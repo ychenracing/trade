@@ -1,0 +1,9 @@
+2026-06-28 08:59:19 | INFO     | strategy.combo:__init__:36 | 加载策略: EMA_Cross (权重=1.0)
+2026-06-28 08:59:19 | INFO     | strategy.combo:__init__:36 | 加载策略: Donchian_Breakout (权重=1.0)
+2026-06-28 08:59:19 | INFO     | strategy.combo:__init__:36 | 加载策略: MACD_Trend (权重=1.0)
+2026-06-28 08:59:19 | INFO     | strategy.combo:__init__:36 | 加载策略: EMA_Cross (权重=1.0)
+2026-06-28 08:59:19 | INFO     | strategy.combo:__init__:36 | 加载策略: Donchian_Breakout (权重=1.0)
+2026-06-28 08:59:19 | INFO     | strategy.combo:__init__:36 | 加载策略: MACD_Trend (权重=1.0)
+2026-06-28 08:59:19 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> buy (强度=0.40) EMA多头排列, 趋势向上
+2026-06-28 08:59:19 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-06-28 08:59:19 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> hold (强度=0.00) MACD无明显信号

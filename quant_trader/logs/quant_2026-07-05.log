@@ -1,0 +1,4 @@
+2026-07-05 11:26:56 | INFO     | risk.manager:reset_after_circuit_breaker:194 | 熔断清仓完毕，重置peak_nav=1698000，解除熔断
+2026-07-05 11:28:28 | INFO     | risk.manager:reset_after_circuit_breaker:195 | 熔断清仓完毕，重置peak_nav=1412044，initial=1412044，解除熔断
+2026-07-05 11:30:34 | INFO     | risk.manager:reset_after_circuit_breaker:195 | 熔断清仓完毕，重置peak_nav=1500000，initial=1500000，解除熔断
+2026-07-05 12:51:10 | ERROR    | risk.manager:check_global_risk:72 | 触发最大回撤熔断! 回撤=25.00%

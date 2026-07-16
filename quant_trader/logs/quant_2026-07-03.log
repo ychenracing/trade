@@ -1,0 +1,42 @@
+2026-07-03 17:43:43 | INFO     | strategy.combo:__init__:36 | 加载策略: EMA_Cross (权重=1.0)
+2026-07-03 17:43:43 | INFO     | strategy.combo:__init__:36 | 加载策略: Donchian_Breakout (权重=1.0)
+2026-07-03 17:43:43 | INFO     | strategy.combo:__init__:36 | 加载策略: MACD_Trend (权重=1.0)
+2026-07-03 17:43:45 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> hold (强度=0.00) EMA多头排列但动量不足(评分=-0.00,R²=0.00)
+2026-07-03 17:43:45 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> sell (强度=0.80) 跌破10日新低(1127.40)
+2026-07-03 17:43:45 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> hold (强度=0.00) MACD无明显信号
+2026-07-03 17:43:45 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> hold (强度=0.00) EMA多头排列但动量不足(评分=0.02,R²=0.05)
+2026-07-03 17:43:45 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:45 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> hold (强度=0.00) MACD无明显信号
+2026-07-03 17:43:46 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> hold (强度=0.00) 无明显信号
+2026-07-03 17:43:46 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:46 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> hold (强度=0.00) MACD无明显信号
+2026-07-03 17:43:46 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> buy (强度=0.46) EMA多头排列+动量评分=1.29(R²=0.50)
+2026-07-03 17:43:46 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:46 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> buy (强度=0.51) MACD零轴上方+动量评分=1.29(R²=0.50)
+2026-07-03 17:43:47 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> buy (强度=0.50) EMA多头排列+动量评分=4.59(R²=0.73)
+2026-07-03 17:43:47 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:47 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> sell (强度=0.80) MACD死叉, DIF=79.793, DEA=79.837
+2026-07-03 17:43:47 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> hold (强度=0.00) EMA多头排列但动量过热(评分=8.16,可能冲顶)
+2026-07-03 17:43:47 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:47 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> hold (强度=0.00) MACD强势区但动量过热(评分=8.16)
+2026-07-03 17:43:47 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> buy (强度=0.50) EMA多头排列+动量评分=2.20(R²=0.60)
+2026-07-03 17:43:47 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> buy (强度=0.40) 通道上部(91%)+动量评分=2.20(R²=0.60)
+2026-07-03 17:43:47 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> buy (强度=0.55) MACD零轴上方+动量评分=2.20(R²=0.60)
+2026-07-03 17:43:48 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> buy (强度=0.50) EMA多头排列+动量评分=4.43(R²=0.80)
+2026-07-03 17:43:48 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:48 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> buy (强度=0.55) MACD零轴上方+动量评分=4.43(R²=0.80)
+2026-07-03 17:43:48 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> buy (强度=0.50) EMA多头排列+动量评分=3.27(R²=0.74)
+2026-07-03 17:43:48 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:48 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> sell (强度=0.80) MACD死叉, DIF=7.045, DEA=7.302
+2026-07-03 17:43:48 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> buy (强度=0.50) EMA多头排列+动量评分=4.57(R²=0.80)
+2026-07-03 17:43:48 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:48 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> buy (强度=0.55) MACD零轴上方+动量评分=4.57(R²=0.80)
+2026-07-03 17:43:50 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> buy (强度=0.50) EMA多头排列+动量评分=2.00(R²=0.59)
+2026-07-03 17:43:50 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:50 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> buy (强度=0.55) MACD零轴上方+动量评分=2.00(R²=0.59)
+2026-07-03 17:43:50 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> hold (强度=0.00) 无明显信号
+2026-07-03 17:43:50 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> sell (强度=0.80) 跌破10日新低(182.00)
+2026-07-03 17:43:50 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> hold (强度=0.00) MACD无明显信号
+2026-07-03 17:43:51 | DEBUG    | strategy.combo:generate_signal:88 |   [EMA_Cross] -> hold (强度=0.00) EMA多头排列但动量不足(评分=0.07,R²=0.06)
+2026-07-03 17:43:51 | DEBUG    | strategy.combo:generate_signal:88 |   [Donchian_Breakout] -> hold (强度=0.00) 价格在通道中部
+2026-07-03 17:43:51 | DEBUG    | strategy.combo:generate_signal:88 |   [MACD_Trend] -> hold (强度=0.00) MACD无明显信号

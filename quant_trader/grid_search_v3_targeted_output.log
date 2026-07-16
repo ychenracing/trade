@@ -1,0 +1,56 @@
+加载数据 (2024-07-01 ~ 2026-07-04)...
+  中际旭创(300308): 487条
+  新易盛(300502): 487条
+  天孚通信(300394): 487条
+  澜起科技(688008): 487条
+  兆易创新(603986): 487条
+  雅克科技(002409): 487条
+  拓荆科技(688072): 482条
+  联瑞新材(688110): 484条
+  鼎龙股份(300054): 487条
+  华海诚科(688535): 477条
+  帝尔激光(300776): 487条
+  德科立(688205): 487条
+成功获取: 12/12只, 交易日: 487
+共11组合
+2026-07-05 12:55:56.258 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.80%
+2026-07-05 12:56:04.842 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=30.76%
+2026-07-05 12:56:20.924 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=21.27%
+20% 25% 8A ret=+241.0% dd=-36.1% sh=1.57 cb=3 43s ETA 432s
+2026-07-05 12:56:39.134 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.17%
+2026-07-05 12:56:47.765 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.40%
+2026-07-05 12:57:03.875 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.54%
+20% 30% 8A ret=+274.8% dd=-29.5% sh=1.70 cb=3 43s ETA 388s
+2026-07-05 12:57:22.113 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.64%
+2026-07-05 12:57:30.424 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.47%
+20% 35% 8A ret=+264.0% dd=-31.9% sh=1.69 cb=2 43s ETA 345s
+2026-07-05 12:58:05.139 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=21.50%
+2026-07-05 12:58:13.077 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.53%
+20% 40% 8A ret=+308.9% dd=-33.8% sh=1.82 cb=2 43s ETA 301s
+2026-07-05 12:58:48.011 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.19%
+2026-07-05 12:58:54.394 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.38%
+2026-07-05 12:58:56.734 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=21.70%
+20% 50% 8A ret=+346.8% dd=-41.8% sh=1.86 cb=3 43s ETA 258s
+2026-07-05 12:59:32.730 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.34%
+2026-07-05 12:59:39.795 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=28.74%
+25% 25% 6A ret=+293.1% dd=-37.5% sh=1.75 cb=2 43s ETA 215s
+2026-07-05 13:00:15.566 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.64%
+2026-07-05 13:00:22.695 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=28.81%
+25% 25% 8A ret=+359.9% dd=-37.9% sh=1.91 cb=2 43s ETA 172s
+2026-07-05 13:00:58.352 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.54%
+2026-07-05 13:01:05.615 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=30.83%
+25% 30% 6A ret=+341.4% dd=-37.4% sh=1.87 cb=2 43s ETA 129s
+2026-07-05 13:01:41.283 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.54%
+2026-07-05 13:01:48.480 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=30.83%
+25% 30% 8A ret=+366.0% dd=-37.4% sh=1.96 cb=2 43s ETA 86s
+2026-07-05 13:02:23.894 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.21%
+2026-07-05 13:02:31.595 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=32.73%
+25% 35% 6A ret=+276.5% dd=-36.6% sh=1.77 cb=2 43s ETA 43s
+2026-07-05 13:03:06.871 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.21%
+2026-07-05 13:03:14.631 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=32.73%
+25% 35% 8A ret=+239.0% dd=-36.6% sh=1.60 cb=2 43s ETA 0s
+回撤<35%: 3个
+  DD=20% Pos=40% Peak=8A ret=+308.9% dd=-33.8% sh=1.82
+  DD=20% Pos=30% Peak=8A ret=+274.8% dd=-29.5% sh=1.70
+  DD=20% Pos=35% Peak=8A ret=+264.0% dd=-31.9% sh=1.69
+done

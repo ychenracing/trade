@@ -1,0 +1,1 @@
+2026-06-24 00:58:10 | ERROR    | risk.manager:check_global_risk:85 | ⚠️ 触发最大回撤熔断! 回撤=25.00% >= 20.00%

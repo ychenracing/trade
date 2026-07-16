@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Sensitive
+.env
+db/
+
+# Backups & snapshots
+backups/
+*.bak.*
+*.zip
+*.tar.gz
+
+# Downloads
+download/
+
+# Personal workspace files
+AGENTS.md
+SOUL.md
+USER.md
+IDENTITY.md
+TOOLS.md
+MEMORY.md
+HEARTBEAT.md
+BOOTSTRAP.md
+
+# Reports (large PDFs)
+*.pdf
+
+# Misc temp
+melt_result.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Skills & uploads (not part of trading system)
+skills/
+upload/

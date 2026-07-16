@@ -1,0 +1,304 @@
+======================================================================
+  组合回测网格搜索 V2 (两阶段+预计算)
+  回测区间: 2024-07-01 ~ 2026-07-04
+  初始资金: 2,000,000
+  股票数量: 12
+======================================================================
+加载数据 (2024-07-01 ~ 2026-07-04)...
+  中际旭创(300308): 487条
+  新易盛(300502): 487条
+  天孚通信(300394): 487条
+  澜起科技(688008): 487条
+  兆易创新(603986): 487条
+  雅克科技(002409): 487条
+  拓荆科技(688072): 482条
+  联瑞新材(688110): 484条
+  鼎龙股份(300054): 487条
+  华海诚科(688535): 477条
+  帝尔激光(300776): 487条
+  德科立(688205): 487条
+成功获取: 12/12只, 交易日: 487
+预计算策略信号...
+  预计算完成: 4986个信号, 耗时42.7s
+
+阶段1: 搜索 DD×Pos = 25组合 (peak_stop=8.0ATR)
+──────────────────────────────────────────────────────────────────────────────────────────
+  #    DD   Pos       收益       回撤     夏普     胜率   熔断     耗时
+──────────────────────────────────────────────────────────────────────────────────────────
+2026-07-05 12:09:13.817 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.38%
+2026-07-05 12:09:13.861 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.69%
+2026-07-05 12:09:13.927 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=21.00%
+  1   20%   25%  +243.2%   -34.7%   1.88  33.3%    3   0.2s ETA    5s 🏆
+2026-07-05 12:09:14.042 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.22%
+2026-07-05 12:09:14.084 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.31%
+2026-07-05 12:09:14.150 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=22.72%
+  2   20%   30%  +228.4%   -29.3%   1.75  32.0%    3   0.2s ETA    5s   
+2026-07-05 12:09:14.264 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=21.38%
+2026-07-05 12:09:14.303 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.62%
+2026-07-05 12:09:14.359 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.53%
+2026-07-05 12:09:14.427 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=21.25%
+  3   20%   35%  +302.8%   -24.3%   1.93  41.8%    4   0.2s ETA    5s 🏆
+2026-07-05 12:09:14.485 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.36%
+2026-07-05 12:09:14.527 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.37%
+2026-07-05 12:09:14.581 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.13%
+2026-07-05 12:09:14.607 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=22.82%
+  4   20%   40%  +282.7%   -33.1%   2.01  50.0%    4   0.2s ETA    5s   
+2026-07-05 12:09:14.704 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=21.13%
+2026-07-05 12:09:14.747 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=27.22%
+2026-07-05 12:09:14.801 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.48%
+2026-07-05 12:09:14.824 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.57%
+2026-07-05 12:09:14.871 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.23%
+  5   20%   50%  +192.0%   -39.2%   1.72  41.3%    5   0.2s ETA    4s   
+2026-07-05 12:09:14.947 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.30%
+2026-07-05 12:09:14.996 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.27%
+  6   25%   25%  +272.6%   -42.2%   1.68  37.0%    2   0.2s ETA    4s   
+2026-07-05 12:09:15.167 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.48%
+2026-07-05 12:09:15.205 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.65%
+2026-07-05 12:09:15.287 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.15%
+  7   25%   30%  +309.2%   -35.0%   1.84  39.1%    3   0.2s ETA    4s 🏆
+2026-07-05 12:09:15.390 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.37%
+2026-07-05 12:09:15.505 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.28%
+  8   25%   35%  +171.9%   -36.4%   1.38  38.3%    2   0.2s ETA    4s   
+2026-07-05 12:09:15.612 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.07%
+2026-07-05 12:09:15.652 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=29.61%
+2026-07-05 12:09:15.730 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.15%
+  9   25%   40%  +165.4%   -37.0%   1.40  41.3%    3   0.2s ETA    4s   
+2026-07-05 12:09:15.835 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.18%
+2026-07-05 12:09:15.874 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.07%
+2026-07-05 12:09:15.948 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=25.10%
+ 10   25%   50%  +375.2%   -37.0%   1.93  36.8%    3   0.2s ETA    3s 🏆
+2026-07-05 12:09:16.115 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=33.63%
+ 11   30%   25%  +314.4%   -36.2%   1.81  28.2%    1   0.2s ETA    3s   
+2026-07-05 12:09:16.351 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=31.12%
+ 12   30%   30%  +327.9%   -34.1%   1.84  31.7%    1   0.2s ETA    3s   
+2026-07-05 12:09:16.577 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=30.61%
+ 13   30%   35%  +336.9%   -35.3%   1.84  33.3%    1   0.2s ETA    3s   
+2026-07-05 12:09:16.760 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=30.14%
+2026-07-05 12:09:16.805 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=30.29%
+ 14   30%   40%  +285.7%   -41.7%   1.66  36.4%    2   0.2s ETA    2s   
+2026-07-05 12:09:16.982 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=31.64%
+2026-07-05 12:09:17.035 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=30.98%
+2026-07-05 12:09:17.101 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=30.25%
+ 15   30%   50%  +129.7%   -43.1%   1.25  35.1%    3   0.2s ETA    2s   
+2026-07-05 12:09:17.260 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=35.01%
+ 16   35%   25%  +288.7%   -37.2%   1.67  25.0%    1   0.2s ETA    2s   
+ 17   35%   30%  +327.9%   -34.1%   1.75  31.7%    0   0.2s ETA    2s   
+2026-07-05 12:09:17.723 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=35.25%
+ 18   35%   35%  +344.6%   -37.5%   1.75  35.5%    1   0.2s ETA    2s   
+2026-07-05 12:09:17.935 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=35.11%
+ 19   35%   40%  +285.6%   -40.6%   1.63  35.7%    1   0.2s ETA    1s   
+2026-07-05 12:09:18.145 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=36.77%
+ 20   35%   50%  +374.4%   -41.7%   1.85  25.9%    1   0.2s ETA    1s   
+ 21   40%   25%  +314.4%   -36.2%   1.70  28.2%    0   0.2s ETA    1s   
+ 22   40%   30%  +327.9%   -34.1%   1.75  31.7%    0   0.2s ETA    1s   
+ 23   40%   35%  +336.9%   -35.3%   1.75  33.3%    0   0.2s ETA    0s   
+ 24   40%   40%  +314.9%   -36.8%   1.70  35.0%    0   0.2s ETA    0s   
+2026-07-05 12:09:19.267 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=40.38%
+ 25   40%   50%  +350.4%   -44.7%   1.70  26.9%    1   0.2s ETA    0s   
+
+阶段1最优 (Sharpe): DD=20% Pos=40% → 收益=+282.7% 回撤=-33.1% 夏普=2.01
+
+阶段2: 搜索 peak_stop = 4组合 (DD=20%, Pos=40%)
+──────────────────────────────────────────────────────────────────────────────────────────
+  #   Peak       收益       回撤     夏普     胜率   熔断     耗时
+──────────────────────────────────────────────────────────────────────────────────────────
+2026-07-05 12:09:19.432 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.36%
+2026-07-05 12:09:19.475 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.37%
+2026-07-05 12:09:19.532 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.13%
+2026-07-05 12:09:19.558 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=21.90%
+  1     6ATR  +288.4%   -33.1%   2.01  48.0%    4   0.2s
+2026-07-05 12:09:19.655 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.36%
+2026-07-05 12:09:19.706 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.37%
+2026-07-05 12:09:19.759 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.13%
+2026-07-05 12:09:19.785 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=22.82%
+  2     8ATR  +282.7%   -33.1%   2.01  50.0%    4   0.2s
+2026-07-05 12:09:19.887 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.36%
+2026-07-05 12:09:19.929 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.37%
+2026-07-05 12:09:19.983 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.13%
+2026-07-05 12:09:20.009 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=22.82%
+  3    10ATR  +282.7%   -33.1%   2.01  50.0%    4   0.2s
+2026-07-05 12:09:20.106 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.36%
+2026-07-05 12:09:20.148 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=26.37%
+2026-07-05 12:09:20.202 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=20.13%
+2026-07-05 12:09:20.229 | ERROR    | risk.manager:check_global_risk:72 - 触发最大回撤熔断! 回撤=22.82%
+  4    12ATR  +282.7%   -33.1%   2.01  50.0%    4   0.2s
+
+======================================================================
+  网格搜索完成 (7s = 0.1min)
+======================================================================
+
+  📊 最优(收益): DD=25% Pos=50% Peak=8ATR
+     收益=+375.2% 回撤=-37.0% 夏普=1.93 熔断=3次
+
+  📊 最优(夏普): DD=20% Pos=40% Peak=6ATR
+     收益=+288.4% 回撤=-33.1% 夏普=2.01 熔断=4次
+
+  📊 最优(回撤): DD=20% Pos=35% Peak=8ATR
+     收益=+302.8% 回撤=-24.3% 夏普=1.93 熔断=4次
+
+结果已保存: grid_search_portfolio_v2_results.json
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 21333 (\N{CJK UNIFIED IDEOGRAPH-5355}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 32929 (\N{CJK UNIFIED IDEOGRAPH-80A1}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 20179 (\N{CJK UNIFIED IDEOGRAPH-4ED3}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 20301 (\N{CJK UNIFIED IDEOGRAPH-4F4D}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 29076 (\N{CJK UNIFIED IDEOGRAPH-7194}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 26029 (\N{CJK UNIFIED IDEOGRAPH-65AD}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 38408 (\N{CJK UNIFIED IDEOGRAPH-9608}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 20540 (\N{CJK UNIFIED IDEOGRAPH-503C}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 24635 (\N{CJK UNIFIED IDEOGRAPH-603B}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 25910 (\N{CJK UNIFIED IDEOGRAPH-6536}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 30410 (\N{CJK UNIFIED IDEOGRAPH-76CA}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 29575 (\N{CJK UNIFIED IDEOGRAPH-7387}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 26368 (\N{CJK UNIFIED IDEOGRAPH-6700}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 22823 (\N{CJK UNIFIED IDEOGRAPH-5927}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 22238 (\N{CJK UNIFIED IDEOGRAPH-56DE}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 25764 (\N{CJK UNIFIED IDEOGRAPH-64A4}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 22799 (\N{CJK UNIFIED IDEOGRAPH-590F}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 26222 (\N{CJK UNIFIED IDEOGRAPH-666E}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 27604 (\N{CJK UNIFIED IDEOGRAPH-6BD4}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 32452 (\N{CJK UNIFIED IDEOGRAPH-7EC4}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 21512 (\N{CJK UNIFIED IDEOGRAPH-5408}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 27979 (\N{CJK UNIFIED IDEOGRAPH-6D4B}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 32593 (\N{CJK UNIFIED IDEOGRAPH-7F51}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 26684 (\N{CJK UNIFIED IDEOGRAPH-683C}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 25628 (\N{CJK UNIFIED IDEOGRAPH-641C}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 32034 (\N{CJK UNIFIED IDEOGRAPH-7D22}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 38454 (\N{CJK UNIFIED IDEOGRAPH-9636}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 27573 (\N{CJK UNIFIED IDEOGRAPH-6BB5}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 28909 (\N{CJK UNIFIED IDEOGRAPH-70ED}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 21147 (\N{CJK UNIFIED IDEOGRAPH-529B}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 22270 (\N{CJK UNIFIED IDEOGRAPH-56FE}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 21306 (\N{CJK UNIFIED IDEOGRAPH-533A}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 38388 (\N{CJK UNIFIED IDEOGRAPH-95F4}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 21021 (\N{CJK UNIFIED IDEOGRAPH-521D}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 22987 (\N{CJK UNIFIED IDEOGRAPH-59CB}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 36164 (\N{CJK UNIFIED IDEOGRAPH-8D44}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 37329 (\N{CJK UNIFIED IDEOGRAPH-91D1}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 23792 (\N{CJK UNIFIED IDEOGRAPH-5CF0}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 27490 (\N{CJK UNIFIED IDEOGRAPH-6B62}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 25439 (\N{CJK UNIFIED IDEOGRAPH-635F}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:625: UserWarning: Glyph 20248 (\N{CJK UNIFIED IDEOGRAPH-4F18}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 29076 (\N{CJK UNIFIED IDEOGRAPH-7194}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 26029 (\N{CJK UNIFIED IDEOGRAPH-65AD}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 38408 (\N{CJK UNIFIED IDEOGRAPH-9608}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 20540 (\N{CJK UNIFIED IDEOGRAPH-503C}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 24635 (\N{CJK UNIFIED IDEOGRAPH-603B}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 25910 (\N{CJK UNIFIED IDEOGRAPH-6536}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 30410 (\N{CJK UNIFIED IDEOGRAPH-76CA}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 29575 (\N{CJK UNIFIED IDEOGRAPH-7387}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 21333 (\N{CJK UNIFIED IDEOGRAPH-5355}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 32929 (\N{CJK UNIFIED IDEOGRAPH-80A1}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 20179 (\N{CJK UNIFIED IDEOGRAPH-4ED3}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 20301 (\N{CJK UNIFIED IDEOGRAPH-4F4D}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 26368 (\N{CJK UNIFIED IDEOGRAPH-6700}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 22823 (\N{CJK UNIFIED IDEOGRAPH-5927}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 22238 (\N{CJK UNIFIED IDEOGRAPH-56DE}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 25764 (\N{CJK UNIFIED IDEOGRAPH-64A4}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 22799 (\N{CJK UNIFIED IDEOGRAPH-590F}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 26222 (\N{CJK UNIFIED IDEOGRAPH-666E}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 27604 (\N{CJK UNIFIED IDEOGRAPH-6BD4}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 32452 (\N{CJK UNIFIED IDEOGRAPH-7EC4}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 21512 (\N{CJK UNIFIED IDEOGRAPH-5408}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 27979 (\N{CJK UNIFIED IDEOGRAPH-6D4B}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 32593 (\N{CJK UNIFIED IDEOGRAPH-7F51}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 26684 (\N{CJK UNIFIED IDEOGRAPH-683C}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 25628 (\N{CJK UNIFIED IDEOGRAPH-641C}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 32034 (\N{CJK UNIFIED IDEOGRAPH-7D22}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 38454 (\N{CJK UNIFIED IDEOGRAPH-9636}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 27573 (\N{CJK UNIFIED IDEOGRAPH-6BB5}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 28909 (\N{CJK UNIFIED IDEOGRAPH-70ED}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 21147 (\N{CJK UNIFIED IDEOGRAPH-529B}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 22270 (\N{CJK UNIFIED IDEOGRAPH-56FE}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 21306 (\N{CJK UNIFIED IDEOGRAPH-533A}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 38388 (\N{CJK UNIFIED IDEOGRAPH-95F4}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 21021 (\N{CJK UNIFIED IDEOGRAPH-521D}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 22987 (\N{CJK UNIFIED IDEOGRAPH-59CB}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 36164 (\N{CJK UNIFIED IDEOGRAPH-8D44}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 37329 (\N{CJK UNIFIED IDEOGRAPH-91D1}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 23792 (\N{CJK UNIFIED IDEOGRAPH-5CF0}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 27490 (\N{CJK UNIFIED IDEOGRAPH-6B62}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 25439 (\N{CJK UNIFIED IDEOGRAPH-635F}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+/home/z/my-project/quant_trader/grid_search_v2.py:627: UserWarning: Glyph 20248 (\N{CJK UNIFIED IDEOGRAPH-4F18}) missing from font(s) DejaVu Sans.
+  plt.savefig(output_file, dpi=150, bbox_inches="tight")
+热力图已保存: grid_search_portfolio_v2_heatmap.png
