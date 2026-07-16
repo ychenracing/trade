@@ -1,0 +1,25 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+
+# ---- Runtime-generated data / caches (produced locally, not source) ----
+cache/
+data/
+data_semi/
+signals/
+results/
+reports/
+*.csv
+*.png
+*.parquet
+
+# ---- Secrets: NEVER commit ----
+email_config.json
+*.bak
+backups/
+
+# ---- Misc local artifacts ----
+_archives/
+*.tar.gz
+.codebuddy/
+.DS_Store
