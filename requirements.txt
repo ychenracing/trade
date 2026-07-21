@@ -1,0 +1,5 @@
+numpy>=1.26,<3
+pandas>=2.0,<4
+akshare>=1.17,<2
+matplotlib>=3.8,<4
+
