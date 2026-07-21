@@ -4,7 +4,7 @@ Codex Quant Fusion v17 is a standalone deterministic daily-bar backtester for
 concentrated A-share technology portfolios. The complete data-loading, signal,
 T+1 execution, transaction-cost, exposure, causal-liquidity, allocation, and risk
 implementation is contained in `codex_quant_fusion_v17.py`; it does not import or
-require v14, v15, or v16 at runtime.
+require another strategy module at runtime.
 
 ## Version 17 design
 
@@ -42,6 +42,21 @@ removes the strongest underlying assets cannot be guaranteed the return of a
 universe that contains them. The fixed default regime basket is appropriate for
 the bundled AI-infrastructure and semiconductor domain; another investment domain
 should supply its own stable benchmark basket before live use.
+
+## Repository layout
+
+- `codex_quant_fusion_v17.py`: complete standalone production engine and CLI.
+- `test_codex_quant_fusion_v17.py`: unit, isolation, routing, risk, and regression
+  tests.
+- `backtest_v17_universes.py`, `stress_test_v17_prefixes.py`, and
+  `backtest_v17_cambricon_universe.py`: reproducible portfolio checks.
+- `market_data_qfq_22_20260720` and `market_data_qfq_9_cambricon_20260720`:
+  canonical forward-adjusted snapshots required by the regression suite.
+- `v17_universe_backtest_20260720.json`, `v17_prefix_stress_20260720.json`, and
+  `v17_cambricon_universe_backtest_20260720.json`: canonical result artifacts.
+
+Historical implementations remain available on their original Git branches and
+are intentionally not duplicated on `main`.
 
 ## Data
 
@@ -106,9 +121,10 @@ The requested multi-symbol warm wealth-factor ratio between the worst and best
 universe is above 83%. The exhaustive ordered-prefix audit also tests every count
 from one through 22. Counts two through 22 all return above 1,000%, and the worst
 single-symbol addition changes wealth by -11.46% (14 to 15 symbols), compared
-with the much larger v16 discontinuities. The one-symbol result remains
-structurally lower because the 60% symbol cap leaves at least 40% cash at entry
-and provides no rotation opportunity.
+with the much larger discontinuities observed before the universe-invariant
+policy was introduced. The one-symbol result remains structurally lower because
+the 60% symbol cap leaves at least 40% cash at entry and provides no rotation
+opportunity.
 
 At 0.5% one-way slippage, warm returns were 642.0017%, 1,048.9399%, 1,032.5983%,
 and 873.9249% for the 1-, 5-, 13-, and 22-symbol universes respectively.

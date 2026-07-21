@@ -100,7 +100,7 @@ class SymbolRoutingTests(unittest.TestCase):
 class StandaloneAndDataSourceTests(unittest.TestCase):
     """Verify standalone packaging and explicit online/local source selection."""
 
-    def test_source_has_no_import_dependency_on_earlier_versions(self) -> None:
+    def test_source_has_no_import_dependency_on_another_strategy_module(self) -> None:
         source_path = ROOT / "codex_quant_fusion_v17.py"
         tree = ast.parse(source_path.read_text(encoding="utf-8"))
         imported_modules = {
@@ -115,12 +115,7 @@ class StandaloneAndDataSourceTests(unittest.TestCase):
             if isinstance(node, ast.ImportFrom) and node.module
         )
         self.assertFalse(
-            imported_modules
-            & {
-                "codex_quant_fusion_v14",
-                "codex_quant_fusion_v15",
-                "codex_quant_fusion_v16",
-            }
+            any(module.startswith("codex_quant_fusion_") for module in imported_modules)
         )
 
     def test_script_starts_in_an_isolated_directory(self) -> None:

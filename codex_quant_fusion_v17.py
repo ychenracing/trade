@@ -1166,7 +1166,7 @@ class RiskManager:
 class _CoreBacktestEngine:
     """Run a shared-cash, multi-symbol, multi-strategy T+1 backtest."""
 
-    ENGINE_LABEL = "Codex Quant v14"
+    ENGINE_LABEL = "Codex Quant v17"
 
     def _display_run_period(self, start_date: str, end_date: str) -> tuple[str, str]:
         """Return the user-facing trading period shown in the run header."""
@@ -3388,7 +3388,7 @@ class PerformanceReport:
             print(f"Backtest failed: {result['error']}")
             return
         print(f"\n{'═' * 60}")
-        engine_version = str(result.get("engine_version", "14.0")).split(".", 1)[0]
+        engine_version = str(result.get("engine_version", "17.0")).split(".", 1)[0]
         print(f"  Codex Quant v{engine_version} performance report")
         print(f"{'═' * 60}")
         print(f"  Symbols: {', '.join((f'{v}({k})' for k, v in symbols_dict.items()))}")
@@ -3609,7 +3609,7 @@ class PersistentRiskManager(RiskManager):
 class _CausalBacktestEngine(_CoreBacktestEngine):
     """Run core signals with causal allocation, explicit state, and durable defense."""
 
-    ENGINE_LABEL = "Codex Quant v15"
+    ENGINE_LABEL = "Codex Quant v17"
     ALLOCATION_LOOKBACKS = (5, 10, 20)
 
     def __init__(
@@ -3632,7 +3632,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
 
     @staticmethod
     def _default_config() -> dict:
-        """Return v14 defaults with non-causal data-end settlement disabled."""
+        """Return core defaults with non-causal data-end settlement disabled."""
         cfg = _CoreBacktestEngine._default_config()
         cfg["close_position_on_data_end"] = False
         return cfg
@@ -3645,7 +3645,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         return _CoreBacktestEngine._validate_config(normalized)
 
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
-        """Reset v15 audit and profile state together with the inherited ledger."""
+        """Reset causal audit and profile state with the inherited ledger."""
         super()._reset_run_state(symbols_dict)
         self.order_events = []
         self._profile_strategy_overrides = {}
@@ -4054,7 +4054,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         indicator_state: str = "cold",
         warmup_calendar_days: int = 365,
     ) -> dict:
-        """Run v15 with an explicit cold or warm indicator-state contract."""
+        """Run with an explicit cold or warm indicator-state contract."""
         indicator_state = str(indicator_state).lower()
         if indicator_state not in {"cold", "warm"}:
             raise ValueError("indicator_state must be either 'cold' or 'warm'")
@@ -4080,7 +4080,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         result = super()._build_result(final_assets, all_dates)
         result.update(
             {
-                "engine_version": "15.0",
+                "engine_version": "17.0",
                 "indicator_state": self._indicator_state,
                 "allocation_lookbacks": list(self.ALLOCATION_LOOKBACKS),
                 "order_events": list(self.order_events),
@@ -4287,9 +4287,9 @@ class _ConfirmedDrawdownRiskManager(PersistentRiskManager):
 
 
 class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
-    """Run one independently funded v16 horizon sleeve."""
+    """Run one independently funded horizon sleeve."""
 
-    ENGINE_LABEL = "Codex Quant v16"
+    ENGINE_LABEL = "Codex Quant v17"
 
     def __init__(
         self,
@@ -4332,7 +4332,7 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         date_to_pos: dict[pd.Timestamp, int],
         pending: list[tuple[Signal, BaseStrategy]],
     ) -> tuple[list[tuple[Signal, BaseStrategy]], bool, bool]:
-        """Apply inherited liquidation handling and retain v16 manager events."""
+        """Apply inherited liquidation handling and retain manager events."""
         outcome = super()._apply_portfolio_risk(
             current_assets, date_str, all_dates, date_to_pos, pending
         )
@@ -4370,7 +4370,7 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         data_map: dict[str, pd.DataFrame] | None = None,
         date: pd.Timestamp | None = None,
     ) -> bool:
-        """Apply the causal ADV cap before v15 exposure and cash checks."""
+        """Apply the causal ADV cap before exposure and cash checks."""
         adjusted_signal = signal
         if data_map is not None and date is not None:
             capacity, adv = self._adv_capacity(signal.symbol, data_map, date)
@@ -4455,11 +4455,11 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         result = super()._build_result(final_assets, all_dates)
         result.update(
             {
-                "engine_version": "16.0",
+                "engine_version": "17.0",
                 "allocation_mode": "single",
                 "sleeve_name": self.sleeve_name,
                 "allocation_lookbacks": list(self.ALLOCATION_LOOKBACKS),
-                "v16_policy": self._policy_snapshot("single"),
+                "sleeve_policy": self._policy_snapshot("single"),
             }
         )
         return result
@@ -4487,7 +4487,7 @@ class _RunRequest:
 
 
 class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
-    """Run either one v16 sleeve or an equal-capital ensemble of sleeves."""
+    """Coordinate one sleeve or an equal-capital ensemble of sleeves."""
 
     def __init__(
         self,
@@ -4512,7 +4512,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
                 resolved_policy, confirmed_drawdown=configured_drawdown
             )
         raw_cfg["max_drawdown"] = resolved_policy.confirmed_drawdown
-        self._v16_user_cfg = raw_cfg
+        self._ensemble_user_cfg = raw_cfg
         self.sleeves: list[_EnsembleSleeveBacktestEngine] = []
         self.last_result: dict | None = None
         super().__init__(
@@ -4531,68 +4531,9 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
         return f"sleeve_{index + 1}"
 
     def _run_ensemble(self, request: _RunRequest) -> dict:
-        """Run independent ledgers and combine their marked-to-market equity."""
-        horizons = self.policy.allocation_horizons
-        sleeve_capital = self.initial_capital / len(horizons)
-        results: list[dict] = []
-        self.sleeves = []
-        print(f"\n{'=' * 60}")
-        print("Codex Quant v16 ensemble backtest")
-        print(f"  Capital: {self.initial_capital:,.0f}")
-        print(f"  Sleeves: {len(horizons)}")
-        print(f"  Period: {request.start_date} ~ {request.end_date}")
-        print(f"{'=' * 60}\n")
-        sleeve_policy = replace(
-            self.policy,
-            allocation_mode="single",
-            max_order_adv_ratio=self.policy.max_order_adv_ratio / len(horizons),
-        )
-        for index, lookbacks in enumerate(horizons):
-            capital = (
-                sleeve_capital
-                if index < len(horizons) - 1
-                else self.initial_capital - sleeve_capital * (len(horizons) - 1)
-            )
-            name = self._sleeve_name(index, len(horizons))
-            sleeve = _EnsembleSleeveBacktestEngine(
-                capital,
-                cfg=self._v16_user_cfg,
-                policy=sleeve_policy,
-                allocation_lookbacks=lookbacks,
-                sleeve_name=name,
-            )
-            with contextlib.redirect_stdout(io.StringIO()):
-                result = sleeve.run(
-                    request.symbols_dict,
-                    request.start_date,
-                    request.end_date,
-                    per_symbol_config=request.per_symbol_config,
-                    profile=request.profile,
-                    config_route=request.config_route,
-                    data_dir=request.data_dir,
-                    indicator_state=request.indicator_state,
-                    warmup_calendar_days=request.warmup_calendar_days,
-                )
-            self.sleeves.append(sleeve)
-            results.append(result)
-            print(
-                f"  {name:<5} {lookbacks}: final {result['final_assets']:,.0f}, "
-                f"return {result['total_return']:.2%}"
-            )
-            lock_dates = [
-                event["date"]
-                for event in result.get("risk_events", [])
-                if event.get("event") == "persistent_portfolio_risk_lock"
-            ]
-            if lock_dates:
-                print(f"        persistent risk lock: {lock_dates[-1]}")
-        combined = self._aggregate_sleeve_results(results)
-        self.last_result = combined
-        print(
-            f"\n  Ensemble completed: initial {self.initial_capital:,.0f} -> "
-            f"final assets {combined['final_assets']:,.0f}"
-        )
-        return combined
+        """Require the concrete portfolio coordinator to build its sleeves."""
+        del request
+        raise NotImplementedError
 
     @staticmethod
     def _decorate_trade(trade: TradeRecord, sleeve: str) -> TradeRecord:
@@ -4701,12 +4642,12 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             if result.get("persistent_risk_lock", False)
         ]
         return {
-            "engine_version": "16.0",
+            "engine_version": "17.0",
             "allocation_mode": "ensemble",
             "allocation_lookbacks": [
                 list(values) for values in self.policy.allocation_horizons
             ],
-            "v16_policy": self._policy_snapshot("ensemble"),
+            "sleeve_policy": self._policy_snapshot("ensemble"),
             "portfolio_max_order_adv_ratio": self.policy.max_order_adv_ratio,
             "per_sleeve_max_order_adv_ratio": (
                 self.policy.max_order_adv_ratio / len(results)
@@ -4764,7 +4705,9 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
                     "total_return": result["total_return"],
                     "max_drawdown": result["max_drawdown"],
                     "persistent_risk_lock": result["persistent_risk_lock"],
-                    "max_order_adv_ratio": result["v16_policy"]["max_order_adv_ratio"],
+                    "max_order_adv_ratio": result["sleeve_policy"][
+                        "max_order_adv_ratio"
+                    ],
                 }
                 for name, result in zip(names, results, strict=True)
             ],
@@ -4802,7 +4745,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
                 warmup_calendar_days=warmup_calendar_days,
             )
             result["allocation_mode"] = "single"
-            result["v16_policy"] = self._policy_snapshot("single")
+            result["sleeve_policy"] = self._policy_snapshot("single")
             self.last_result = result
             return result
         return self._run_ensemble(
@@ -5094,7 +5037,7 @@ class _UniverseInvariantSleeveMixin:
 
     @staticmethod
     def _validate_config(cfg: dict) -> dict:
-        """Permit a one-symbol risk scope while retaining every other v15 check."""
+        """Permit a one-symbol risk scope while retaining all core checks."""
         normalized = dict(cfg)
         requested_minimum = normalized.get("sector_guard_min_symbols")
         if requested_minimum == 1:
@@ -5106,7 +5049,7 @@ class _UniverseInvariantSleeveMixin:
 
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
         """Reset tradable and regime metadata at every independent run."""
-        # The concrete classes place this cooperative mixin before a v16 engine.
+        # Concrete classes place this cooperative mixin before the sleeve engine.
         super()._reset_run_state(  # pyright: ignore[reportAttributeAccessIssue]
             symbols_dict
         )
@@ -5358,7 +5301,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
 
     def _runtime_sleeve_cfg(self, tradable_count: int) -> dict[str, Any]:
         """Return shared overrides, with a time-series fallback for one asset."""
-        sleeve_cfg = dict(self._v16_user_cfg)
+        sleeve_cfg = dict(self._ensemble_user_cfg)
         if tradable_count <= 2:
             sleeve_cfg.update(self._SINGLE_ASSET_TREND_OVERRIDES)
         return sleeve_cfg
