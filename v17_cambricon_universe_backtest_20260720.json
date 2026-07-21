@@ -1,0 +1,93 @@
+{
+  "engine": "Codex Quant Fusion v17",
+  "data_directory": "market_data_qfq_9_cambricon_20260720",
+  "data_adjustment": "qfq",
+  "data_provider": "Eastmoney push2his",
+  "initial_capital": 2000000.0,
+  "symbols": {
+    "300308": "中际旭创",
+    "688256": "寒武纪",
+    "300502": "新易盛",
+    "300394": "天孚通信",
+    "603986": "兆易创新",
+    "688008": "澜起科技",
+    "688347": "华虹宏力",
+    "300054": "鼎龙股份",
+    "688300": "联瑞新材"
+  },
+  "cambricon_mapping": {
+    "classification": "semiconductor",
+    "risk_group": "domestic_semiconductor",
+    "parameter_profile": "domestic_design"
+  },
+  "results": [
+    {
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "final_assets": 25838643.00192851,
+      "total_return": 11.919321500964255,
+      "annual_return": 7.457843056894832,
+      "max_drawdown": -0.1494399295472653,
+      "sharpe": 3.7454556029697423,
+      "total_trades": 244,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "guard_on_dates": [
+        "2026-06-26"
+      ],
+      "cambricon_parameter_route": "domestic_design"
+    },
+    {
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "final_assets": 25838643.00192851,
+      "total_return": 11.919321500964255,
+      "annual_return": 6.694466260480863,
+      "max_drawdown": -0.1494399295472653,
+      "sharpe": 3.6570122403579433,
+      "total_trades": 244,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "guard_on_dates": [
+        "2026-06-26"
+      ],
+      "cambricon_parameter_route": "domestic_design"
+    },
+    {
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "final_assets": 30361552.717196256,
+      "total_return": 14.180776358598129,
+      "annual_return": 8.676437780429934,
+      "max_drawdown": -0.1511105646833452,
+      "sharpe": 3.9601919914707584,
+      "total_trades": 292,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "guard_on_dates": [
+        "2026-06-26"
+      ],
+      "cambricon_parameter_route": "domestic_design"
+    },
+    {
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "final_assets": 30361552.717196256,
+      "total_return": 14.180776358598129,
+      "annual_return": 7.750735724724592,
+      "max_drawdown": -0.1511105646833452,
+      "sharpe": 3.866113384580219,
+      "total_trades": 292,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "guard_on_dates": [
+        "2026-06-26"
+      ],
+      "cambricon_parameter_route": "domestic_design"
+    }
+  ]
+}

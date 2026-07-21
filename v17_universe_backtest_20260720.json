@@ -1,0 +1,4085 @@
+{
+  "engine": "Codex Quant Fusion v17",
+  "data_directory": "market_data_qfq_22_20260720",
+  "data_adjustment": "qfq",
+  "data_provider": "Eastmoney push2his",
+  "initial_capital": 2000000.0,
+  "results": [
+    {
+      "universe": "1_symbol",
+      "symbol_count": 1,
+      "symbols": [
+        "300308"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 15254331.34744775,
+      "total_return": 6.627165673723875,
+      "annual_return": 4.448495051864239,
+      "max_drawdown": -0.18489640482320607,
+      "sharpe": 3.2933226123108503,
+      "total_trades": 12,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.21000000000000002,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.25,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 5084777.115815916,
+          "total_return": 6.627165673723874,
+          "max_drawdown": -0.18489640482320607,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 5084777.115815916,
+          "total_return": 6.627165673723874,
+          "max_drawdown": -0.18489640482320607,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 5084777.115815916,
+          "total_return": 6.627165673723873,
+          "max_drawdown": -0.18489640482320607,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "1_symbol",
+      "symbol_count": 1,
+      "symbols": [
+        "300308"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 15254331.34744775,
+      "total_return": 6.627165673723875,
+      "annual_return": 4.054249923507102,
+      "max_drawdown": -0.18489640482320607,
+      "sharpe": 3.2164592597370567,
+      "total_trades": 12,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.21000000000000002,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.25,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 5084777.115815916,
+          "total_return": 6.627165673723874,
+          "max_drawdown": -0.18489640482320607,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 5084777.115815916,
+          "total_return": 6.627165673723874,
+          "max_drawdown": -0.18489640482320607,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 5084777.115815916,
+          "total_return": 6.627165673723873,
+          "max_drawdown": -0.18489640482320607,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "1_symbol",
+      "symbol_count": 1,
+      "symbols": [
+        "300308"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 14909783.406695,
+      "total_return": 6.4548917033475,
+      "annual_return": 4.34561169697782,
+      "max_drawdown": -0.18341366748710383,
+      "sharpe": 3.2807571163772917,
+      "total_trades": 12,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.21000000000000002,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.25,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 4969927.802231667,
+          "total_return": 6.4548917033475,
+          "max_drawdown": -0.18341366748710383,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 4969927.802231667,
+          "total_return": 6.4548917033475,
+          "max_drawdown": -0.18341366748710383,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 4969927.802231667,
+          "total_return": 6.454891703347498,
+          "max_drawdown": -0.18341366748710383,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "1_symbol",
+      "symbol_count": 1,
+      "symbols": [
+        "300308"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 14909783.406695,
+      "total_return": 6.4548917033475,
+      "annual_return": 3.9630009559245885,
+      "max_drawdown": -0.18341366748710383,
+      "sharpe": 3.2042104060018644,
+      "total_trades": 12,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.21000000000000002,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.25,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 4969927.802231667,
+          "total_return": 6.4548917033475,
+          "max_drawdown": -0.18341366748710383,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 4969927.802231667,
+          "total_return": 6.4548917033475,
+          "max_drawdown": -0.18341366748710383,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 4969927.802231667,
+          "total_return": 6.454891703347498,
+          "max_drawdown": -0.18341366748710383,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "3_symbols",
+      "symbol_count": 3,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 20399344.74616825,
+      "total_return": 9.199672373084125,
+      "annual_return": 5.943872661749938,
+      "max_drawdown": -0.18153210121804966,
+      "sharpe": 3.572971831971682,
+      "total_trades": 145,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.22333333333333336,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.26333333333333336,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6853581.763995666,
+          "total_return": 9.280372645993499,
+          "max_drawdown": -0.1815321012180496,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6853581.763995666,
+          "total_return": 9.280372645993499,
+          "max_drawdown": -0.1815321012180496,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 6692181.218176918,
+          "total_return": 9.038271827265376,
+          "max_drawdown": -0.18153210121804975,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "3_symbols",
+      "symbol_count": 3,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 20399344.74616825,
+      "total_return": 9.199672373084125,
+      "annual_return": 5.3725843792015615,
+      "max_drawdown": -0.18153210121804966,
+      "sharpe": 3.488990144638166,
+      "total_trades": 145,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.22333333333333336,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.26333333333333336,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6853581.763995666,
+          "total_return": 9.280372645993499,
+          "max_drawdown": -0.1815321012180496,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6853581.763995666,
+          "total_return": 9.280372645993499,
+          "max_drawdown": -0.1815321012180496,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 6692181.218176918,
+          "total_return": 9.038271827265376,
+          "max_drawdown": -0.18153210121804975,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "3_symbols",
+      "symbol_count": 3,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 22075139.13989025,
+      "total_return": 10.037569569945125,
+      "annual_return": 6.4167268734352065,
+      "max_drawdown": -0.17949178277949351,
+      "sharpe": 3.678659632593836,
+      "total_trades": 176,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.22333333333333336,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.26333333333333336,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7472183.985550166,
+          "total_return": 10.208275978325249,
+          "max_drawdown": -0.1805771070818878,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7472183.985550166,
+          "total_return": 10.208275978325249,
+          "max_drawdown": -0.1805771070818878,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7130771.168789918,
+          "total_return": 9.696156753184875,
+          "max_drawdown": -0.18414096682456185,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "3_symbols",
+      "symbol_count": 3,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 22075139.13989025,
+      "total_return": 10.037569569945125,
+      "annual_return": 5.786698830950824,
+      "max_drawdown": -0.17949178277949351,
+      "sharpe": 3.5919507711218306,
+      "total_trades": 176,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.22333333333333336,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.26333333333333336,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7472183.985550166,
+          "total_return": 10.208275978325249,
+          "max_drawdown": -0.1805771070818878,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7472183.985550166,
+          "total_return": 10.208275978325249,
+          "max_drawdown": -0.1805771070818878,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7130771.168789918,
+          "total_return": 9.696156753184875,
+          "max_drawdown": -0.18414096682456185,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "5_symbols",
+      "symbol_count": 5,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 23176418.79037451,
+      "total_return": 10.588209395187254,
+      "annual_return": 6.724220971890598,
+      "max_drawdown": -0.14659953500343506,
+      "sharpe": 3.7535528787639647,
+      "total_trades": 178,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.226,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.266,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7911387.93213767,
+          "total_return": 10.867081898206505,
+          "max_drawdown": -0.14659953500343512,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7449989.27891342,
+          "total_return": 10.17498391837013,
+          "max_drawdown": -0.14659953500343512,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7815041.57932342,
+          "total_return": 10.722562368985129,
+          "max_drawdown": -0.14659953500343512,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "5_symbols",
+      "symbol_count": 5,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 23176418.79037451,
+      "total_return": 10.588209395187254,
+      "annual_return": 6.0553628680689515,
+      "max_drawdown": -0.14659953500343506,
+      "sharpe": 3.664898670236353,
+      "total_trades": 178,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.226,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.266,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7911387.93213767,
+          "total_return": 10.867081898206505,
+          "max_drawdown": -0.14659953500343512,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7449989.27891342,
+          "total_return": 10.17498391837013,
+          "max_drawdown": -0.14659953500343512,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7815041.57932342,
+          "total_return": 10.722562368985129,
+          "max_drawdown": -0.14659953500343512,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "5_symbols",
+      "symbol_count": 5,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 25504734.691536505,
+      "total_return": 11.752367345768253,
+      "annual_return": 7.366541656247767,
+      "max_drawdown": -0.14906058255072746,
+      "sharpe": 3.840776206688311,
+      "total_trades": 206,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.226,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.266,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 8707355.47401267,
+          "total_return": 12.061033211019003,
+          "max_drawdown": -0.15007293928838444,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 8206163.805353168,
+          "total_return": 11.309245708029753,
+          "max_drawdown": -0.15007293928838444,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 8591215.412170667,
+          "total_return": 11.886823118255998,
+          "max_drawdown": -0.15816872662574077,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "5_symbols",
+      "symbol_count": 5,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 25504734.691536505,
+      "total_return": 11.752367345768253,
+      "annual_return": 6.615066277492918,
+      "max_drawdown": -0.14906058255072746,
+      "sharpe": 3.7498426761379355,
+      "total_trades": 206,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.226,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.266,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 8707355.47401267,
+          "total_return": 12.061033211019003,
+          "max_drawdown": -0.15007293928838444,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 8206163.805353168,
+          "total_return": 11.309245708029753,
+          "max_drawdown": -0.15007293928838444,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 8591215.412170667,
+          "total_return": 11.886823118255998,
+          "max_drawdown": -0.15816872662574077,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "13_symbols",
+      "symbol_count": 13,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 22855869.29780226,
+      "total_return": 10.427934648901129,
+      "annual_return": 6.634973341115379,
+      "max_drawdown": -0.1873501811778238,
+      "sharpe": 3.4698792559362963,
+      "total_trades": 281,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 2,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.22846153846153847,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2684615384615385,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7319222.011163419,
+          "total_return": 9.97883301674513,
+          "max_drawdown": -0.18939636536248125,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 8604767.97272442,
+          "total_return": 11.90715195908663,
+          "max_drawdown": -0.183471693948131,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 6931879.313914419,
+          "total_return": 9.397818970871628,
+          "max_drawdown": -0.18932265776537205,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "13_symbols",
+      "symbol_count": 13,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 22982218.456435755,
+      "total_return": 10.491109228217878,
+      "annual_return": 6.008177640569993,
+      "max_drawdown": -0.1873501811778238,
+      "sharpe": 3.3957167836156934,
+      "total_trades": 283,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.22846153846153847,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2684615384615385,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7365167.159757419,
+          "total_return": 10.047750739636127,
+          "max_drawdown": -0.18939636536248125,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 8604767.97272442,
+          "total_return": 11.90715195908663,
+          "max_drawdown": -0.183471693948131,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7012283.323953919,
+          "total_return": 9.518424985930878,
+          "max_drawdown": -0.18932265776537205,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "13_symbols",
+      "symbol_count": 13,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 26222571.391288754,
+      "total_return": 12.111285695644376,
+      "annual_return": 7.562580577034325,
+      "max_drawdown": -0.1832414620831159,
+      "sharpe": 3.7379355715424643,
+      "total_trades": 330,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 3,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.22846153846153847,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2684615384615385,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 9382256.487029418,
+          "total_return": 13.073384730544129,
+          "max_drawdown": -0.18489439371829466,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 8797933.072653169,
+          "total_return": 12.196899608979754,
+          "max_drawdown": -0.1859709460954272,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 8042381.831606169,
+          "total_return": 11.063572747409252,
+          "max_drawdown": -0.1795898371648426,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "13_symbols",
+      "symbol_count": 13,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 26360406.837070756,
+      "total_return": 12.180203418535378,
+      "annual_return": 6.8181220247234675,
+      "max_drawdown": -0.1832414620831159,
+      "sharpe": 3.656758687804959,
+      "total_trades": 333,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.22846153846153847,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2684615384615385,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 9428201.635623418,
+          "total_return": 13.142302453435128,
+          "max_drawdown": -0.18489439371829466,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 8797933.072653169,
+          "total_return": 12.196899608979754,
+          "max_drawdown": -0.1859709460954272,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 8134272.128794169,
+          "total_return": 11.201408193191252,
+          "max_drawdown": -0.1795898371648426,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "22_symbols",
+      "symbol_count": 22,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+        "688249",
+        "688347",
+        "300666",
+        "600206",
+        "688409",
+        "688361",
+        "300604",
+        "688120",
+        "688082"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 20895189.92960201,
+      "total_return": 9.447594964801004,
+      "annual_return": 6.08443165505164,
+      "max_drawdown": -0.17938673110465267,
+      "sharpe": 3.36283467528752,
+      "total_trades": 332,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.2290909090909091,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2690909090909091,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7043234.206815669,
+          "total_return": 9.564851310223505,
+          "max_drawdown": -0.17357298554656073,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6791986.056129669,
+          "total_return": 9.187979084194504,
+          "max_drawdown": -0.19990286825085324,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7059969.666656668,
+          "total_return": 9.589954499985001,
+          "max_drawdown": -0.18210111321013547,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "22_symbols",
+      "symbol_count": 22,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+        "688249",
+        "688347",
+        "300666",
+        "600206",
+        "688409",
+        "688361",
+        "300604",
+        "688120",
+        "688082"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 20895189.92960201,
+      "total_return": 9.447594964801004,
+      "annual_return": 5.495809406043773,
+      "max_drawdown": -0.17938673110465267,
+      "sharpe": 3.2842147846079204,
+      "total_trades": 332,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.2290909090909091,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2690909090909091,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7043234.206815669,
+          "total_return": 9.564851310223505,
+          "max_drawdown": -0.17357298554656073,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6791986.056129669,
+          "total_return": 9.187979084194504,
+          "max_drawdown": -0.19990286825085324,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7059969.666656668,
+          "total_return": 9.589954499985001,
+          "max_drawdown": -0.18210111321013547,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "22_symbols",
+      "symbol_count": 22,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+        "688249",
+        "688347",
+        "300666",
+        "600206",
+        "688409",
+        "688361",
+        "300604",
+        "688120",
+        "688082"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 22664538.18490451,
+      "total_return": 10.332269092452254,
+      "annual_return": 6.581604126406941,
+      "max_drawdown": -0.15916740322410028,
+      "sharpe": 3.538267656365203,
+      "total_trades": 354,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.2290909090909091,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2690909090909091,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7658144.185706921,
+          "total_return": 10.487216278560382,
+          "max_drawdown": -0.16055242403690775,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7565995.482803168,
+          "total_return": 10.348993224204753,
+          "max_drawdown": -0.20028835304820355,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7440398.51639442,
+          "total_return": 10.160597774591627,
+          "max_drawdown": -0.17230761536802178,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "22_symbols",
+      "symbol_count": 22,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+        "688249",
+        "688347",
+        "300666",
+        "600206",
+        "688409",
+        "688361",
+        "300604",
+        "688120",
+        "688082"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 22664538.18490451,
+      "total_return": 10.332269092452254,
+      "annual_return": 5.930815631514608,
+      "max_drawdown": -0.15916740322410028,
+      "sharpe": 3.4551769564231347,
+      "total_trades": 354,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "allocation_mode": "ensemble",
+      "v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "effective_v17_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.2290909090909091,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2690909090909091,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ]
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7658144.185706921,
+          "total_return": 10.487216278560382,
+          "max_drawdown": -0.16055242403690775,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7565995.482803168,
+          "total_return": 10.348993224204753,
+          "max_drawdown": -0.20028835304820355,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7440398.51639442,
+          "total_return": 10.160597774591627,
+          "max_drawdown": -0.17230761536802178,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    }
+  ]
+}

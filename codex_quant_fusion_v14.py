@@ -31,6 +31,7 @@ EXECUTION_PRIORITY = {
     for rank, code in enumerate(
         (
             "300308",
+            "688256",
             "300502",
             "300394",
             "688008",
@@ -1149,6 +1150,12 @@ class RiskManager:
 class BacktestEngine:
     """Run a shared-cash, multi-symbol, multi-strategy T+1 backtest."""
 
+    ENGINE_LABEL = "Codex Quant v14"
+
+    def _display_run_period(self, start_date: str, end_date: str) -> tuple[str, str]:
+        """Return the user-facing trading period shown in the run header."""
+        return start_date, end_date
+
     def __init__(
         self, initial_capital: float = 2000000, cfg: dict | None = None
     ) -> None:
@@ -1447,6 +1454,7 @@ class BacktestEngine:
         "688008": "default",
         "002409": "default",
         "688300": "default",
+        "688256": "semiconductor",
         "603986": "semiconductor",
         "688072": "semiconductor",
         "300054": "semiconductor",
@@ -1471,6 +1479,7 @@ class BacktestEngine:
         "688008": "overseas_compute",
         "002409": "overseas_compute",
         "688300": "overseas_compute",
+        "688256": "domestic_semiconductor",
         "603986": "domestic_semiconductor",
         "688072": "domestic_semiconductor",
         "300054": "domestic_semiconductor",
@@ -1495,6 +1504,7 @@ class BacktestEngine:
         "688008": "overseas_memory_material",
         "002409": "overseas_memory_material",
         "688300": "overseas_memory_material",
+        "688256": "domestic_design",
         "603986": "domestic_design",
         "688072": "domestic_equipment",
         "300776": "domestic_equipment",
@@ -2507,11 +2517,12 @@ class BacktestEngine:
     ]:
         """Reset state, load data, compute indicators, and instantiate strategies."""
         self._reset_run_state(symbols_dict)
+        display_start, display_end = self._display_run_period(start_date, end_date)
         print(f"\n{'=' * 60}")
-        print("Codex Quant v14 backtest")
+        print(f"{self.ENGINE_LABEL} backtest")
         print(f"  Capital: {self.initial_capital:,.0f}")
         print(f"  Symbols: {symbols_dict}")
-        print(f"  Period: {start_date} ~ {end_date}")
+        print(f"  Period: {display_start} ~ {display_end}")
         print(f"{'=' * 60}\n")
         self._apply_global_profile(profile)
         symbol_configs = self._resolve_symbol_configs(
@@ -3361,7 +3372,8 @@ class PerformanceReport:
             print(f"Backtest failed: {result['error']}")
             return
         print(f"\n{'═' * 60}")
-        print("  Codex Quant v14 performance report")
+        engine_version = str(result.get("engine_version", "14.0")).split(".", 1)[0]
+        print(f"  Codex Quant v{engine_version} performance report")
         print(f"{'═' * 60}")
         print(f"  Symbols: {', '.join((f'{v}({k})' for k, v in symbols_dict.items()))}")
         print(f"  Initial capital:   {result['initial_capital']:>15,.0f}")
@@ -3496,6 +3508,7 @@ DEFAULT_SYMBOLS = {
 }
 SYMBOL_NAME_TABLE: dict[str, str] = {
     **DEFAULT_SYMBOLS,
+    "688256": "寒武纪",
     "002409": "雅克科技",
     "688072": "拓荆科技",
     "688300": "联瑞新材",
