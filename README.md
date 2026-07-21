@@ -22,8 +22,9 @@ require another strategy module at runtime.
 - One- and two-symbol universes have little useful cross-sectional information.
   V17 therefore switches every sleeve to a slower time-series trend contract
   without changing the 60% symbol exposure ceiling.
-- Forced industry-group slots are disabled. The causal momentum allocator may use
-  up to six positions and can ignore weaker additions to a large universe.
+- Forced industry-group slots are disabled. The synchronized portfolio
+  coordinator admits at most six distinct symbols across all sleeves, not six
+  per sleeve, and can ignore weaker additions to a large universe.
 - Allocation horizons are `(3, 5, 10)`, `(5, 10, 20)`, and `(5, 20, 60)` days.
   Candidate horizons are `(10, 20, 40)`, `(10, 20, 40)`, and `(10, 40, 80)`;
   the long sleeve reduces dependence on one ranking horizon.
@@ -34,8 +35,20 @@ require another strategy module at runtime.
   drawdown boundary is terminal for the affected sleeve.
 - The 18% shadow alert remains audit-only. Orders still execute no earlier than a
   later tradable open, so gaps can exceed a decision threshold.
-- The portfolio ADV budget remains 0.5% of the prior 20 daily volumes and is
-  divided among independent sleeves without adding leverage.
+- The three sleeves retain fixed virtual subaccounts, so unused cash is not
+  borrowed by another sleeve. They advance on one shared trading calendar: all
+  sells execute before globally ranked new symbols are admitted, then buys run.
+- The portfolio ADV budget is 0.5% of the prior 20 daily volumes. Each sleeve
+  receives one-third and all same-date, same-symbol, same-side orders consume a
+  shared balance; no strategy order receives a fresh capacity allowance.
+- Same-symbol strategy confirmations share cash, exposure, and ADV capacity
+  proportionally before execution. Board-lot rounding can create at most a
+  one-lot attribution difference.
+- The breadth guard requires four of five regime symbols. Missing observations
+  are audited and pause recovery without erasing prior shock confirmations or
+  releasing an active guard.
+- Open positions are marked to market at the requested end date. The engine no
+  longer offers a synthetic same-close period-end liquidation.
 
 Universe-size robustness does not mean composition invariance. A universe that
 removes the strongest underlying assets cannot be guaranteed the return of a
@@ -112,19 +125,19 @@ default costs, 0.1% one-way slippage, and data through 2026-07-20.
 | Tradable universe | Cold return | Cold max drawdown | Warm return | Warm max drawdown |
 |---|---:|---:|---:|---:|
 | 1 symbol | 662.7166% | -18.4896% | 645.4892% | -18.3414% |
-| 3 symbols | 919.9672% | -18.1532% | 1,003.7570% | -17.9492% |
-| 5 symbols | 1,058.8209% | -14.6600% | 1,175.2367% | -14.9061% |
-| 13 symbols | 1,049.1109% | -18.7350% | 1,218.0203% | -18.3241% |
-| 22 symbols | 944.7595% | -17.9387% | 1,033.2269% | -15.9167% |
+| 3 symbols | 992.1379% | -18.3217% | 1,012.8079% | -17.9190% |
+| 5 symbols | 1,071.9918% | -15.9755% | 1,145.4804% | -14.9383% |
+| 13 symbols | 836.4956% | -16.9317% | 945.3487% | -18.4072% |
+| 22 symbols | 622.2555% | -16.5250% | 850.1060% | -16.9000% |
 
 The requested multi-symbol warm wealth-factor ratio between the worst and best
-universe is above 83%. The exhaustive ordered-prefix audit also tests every count
-from one through 22. Counts two through 22 all return above 1,000%, and the worst
-single-symbol addition changes wealth by -11.46% (14 to 15 symbols), compared
-with the much larger discontinuities observed before the universe-invariant
-policy was introduced. The one-symbol result remains structurally lower because
-the 60% symbol cap leaves at least 40% cash at entry and provides no rotation
-opportunity.
+universe is 76.28%. The exhaustive ordered-prefix audit also tests every count
+from one through 22. Counts two through 22 all return above 800%; the worst
+single-symbol addition changes wealth by -13.23% (9 to 10 symbols). The
+one-symbol result remains structurally lower because the 60% symbol cap leaves at
+least 40% cash at entry and provides no rotation opportunity. The two-symbol
+prefix reaches -21.76% drawdown, so the sub-20% claim applies to the five requested
+1-, 3-, 5-, 13-, and 22-symbol warm scenarios, not every possible composition.
 
 At 0.5% one-way slippage, warm returns were 642.0017%, 1,048.9399%, 1,032.5983%,
 and 873.9249% for the 1-, 5-, 13-, and 22-symbol universes respectively.
@@ -160,11 +173,12 @@ python backtest_v17_cambricon_universe.py
 
 The tests cover standalone isolated startup, absence of versioned imports,
 AKShare provider failover, strict local CSV selection, policy validation,
-concentration scaling, temporary rearming, terminal locks, signal-only basket
-isolation, all five requested universe sizes, sub-20% drawdown for the requested
-universes, bounded multi-symbol wealth dispersion, Cambricon's complete route,
-the 2026-06-26 regime-gate event, the complete one-through-22 prefix artifact,
-and the mapped nine-symbol Cambricon artifact.
+concentration scaling, temporary rearming, terminal locks, signal immutability,
+fair same-symbol allocation, cumulative ADV accounting, missing-data guard
+quorum, signal-only basket isolation, the portfolio-wide six-symbol ceiling, all
+five requested universe sizes, sub-20% drawdown for the requested warm universes,
+Cambricon's complete route, the 2026-06-26 regime-gate event, the complete
+one-through-22 prefix artifact, and the mapped nine-symbol Cambricon artifact.
 
 ## Important assumptions
 

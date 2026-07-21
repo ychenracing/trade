@@ -22,11 +22,10 @@ import json
 import math
 import re
 import time
-from dataclasses import dataclass, replace
-from datetime import timedelta
+from dataclasses import dataclass, field, replace
 from itertools import pairwise
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import numpy as np
 import pandas as pd
@@ -78,7 +77,7 @@ EXECUTION_PRIORITY = {
 
 
 def _is_finite_number(value: Any) -> bool:
-    """Handle is finite number for the quantitative backtest system."""
+    """Return whether value is a finite real number."""
     try:
         return bool(np.isfinite(float(value)))
     except (TypeError, ValueError):
@@ -93,7 +92,7 @@ def _require_finite(
     max_value: float | None = None,
     inclusive_max: bool = True,
 ) -> float:
-    """Handle require finite for the quantitative backtest system."""
+    """Validate and normalize one bounded finite value."""
     if not _is_finite_number(value):
         raise ValueError(
             f"Configuration  {name} must be finite; current value is {value!r}"
@@ -118,7 +117,7 @@ def _require_finite(
 def _require_positive(
     name: str, value: Any, *, max_value: float | None = None, inclusive_max: bool = True
 ) -> float:
-    """Handle require positive for the quantitative backtest system."""
+    """Validate a positive value with an optional upper bound."""
     value = _require_finite(
         name, value, max_value=max_value, inclusive_max=inclusive_max
     )
@@ -128,7 +127,7 @@ def _require_positive(
 
 
 def _require_bool(name: str, value: Any) -> bool:
-    """Handle require bool for the quantitative backtest system."""
+    """Reject truthy substitutes and return an actual Boolean."""
     if not isinstance(value, bool):
         raise ValueError(
             f"Configuration  {name} must be bool; current value is {value!r}"
@@ -137,7 +136,7 @@ def _require_bool(name: str, value: Any) -> bool:
 
 
 def _require_int(name: str, value: Any, *, min_value: int = 0) -> int:
-    """Handle require int for the quantitative backtest system."""
+    """Validate an integer without accepting booleans or fractions."""
     if isinstance(value, bool) or not isinstance(value, (int, np.integer)):
         raise ValueError(
             f"Configuration  {name} must be an integer; current value is {value!r}"
@@ -151,7 +150,7 @@ def _require_int(name: str, value: Any, *, min_value: int = 0) -> int:
 
 
 def _floor_to_lot(shares: float, lot_size: int = A_SHARE_LOT_SIZE) -> int:
-    """Handle floor to lot for the quantitative backtest system."""
+    """Round a finite positive share count down to a board lot."""
     if (
         isinstance(lot_size, bool)
         or not isinstance(lot_size, (int, np.integer))
@@ -166,7 +165,7 @@ def _floor_to_lot(shares: float, lot_size: int = A_SHARE_LOT_SIZE) -> int:
 
 
 def _limit_pct_for_code(code: str, cfg: dict | None = None, name: str = "") -> float:
-    """Handle limit pct for code for the quantitative backtest system."""
+    """Resolve the estimated daily board limit for a symbol."""
     code = str(code)
     if not _SYMBOL_RE.match(code):
         raise ValueError(
@@ -188,7 +187,7 @@ def _limit_pct_for_code(code: str, cfg: dict | None = None, name: str = "") -> f
 
 
 def _parse_dates(values: pd.Series | pd.Index) -> pd.Series:
-    """Handle parse dates for the quantitative backtest system."""
+    """Parse exchange dates without interpreting YYYYMMDD as nanoseconds."""
     ser = pd.Series(values)
     as_str = ser.astype("string").str.strip()
     parsed = pd.Series(pd.NaT, index=ser.index, dtype="datetime64[ns]")
@@ -211,7 +210,7 @@ def _parse_dates(values: pd.Series | pd.Index) -> pd.Series:
 class DataFetcher:
     """Load and validate forward-adjusted A-share daily market data."""
 
-    _COLUMN_ALIASES = {
+    _COLUMN_ALIASES: ClassVar[dict[str, str]] = {
         # AKShare providers return localized headers. Unicode escapes keep the
         # source English-only while preserving compatibility with those frames.
         "\u65e5\u671f": "date",
@@ -347,7 +346,7 @@ class DataFetcher:
     def load_stock_data(
         symbol: str, start_date: str, end_date: str, data_dir: str | None = None
     ) -> pd.DataFrame:
-        """Handle load stock data for the quantitative backtest system."""
+        """Load validated qfq OHLCV data from CSV or provider failover."""
         symbol = str(symbol)
         if not _SYMBOL_RE.match(symbol):
             raise ValueError(
@@ -454,7 +453,7 @@ class Indicators:
 
     @staticmethod
     def _wilder_average(series: pd.Series, period: int) -> pd.Series:
-        """Handle wilder average for the quantitative backtest system."""
+        """Compute Wilder smoothing after one complete non-missing seed."""
         period = _require_int("period", period, min_value=1)
         values = pd.to_numeric(series, errors="coerce")
         out = pd.Series(np.nan, index=values.index, dtype="float64")
@@ -478,7 +477,7 @@ class Indicators:
 
     @staticmethod
     def atr(df: pd.DataFrame, period: int = 20, method: str = "wilder") -> pd.Series:
-        """Handle atr for the quantitative backtest system."""
+        """Compute average true range with Wilder or simple smoothing."""
         period = _require_int("period", period, min_value=1)
         method = str(method).lower()
         if method not in {"wilder", "sma"}:
@@ -497,7 +496,7 @@ class Indicators:
 
     @staticmethod
     def adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
-        """Handle adx for the quantitative backtest system."""
+        """Compute average directional index from OHLC data."""
         period = _require_int("period", period, min_value=1)
         high, low = (df["high"], df["low"])
         up_move = high.diff()
@@ -522,7 +521,7 @@ class Indicators:
 
     @staticmethod
     def rsi(close: pd.Series, period: int = 14) -> pd.Series:
-        """Handle rsi for the quantitative backtest system."""
+        """Compute Wilder RSI, mapping unchanged windows to neutral."""
         period = _require_int("period", period, min_value=1)
         delta = close.diff()
         gain = delta.clip(lower=0).fillna(0.0)
@@ -538,7 +537,7 @@ class Indicators:
     def donchian(
         df: pd.DataFrame, entry_period: int = 20, exit_period: int = 10
     ) -> tuple[pd.Series, pd.Series]:
-        """Handle donchian for the quantitative backtest system."""
+        """Return lagged Donchian bands without look-ahead."""
         entry_period = _require_int("entry_period", entry_period, min_value=1)
         exit_period = _require_int("exit_period", exit_period, min_value=1)
         # The one-bar shift is essential: today's high and low must not influence
@@ -549,13 +548,13 @@ class Indicators:
 
     @staticmethod
     def ma(series: pd.Series, period: int) -> pd.Series:
-        """Handle ma for the quantitative backtest system."""
+        """Return a full-window simple moving average."""
         period = _require_int("period", period, min_value=1)
         return series.rolling(period).mean()
 
     @staticmethod
     def compute_all(df: pd.DataFrame, cfg: dict) -> dict[str, pd.Series]:
-        """Handle compute all for the quantitative backtest system."""
+        """Precompute every indicator consumed by the strategies."""
         atr_period = cfg.get("atr_period", 20)
         adx_period = cfg.get("adx_period", 14)
         rsi_period = cfg.get("rsi_period", 14)
@@ -563,6 +562,7 @@ class Indicators:
         exit_p = cfg.get("exit_period", 10)
         ma_short = cfg.get("ma_short", 20)
         ma_long = cfg.get("ma_long", 60)
+        reversal_exit_period = int(cfg.get("reversal_exit_period", 6))
         donchian_upper, donchian_lower = Indicators.donchian(df, entry_p, exit_p)
         return {
             "atr": Indicators.atr(
@@ -574,6 +574,9 @@ class Indicators:
             "donchian_lower": donchian_lower,
             "ma_short": Indicators.ma(df["close"], ma_short),
             "ma_long": Indicators.ma(df["close"], ma_long),
+            # The reversal floor is lagged: today's low cannot affect today's
+            # close-generated exit signal.
+            "reversal_low": (df["low"].rolling(reversal_exit_period).min().shift(1)),
         }
 
 
@@ -595,11 +598,11 @@ class Position:
 
     @property
     def cost(self) -> float:
-        """Handle cost for the quantitative backtest system."""
+        """Return the remaining position's fee-inclusive cost basis."""
         return self.shares * self.entry_price
 
     def market_value_at(self, price: float) -> float:
-        """Handle market value at for the quantitative backtest system."""
+        """Mark the position at the supplied price."""
         return self.shares * price
 
 
@@ -626,7 +629,7 @@ class TradeRecord:
     exit_from_peak_pct: float = 0.0
 
 
-@dataclass
+@dataclass(frozen=True)
 class Signal:
     """Represent a close-generated instruction pending T+1 execution."""
 
@@ -672,18 +675,18 @@ class BaseStrategy:
     name: str = "base"
 
     def __init__(self, cfg: dict) -> None:
-        """Handle init for the quantitative backtest system."""
+        """Bind one validated symbol configuration to the strategy."""
         self.cfg = cfg
         self.position: Position | None = None
 
     def on_bar(self, ctx: BarContext) -> Signal | None:
-        """Handle on bar for the quantitative backtest system."""
+        """Generate a close-based signal for one bar."""
         raise NotImplementedError
 
     def _calc_shares(
         self, capital: float, price: float, atr_val: float, unit_number: int = 1
     ) -> int:
-        """Handle calc shares for the quantitative backtest system."""
+        """Convert a stop-distance risk budget into board-lot shares."""
         risk_pct = float(self.cfg.get("risk_pct", 0.01))
         atr_mult = float(self.cfg.get("atr_multiplier", 1.0))
         decay = float(self.cfg.get("pyramid_risk_decay", 1.0)) ** max(
@@ -717,7 +720,7 @@ class BaseStrategy:
         reason: str,
         atr_val: float = 0.0,
     ) -> Signal:
-        """Handle make buy signal for the quantitative backtest system."""
+        """Create an immutable buy instruction from current close data."""
         price = float(ctx.df["close"].iloc[ctx.i])
         return Signal(
             symbol=ctx.symbol,
@@ -732,7 +735,7 @@ class BaseStrategy:
         )
 
     def _make_sell_signal(self, ctx: BarContext, reason: str) -> Signal:
-        """Handle make sell signal for the quantitative backtest system."""
+        """Create a full-position sell instruction from current close data."""
         return Signal(
             symbol=ctx.symbol,
             strategy_name=self.name,
@@ -777,7 +780,8 @@ class BaseStrategy:
             exit_period = int(cfg.get("reversal_exit_period", 6))
             break_giveback = float(cfg.get("reversal_break_giveback", 0.12))
             if i >= exit_period:
-                prior_low = df["low"].rolling(exit_period).min().shift(1).iloc[i]
+                reversal_low = ctx.indicators.get("reversal_low")
+                prior_low = reversal_low.iloc[i] if reversal_low is not None else np.nan
                 ma_short = ctx.indicators.get("ma_short")
                 ma_value = ma_short.iloc[i] if ma_short is not None else np.nan
                 if (
@@ -814,7 +818,7 @@ class TurtleBreakoutStrategy(BaseStrategy):
     name = "turtle_breakout"
 
     def on_bar(self, ctx: BarContext) -> Signal | None:
-        """Handle on bar for the quantitative backtest system."""
+        """Generate Donchian breakout, pyramid, stop, or exit signals."""
         i, df, ind = (ctx.i, ctx.df, ctx.indicators)
         cfg = self.cfg
         entry_period = cfg.get("entry_period", 20)
@@ -904,7 +908,7 @@ class DualMAStrategy(BaseStrategy):
     name = "dual_ma"
 
     def on_bar(self, ctx: BarContext) -> Signal | None:
-        """Handle on bar for the quantitative backtest system."""
+        """Generate dual-moving-average trend signals."""
         i, df, ind = (ctx.i, ctx.df, ctx.indicators)
         cfg = self.cfg
         if i < cfg.get("ma_long", 60) + 2:
@@ -969,7 +973,7 @@ class ATRChannelStrategy(BaseStrategy):
     name = "atr_channel"
 
     def on_bar(self, ctx: BarContext) -> Signal | None:
-        """Handle on bar for the quantitative backtest system."""
+        """Generate ATR-channel breakout and risk-exit signals."""
         i, df, ind = (ctx.i, ctx.df, ctx.indicators)
         cfg = self.cfg
         period = cfg.get("atr_period", 20)
@@ -1026,16 +1030,15 @@ class RiskManager:
     """Enforce portfolio drawdown, daily-loss, sector, and position limits."""
 
     def __init__(self, cfg: dict) -> None:
-        """Handle init for the quantitative backtest system."""
+        """Initialize shared daily-loss and exposure controls."""
         self.cfg = cfg
         self.peak_assets: float = 0.0
-        self.cooldown_until: str | None = None
         self.daily_start_assets: float = 0.0
         self.symbol_groups: dict[str, str] = {}
         self.group_weight_limits: dict[str, float] = {}
 
     def configure_groups(self, symbol_groups: dict[str, str]) -> None:
-        """Handle configure groups for the quantitative backtest system."""
+        """Enable sector caps only when multiple groups are tradable."""
         self.symbol_groups = dict(symbol_groups)
         active = set(self.symbol_groups.values())
         if len(active) > 1:
@@ -1052,50 +1055,12 @@ class RiskManager:
         trading_dates: list[pd.Timestamp] | None = None,
         date_to_pos: dict[pd.Timestamp, int] | None = None,
     ) -> str | None:
-        """Handle check portfolio risk for the quantitative backtest system."""
-        max_drawdown_pct = self.cfg.get("max_drawdown", 0.2)
-        cooldown_days = self.cfg.get("cooldown_days", 3)
-        self.peak_assets = max(self.peak_assets, current_assets)
-        if self.cooldown_until:
-            cooldown_end = pd.Timestamp(self.cooldown_until)
-            current_date = pd.Timestamp(date_str)
-            if current_date < cooldown_end:
-                return "portfolio cooldown"
-            self.cooldown_until = None
-        if self.peak_assets > 0:
-            drawdown = (self.peak_assets - current_assets) / self.peak_assets
-            if drawdown >= max_drawdown_pct:
-                if trading_dates is not None:
-                    current_date = pd.Timestamp(date_str)
-                    idx = (
-                        date_to_pos.get(current_date)
-                        if date_to_pos is not None
-                        else None
-                    )
-                    if idx is None:
-                        try:
-                            idx = trading_dates.index(current_date)
-                        except ValueError:
-                            idx = None
-                    if idx is not None:
-                        end_idx = min(idx + cooldown_days + 1, len(trading_dates) - 1)
-                        self.cooldown_until = trading_dates[end_idx].strftime(
-                            "%Y-%m-%d"
-                        )
-                    else:
-                        self.cooldown_until = (
-                            pd.Timestamp(date_str) + timedelta(days=cooldown_days)
-                        ).strftime("%Y-%m-%d")
-                else:
-                    self.cooldown_until = (
-                        pd.Timestamp(date_str) + timedelta(days=cooldown_days)
-                    ).strftime("%Y-%m-%d")
-                self.peak_assets = current_assets
-                return "portfolio drawdown circuit breaker"
-        return None
+        """Require a concrete persistent or recoverable drawdown policy."""
+        del current_assets, date_str, trading_dates, date_to_pos
+        raise NotImplementedError("RiskManager requires a concrete drawdown policy")
 
     def check_daily_loss(self, current_assets: float) -> bool:
-        """Handle check daily loss for the quantitative backtest system."""
+        """Return whether close-to-close portfolio loss reached its limit."""
         if self.daily_start_assets > 0:
             daily_loss = (
                 self.daily_start_assets - current_assets
@@ -1112,7 +1077,7 @@ class RiskManager:
         current_prices: dict | None = None,
         position_cfg: dict | None = None,
     ) -> bool:
-        """Handle check position limits for the quantitative backtest system."""
+        """Check symbol, sector, and total exposure before a buy."""
         if current_assets <= 0:
             return False
         if current_prices is not None:
@@ -1122,7 +1087,6 @@ class RiskManager:
                     return False
 
         def _mark(sym: str, pos: Position) -> float:
-            """Handle mark for the quantitative backtest system."""
             if current_prices is None:
                 return pos.entry_price
             return float(current_prices[sym])
@@ -1156,11 +1120,9 @@ class RiskManager:
             )
         )
         # All three strategy sub-positions for a symbol share one symbol cap.
-        if (total_position_value + buy_value) / current_assets > self.cfg.get(
+        return (total_position_value + buy_value) / current_assets <= self.cfg.get(
             "max_total_weight", 0.95
-        ):
-            return False
-        return True
+        )
 
 
 class _CoreBacktestEngine:
@@ -1175,7 +1137,7 @@ class _CoreBacktestEngine:
     def __init__(
         self, initial_capital: float = 2000000, cfg: dict | None = None
     ) -> None:
-        """Handle init for the quantitative backtest system."""
+        """Initialize a reusable engine with validated immutable inputs."""
         self.initial_capital = _require_finite(
             "initial_capital", initial_capital, min_value=0.01
         )
@@ -1205,7 +1167,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def _default_config() -> dict:
-        """Handle default config for the quantitative backtest system."""
+        """Return the complete auditable strategy and execution defaults."""
         # Values are explicit to keep every historical run auditable. Industry
         # profiles below copy this dictionary and override only declared fields.
         return {
@@ -1228,7 +1190,6 @@ class _CoreBacktestEngine:
             "max_total_weight": 1.0,
             "max_units": 20,
             "max_drawdown": 0.165,
-            "cooldown_days": 10,
             "daily_loss_limit": 0.06,
             "sector_guard_enabled": True,
             "sector_guard_min_symbols": 5,
@@ -1240,6 +1201,9 @@ class _CoreBacktestEngine:
             "sector_recovery_ma": 5,
             "sector_recovery_breadth": 0.8,
             "sector_recovery_confirmations": 2,
+            # A sell is a symbol-level risk veto by default: it suppresses every
+            # same-symbol buy, including another strategy's stale pending order.
+            "symbol_level_sell_veto": True,
             "momentum_lookback": 5,
             "max_positions": 6,
             "group_min_slots": 2,
@@ -1270,12 +1234,10 @@ class _CoreBacktestEngine:
             "limit_price_epsilon": 0.001,
             "per_symbol_limit_pct": {},
             "st_symbols": set(),
-            "close_position_on_data_end": True,
-            "force_close_on_end": False,
             "risk_free_rate": 0.0,
         }
 
-    _PER_SYMBOL_OVERRIDE_KEYS = {
+    _PER_SYMBOL_OVERRIDE_KEYS: ClassVar[set[str]] = {
         "entry_period",
         "exit_period",
         "adx_threshold",
@@ -1308,7 +1270,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def optimized_aggressive_config() -> dict:
-        """Handle optimized aggressive config for the quantitative backtest system."""
+        """Return the legacy high-turnover profile retained for compatibility."""
         cfg = _CoreBacktestEngine._default_config()
         cfg.update(
             {
@@ -1327,7 +1289,6 @@ class _CoreBacktestEngine:
                 "max_total_weight": 0.98,
                 "max_units": 10,
                 "max_drawdown": 0.15,
-                "cooldown_days": 5,
                 "momentum_lookback": 10,
                 "max_positions": 2,
             }
@@ -1336,7 +1297,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def semiconductor_config() -> dict:
-        """Handle semiconductor config for the quantitative backtest system."""
+        """Return the broad semiconductor trend profile."""
         cfg = _CoreBacktestEngine._default_config()
         cfg.update(
             {
@@ -1368,7 +1329,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def semiconductor_heavy_config() -> dict:
-        """Handle semiconductor heavy config for the quantitative backtest system."""
+        """Return the higher-risk semiconductor trend profile."""
         cfg = _CoreBacktestEngine.semiconductor_config()
         cfg.update(
             {
@@ -1382,7 +1343,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def overseas_memory_material_config() -> dict:
-        """Handle overseas memory material config for the quantitative backtest system."""
+        """Return the overseas-memory material profile."""
         cfg = _CoreBacktestEngine._default_config()
         cfg.update(
             {
@@ -1404,7 +1365,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def domestic_design_config() -> dict:
-        """Handle domestic design config for the quantitative backtest system."""
+        """Return the domestic chip-design profile."""
         cfg = _CoreBacktestEngine.semiconductor_config()
         cfg.update(
             {
@@ -1423,7 +1384,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def domestic_material_config() -> dict:
-        """Handle domestic material config for the quantitative backtest system."""
+        """Return the domestic semiconductor-material profile."""
         cfg = _CoreBacktestEngine.semiconductor_config()
         cfg.update(
             {
@@ -1443,7 +1404,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def domestic_foundry_config() -> dict:
-        """Handle domestic foundry config for the quantitative backtest system."""
+        """Return the domestic foundry and equipment profile."""
         cfg = _CoreBacktestEngine.semiconductor_config()
         cfg.update(
             {
@@ -1461,7 +1422,7 @@ class _CoreBacktestEngine:
         )
         return cfg
 
-    _KNOWN_CLASSIFICATION: dict[str, str] = {
+    _KNOWN_CLASSIFICATION: ClassVar[dict[str, str]] = {
         "300308": "default",
         "300502": "default",
         "300394": "default",
@@ -1486,7 +1447,7 @@ class _CoreBacktestEngine:
         "300666": "semiconductor",
         "600206": "semiconductor",
     }
-    _SYMBOL_GROUP: dict[str, str] = {
+    _SYMBOL_GROUP: ClassVar[dict[str, str]] = {
         "300308": "overseas_compute",
         "300502": "overseas_compute",
         "300394": "overseas_compute",
@@ -1511,7 +1472,7 @@ class _CoreBacktestEngine:
         "300666": "domestic_semiconductor",
         "600206": "domestic_semiconductor",
     }
-    _SYMBOL_PROFILE: dict[str, str] = {
+    _SYMBOL_PROFILE: ClassVar[dict[str, str]] = {
         "300308": "overseas_optical",
         "300502": "overseas_optical",
         "300394": "overseas_optical",
@@ -1539,7 +1500,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def config_for_symbol(code: str, name: str = "") -> dict:
-        """Handle config for symbol for the quantitative backtest system."""
+        """Resolve the built-in parameter profile for a symbol."""
         profile = _CoreBacktestEngine._SYMBOL_PROFILE.get(code)
         if profile == "overseas_memory_material":
             return _CoreBacktestEngine.overseas_memory_material_config()
@@ -1561,7 +1522,7 @@ class _CoreBacktestEngine:
             else _CoreBacktestEngine._default_config()
         )
 
-    _INDUSTRY_HINTS: dict[str, str] = {
+    _INDUSTRY_HINTS: ClassVar[dict[str, str]] = {
         "foundry": "semiconductor",
         "Nexchip": "semiconductor",
         "Hua Hong": "semiconductor",
@@ -1606,7 +1567,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def _classify_by_industry_hints(code: str, name: str = "") -> str | None:
-        """Handle classify by industry hints for the quantitative backtest system."""
+        """Infer a broad route from explicit code and name hints."""
         candidates = " ".join((str(x) for x in (code, name) if x))
         for key, cls in _CoreBacktestEngine._INDUSTRY_HINTS.items():
             if key in candidates:
@@ -1621,7 +1582,7 @@ class _CoreBacktestEngine:
         lookback_start: str = "",
         lookback_end: str | None = None,
     ) -> str:
-        """Handle classify symbol for the quantitative backtest system."""
+        """Classify a symbol without network-dependent industry lookups."""
         known = _CoreBacktestEngine._KNOWN_CLASSIFICATION.get(code)
         if known:
             return known
@@ -1672,7 +1633,6 @@ class _CoreBacktestEngine:
             "max_units": 1,
             "momentum_lookback": 1,
             "max_positions": 1,
-            "cooldown_days": 0,
             "max_pending_buy_days": 1,
             "group_min_slots": 0,
             "reversal_exit_period": 2,
@@ -1681,7 +1641,7 @@ class _CoreBacktestEngine:
             "sector_shock_confirmations": 1,
             "sector_recovery_ma": 2,
             "sector_recovery_confirmations": 1,
-            "sector_guard_min_symbols": 2,
+            "sector_guard_min_symbols": 1,
         }
         for key, minimum in minimums.items():
             out[key] = _require_int(key, out.get(key), min_value=minimum)
@@ -1785,8 +1745,7 @@ class _CoreBacktestEngine:
         boolean_keys = (
             "liquidate_on_circuit_breaker",
             "sector_guard_enabled",
-            "close_position_on_data_end",
-            "force_close_on_end",
+            "symbol_level_sell_veto",
             "reversal_turtle_enabled",
             "reversal_dual_ma_enabled",
             "reversal_atr_channel_enabled",
@@ -1845,13 +1804,13 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def _signal_key(signal: Signal) -> tuple[str, str, str]:
-        """Handle signal key for the quantitative backtest system."""
+        """Return the identity used to deduplicate pending instructions."""
         return (signal.symbol, signal.strategy_name, signal.direction)
 
     def _pending_has_buy(
         self, pending: list[tuple[Signal, BaseStrategy]], code: str, strategy_name: str
     ) -> bool:
-        """Handle pending has buy for the quantitative backtest system."""
+        """Check for a pending buy from the same symbol and strategy."""
         return any(
             (
                 sig.symbol == code
@@ -1864,7 +1823,7 @@ class _CoreBacktestEngine:
     def _pending_has_sell(
         self, pending: list[tuple[Signal, BaseStrategy]], code: str, strategy_name: str
     ) -> bool:
-        """Handle pending has sell for the quantitative backtest system."""
+        """Check for a pending sell from the same symbol and strategy."""
         return any(
             (
                 sig.symbol == code
@@ -1878,7 +1837,7 @@ class _CoreBacktestEngine:
     def _dedupe_pending_signals(
         pending: list[tuple[Signal, BaseStrategy]],
     ) -> list[tuple[Signal, BaseStrategy]]:
-        """Handle dedupe pending signals for the quantitative backtest system."""
+        """Keep the newest instruction per symbol, strategy, and side."""
         result: dict[tuple[str, str, str], tuple[Signal, BaseStrategy]] = {}
         for signal, strategy in pending:
             if signal.direction not in {"buy", "sell"}:
@@ -1914,15 +1873,21 @@ class _CoreBacktestEngine:
             if sells:
                 conflict = bool(buys)
                 for signal, strategy in sells:
-                    signal.fusion_votes = len(sells)
-                    signal.fusion_label = (
+                    label = (
                         "conflict: sell takes priority" if conflict else "exit signal"
                     )
-                    if conflict:
-                        signal.reason = (
-                            f"[conflict: sell takes priority] {signal.reason}"
+                    reason = f"[{label}] {signal.reason}" if conflict else signal.reason
+                    fused.append(
+                        (
+                            replace(
+                                signal,
+                                fusion_votes=len(sells),
+                                fusion_label=label,
+                                reason=reason,
+                            ),
+                            strategy,
                         )
-                    fused.append((signal, strategy))
+                    )
                 self.fusion_events.append(
                     {
                         "date": date_str,
@@ -1932,7 +1897,14 @@ class _CoreBacktestEngine:
                         "sell_votes": len(sells),
                     }
                 )
-                continue
+                if bool(self.cfg["symbol_level_sell_veto"]):
+                    continue
+                selling_strategies = {signal.strategy_name for signal, _ in sells}
+                buys = [
+                    item
+                    for item in buys
+                    if item[0].strategy_name not in selling_strategies
+                ]
             if not buys:
                 continue
             votes = len(buys)
@@ -1952,12 +1924,20 @@ class _CoreBacktestEngine:
                     float(self.cfg["fusion_single_scale"]),
                 )
             for signal, strategy in buys:
-                signal.fusion_votes = votes
-                signal.fusion_label = label
-                signal.target_shares = _floor_to_lot(signal.target_shares * scale)
-                signal.reason = f"[{label}] {signal.reason}"
-                if signal.target_shares > 0:
-                    fused.append((signal, strategy))
+                target_shares = _floor_to_lot(signal.target_shares * scale)
+                if target_shares > 0:
+                    fused.append(
+                        (
+                            replace(
+                                signal,
+                                fusion_votes=votes,
+                                fusion_label=label,
+                                target_shares=target_shares,
+                                reason=f"[{label}] {signal.reason}",
+                            ),
+                            strategy,
+                        )
+                    )
             self.fusion_events.append(
                 {
                     "date": date_str,
@@ -1973,7 +1953,7 @@ class _CoreBacktestEngine:
     def _buy_signal_expired(
         self, signal: Signal, date: pd.Timestamp, date_to_pos: dict[pd.Timestamp, int]
     ) -> bool:
-        """Handle buy signal expired for the quantitative backtest system."""
+        """Expire an unfilled buy after its trading-day lifetime."""
         if signal.direction != "buy" or not signal.signal_date:
             return False
         signal_ts = pd.Timestamp(signal.signal_date)
@@ -1984,7 +1964,7 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def _has_pending_liquidation(pending: list[tuple[Signal, BaseStrategy]]) -> bool:
-        """Handle has pending liquidation for the quantitative backtest system."""
+        """Detect risk-generated sells that must keep entries blocked."""
         return any(
             (
                 sig.direction == "sell"
@@ -1995,7 +1975,7 @@ class _CoreBacktestEngine:
         )
 
     def _validate_strategy_templates(self) -> None:
-        """Handle validate strategy templates for the quantitative backtest system."""
+        """Reject unnamed or duplicate strategy templates before a run."""
         names: list[str] = []
         for cls in self.strategy_templates:
             name = getattr(cls, "name", "")
@@ -2009,7 +1989,7 @@ class _CoreBacktestEngine:
             )
 
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
-        """Handle reset run state for the quantitative backtest system."""
+        """Reset every mutable ledger and state machine for a fresh run."""
         self.cash = self.initial_capital
         self.positions = {}
         self.trades = []
@@ -2028,7 +2008,7 @@ class _CoreBacktestEngine:
         self.cfg = self._validate_config({**self._default_config(), **self._user_cfg})
 
     def _apply_global_profile(self, profile: str | None) -> None:
-        """Handle apply global profile for the quantitative backtest system."""
+        """Layer an optional profile beneath explicit user overrides."""
         factories = {
             "semiconductor": self.semiconductor_config,
             "semiconductor_heavy": self.semiconductor_heavy_config,
@@ -2046,7 +2026,7 @@ class _CoreBacktestEngine:
         per_symbol_config: dict[str, dict] | None,
         config_route: str,
     ) -> dict[str, dict]:
-        """Handle resolve symbol configs for the quantitative backtest system."""
+        """Resolve and validate one effective strategy config per symbol."""
         overrides = per_symbol_config or {}
         if not isinstance(overrides, dict):
             raise ValueError("per_symbol_config must be a dict")
@@ -2080,7 +2060,6 @@ class _CoreBacktestEngine:
         )
 
         def _base_for(code: str) -> dict:
-            """Handle base for for the quantitative backtest system."""
             if config_route == "auto":
                 return _CoreBacktestEngine.config_for_symbol(
                     code, name=symbols_dict.get(code, "")
@@ -2104,7 +2083,7 @@ class _CoreBacktestEngine:
         profile: str | None,
         data_dir: str | None,
     ) -> tuple[dict[str, pd.DataFrame], dict[str, dict[str, pd.Series]]]:
-        """Handle load market data for the quantitative backtest system."""
+        """Load data and precompute indicators for every symbol."""
         data_map: dict[str, pd.DataFrame] = {}
         ind_map: dict[str, dict[str, pd.Series]] = {}
         for code, name in symbols_dict.items():
@@ -2139,7 +2118,7 @@ class _CoreBacktestEngine:
         symbols_dict: dict[str, str],
         date: pd.Timestamp,
     ) -> set[str]:
-        """Handle select momentum candidates for the quantitative backtest system."""
+        """Select at most max_positions candidates by lag-safe momentum."""
         lookback = int(self.cfg.get("momentum_lookback", 20))
         scores: dict[str, float] = {}
         for code, df in data_map.items():
@@ -2185,7 +2164,7 @@ class _CoreBacktestEngine:
     def _record_equity(
         self, data_map: dict[str, pd.DataFrame], date: pd.Timestamp, date_str: str
     ) -> None:
-        """Handle record equity for the quantitative backtest system."""
+        """Append one closing mark-to-market portfolio snapshot."""
         assets = self._total_assets(data_map, date)
         self.equity_curve.append(
             {
@@ -2204,38 +2183,9 @@ class _CoreBacktestEngine:
         date_to_pos: dict[pd.Timestamp, int],
         pending: list[tuple[Signal, BaseStrategy]],
     ) -> tuple[list[tuple[Signal, BaseStrategy]], bool, bool]:
-        """Handle apply portfolio risk for the quantitative backtest system."""
-        risk_status = self.risk.check_portfolio_risk(
-            current_assets, date_str, trading_dates=all_dates, date_to_pos=date_to_pos
-        )
-        if risk_status is None and self.risk.check_daily_loss(current_assets):
-            risk_status = "daily loss limit"
-        risk_blocked = self._has_pending_liquidation(pending)
-        liquidate = False
-        if risk_blocked:
-            risk_status = risk_status or "circuit breaker liquidation pending"
-        if not risk_status:
-            return (pending, risk_blocked, liquidate)
-        if risk_status == "portfolio drawdown circuit breaker":
-            liquidate = bool(self.cfg.get("liquidate_on_circuit_breaker", True))
-            if liquidate:
-                print(
-                    f"  WARNING [{date_str}] {risk_status}: generate T+1 liquidation signals and cool down for {self.cfg['cooldown_days']} days"
-                )
-                liquidation_signals = self._generate_liquidation_signals(date_str)
-                pending = self._dedupe_pending_signals(
-                    [
-                        (sig, strategy)
-                        for sig, strategy in pending
-                        if sig.direction == "sell"
-                    ]
-                    + liquidation_signals
-                )
-            else:
-                print(
-                    f"  WARNING [{date_str}] {risk_status}: block new entries and cool down for {self.cfg['cooldown_days']} days"
-                )
-        return (pending, True, liquidate)
+        """Apply a concrete persistent or recoverable portfolio risk policy."""
+        del current_assets, date_str, all_dates, date_to_pos, pending
+        raise NotImplementedError
 
     def _update_sector_guard(
         self,
@@ -2259,11 +2209,22 @@ class _CoreBacktestEngine:
         observation = self._build_sector_observation(
             data_map, date, max_ma, shock_ma, recovery_ma
         )
-        if observation is None:
-            return self._current_sector_guard_state()
-        if observation.symbol_count < int(self.cfg["sector_guard_min_symbols"]):
-            self._sector_shock_positions = []
-            self._sector_recovery_streak = 0
+        required = int(self.cfg["sector_guard_min_symbols"])
+        observed = observation.symbol_count if observation is not None else 0
+        if observation is None or observed < required:
+            # Missing one regime constituent must not erase earlier causal
+            # confirmations or release an active defense. Old shocks still age
+            # out normally; recovery simply pauses until quorum returns.
+            self._trim_sector_shock_window(pos)
+            self.risk_events.append(
+                {
+                    "date": date.strftime("%Y-%m-%d"),
+                    "event": "sector_guard_data_insufficient",
+                    "observed_symbols": observed,
+                    "required_symbols": required,
+                    "guard_active": bool(self.sector_guard_active),
+                }
+            )
             return self._current_sector_guard_state()
         shock = self._is_sector_shock(observation)
         if shock:
@@ -2430,7 +2391,7 @@ class _CoreBacktestEngine:
         allow_buys: bool,
         top_symbols: set[str] | None = None,
     ) -> list[tuple[Signal, BaseStrategy]]:
-        """Handle collect strategy signals for the quantitative backtest system."""
+        """Collect one close-generated instruction per eligible strategy."""
         held_symbols = set(self.positions)
         daily: list[tuple[Signal, BaseStrategy]] = []
         for code in symbols_dict:
@@ -2628,14 +2589,25 @@ class _CoreBacktestEngine:
             top_symbols=top_symbols,
         )
         fused_daily = self._fuse_daily_signals(daily_signals, date_str)
-        sell_symbols = {
-            signal.symbol for signal, _ in fused_daily if signal.direction == "sell"
+        sells = {
+            (signal.symbol, signal.strategy_name)
+            for signal, _ in fused_daily
+            if signal.direction == "sell"
         }
-        if sell_symbols:
+        if sells:
+            sell_symbols = {symbol for symbol, _ in sells}
+            symbol_veto = bool(self.cfg["symbol_level_sell_veto"])
             pending = [
                 item
                 for item in pending
-                if not (item[0].direction == "buy" and item[0].symbol in sell_symbols)
+                if not (
+                    item[0].direction == "buy"
+                    and (
+                        item[0].symbol in sell_symbols
+                        if symbol_veto
+                        else (item[0].symbol, item[0].strategy_name) in sells
+                    )
+                )
             ]
         pending.extend(fused_daily)
         return pending
@@ -2647,19 +2619,20 @@ class _CoreBacktestEngine:
         date: pd.Timestamp,
         date_str: str,
     ) -> list[tuple[Signal, BaseStrategy]]:
-        """Deduplicate instructions, close exhausted symbols, and mark equity."""
+        """Deduplicate pending instructions and mark the closing portfolio equity."""
         pending = self._dedupe_pending_signals(pending)
-        closed_keys = self._close_positions_on_data_end(data_map, date)
-        if closed_keys:
-            pending = [
-                item
-                for item in pending
-                if (item[0].symbol, item[0].strategy_name) not in closed_keys
-            ]
         self._record_equity(data_map, date, date_str)
         return pending
 
-    def _process_trading_day(
+    def _start_trading_day(self) -> None:
+        """Freeze the prior-close equity used by the daily loss guard."""
+        self.risk.daily_start_assets = (
+            self.equity_curve[-1]["assets"]
+            if self.equity_curve
+            else self.initial_capital
+        )
+
+    def _evaluate_trading_day(
         self,
         symbols_dict: dict[str, str],
         data_map: dict[str, pd.DataFrame],
@@ -2669,19 +2642,8 @@ class _CoreBacktestEngine:
         date: pd.Timestamp,
         pending: list[tuple[Signal, BaseStrategy]],
     ) -> list[tuple[Signal, BaseStrategy]]:
-        """Process one date while preserving close-signal and next-open execution order."""
+        """Evaluate close-based risk and signals after the opening execution phase."""
         date_str = date.strftime("%Y-%m-%d")
-        self.risk.daily_start_assets = (
-            self.equity_curve[-1]["assets"]
-            if self.equity_curve
-            else self.initial_capital
-        )
-        # Execute yesterday's close-generated instructions before observing
-        # today's close. This ordering enforces T+1 causality throughout.
-        if pending:
-            pending = self._execute_pending_signals(
-                pending, data_map, date, date_to_pos
-            )
         current_assets = self._total_assets(data_map, date)
         pending, risk_blocked, liquidate = self._apply_portfolio_risk(
             current_assets, date_str, all_dates, date_to_pos, pending
@@ -2716,6 +2678,32 @@ class _CoreBacktestEngine:
                 pending,
             )
         return self._finish_trading_day(pending, data_map, date, date_str)
+
+    def _process_trading_day(
+        self,
+        symbols_dict: dict[str, str],
+        data_map: dict[str, pd.DataFrame],
+        indicator_map: dict[str, dict[str, pd.Series]],
+        all_dates: list[pd.Timestamp],
+        date_to_pos: dict[pd.Timestamp, int],
+        date: pd.Timestamp,
+        pending: list[tuple[Signal, BaseStrategy]],
+    ) -> list[tuple[Signal, BaseStrategy]]:
+        """Execute prior-close orders, then evaluate today's close."""
+        self._start_trading_day()
+        if pending:
+            pending = self._execute_pending_signals(
+                pending, data_map, date, date_to_pos
+            )
+        return self._evaluate_trading_day(
+            symbols_dict,
+            data_map,
+            indicator_map,
+            all_dates,
+            date_to_pos,
+            date,
+            pending,
+        )
 
     def run(
         self,
@@ -2754,20 +2742,7 @@ class _CoreBacktestEngine:
                 pending_signals,
             )
         last_date = all_dates[-1]
-        if self.cfg.get("force_close_on_end", False):
-            self._liquidate_all(
-                data_map, last_date, reason="forced liquidation at period end"
-            )
-            pending_signals = []
         final_assets = self._total_assets(data_map, last_date)
-        if self.cfg.get("force_close_on_end", False) and self.equity_curve:
-            self.equity_curve[-1].update(
-                {
-                    "assets": final_assets,
-                    "cash": self.cash,
-                    "position_value": final_assets - self.cash,
-                }
-            )
         self.pending_signals = self._dedupe_pending_signals(pending_signals)
         print(
             f"\n  Backtest completed: initial {self.initial_capital:,.0f} -> final assets {final_assets:,.0f}"
@@ -2780,62 +2755,14 @@ class _CoreBacktestEngine:
         data_map: dict[str, pd.DataFrame],
         date: pd.Timestamp,
         date_to_pos: dict[pd.Timestamp, int],
+        directions: frozenset[str] | None = None,
     ) -> list[tuple[Signal, BaseStrategy]]:
-        """Execute prior-close signals at the next tradable open in deterministic priority order."""
-        date_str = date.strftime("%Y-%m-%d")
-        strategy_rank = {"turtle_breakout": 0, "dual_ma": 1, "atr_channel": 2}
-        # Sells execute before buys, then a stable symbol/strategy priority breaks
-        # ties. This avoids accidental dependence on caller dictionary order.
-        sorted_pending = sorted(
-            pending,
-            key=lambda x: (
-                0 if x[0].direction == "sell" else 1,
-                EXECUTION_PRIORITY.get(x[0].symbol, 9999),
-                x[0].symbol,
-                strategy_rank.get(x[0].strategy_name, 99),
-            ),
-        )
-        unexecuted = []
-        for signal, strategy in sorted_pending:
-            code = signal.symbol
-            if self._buy_signal_expired(signal, date, date_to_pos):
-                continue
-            if code not in data_map or date not in data_map[code].index:
-                unexecuted.append((signal, strategy))
-                continue
-            open_price = data_map[code].loc[date, "open"]
-            if pd.isna(open_price) or open_price <= 0:
-                unexecuted.append((signal, strategy))
-                continue
-            df = data_map[code]
-            loc = df.index.get_loc(date)
-            if loc > 0:
-                # Opening prices at or beyond the estimated board limit are treated
-                # as untradable. Sell orders survive for a later trading day.
-                prev_close = df.iloc[loc - 1]["close"]
-                if prev_close > 0:
-                    change_pct = (open_price - prev_close) / prev_close
-                    limit_up = _limit_pct_for_code(
-                        code, self.cfg, self.symbol_names.get(code, "")
-                    )
-                    eps = float(self.cfg.get("limit_price_epsilon", 0.001))
-                    limit_down = -limit_up
-                    if signal.direction == "buy" and change_pct >= limit_up - eps:
-                        continue
-                    if signal.direction == "sell" and change_pct <= limit_down + eps:
-                        unexecuted.append((signal, strategy))
-                        continue
-            signal.price = open_price
-            if signal.direction == "buy":
-                self._execute_buy(signal, strategy, date_str, data_map, date)
-            elif signal.direction == "sell":
-                executed = self._execute_sell(signal, strategy, date_str)
-                if not executed and strategy.position is not None:
-                    unexecuted.append((signal, strategy))
-        return self._dedupe_pending_signals(unexecuted)
+        """Execute pending orders in a concrete causal execution model."""
+        del pending, data_map, date, date_to_pos, directions
+        raise NotImplementedError
 
     def _latest_close_on_or_before(self, df: pd.DataFrame, date: pd.Timestamp) -> float:
-        """Handle latest close on or before for the quantitative backtest system."""
+        """Return the latest valid closing mark known by date."""
         if date in df.index:
             price = df.loc[date, "close"]
             if _is_finite_number(price) and price > 0:
@@ -2848,7 +2775,7 @@ class _CoreBacktestEngine:
         return float(closes.iloc[-1]) if not closes.empty else 0.0
 
     def _latest_close_before(self, df: pd.DataFrame, date: pd.Timestamp) -> float:
-        """Handle latest close before for the quantitative backtest system."""
+        """Return the latest valid closing mark strictly before date."""
         mask = df.index < date
         if not mask.any():
             return 0.0
@@ -2859,7 +2786,7 @@ class _CoreBacktestEngine:
     def _execution_mark_prices(
         self, data_map: dict[str, pd.DataFrame], date: pd.Timestamp
     ) -> dict[str, float]:
-        """Handle execution mark prices for the quantitative backtest system."""
+        """Build opening marks, falling back only to prior known closes."""
         prices: dict[str, float] = {}
         for code, df in data_map.items():
             price = 0.0
@@ -2874,7 +2801,7 @@ class _CoreBacktestEngine:
         return prices
 
     def _total_assets_at_prices(self, prices: dict[str, float]) -> float:
-        """Handle total assets at prices for the quantitative backtest system."""
+        """Mark cash and every position with an explicit price map."""
         total = self.cash
         for code, positions in self.positions.items():
             price = prices.get(code)
@@ -2886,7 +2813,7 @@ class _CoreBacktestEngine:
     def _total_assets(
         self, data_map: dict[str, pd.DataFrame], date: pd.Timestamp
     ) -> float:
-        """Handle total assets for the quantitative backtest system."""
+        """Mark total assets with the latest close known by date."""
         total = self.cash
         for code, positions in self.positions.items():
             if code not in data_map:
@@ -2904,25 +2831,21 @@ class _CoreBacktestEngine:
         commission_rate: float,
         min_commission: float,
     ) -> tuple[int, float, float, float]:
-        """Handle fit buy to cash for the quantitative backtest system."""
-        shares = _floor_to_lot(requested_shares)
-        if shares > 0:
-            requested_value = shares * exec_price
-            requested_commission = max(
-                requested_value * commission_rate, min_commission
-            )
-            if requested_value + requested_commission > self.cash:
-                shares = _floor_to_lot(self.cash / (exec_price * (1 + commission_rate)))
-        # Minimum commission makes the closed-form estimate slightly optimistic;
-        # reduce by one board lot until the exact cash debit fits.
-        while shares > 0:
-            buy_value = shares * exec_price
-            commission = max(buy_value * commission_rate, min_commission)
-            total_cost = buy_value + commission
-            if total_cost <= self.cash:
-                return (shares, buy_value, commission, total_cost)
-            shares -= A_SHARE_LOT_SIZE
-        return (0, 0.0, 0.0, 0.0)
+        """Fit a board-lot buy to cash in constant time, including minimum fees."""
+        requested = _floor_to_lot(requested_shares)
+        if requested <= 0 or exec_price <= 0 or self.cash <= min_commission:
+            return (0, 0.0, 0.0, 0.0)
+        by_rate = _floor_to_lot(self.cash / (exec_price * (1.0 + commission_rate)))
+        by_minimum_fee = _floor_to_lot(
+            max(self.cash - min_commission, 0.0) / exec_price
+        )
+        shares = min(requested, by_rate, by_minimum_fee)
+        if shares <= 0:
+            return (0, 0.0, 0.0, 0.0)
+        buy_value = shares * exec_price
+        commission = max(buy_value * commission_rate, min_commission)
+        total_cost = buy_value + commission
+        return (shares, buy_value, commission, total_cost)
 
     def _apply_buy_to_position(
         self,
@@ -2933,7 +2856,7 @@ class _CoreBacktestEngine:
         exec_price: float,
         total_cost: float,
     ) -> None:
-        """Handle apply buy to position for the quantitative backtest system."""
+        """Apply one filled buy to its strategy sub-position."""
         strategy_cfg = strategy.cfg
         effective_entry = total_cost / shares
         # Anchor the stop to the actual slipped execution price, while never
@@ -2985,7 +2908,7 @@ class _CoreBacktestEngine:
         data_map: dict[str, pd.DataFrame] | None = None,
         date: pd.Timestamp | None = None,
     ) -> bool:
-        """Handle execute buy for the quantitative backtest system."""
+        """Execute a buy after cash, risk, and exposure checks."""
         if signal.target_shares <= 0 or signal.price <= 0:
             return False
         global_cfg = self.cfg
@@ -3009,24 +2932,6 @@ class _CoreBacktestEngine:
             current_prices = None
         if signal.symbol not in self.positions and len(self.positions) >= int(
             global_cfg.get("max_positions", 1)
-        ):
-            return False
-        if (
-            data_map is not None
-            and date is not None
-            and self.cfg.get("force_close_on_end", False)
-            and (self.global_last_date is not None)
-            and (pd.Timestamp(date) == self.global_last_date)
-        ):
-            return False
-        if (
-            data_map is not None
-            and date is not None
-            and self.cfg.get("close_position_on_data_end", True)
-            and (self.global_last_date is not None)
-            and (signal.symbol in self.symbol_last_dates)
-            and (self.symbol_last_dates[signal.symbol] == pd.Timestamp(date))
-            and (pd.Timestamp(date) < self.global_last_date)
         ):
             return False
         if signal.atr > 0:
@@ -3084,16 +2989,16 @@ class _CoreBacktestEngine:
 
     def _execute_sell(
         self, signal: Signal, strategy: BaseStrategy, date_str: str
-    ) -> bool:
-        """Handle execute sell for the quantitative backtest system."""
+    ) -> int:
+        """Execute a sell and return the filled share count."""
         if signal.target_shares <= 0 or signal.price <= 0:
-            return False
+            return 0
         pos = None
         if signal.symbol in self.positions:
             pos = self.positions[signal.symbol].get(strategy.name)
         if pos is None:
             strategy.position = None
-            return False
+            return 0
         cfg = self.cfg
         slippage = float(cfg.get("slippage", 0.001))
         commission_rate = float(cfg.get("commission_rate", 0.00025))
@@ -3102,7 +3007,7 @@ class _CoreBacktestEngine:
         exec_price = float(signal.price) * (1 - slippage)
         sell_shares = _floor_to_lot(min(signal.target_shares, pos.shares))
         if sell_shares <= 0:
-            return False
+            return 0
         sell_value = sell_shares * exec_price
         commission = (
             max(sell_value * commission_rate, min_commission) if sell_value > 0 else 0.0
@@ -3145,12 +3050,12 @@ class _CoreBacktestEngine:
                 exit_from_peak_pct=exit_from_peak_pct,
             )
         )
-        return True
+        return sell_shares
 
     def _generate_liquidation_signals(
         self, date_str: str, reason: str = "circuit breaker liquidation"
     ) -> list[tuple[Signal, BaseStrategy]]:
-        """Handle generate liquidation signals for the quantitative backtest system."""
+        """Queue full-position sells for execution at a later tradable open."""
         # These are ordinary pending sell signals. The placeholder price is always
         # replaced by a later tradable opening price before execution.
         signals = []
@@ -3171,121 +3076,6 @@ class _CoreBacktestEngine:
                 )
                 signals.append((sig, strategy))
         return signals
-
-    def _liquidate_all(
-        self,
-        data_map: dict[str, pd.DataFrame],
-        date: pd.Timestamp,
-        reason: str = "period-end settlement",
-    ) -> None:
-        """Handle liquidate all for the quantitative backtest system."""
-        cfg = self.cfg
-        slippage = cfg.get("slippage", 0.001)
-        commission_rate = cfg.get("commission_rate", 0.00025)
-        min_commission = cfg.get("min_commission", 0.0)
-        stamp_duty = cfg.get("stamp_duty", 0.0005)
-        date_str = date.strftime("%Y-%m-%d")
-        liquidated_codes: set[str] = set()
-        for code in list(self.positions.keys()):
-            if code not in data_map or date not in data_map[code].index:
-                continue
-            close_price = data_map[code].loc[date, "close"]
-            exec_price = close_price * (1 - slippage)
-            for strat_name in list(self.positions[code].keys()):
-                pos = self.positions[code][strat_name]
-                sell_value = pos.shares * exec_price
-                commission = (
-                    max(sell_value * commission_rate, min_commission)
-                    if sell_value > 0
-                    else 0.0
-                )
-                stamp_duty_cost = sell_value * stamp_duty
-                net_proceeds = sell_value - commission - stamp_duty_cost
-                pnl = net_proceeds - pos.cost
-                pnl_pct = pnl / pos.cost if pos.cost > 0 else 0
-                peak_close = max(
-                    float(pos.highest_close_since_entry), float(pos.entry_price)
-                )
-                exit_from_peak_pct = (
-                    exec_price / peak_close - 1 if peak_close > 0 else 0.0
-                )
-                self.cash += net_proceeds
-                self.trades.append(
-                    TradeRecord(
-                        symbol=code,
-                        strategy_name=strat_name,
-                        direction="sell",
-                        shares=pos.shares,
-                        price=exec_price,
-                        date=date_str,
-                        reason=reason,
-                        pnl=pnl,
-                        pnl_pct=pnl_pct,
-                        signal_date=date_str,
-                        gross_value=sell_value,
-                        commission=commission,
-                        stamp_duty_cost=stamp_duty_cost,
-                        net_cash_flow=net_proceeds,
-                        cash_after=self.cash,
-                        peak_close=peak_close,
-                        exit_from_peak_pct=exit_from_peak_pct,
-                    )
-                )
-                del self.positions[code][strat_name]
-            if not self.positions[code]:
-                del self.positions[code]
-            liquidated_codes.add(code)
-        for code in liquidated_codes:
-            if code in self.strategy_instances:
-                for strategy in self.strategy_instances[code]:
-                    strategy.position = None
-
-    def _close_positions_on_data_end(
-        self, data_map: dict[str, pd.DataFrame], date: pd.Timestamp
-    ) -> set[tuple[str, str]]:
-        """Handle close positions on data end for the quantitative backtest system."""
-        closed: set[tuple[str, str]] = set()
-        if (
-            not self.cfg.get("close_position_on_data_end", True)
-            or self.global_last_date is None
-        ):
-            return closed
-        for code in list(self.positions.keys()):
-            last_date = self.symbol_last_dates.get(code)
-            if (
-                last_date is None
-                or pd.Timestamp(date) != last_date
-                or last_date >= self.global_last_date
-            ):
-                continue
-            df = data_map.get(code)
-            if df is None or date not in df.index:
-                continue
-            close_price = df.loc[date, "close"]
-            if not _is_finite_number(close_price) or close_price <= 0:
-                continue
-            strategies = {s.name: s for s in self.strategy_instances.get(code, [])}
-            for strat_name in list(self.positions.get(code, {}).keys()):
-                pos = self.positions[code].get(strat_name)
-                if pos is None:
-                    continue
-                if pos.last_buy_date == date.strftime("%Y-%m-%d"):
-                    continue
-                strategy = strategies.get(strat_name)
-                if strategy is None:
-                    continue
-                signal = Signal(
-                    symbol=code,
-                    strategy_name=strat_name,
-                    direction="sell",
-                    target_shares=pos.shares,
-                    price=float(close_price),
-                    reason="forced settlement at data end",
-                    signal_date=date.strftime("%Y-%m-%d"),
-                )
-                if self._execute_sell(signal, strategy, date.strftime("%Y-%m-%d")):
-                    closed.add((code, strat_name))
-        return closed
 
     def _build_result(self, final_assets: float, all_dates: list[pd.Timestamp]) -> dict:
         """Build performance metrics and audited output objects from the equity curve."""
@@ -3351,7 +3141,7 @@ class _CoreBacktestEngine:
             else 0.0,
             "open_positions": int(open_positions),
             "open_position_value": open_position_value,
-            "force_close_on_end": bool(self.cfg.get("force_close_on_end", False)),
+            "period_end_valuation": "mark_to_market",
             "equity_curve": eq,
             "trades": self.trades,
             "drawdown_series": drawdown,
@@ -3383,7 +3173,7 @@ class PerformanceReport:
 
     @staticmethod
     def print_report(result: dict, symbols_dict: dict[str, str]) -> None:
-        """Handle print report for the quantitative backtest system."""
+        """Print the standard human-readable performance summary."""
         if "error" in result:
             print(f"Backtest failed: {result['error']}")
             return
@@ -3435,7 +3225,7 @@ class PerformanceReport:
 
     @staticmethod
     def save_result(result: dict, output_dir: str) -> None:
-        """Handle save result for the quantitative backtest system."""
+        """Persist audited tabular and JSON result artifacts."""
         if "error" in result:
             raise ValueError(f"Cannot save a failed backtest result: {result['error']}")
         out = Path(output_dir).expanduser()
@@ -3472,7 +3262,7 @@ class PerformanceReport:
 
     @staticmethod
     def plot_equity_curve(result: dict, save_path: str = "equity_curve.png") -> None:
-        """Handle plot equity curve for the quantitative backtest system."""
+        """Plot portfolio equity and drawdown in a deterministic layout."""
         if "error" in result:
             print(f"Backtest failed; cannot plot: {result['error']}")
             return
@@ -3480,22 +3270,10 @@ class PerformanceReport:
 
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-        from matplotlib.font_manager import FontProperties, fontManager
 
-        zh_font_path = None
-        preferred_fonts = ("noto sans cjk", "droid sans fallback", "source han sans")
-        for font in fontManager.ttflist:
-            if any(name in font.name.lower() for name in preferred_fonts):
-                zh_font_path = font.fname
-                break
-        if zh_font_path:
-            fontManager.addfont(zh_font_path)
-            zh_font_name = FontProperties(fname=zh_font_path).get_name()
-            plt.rcParams["font.family"] = ["DejaVu Sans", zh_font_name]
-            plt.rcParams["axes.unicode_minus"] = False
         eq = result["equity_curve"]
         dd = result["drawdown_series"]
-        fig, axes = plt.subplots(
+        _, axes = plt.subplots(
             2, 1, figsize=(14, 8), gridspec_kw={"height_ratios": [3, 1]}
         )
         axes[0].plot(eq.index, eq["assets"] / 10000, linewidth=1.5, color="#1a73e8")
@@ -3547,7 +3325,7 @@ DEFAULT_SYMBOL_NAMES = {v: k for k, v in SYMBOL_NAME_TABLE.items()}
 
 
 def parse_symbols(symbols_str: str) -> dict[str, str]:
-    """Handle parse symbols for the quantitative backtest system."""
+    """Resolve comma-separated stock codes or supported Chinese names."""
     result = {}
     for s in symbols_str.split(","):
         s = s.strip()
@@ -3630,20 +3408,6 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             return self._requested_start_date, self._requested_end_date
         return start_date, end_date
 
-    @staticmethod
-    def _default_config() -> dict:
-        """Return core defaults with non-causal data-end settlement disabled."""
-        cfg = _CoreBacktestEngine._default_config()
-        cfg["close_position_on_data_end"] = False
-        return cfg
-
-    @staticmethod
-    def _validate_config(cfg: dict) -> dict:
-        """Normalize legacy data-end settlement off before inherited validation."""
-        normalized = dict(cfg)
-        normalized["close_position_on_data_end"] = False
-        return _CoreBacktestEngine._validate_config(normalized)
-
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
         """Reset causal audit and profile state with the inherited ledger."""
         super()._reset_run_state(symbols_dict)
@@ -3702,7 +3466,6 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                     **route_cfg,
                     **route_overrides,
                     **per_symbol.get(code, {}),
-                    "close_position_on_data_end": False,
                 }
             )
         return final
@@ -3721,7 +3484,12 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                     continue
                 momentum = float(history.iloc[-1] / history.iloc[-1 - window] - 1.0)
                 volatility = float(history.pct_change().tail(window).std())
-                score = momentum / volatility if volatility > 0 else momentum
+                # A flat series has no risk-adjusted momentum evidence. Treating
+                # its zero volatility as a divisor or as raw momentum would give
+                # it an arbitrary ranking advantage.
+                if not math.isfinite(volatility) or volatility <= 0:
+                    continue
+                score = momentum / volatility
                 if np.isfinite(score):
                     raw[window][code] = score
 
@@ -3843,14 +3611,183 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             )
         return executed
 
+    @staticmethod
+    def _allocate_lots_pro_rata(
+        items: list[tuple[Signal, BaseStrategy]], capacity: int
+    ) -> list[int]:
+        """Split a same-symbol capacity proportionally, with at most one-lot skew."""
+        targets = [_floor_to_lot(signal.target_shares) for signal, _ in items]
+        total = sum(targets)
+        capacity = min(_floor_to_lot(capacity), total)
+        if capacity <= 0:
+            return [0] * len(items)
+        if capacity >= total:
+            return targets
+
+        exact = [capacity * target / total for target in targets]
+        allocated = [_floor_to_lot(value) for value in exact]
+        remaining_lots = (capacity - sum(allocated)) // A_SHARE_LOT_SIZE
+        order = sorted(
+            range(len(items)),
+            key=lambda index: (
+                -(exact[index] - allocated[index]),
+                items[index][0].strategy_name,
+            ),
+        )
+        while remaining_lots > 0:
+            progressed = False
+            for index in order:
+                if allocated[index] >= targets[index]:
+                    continue
+                allocated[index] += A_SHARE_LOT_SIZE
+                remaining_lots -= 1
+                progressed = True
+                if remaining_lots == 0:
+                    break
+            if not progressed:
+                break
+        return allocated
+
+    def _remaining_adv_capacity(
+        self,
+        symbol: str,
+        direction: str,
+        data_map: dict[str, pd.DataFrame],
+        date: pd.Timestamp,
+    ) -> int | None:
+        """Return a liquidity cap when the concrete engine enables ADV limits."""
+        del symbol, direction, data_map, date
+        return None
+
+    def _buy_batch_capacity(
+        self,
+        items: list[tuple[Signal, BaseStrategy]],
+        data_map: dict[str, pd.DataFrame],
+        date: pd.Timestamp,
+    ) -> int:
+        """Return the shared cash, exposure, and liquidity capacity for one symbol."""
+        signal, strategy = items[0]
+        requested = sum(_floor_to_lot(item[0].target_shares) for item in items)
+        execution_price = float(signal.price) * (
+            1.0 + float(self.cfg.get("slippage", 0.001))
+        )
+        if requested <= 0 or execution_price <= 0:
+            return 0
+        if signal.symbol not in self.positions and len(self.positions) >= int(
+            self.cfg.get("max_positions", 1)
+        ):
+            return 0
+        _, exposure_value = self._remaining_buy_capacity(
+            signal, strategy, data_map, date
+        )
+        exposure_shares = _floor_to_lot(exposure_value / execution_price)
+        cash_shares = self._cash_affordable_batch_capacity(
+            items, requested, execution_price
+        )
+        capacities = [requested, exposure_shares, cash_shares]
+        adv_capacity = self._remaining_adv_capacity(
+            signal.symbol, "buy", data_map, date
+        )
+        if adv_capacity is not None:
+            capacities.append(adv_capacity)
+        return max(min(capacities), 0)
+
+    def _cash_affordable_batch_capacity(
+        self,
+        items: list[tuple[Signal, BaseStrategy]],
+        requested: int,
+        execution_price: float,
+    ) -> int:
+        """Find the largest proportional batch whose separate fees fit cash."""
+        commission_rate = float(self.cfg.get("commission_rate", 0.00025))
+        min_commission = float(self.cfg.get("min_commission", 0.0))
+        low = 0
+        high = requested // A_SHARE_LOT_SIZE
+        while low < high:
+            midpoint = (low + high + 1) // 2
+            capacity = midpoint * A_SHARE_LOT_SIZE
+            allocations = self._allocate_lots_pro_rata(items, capacity)
+            total_cost = sum(
+                shares * execution_price
+                + max(shares * execution_price * commission_rate, min_commission)
+                for shares in allocations
+                if shares > 0
+            )
+            if total_cost <= self.cash:
+                low = midpoint
+            else:
+                high = midpoint - 1
+        return low * A_SHARE_LOT_SIZE
+
+    def _execute_buy_batch(
+        self,
+        items: list[tuple[Signal, BaseStrategy]],
+        date_str: str,
+        data_map: dict[str, pd.DataFrame],
+        date: pd.Timestamp,
+    ) -> None:
+        """Execute same-symbol confirmations from one shared proportional budget."""
+        capacity = self._buy_batch_capacity(items, data_map, date)
+        allocations = self._allocate_lots_pro_rata(items, capacity)
+        for (signal, strategy), allocated in zip(items, allocations, strict=True):
+            if allocated <= 0:
+                self._record_order_event(
+                    date=date_str,
+                    signal=signal,
+                    event="rejected_no_shared_batch_capacity",
+                )
+                continue
+            adjusted = replace(signal, target_shares=allocated)
+            if allocated < signal.target_shares:
+                self._record_order_event(
+                    date=date_str,
+                    signal=signal,
+                    event="scaled_for_fair_batch_allocation",
+                    requested_shares=int(signal.target_shares),
+                    adjusted_shares=int(allocated),
+                )
+            self._execute_buy(adjusted, strategy, date_str, data_map, date)
+
+    def _prepare_open_signal(
+        self,
+        signal: Signal,
+        data_map: dict[str, pd.DataFrame],
+        date: pd.Timestamp,
+        date_to_pos: dict[pd.Timestamp, int],
+    ) -> tuple[Signal | None, bool]:
+        """Return an executable open order and whether a blocked order must persist."""
+        date_str = date.strftime("%Y-%m-%d")
+        if self._buy_signal_expired(signal, date, date_to_pos):
+            self._record_order_event(
+                date=date_str, signal=signal, event="expired_pending_buy"
+            )
+            return None, False
+        frame = data_map.get(signal.symbol)
+        if frame is None or date not in frame.index:
+            return None, True
+        open_price = frame.loc[date, "open"]
+        if pd.isna(open_price) or float(open_price) <= 0:
+            return None, True
+        executable = replace(signal, price=float(open_price))
+        limit_state = self._opening_limit_state(
+            executable, frame, date, float(open_price)
+        )
+        if limit_state == "buy_blocked":
+            self._record_order_event(
+                date=date_str, signal=signal, event="rejected_limit_up_open"
+            )
+            return None, False
+        return (None, True) if limit_state == "sell_blocked" else (executable, False)
+
     def _execute_pending_signals(
         self,
         pending: list[tuple[Signal, BaseStrategy]],
         data_map: dict[str, pd.DataFrame],
         date: pd.Timestamp,
         date_to_pos: dict[pd.Timestamp, int],
+        directions: frozenset[str] | None = None,
     ) -> list[tuple[Signal, BaseStrategy]]:
-        """Execute sells first, then rank buys by prior-close allocation scores."""
+        """Execute selected sides, batching same-symbol buys before any fill."""
         date_str = date.strftime("%Y-%m-%d")
         strategy_rank = {"turtle_breakout": 0, "dual_ma": 1, "atr_channel": 2}
         allocation_scores = self._allocation_scores(data_map, date)
@@ -3863,39 +3800,32 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                 strategy_rank.get(item[0].strategy_name, 99),
             ),
         )
+        allowed = directions or frozenset({"buy", "sell"})
         unexecuted: list[tuple[Signal, BaseStrategy]] = []
+        buy_batches: dict[str, list[tuple[Signal, BaseStrategy]]] = {}
         for signal, strategy in sorted_pending:
-            code = signal.symbol
-            if self._buy_signal_expired(signal, date, date_to_pos):
-                self._record_order_event(
-                    date=date_str, signal=signal, event="expired_pending_buy"
-                )
-                continue
-            if code not in data_map or date not in data_map[code].index:
+            if signal.direction not in allowed:
                 unexecuted.append((signal, strategy))
                 continue
-            open_price = data_map[code].loc[date, "open"]
-            if pd.isna(open_price) or open_price <= 0:
-                unexecuted.append((signal, strategy))
-                continue
-            limit_state = self._opening_limit_state(
-                signal, data_map[code], date, float(open_price)
+            executable_signal, keep_pending = self._prepare_open_signal(
+                signal, data_map, date, date_to_pos
             )
-            if limit_state == "buy_blocked":
-                self._record_order_event(
-                    date=date_str, signal=signal, event="rejected_limit_up_open"
-                )
-                continue
-            if limit_state == "sell_blocked":
+            if keep_pending:
                 unexecuted.append((signal, strategy))
+            if executable_signal is None:
                 continue
-            executable_signal = replace(signal, price=float(open_price))
+            code = executable_signal.symbol
             if executable_signal.direction == "buy":
-                self._execute_buy(executable_signal, strategy, date_str, data_map, date)
+                buy_batches.setdefault(code, []).append((executable_signal, strategy))
             elif executable_signal.direction == "sell":
-                executed = self._execute_sell(executable_signal, strategy, date_str)
-                if not executed and strategy.position is not None:
-                    unexecuted.append((executable_signal, strategy))
+                sold = self._execute_sell(executable_signal, strategy, date_str)
+                remaining = max(executable_signal.target_shares - sold, 0)
+                if remaining > 0 and strategy.position is not None:
+                    unexecuted.append(
+                        (replace(signal, target_shares=remaining), strategy)
+                    )
+        for items in buy_batches.values():
+            self._execute_buy_batch(items, date_str, data_map, date)
         return self._dedupe_pending_signals(unexecuted)
 
     def _opening_limit_state(
@@ -3922,13 +3852,6 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         if signal.direction == "sell" and change <= -limit_up + epsilon:
             return "sell_blocked"
         return None
-
-    def _close_positions_on_data_end(
-        self, data_map: dict[str, pd.DataFrame], date: pd.Timestamp
-    ) -> set[tuple[str, str]]:
-        """Never infer a tradable liquidation event from missing future rows."""
-        del data_map, date
-        return set()
 
     def _apply_portfolio_risk(
         self,
@@ -4305,9 +4228,15 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         self.ALLOCATION_LOOKBACKS = tuple(allocation_lookbacks)
         self._execution_data_map: dict[str, pd.DataFrame] | None = None
         self._execution_date: pd.Timestamp | None = None
+        self._adv_used: dict[tuple[str, str, str], int] = {}
         normalized_cfg = dict(cfg or {})
         normalized_cfg["max_drawdown"] = policy.confirmed_drawdown
         super().__init__(initial_capital=initial_capital, cfg=normalized_cfg)
+
+    def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
+        """Reset the ledger and all per-run liquidity reservations."""
+        super()._reset_run_state(symbols_dict)
+        self._adv_used = {}
 
     def _resolve_symbol_configs(
         self,
@@ -4343,6 +4272,7 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
     def _adv_capacity(
         self,
         symbol: str,
+        direction: str,
         data_map: dict[str, pd.DataFrame],
         date: pd.Timestamp,
     ) -> tuple[int, float]:
@@ -4359,8 +4289,27 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         if history.empty:
             return 0, 0.0
         adv = float(history.mean())
-        capacity = _floor_to_lot(adv * self.policy.max_order_adv_ratio)
-        return capacity, adv
+        daily_capacity = _floor_to_lot(adv * self.policy.max_order_adv_ratio)
+        key = (date.strftime("%Y-%m-%d"), symbol, direction)
+        return max(daily_capacity - self._adv_used.get(key, 0), 0), adv
+
+    def _remaining_adv_capacity(
+        self,
+        symbol: str,
+        direction: str,
+        data_map: dict[str, pd.DataFrame],
+        date: pd.Timestamp,
+    ) -> int | None:
+        """Return the unconsumed daily side-specific ADV budget."""
+        capacity, _ = self._adv_capacity(symbol, direction, data_map, date)
+        return capacity
+
+    def _consume_adv(
+        self, date_str: str, symbol: str, direction: str, shares: int
+    ) -> None:
+        """Reserve actual fills so later same-day orders cannot reuse capacity."""
+        key = (date_str, symbol, direction)
+        self._adv_used[key] = self._adv_used.get(key, 0) + int(shares)
 
     def _execute_buy(
         self,
@@ -4373,7 +4322,7 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         """Apply the causal ADV cap before exposure and cash checks."""
         adjusted_signal = signal
         if data_map is not None and date is not None:
-            capacity, adv = self._adv_capacity(signal.symbol, data_map, date)
+            capacity, adv = self._adv_capacity(signal.symbol, "buy", data_map, date)
             if capacity <= 0:
                 self._record_order_event(
                     date=date_str,
@@ -4391,7 +4340,13 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
                     adjusted_shares=int(capacity),
                     prior_adv=adv,
                 )
-        return super()._execute_buy(adjusted_signal, strategy, date_str, data_map, date)
+        before = len(self.trades)
+        executed = super()._execute_buy(
+            adjusted_signal, strategy, date_str, data_map, date
+        )
+        if executed and len(self.trades) > before:
+            self._consume_adv(date_str, signal.symbol, "buy", self.trades[-1].shares)
+        return executed
 
     def _execute_pending_signals(
         self,
@@ -4399,13 +4354,14 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         data_map: dict[str, pd.DataFrame],
         date: pd.Timestamp,
         date_to_pos: dict[pd.Timestamp, int],
+        directions: frozenset[str] | None = None,
     ) -> list[tuple[Signal, BaseStrategy]]:
         """Expose execution context so inherited sell calls can use prior ADV."""
         self._execution_data_map = data_map
         self._execution_date = date
         try:
             return super()._execute_pending_signals(
-                pending, data_map, date, date_to_pos
+                pending, data_map, date, date_to_pos, directions
             )
         finally:
             self._execution_data_map = None
@@ -4413,25 +4369,22 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
 
     def _execute_sell(
         self, signal: Signal, strategy: BaseStrategy, date_str: str
-    ) -> bool:
-        """Partially fill an oversized sell and preserve its pending remainder."""
+    ) -> int:
+        """Fill a sell from the remaining shared ADV budget."""
         data_map = self._execution_data_map
         date = self._execution_date
         if data_map is None or date is None:
             return super()._execute_sell(signal, strategy, date_str)
-        capacity, adv = self._adv_capacity(signal.symbol, data_map, date)
+        capacity, adv = self._adv_capacity(signal.symbol, "sell", data_map, date)
         if capacity <= 0:
             self._record_order_event(
                 date=date_str,
                 signal=signal,
                 event="deferred_sell_no_prior_adv_capacity",
             )
-            return False
-        position = self.positions.get(signal.symbol, {}).get(strategy.name)
-        shares_before = position.shares if position is not None else 0
+            return 0
         adjusted_signal = signal
-        partial = capacity < signal.target_shares
-        if partial:
+        if capacity < signal.target_shares:
             adjusted_signal = replace(signal, target_shares=capacity)
             self._record_order_event(
                 date=date_str,
@@ -4441,14 +4394,10 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
                 adjusted_shares=int(capacity),
                 prior_adv=adv,
             )
-        executed = super()._execute_sell(adjusted_signal, strategy, date_str)
-        if partial and executed and strategy.position is not None:
-            shares_sold = max(shares_before - strategy.position.shares, 0)
-            remaining_target = max(signal.target_shares - shares_sold, 0)
-            if remaining_target > 0:
-                signal.target_shares = remaining_target
-                return False
-        return executed
+        shares_sold = super()._execute_sell(adjusted_signal, strategy, date_str)
+        if shares_sold > 0:
+            self._consume_adv(date_str, signal.symbol, "sell", shares_sold)
+        return shares_sold
 
     def _build_result(self, final_assets: float, all_dates: list[pd.Timestamp]) -> dict:
         """Add sleeve, risk, and liquidity metadata to the inherited result."""
@@ -4484,6 +4433,18 @@ class _RunRequest:
     data_dir: str | None
     indicator_state: str
     warmup_calendar_days: int
+
+
+@dataclass
+class _PreparedSleeveRun:
+    """Hold one funded sleeve's state during synchronized portfolio replay."""
+
+    sleeve: _EnsembleSleeveBacktestEngine
+    data_map: dict[str, pd.DataFrame]
+    indicator_map: dict[str, dict[str, pd.Series]]
+    all_dates: list[pd.Timestamp]
+    date_to_pos: dict[pd.Timestamp, int]
+    pending: list[tuple[Signal, BaseStrategy]] = field(default_factory=list)
 
 
 class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
@@ -4669,9 +4630,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             "open_position_value": sum(
                 float(result["open_position_value"]) for result in results
             ),
-            "force_close_on_end": all(
-                result["force_close_on_end"] for result in results
-            ),
+            "period_end_valuation": "mark_to_market",
             "equity_curve": equity,
             "drawdown_series": drawdown,
             "trades": trades,
@@ -5035,18 +4994,6 @@ class _UniverseInvariantSleeveMixin:
     risk_events: list[dict[str, Any]]
     _risk_lock_logged: bool
 
-    @staticmethod
-    def _validate_config(cfg: dict) -> dict:
-        """Permit a one-symbol risk scope while retaining all core checks."""
-        normalized = dict(cfg)
-        requested_minimum = normalized.get("sector_guard_min_symbols")
-        if requested_minimum == 1:
-            normalized["sector_guard_min_symbols"] = 2
-            validated = _CausalBacktestEngine._validate_config(normalized)
-            validated["sector_guard_min_symbols"] = 1
-            return validated
-        return _CausalBacktestEngine._validate_config(normalized)
-
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
         """Reset tradable and regime metadata at every independent run."""
         # Concrete classes place this cooperative mixin before the sleeve engine.
@@ -5104,7 +5051,8 @@ class _UniverseInvariantSleeveMixin:
             cache[code] = {}
             for window in self.policy.candidate_lookbacks:
                 volatility = daily_returns.rolling(window, min_periods=window).std()
-                cache[code][window] = close.pct_change(window) / volatility
+                valid_volatility = volatility.where(volatility > 0)
+                cache[code][window] = close.pct_change(window) / valid_volatility
         return cache
 
     def _resolve_symbol_configs(
@@ -5261,7 +5209,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
 
     ENGINE_LABEL = "Codex Quant v17"
 
-    _SINGLE_ASSET_TREND_OVERRIDES: dict[str, Any] = {
+    _SINGLE_ASSET_TREND_OVERRIDES: ClassVar[dict[str, Any]] = {
         "entry_period": 30,
         "exit_period": 20,
         "trail_atr_mult": 10.0,
@@ -5279,7 +5227,9 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
     ) -> None:
         resolved_policy = policy or V17Policy()
         normalized_cfg = {
-            "sector_guard_min_symbols": len(resolved_policy.regime_symbols),
+            "sector_guard_min_symbols": max(
+                1, math.ceil(len(resolved_policy.regime_symbols) * 0.8)
+            ),
             "group_min_slots": 0,
             **dict(cfg or {}),
         }
@@ -5365,13 +5315,109 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         return result
 
     def _run_ensemble(self, request: _RunRequest) -> dict:
-        """Run v17 child sleeves and aggregate their independent ledgers."""
+        """Replay fixed-capital sleeves on one synchronized portfolio calendar."""
         tradable_count = len(request.symbols_dict)
         effective_policy = self._effective_policy(tradable_count)
+        states = self._prepare_ensemble_sleeves(request, effective_policy)
+        reference_dates = states[0].all_dates
+        if any(state.all_dates != reference_dates for state in states[1:]):
+            raise RuntimeError("ensemble sleeves produced different trading calendars")
+
+        portfolio_risk = RecoverableDrawdownRiskManager(
+            {"max_drawdown": effective_policy.confirmed_drawdown}, effective_policy
+        )
+        portfolio_risk_events: list[dict[str, Any]] = []
+        symbol_count_curve: list[dict[str, Any]] = []
+        for date in reference_dates:
+            self._execute_ensemble_open(states, date)
+            for state in states:
+                state.pending = state.sleeve._evaluate_trading_day(
+                    request.symbols_dict,
+                    state.data_map,
+                    state.indicator_map,
+                    state.all_dates,
+                    state.date_to_pos,
+                    date,
+                    state.pending,
+                )
+            assets = sum(
+                state.sleeve._total_assets(state.data_map, date) for state in states
+            )
+            status = portfolio_risk.check_portfolio_risk(
+                assets,
+                date.strftime("%Y-%m-%d"),
+                trading_dates=reference_dates,
+                date_to_pos=states[0].date_to_pos,
+            )
+            portfolio_risk_events.extend(portfolio_risk.drain_audit_events())
+            if status:
+                self._apply_global_risk_lock(states, date)
+            held = self._held_portfolio_symbols(states)
+            symbol_count_curve.append(
+                {"date": date.strftime("%Y-%m-%d"), "symbol_count": len(held)}
+            )
+
+        results = self._finalize_ensemble_sleeves(states)
+        combined = self._aggregate_sleeve_results(results)
+        combined_risk_events = list(combined["risk_events"])
+        combined_risk_events.extend(
+            {"sleeve": "portfolio", **event} for event in portfolio_risk_events
+        )
+        combined.update(
+            {
+                "engine_version": "17.0",
+                "v17_policy": self.policy.as_dict(),
+                "effective_v17_policy": effective_policy.as_dict(),
+                "terminal_risk_lock": bool(
+                    portfolio_risk.terminal_lock
+                    or any(
+                        result.get("terminal_risk_lock", False) for result in results
+                    )
+                ),
+                "cycle_lock_count": int(
+                    portfolio_risk.cycle_lock_count
+                    + sum(int(result.get("cycle_lock_count", 0)) for result in results)
+                ),
+                "portfolio_cycle_lock_count": int(portfolio_risk.cycle_lock_count),
+                "persistent_risk_lock": bool(
+                    portfolio_risk.persistent_lock or combined["persistent_risk_lock"]
+                ),
+                "all_sleeves_locked": bool(
+                    portfolio_risk.persistent_lock or combined["all_sleeves_locked"]
+                ),
+                "locked_sleeves": (
+                    [state.sleeve.sleeve_name for state in states]
+                    if portfolio_risk.persistent_lock
+                    else combined["locked_sleeves"]
+                ),
+                "guard_scope_mode": "fixed_signal_only_regime_basket",
+                "portfolio_cash_model": "fixed_virtual_subaccounts",
+                "portfolio_max_positions": int(self.cfg["max_positions"]),
+                "max_concurrent_symbols": max(
+                    item["symbol_count"] for item in symbol_count_curve
+                ),
+                "portfolio_symbol_count_curve": symbol_count_curve,
+                "risk_events": self._sort_events(combined_risk_events),
+            }
+        )
+        self.last_result = combined
+        return combined
+
+    def _prepare_ensemble_sleeves(
+        self, request: _RunRequest, effective_policy: V17Policy
+    ) -> list[_PreparedSleeveRun]:
+        """Create funded sleeves and prepare their data without running ahead."""
+        tradable_count = len(request.symbols_dict)
+        indicator_state = str(request.indicator_state).lower()
+        if indicator_state not in {"cold", "warm"}:
+            raise ValueError("indicator_state must be either 'cold' or 'warm'")
+        warmup_days = _require_int(
+            "warmup_calendar_days", request.warmup_calendar_days, min_value=120
+        )
         horizons = effective_policy.allocation_horizons
         sleeve_capital = self.initial_capital / len(horizons)
-        results: list[dict] = []
         self.sleeves = []
+        states: list[_PreparedSleeveRun] = []
         base_sleeve_policy = replace(
             effective_policy,
             allocation_mode="single",
@@ -5398,37 +5444,150 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 allocation_lookbacks=lookbacks,
                 sleeve_name=name,
             )
+            sleeve._indicator_state = indicator_state
+            sleeve._warmup_calendar_days = warmup_days
+            sleeve._requested_start_date = request.start_date
+            sleeve._requested_end_date = request.end_date
+            profile, route, start_ts, end_ts = sleeve._validate_run_request(
+                request.symbols_dict,
+                request.start_date,
+                request.end_date,
+                request.profile,
+                request.config_route,
+            )
             with contextlib.redirect_stdout(io.StringIO()):
-                result = sleeve.run(
+                prepared = sleeve._prepare_run(
                     request.symbols_dict,
                     request.start_date,
                     request.end_date,
-                    per_symbol_config=request.per_symbol_config,
-                    profile=request.profile,
-                    config_route=request.config_route,
-                    data_dir=request.data_dir,
-                    indicator_state=request.indicator_state,
-                    warmup_calendar_days=request.warmup_calendar_days,
+                    start_ts,
+                    end_ts,
+                    request.per_symbol_config,
+                    profile,
+                    route,
+                    request.data_dir,
                 )
             self.sleeves.append(sleeve)
-            results.append(result)
-        combined = self._aggregate_sleeve_results(results)
-        combined.update(
-            {
-                "engine_version": "17.0",
-                "v17_policy": self.policy.as_dict(),
-                "effective_v17_policy": effective_policy.as_dict(),
-                "terminal_risk_lock": any(
-                    result.get("terminal_risk_lock", False) for result in results
-                ),
-                "cycle_lock_count": sum(
-                    int(result.get("cycle_lock_count", 0)) for result in results
-                ),
-                "guard_scope_mode": "fixed_signal_only_regime_basket",
+            states.append(
+                _PreparedSleeveRun(
+                    sleeve=sleeve,
+                    data_map=prepared[0],
+                    indicator_map=prepared[1],
+                    all_dates=prepared[2],
+                    date_to_pos=prepared[3],
+                )
+            )
+        return states
+
+    @staticmethod
+    def _held_portfolio_symbols(states: list[_PreparedSleeveRun]) -> set[str]:
+        """Return the distinct symbols held by any virtual subaccount."""
+        return {
+            symbol
+            for state in states
+            for symbol, positions in state.sleeve.positions.items()
+            if positions
+        }
+
+    def _authorize_portfolio_buys(
+        self, states: list[_PreparedSleeveRun], date: pd.Timestamp
+    ) -> None:
+        """Admit new symbols by cross-sleeve score before any sleeve can buy."""
+        held = self._held_portfolio_symbols(states)
+        maximum = int(self.cfg["max_positions"])
+        if len(held) > maximum:
+            raise RuntimeError("portfolio symbol limit was already exceeded")
+        score_samples: dict[str, list[float]] = {}
+        for state in states:
+            scores = state.sleeve._allocation_scores(state.data_map, date)
+            candidates = {
+                signal.symbol
+                for signal, _ in state.pending
+                if signal.direction == "buy"
+                and signal.symbol not in held
+                and signal.symbol in state.data_map
+                and date in state.data_map[signal.symbol].index
             }
+            for symbol in candidates:
+                score_samples.setdefault(symbol, []).append(scores.get(symbol, 0.0))
+        ranked = sorted(
+            score_samples,
+            key=lambda symbol: (
+                -float(np.mean(score_samples[symbol])),
+                EXECUTION_PRIORITY.get(symbol, 9999),
+                symbol,
+            ),
         )
-        self.last_result = combined
-        return combined
+        allowed = held | set(ranked[: max(maximum - len(held), 0)])
+        date_str = date.strftime("%Y-%m-%d")
+        for state in states:
+            retained: list[tuple[Signal, BaseStrategy]] = []
+            for signal, strategy in state.pending:
+                if signal.direction == "buy" and signal.symbol not in allowed:
+                    state.sleeve._record_order_event(
+                        date=date_str,
+                        signal=signal,
+                        event="rejected_portfolio_symbol_limit",
+                        portfolio_max_positions=maximum,
+                    )
+                    continue
+                retained.append((signal, strategy))
+            state.pending = retained
+
+    def _execute_ensemble_open(
+        self, states: list[_PreparedSleeveRun], date: pd.Timestamp
+    ) -> None:
+        """Execute every sleeve's sells before globally admitting and filling buys."""
+        for state in states:
+            state.sleeve._start_trading_day()
+            state.pending = state.sleeve._execute_pending_signals(
+                state.pending,
+                state.data_map,
+                date,
+                state.date_to_pos,
+                frozenset({"sell"}),
+            )
+        self._authorize_portfolio_buys(states, date)
+        for state in states:
+            state.pending = state.sleeve._execute_pending_signals(
+                state.pending,
+                state.data_map,
+                date,
+                state.date_to_pos,
+                frozenset({"buy"}),
+            )
+        if len(self._held_portfolio_symbols(states)) > int(self.cfg["max_positions"]):
+            raise RuntimeError("portfolio symbol limit exceeded after buy execution")
+
+    @staticmethod
+    def _apply_global_risk_lock(
+        states: list[_PreparedSleeveRun], date: pd.Timestamp
+    ) -> None:
+        """Cancel buys and queue T+1 liquidations in every funded sleeve."""
+        date_str = date.strftime("%Y-%m-%d")
+        for state in states:
+            liquidations = state.sleeve._generate_liquidation_signals(
+                date_str, reason="portfolio-level drawdown liquidation"
+            )
+            state.pending = state.sleeve._dedupe_pending_signals(
+                [item for item in state.pending if item[0].direction == "sell"]
+                + liquidations
+            )
+
+    @staticmethod
+    def _finalize_ensemble_sleeves(
+        states: list[_PreparedSleeveRun],
+    ) -> list[dict]:
+        """Mark open positions at the final close and build sleeve reports."""
+        results: list[dict] = []
+        for state in states:
+            last_date = state.all_dates[-1]
+            final_assets = state.sleeve._total_assets(state.data_map, last_date)
+            state.sleeve.pending_signals = state.sleeve._dedupe_pending_signals(
+                state.pending
+            )
+            results.append(state.sleeve._build_result(final_assets, state.all_dates))
+        return results
 
 
 def build_argument_parser() -> argparse.ArgumentParser:

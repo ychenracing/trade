@@ -60,6 +60,7 @@ def _run(task: tuple[str, str]) -> dict[str, Any]:
         "max_drawdown": float(result["max_drawdown"]),
         "sharpe": float(result["sharpe"]),
         "total_trades": int(result["total_trades"]),
+        "max_concurrent_symbols": int(result["max_concurrent_symbols"]),
         "terminal_risk_lock": bool(result["terminal_risk_lock"]),
         "cycle_lock_count": int(result["cycle_lock_count"]),
         "guard_on_dates": guard_on_dates,

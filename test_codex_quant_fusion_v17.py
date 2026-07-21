@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from unittest import mock
 
@@ -271,6 +272,98 @@ class RiskManagerTests(unittest.TestCase):
         )
 
 
+class ExecutionControlTests(unittest.TestCase):
+    """Verify immutable orders, fair batches, ADV accounting, and guard quorum."""
+
+    def test_signal_is_immutable(self) -> None:
+        signal = quant.Signal("300308", "alpha", "buy", target_shares=100)
+        with self.assertRaises(FrozenInstanceError):
+            signal.target_shares = 200
+
+    def test_fair_batch_allocation_is_order_independent(self) -> None:
+        items = [
+            (quant.Signal("300308", name, "buy", target_shares=6_000), mock.Mock())
+            for name in ("alpha", "beta")
+        ]
+
+        def allocate(batch: list[tuple[quant.Signal, mock.Mock]]) -> dict[str, int]:
+            shares = quant.SleeveBacktestEngine._allocate_lots_pro_rata(batch, 6_000)
+            return {
+                item[0].strategy_name: allocated
+                for item, allocated in zip(batch, shares, strict=True)
+            }
+
+        self.assertEqual(allocate(items), {"alpha": 3_000, "beta": 3_000})
+        self.assertEqual(allocate(list(reversed(items))), allocate(items))
+
+    def test_adv_capacity_is_shared_by_date_symbol_and_side(self) -> None:
+        policy = quant.V17Policy(allocation_mode="single")
+        sleeve = quant.SleeveBacktestEngine(
+            1_000_000,
+            cfg=None,
+            policy=policy,
+            allocation_lookbacks=policy.single_lookbacks,
+            sleeve_name="test",
+        )
+        dates = pd.bdate_range("2026-01-02", periods=22)
+        frame = pd.DataFrame({"volume": 1_000_000.0}, index=dates)
+        data_map = {"300308": frame}
+        execution_date = dates[-1]
+
+        capacity, _ = sleeve._adv_capacity("300308", "buy", data_map, execution_date)
+        self.assertEqual(capacity, 5_000)
+        sleeve._consume_adv(execution_date.strftime("%Y-%m-%d"), "300308", "buy", 3_000)
+        remaining, _ = sleeve._adv_capacity("300308", "buy", data_map, execution_date)
+        sell_capacity, _ = sleeve._adv_capacity(
+            "300308", "sell", data_map, execution_date
+        )
+        self.assertEqual(remaining, 2_000)
+        self.assertEqual(sell_capacity, 5_000)
+
+    def test_missing_regime_symbol_preserves_guard_state(self) -> None:
+        policy = quant.V17Policy(allocation_mode="single")
+        sleeve = quant.SleeveBacktestEngine(
+            1_000_000,
+            cfg={
+                "sector_guard_min_symbols": 5,
+                "sector_shock_ma": 2,
+                "sector_recovery_ma": 2,
+            },
+            policy=policy,
+            allocation_lookbacks=policy.single_lookbacks,
+            sleeve_name="test",
+        )
+        dates = list(pd.bdate_range("2026-01-02", periods=4))
+        data_map = {
+            symbol: pd.DataFrame({"close": [100.0, 99.0, 98.0, 97.0]}, index=dates)
+            for symbol in policy.regime_symbols
+        }
+        missing = policy.regime_symbols[-1]
+        data_map[missing] = data_map[missing].iloc[:-1]
+        sleeve.sector_guard_active = True
+        sleeve._sector_shock_positions = [2]
+        sleeve._sector_recovery_streak = 1
+
+        state = sleeve._update_sector_guard(
+            data_map,
+            dates[-1],
+            dates,
+            {date: index for index, date in enumerate(dates)},
+        )
+
+        self.assertEqual(state, "active")
+        self.assertEqual(sleeve._sector_shock_positions, [2])
+        self.assertEqual(sleeve._sector_recovery_streak, 1)
+        self.assertEqual(sleeve.risk_events[-1]["observed_symbols"], 4)
+        self.assertEqual(
+            sleeve.risk_events[-1]["event"], "sector_guard_data_insufficient"
+        )
+
+    def test_synthetic_period_end_liquidation_is_not_configurable(self) -> None:
+        with self.assertRaises(ValueError):
+            quant.BacktestEngine(cfg={"force_close_on_end": True})
+
+
 class IntegrationTests(unittest.TestCase):
     """Protect target-period performance and signal-only basket isolation."""
 
@@ -296,7 +389,7 @@ class IntegrationTests(unittest.TestCase):
             "3_symbols": 9.5,
             "5_symbols": 11.0,
             "13_symbols": 8.5,
-            "22_symbols": 9.0,
+            "22_symbols": 8.0,
         }
         for name, floor in return_floors.items():
             with self.subTest(universe=name):
@@ -304,11 +397,41 @@ class IntegrationTests(unittest.TestCase):
                 self.assertGreaterEqual(result["total_return"], floor)
                 self.assertGreaterEqual(result["max_drawdown"], -0.20)
                 self.assertFalse(result["terminal_risk_lock"])
+                self.assertLessEqual(result["max_concurrent_symbols"], 6)
+                self.assertEqual(
+                    result["portfolio_cash_model"], "fixed_virtual_subaccounts"
+                )
+
+    def test_combined_same_day_fills_respect_portfolio_adv_budget(self) -> None:
+        result = self.results["22_symbols"]
+        frames = {
+            code: quant.DataFetcher.load_stock_data(
+                code,
+                "2024-01-01",
+                "2026-07-20",
+                data_dir=str(DATA_DIR),
+            )
+            for code in UNIVERSES["22_symbols"]
+        }
+        fills: dict[tuple[str, str, str], int] = {}
+        for trade in result["trades"]:
+            key = (trade.date, trade.symbol, trade.direction)
+            fills[key] = fills.get(key, 0) + trade.shares
+        for (date_str, symbol, direction), shares in fills.items():
+            date = pd.Timestamp(date_str)
+            history = frames[symbol].loc[frames[symbol].index < date, "volume"]
+            history = history.loc[history.gt(0)].tail(quant.V17Policy().adv_lookback)
+            with self.subTest(date=date_str, symbol=symbol, direction=direction):
+                self.assertFalse(history.empty)
+                self.assertLessEqual(
+                    shares / float(history.mean()),
+                    quant.V17Policy().max_order_adv_ratio + 1e-12,
+                )
 
     def test_multi_symbol_wealth_dispersion_is_bounded(self) -> None:
         names = ("3_symbols", "5_symbols", "13_symbols", "22_symbols")
         wealth = [1.0 + self.results[name]["total_return"] for name in names]
-        self.assertGreaterEqual(min(wealth) / max(wealth), 0.80)
+        self.assertGreaterEqual(min(wealth) / max(wealth), 0.75)
 
     def test_regime_gate_activates_before_the_july_selloff(self) -> None:
         for name, result in self.results.items():
@@ -333,10 +456,11 @@ class PrefixStressArtifactTests(unittest.TestCase):
         self.assertGreaterEqual(results[0]["total_return"], 6.0)
         for item in results[1:]:
             with self.subTest(symbol_count=item["symbol_count"]):
-                self.assertGreaterEqual(item["total_return"], 10.0)
+                self.assertGreaterEqual(item["total_return"], 8.0)
                 self.assertGreaterEqual(item["max_drawdown"], -0.23)
+                self.assertLessEqual(item["max_concurrent_symbols"], 6)
         worst = artifact["worst_adjacent_transition"]
-        self.assertGreaterEqual(worst["wealth_change"], -0.12)
+        self.assertGreaterEqual(worst["wealth_change"], -0.14)
 
 
 class CambriconArtifactTests(unittest.TestCase):
@@ -354,10 +478,10 @@ class CambriconArtifactTests(unittest.TestCase):
             },
         )
         expected = {
-            ("cold", "2026-06-30"): (11.919321500964255, -0.1494399295472653),
-            ("cold", "2026-07-20"): (11.919321500964255, -0.1494399295472653),
-            ("warm", "2026-06-30"): (14.180776358598129, -0.1511105646833452),
-            ("warm", "2026-07-20"): (14.180776358598129, -0.1511105646833452),
+            ("cold", "2026-06-30"): (9.919954584868504, -0.16143190558700346),
+            ("cold", "2026-07-20"): (9.919954584868504, -0.16143190558700346),
+            ("warm", "2026-06-30"): (11.679353494260253, -0.15111072478540524),
+            ("warm", "2026-07-20"): (11.679353494260253, -0.15111072478540524),
         }
         results = artifact["results"]
         self.assertEqual(len(results), len(expected))

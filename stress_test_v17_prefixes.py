@@ -40,6 +40,7 @@ def _run(count: int) -> dict[str, Any]:
         "max_drawdown": float(result["max_drawdown"]),
         "sharpe": float(result["sharpe"]),
         "total_trades": int(result["total_trades"]),
+        "max_concurrent_symbols": int(result["max_concurrent_symbols"]),
         "terminal_risk_lock": bool(result["terminal_risk_lock"]),
     }
 
