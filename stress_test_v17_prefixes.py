@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import codex_quant_fusion_v17 as v17
-from backtest_v16_universes import NAMES
+from backtest_v17_universes import NAMES
 
 
 ROOT = Path(__file__).resolve().parent

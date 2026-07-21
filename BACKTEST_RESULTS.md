@@ -2,8 +2,9 @@
 
 Verification date: 2026-07-21 UTC.
 
-Codex Quant Fusion v17 uses the same code, parameters, costs, and forward-adjusted
-data snapshot across every requested universe. Initial capital is CNY 2,000,000.
+Codex Quant Fusion v17 is a standalone module with built-in AKShare and local CSV
+data paths. It uses the same code, parameters, costs, and forward-adjusted data
+snapshot across every requested universe. Initial capital is CNY 2,000,000.
 
 | Universe | Cold return | Cold maximum drawdown | Warm return | Warm maximum drawdown |
 |---|---:|---:|---:|---:|

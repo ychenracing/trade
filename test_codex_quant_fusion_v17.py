@@ -4,16 +4,22 @@
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import io
 import json
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import pandas as pd
 
 import codex_quant_fusion_v17 as quant
-from backtest_v16_universes import NAMES, UNIVERSES
+from backtest_v17_universes import NAMES, UNIVERSES
 
 
 ROOT = Path(__file__).resolve().parent
@@ -79,8 +85,8 @@ class SymbolRoutingTests(unittest.TestCase):
             engine.config_for_symbol(code, name=name),
             engine.domestic_design_config(),
         )
-        self.assertEqual(quant.v14.parse_symbols(name), {code: name})
-        self.assertIn(code, quant.v14.EXECUTION_PRIORITY)
+        self.assertEqual(quant.parse_symbols(name), {code: name})
+        self.assertIn(code, quant.EXECUTION_PRIORITY)
         self.assertEqual(
             set(engine._KNOWN_CLASSIFICATION),
             set(engine._SYMBOL_GROUP),
@@ -88,6 +94,120 @@ class SymbolRoutingTests(unittest.TestCase):
         self.assertEqual(
             set(engine._KNOWN_CLASSIFICATION),
             set(engine._SYMBOL_PROFILE),
+        )
+
+
+class StandaloneAndDataSourceTests(unittest.TestCase):
+    """Verify standalone packaging and explicit online/local source selection."""
+
+    def test_source_has_no_import_dependency_on_earlier_versions(self) -> None:
+        source_path = ROOT / "codex_quant_fusion_v17.py"
+        tree = ast.parse(source_path.read_text(encoding="utf-8"))
+        imported_modules = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import)
+            for alias in node.names
+        }
+        imported_modules.update(
+            node.module
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module
+        )
+        self.assertFalse(
+            imported_modules
+            & {
+                "codex_quant_fusion_v14",
+                "codex_quant_fusion_v15",
+                "codex_quant_fusion_v16",
+            }
+        )
+
+    def test_script_starts_in_an_isolated_directory(self) -> None:
+        source = ROOT / "codex_quant_fusion_v17.py"
+        with tempfile.TemporaryDirectory() as directory:
+            isolated = Path(directory) / source.name
+            shutil.copy2(source, isolated)
+            completed = subprocess.run(
+                [sys.executable, "-I", str(isolated), "--help"],
+                cwd=directory,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("standalone backtester", completed.stdout)
+
+    def test_cli_defaults_to_online_data(self) -> None:
+        args = quant.build_argument_parser().parse_args([])
+        self.assertEqual(args.data_dir, "")
+
+    def test_local_csv_mode_never_calls_the_online_loader(self) -> None:
+        with mock.patch.object(
+            quant.DataFetcher,
+            "fetch_stock_data",
+            side_effect=AssertionError("online loader must not be called"),
+        ):
+            frame = quant.DataFetcher.load_stock_data(
+                "300308",
+                "2025-04-01",
+                "2025-04-10",
+                data_dir=str(DATA_DIR),
+            )
+        self.assertFalse(frame.empty)
+
+    def test_online_mode_uses_provider_failover(self) -> None:
+        raw = pd.DataFrame(
+            {
+                "date": ["2026-01-02", "2026-01-05"],
+                "open": [10.0, 10.2],
+                "close": [10.1, 10.3],
+                "high": [10.2, 10.4],
+                "low": [9.9, 10.1],
+                "volume": [1_000.0, 1_200.0],
+            }
+        )
+        with (
+            mock.patch.object(quant, "ak", object()),
+            mock.patch.object(
+                quant.DataFetcher,
+                "_fetch_eastmoney",
+                side_effect=RuntimeError("provider unavailable"),
+            ) as eastmoney,
+            mock.patch.object(
+                quant.DataFetcher,
+                "_fetch_sina",
+                return_value=raw,
+            ) as sina,
+            mock.patch.object(quant.DataFetcher, "_fetch_tencent") as tencent,
+        ):
+            frame = quant.DataFetcher.load_stock_data(
+                "300308",
+                "2026-01-02",
+                "2026-01-05",
+                data_dir=None,
+            )
+        eastmoney.assert_called_once()
+        sina.assert_called_once()
+        tencent.assert_not_called()
+        self.assertEqual(len(frame), 2)
+
+    def test_eastmoney_provider_requests_forward_adjusted_akshare_data(self) -> None:
+        provider = mock.Mock()
+        provider.stock_zh_a_hist.return_value = pd.DataFrame()
+        with mock.patch.object(quant, "ak", provider):
+            quant.DataFetcher._fetch_eastmoney(
+                "300308",
+                "2025-04-01",
+                "2026-07-20",
+            )
+        provider.stock_zh_a_hist.assert_called_once_with(
+            symbol="300308",
+            period="daily",
+            start_date="20250401",
+            end_date="20260720",
+            adjust="qfq",
         )
 
 

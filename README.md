@@ -1,9 +1,10 @@
 # Codex Quant Fusion v17
 
-Codex Quant Fusion v17 is a deterministic daily-bar backtester for concentrated
-A-share technology portfolios. It preserves the reviewed v16 signal, T+1
-execution, transaction-cost, exposure, and causal-liquidity contracts while
-removing risk behavior that previously changed abruptly with universe size.
+Codex Quant Fusion v17 is a standalone deterministic daily-bar backtester for
+concentrated A-share technology portfolios. The complete data-loading, signal,
+T+1 execution, transaction-cost, exposure, causal-liquidity, allocation, and risk
+implementation is contained in `codex_quant_fusion_v17.py`; it does not import or
+require v14, v15, or v16 at runtime.
 
 ## Version 17 design
 
@@ -53,6 +54,14 @@ shares before the ADV participation rule is applied. `920045` begins on
 `domestic_semiconductor` risk group, and routed through the `domestic_design`
 parameter profile. The CLI also recognizes its preset stock name.
 
+The engine supports two explicit data paths:
+
+- Omit `--data-dir` to fetch forward-adjusted daily data through AKShare. The
+  online loader tries Eastmoney, Sina, and Tencent in deterministic failover
+  order and validates every returned frame.
+- Pass `--data-dir PATH` to read `PATH/<symbol>.csv`. Local files must contain
+  forward-adjusted daily OHLCV data and pass the same validation contract.
+
 ## Quick start
 
 ```bash
@@ -62,6 +71,16 @@ python codex_quant_fusion_v17.py \
   --end 2026-07-20 \
   --capital 2000000 \
   --data-dir market_data_qfq_22_20260720 \
+  --indicator-state warm \
+  --no-plot
+```
+
+For online data, omit the local directory option:
+
+```bash
+python codex_quant_fusion_v17.py \
+  --start 2025-04-01 \
+  --end 2026-07-20 \
   --indicator-state warm \
   --no-plot
 ```
@@ -123,12 +142,13 @@ python stress_test_v17_prefixes.py
 python backtest_v17_cambricon_universe.py
 ```
 
-The tests cover policy validation, concentration scaling, temporary rearming,
-terminal locks, signal-only basket isolation, all five requested universe sizes,
-sub-20% drawdown for the five requested universes, bounded multi-symbol wealth
-dispersion, Cambricon's complete classification route, the 2026-06-26 regime-gate
-event, the complete one-through-22 prefix artifact, and the mapped nine-symbol
-Cambricon artifact.
+The tests cover standalone isolated startup, absence of versioned imports,
+AKShare provider failover, strict local CSV selection, policy validation,
+concentration scaling, temporary rearming, terminal locks, signal-only basket
+isolation, all five requested universe sizes, sub-20% drawdown for the requested
+universes, bounded multi-symbol wealth dispersion, Cambricon's complete route,
+the 2026-06-26 regime-gate event, the complete one-through-22 prefix artifact,
+and the mapped nine-symbol Cambricon artifact.
 
 ## Important assumptions
 
