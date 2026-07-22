@@ -6,7 +6,7 @@ T+1 execution, transaction-cost, exposure, causal-liquidity, allocation, and ris
 implementation is contained in `quant_fusion_v17.py`; it does not import or
 require another strategy module at runtime.
 
-## Version 17 design
+## Version 17.1 design
 
 - Tradable symbols and regime-observation symbols are separate. The default
   signal-only regime basket is `300308`, `300502`, `300394`, `688008`, and
@@ -53,6 +53,11 @@ require another strategy module at runtime.
   releasing an active guard.
 - Open positions are marked to market at the requested end date. The engine no
   longer offers a synthetic same-close period-end liquidation.
+- Calmar is reported beside return, drawdown, and Sharpe in in-memory results,
+  console summaries, saved CSV summaries, and canonical JSON artifacts.
+- A symbol without explicit routing metadata or a recognized name hint still
+  receives the deterministic default profile, but now produces a route warning
+  and appears in `unmapped_symbols` instead of falling back silently.
 
 Universe-size robustness does not mean composition invariance. A universe that
 removes the strongest underlying assets cannot be guaranteed the return of a
@@ -71,6 +76,8 @@ should supply its own stable benchmark basket before live use.
   canonical forward-adjusted snapshots required by the regression suite.
 - `v17_universe_backtest_20260720.json`, `v17_prefix_stress_20260720.json`, and
   `v17_cambricon_universe_backtest_20260720.json`: canonical result artifacts.
+- `STRATEGY_REVIEW_20260722.md`: proposal audit, controlled experiments, and
+  release decisions for the 17.1 review.
 
 Historical implementations remain available on their original Git branches and
 are intentionally not duplicated on `main`.
@@ -127,13 +134,13 @@ tests. Both states start the portfolio flat on the requested first date.
 Initial capital is CNY 2,000,000. All scenarios use identical v17 parameters,
 default costs, 0.1% one-way slippage, and data through 2026-07-20.
 
-| Tradable universe | Cold return | Cold max drawdown | Warm return | Warm max drawdown |
-|---|---:|---:|---:|---:|
-| 1 symbol | 662.7166% | -18.4896% | 645.4892% | -18.3414% |
-| 3 symbols | 992.1379% | -18.3217% | 1,012.8079% | -17.9190% |
-| 5 symbols | 1,071.9918% | -15.9755% | 1,145.4804% | -14.9383% |
-| 13 symbols | 836.4956% | -16.9317% | 945.3487% | -18.4072% |
-| 22 symbols | 622.2555% | -16.5250% | 850.1060% | -16.9000% |
+| Tradable universe | Cold return | Cold max drawdown | Warm return | Warm max drawdown | Warm Sharpe | Warm Calmar |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 symbol | 662.7166% | -18.4896% | 645.4892% | -18.3414% | 3.2042 | 21.6069 |
+| 3 symbols | 992.1379% | -18.3217% | 1,012.8079% | -17.9190% | 3.5976 | 32.5411 |
+| 5 symbols | 1,071.9918% | -15.9755% | 1,145.4804% | -14.9383% | 3.7086 | 43.3317 |
+| 13 symbols | 836.4956% | -16.9317% | 945.3487% | -18.4072% | 3.3981 | 29.8727 |
+| 22 symbols | 622.2555% | -16.5250% | 850.1060% | -16.9000% | 3.3343 | 29.7161 |
 
 The requested multi-symbol warm wealth-factor ratio between the worst and best
 universe is 76.28%. The exhaustive ordered-prefix audit also tests every count
@@ -185,7 +192,9 @@ rejection auditing, data snapshot checksums, signal-only basket isolation, the
 portfolio-wide six-symbol ceiling, all five requested universe sizes, sub-20%
 drawdown for the requested warm universes, Cambricon's complete route, the
 2026-06-26 regime-gate event, the complete one-through-22 prefix artifact, and
-the mapped nine-symbol Cambricon artifact.
+the mapped nine-symbol Cambricon artifact. It also checks deterministic detection
+of unmapped auto routes and the presence of positive Calmar values in successful
+target-period runs.
 
 ## Important assumptions
 

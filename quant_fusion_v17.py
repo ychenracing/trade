@@ -1575,6 +1575,14 @@ class _CoreBacktestEngine:
         return None
 
     @staticmethod
+    def _uses_unmapped_auto_route(code: str, name: str = "") -> bool:
+        """Return whether auto routing must fall back without explicit metadata."""
+        return (
+            code not in _CoreBacktestEngine._SYMBOL_PROFILE
+            and _CoreBacktestEngine._classify_by_industry_hints(code, name) is None
+        )
+
+    @staticmethod
     def classify_symbol(
         code: str,
         df: pd.DataFrame | None = None,
@@ -2105,6 +2113,11 @@ class _CoreBacktestEngine:
                 if config_route == "auto"
                 else str(profile or "default")
             )
+            if config_route == "auto" and self._uses_unmapped_auto_route(code, name):
+                print(
+                    f"  [Route warning] {name}({code}) has no explicit metadata; "
+                    "using the default trend profile"
+                )
             print(f"  [Parameter route] {name}({code}) -> {route}")
             print(
                 f"  {name} ({code}): {len(df)} rows, "
@@ -3157,6 +3170,7 @@ class _CoreBacktestEngine:
         peak = eq["assets"].cummax()
         drawdown = (eq["assets"] - peak) / peak
         max_drawdown = drawdown.min()
+        calmar = annual_return / abs(max_drawdown) if max_drawdown < 0 else 0.0
         daily_returns = eq["assets"].pct_change().dropna()
         sharpe = 0.0
         if daily_returns.std() > 0:
@@ -3189,6 +3203,7 @@ class _CoreBacktestEngine:
             "annual_return": annual_return,
             "max_drawdown": max_drawdown,
             "sharpe": sharpe,
+            "calmar": calmar,
             "win_rate": win_rate,
             "profit_factor": profit_factor,
             "total_trades": len(self.trades),
@@ -3215,6 +3230,11 @@ class _CoreBacktestEngine:
                 )
                 for code in self.symbol_names
             },
+            "unmapped_symbols": sorted(
+                code
+                for code, name in self.symbol_names.items()
+                if _CoreBacktestEngine._uses_unmapped_auto_route(code, name)
+            ),
             "fusion_events": list(self.fusion_events),
             "risk_events": list(self.risk_events),
             "sector_guard_active": bool(self.sector_guard_active),
@@ -3249,6 +3269,7 @@ class PerformanceReport:
         print(f"  Annualized return: {result['annual_return']:>15.2%}")
         print(f"  Maximum drawdown:   {result['max_drawdown']:>15.2%}")
         print(f"  Sharpe ratio:   {result['sharpe']:>15.2f}")
+        print(f"  Calmar ratio:   {result['calmar']:>15.2f}")
         print(f"  Win rate:       {result['win_rate']:>15.2%}")
         pf = result.get("profit_factor")
         pf_str = (
@@ -3307,6 +3328,7 @@ class PerformanceReport:
             "annual_return",
             "max_drawdown",
             "sharpe",
+            "calmar",
             "win_rate",
             "profit_factor",
             "total_trades",
@@ -3337,7 +3359,7 @@ class PerformanceReport:
             2, 1, figsize=(14, 8), gridspec_kw={"height_ratios": [3, 1]}
         )
         axes[0].plot(eq.index, eq["assets"] / 10000, linewidth=1.5, color="#1a73e8")
-        axes[0].set_title("AQuant Portfolio Equity Curve", fontsize=14)
+        axes[0].set_title("Quant Fusion Portfolio Equity Curve", fontsize=14)
         axes[0].set_ylabel("Assets (CNY 10k)")
         axes[0].grid(True, alpha=0.3)
         axes[0].axhline(
@@ -4108,7 +4130,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         result = super()._build_result(final_assets, all_dates)
         result.update(
             {
-                "engine_version": "17.0",
+                "engine_version": "17.1",
                 "indicator_state": self._indicator_state,
                 "allocation_lookbacks": list(self.ALLOCATION_LOOKBACKS),
                 "order_events": list(self.order_events),
@@ -4509,7 +4531,7 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         result = super()._build_result(final_assets, all_dates)
         result.update(
             {
-                "engine_version": "17.0",
+                "engine_version": "17.1",
                 "allocation_mode": "single",
                 "sleeve_name": self.sleeve_name,
                 "allocation_lookbacks": list(self.ALLOCATION_LOOKBACKS),
@@ -4661,6 +4683,8 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             sharpe = float(
                 (daily_returns - daily_rf).mean() / daily_returns.std() * math.sqrt(252)
             )
+        max_drawdown = float(drawdown.min())
+        calmar = annual_return / abs(max_drawdown) if max_drawdown < 0 else 0.0
         names = [result["sleeve_name"] for result in results]
         trades = [
             self._decorate_trade(trade, name)
@@ -4708,7 +4732,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             if result.get("persistent_risk_lock", False)
         ]
         return {
-            "engine_version": "17.0",
+            "engine_version": "17.1",
             "allocation_mode": "ensemble",
             "allocation_lookbacks": [
                 list(values) for values in self.policy.allocation_horizons
@@ -4723,8 +4747,9 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             "final_assets": final_assets,
             "total_return": total_return,
             "annual_return": annual_return,
-            "max_drawdown": float(drawdown.min()),
+            "max_drawdown": max_drawdown,
             "sharpe": sharpe,
+            "calmar": calmar,
             "win_rate": len(wins) / decisive if decisive else 0.0,
             "profit_factor": total_win / total_loss if total_loss > 0 else float("inf"),
             "total_trades": len(trades),
@@ -4742,6 +4767,13 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             "pending_signals": pending_signals,
             "trade_cash_scope": "sleeve",
             "parameter_routes": dict(results[0].get("parameter_routes", {})),
+            "unmapped_symbols": sorted(
+                {
+                    code
+                    for result in results
+                    for code in result.get("unmapped_symbols", [])
+                }
+            ),
             "fusion_events": fusion_events,
             "risk_events": risk_events,
             "order_events": order_events,
@@ -5283,7 +5315,7 @@ class _UniverseInvariantSleeveMixin:
         manager = self.risk
         result.update(
             {
-                "engine_version": "17.0",
+                "engine_version": "17.1",
                 "v17_policy": self.policy.as_dict(),
                 "terminal_risk_lock": bool(
                     isinstance(manager, RecoverableDrawdownRiskManager)
@@ -5470,7 +5502,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         )
         combined.update(
             {
-                "engine_version": "17.0",
+                "engine_version": "17.1",
                 "v17_policy": self.policy.as_dict(),
                 "effective_v17_policy": effective_policy.as_dict(),
                 "terminal_risk_lock": bool(

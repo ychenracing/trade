@@ -1,18 +1,22 @@
 # Verified Backtest Results
 
-Verification date: 2026-07-21 UTC.
+Verification date: 2026-07-22 UTC.
+
+Engine revision: 17.1. The trading path and all return, drawdown, trade-count,
+and final-asset figures are identical to the 17.0 baseline at commit `89a4bdb`.
+Revision 17.1 adds Calmar reporting and explicit unmapped-route auditing.
 
 Quant Fusion v17 is a standalone module with built-in AKShare and local CSV
 data paths. It uses the same code, parameters, costs, and forward-adjusted data
 snapshot across every requested universe. Initial capital is CNY 2,000,000.
 
-| Universe | Cold return | Cold maximum drawdown | Warm return | Warm maximum drawdown |
-|---|---:|---:|---:|---:|
-| 1 symbol | 662.716567% | -18.489640% | 645.489170% | -18.341367% |
-| 3 symbols | 992.137940% | -18.321672% | 1,012.807942% | -17.918988% |
-| 5 symbols | 1,071.991794% | -15.975509% | 1,145.480399% | -14.938319% |
-| 13 symbols | 836.495572% | -16.931701% | 945.348654% | -18.407181% |
-| 22 symbols | 622.255461% | -16.525002% | 850.106024% | -16.900028% |
+| Universe | Cold return | Cold maximum drawdown | Warm return | Warm maximum drawdown | Warm Sharpe | Warm Calmar |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 symbol | 662.716567% | -18.489640% | 645.489170% | -18.341367% | 3.2042 | 21.6069 |
+| 3 symbols | 992.137940% | -18.321672% | 1,012.807942% | -17.918988% | 3.5976 | 32.5411 |
+| 5 symbols | 1,071.991794% | -15.975509% | 1,145.480399% | -14.938319% | 3.7086 | 43.3317 |
+| 13 symbols | 836.495572% | -16.931701% | 945.348654% | -18.407181% | 3.3981 | 29.8727 |
+| 22 symbols | 622.255461% | -16.525002% | 850.106024% | -16.900028% | 3.3343 | 29.7161 |
 
 The 2026-06-30 and 2026-07-20 figures are identical for the 1-, 3-, and 5-symbol
 universes. The 13-symbol results increase slightly through July; the 22-symbol
@@ -27,12 +31,12 @@ After routing `688256` 寒武纪 through `semiconductor` / `domestic_semiconduct
 `domestic_design`, the requested nine-symbol universe produced the following
 deterministic results:
 
-| Indicator state | End date | Total return | Maximum drawdown |
-|---|---:|---:|---:|
-| Cold | 2026-06-30 | 991.995458% | -16.143191% |
-| Cold | 2026-07-20 | 991.995458% | -16.143191% |
-| Warm | 2026-06-30 | 1,167.935349% | -15.111072% |
-| Warm | 2026-07-20 | 1,167.935349% | -15.111072% |
+| Indicator state | End date | Total return | Maximum drawdown | Sharpe | Calmar |
+|---|---:|---:|---:|---:|---:|
+| Cold | 2026-06-30 | 991.995458% | -16.143191% | 3.5636 | 39.3399 |
+| Cold | 2026-07-20 | 991.995458% | -16.143191% | 3.4799 | 35.4884 |
+| Warm | 2026-06-30 | 1,167.935349% | -15.111072% | 3.7778 | 48.4847 |
+| Warm | 2026-07-20 | 1,167.935349% | -15.111072% | 3.6885 | 43.5461 |
 
 The universe contains `300308`, `688256`, `300502`, `300394`, `603986`,
 `688008`, `688347`, `300054`, and `688300`. The sector guard still confirms on
@@ -46,3 +50,7 @@ documented in `README.md`. Exact scenario metadata is stored in
 `v17_universe_backtest_20260720.json`. The one-through-22 ordered-prefix audit is
 stored in `v17_prefix_stress_20260720.json`; its worst adjacent wealth change is
 -13.23% when moving from 9 to 10 symbols.
+
+The 2026-07-22 proposal audit and controlled before/after experiments are recorded
+in `STRATEGY_REVIEW_20260722.md`. No tested trading-rule candidate was stable
+enough across time windows and universe sizes to replace the current defaults.

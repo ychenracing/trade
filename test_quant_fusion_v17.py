@@ -98,6 +98,18 @@ class SymbolRoutingTests(unittest.TestCase):
             set(engine._SYMBOL_PROFILE),
         )
 
+    def test_unknown_auto_routes_are_explicitly_identifiable(self) -> None:
+        engine = quant.BacktestEngine
+        self.assertFalse(engine._uses_unmapped_auto_route("300308", "中际旭创"))
+        self.assertFalse(engine._uses_unmapped_auto_route("000001", "optical module"))
+        self.assertTrue(engine._uses_unmapped_auto_route("000001", "示例科技"))
+
+        core = quant._CoreBacktestEngine(initial_capital=100.0)
+        core.symbol_names = {"000001": "示例科技", "300308": "中际旭创"}
+        core.equity_curve = [{"date": "2026-01-02", "assets": 100.0, "cash": 100.0}]
+        result = core._build_result(100.0, [pd.Timestamp("2026-01-02")])
+        self.assertEqual(result["unmapped_symbols"], ["000001"])
+
 
 class StandaloneAndDataSourceTests(unittest.TestCase):
     """Verify standalone packaging and explicit online/local source selection."""
@@ -552,6 +564,7 @@ class IntegrationTests(unittest.TestCase):
                 self.assertEqual(
                     result["portfolio_cash_model"], "fixed_virtual_subaccounts"
                 )
+                self.assertGreater(result["calmar"], 0.0)
 
     def test_combined_same_day_fills_respect_portfolio_adv_budget(self) -> None:
         result = self.results["22_symbols"]

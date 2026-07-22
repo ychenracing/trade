@@ -93,6 +93,7 @@ def _run(task: tuple[str, tuple[str, ...], str, str]) -> dict[str, Any]:
         "annual_return": float(result["annual_return"]),
         "max_drawdown": float(result["max_drawdown"]),
         "sharpe": float(result["sharpe"]),
+        "calmar": float(result["calmar"]),
         "total_trades": int(result["total_trades"]),
         "sector_guard_active": bool(result["sector_guard_active"]),
         "persistent_risk_lock": bool(result["persistent_risk_lock"]),

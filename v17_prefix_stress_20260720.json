@@ -107,6 +107,7 @@
       "total_return": 6.454891703347498,
       "max_drawdown": -0.1834136674871038,
       "sharpe": 3.2042104060018666,
+      "calmar": 21.606901002637844,
       "total_trades": 18,
       "max_concurrent_symbols": 1,
       "terminal_risk_lock": false
@@ -120,6 +121,7 @@
       "total_return": 10.598710524961126,
       "max_drawdown": -0.2176173519918565,
       "sharpe": 3.374880241349695,
+      "calmar": 27.84916259313146,
       "total_trades": 33,
       "max_concurrent_symbols": 2,
       "terminal_risk_lock": false
@@ -134,6 +136,7 @@
       "total_return": 10.128079418161374,
       "max_drawdown": -0.17918987929749075,
       "sharpe": 3.597575278062025,
+      "calmar": 32.541139312240155,
       "total_trades": 187,
       "max_concurrent_symbols": 3,
       "terminal_risk_lock": false
@@ -149,6 +152,7 @@
       "total_return": 10.820403616951502,
       "max_drawdown": -0.14897065582786992,
       "sharpe": 3.6527009504665866,
+      "calmar": 41.403276809255836,
       "total_trades": 215,
       "max_concurrent_symbols": 4,
       "terminal_risk_lock": false
@@ -165,6 +169,7 @@
       "total_return": 11.454803988676627,
       "max_drawdown": -0.149383189130925,
       "sharpe": 3.708610440155569,
+      "calmar": 43.331691974174355,
       "total_trades": 244,
       "max_concurrent_symbols": 5,
       "terminal_risk_lock": false
@@ -182,6 +187,7 @@
       "total_return": 11.956998907700125,
       "max_drawdown": -0.1493873777190758,
       "sharpe": 3.736988027571802,
+      "calmar": 44.932551519451444,
       "total_trades": 225,
       "max_concurrent_symbols": 5,
       "terminal_risk_lock": false
@@ -200,6 +206,7 @@
       "total_return": 11.554212062701378,
       "max_drawdown": -0.16800978758352336,
       "sharpe": 3.6826952745369486,
+      "calmar": 38.8105591983342,
       "total_trades": 200,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -219,6 +226,7 @@
       "total_return": 11.893713615851379,
       "max_drawdown": -0.16744193570557733,
       "sharpe": 3.6793150119529745,
+      "calmar": 39.90816996911107,
       "total_trades": 243,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -239,6 +247,7 @@
       "total_return": 10.993162566206252,
       "max_drawdown": -0.16757245485118272,
       "sharpe": 3.5689426694964697,
+      "calmar": 37.30501981312011,
       "total_trades": 248,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -260,6 +269,7 @@
       "total_return": 9.406614835297377,
       "max_drawdown": -0.18423253876000822,
       "sharpe": 3.3916586284084715,
+      "calmar": 29.720495053239127,
       "total_trades": 369,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -282,6 +292,7 @@
       "total_return": 9.406614835297377,
       "max_drawdown": -0.18423253876000822,
       "sharpe": 3.3916586284084715,
+      "calmar": 29.720495053239127,
       "total_trades": 369,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -305,6 +316,7 @@
       "total_return": 9.408488313156628,
       "max_drawdown": -0.18423253876000822,
       "sharpe": 3.3919060574922892,
+      "calmar": 29.725541089954195,
       "total_trades": 369,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -329,6 +341,7 @@
       "total_return": 9.453486541954879,
       "max_drawdown": -0.18407181266292794,
       "sharpe": 3.3981089878899424,
+      "calmar": 29.87274566541505,
       "total_trades": 368,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -354,6 +367,7 @@
       "total_return": 9.225380620350752,
       "max_drawdown": -0.17078150465280928,
       "sharpe": 3.379728978004685,
+      "calmar": 31.533801779347563,
       "total_trades": 351,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -380,6 +394,7 @@
       "total_return": 8.972190781960004,
       "max_drawdown": -0.18676311781773852,
       "sharpe": 3.3344022367607202,
+      "calmar": 28.15858187424629,
       "total_trades": 361,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -407,6 +422,7 @@
       "total_return": 8.188185230139878,
       "max_drawdown": -0.18621723717911906,
       "sharpe": 3.219607121129787,
+      "calmar": 26.116498209403833,
       "total_trades": 379,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -435,6 +451,7 @@
       "total_return": 8.659925029627379,
       "max_drawdown": -0.18863704549092894,
       "sharpe": 3.2877510493762903,
+      "calmar": 27.047632195944352,
       "total_trades": 374,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -464,6 +481,7 @@
       "total_return": 8.662055448409003,
       "max_drawdown": -0.18863704549092894,
       "sharpe": 3.2880504778700943,
+      "calmar": 27.053321424752543,
       "total_trades": 376,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -494,6 +512,7 @@
       "total_return": 8.74380757214138,
       "max_drawdown": -0.18863704549092894,
       "sharpe": 3.314382510419667,
+      "calmar": 27.27144707907417,
       "total_trades": 363,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -525,6 +544,7 @@
       "total_return": 8.501060240695377,
       "max_drawdown": -0.16900028070618606,
       "sharpe": 3.3342989114022,
+      "calmar": 29.71605282411449,
       "total_trades": 324,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -557,6 +577,7 @@
       "total_return": 8.501060240695377,
       "max_drawdown": -0.16900028070618606,
       "sharpe": 3.3342989114022,
+      "calmar": 29.71605282411449,
       "total_trades": 324,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
@@ -590,6 +611,7 @@
       "total_return": 8.501060240695377,
       "max_drawdown": -0.16900028070618606,
       "sharpe": 3.3342989114022,
+      "calmar": 29.71605282411449,
       "total_trades": 324,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false
