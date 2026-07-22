@@ -1,0 +1,6342 @@
+{
+  "optimizer_version": "1.0",
+  "engine": "Quant Fusion v17.1",
+  "selection_protocol": {
+    "test_data_used_for_parameter_selection": false,
+    "test_data_used_for_one_time_promotion_gate": true,
+    "drawdown_limit": 0.2,
+    "objective": "maximize robust validation return after the drawdown hard limit; penalize fold instability and train-validation degradation; reject isolated parameter spikes without one-axis support",
+    "stress_costs": "0.2% slippage and 1.5x commission",
+    "hard_constraints": {
+      "max_symbol_weight": 0.6,
+      "max_total_weight": 1.0,
+      "max_positions": 6
+    }
+  },
+  "folds": [
+    {
+      "name": "fold_1",
+      "train": {
+        "name": "fold_1_train",
+        "start": "2024-01-02",
+        "end": "2024-12-31",
+        "role": "train"
+      },
+      "validation": {
+        "name": "fold_1_validation",
+        "start": "2025-01-02",
+        "end": "2025-07-01",
+        "role": "validation"
+      }
+    },
+    {
+      "name": "fold_2",
+      "train": {
+        "name": "fold_2_train",
+        "start": "2024-01-02",
+        "end": "2025-07-01",
+        "role": "train"
+      },
+      "validation": {
+        "name": "fold_2_validation",
+        "start": "2025-07-02",
+        "end": "2025-12-31",
+        "role": "validation"
+      }
+    }
+  ],
+  "final_holdout": {
+    "name": "final_holdout",
+    "start": "2026-01-05",
+    "end": "2026-07-20",
+    "role": "test"
+  },
+  "evaluations": [
+    {
+      "candidate": {
+        "candidate_id": "baseline",
+        "engine_overrides": {},
+        "symbol_multipliers": {},
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 21,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.559619176468476
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.15438789205348225,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5650663115199452,
+          "calmar": 0.5749756775616218,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.10132181203963797,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.46319846222338695,
+          "calmar": 0.3773455078270053,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-ab9aebb524b7",
+        "engine_overrides": {
+          "max_positions": 3
+        },
+        "symbol_multipliers": {},
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.510820113842107,
+        "compound_validation_return": 2.993582688225133,
+        "worst_validation_return": 0.3293787871235003,
+        "worst_validation_drawdown": -0.25851540330007533,
+        "worst_stress_drawdown": -0.2622795733537749,
+        "validation_stability": 3.6740135597119883,
+        "generalization_gap": 0.0,
+        "selection_score": 3.6087856632702855,
+        "parameter_neighbor_count": 4,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.5842024198693805,
+        "robust_selection_score": 3.602639852420059
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.07750123776950102,
+          "annual_return": 0.08082991205902013,
+          "max_drawdown": -0.28435125215280893,
+          "sharpe": 0.3898327070349167,
+          "calmar": 0.2842607917041369,
+          "total_trades": 144,
+          "final_assets": 2155002.475539002
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.07750123776950102,
+          "annual_return": 0.05364047247078263,
+          "max_drawdown": -0.28435125215280893,
+          "sharpe": 0.3195902655332497,
+          "calmar": 0.18864159051410298,
+          "total_trades": 144,
+          "final_assets": 2155002.475539002
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3293787871235003,
+          "annual_return": 0.8368065541301186,
+          "max_drawdown": -0.25851540330007533,
+          "sharpe": 1.7609245018184139,
+          "calmar": 3.236969803144704,
+          "total_trades": 96,
+          "final_assets": 2658757.5742470007
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.31478574369199985,
+          "annual_return": 0.7940143107156294,
+          "max_drawdown": -0.2622795733537749,
+          "sharpe": 1.6997709994573558,
+          "calmar": 3.0273585569876844,
+          "total_trades": 98,
+          "final_assets": 2629571.487384
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9319118955541246,
+          "annual_return": 7.745330881148904,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.2990349553456846,
+          "calmar": 43.29935080864247,
+          "total_trades": 66,
+          "final_assets": 5863823.791108249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-7e01229f3eb3",
+        "engine_overrides": {
+          "max_positions": 4
+        },
+        "symbol_multipliers": {},
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.510820113842107,
+        "compound_validation_return": 2.993582688225133,
+        "worst_validation_return": 0.3293787871235003,
+        "worst_validation_drawdown": -0.25851540330007533,
+        "worst_stress_drawdown": -0.2622795733537749,
+        "validation_stability": 3.6740135597119883,
+        "generalization_gap": 0.0,
+        "selection_score": 3.6087856632702855,
+        "parameter_neighbor_count": 4,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.5842024198693805,
+        "robust_selection_score": 3.602639852420059
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.15908515016850155,
+          "annual_return": 0.166177709820432,
+          "max_drawdown": -0.2640111364026037,
+          "sharpe": 0.5925681996959978,
+          "calmar": 0.6294344703968069,
+          "total_trades": 169,
+          "final_assets": 2318170.300337003
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.15908515016850155,
+          "annual_return": 0.10887026883915008,
+          "max_drawdown": -0.2640111364026037,
+          "sharpe": 0.48573229923711436,
+          "calmar": 0.41236998682179976,
+          "total_trades": 169,
+          "final_assets": 2318170.300337003
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3293787871235003,
+          "annual_return": 0.8368065541301186,
+          "max_drawdown": -0.25851540330007533,
+          "sharpe": 1.7609245018184139,
+          "calmar": 3.236969803144704,
+          "total_trades": 96,
+          "final_assets": 2658757.5742470007
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.31478574369199985,
+          "annual_return": 0.7940143107156294,
+          "max_drawdown": -0.2622795733537749,
+          "sharpe": 1.6997709994573558,
+          "calmar": 3.0273585569876844,
+          "total_trades": 98,
+          "final_assets": 2629571.487384
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9319118955541246,
+          "annual_return": 7.745330881148904,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.2990349553456846,
+          "calmar": 43.29935080864247,
+          "total_trades": 66,
+          "final_assets": 5863823.791108249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-67dc122ee6a2",
+        "engine_overrides": {
+          "max_positions": 5
+        },
+        "symbol_multipliers": {},
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 4,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.6087856632702855,
+        "robust_selection_score": 3.571910798168928
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.15438789205348225,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5650663115199452,
+          "calmar": 0.5749756775616218,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.10132181203963797,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.46319846222338695,
+          "calmar": 0.3773455078270053,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-ca7f2b0c5e92",
+        "engine_overrides": {
+          "momentum_lookback": 10
+        },
+        "symbol_multipliers": {},
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.559619176468476
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.15438789205348225,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5650663115199452,
+          "calmar": 0.5749756775616218,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.10132181203963797,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.46319846222338695,
+          "calmar": 0.3773455078270053,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-6e8dbfe9c4d0",
+        "engine_overrides": {
+          "momentum_lookback": 20
+        },
+        "symbol_multipliers": {},
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.559619176468476
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.15438789205348225,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5650663115199452,
+          "calmar": 0.5749756775616218,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.10132181203963797,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.46319846222338695,
+          "calmar": 0.3773455078270053,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-909195064307",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "entry_period": 0.85
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.560202895122063,
+        "robust_selection_score": 3.5597651061318727
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.07209830175287602,
+          "annual_return": 0.07518691909637343,
+          "max_drawdown": -0.2904858060245062,
+          "sharpe": 0.37375143101333314,
+          "calmar": 0.25883164525439994,
+          "total_trades": 153,
+          "final_assets": 2144196.603505752
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.07209830175287602,
+          "annual_return": 0.049939381384981774,
+          "max_drawdown": -0.2904858060245062,
+          "sharpe": 0.30640907570980824,
+          "calmar": 0.17191676959516827,
+          "total_trades": 153,
+          "final_assets": 2144196.603505752
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9320740687891247,
+          "annual_return": 7.746306111572224,
+          "max_drawdown": -0.178868200451865,
+          "sharpe": 3.2993874903065863,
+          "calmar": 43.3073407794295,
+          "total_trades": 72,
+          "final_assets": 5864148.137578249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-413dab879f27",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "entry_period": 1.15
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.473445364767489,
+        "compound_validation_return": 2.9166409683612136,
+        "worst_validation_return": 0.3037665240962506,
+        "worst_validation_drawdown": -0.26990496740516784,
+        "worst_stress_drawdown": -0.27492445080749883,
+        "validation_stability": 3.711388308786607,
+        "generalization_gap": 0.0,
+        "selection_score": 3.56078661377565,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.5604947544488565
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1457412584682516,
+          "annual_return": 0.15220072859857225,
+          "max_drawdown": -0.2688567748001434,
+          "sharpe": 0.5603808146946428,
+          "calmar": 0.5661033786919141,
+          "total_trades": 175,
+          "final_assets": 2291482.5169365034
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1457412584682516,
+          "annual_return": 0.099918702654064,
+          "max_drawdown": -0.2688567748001434,
+          "sharpe": 0.459359233328626,
+          "calmar": 0.371642867204441,
+          "total_trades": 175,
+          "final_assets": 2291482.5169365034
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3037665240962506,
+          "annual_return": 0.7620570559808817,
+          "max_drawdown": -0.26990496740516784,
+          "sharpe": 1.6291775570038918,
+          "calmar": 2.823427309646064,
+          "total_trades": 96,
+          "final_assets": 2607533.048192501
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2862849989222498,
+          "annual_return": 0.71198436175483,
+          "max_drawdown": -0.27492445080749883,
+          "sharpe": 1.553907159253352,
+          "calmar": 2.58974550886112,
+          "total_trades": 98,
+          "final_assets": 2572569.9978444995
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-775e6d786449",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "exit_period": 0.85
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.485426088038226,
+        "compound_validation_return": 2.8908382543335436,
+        "worst_validation_return": 0.29094899087562553,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.7601576223355337,
+        "generalization_gap": 0.0,
+        "selection_score": 3.5599341319981237,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.559855393115712
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14819300379750122,
+          "annual_return": 0.15476829280159032,
+          "max_drawdown": -0.26785145604596194,
+          "sharpe": 0.5670072173470163,
+          "calmar": 0.577813893888383,
+          "total_trades": 183,
+          "final_assets": 2296386.0075950027
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14819300379750122,
+          "annual_return": 0.10156575778819654,
+          "max_drawdown": -0.26785145604596194,
+          "sharpe": 0.4647888009444548,
+          "calmar": 0.3791868795022282,
+          "total_trades": 183,
+          "final_assets": 2296386.0075950027
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.29094899087562553,
+          "annual_return": 0.7252684657026927,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6055705437316468,
+          "calmar": 2.733441466814061,
+          "total_trades": 107,
+          "final_assets": 2581897.981751251
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0139364776097497,
+          "annual_return": 8.24558371037376,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3599785072016592,
+          "calmar": 45.20502135216443,
+          "total_trades": 54,
+          "final_assets": 6027872.9552195
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2739552450686247,
+          "annual_return": 0.6771292568747522,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5315523214447397,
+          "calmar": 2.5117675987744557,
+          "total_trades": 109,
+          "final_assets": 2547910.490137249
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9615905126033741,
+          "annual_return": 7.924716318100854,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.331781145710606,
+          "calmar": 44.32278268439848,
+          "total_trades": 66,
+          "final_assets": 5923181.025206748
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-8a40f5249c91",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "exit_period": 1.15
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.5597766542333,
+        "robust_selection_score": 3.5596585459096817
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.15438789205348225,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5650663115199452,
+          "calmar": 0.5749756775616218,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.10132181203963797,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.46319846222338695,
+          "calmar": 0.3773455078270053,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-91833257d284",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "hard_stop": 0.85
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.559619176468476
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.15438789205348225,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5650663115199452,
+          "calmar": 0.5749756775616218,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.10132181203963797,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.46319846222338695,
+          "calmar": 0.3773455078270053,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-dff297bf30f4",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "hard_stop": 1.15
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.559619176468476
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.15438789205348225,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5650663115199452,
+          "calmar": 0.5749756775616218,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.10132181203963797,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.46319846222338695,
+          "calmar": 0.3773455078270053,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-1bd3d8558f30",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "risk_pct": 0.8
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.540116125644854,
+        "compound_validation_return": 2.965179538661836,
+        "worst_validation_return": 0.3122359985291254,
+        "worst_validation_drawdown": -0.2768453620698454,
+        "worst_stress_drawdown": -0.2808951878565487,
+        "validation_stability": 3.753523590115771,
+        "generalization_gap": 0.0,
+        "selection_score": 3.6173470280423676,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.6029150651488946
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.09308761217662642,
+          "annual_return": 0.09711533490208568,
+          "max_drawdown": -0.2791144931011477,
+          "sharpe": 0.4293209780200822,
+          "calmar": 0.3479408533146011,
+          "total_trades": 179,
+          "final_assets": 2186175.224353253
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.09078213636162635,
+          "annual_return": 0.06271451366343506,
+          "max_drawdown": -0.2791144931011477,
+          "sharpe": 0.34696302087276454,
+          "calmar": 0.22469099675418172,
+          "total_trades": 183,
+          "final_assets": 2181564.272723253
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3122359985291254,
+          "annual_return": 0.7865925355290833,
+          "max_drawdown": -0.2768453620698454,
+          "sharpe": 1.6803567432976774,
+          "calmar": 2.841270410485091,
+          "total_trades": 116,
+          "final_assets": 2624471.997058251
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0216969684617503,
+          "annual_return": 8.293639715760625,
+          "max_drawdown": -0.16779629718282396,
+          "sharpe": 3.4488388495616933,
+          "calmar": 49.42683393498377,
+          "total_trades": 87,
+          "final_assets": 6043393.9369235
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": -0.22234116754787492,
+          "annual_return": -0.4155195872929547,
+          "max_drawdown": -0.2808951878565487,
+          "sharpe": -1.875132696110184,
+          "calmar": -1.4792691553874455,
+          "total_trades": 91,
+          "final_assets": 1555317.66490425
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 2.01106187288175,
+          "annual_return": 8.227814896784038,
+          "max_drawdown": -0.1682028981815519,
+          "sharpe": 3.4353585351526807,
+          "calmar": 48.91601147028538,
+          "total_trades": 87,
+          "final_assets": 6022123.7457635
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-4034eca7e721",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "risk_pct": 1.2
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.433211263354592,
+        "compound_validation_return": 2.882994177619784,
+        "worst_validation_return": 0.29680611931900036,
+        "worst_validation_drawdown": -0.25592629717708343,
+        "worst_stress_drawdown": -0.26325443364904993,
+        "validation_stability": 3.691183011448051,
+        "generalization_gap": 0.0,
+        "selection_score": 3.5252558164585297,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.588483102255422,
+        "robust_selection_score": 3.541062637907753
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.09252046713162576,
+          "annual_return": 0.09652258434145922,
+          "max_drawdown": -0.2889998001557635,
+          "sharpe": 0.42957643798142053,
+          "calmar": 0.33398841206615376,
+          "total_trades": 146,
+          "final_assets": 2185040.9342632517
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.09252046713162576,
+          "annual_return": 0.0638997509196737,
+          "max_drawdown": -0.2889998001557635,
+          "sharpe": 0.35216521885571506,
+          "calmar": 0.22110655746209296,
+          "total_trades": 146,
+          "final_assets": 2185040.9342632517
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.29680611931900036,
+          "annual_return": 0.7420282519065411,
+          "max_drawdown": -0.25592629717708343,
+          "sharpe": 1.64312444518126,
+          "calmar": 2.8993825960491604,
+          "total_trades": 104,
+          "final_assets": 2593612.2386380006
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 1.994275026754874,
+          "annual_return": 8.124394274802643,
+          "max_drawdown": -0.18142454043356102,
+          "sharpe": 3.342031635722658,
+          "calmar": 44.7811208747576,
+          "total_trades": 51,
+          "final_assets": 5988550.053509748
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.28187831364774985,
+          "annual_return": 0.699483277894795,
+          "max_drawdown": -0.26325443364904993,
+          "sharpe": 1.5721383106985871,
+          "calmar": 2.657061718577895,
+          "total_trades": 102,
+          "final_assets": 2563756.6272954997
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9831853897058749,
+          "annual_return": 8.056395300032673,
+          "max_drawdown": -0.181568336919151,
+          "sharpe": 3.3297950913106664,
+          "calmar": 44.37114662574695,
+          "total_trades": 45,
+          "final_assets": 5966370.77941175
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-2491d51b7c6a",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "trail_atr_mult": 0.85
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 3.4053710978932465,
+        "compound_validation_return": 2.555903247097877,
+        "worst_validation_return": 0.3683630300266254,
+        "worst_validation_drawdown": -0.22536477822003223,
+        "worst_stress_drawdown": -0.23212693836931178,
+        "validation_stability": 2.4516136737260115,
+        "generalization_gap": 0.0,
+        "selection_score": 2.8108858309630746,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.2571880046173587,
+        "robust_selection_score": 2.9224613743766454
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.15802259615212666,
+          "annual_return": 0.16506449915618426,
+          "max_drawdown": -0.26067305173167027,
+          "sharpe": 0.5912307573022136,
+          "calmar": 0.633224255670652,
+          "total_trades": 176,
+          "final_assets": 2316045.192304253
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.15802259615212666,
+          "annual_return": 0.10815860615689021,
+          "max_drawdown": -0.26067305173167027,
+          "sharpe": 0.48463649061394626,
+          "calmar": 0.41492055062226274,
+          "total_trades": 176,
+          "final_assets": 2316045.192304253
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3683630300266254,
+          "annual_return": 0.9537574241672349,
+          "max_drawdown": -0.22536477822003223,
+          "sharpe": 1.981079715746265,
+          "calmar": 4.2320607137466935,
+          "total_trades": 100,
+          "final_assets": 2736726.0600532508
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 1.5986548664857505,
+          "annual_return": 5.856984771619258,
+          "max_drawdown": -0.1839030173927419,
+          "sharpe": 3.0034186098925213,
+          "calmar": 31.848225519384087,
+          "total_trades": 78,
+          "final_assets": 5197309.732971501
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.24143494064087512,
+          "annual_return": 0.5870235890365658,
+          "max_drawdown": -0.23212693836931178,
+          "sharpe": 1.497612888457192,
+          "calmar": 2.52889041298006,
+          "total_trades": 95,
+          "final_assets": 2482869.8812817503
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.5571450790572503,
+          "annual_return": 5.6379629269899,
+          "max_drawdown": -0.1802275535212602,
+          "sharpe": 2.966793944010543,
+          "calmar": 31.28246939403097,
+          "total_trades": 84,
+          "final_assets": 5114290.1581145
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-5e9aa711980b",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "trail_atr_mult": 1.15
+        },
+        "policy_overrides": {}
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.095795835584182,
+        "compound_validation_return": 2.6930473327948548,
+        "worst_validation_return": 0.2770872584900004,
+        "worst_validation_drawdown": -0.2783897164999946,
+        "worst_stress_drawdown": -0.2827647940362641,
+        "validation_stability": 3.409848775565294,
+        "generalization_gap": 0.0,
+        "selection_score": 3.2571880046173587,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.185252503715775,
+        "robust_selection_score": 3.239204129391963
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.08489674084037646,
+          "annual_return": 0.08855589815320086,
+          "max_drawdown": -0.2813929648300043,
+          "sharpe": 0.4102226549472419,
+          "calmar": 0.31470544477435475,
+          "total_trades": 151,
+          "final_assets": 2169793.4816807527
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.08489674084037646,
+          "annual_return": 0.05869748934313468,
+          "max_drawdown": -0.2813929648300043,
+          "sharpe": 0.33630263588446735,
+          "calmar": 0.20859615086182104,
+          "total_trades": 151,
+          "final_assets": 2169793.4816807527
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.2770872584900004,
+          "annual_return": 0.6859470600188882,
+          "max_drawdown": -0.2783897164999946,
+          "sharpe": 1.522038495875627,
+          "calmar": 2.463981315986941,
+          "total_trades": 101,
+          "final_assets": 2554174.516980001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 1.8917736891067505,
+          "annual_return": 7.505644611149476,
+          "max_drawdown": -0.19363453093384492,
+          "sharpe": 3.22752524441257,
+          "calmar": 38.76191180855946,
+          "total_trades": 54,
+          "final_assets": 5783547.378213501
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": -0.23048150427187497,
+          "annual_return": -0.42850793881247673,
+          "max_drawdown": -0.2827647940362641,
+          "sharpe": -1.8813946203855398,
+          "calmar": -1.5154218200074843,
+          "total_trades": 75,
+          "final_assets": 1539036.99145625
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.8471323962428752,
+          "annual_return": 7.243010416032744,
+          "max_drawdown": -0.19637738511192174,
+          "sharpe": 3.2020826193870344,
+          "calmar": 36.88311875578098,
+          "total_trades": 69,
+          "final_assets": 5694264.79248575
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-adfac44d440c",
+        "engine_overrides": {},
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "candidate_reference_percentile": 0.4
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.559619176468476
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.15438789205348225,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5650663115199452,
+          "calmar": 0.5749756775616218,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.10132181203963797,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.46319846222338695,
+          "calmar": 0.3773455078270053,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-50f05eeb294a",
+        "engine_overrides": {},
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "candidate_reference_percentile": 0.6
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.559619176468476
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.15438789205348225,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5650663115199452,
+          "calmar": 0.5749756775616218,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14782977600437652,
+          "annual_return": 0.10132181203963797,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.46319846222338695,
+          "calmar": 0.3773455078270053,
+          "total_trades": 179,
+          "final_assets": 2295659.552008753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-b367efc098e0",
+        "engine_overrides": {},
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "rearm_trading_days": 7
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.47253661008188,
+        "compound_validation_return": 2.91474875080259,
+        "worst_validation_return": 0.3031366450930004,
+        "worst_validation_drawdown": -0.2653316248063007,
+        "worst_stress_drawdown": -0.26958276601909265,
+        "validation_stability": 3.712297063472216,
+        "generalization_gap": 0.0,
+        "selection_score": 3.559619176468476,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.448037716385997,
+        "robust_selection_score": 3.531723811447856
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.08005448788300162,
+          "annual_return": 0.08349701242009289,
+          "max_drawdown": -0.2826554487675156,
+          "sharpe": 0.3967740660273804,
+          "calmar": 0.29540209744468526,
+          "total_trades": 151,
+          "final_assets": 2160108.975766003
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.08005448788300162,
+          "annual_return": 0.05538754860722617,
+          "max_drawdown": -0.2826554487675156,
+          "sharpe": 0.3252797251270512,
+          "calmar": 0.19595429293415986,
+          "total_trades": 151,
+          "final_assets": 2160108.975766003
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3031366450930004,
+          "annual_return": 0.7602395466096639,
+          "max_drawdown": -0.2653316248063007,
+          "sharpe": 1.6542764757206259,
+          "calmar": 2.86524287168806,
+          "total_trades": 102,
+          "final_assets": 2606273.290186001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2866227104365,
+          "annual_return": 0.7129444070595832,
+          "max_drawdown": -0.26958276601909265,
+          "sharpe": 1.5830636519056673,
+          "calmar": 2.6446216039236363,
+          "total_trades": 104,
+          "final_assets": 2573245.420873
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-593f3507bcaa",
+        "engine_overrides": {},
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "rearm_trading_days": 15
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.299097235168714,
+        "compound_validation_return": 2.5324052309052703,
+        "worst_validation_return": 0.17586261462300068,
+        "worst_validation_drawdown": -0.25842221919424907,
+        "worst_stress_drawdown": -0.2632188694005653,
+        "validation_stability": 3.885736438385382,
+        "generalization_gap": 0.0,
+        "selection_score": 3.336456256303518,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.559619176468476,
+        "robust_selection_score": 3.392246986344758
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.13500571881575163,
+          "annual_return": 0.14096072862192388,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.5326935601990616,
+          "calmar": 0.5249698624092491,
+          "total_trades": 177,
+          "final_assets": 2270011.437631503
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.13220692643175158,
+          "annual_return": 0.0908073740559634,
+          "max_drawdown": -0.2685120398626532,
+          "sharpe": 0.43098486895363414,
+          "calmar": 0.33818734572353754,
+          "total_trades": 181,
+          "final_assets": 2264413.852863503
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.17586261462300068,
+          "annual_return": 0.4133607967833317,
+          "max_drawdown": -0.25842221919424907,
+          "sharpe": 1.1381454450496624,
+          "calmar": 1.5995559440367604,
+          "total_trades": 98,
+          "final_assets": 2351725.229246001
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.16343007558324985,
+          "annual_return": 0.3816387657207174,
+          "max_drawdown": -0.2632188694005653,
+          "sharpe": 1.074694944935857,
+          "calmar": 1.449891364512858,
+          "total_trades": 103,
+          "final_assets": 2326860.1511664996
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-6272a0eff3a6",
+        "engine_overrides": {},
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.569295548860665,
+        "compound_validation_return": 3.1106951313297486,
+        "worst_validation_return": 0.3683630300266254,
+        "worst_validation_drawdown": -0.22536477822003223,
+        "worst_stress_drawdown": -0.2206607525352616,
+        "validation_stability": 3.61553812469343,
+        "generalization_gap": 0.0,
+        "selection_score": 3.6838291691886385,
+        "parameter_neighbor_count": 11,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.6838291691886385,
+        "robust_selection_score": 3.6838291691886385
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1315998478823761,
+          "annual_return": 0.13739573255408222,
+          "max_drawdown": -0.24842033975061417,
+          "sharpe": 0.542147404970288,
+          "calmar": 0.5530776291990098,
+          "total_trades": 133,
+          "final_assets": 2263199.695764752
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1315998478823761,
+          "annual_return": 0.0903979247664135,
+          "max_drawdown": -0.24842033975061417,
+          "sharpe": 0.444418665125983,
+          "calmar": 0.363890995629274,
+          "total_trades": 133,
+          "final_assets": 2263199.695764752
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3683630300266254,
+          "annual_return": 0.9537574241672349,
+          "max_drawdown": -0.22536477822003223,
+          "sharpe": 1.981079715746265,
+          "calmar": 4.2320607137466935,
+          "total_trades": 100,
+          "final_assets": 2736726.0600532508
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.3714927516483748,
+          "annual_return": 0.9633130084703021,
+          "max_drawdown": -0.2206607525352616,
+          "sharpe": 1.9970858481073885,
+          "calmar": 4.36558380864021,
+          "total_trades": 98,
+          "final_assets": 2742985.5032967497
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-04641fb49c9f",
+        "engine_overrides": {},
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "drawdown_alert": 0.1,
+          "confirmed_drawdown": 0.14,
+          "emergency_drawdown": 0.18,
+          "terminal_drawdown": 0.2,
+          "concentration_drawdown_adjustment": 0.01
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 2.070669465988166,
+        "compound_validation_return": 0.9183304046697767,
+        "worst_validation_return": -0.17482537513524965,
+        "worst_validation_drawdown": -0.23643573443074506,
+        "worst_stress_drawdown": -0.2384183689552939,
+        "validation_stability": 2.4072687837059474,
+        "generalization_gap": 0.0,
+        "selection_score": 1.4601110013049166,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.621724172828557,
+        "robust_selection_score": 2.0005142941858267
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.19473034384100107,
+          "annual_return": 0.20354647407823334,
+          "max_drawdown": -0.21178342214384796,
+          "sharpe": 0.7269422550089697,
+          "calmar": 0.9611067382789767,
+          "total_trades": 111,
+          "final_assets": 2389460.6876820023
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.19473034384100107,
+          "annual_return": 0.13263225652637511,
+          "max_drawdown": -0.21178342214384796,
+          "sharpe": 0.5958105053745916,
+          "calmar": 0.6262636385027737,
+          "total_trades": 111,
+          "final_assets": 2389460.6876820023
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": -0.17482537513524965,
+          "annual_return": -0.3365993177177813,
+          "max_drawdown": -0.23643573443074506,
+          "sharpe": -1.8179909859378443,
+          "calmar": -1.4236397832510186,
+          "total_trades": 51,
+          "final_assets": 1650349.2497295006
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 1.3247569021941255,
+          "annual_return": 4.477938249694113,
+          "max_drawdown": -0.1628789670669745,
+          "sharpe": 2.9314605349258755,
+          "calmar": 27.492427845842254,
+          "total_trades": 86,
+          "final_assets": 4649513.804388251
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": -0.17876821599874992,
+          "annual_return": -0.3433504750288566,
+          "max_drawdown": -0.2384183689552939,
+          "sharpe": -1.8653539889039477,
+          "calmar": -1.4401175401599977,
+          "total_trades": 51,
+          "final_assets": 1642463.5680025
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.2932656457011253,
+          "annual_return": 4.329371561612639,
+          "max_drawdown": -0.16557269649807885,
+          "sharpe": 2.90116654624081,
+          "calmar": 26.147859237545685,
+          "total_trades": 96,
+          "final_assets": 4586531.2914022505
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-6fbb0b9f617d",
+        "engine_overrides": {
+          "max_positions": 3
+        },
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.615751742464965,
+        "compound_validation_return": 3.201102673028765,
+        "worst_validation_return": 0.3984577789058754,
+        "worst_validation_drawdown": -0.21815646024373947,
+        "worst_stress_drawdown": -0.2129342378922134,
+        "validation_stability": 3.569081931089131,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7434041486379757,
+        "parameter_neighbor_count": 10,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.7423490719854646,
+        "robust_selection_score": 3.7431403794748483
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.22470080688637628,
+          "annual_return": 0.23500184797312085,
+          "max_drawdown": -0.23257790315870827,
+          "sharpe": 0.7596340392801836,
+          "calmar": 1.0104220769965344,
+          "total_trades": 171,
+          "final_assets": 2449401.6137727527
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.22470080688637628,
+          "annual_return": 0.1524471089936923,
+          "max_drawdown": -0.23257790315870827,
+          "sharpe": 0.6225852793310692,
+          "calmar": 0.655466864750536,
+          "total_trades": 171,
+          "final_assets": 2449401.6137727527
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3984577789058754,
+          "annual_return": 1.0466698113758341,
+          "max_drawdown": -0.21815646024373947,
+          "sharpe": 2.1014055540883465,
+          "calmar": 4.797794253749911,
+          "total_trades": 96,
+          "final_assets": 2796915.557811751
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.4028331710906248,
+          "annual_return": 1.0603693166808874,
+          "max_drawdown": -0.2129342378922134,
+          "sharpe": 2.1212705429395458,
+          "calmar": 4.9797971767116325,
+          "total_trades": 96,
+          "final_assets": 2805666.3421812495
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9319118955541246,
+          "annual_return": 7.745330881148904,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.2990349553456846,
+          "calmar": 43.29935080864247,
+          "total_trades": 66,
+          "final_assets": 5863823.791108249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-99e10905750a",
+        "engine_overrides": {
+          "max_positions": 4
+        },
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.615751742464965,
+        "compound_validation_return": 3.201102673028765,
+        "worst_validation_return": 0.3984577789058754,
+        "worst_validation_drawdown": -0.21815646024373947,
+        "worst_stress_drawdown": -0.2129342378922134,
+        "validation_stability": 3.569081931089131,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7434041486379757,
+        "parameter_neighbor_count": 7,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.741293995332954,
+        "robust_selection_score": 3.7428766103117206
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14309980789787602,
+          "annual_return": 0.1494347516693748,
+          "max_drawdown": -0.24078236060321032,
+          "sharpe": 0.5738969913008193,
+          "calmar": 0.6206216738427575,
+          "total_trades": 131,
+          "final_assets": 2286199.615795752
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14309980789787602,
+          "annual_return": 0.09814302195815916,
+          "max_drawdown": -0.24078236060321032,
+          "sharpe": 0.47043408578638957,
+          "calmar": 0.4076005472838222,
+          "total_trades": 131,
+          "final_assets": 2286199.615795752
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3984577789058754,
+          "annual_return": 1.0466698113758341,
+          "max_drawdown": -0.21815646024373947,
+          "sharpe": 2.1014055540883465,
+          "calmar": 4.797794253749911,
+          "total_trades": 96,
+          "final_assets": 2796915.557811751
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.4028331710906248,
+          "annual_return": 1.0603693166808874,
+          "max_drawdown": -0.2129342378922134,
+          "sharpe": 2.1212705429395458,
+          "calmar": 4.9797971767116325,
+          "total_trades": 96,
+          "final_assets": 2805666.3421812495
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9319118955541246,
+          "annual_return": 7.745330881148904,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.2990349553456846,
+          "calmar": 43.29935080864247,
+          "total_trades": 66,
+          "final_assets": 5863823.791108249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-3c52062cd97a",
+        "engine_overrides": {
+          "max_positions": 5
+        },
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.569295548860665,
+        "compound_validation_return": 3.1106951313297486,
+        "worst_validation_return": 0.3683630300266254,
+        "worst_validation_drawdown": -0.22536477822003223,
+        "worst_stress_drawdown": -0.2206607525352616,
+        "validation_stability": 3.61553812469343,
+        "generalization_gap": 0.0,
+        "selection_score": 3.6838291691886385,
+        "parameter_neighbor_count": 4,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.713616658913307,
+        "robust_selection_score": 3.6912760416198056
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1315998478823761,
+          "annual_return": 0.13739573255408222,
+          "max_drawdown": -0.24842033975061417,
+          "sharpe": 0.542147404970288,
+          "calmar": 0.5530776291990098,
+          "total_trades": 133,
+          "final_assets": 2263199.695764752
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1315998478823761,
+          "annual_return": 0.0903979247664135,
+          "max_drawdown": -0.24842033975061417,
+          "sharpe": 0.444418665125983,
+          "calmar": 0.363890995629274,
+          "total_trades": 133,
+          "final_assets": 2263199.695764752
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3683630300266254,
+          "annual_return": 0.9537574241672349,
+          "max_drawdown": -0.22536477822003223,
+          "sharpe": 1.981079715746265,
+          "calmar": 4.2320607137466935,
+          "total_trades": 100,
+          "final_assets": 2736726.0600532508
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.3714927516483748,
+          "annual_return": 0.9633130084703021,
+          "max_drawdown": -0.2206607525352616,
+          "sharpe": 1.9970858481073885,
+          "calmar": 4.36558380864021,
+          "total_trades": 98,
+          "final_assets": 2742985.5032967497
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-703c27eb5ffc",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "entry_period": 1.15
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.601332824695262,
+        "compound_validation_return": 3.173280226768414,
+        "worst_validation_return": 0.38919627795500067,
+        "worst_validation_drawdown": -0.2208952894807344,
+        "worst_stress_drawdown": -0.22615098648766832,
+        "validation_stability": 3.583500848858834,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7249174263783034,
+        "parameter_neighbor_count": 4,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.73696989748326,
+        "robust_selection_score": 3.7279305441545425
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.387581176116752,
+          "annual_return": 0.40649063840333555,
+          "max_drawdown": -0.24424100691771639,
+          "sharpe": 0.950664488954529,
+          "calmar": 1.6643013535408502,
+          "total_trades": 211,
+          "final_assets": 2775162.352233504
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.387581176116752,
+          "annual_return": 0.25771105912363157,
+          "max_drawdown": -0.24424100691771639,
+          "sharpe": 0.7789845954547862,
+          "calmar": 1.05515065785187,
+          "total_trades": 211,
+          "final_assets": 2775162.352233504
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.38919627795500067,
+          "annual_return": 1.0178319758364274,
+          "max_drawdown": -0.2208952894807344,
+          "sharpe": 2.029217406129171,
+          "calmar": 4.607757721901076,
+          "total_trades": 94,
+          "final_assets": 2778392.5559100015
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.3714676793853753,
+          "annual_return": 0.9632363599830944,
+          "max_drawdown": -0.22615098648766832,
+          "sharpe": 1.957103364653514,
+          "calmar": 4.259262251927511,
+          "total_trades": 92,
+          "final_assets": 2742935.3587707505
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-31a6d8935362",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "exit_period": 0.85
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.580032151723209,
+        "compound_validation_return": 3.085127163225475,
+        "worst_validation_return": 0.3554124957753755,
+        "worst_validation_drawdown": -0.22536477822003223,
+        "worst_stress_drawdown": -0.2206607525352616,
+        "validation_stability": 3.66555155865055,
+        "generalization_gap": 0.0,
+        "selection_score": 3.6814148868493404,
+        "parameter_neighbor_count": 4,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.712561582260796,
+        "robust_selection_score": 3.6892015607022044
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.21243332135850146,
+          "annual_return": 0.22212266972751693,
+          "max_drawdown": -0.23870307239173397,
+          "sharpe": 0.7320923334181972,
+          "calmar": 0.9305396344584662,
+          "total_trades": 159,
+          "final_assets": 2424866.642717003
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.21243332135850146,
+          "annual_return": 0.14435429648629738,
+          "max_drawdown": -0.23870307239173397,
+          "sharpe": 0.6000286201853567,
+          "calmar": 0.6047441913499905,
+          "total_trades": 159,
+          "final_assets": 2424866.642717003
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3554124957753755,
+          "annual_return": 0.9144805930726596,
+          "max_drawdown": -0.22536477822003223,
+          "sharpe": 1.9305952731604832,
+          "calmar": 4.057779570948825,
+          "total_trades": 107,
+          "final_assets": 2710824.991550751
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0139364776097497,
+          "annual_return": 8.24558371037376,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3599785072016592,
+          "calmar": 45.20502135216443,
+          "total_trades": 54,
+          "final_assets": 6027872.9552195
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.3570280023432497,
+          "annual_return": 0.9193570070902921,
+          "max_drawdown": -0.2206607525352616,
+          "sharpe": 1.9404153111477183,
+          "calmar": 4.166382088918956,
+          "total_trades": 113,
+          "final_assets": 2714056.0046864995
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9615905126033741,
+          "annual_return": 7.924716318100854,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.331781145710606,
+          "calmar": 44.32278268439848,
+          "total_trades": 66,
+          "final_assets": 5923181.025206748
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-ac9ab6e968f0",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "hard_stop": 0.85
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.569295548860665,
+        "compound_validation_return": 3.1106951313297486,
+        "worst_validation_return": 0.3683630300266254,
+        "worst_validation_drawdown": -0.22536477822003223,
+        "worst_stress_drawdown": -0.2206607525352616,
+        "validation_stability": 3.61553812469343,
+        "generalization_gap": 0.0,
+        "selection_score": 3.6838291691886385,
+        "parameter_neighbor_count": 4,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.713616658913307,
+        "robust_selection_score": 3.6912760416198056
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1315998478823761,
+          "annual_return": 0.13739573255408222,
+          "max_drawdown": -0.24842033975061417,
+          "sharpe": 0.542147404970288,
+          "calmar": 0.5530776291990098,
+          "total_trades": 133,
+          "final_assets": 2263199.695764752
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1315998478823761,
+          "annual_return": 0.0903979247664135,
+          "max_drawdown": -0.24842033975061417,
+          "sharpe": 0.444418665125983,
+          "calmar": 0.363890995629274,
+          "total_trades": 133,
+          "final_assets": 2263199.695764752
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3683630300266254,
+          "annual_return": 0.9537574241672349,
+          "max_drawdown": -0.22536477822003223,
+          "sharpe": 1.981079715746265,
+          "calmar": 4.2320607137466935,
+          "total_trades": 100,
+          "final_assets": 2736726.0600532508
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.3714927516483748,
+          "annual_return": 0.9633130084703021,
+          "max_drawdown": -0.2206607525352616,
+          "sharpe": 1.9970858481073885,
+          "calmar": 4.36558380864021,
+          "total_trades": 98,
+          "final_assets": 2742985.5032967497
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-cf112874bc37",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "risk_pct": 0.8
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.608473516460203,
+        "compound_validation_return": 3.104477055641608,
+        "worst_validation_return": 0.3583351006011255,
+        "worst_validation_drawdown": -0.19843486681061961,
+        "worst_stress_drawdown": -0.20350268773921953,
+        "validation_stability": 3.685166199300422,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7050987216651534,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.6838291691886385,
+        "robust_selection_score": 3.6997813335460243
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.10866308580012607,
+          "annual_return": 0.11339895680766454,
+          "max_drawdown": -0.24481784429431672,
+          "sharpe": 0.485499062708882,
+          "calmar": 0.46319726870618894,
+          "total_trades": 124,
+          "final_assets": 2217326.171600252
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.10866308580012607,
+          "annual_return": 0.07487932938951203,
+          "max_drawdown": -0.24481784429431672,
+          "sharpe": 0.3979970510333933,
+          "calmar": 0.30585731855188264,
+          "total_trades": 124,
+          "final_assets": 2217326.171600252
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3583351006011255,
+          "annual_return": 0.9233073171597803,
+          "max_drawdown": -0.19843486681061961,
+          "sharpe": 2.0503444408120926,
+          "calmar": 4.652949010422436,
+          "total_trades": 103,
+          "final_assets": 2716670.201202251
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0216969684617503,
+          "annual_return": 8.293639715760625,
+          "max_drawdown": -0.16779629718282396,
+          "sharpe": 3.4488388495616933,
+          "calmar": 49.42683393498377,
+          "total_trades": 87,
+          "final_assets": 6043393.9369235
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2498212624107501,
+          "annual_return": 0.6100069002995205,
+          "max_drawdown": -0.20350268773921953,
+          "sharpe": 1.6179398056788217,
+          "calmar": 2.997537315483615,
+          "total_trades": 108,
+          "final_assets": 2499642.5248215003
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 2.01106187288175,
+          "annual_return": 8.227814896784038,
+          "max_drawdown": -0.1682028981815519,
+          "sharpe": 3.4353585351526807,
+          "calmar": 48.91601147028538,
+          "total_trades": 87,
+          "final_assets": 6022123.7457635
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-d9398aca9694",
+        "engine_overrides": {},
+        "symbol_multipliers": {
+          "trail_atr_mult": 0.85
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 3.4053710978932465,
+        "compound_validation_return": 2.555903247097877,
+        "worst_validation_return": 0.3683630300266254,
+        "worst_validation_drawdown": -0.22536477822003223,
+        "worst_stress_drawdown": -0.2206607525352616,
+        "validation_stability": 2.4516136737260115,
+        "generalization_gap": 0.0,
+        "selection_score": 2.8108858309630746,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 2.8734504804432013,
+        "robust_selection_score": 2.8265269933331063
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.21105148526200135,
+          "annual_return": 0.22067226764749792,
+          "max_drawdown": -0.23752300502542723,
+          "sharpe": 0.7260991559153954,
+          "calmar": 0.9290563986586251,
+          "total_trades": 158,
+          "final_assets": 2422102.970524003
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.21105148526200135,
+          "annual_return": 0.14344116884256608,
+          "max_drawdown": -0.23752300502542723,
+          "sharpe": 0.5951199684604823,
+          "calmar": 0.6039043200350656,
+          "total_trades": 158,
+          "final_assets": 2422102.970524003
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3683630300266254,
+          "annual_return": 0.9537574241672349,
+          "max_drawdown": -0.22536477822003223,
+          "sharpe": 1.981079715746265,
+          "calmar": 4.2320607137466935,
+          "total_trades": 100,
+          "final_assets": 2736726.0600532508
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 1.5986548664857505,
+          "annual_return": 5.856984771619258,
+          "max_drawdown": -0.1839030173927419,
+          "sharpe": 3.0034186098925213,
+          "calmar": 31.848225519384087,
+          "total_trades": 78,
+          "final_assets": 5197309.732971501
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.3714927516483748,
+          "annual_return": 0.9633130084703021,
+          "max_drawdown": -0.2206607525352616,
+          "sharpe": 1.9970858481073885,
+          "calmar": 4.36558380864021,
+          "total_trades": 98,
+          "final_assets": 2742985.5032967497
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.5571450790572503,
+          "annual_return": 5.6379629269899,
+          "max_drawdown": -0.1802275535212602,
+          "sharpe": 2.966793944010543,
+          "calmar": 31.28246939403097,
+          "total_trades": 84,
+          "final_assets": 5114290.1581145
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-a786258a60e0",
+        "engine_overrides": {},
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015,
+          "rearm_trading_days": 15
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.569295548860665,
+        "compound_validation_return": 3.1106951313297486,
+        "worst_validation_return": 0.3683630300266254,
+        "worst_validation_drawdown": -0.22536477822003223,
+        "worst_stress_drawdown": -0.2206607525352616,
+        "validation_stability": 3.61553812469343,
+        "generalization_gap": 0.0,
+        "selection_score": 3.6838291691886385,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.6838291691886385,
+        "robust_selection_score": 3.6838291691886385
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.28466409507100154,
+          "annual_return": 0.2980308778840435,
+          "max_drawdown": -0.23715437717239093,
+          "sharpe": 0.8318529337032202,
+          "calmar": 1.256695665656639,
+          "total_trades": 186,
+          "final_assets": 2569328.190142003
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.28466409507100154,
+          "annual_return": 0.19166095646972647,
+          "max_drawdown": -0.23715437717239093,
+          "sharpe": 0.6817235883654819,
+          "calmar": 0.8081695929668857,
+          "total_trades": 186,
+          "final_assets": 2569328.190142003
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3683630300266254,
+          "annual_return": 0.9537574241672349,
+          "max_drawdown": -0.22536477822003223,
+          "sharpe": 1.981079715746265,
+          "calmar": 4.2320607137466935,
+          "total_trades": 100,
+          "final_assets": 2736726.0600532508
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.3714927516483748,
+          "annual_return": 0.9633130084703021,
+          "max_drawdown": -0.2206607525352616,
+          "sharpe": 1.9970858481073885,
+          "calmar": 4.36558380864021,
+          "total_trades": 98,
+          "final_assets": 2742985.5032967497
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9390716025361248,
+          "annual_return": 7.788438053521114,
+          "max_drawdown": -0.1787955502371997,
+          "sharpe": 3.3049702320789134,
+          "calmar": 43.560581027819524,
+          "total_trades": 69,
+          "final_assets": 5878143.205072249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-626ab3fba298",
+        "engine_overrides": {
+          "max_positions": 3
+        },
+        "symbol_multipliers": {
+          "entry_period": 1.15
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.652192849627039,
+        "compound_validation_return": 3.270502910204498,
+        "worst_validation_return": 0.42155964265212553,
+        "worst_validation_drawdown": -0.21270188796187364,
+        "worst_stress_drawdown": -0.21757251406586461,
+        "validation_stability": 3.532640823927056,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7901106257778814,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.7434041486379757,
+        "robust_selection_score": 3.7784340064929047
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14692750039337565,
+          "annual_return": 0.15344297951005603,
+          "max_drawdown": -0.24028372935752626,
+          "sharpe": 0.5851457176465258,
+          "calmar": 0.6385908022999887,
+          "total_trades": 152,
+          "final_assets": 2293855.0007867515
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14692750039337565,
+          "annual_return": 0.1007157386242108,
+          "max_drawdown": -0.24028372935752626,
+          "sharpe": 0.4796507833656842,
+          "calmar": 0.41915338543107283,
+          "total_trades": 152,
+          "final_assets": 2293855.0007867515
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.42155964265212553,
+          "annual_return": 1.1195520256999836,
+          "max_drawdown": -0.21270188796187364,
+          "sharpe": 2.152865864579717,
+          "calmar": 5.263479494364718,
+          "total_trades": 87,
+          "final_assets": 2843119.285304251
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.40729348525712505,
+          "annual_return": 1.074384748169999,
+          "max_drawdown": -0.21757251406586461,
+          "sharpe": 2.0944375888509876,
+          "calmar": 4.938053654354318,
+          "total_trades": 83,
+          "final_assets": 2814586.97051425
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9319118955541246,
+          "annual_return": 7.745330881148904,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.2990349553456846,
+          "calmar": 43.29935080864247,
+          "total_trades": 66,
+          "final_assets": 5863823.791108249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-c236373c0f10",
+        "engine_overrides": {
+          "max_positions": 3
+        },
+        "symbol_multipliers": {
+          "exit_period": 0.85
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.62671307197251,
+        "compound_validation_return": 3.1772305406417756,
+        "worst_validation_return": 0.38597165921512544,
+        "worst_validation_drawdown": -0.21815646024373947,
+        "worst_stress_drawdown": -0.2129342378922134,
+        "validation_stability": 3.618870638401249,
+        "generalization_gap": 0.0,
+        "selection_score": 3.741293995332954,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.741293995332954,
+        "robust_selection_score": 3.741293995332954
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.21226627092950112,
+          "annual_return": 0.22194732671239303,
+          "max_drawdown": -0.23006971923534356,
+          "sharpe": 0.7319312726035517,
+          "calmar": 0.9646959515144106,
+          "total_trades": 180,
+          "final_assets": 2424532.5418590023
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.21226627092950112,
+          "annual_return": 0.1442439249081635,
+          "max_drawdown": -0.23006971923534356,
+          "sharpe": 0.5998967060485382,
+          "calmar": 0.6269574518001351,
+          "total_trades": 180,
+          "final_assets": 2424532.5418590023
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.38597165921512544,
+          "annual_return": 1.0078424335712617,
+          "max_drawdown": -0.21815646024373947,
+          "sharpe": 2.0534237674472187,
+          "calmar": 4.619814753343681,
+          "total_trades": 103,
+          "final_assets": 2771943.318430251
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0139364776097497,
+          "annual_return": 8.24558371037376,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3599785072016592,
+          "calmar": 45.20502135216443,
+          "total_trades": 54,
+          "final_assets": 6027872.9552195
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.3893581686737497,
+          "annual_return": 1.0183341919111397,
+          "max_drawdown": -0.2129342378922134,
+          "sharpe": 2.070188680352348,
+          "calmar": 4.782388224605838,
+          "total_trades": 103,
+          "final_assets": 2778716.3373474996
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9603039446033748,
+          "annual_return": 7.916901896633036,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.329231825847821,
+          "calmar": 44.258498158450784,
+          "total_trades": 66,
+          "final_assets": 5920607.889206749
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-212d5fb85925",
+        "engine_overrides": {
+          "max_positions": 3
+        },
+        "symbol_multipliers": {
+          "hard_stop": 0.85
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.615751742464965,
+        "compound_validation_return": 3.201102673028765,
+        "worst_validation_return": 0.3984577789058754,
+        "worst_validation_drawdown": -0.21815646024373947,
+        "worst_stress_drawdown": -0.2129342378922134,
+        "validation_stability": 3.569081931089131,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7434041486379757,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.7434041486379757,
+        "robust_selection_score": 3.7434041486379757
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.22470080688637628,
+          "annual_return": 0.23500184797312085,
+          "max_drawdown": -0.23257790315870827,
+          "sharpe": 0.7596340392801836,
+          "calmar": 1.0104220769965344,
+          "total_trades": 171,
+          "final_assets": 2449401.6137727527
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.22470080688637628,
+          "annual_return": 0.1524471089936923,
+          "max_drawdown": -0.23257790315870827,
+          "sharpe": 0.6225852793310692,
+          "calmar": 0.655466864750536,
+          "total_trades": 171,
+          "final_assets": 2449401.6137727527
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3984577789058754,
+          "annual_return": 1.0466698113758341,
+          "max_drawdown": -0.21815646024373947,
+          "sharpe": 2.1014055540883465,
+          "calmar": 4.797794253749911,
+          "total_trades": 96,
+          "final_assets": 2796915.557811751
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.4028331710906248,
+          "annual_return": 1.0603693166808874,
+          "max_drawdown": -0.2129342378922134,
+          "sharpe": 2.1212705429395458,
+          "calmar": 4.9797971767116325,
+          "total_trades": 96,
+          "final_assets": 2805666.3421812495
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9319118955541246,
+          "annual_return": 7.745330881148904,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.2990349553456846,
+          "calmar": 43.29935080864247,
+          "total_trades": 66,
+          "final_assets": 5863823.791108249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-94414f3e926e",
+        "engine_overrides": {
+          "max_positions": 3
+        },
+        "symbol_multipliers": {
+          "risk_pct": 0.8
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": true,
+      "rejection_reasons": [],
+      "summary": {
+        "median_validation_annual_return": 4.670961542599382,
+        "compound_validation_return": 3.16299984192674,
+        "worst_validation_return": 0.37149814873162557,
+        "worst_validation_drawdown": -0.19158350438986743,
+        "worst_stress_drawdown": -0.19613061103196244,
+        "validation_stability": 3.7076320344822458,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7626284414154014,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.7242514351515643,
+        "robust_selection_score": 3.7530341898494424
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1075839663963758,
+          "annual_return": 0.11227046824348852,
+          "max_drawdown": -0.2455529023367695,
+          "sharpe": 0.48017464392578474,
+          "calmar": 0.45721499186156006,
+          "total_trades": 145,
+          "final_assets": 2215167.9327927516
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1075839663963758,
+          "annual_return": 0.07414685727461112,
+          "max_drawdown": -0.2455529023367695,
+          "sharpe": 0.3936335829277,
+          "calmar": 0.3019587900163388,
+          "total_trades": 145,
+          "final_assets": 2215167.9327927516
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.37149814873162557,
+          "annual_return": 0.9633295081171354,
+          "max_drawdown": -0.19158350438986743,
+          "sharpe": 2.1219387655298703,
+          "calmar": 5.028248706406293,
+          "total_trades": 95,
+          "final_assets": 2742996.2974632513
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0353667234452497,
+          "annual_return": 8.378593577081627,
+          "max_drawdown": -0.17576635787233028,
+          "sharpe": 3.47048893305314,
+          "calmar": 47.66892640039516,
+          "total_trades": 81,
+          "final_assets": 6070733.446890499
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.2651206218469999,
+          "annual_return": 0.6523888957421935,
+          "max_drawdown": -0.19613061103196244,
+          "sharpe": 1.7068985164635468,
+          "calmar": 3.3262981862422123,
+          "total_trades": 100,
+          "final_assets": 2530241.243694
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 2.020006701721875,
+          "annual_return": 8.283162225418321,
+          "max_drawdown": -0.17623786604410158,
+          "sharpe": 3.4536836220486027,
+          "calmar": 46.99990082350153,
+          "total_trades": 81,
+          "final_assets": 6040013.40344375
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-0690eb6fa49f",
+        "engine_overrides": {
+          "max_positions": 3
+        },
+        "symbol_multipliers": {
+          "trail_atr_mult": 0.85
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 3.4558135182052654,
+        "compound_validation_return": 2.636204378208206,
+        "worst_validation_return": 0.3984577789058754,
+        "worst_validation_drawdown": -0.21815646024373947,
+        "worst_stress_drawdown": -0.2129342378922134,
+        "validation_stability": 2.409143706829431,
+        "generalization_gap": 0.0,
+        "selection_score": 2.8734504804432013,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.277144989800525,
+        "robust_selection_score": 2.9743741077825323
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.22081503388137658,
+          "annual_return": 0.2309217395374339,
+          "max_drawdown": -0.2274654970580554,
+          "sharpe": 0.7503288584790964,
+          "calmar": 1.0151945790639902,
+          "total_trades": 179,
+          "final_assets": 2441630.067762753
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.22081503388137658,
+          "annual_return": 0.14988632236915556,
+          "max_drawdown": -0.2274654970580554,
+          "sharpe": 0.6149645394750275,
+          "calmar": 0.6589409132713454,
+          "total_trades": 179,
+          "final_assets": 2441630.067762753
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3984577789058754,
+          "annual_return": 1.0466698113758341,
+          "max_drawdown": -0.21815646024373947,
+          "sharpe": 2.1014055540883465,
+          "calmar": 4.797794253749911,
+          "total_trades": 96,
+          "final_assets": 2796915.557811751
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 1.6001531351580005,
+          "annual_return": 5.864957225034696,
+          "max_drawdown": -0.1839030173927419,
+          "sharpe": 3.0069127950507464,
+          "calmar": 31.89157692018472,
+          "total_trades": 72,
+          "final_assets": 5200306.270316001
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.4028331710906248,
+          "annual_return": 1.0603693166808874,
+          "max_drawdown": -0.2129342378922134,
+          "sharpe": 2.1212705429395458,
+          "calmar": 4.9797971767116325,
+          "total_trades": 96,
+          "final_assets": 2805666.3421812495
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.5582509103697504,
+          "annual_return": 5.643751270042994,
+          "max_drawdown": -0.18031134387722528,
+          "sharpe": 2.96727387414221,
+          "calmar": 31.300034422048604,
+          "total_trades": 84,
+          "final_assets": 5116501.820739501
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-49b4cb9cd98b",
+        "engine_overrides": {
+          "max_positions": 3
+        },
+        "symbol_multipliers": {},
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015,
+          "rearm_trading_days": 15
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.615751742464965,
+        "compound_validation_return": 3.201102673028765,
+        "worst_validation_return": 0.3984577789058754,
+        "worst_validation_drawdown": -0.21815646024373947,
+        "worst_stress_drawdown": -0.2129342378922134,
+        "validation_stability": 3.569081931089131,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7434041486379757,
+        "parameter_neighbor_count": 2,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.713616658913307,
+        "robust_selection_score": 3.7359572762068085
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14017942142062578,
+          "annual_return": 0.14637699634157286,
+          "max_drawdown": -0.2427220065659382,
+          "sharpe": 0.5667612199000412,
+          "calmar": 0.6030643797508648,
+          "total_trades": 134,
+          "final_assets": 2280358.8428412518
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14017942142062578,
+          "annual_return": 0.09617839677848683,
+          "max_drawdown": -0.2427220065659382,
+          "sharpe": 0.46458723602442586,
+          "calmar": 0.39624918292012745,
+          "total_trades": 134,
+          "final_assets": 2280358.8428412518
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3984577789058754,
+          "annual_return": 1.0466698113758341,
+          "max_drawdown": -0.21815646024373947,
+          "sharpe": 2.1014055540883465,
+          "calmar": 4.797794253749911,
+          "total_trades": 96,
+          "final_assets": 2796915.557811751
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.4028331710906248,
+          "annual_return": 1.0603693166808874,
+          "max_drawdown": -0.2129342378922134,
+          "sharpe": 2.1212705429395458,
+          "calmar": 4.9797971767116325,
+          "total_trades": 96,
+          "final_assets": 2805666.3421812495
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9319118955541246,
+          "annual_return": 7.745330881148904,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.2990349553456846,
+          "calmar": 43.29935080864247,
+          "total_trades": 66,
+          "final_assets": 5863823.791108249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-d6d513fad6da",
+        "engine_overrides": {
+          "max_positions": 4
+        },
+        "symbol_multipliers": {
+          "entry_period": 1.15
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.652192849627039,
+        "compound_validation_return": 3.270502910204498,
+        "worst_validation_return": 0.42155964265212553,
+        "worst_validation_drawdown": -0.21270188796187364,
+        "worst_stress_drawdown": -0.21757251406586461,
+        "validation_stability": 3.532640823927056,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7901106257778814,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.7434041486379757,
+        "robust_selection_score": 3.7784340064929047
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3079838936422514,
+          "annual_return": 0.32257612013385617,
+          "max_drawdown": -0.23264637272776145,
+          "sharpe": 0.8774924518694858,
+          "calmar": 1.3865512552449244,
+          "total_trades": 171,
+          "final_assets": 2615967.7872845028
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3079838936422514,
+          "annual_return": 0.2067621422619934,
+          "max_drawdown": -0.23264637272776145,
+          "sharpe": 0.7190895728951265,
+          "calmar": 0.8887400213367723,
+          "total_trades": 171,
+          "final_assets": 2615967.7872845028
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.42155964265212553,
+          "annual_return": 1.1195520256999836,
+          "max_drawdown": -0.21270188796187364,
+          "sharpe": 2.152865864579717,
+          "calmar": 5.263479494364718,
+          "total_trades": 87,
+          "final_assets": 2843119.285304251
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.40729348525712505,
+          "annual_return": 1.074384748169999,
+          "max_drawdown": -0.21757251406586461,
+          "sharpe": 2.0944375888509876,
+          "calmar": 4.938053654354318,
+          "total_trades": 83,
+          "final_assets": 2814586.97051425
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9319118955541246,
+          "annual_return": 7.745330881148904,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.2990349553456846,
+          "calmar": 43.29935080864247,
+          "total_trades": 66,
+          "final_assets": 5863823.791108249
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-e9bbb2345a52",
+        "engine_overrides": {
+          "max_positions": 4
+        },
+        "symbol_multipliers": {
+          "exit_period": 0.85
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.62671307197251,
+        "compound_validation_return": 3.1772305406417756,
+        "worst_validation_return": 0.38597165921512544,
+        "worst_validation_drawdown": -0.21815646024373947,
+        "worst_stress_drawdown": -0.2129342378922134,
+        "validation_stability": 3.618870638401249,
+        "generalization_gap": 0.0,
+        "selection_score": 3.741293995332954,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.741293995332954,
+        "robust_selection_score": 3.741293995332954
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1451473052500012,
+          "annual_return": 0.15157875155557798,
+          "max_drawdown": -0.24238509981152762,
+          "sharpe": 0.5772992094826559,
+          "calmar": 0.625363323378548,
+          "total_trades": 125,
+          "final_assets": 2290294.6105000023
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.1451473052500012,
+          "annual_return": 0.09951953247285128,
+          "max_drawdown": -0.24238509981152762,
+          "sharpe": 0.47322173434070725,
+          "calmar": 0.4105843657478743,
+          "total_trades": 125,
+          "final_assets": 2290294.6105000023
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.38597165921512544,
+          "annual_return": 1.0078424335712617,
+          "max_drawdown": -0.21815646024373947,
+          "sharpe": 2.0534237674472187,
+          "calmar": 4.619814753343681,
+          "total_trades": 103,
+          "final_assets": 2771943.318430251
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0139364776097497,
+          "annual_return": 8.24558371037376,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3599785072016592,
+          "calmar": 45.20502135216443,
+          "total_trades": 54,
+          "final_assets": 6027872.9552195
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.38919288320224954,
+          "annual_return": 1.017821445373376,
+          "max_drawdown": -0.2129342378922134,
+          "sharpe": 2.0693015862851465,
+          "calmar": 4.779980220412434,
+          "total_trades": 105,
+          "final_assets": 2778385.7664044993
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9603039446033748,
+          "annual_return": 7.916901896633036,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.329231825847821,
+          "calmar": 44.258498158450784,
+          "total_trades": 66,
+          "final_assets": 5920607.889206749
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "candidate_id": "candidate-d5233ff30e01",
+        "engine_overrides": {
+          "max_positions": 4
+        },
+        "symbol_multipliers": {
+          "hard_stop": 0.85
+        },
+        "policy_overrides": {
+          "drawdown_alert": 0.14,
+          "confirmed_drawdown": 0.18,
+          "emergency_drawdown": 0.22,
+          "terminal_drawdown": 0.24,
+          "concentration_drawdown_adjustment": 0.015
+        }
+      },
+      "drawdown_limit": 0.2,
+      "feasible": false,
+      "rejection_reasons": [
+        "validation drawdown exceeds hard limit",
+        "stress drawdown exceeds hard limit"
+      ],
+      "summary": {
+        "median_validation_annual_return": 4.615751742464965,
+        "compound_validation_return": 3.201102673028765,
+        "worst_validation_return": 0.3984577789058754,
+        "worst_validation_drawdown": -0.21815646024373947,
+        "worst_stress_drawdown": -0.2129342378922134,
+        "validation_stability": 3.569081931089131,
+        "generalization_gap": 0.0,
+        "selection_score": 3.7434041486379757,
+        "parameter_neighbor_count": 3,
+        "parameter_supported": true,
+        "neighbor_median_score": 3.7434041486379757,
+        "robust_selection_score": 3.7434041486379757
+      },
+      "training": [
+        {
+          "window": "fold_1_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14309980789787602,
+          "annual_return": 0.1494347516693748,
+          "max_drawdown": -0.24078236060321032,
+          "sharpe": 0.5738969913008193,
+          "calmar": 0.6206216738427575,
+          "total_trades": 131,
+          "final_assets": 2286199.615795752
+        },
+        {
+          "window": "fold_2_train",
+          "role": "train",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.14309980789787602,
+          "annual_return": 0.09814302195815916,
+          "max_drawdown": -0.24078236060321032,
+          "sharpe": 0.47043408578638957,
+          "calmar": 0.4076005472838222,
+          "total_trades": 131,
+          "final_assets": 2286199.615795752
+        }
+      ],
+      "validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 0.3984577789058754,
+          "annual_return": 1.0466698113758341,
+          "max_drawdown": -0.21815646024373947,
+          "sharpe": 2.1014055540883465,
+          "calmar": 4.797794253749911,
+          "total_trades": 96,
+          "final_assets": 2796915.557811751
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": false,
+          "total_return": 2.0040968961648744,
+          "annual_return": 8.184833673554095,
+          "max_drawdown": -0.18240415475390453,
+          "sharpe": 3.3475430914455515,
+          "calmar": 44.87196952611569,
+          "total_trades": 57,
+          "final_assets": 6008193.792329749
+        }
+      ],
+      "stress_validation": [
+        {
+          "window": "fold_1_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 0.4028331710906248,
+          "annual_return": 1.0603693166808874,
+          "max_drawdown": -0.2129342378922134,
+          "sharpe": 2.1212705429395458,
+          "calmar": 4.9797971767116325,
+          "total_trades": 96,
+          "final_assets": 2805666.3421812495
+        },
+        {
+          "window": "fold_2_validation",
+          "role": "validation",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008"
+          ],
+          "stressed": true,
+          "total_return": 1.9319118955541246,
+          "annual_return": 7.745330881148904,
+          "max_drawdown": -0.17887868377931776,
+          "sharpe": 3.2990349553456846,
+          "calmar": 43.29935080864247,
+          "total_trades": 66,
+          "final_assets": 5863823.791108249
+        }
+      ]
+    }
+  ],
+  "pareto_candidate_ids": [
+    "candidate-94414f3e926e"
+  ],
+  "status": "candidate_rejected_on_holdout",
+  "selected_candidate": {
+    "candidate_id": "candidate-94414f3e926e",
+    "engine_overrides": {
+      "max_positions": 3
+    },
+    "symbol_multipliers": {
+      "risk_pct": 0.8
+    },
+    "policy_overrides": {
+      "drawdown_alert": 0.14,
+      "confirmed_drawdown": 0.18,
+      "emergency_drawdown": 0.22,
+      "terminal_drawdown": 0.24,
+      "concentration_drawdown_adjustment": 0.015
+    }
+  },
+  "recommended_candidate": {
+    "candidate_id": "baseline",
+    "engine_overrides": {},
+    "symbol_multipliers": {},
+    "policy_overrides": {}
+  },
+  "promotion_gate": {
+    "passed": false,
+    "checks": {
+      "ordinary_drawdown_within_limit": true,
+      "stress_drawdown_within_limit": true,
+      "ordinary_return_not_below_baseline": false,
+      "stress_return_not_below_baseline": false
+    },
+    "rule": "holdout and stressed-holdout drawdown must stay within the hard limit, and return must not fall below the v17.1 baseline"
+  },
+  "holdout_comparison": {
+    "baseline": {
+      "window": "final_holdout",
+      "role": "test",
+      "symbols": [
+        "300308",
+        "300394",
+        "300502",
+        "603986",
+        "688008"
+      ],
+      "stressed": false,
+      "total_return": 1.5284390105927503,
+      "annual_return": 5.038291052045939,
+      "max_drawdown": -0.11395195096130682,
+      "sharpe": 3.5943437150899764,
+      "calmar": 44.21417105668271,
+      "total_trades": 123,
+      "final_assets": 5056878.021185501
+    },
+    "baseline_stress": {
+      "window": "final_holdout",
+      "role": "test",
+      "symbols": [
+        "300308",
+        "300394",
+        "300502",
+        "603986",
+        "688008"
+      ],
+      "stressed": true,
+      "total_return": 1.4995976724473752,
+      "annual_return": 4.905489594623328,
+      "max_drawdown": -0.11487200768210647,
+      "sharpe": 3.5537361219356822,
+      "calmar": 42.70395976884674,
+      "total_trades": 124,
+      "final_assets": 4999195.34489475
+    },
+    "selected": {
+      "window": "final_holdout",
+      "role": "test",
+      "symbols": [
+        "300308",
+        "300394",
+        "300502",
+        "603986",
+        "688008"
+      ],
+      "stressed": false,
+      "total_return": 1.2497014223190006,
+      "annual_return": 3.8148253921809996,
+      "max_drawdown": -0.1111559279075154,
+      "sharpe": 3.2198875194453542,
+      "calmar": 34.319585684670216,
+      "total_trades": 111,
+      "final_assets": 4499402.844638001
+    },
+    "selected_stress": {
+      "window": "final_holdout",
+      "role": "test",
+      "symbols": [
+        "300308",
+        "300394",
+        "300502",
+        "603986",
+        "688008"
+      ],
+      "stressed": true,
+      "total_return": 1.2388542567336254,
+      "annual_return": 3.76992549567788,
+      "max_drawdown": -0.11298233550751366,
+      "sharpe": 3.194440119136237,
+      "calmar": 33.36738861649013,
+      "total_trades": 111,
+      "final_assets": 4477708.51346725
+    },
+    "delta_total_return": -0.2787375882737497,
+    "delta_max_drawdown": 0.0027960230537914244,
+    "selected_holdout_drawdown_within_limit": true
+  },
+  "run_metadata": {
+    "symbols": {
+      "300308": "中际旭创",
+      "300502": "新易盛",
+      "300394": "天孚通信",
+      "688008": "澜起科技",
+      "603986": "兆易创新"
+    },
+    "data_directory": "market_data_qfq_22_20260720",
+    "data_coverage": {
+      "300308": {
+        "first_date": "2024-01-02",
+        "last_date": "2026-07-20",
+        "rows": 615
+      },
+      "300394": {
+        "first_date": "2024-01-02",
+        "last_date": "2026-07-20",
+        "rows": 615
+      },
+      "300502": {
+        "first_date": "2024-01-02",
+        "last_date": "2026-07-20",
+        "rows": 615
+      },
+      "603986": {
+        "first_date": "2024-01-02",
+        "last_date": "2026-07-20",
+        "rows": 615
+      },
+      "688008": {
+        "first_date": "2024-01-02",
+        "last_date": "2026-07-20",
+        "rows": 615
+      }
+    },
+    "candidate_count": 40,
+    "seed": 17,
+    "engine_sha256": "f5a16f9d3dfb43383cc5865efbdd7c3f7f06da883e7d47839f1b51181fecf77c",
+    "optimizer_sha256": "774660ff32d37c13db4b5008cd9263ecee0c0b96ce37a00ceed58486be7f0a0f",
+    "data_fingerprint": "ecf12259d941720912796f98330eb24648ffed716b2b8af7d15b294ae8e93662",
+    "cache_signature": "9d1819853d8b3b79b8c9"
+  }
+}

@@ -68,8 +68,12 @@ should supply its own stable benchmark basket before live use.
 ## Repository layout
 
 - `quant_fusion_v17.py`: complete standalone production engine and CLI.
+- `quant_fusion_optimizer.py`: independent automatic parameter-search,
+  walk-forward validation, Pareto selection, and final-holdout reporting layer.
 - `test_quant_fusion_v17.py`: unit, isolation, routing, risk, and regression
   tests.
+- `test_quant_fusion_optimizer.py`: leakage, constraint, parameter-support,
+  dynamic-listing, and deterministic-search tests.
 - `backtest_v17_universes.py`, `stress_test_v17_prefixes.py`, and
   `backtest_v17_cambricon_universe.py`: reproducible portfolio checks.
 - `market_data_qfq_22_20260720` and `market_data_qfq_9_cambricon_20260720`:
@@ -129,6 +133,82 @@ The CLI defaults to warm indicator state because a live strategy normally has
 pre-start history. Cold state remains available for initialization sensitivity
 tests. Both states start the portfolio flat on the requested first date.
 
+## Automatic parameter optimization
+
+The optimizer preserves `quant_fusion_v17.py` as the only execution engine. It
+changes no signal, fill, T+1, cost, liquidity, or accounting code. It searches
+portfolio controls and route-preserving multipliers around each stock's existing
+industry profile, so an optical-module stock and semiconductor-equipment stock do
+not silently receive one identical absolute parameter set.
+
+The default protocol enforces these hard limits before a candidate can run:
+
+- maximum symbol weight: 60%;
+- maximum total weight: 100%;
+- maximum concurrent symbols: six;
+- maximum validation and higher-cost validation drawdown: 20%.
+
+Selection uses expanding training windows followed by non-overlapping validation
+windows. It penalizes performance instability and training-to-validation
+degradation, rejects isolated parameter spikes without a one-axis neighbor, and
+chooses from the validation return/drawdown Pareto frontier. The final holdout is
+run only after parameter selection. It cannot choose a different parameter
+candidate, but it is a mandatory one-time promotion gate: a candidate is not
+recommended if ordinary or stressed holdout drawdown breaches 20%, or if its
+return falls below the already-feasible v17.1 baseline.
+
+Example for the five-symbol reference universe:
+
+```bash
+python quant_fusion_optimizer.py \
+  --symbol 300308,300502,300394,688008,603986 \
+  --data-dir market_data_qfq_22_20260720 \
+  --start 2024-01-02 \
+  --test-start 2026-01-05 \
+  --end 2026-07-20 \
+  --train-months 12 \
+  --validation-months 6 \
+  --step-months 6 \
+  --candidates 40 \
+  --seed 17 \
+  --output-dir optimizer_output
+```
+
+The output directory contains:
+
+- `optimization_report.json`: every candidate, fold, rejection, Pareto result,
+  cost stress, and untouched final-holdout comparison;
+- `recommended_config.json`: the selected compact modifiers plus materialized
+  per-symbol configuration that can be passed back to v17;
+- `optimization_summary.md`: concise baseline-versus-selected holdout results.
+
+Local data is mandatory for optimization so hundreds of candidate runs share one
+frozen snapshot. A stock with no observations in an early fold is excluded from
+that fold and becomes eligible only after it has enough historical rows; the
+optimizer never backfills a pre-listing period. A custom finite search space can
+be supplied with `--search-space`. Historical best parameters remain research
+results, not a promise of future optimality.
+
+### Frozen five-symbol validation on 2026 data
+
+The canonical 40-candidate run used 2024-01-02 through 2025-12-31 only for
+parameter selection and first opened 2026-01-05 through 2026-07-20 after the
+validation winner was frozen. The research winner combined a three-position
+ceiling, the moderate portfolio-risk bundle, and a 0.8 per-route risk multiplier.
+It passed the pre-test 20% constraint but failed the one-time promotion gate:
+
+| Final holdout | Total return | Maximum drawdown | Sharpe | Calmar |
+|---|---:|---:|---:|---:|
+| v17.1 baseline | 152.8439% | -11.3952% | 3.5943 | 44.2142 |
+| validation winner | 124.9701% | -11.1156% | 3.2199 | 34.3196 |
+
+The 0.28 percentage-point drawdown improvement did not justify 27.87 percentage
+points less return, so `recommended_config.json` retains the v17.1 baseline. The
+complete evidence is stored in
+`optimizer_validation_5_symbols_20260722/optimization_report.json`; the concise
+comparison is in the adjacent `optimization_summary.md`. No further parameter
+tuning used the opened 2026 holdout.
+
 ## Cross-universe target results
 
 Initial capital is CNY 2,000,000. All scenarios use identical v17 parameters,
@@ -176,8 +256,8 @@ These stress results are an explicit limitation, not an accepted live-risk claim
 Run the standard-library regression suite and the complete cross-universe runner:
 
 ```bash
-python -m py_compile quant_fusion_v17.py
-python -m unittest -v test_quant_fusion_v17.py
+python -m py_compile quant_fusion_v17.py quant_fusion_optimizer.py
+python -m unittest -v test_quant_fusion_v17.py test_quant_fusion_optimizer.py
 python backtest_v17_universes.py
 python stress_test_v17_prefixes.py
 python backtest_v17_cambricon_universe.py

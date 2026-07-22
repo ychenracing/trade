@@ -1,0 +1,23 @@
+{
+  "candidate_id": "baseline",
+  "engine_overrides": {},
+  "symbol_multipliers": {},
+  "policy_overrides": {},
+  "materialized_per_symbol_config": {
+    "300308": {
+      "max_symbol_weight": 0.6
+    },
+    "300502": {
+      "max_symbol_weight": 0.6
+    },
+    "300394": {
+      "max_symbol_weight": 0.6
+    },
+    "688008": {
+      "max_symbol_weight": 0.58
+    },
+    "603986": {
+      "max_symbol_weight": 0.5
+    }
+  }
+}
