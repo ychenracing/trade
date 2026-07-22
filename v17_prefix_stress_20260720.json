@@ -1,5 +1,5 @@
 {
-  "engine": "Codex Quant Fusion v17",
+  "engine": "Quant Fusion v17",
   "v17_policy": {
     "allocation_mode": "ensemble",
     "single_lookbacks": [

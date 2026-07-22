@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import hashlib
 import io
 import json
 import shutil
@@ -19,7 +20,7 @@ from unittest import mock
 
 import pandas as pd
 
-import codex_quant_fusion_v17 as quant
+import quant_fusion_v17 as quant
 from backtest_v17_universes import NAMES, UNIVERSES
 
 
@@ -102,7 +103,7 @@ class StandaloneAndDataSourceTests(unittest.TestCase):
     """Verify standalone packaging and explicit online/local source selection."""
 
     def test_source_has_no_import_dependency_on_another_strategy_module(self) -> None:
-        source_path = ROOT / "codex_quant_fusion_v17.py"
+        source_path = ROOT / "quant_fusion_v17.py"
         tree = ast.parse(source_path.read_text(encoding="utf-8"))
         imported_modules = {
             alias.name
@@ -116,11 +117,11 @@ class StandaloneAndDataSourceTests(unittest.TestCase):
             if isinstance(node, ast.ImportFrom) and node.module
         )
         self.assertFalse(
-            any(module.startswith("codex_quant_fusion_") for module in imported_modules)
+            any(module.startswith("quant_fusion_v") for module in imported_modules)
         )
 
     def test_script_starts_in_an_isolated_directory(self) -> None:
-        source = ROOT / "codex_quant_fusion_v17.py"
+        source = ROOT / "quant_fusion_v17.py"
         with tempfile.TemporaryDirectory() as directory:
             isolated = Path(directory) / source.name
             shutil.copy2(source, isolated)
@@ -296,6 +297,156 @@ class ExecutionControlTests(unittest.TestCase):
         self.assertEqual(allocate(items), {"alpha": 3_000, "beta": 3_000})
         self.assertEqual(allocate(list(reversed(items))), allocate(items))
 
+    @staticmethod
+    def _sleeve(capital: float = 1_000_000) -> quant.SleeveBacktestEngine:
+        policy = quant.V17Policy(allocation_mode="single")
+        return quant.SleeveBacktestEngine(
+            capital,
+            cfg=None,
+            policy=policy,
+            allocation_lookbacks=policy.single_lookbacks,
+            sleeve_name="test",
+        )
+
+    def test_batch_capacity_uses_the_strictest_strategy_exposure(self) -> None:
+        sleeve = self._sleeve()
+        dates = pd.bdate_range("2026-01-02", periods=22)
+        frame = pd.DataFrame(
+            {
+                "open": 10.0,
+                "close": 10.0,
+                "high": 10.0,
+                "low": 10.0,
+                "volume": 10_000_000.0,
+            },
+            index=dates,
+        )
+        loose_cfg = sleeve._default_config()
+        strict_cfg = sleeve._default_config()
+        loose_cfg["max_symbol_weight"] = 0.60
+        strict_cfg["max_symbol_weight"] = 0.20
+        items = [
+            (
+                quant.Signal("300308", "turtle_breakout", "buy", 50_000, price=10.0),
+                quant.TurtleBreakoutStrategy(loose_cfg),
+            ),
+            (
+                quant.Signal("300308", "dual_ma", "buy", 50_000, price=10.0),
+                quant.DualMAStrategy(strict_cfg),
+            ),
+        ]
+
+        capacity = sleeve._buy_batch_capacity(items, {"300308": frame}, dates[-1])
+
+        self.assertEqual(capacity, 19_900)
+
+    def test_batch_rejects_mixed_symbols_or_execution_prices(self) -> None:
+        sleeve = self._sleeve()
+        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
+        dates = pd.bdate_range("2026-01-02", periods=2)
+        frame = pd.DataFrame(
+            {
+                "open": 10.0,
+                "close": 10.0,
+                "high": 10.0,
+                "low": 10.0,
+                "volume": 1_000_000.0,
+            },
+            index=dates,
+        )
+        data_map = {"300308": frame, "300502": frame}
+
+        with self.assertRaisesRegex(ValueError, "exactly one symbol"):
+            sleeve._buy_batch_capacity(
+                [
+                    (quant.Signal("300308", "a", "buy", 100, price=10.0), strategy),
+                    (quant.Signal("300502", "b", "buy", 100, price=10.0), strategy),
+                ],
+                data_map,
+                dates[-1],
+            )
+        with self.assertRaisesRegex(ValueError, "one execution price"):
+            sleeve._buy_batch_capacity(
+                [
+                    (quant.Signal("300308", "a", "buy", 100, price=10.0), strategy),
+                    (quant.Signal("300308", "b", "buy", 100, price=10.1), strategy),
+                ],
+                data_map,
+                dates[-1],
+            )
+
+    def test_low_price_fee_floor_uses_exact_affordability_search(self) -> None:
+        sleeve = self._sleeve(capital=14.5)
+        items = [
+            (quant.Signal("300308", name, "buy", target * 100), mock.Mock())
+            for name, target in zip(("a", "b", "c"), (1, 3, 3), strict=True)
+        ]
+
+        capacity = sleeve._cash_affordable_batch_capacity(
+            items,
+            requested=700,
+            execution_price=0.01,
+        )
+
+        self.assertEqual(capacity, 400)
+
+    def test_buy_rejection_records_the_concrete_execution_reason(self) -> None:
+        sleeve = self._sleeve(capital=1_000)
+        sleeve.cash = 0.0
+        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
+        signal = quant.Signal(
+            "300308", strategy.name, "buy", target_shares=100, price=10.0
+        )
+
+        executed = sleeve._execute_buy(signal, strategy, "2026-01-02")
+
+        self.assertFalse(executed)
+        self.assertEqual(sleeve.order_events[-1]["event"], "rejected_insufficient_cash")
+        self.assertNotIn(
+            "rejected_by_execution_checks",
+            {event["event"] for event in sleeve.order_events},
+        )
+
+    def test_portfolio_liquidation_audits_a_superseded_sell_reason(self) -> None:
+        sleeve = self._sleeve()
+        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
+        strategy.position = quant.Position(
+            "300308", strategy.name, 1_000, 10.0, "2026-01-02"
+        )
+        sleeve.positions = {"300308": {strategy.name: strategy.position}}
+        sleeve.strategy_instances = {"300308": [strategy]}
+        previous = quant.Signal(
+            "300308",
+            strategy.name,
+            "sell",
+            target_shares=300,
+            price=9.0,
+            reason="strategy reversal",
+            signal_date="2026-01-05",
+        )
+        state = quant._PreparedSleeveRun(
+            sleeve=sleeve,
+            data_map={},
+            indicator_map={},
+            all_dates=[pd.Timestamp("2026-01-06")],
+            date_to_pos={pd.Timestamp("2026-01-06"): 0},
+            pending=[(previous, strategy)],
+        )
+
+        quant.BacktestEngine._apply_global_risk_lock(
+            [state], pd.Timestamp("2026-01-06")
+        )
+
+        self.assertEqual(len(state.pending), 1)
+        liquidation = state.pending[0][0]
+        self.assertEqual(liquidation.target_shares, 1_000)
+        self.assertEqual(liquidation.reason, "portfolio-level drawdown liquidation")
+        event = sleeve.order_events[-1]
+        self.assertEqual(
+            event["event"], "pending_sell_superseded_by_portfolio_liquidation"
+        )
+        self.assertEqual(event["previous_reason"], "strategy reversal")
+
     def test_adv_capacity_is_shared_by_date_symbol_and_side(self) -> None:
         policy = quant.V17Policy(allocation_mode="single")
         sleeve = quant.SleeveBacktestEngine(
@@ -427,6 +578,19 @@ class IntegrationTests(unittest.TestCase):
                     shares / float(history.mean()),
                     quant.V17Policy().max_order_adv_ratio + 1e-12,
                 )
+
+    def test_canonical_market_data_matches_the_frozen_checksums(self) -> None:
+        checksum_path = DATA_DIR / "SHA256SUMS"
+        expected = {}
+        for line in checksum_path.read_text(encoding="utf-8").splitlines():
+            digest, filename = line.split(maxsplit=1)
+            expected[filename] = digest
+        actual_files = sorted(path.name for path in DATA_DIR.glob("*.csv"))
+        self.assertEqual(sorted(expected), actual_files)
+        for filename, digest in expected.items():
+            with self.subTest(filename=filename):
+                actual = hashlib.sha256((DATA_DIR / filename).read_bytes()).hexdigest()
+                self.assertEqual(actual, digest)
 
     def test_multi_symbol_wealth_dispersion_is_bounded(self) -> None:
         names = ("3_symbols", "5_symbols", "13_symbols", "22_symbols")

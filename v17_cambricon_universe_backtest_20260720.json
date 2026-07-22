@@ -1,5 +1,5 @@
 {
-  "engine": "Codex Quant Fusion v17",
+  "engine": "Quant Fusion v17",
   "data_directory": "market_data_qfq_9_cambricon_20260720",
   "data_adjustment": "qfq",
   "data_provider": "Eastmoney push2his",

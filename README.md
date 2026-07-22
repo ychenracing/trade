@@ -1,9 +1,9 @@
-# Codex Quant Fusion v17
+# Quant Fusion v17
 
-Codex Quant Fusion v17 is a standalone deterministic daily-bar backtester for
+Quant Fusion v17 is a standalone deterministic daily-bar backtester for
 concentrated A-share technology portfolios. The complete data-loading, signal,
 T+1 execution, transaction-cost, exposure, causal-liquidity, allocation, and risk
-implementation is contained in `codex_quant_fusion_v17.py`; it does not import or
+implementation is contained in `quant_fusion_v17.py`; it does not import or
 require another strategy module at runtime.
 
 ## Version 17 design
@@ -43,7 +43,11 @@ require another strategy module at runtime.
   shared balance; no strategy order receives a fresh capacity allowance.
 - Same-symbol strategy confirmations share cash, exposure, and ADV capacity
   proportionally before execution. Board-lot rounding can create at most a
-  one-lot attribution difference.
+  one-lot attribution difference. Batch validation applies the strictest
+  strategy exposure cap and rejects mixed-symbol or mixed-price batches.
+- Buy rejections identify the concrete failed execution check. If a
+  portfolio-level liquidation supersedes an existing strategy sell, the prior
+  reason and requested size remain in the order audit trail.
 - The breadth guard requires four of five regime symbols. Missing observations
   are audited and pause recovery without erasing prior shock confirmations or
   releasing an active guard.
@@ -53,13 +57,13 @@ require another strategy module at runtime.
 Universe-size robustness does not mean composition invariance. A universe that
 removes the strongest underlying assets cannot be guaranteed the return of a
 universe that contains them. The fixed default regime basket is appropriate for
-the bundled AI-infrastructure and semiconductor domain; another investment domain
+the bundled technology-hardware and semiconductor domain; another investment domain
 should supply its own stable benchmark basket before live use.
 
 ## Repository layout
 
-- `codex_quant_fusion_v17.py`: complete standalone production engine and CLI.
-- `test_codex_quant_fusion_v17.py`: unit, isolation, routing, risk, and regression
+- `quant_fusion_v17.py`: complete standalone production engine and CLI.
+- `test_quant_fusion_v17.py`: unit, isolation, routing, risk, and regression
   tests.
 - `backtest_v17_universes.py`, `stress_test_v17_prefixes.py`, and
   `backtest_v17_cambricon_universe.py`: reproducible portfolio checks.
@@ -76,7 +80,8 @@ are intentionally not duplicated on `main`.
 The reproducible 22-symbol Eastmoney forward-adjusted snapshot is stored in
 `market_data_qfq_22_20260720`. Provider volume is converted from board lots to
 shares before the ADV participation rule is applied. `920045` begins on
-2025-12-31 and is unavailable before that date.
+2025-12-31 and is unavailable before that date. `SHA256SUMS` freezes the exact
+CSV bytes, and the regression suite fails if a file is truncated or modified.
 
 `688256` 寒武纪 is explicitly classified as `semiconductor`, assigned to the
 `domestic_semiconductor` risk group, and routed through the `domestic_design`
@@ -94,7 +99,7 @@ The engine supports two explicit data paths:
 
 ```bash
 python -m pip install -r requirements.txt
-python codex_quant_fusion_v17.py \
+python quant_fusion_v17.py \
   --start 2025-04-01 \
   --end 2026-07-20 \
   --capital 2000000 \
@@ -106,7 +111,7 @@ python codex_quant_fusion_v17.py \
 For online data, omit the local directory option:
 
 ```bash
-python codex_quant_fusion_v17.py \
+python quant_fusion_v17.py \
   --start 2025-04-01 \
   --end 2026-07-20 \
   --indicator-state warm \
@@ -164,8 +169,8 @@ These stress results are an explicit limitation, not an accepted live-risk claim
 Run the standard-library regression suite and the complete cross-universe runner:
 
 ```bash
-python -m py_compile codex_quant_fusion_v17.py
-python -m unittest -v test_codex_quant_fusion_v17.py
+python -m py_compile quant_fusion_v17.py
+python -m unittest -v test_quant_fusion_v17.py
 python backtest_v17_universes.py
 python stress_test_v17_prefixes.py
 python backtest_v17_cambricon_universe.py
@@ -175,10 +180,12 @@ The tests cover standalone isolated startup, absence of versioned imports,
 AKShare provider failover, strict local CSV selection, policy validation,
 concentration scaling, temporary rearming, terminal locks, signal immutability,
 fair same-symbol allocation, cumulative ADV accounting, missing-data guard
-quorum, signal-only basket isolation, the portfolio-wide six-symbol ceiling, all
-five requested universe sizes, sub-20% drawdown for the requested warm universes,
-Cambricon's complete route, the 2026-06-26 regime-gate event, the complete
-one-through-22 prefix artifact, and the mapped nine-symbol Cambricon artifact.
+quorum, strict batch exposure, low-price minimum-fee affordability, detailed
+rejection auditing, data snapshot checksums, signal-only basket isolation, the
+portfolio-wide six-symbol ceiling, all five requested universe sizes, sub-20%
+drawdown for the requested warm universes, Cambricon's complete route, the
+2026-06-26 regime-gate event, the complete one-through-22 prefix artifact, and
+the mapped nine-symbol Cambricon artifact.
 
 ## Important assumptions
 

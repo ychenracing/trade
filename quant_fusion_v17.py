@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Codex Quant Fusion v17: a standalone A-share technology trend system.
+"""Quant Fusion v17: a standalone A-share technology trend system.
 
 This single module contains the complete data, indicator, signal, execution,
 portfolio-allocation, and risk-control implementation. It has no runtime
@@ -1128,7 +1128,7 @@ class RiskManager:
 class _CoreBacktestEngine:
     """Run a shared-cash, multi-symbol, multi-strategy T+1 backtest."""
 
-    ENGINE_LABEL = "Codex Quant v17"
+    ENGINE_LABEL = "Quant Fusion v17"
 
     def _display_run_period(self, start_date: str, end_date: str) -> tuple[str, str]:
         """Return the user-facing trading period shown in the run header."""
@@ -2900,6 +2900,17 @@ class _CoreBacktestEngine:
             )
         strategy.position = symbol_positions[strategy.name]
 
+    def _record_buy_rejection(
+        self,
+        *,
+        date: str,
+        signal: Signal,
+        event: str,
+        **details: Any,
+    ) -> None:
+        """Allow audit-capable engines to explain a rejected buy."""
+        del date, signal, event, details
+
     def _execute_buy(
         self,
         signal: Signal,
@@ -2910,6 +2921,13 @@ class _CoreBacktestEngine:
     ) -> bool:
         """Execute a buy after cash, risk, and exposure checks."""
         if signal.target_shares <= 0 or signal.price <= 0:
+            self._record_buy_rejection(
+                date=date_str,
+                signal=signal,
+                event="rejected_invalid_buy_order",
+                requested_shares=int(signal.target_shares),
+                signal_price=float(signal.price),
+            )
             return False
         global_cfg = self.cfg
         strategy_cfg = strategy.cfg
@@ -2923,6 +2941,14 @@ class _CoreBacktestEngine:
             signal.target_shares, exec_price, commission_rate, min_commission
         )
         if shares <= 0:
+            self._record_buy_rejection(
+                date=date_str,
+                signal=signal,
+                event="rejected_insufficient_cash",
+                requested_shares=int(signal.target_shares),
+                execution_price=exec_price,
+                available_cash=float(self.cash),
+            )
             return False
         if data_map is not None and date is not None:
             current_prices = self._execution_mark_prices(data_map, date)
@@ -2933,6 +2959,13 @@ class _CoreBacktestEngine:
         if signal.symbol not in self.positions and len(self.positions) >= int(
             global_cfg.get("max_positions", 1)
         ):
+            self._record_buy_rejection(
+                date=date_str,
+                signal=signal,
+                event="rejected_max_positions",
+                current_positions=len(self.positions),
+                max_positions=int(global_cfg.get("max_positions", 1)),
+            )
             return False
         if signal.atr > 0:
             # Recompute only the size against execution-day equity. The ATR itself
@@ -2947,11 +2980,25 @@ class _CoreBacktestEngine:
             )
             shares = min(shares, risk_limited_shares)
             if shares <= 0:
+                self._record_buy_rejection(
+                    date=date_str,
+                    signal=signal,
+                    event="rejected_risk_sizing_zero",
+                    current_assets=float(current_assets),
+                    signal_atr=float(signal.atr),
+                )
                 return False
             shares, buy_value, commission, total_cost = self._fit_buy_to_cash(
                 shares, exec_price, commission_rate, min_commission
             )
             if shares <= 0:
+                self._record_buy_rejection(
+                    date=date_str,
+                    signal=signal,
+                    event="rejected_insufficient_cash_after_risk_sizing",
+                    risk_limited_shares=int(risk_limited_shares),
+                    available_cash=float(self.cash),
+                )
                 return False
         if not self.risk.check_position_limits(
             signal.symbol,
@@ -2961,8 +3008,21 @@ class _CoreBacktestEngine:
             current_prices,
             position_cfg=strategy_cfg,
         ):
+            self._record_buy_rejection(
+                date=date_str,
+                signal=signal,
+                event="rejected_position_limit",
+                proposed_buy_value=float(buy_value),
+                current_assets=float(current_assets),
+            )
             return False
         if self.risk.check_daily_loss(current_assets):
+            self._record_buy_rejection(
+                date=date_str,
+                signal=signal,
+                event="rejected_daily_loss_limit",
+                current_assets=float(current_assets),
+            )
             return False
         self.cash -= total_cost
         self._apply_buy_to_position(
@@ -3179,7 +3239,7 @@ class PerformanceReport:
             return
         print(f"\n{'═' * 60}")
         engine_version = str(result.get("engine_version", "17.0")).split(".", 1)[0]
-        print(f"  Codex Quant v{engine_version} performance report")
+        print(f"  Quant Fusion v{engine_version} performance report")
         print(f"{'═' * 60}")
         print(f"  Symbols: {', '.join((f'{v}({k})' for k, v in symbols_dict.items()))}")
         print(f"  Initial capital:   {result['initial_capital']:>15,.0f}")
@@ -3387,7 +3447,7 @@ class PersistentRiskManager(RiskManager):
 class _CausalBacktestEngine(_CoreBacktestEngine):
     """Run core signals with causal allocation, explicit state, and durable defense."""
 
-    ENGINE_LABEL = "Codex Quant v17"
+    ENGINE_LABEL = "Quant Fusion v17"
     ALLOCATION_LOOKBACKS = (5, 10, 20)
 
     def __init__(
@@ -3528,6 +3588,22 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             }
         )
 
+    def _record_buy_rejection(
+        self,
+        *,
+        date: str,
+        signal: Signal,
+        event: str,
+        **details: Any,
+    ) -> None:
+        """Record the concrete execution check that rejected a buy."""
+        self._record_order_event(
+            date=date,
+            signal=signal,
+            event=event,
+            **details,
+        )
+
     def _remaining_buy_capacity(
         self,
         signal: Signal,
@@ -3600,10 +3676,11 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                     requested_shares=int(signal.target_shares),
                     adjusted_shares=int(capacity_shares),
                 )
+        events_before = len(self.order_events)
         executed = super()._execute_buy(
             adjusted_signal, strategy, date_str, data_map, date
         )
-        if not executed:
+        if not executed and len(self.order_events) == events_before:
             self._record_order_event(
                 date=date_str,
                 signal=adjusted_signal,
@@ -3666,7 +3743,16 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         date: pd.Timestamp,
     ) -> int:
         """Return the shared cash, exposure, and liquidity capacity for one symbol."""
-        signal, strategy = items[0]
+        if not items:
+            return 0
+        signal = items[0][0]
+        if any(item[0].symbol != signal.symbol for item in items[1:]):
+            raise ValueError("A buy batch must contain exactly one symbol")
+        if any(
+            not math.isclose(float(item[0].price), float(signal.price))
+            for item in items[1:]
+        ):
+            raise ValueError("A buy batch must use one execution price")
         requested = sum(_floor_to_lot(item[0].target_shares) for item in items)
         execution_price = float(signal.price) * (
             1.0 + float(self.cfg.get("slippage", 0.001))
@@ -3677,8 +3763,12 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             self.cfg.get("max_positions", 1)
         ):
             return 0
-        _, exposure_value = self._remaining_buy_capacity(
-            signal, strategy, data_map, date
+        # All production strategies for one symbol currently share a validated
+        # config. Taking the minimum still preserves safety if a future caller
+        # supplies heterogeneous strategy-level exposure limits.
+        exposure_value = min(
+            self._remaining_buy_capacity(item_signal, strategy, data_map, date)[1]
+            for item_signal, strategy in items
         )
         exposure_shares = _floor_to_lot(exposure_value / execution_price)
         cash_shares = self._cash_affordable_batch_capacity(
@@ -3701,19 +3791,34 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         """Find the largest proportional batch whose separate fees fit cash."""
         commission_rate = float(self.cfg.get("commission_rate", 0.00025))
         min_commission = float(self.cfg.get("min_commission", 0.0))
-        low = 0
-        high = requested // A_SHARE_LOT_SIZE
-        while low < high:
-            midpoint = (low + high + 1) // 2
-            capacity = midpoint * A_SHARE_LOT_SIZE
+
+        def total_cost(capacity: int) -> float:
             allocations = self._allocate_lots_pro_rata(items, capacity)
-            total_cost = sum(
+            return sum(
                 shares * execution_price
                 + max(shares * execution_price * commission_rate, min_commission)
                 for shares in allocations
                 if shares > 0
             )
-            if total_cost <= self.cash:
+
+        # Largest-remainder allocation can exhibit the Alabama paradox: adding
+        # one lot may remove a small strategy's allocation and one minimum fee.
+        # Binary search is safe for normal A-share prices, where one extra lot
+        # costs more than every possible fee-floor drop. Use an exact descending
+        # scan only for pathological low adjusted prices where that proof fails.
+        lot_cost = A_SHARE_LOT_SIZE * execution_price * (1.0 + commission_rate)
+        if lot_cost < len(items) * min_commission:
+            for capacity in range(_floor_to_lot(requested), -1, -A_SHARE_LOT_SIZE):
+                if total_cost(capacity) <= self.cash:
+                    return capacity
+            return 0
+
+        low = 0
+        high = requested // A_SHARE_LOT_SIZE
+        while low < high:
+            midpoint = (low + high + 1) // 2
+            capacity = midpoint * A_SHARE_LOT_SIZE
+            if total_cost(capacity) <= self.cash:
                 low = midpoint
             else:
                 high = midpoint - 1
@@ -4212,7 +4317,7 @@ class _ConfirmedDrawdownRiskManager(PersistentRiskManager):
 class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
     """Run one independently funded horizon sleeve."""
 
-    ENGINE_LABEL = "Codex Quant v17"
+    ENGINE_LABEL = "Quant Fusion v17"
 
     def __init__(
         self,
@@ -5201,13 +5306,13 @@ class SleeveBacktestEngine(
 ):
     """Run one v17 sleeve with adaptive breadth and recoverable drawdown defense."""
 
-    ENGINE_LABEL = "Codex Quant v17"
+    ENGINE_LABEL = "Quant Fusion v17"
 
 
 class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
     """Coordinate equal-capital v17 sleeves under one universe-invariant policy."""
 
-    ENGINE_LABEL = "Codex Quant v17"
+    ENGINE_LABEL = "Quant Fusion v17"
 
     _SINGLE_ASSET_TREND_OVERRIDES: ClassVar[dict[str, Any]] = {
         "entry_period": 30,
@@ -5492,7 +5597,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
     def _authorize_portfolio_buys(
         self, states: list[_PreparedSleeveRun], date: pd.Timestamp
     ) -> None:
-        """Admit new symbols by cross-sleeve score before any sleeve can buy."""
+        """Admit symbols by the mean of comparable percentile ranks (Borda score)."""
         held = self._held_portfolio_symbols(states)
         maximum = int(self.cfg["max_positions"])
         if len(held) > maximum:
@@ -5566,9 +5671,26 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         """Cancel buys and queue T+1 liquidations in every funded sleeve."""
         date_str = date.strftime("%Y-%m-%d")
         for state in states:
+            pending_sells = {
+                state.sleeve._signal_key(signal): signal
+                for signal, _ in state.pending
+                if signal.direction == "sell"
+            }
             liquidations = state.sleeve._generate_liquidation_signals(
                 date_str, reason="portfolio-level drawdown liquidation"
             )
+            for signal, _ in liquidations:
+                previous = pending_sells.get(state.sleeve._signal_key(signal))
+                if previous is None:
+                    continue
+                state.sleeve._record_order_event(
+                    date=date_str,
+                    signal=signal,
+                    event="pending_sell_superseded_by_portfolio_liquidation",
+                    previous_reason=previous.reason,
+                    previous_target_shares=int(previous.target_shares),
+                    liquidation_target_shares=int(signal.target_shares),
+                )
             state.pending = state.sleeve._dedupe_pending_signals(
                 [item for item in state.pending if item[0].direction == "sell"]
                 + liquidations
@@ -5593,7 +5715,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
 def build_argument_parser() -> argparse.ArgumentParser:
     """Build the standalone command-line interface."""
     parser = argparse.ArgumentParser(
-        description="Codex Quant Fusion v17 standalone backtester"
+        description="Quant Fusion v17 standalone backtester"
     )
     parser.add_argument(
         "--symbol",

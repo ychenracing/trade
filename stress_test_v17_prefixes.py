@@ -10,7 +10,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
-import codex_quant_fusion_v17 as v17
+import quant_fusion_v17 as v17
 from backtest_v17_universes import NAMES
 
 
@@ -63,7 +63,7 @@ def main() -> int:
     ]
     worst_transition = min(adjacent_drops, key=lambda item: item["wealth_change"])
     artifact = {
-        "engine": "Codex Quant Fusion v17",
+        "engine": "Quant Fusion v17",
         "v17_policy": v17.V17Policy().as_dict(),
         "data_directory": DATA_DIR.name,
         "start_date": START_DATE,

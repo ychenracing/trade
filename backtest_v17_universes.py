@@ -10,7 +10,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
-import codex_quant_fusion_v17 as v17
+import quant_fusion_v17 as v17
 
 
 ROOT = Path(__file__).resolve().parent
@@ -129,7 +129,7 @@ def main() -> int:
         )
     )
     artifact = {
-        "engine": "Codex Quant Fusion v17",
+        "engine": "Quant Fusion v17",
         "data_directory": DATA_DIR.name,
         "data_adjustment": "qfq",
         "data_provider": "Eastmoney push2his",
