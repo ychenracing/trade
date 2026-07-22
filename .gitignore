@@ -7,4 +7,4 @@ htmlcov/
 *.log
 equity_curve_*.png
 backtest_output/
-
+candidate_cache/
