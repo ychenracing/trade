@@ -235,6 +235,8 @@ class DataFetcher:
         "vol": "volume",
     }
 
+    _cache_dir: str | None = None
+
     @staticmethod
     def _exchange_symbol(symbol: str) -> str:
         """Add the exchange prefix required by Sina and Tencent endpoints."""
@@ -359,7 +361,58 @@ class DataFetcher:
             if not path.is_file():
                 raise FileNotFoundError(f"Missing local market-data file: {path}")
             return DataFetcher._normalize_columns(pd.read_csv(path))
+        if DataFetcher._cache_dir:
+            return DataFetcher._load_with_cache(symbol, start_date, end_date)
         return DataFetcher.fetch_stock_data(symbol, start_date, end_date)
+
+    @staticmethod
+    def _load_with_cache(
+        symbol: str, start_date: str, end_date: str
+    ) -> pd.DataFrame:
+        """Hybrid mode: load local cache, fetch only incremental data from network."""
+        import sys
+
+        def _log(msg: str) -> None:
+            print(msg, file=sys.stderr, flush=True)
+
+        cache_path = Path(DataFetcher._cache_dir).expanduser() / f"{symbol}.csv"  # type: ignore[arg-type]
+        start_ts = pd.Timestamp(start_date)
+        end_ts = pd.Timestamp(end_date)
+        if cache_path.is_file():
+            cached = DataFetcher._normalize_columns(pd.read_csv(cache_path))
+            last_cached = cached.index[-1]
+            fetch_start = (last_cached + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+            if fetch_start > end_date:
+                _log(
+                    f"  [Cache] {symbol}: cache up to date "
+                    f"({last_cached.strftime('%Y-%m-%d')}), no fetch needed"
+                )
+                combined = cached
+            else:
+                _log(
+                    f"  [Cache] {symbol}: cache to {last_cached.strftime('%Y-%m-%d')}, "
+                    f"fetching {fetch_start} ~ {end_date}"
+                )
+                try:
+                    new_data = DataFetcher.fetch_stock_data(
+                        symbol, fetch_start, end_date
+                    )
+                    combined = pd.concat([cached, new_data])
+                    combined = combined[~combined.index.duplicated(keep="last")].sort_index()
+                except RuntimeError as exc:
+                    _log(
+                        f"  [Cache] {symbol}: incremental fetch failed ({exc}); "
+                        f"using cached data only (latest day may be missing)"
+                    )
+                    combined = cached
+            combined.to_csv(cache_path)
+            return combined[(combined.index >= start_ts) & (combined.index <= end_ts)].copy()
+        # No cache file: full fetch + save
+        _log(f"  [Cache] {symbol}: no cache file, full fetch {start_date} ~ {end_date}")
+        df = DataFetcher.fetch_stock_data(symbol, start_date, end_date)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(cache_path)
+        return df
 
     @staticmethod
     def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -5766,6 +5819,17 @@ def build_argument_parser() -> argparse.ArgumentParser:
             "forward-adjusted data through AKShare provider failover."
         ),
     )
+    parser.add_argument(
+        "--cache-dir",
+        default="",
+        help=(
+            "Local cache directory for incremental data fetching. On first run, "
+            "fetches full history from AKShare and saves to cache. On subsequent "
+            "runs, loads cached history and only fetches the latest days from "
+            "AKShare, then merges and updates the cache. Combines the speed of "
+            "local data with the freshness of online data."
+        ),
+    )
     parser.add_argument("--indicator-state", choices=["cold", "warm"], default="warm")
     parser.add_argument("--warmup-calendar-days", type=int, default=365)
     parser.add_argument("--save-dir", default="")
@@ -5777,6 +5841,7 @@ def main() -> dict | None:
     """Run a standalone v17 backtest from local CSV or online providers."""
     args = build_argument_parser().parse_args()
     symbols = parse_symbols(args.symbol)
+    DataFetcher._cache_dir = args.cache_dir or None
     engine = BacktestEngine(args.capital)
     result = engine.run(
         symbols,
