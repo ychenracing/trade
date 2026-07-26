@@ -95,21 +95,21 @@ def _require_finite(
     """Validate and normalize one bounded finite value."""
     if not _is_finite_number(value):
         raise ValueError(
-            f"Configuration  {name} must be finite; current value is {value!r}"
+            f"Configuration {name} must be finite; current value is {value!r}"
         )
     value = float(value)
     if min_value is not None and value < min_value:
         raise ValueError(
-            f"Configuration  {name} must be >= {min_value}; current value is {value}"
+            f"Configuration {name} must be >= {min_value}; current value is {value}"
         )
     if max_value is not None:
         if inclusive_max and value > max_value:
             raise ValueError(
-                f"Configuration  {name} must be <= {max_value}; current value is {value}"
+                f"Configuration {name} must be <= {max_value}; current value is {value}"
             )
         if not inclusive_max and value >= max_value:
             raise ValueError(
-                f"Configuration  {name} must be < {max_value}; current value is {value}"
+                f"Configuration {name} must be < {max_value}; current value is {value}"
             )
     return value
 
@@ -122,7 +122,7 @@ def _require_positive(
         name, value, max_value=max_value, inclusive_max=inclusive_max
     )
     if value <= 0:
-        raise ValueError(f"Configuration  {name} must be > 0; current value is {value}")
+        raise ValueError(f"Configuration {name} must be > 0; current value is {value}")
     return value
 
 
@@ -130,7 +130,7 @@ def _require_bool(name: str, value: Any) -> bool:
     """Reject truthy substitutes and return an actual Boolean."""
     if not isinstance(value, bool):
         raise ValueError(
-            f"Configuration  {name} must be bool; current value is {value!r}"
+            f"Configuration {name} must be bool; current value is {value!r}"
         )
     return value
 
@@ -139,12 +139,12 @@ def _require_int(name: str, value: Any, *, min_value: int = 0) -> int:
     """Validate an integer without accepting booleans or fractions."""
     if isinstance(value, bool) or not isinstance(value, (int, np.integer)):
         raise ValueError(
-            f"Configuration  {name} must be an integer; current value is {value!r}"
+            f"Configuration {name} must be an integer; current value is {value!r}"
         )
     value = int(value)
     if value < min_value:
         raise ValueError(
-            f"Configuration  {name} must be >= {min_value}; current value is {value}"
+            f"Configuration {name} must be >= {min_value}; current value is {value}"
         )
     return value
 
@@ -273,11 +273,9 @@ class DataFetcher:
         import urllib.request
 
         exchange_symbol = DataFetcher._exchange_symbol(symbol)
-        compact_start = start_date.replace("-", "")
-        compact_end = end_date.replace("-", "")
         url = (
             "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?"
-            f"param={exchange_symbol},day,{compact_start},{compact_end},1000,qfq"
+            f"param={exchange_symbol},day,{start_date},{end_date},1000,qfq"
         )
         request = urllib.request.Request(
             url,
@@ -606,6 +604,67 @@ class Indicators:
         return series.rolling(period).mean()
 
     @staticmethod
+    def hurst_rs(series: pd.Series, window: int = 100) -> float:
+        """Estimate the Hurst exponent via rescaled-range (R/S) analysis.
+
+        The function is a pure transformation: it consumes the most recent
+        ``window`` observations of the supplied series (callers should pass a
+        stationary transformation such as log returns for price data) and
+        regresses ``log(R/S)`` on ``log(n)`` across several sub-period sizes.
+        Values near 0.5 indicate a random walk, above 0.5 persistence
+        (trending), and below 0.5 anti-persistence (mean-reversion). A finite
+        result requires at least ``window`` non-missing observations.
+        """
+        period = _require_int("window", window, min_value=10)
+        values = (
+            pd.Series(pd.to_numeric(series, errors="coerce"))
+            .dropna()
+            .to_numpy(dtype=float)
+        )
+        if values.size < period:
+            return float("nan")
+        segment = values[-period:]
+        n = segment.size
+        # Build a stable set of sub-period sizes that divide the window so the
+        # log-log regression has at least two support points.
+        sizes: list[int] = []
+        size = 4
+        while size <= n // 2:
+            sizes.append(size)
+            size *= 2
+        for divisor in (2, 3, 5):
+            candidate = n // divisor
+            if candidate >= 4 and candidate not in sizes:
+                sizes.append(candidate)
+        sizes = sorted(set(sizes))
+        if len(sizes) < 2:
+            return float("nan")
+        log_sizes: list[float] = []
+        log_rs: list[float] = []
+        for size in sizes:
+            blocks = n // size
+            if blocks < 1:
+                continue
+            rs_values: list[float] = []
+            for block in range(blocks):
+                sub = segment[block * size : (block + 1) * size]
+                mean = float(np.mean(sub))
+                deviation = np.cumsum(sub - mean)
+                r = float(np.max(deviation) - np.min(deviation))
+                std = float(np.std(sub, ddof=0))
+                if std > 0.0 and r > 0.0:
+                    rs_values.append(r / std)
+            if rs_values:
+                log_sizes.append(math.log(size))
+                log_rs.append(math.log(float(np.mean(rs_values))))
+        if len(log_sizes) < 2:
+            return float("nan")
+        slope = float(np.polyfit(np.array(log_sizes), np.array(log_rs), 1)[0])
+        if not math.isfinite(slope):
+            return float("nan")
+        return max(0.0, min(1.0, slope))
+
+    @staticmethod
     def compute_all(df: pd.DataFrame, cfg: dict) -> dict[str, pd.Series]:
         """Precompute every indicator consumed by the strategies."""
         atr_period = cfg.get("atr_period", 20)
@@ -720,6 +779,26 @@ class SectorObservation:
     shock_breadth: float
     recovery_breadth: float
     normalized_series: tuple[pd.Series, ...]
+
+
+@dataclass(frozen=True)
+class MarketRegimeObservation:
+    """Snapshot the five basket-level regime indicators at one close.
+
+    Each field is computed from the fixed ``regime_symbols`` basket using only
+    data on or before the scored date. ``raw_score`` sums the per-indicator
+    votes (+1 trend / -1 choppy / 0 neutral) and ``candidate_state`` is the
+    unconfirmed regime implied by that score before the state machine applies
+    its confirmation and minimum-hold gates.
+    """
+
+    ewi_slope: float
+    breadth_above_ma: float
+    adx_median: float
+    hurst: float
+    volatility_percentile: float
+    raw_score: int
+    candidate_state: str
 
 
 class BaseStrategy:
@@ -1288,6 +1367,35 @@ class _CoreBacktestEngine:
             "per_symbol_limit_pct": {},
             "st_symbols": set(),
             "risk_free_rate": 0.0,
+            # Market regime recognition: a fixed-basket state machine that gates
+            # new entries (CHOPPY) and scales sizes (TRANSITION) before signals.
+            # Enabled by default with conservative parameters: the state machine
+            # only intervenes after multi-day confirmation of a genuine regime
+            # shift, so TREND periods are fully open (zero-cost).  The volatility
+            # fast-path was removed because vol_pct=1.0 during V-shaped corrections
+            # blocked trend entries and reduced returns.
+            "market_regime_enabled": True,
+            "regime_ewi_lookback": 20,
+            "regime_breadth_ma_long": 20,
+            "regime_adx_trend": 25,
+            "regime_adx_choppy": 20,
+            "regime_hurst_window": 100,
+            "regime_hurst_trend": 0.55,
+            "regime_hurst_choppy": 0.45,
+            "regime_vol_lookback": 60,
+            "regime_vol_extreme_pct": 0.9,
+            "regime_ewi_slope_trend": 0.02,
+            "regime_ewi_slope_choppy": -0.02,
+            "regime_score_trend": 2,
+            "regime_score_choppy": -3,
+            "regime_choppy_confirmations": 2,
+            "regime_trend_confirmations": 3,
+            "regime_recovery_confirmations": 3,
+            "regime_min_state_hold": 3,
+            "regime_transition_scale": 1.0,
+            "regime_trend_to_transition_confirmations": 3,
+            "regime_choppy_exit_ratio": 0.3,
+            "regime_transition_exit_ratio": 0.0,
         }
 
     _PER_SYMBOL_OVERRIDE_KEYS: ClassVar[set[str]] = {
@@ -1703,6 +1811,16 @@ class _CoreBacktestEngine:
             "sector_recovery_ma": 2,
             "sector_recovery_confirmations": 1,
             "sector_guard_min_symbols": 1,
+            "regime_ewi_lookback": 2,
+            "regime_breadth_ma_long": 1,
+            "regime_hurst_window": 10,
+            "regime_vol_lookback": 2,
+            "regime_score_trend": -10,
+            "regime_score_choppy": -10,
+            "regime_choppy_confirmations": 1,
+            "regime_trend_confirmations": 1,
+            "regime_recovery_confirmations": 1,
+            "regime_min_state_hold": 1,
         }
         for key, minimum in minimums.items():
             out[key] = _require_int(key, out.get(key), min_value=minimum)
@@ -1799,6 +1917,60 @@ class _CoreBacktestEngine:
             out[key] = _require_positive(
                 key, out.get(key), max_value=2.0, inclusive_max=True
             )
+        # Market regime numeric thresholds: trend thresholds must sit above
+        # their choppy counterparts so the scoring votes are well ordered.
+        out["regime_adx_trend"] = _require_finite(
+            "regime_adx_trend", out.get("regime_adx_trend"), min_value=0.0
+        )
+        out["regime_adx_choppy"] = _require_finite(
+            "regime_adx_choppy", out.get("regime_adx_choppy"), min_value=0.0
+        )
+        out["regime_hurst_trend"] = _require_finite(
+            "regime_hurst_trend",
+            out.get("regime_hurst_trend"),
+            min_value=0.0,
+            max_value=1.0,
+        )
+        out["regime_hurst_choppy"] = _require_finite(
+            "regime_hurst_choppy",
+            out.get("regime_hurst_choppy"),
+            min_value=0.0,
+            max_value=1.0,
+        )
+        out["regime_vol_extreme_pct"] = _require_positive(
+            "regime_vol_extreme_pct",
+            out.get("regime_vol_extreme_pct"),
+            max_value=1.0,
+            inclusive_max=True,
+        )
+        out["regime_ewi_slope_trend"] = _require_finite(
+            "regime_ewi_slope_trend",
+            out.get("regime_ewi_slope_trend"),
+            min_value=-1.0,
+            max_value=1.0,
+        )
+        out["regime_ewi_slope_choppy"] = _require_finite(
+            "regime_ewi_slope_choppy",
+            out.get("regime_ewi_slope_choppy"),
+            min_value=-1.0,
+            max_value=1.0,
+        )
+        out["regime_transition_scale"] = _require_finite(
+            "regime_transition_scale",
+            out.get("regime_transition_scale"),
+            min_value=0.0,
+            max_value=1.0,
+        )
+        if out["regime_adx_trend"] <= out["regime_adx_choppy"]:
+            raise ValueError("regime_adx_trend must be greater than regime_adx_choppy")
+        if out["regime_hurst_trend"] <= out["regime_hurst_choppy"]:
+            raise ValueError(
+                "regime_hurst_trend must be greater than regime_hurst_choppy"
+            )
+        if out["regime_ewi_slope_trend"] <= out["regime_ewi_slope_choppy"]:
+            raise ValueError(
+                "regime_ewi_slope_trend must be greater than regime_ewi_slope_choppy"
+            )
 
     @staticmethod
     def _validate_boolean_config(out: dict) -> None:
@@ -1810,6 +1982,7 @@ class _CoreBacktestEngine:
             "reversal_turtle_enabled",
             "reversal_dual_ma_enabled",
             "reversal_atr_channel_enabled",
+            "market_regime_enabled",
         )
         for key in boolean_keys:
             out[key] = _require_bool(key, out.get(key))
@@ -3198,6 +3371,36 @@ class _CoreBacktestEngine:
                     target_shares=pos.shares,
                     price=pos.entry_price,
                     reason=reason,
+                    signal_date=date_str,
+                )
+                signals.append((sig, strategy))
+        return signals
+
+    def _generate_regime_reduction_signals(
+        self, date_str: str, exit_ratio: float
+    ) -> list[tuple[Signal, BaseStrategy]]:
+        """Queue partial-position sells when the regime enters CHOPPY.
+
+        Unlike full liquidation, only *exit_ratio* of each position is sold,
+        reducing exposure without abandoning all trend-following entries.
+        """
+        signals = []
+        for code, positions in self.positions.items():
+            strategies = {s.name: s for s in self.strategy_instances.get(code, [])}
+            for strat_name, pos in positions.items():
+                strategy = strategies.get(strat_name)
+                if strategy is None:
+                    continue
+                sell_shares = max(0, int(pos.shares * exit_ratio))
+                if sell_shares <= 0:
+                    continue
+                sig = Signal(
+                    symbol=code,
+                    strategy_name=strat_name,
+                    direction="sell",
+                    target_shares=sell_shares,
+                    price=pos.entry_price,
+                    reason="regime choppy reduction",
                     signal_date=date_str,
                 )
                 signals.append((sig, strategy))
@@ -4944,6 +5147,31 @@ class V17Policy(_PortfolioPolicyBase):
         "688008",
         "603986",
     )
+    # Market regime recognition controls (propagated to cfg at runtime so the
+    # mixin reads them via self.cfg.get(...); the policy snapshot stays auditable).
+    # Enabled by default — see _default_config() for rationale.
+    market_regime_enabled: bool = True
+    regime_ewi_lookback: int = 20
+    regime_breadth_ma_long: int = 20
+    regime_adx_trend: float = 25
+    regime_adx_choppy: float = 20
+    regime_hurst_window: int = 100
+    regime_hurst_trend: float = 0.55
+    regime_hurst_choppy: float = 0.45
+    regime_vol_lookback: int = 60
+    regime_vol_extreme_pct: float = 0.9
+    regime_ewi_slope_trend: float = 0.02
+    regime_ewi_slope_choppy: float = -0.02
+    regime_score_trend: int = 2
+    regime_score_choppy: int = -3
+    regime_choppy_confirmations: int = 2
+    regime_trend_confirmations: int = 3
+    regime_recovery_confirmations: int = 3
+    regime_min_state_hold: int = 3
+    regime_transition_scale: float = 1.0
+    regime_trend_to_transition_confirmations: int = 3
+    regime_choppy_exit_ratio: float = 0.3
+    regime_transition_exit_ratio: float = 0.0
 
     def __post_init__(self) -> None:
         """Validate inherited controls and the v17 recovery constraints."""
@@ -5001,6 +5229,144 @@ class V17Policy(_PortfolioPolicyBase):
         )
         object.__setattr__(self, "candidate_reference_percentile", reference_percentile)
         object.__setattr__(self, "regime_symbols", regime_symbols)
+        self._validate_market_regime_fields()
+
+    def _validate_market_regime_fields(self) -> None:
+        """Validate the market-regime controls and freeze normalized values."""
+        market_regime_enabled = _require_bool(
+            "market_regime_enabled", self.market_regime_enabled
+        )
+        object.__setattr__(self, "market_regime_enabled", market_regime_enabled)
+        ewi_lookback = _require_int(
+            "regime_ewi_lookback", self.regime_ewi_lookback, min_value=2
+        )
+        breadth_ma_long = _require_int(
+            "regime_breadth_ma_long", self.regime_breadth_ma_long, min_value=1
+        )
+        hurst_window = _require_int(
+            "regime_hurst_window", self.regime_hurst_window, min_value=10
+        )
+        vol_lookback = _require_int(
+            "regime_vol_lookback", self.regime_vol_lookback, min_value=2
+        )
+        score_trend = _require_int(
+            "regime_score_trend", self.regime_score_trend, min_value=-10
+        )
+        score_choppy = _require_int(
+            "regime_score_choppy", self.regime_score_choppy, min_value=-10
+        )
+        choppy_confirmations = _require_int(
+            "regime_choppy_confirmations",
+            self.regime_choppy_confirmations,
+            min_value=1,
+        )
+        trend_confirmations = _require_int(
+            "regime_trend_confirmations",
+            self.regime_trend_confirmations,
+            min_value=1,
+        )
+        recovery_confirmations = _require_int(
+            "regime_recovery_confirmations",
+            self.regime_recovery_confirmations,
+            min_value=1,
+        )
+        min_state_hold = _require_int(
+            "regime_min_state_hold", self.regime_min_state_hold, min_value=1
+        )
+        adx_trend = _require_finite(
+            "regime_adx_trend", self.regime_adx_trend, min_value=0.0
+        )
+        adx_choppy = _require_finite(
+            "regime_adx_choppy", self.regime_adx_choppy, min_value=0.0
+        )
+        hurst_trend = _require_finite(
+            "regime_hurst_trend",
+            self.regime_hurst_trend,
+            min_value=0.0,
+            max_value=1.0,
+        )
+        hurst_choppy = _require_finite(
+            "regime_hurst_choppy",
+            self.regime_hurst_choppy,
+            min_value=0.0,
+            max_value=1.0,
+        )
+        vol_extreme_pct = _require_positive(
+            "regime_vol_extreme_pct",
+            self.regime_vol_extreme_pct,
+            max_value=1.0,
+            inclusive_max=True,
+        )
+        ewi_slope_trend = _require_finite(
+            "regime_ewi_slope_trend",
+            self.regime_ewi_slope_trend,
+            min_value=-1.0,
+            max_value=1.0,
+        )
+        ewi_slope_choppy = _require_finite(
+            "regime_ewi_slope_choppy",
+            self.regime_ewi_slope_choppy,
+            min_value=-1.0,
+            max_value=1.0,
+        )
+        transition_scale = _require_finite(
+            "regime_transition_scale",
+            self.regime_transition_scale,
+            min_value=0.0,
+            max_value=1.0,
+        )
+        trend_to_transition = _require_int(
+            "regime_trend_to_transition_confirmations",
+            self.regime_trend_to_transition_confirmations,
+            min_value=1,
+        )
+        choppy_exit_ratio = _require_finite(
+            "regime_choppy_exit_ratio",
+            self.regime_choppy_exit_ratio,
+            min_value=0.0,
+            max_value=1.0,
+        )
+        transition_exit_ratio = _require_finite(
+            "regime_transition_exit_ratio",
+            self.regime_transition_exit_ratio,
+            min_value=0.0,
+            max_value=1.0,
+        )
+        if adx_trend <= adx_choppy:
+            raise ValueError("regime_adx_trend must be greater than regime_adx_choppy")
+        if hurst_trend <= hurst_choppy:
+            raise ValueError(
+                "regime_hurst_trend must be greater than regime_hurst_choppy"
+            )
+        if ewi_slope_trend <= ewi_slope_choppy:
+            raise ValueError(
+                "regime_ewi_slope_trend must be greater than regime_ewi_slope_choppy"
+            )
+        object.__setattr__(self, "regime_ewi_lookback", ewi_lookback)
+        object.__setattr__(self, "regime_breadth_ma_long", breadth_ma_long)
+        object.__setattr__(self, "regime_hurst_window", hurst_window)
+        object.__setattr__(self, "regime_vol_lookback", vol_lookback)
+        object.__setattr__(self, "regime_score_trend", score_trend)
+        object.__setattr__(self, "regime_score_choppy", score_choppy)
+        object.__setattr__(self, "regime_choppy_confirmations", choppy_confirmations)
+        object.__setattr__(self, "regime_trend_confirmations", trend_confirmations)
+        object.__setattr__(self, "regime_recovery_confirmations", recovery_confirmations)
+        object.__setattr__(self, "regime_min_state_hold", min_state_hold)
+        object.__setattr__(self, "regime_adx_trend", adx_trend)
+        object.__setattr__(self, "regime_adx_choppy", adx_choppy)
+        object.__setattr__(self, "regime_hurst_trend", hurst_trend)
+        object.__setattr__(self, "regime_hurst_choppy", hurst_choppy)
+        object.__setattr__(self, "regime_vol_extreme_pct", vol_extreme_pct)
+        object.__setattr__(self, "regime_ewi_slope_trend", ewi_slope_trend)
+        object.__setattr__(self, "regime_ewi_slope_choppy", ewi_slope_choppy)
+        object.__setattr__(self, "regime_transition_scale", transition_scale)
+        object.__setattr__(
+            self, "regime_trend_to_transition_confirmations", trend_to_transition
+        )
+        object.__setattr__(self, "regime_choppy_exit_ratio", choppy_exit_ratio)
+        object.__setattr__(
+            self, "regime_transition_exit_ratio", transition_exit_ratio
+        )
 
     def as_dict(self) -> dict[str, Any]:
         """Return a complete JSON-friendly v17 policy snapshot."""
@@ -5018,6 +5384,30 @@ class V17Policy(_PortfolioPolicyBase):
                 ),
                 "candidate_reference_percentile": (self.candidate_reference_percentile),
                 "regime_symbols": list(self.regime_symbols),
+                "market_regime_enabled": self.market_regime_enabled,
+                "regime_ewi_lookback": self.regime_ewi_lookback,
+                "regime_breadth_ma_long": self.regime_breadth_ma_long,
+                "regime_adx_trend": self.regime_adx_trend,
+                "regime_adx_choppy": self.regime_adx_choppy,
+                "regime_hurst_window": self.regime_hurst_window,
+                "regime_hurst_trend": self.regime_hurst_trend,
+                "regime_hurst_choppy": self.regime_hurst_choppy,
+                "regime_vol_lookback": self.regime_vol_lookback,
+                "regime_vol_extreme_pct": self.regime_vol_extreme_pct,
+                "regime_ewi_slope_trend": self.regime_ewi_slope_trend,
+                "regime_ewi_slope_choppy": self.regime_ewi_slope_choppy,
+                "regime_score_trend": self.regime_score_trend,
+                "regime_score_choppy": self.regime_score_choppy,
+                "regime_choppy_confirmations": self.regime_choppy_confirmations,
+                "regime_trend_confirmations": self.regime_trend_confirmations,
+                "regime_recovery_confirmations": self.regime_recovery_confirmations,
+                "regime_min_state_hold": self.regime_min_state_hold,
+                "regime_transition_scale": self.regime_transition_scale,
+                "regime_trend_to_transition_confirmations": (
+                    self.regime_trend_to_transition_confirmations
+                ),
+                "regime_choppy_exit_ratio": self.regime_choppy_exit_ratio,
+                "regime_transition_exit_ratio": self.regime_transition_exit_ratio,
             }
         )
         return snapshot
@@ -5192,6 +5582,19 @@ class _UniverseInvariantSleeveMixin:
         )
         self._tradable_symbol_codes: set[str] = set(symbols_dict)
         self._candidate_score_series: dict[str, dict[int, pd.Series]] = {}
+        # Market regime state machine: start in TREND (full trading) and let the
+        # basket indicators demote the state when conditions deteriorate.
+        self._regime_state: str = "TREND"
+        self._regime_state_series: list[dict[str, Any]] = []
+        self._regime_indicator_series: dict[str, pd.Series] = {}
+        self._regime_to_choppy_streak: int = 0
+        self._regime_to_trend_streak: int = 0
+        self._regime_non_choppy_streak: int = 0
+        self._regime_to_transition_streak: int = 0
+        self._regime_state_start_pos: int = 0
+        self._regime_prev_state: str = "TREND"
+        self._regime_latest_observation: MarketRegimeObservation | None = None
+        self._regime_effective_state: str = "TREND"
 
     def _prepare_run(
         self,
@@ -5228,6 +5631,7 @@ class _UniverseInvariantSleeveMixin:
         )
         self._tradable_symbol_codes = set(symbols_dict)
         self._candidate_score_series = self._build_candidate_score_series(prepared[0])
+        self._regime_indicator_series = self._build_regime_indicator_series(prepared[0])
         return prepared
 
     def _build_candidate_score_series(
@@ -5244,6 +5648,487 @@ class _UniverseInvariantSleeveMixin:
                 valid_volatility = volatility.where(volatility > 0)
                 cache[code][window] = close.pct_change(window) / valid_volatility
         return cache
+
+    @staticmethod
+    def _rolling_slope_pct(series: pd.Series, window: int) -> pd.Series:
+        """Return the rolling linear-regression slope as a window percentage.
+
+        The per-bar slope of a least-squares fit over ``window`` observations is
+        scaled by ``window`` and divided by the window mean so the result is
+        comparable to a percentage move over the window (e.g. +0.02 for a 2%
+        uptrend). The output is lag-safe: each bar uses only itself and prior
+        bars.
+        """
+        x = np.arange(window, dtype=float)
+        x_mean = x.mean()
+        denom = float(((x - x_mean) ** 2).sum())
+        if denom <= 0.0:
+            return pd.Series(np.nan, index=series.index, dtype="float64")
+
+        def _slope(y: np.ndarray) -> float:
+            y_arr = np.asarray(y, dtype=float)
+            if y_arr.size != window or np.isnan(y_arr).any():
+                return float("nan")
+            y_mean = float(y_arr.mean())
+            if y_mean <= 0.0:
+                return float("nan")
+            slope = float(((x - x_mean) * (y_arr - y_mean)).sum() / denom)
+            return slope * window / y_mean
+
+        return series.rolling(window, min_periods=window).apply(_slope, raw=True)
+
+    def _build_regime_indicator_series(
+        self, data_map: dict[str, pd.DataFrame]
+    ) -> dict[str, pd.Series]:
+        """Precompute the five causal market-regime indicator series.
+
+        Every returned series is indexed by trading date and uses only data on
+        or before that date (rolling windows end at the current bar), so the
+        regime state machine never looks past the close it is scoring. The
+        equal-weight basket index (EWI) cumulates the cross-sectional mean of
+        daily returns across the fixed ``regime_symbols`` basket.
+        """
+        if not bool(self.cfg.get("market_regime_enabled", True)):
+            return {}
+        regime_codes = [code for code in self.policy.regime_symbols if code in data_map]
+        if not regime_codes:
+            return {}
+
+        ewi_lookback = _require_int(
+            "regime_ewi_lookback",
+            int(self.cfg.get("regime_ewi_lookback", 20)),
+            min_value=2,
+        )
+        breadth_ma = _require_int(
+            "regime_breadth_ma_long",
+            int(self.cfg.get("regime_breadth_ma_long", 20)),
+            min_value=1,
+        )
+        adx_period = _require_int(
+            "adx_period", int(self.cfg.get("adx_period", 14)), min_value=1
+        )
+        hurst_window = _require_int(
+            "regime_hurst_window",
+            int(self.cfg.get("regime_hurst_window", 100)),
+            min_value=10,
+        )
+        vol_lookback = _require_int(
+            "regime_vol_lookback",
+            int(self.cfg.get("regime_vol_lookback", 60)),
+            min_value=2,
+        )
+
+        close_frames: list[pd.Series] = []
+        adx_frames: list[pd.Series] = []
+        breadth_frames: list[pd.Series] = []
+        for code in regime_codes:
+            frame = data_map[code]
+            close = pd.to_numeric(frame["close"], errors="coerce")
+            close_frames.append(close)
+            adx_frames.append(Indicators.adx(frame, adx_period))
+            ma = close.rolling(breadth_ma, min_periods=breadth_ma).mean()
+            breadth_frames.append((close > ma).astype(float))
+
+        aligned_close = pd.concat(close_frames, axis=1, keys=regime_codes).sort_index()
+        basket_return = aligned_close.pct_change().mean(axis=1, skipna=True)
+        # Anchor the index at 1.0 and treat any fully-missing day as flat.
+        basket_return = basket_return.fillna(0.0)
+        ewi = (1.0 + basket_return).cumprod()
+
+        ewi_slope = self._rolling_slope_pct(ewi, ewi_lookback)
+        breadth = pd.concat(breadth_frames, axis=1, keys=regime_codes).mean(
+            axis=1, skipna=True
+        )
+        adx_median = pd.concat(adx_frames, axis=1, keys=regime_codes).median(
+            axis=1, skipna=True
+        )
+
+        ewi_log_returns = np.log(ewi / ewi.shift(1))
+        hurst = ewi_log_returns.rolling(
+            hurst_window, min_periods=hurst_window
+        ).apply(lambda arr: Indicators.hurst_rs(arr, hurst_window), raw=True)
+
+        volatility = ewi_log_returns.rolling(
+            vol_lookback, min_periods=vol_lookback
+        ).std()
+        vol_percentile = volatility.rolling(
+            vol_lookback, min_periods=vol_lookback
+        ).rank(pct=True)
+
+        return {
+            "ewi_slope": ewi_slope,
+            "breadth": breadth,
+            "adx_median": adx_median,
+            "hurst": hurst,
+            "vol_percentile": vol_percentile,
+        }
+
+    def _score_regime_candidate(self, date: pd.Timestamp) -> MarketRegimeObservation:
+        """Vote the five indicators at date into a raw score and candidate state."""
+        series_map = self._regime_indicator_series
+
+        def _value(key: str) -> float:
+            series = series_map.get(key)
+            if series is None or date not in series.index:
+                return float("nan")
+            value = float(series.loc[date])
+            return value if math.isfinite(value) else float("nan")
+
+        ewi_slope = _value("ewi_slope")
+        breadth = _value("breadth")
+        adx_median = _value("adx_median")
+        hurst = _value("hurst")
+        vol_percentile = _value("vol_percentile")
+
+        score = 0
+        if math.isfinite(ewi_slope):
+            if ewi_slope > float(self.cfg.get("regime_ewi_slope_trend", 0.02)):
+                score += 1
+            elif ewi_slope < float(self.cfg.get("regime_ewi_slope_choppy", -0.02)):
+                score -= 1
+        if math.isfinite(breadth):
+            if breadth > 0.6:
+                score += 1
+            elif breadth < 0.4:
+                score -= 1
+        if math.isfinite(adx_median):
+            if adx_median > float(self.cfg.get("regime_adx_trend", 25)):
+                score += 1
+            elif adx_median < float(self.cfg.get("regime_adx_choppy", 20)):
+                score -= 1
+        if math.isfinite(hurst):
+            if hurst > float(self.cfg.get("regime_hurst_trend", 0.55)):
+                score += 1
+            elif hurst < float(self.cfg.get("regime_hurst_choppy", 0.45)):
+                score -= 1
+        if math.isfinite(vol_percentile) and vol_percentile > float(
+            self.cfg.get("regime_vol_extreme_pct", 0.9)
+        ):
+            score -= 1
+
+        trend_threshold = int(self.cfg.get("regime_score_trend", 2))
+        choppy_threshold = int(self.cfg.get("regime_score_choppy", -3))
+        if score >= trend_threshold:
+            candidate = "TREND"
+        elif score <= choppy_threshold:
+            candidate = "CHOPPY"
+        else:
+            candidate = "TRANSITION"
+
+        return MarketRegimeObservation(
+            ewi_slope=ewi_slope,
+            breadth_above_ma=breadth,
+            adx_median=adx_median,
+            hurst=hurst,
+            volatility_percentile=vol_percentile,
+            raw_score=int(score),
+            candidate_state=candidate,
+        )
+
+    def _advance_regime_state(
+        self, candidate: str, pos: int, current: str
+    ) -> str:
+        """Apply confirmation gates and minimum hold to one candidate transition.
+
+        Three-state machine with early-warning TRANSITION:
+        - TREND → TRANSITION: when the composite score softens (candidate
+          becomes TRANSITION) for *trend_to_transition_confirmations* days.
+          This activates position-size scaling before full CHOPPY defense.
+        - TREND/TRANSITION → CHOPPY: when the candidate is CHOPPY for
+          *choppy_confirmations* day(s).  Fast defense — even one day of
+          strong negative score triggers the block.
+        - CHOPPY → TRANSITION/TREND: slow recovery via *recovery_confirmations*.
+        """
+        choppy_confirmations = int(self.cfg.get("regime_choppy_confirmations", 2))
+        trend_confirmations = int(self.cfg.get("regime_trend_confirmations", 3))
+        recovery_confirmations = int(self.cfg.get("regime_recovery_confirmations", 3))
+        min_hold = int(self.cfg.get("regime_min_state_hold", 3))
+        trend_to_transition = int(
+            self.cfg.get("regime_trend_to_transition_confirmations", 3)
+        )
+
+        # Update confirmation streaks from the freshly scored candidate.
+        if candidate == "CHOPPY":
+            self._regime_to_choppy_streak += 1
+        else:
+            self._regime_to_choppy_streak = 0
+        if candidate == "TREND":
+            self._regime_to_trend_streak += 1
+        else:
+            self._regime_to_trend_streak = 0
+        if candidate != "CHOPPY":
+            self._regime_non_choppy_streak += 1
+        else:
+            self._regime_non_choppy_streak = 0
+        if candidate == "TRANSITION":
+            self._regime_to_transition_streak += 1
+        else:
+            self._regime_to_transition_streak = 0
+
+        can_leave = (pos - self._regime_state_start_pos) >= min_hold
+
+        if current == "CHOPPY":
+            # Exit CHOPPY only after sustained non-choppy evidence (slow).
+            if can_leave and self._regime_non_choppy_streak >= recovery_confirmations:
+                new_state = (
+                    "TREND"
+                    if self._regime_to_trend_streak >= trend_confirmations
+                    else "TRANSITION"
+                )
+            else:
+                new_state = "CHOPPY"
+        elif current == "TREND":
+            # Early warning: demote to TRANSITION when momentum softens.
+            if can_leave and self._regime_to_transition_streak >= trend_to_transition:
+                new_state = "TRANSITION"
+            # Fast defense: jump straight to CHOPPY when score confirms.
+            elif can_leave and self._regime_to_choppy_streak >= choppy_confirmations:
+                new_state = "CHOPPY"
+            else:
+                new_state = "TREND"
+        else:  # TRANSITION
+            if can_leave and self._regime_to_choppy_streak >= choppy_confirmations:
+                new_state = "CHOPPY"
+            elif can_leave and self._regime_to_trend_streak >= trend_confirmations:
+                new_state = "TREND"
+            else:
+                new_state = "TRANSITION"
+
+        if new_state != current:
+            self._regime_state_start_pos = pos
+            # Reset streaks after a committed transition so confirmation windows
+            # restart cleanly from the new state.
+            self._regime_to_choppy_streak = 0
+            self._regime_to_trend_streak = 0
+            self._regime_non_choppy_streak = 0
+            self._regime_to_transition_streak = 0
+        return new_state
+
+    def _update_market_regime(
+        self,
+        data_map: dict[str, pd.DataFrame],
+        date: pd.Timestamp,
+        all_dates: list[pd.Timestamp],
+        date_to_pos: dict[pd.Timestamp, int],
+    ) -> None:
+        """Score the regime basket and advance the three-state machine by one day.
+
+        Called after ``_update_sector_guard`` and before any new signal
+        generation so entries respect the current regime. The EWI slope is the
+        primary indicator: when it (or the indicator series) is unavailable the
+        prior state is preserved without advancing confirmation streaks.
+        """
+        del all_dates
+        # Guard: _regime_state is initialised in _reset_run_state; tests that
+        # call _update_sector_guard directly (without a full run) skip it.
+        if not hasattr(self, "_regime_state"):
+            return
+        previous_state = self._regime_state
+        if not bool(self.cfg.get("market_regime_enabled", True)):
+            self._regime_state = "TREND"
+            return
+        if not self._regime_indicator_series:
+            self._regime_state = "TREND"
+            return
+
+        date = pd.Timestamp(date)
+        pos = date_to_pos.get(date)
+        if pos is None:
+            return
+
+        observation = self._score_regime_candidate(date)
+        self._regime_latest_observation = observation
+        # Insufficient causal history: preserve the prior state and record the
+        # gap without advancing the confirmation streaks.
+        if not math.isfinite(observation.ewi_slope):
+            self._regime_state_series.append(
+                {
+                    "date": date.strftime("%Y-%m-%d"),
+                    "state": previous_state,
+                    "previous_state": previous_state,
+                    "candidate": None,
+                    "score": None,
+                    "ewi_slope": None,
+                    "breadth": None,
+                    "adx_median": None,
+                    "hurst": None,
+                    "vol_percentile": None,
+                }
+            )
+            return
+
+        new_state = self._advance_regime_state(
+            observation.candidate_state, pos, previous_state
+        )
+        self._regime_prev_state = previous_state
+        self._regime_state = new_state
+        self._regime_state_series.append(
+            {
+                "date": date.strftime("%Y-%m-%d"),
+                "state": new_state,
+                "previous_state": previous_state,
+                "candidate": observation.candidate_state,
+                "score": observation.raw_score,
+                "ewi_slope": observation.ewi_slope,
+                "breadth": observation.breadth_above_ma,
+                "adx_median": observation.adx_median,
+                "hurst": observation.hurst,
+                "vol_percentile": observation.volatility_percentile,
+            }
+        )
+
+    def _merge_unblocked_daily_signals(
+        self,
+        symbols_dict: dict[str, str],
+        data_map: dict[str, pd.DataFrame],
+        indicator_map: dict[str, dict[str, pd.Series]],
+        date: pd.Timestamp,
+        date_str: str,
+        current_assets: float,
+        pending: list[tuple[Signal, BaseStrategy]],
+    ) -> list[tuple[Signal, BaseStrategy]]:
+        """Rank candidates, fuse new signals, and remove conflicting pending buys.
+
+        The market-regime state machine can veto new entries: when the current
+        regime is CHOPPY, buys are suppressed (exits remain unaffected) by
+        forwarding ``allow_buys=False`` to the strategy signal collector.
+
+        On the *first day* the regime enters CHOPPY, a partial-position
+        reduction is queued via ``_generate_regime_reduction_signals`` to
+        actively cut exposure — not merely block new entries.
+
+        The volatility fast-path was removed: in AI super-cycle markets,
+        ``vol_percentile`` frequently hits 1.0 during V-shaped corrections
+        (every new high sets the rank to 1.0), which blocked entries even in
+        TREND state and reduced returns by ~20%.  The state machine's
+        multi-day confirmation mechanism is sufficient to detect sustained
+        choppy markets without blocking trend entries on temporary vol spikes.
+        """
+        regime_enabled = bool(self.cfg.get("market_regime_enabled", True))
+
+        # --- Buy gate -------------------------------------------------------
+        # Only the state machine gates entries: CHOPPY blocks buys, TRANSITION
+        # scales them (handled in _fuse_daily_signals), TREND is fully open.
+        allow_buys = self._regime_state != "CHOPPY"
+
+        # --- Regime-mandated sells (state machine transitions only) --------
+        # Forced sells fire ONLY on actual state machine transitions.
+        # TRANSITION defaults to 0.0 (no trim) so only CHOPPY actively cuts
+        # exposure.
+        regime_sells: list[tuple[Signal, BaseStrategy]] = []
+        if regime_enabled:
+            if (
+                self._regime_state == "TRANSITION"
+                and self._regime_prev_state == "TREND"
+            ):
+                trim = float(self.cfg.get("regime_transition_exit_ratio", 0.0))
+                if trim > 0:
+                    regime_sells = self._generate_regime_reduction_signals(
+                        date_str, trim
+                    )
+                    if regime_sells:
+                        print(
+                            f"  REGIME [{date_str}] TRANSITION entered — "
+                            f"queue {len(regime_sells)} trim sells "
+                            f"({trim:.0%} ratio)"
+                        )
+            elif (
+                self._regime_state == "CHOPPY"
+                and self._regime_prev_state != "CHOPPY"
+            ):
+                exit_ratio = float(self.cfg.get("regime_choppy_exit_ratio", 0.3))
+                regime_sells = self._generate_regime_reduction_signals(
+                    date_str, exit_ratio
+                )
+                if regime_sells:
+                    print(
+                        f"  REGIME [{date_str}] CHOPPY entered — "
+                        f"queue {len(regime_sells)} partial sells "
+                        f"({exit_ratio:.0%} ratio)"
+                    )
+
+        # Momentum ranks only allocate scarce slots; they do not create a buy
+        # unless an underlying strategy independently emits an entry signal.
+        top_symbols = self._select_momentum_candidates(data_map, symbols_dict, date)
+        daily_signals = self._collect_strategy_signals(
+            symbols_dict,
+            data_map,
+            indicator_map,
+            date,
+            date_str,
+            current_assets,
+            pending,
+            allow_buys=allow_buys,
+            top_symbols=top_symbols,
+        )
+        fused_daily = self._fuse_daily_signals(daily_signals, date_str)
+        # Append regime-mandated partial sells after fusion so they survive
+        # the buy/sell conflict resolution pass.
+        fused_daily.extend(regime_sells)
+        sells = {
+            (signal.symbol, signal.strategy_name)
+            for signal, _ in fused_daily
+            if signal.direction == "sell"
+        }
+        if sells:
+            sell_symbols = {symbol for symbol, _ in sells}
+            symbol_veto = bool(self.cfg["symbol_level_sell_veto"])
+            pending = [
+                item
+                for item in pending
+                if not (
+                    item[0].direction == "buy"
+                    and (
+                        item[0].symbol in sell_symbols
+                        if symbol_veto
+                        else (item[0].symbol, item[0].strategy_name) in sells
+                    )
+                )
+            ]
+        pending.extend(fused_daily)
+        return pending
+
+    def _fuse_daily_signals(
+        self, daily: list[tuple[Signal, BaseStrategy]], date_str: str
+    ) -> list[tuple[Signal, BaseStrategy]]:
+        """Resolve buy/sell conflicts and scale same-symbol strategy confirmations.
+
+        The market-regime state machine can throttle entries: when the current
+        regime is TRANSITION, surviving buy signals have their target shares
+        scaled by ``regime_transition_scale`` (default 1.0) on top of the
+        fusion-vote scaling applied by the base implementation. CHOPPY already
+        blocks buys upstream, so only TRANSITION needs a post-pass here.
+        """
+        fused = super()._fuse_daily_signals(  # pyright: ignore[reportAttributeAccessIssue]
+            daily, date_str
+        )
+        if self._regime_state != "TRANSITION":
+            return fused
+        scale = float(self.cfg.get("regime_transition_scale", 1.0))
+        if scale >= 1.0:
+            return fused
+        adjusted: list[tuple[Signal, BaseStrategy]] = []
+        for signal, strategy in fused:
+            if signal.direction != "buy":
+                adjusted.append((signal, strategy))
+                continue
+            target_shares = _floor_to_lot(signal.target_shares * scale)
+            if target_shares <= 0:
+                # Regime throttle eliminated the entry; drop it but keep exits.
+                continue
+            adjusted.append(
+                (
+                    replace(
+                        signal,
+                        target_shares=target_shares,
+                        reason=(
+                            f"[regime transition x{scale:.2f}] {signal.reason}"
+                        ),
+                    ),
+                    strategy,
+                )
+            )
+        return adjusted
 
     def _resolve_symbol_configs(
         self,
@@ -5326,18 +6211,25 @@ class _UniverseInvariantSleeveMixin:
         all_dates: list[pd.Timestamp],
         date_to_pos: dict[pd.Timestamp, int],
     ) -> str | None:
-        """Update breadth risk from the fixed signal-only basket."""
+        """Update breadth risk, then advance the market-regime state machine.
+
+        The regime update runs after the sector guard so entries respect the
+        freshly scored regime, and before signal generation because
+        ``_evaluate_trading_day`` continues only after this method returns.
+        """
         scoped_data = {
             code: data_map[code]
             for code in self.policy.regime_symbols
             if code in data_map
         }
-        return super()._update_sector_guard(  # pyright: ignore[reportAttributeAccessIssue]
+        guard_state = super()._update_sector_guard(  # pyright: ignore[reportAttributeAccessIssue]
             scoped_data,
             date,
             all_dates,
             date_to_pos,
         )
+        self._update_market_regime(data_map, date, all_dates, date_to_pos)
+        return guard_state
 
     def _apply_portfolio_risk(
         self,
@@ -5360,7 +6252,7 @@ class _UniverseInvariantSleeveMixin:
         return outcome
 
     def _build_result(self, final_assets: float, all_dates: list[pd.Timestamp]) -> dict:
-        """Expose temporary and terminal lock state in the standard result."""
+        """Expose temporary and terminal lock state plus regime history."""
         result = super()._build_result(  # pyright: ignore[reportAttributeAccessIssue]
             final_assets,
             all_dates,
@@ -5381,6 +6273,8 @@ class _UniverseInvariantSleeveMixin:
                 ),
                 "guard_scope_mode": "fixed_signal_only_regime_basket",
                 "tradable_symbols": sorted(self._tradable_symbol_codes),
+                "regime_state_series": list(self._regime_state_series),
+                "regime_final_state": self._regime_state,
             }
         )
         return result
@@ -5409,6 +6303,33 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         "hard_stop": 0.25,
     }
 
+    # Policy field names that are mirrored into cfg so a custom V17Policy can
+    # drive the regime state machine read by the mixin (self.cfg.get(...)).
+    _REGIME_CFG_KEYS: ClassVar[tuple[str, ...]] = (
+        "market_regime_enabled",
+        "regime_ewi_lookback",
+        "regime_breadth_ma_long",
+        "regime_adx_trend",
+        "regime_adx_choppy",
+        "regime_hurst_window",
+        "regime_hurst_trend",
+        "regime_hurst_choppy",
+        "regime_vol_lookback",
+        "regime_vol_extreme_pct",
+        "regime_ewi_slope_trend",
+        "regime_ewi_slope_choppy",
+        "regime_score_trend",
+        "regime_score_choppy",
+        "regime_choppy_confirmations",
+        "regime_trend_confirmations",
+        "regime_recovery_confirmations",
+        "regime_min_state_hold",
+        "regime_transition_scale",
+        "regime_trend_to_transition_confirmations",
+        "regime_choppy_exit_ratio",
+        "regime_transition_exit_ratio",
+    )
+
     def __init__(
         self,
         initial_capital: float = 2_000_000,
@@ -5416,11 +6337,17 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         policy: V17Policy | None = None,
     ) -> None:
         resolved_policy = policy or V17Policy()
+        regime_cfg = {
+            key: getattr(resolved_policy, key) for key in self._REGIME_CFG_KEYS
+        }
         normalized_cfg = {
             "sector_guard_min_symbols": max(
                 1, math.ceil(len(resolved_policy.regime_symbols) * 0.8)
             ),
             "group_min_slots": 0,
+            # Policy regime values override _default_config defaults; explicit
+            # user cfg still wins because it is spread last.
+            **regime_cfg,
             **dict(cfg or {}),
         }
         super().__init__(
@@ -5440,10 +6367,20 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         )
 
     def _runtime_sleeve_cfg(self, tradable_count: int) -> dict[str, Any]:
-        """Return shared overrides, with a time-series fallback for one asset."""
+        """Return shared overrides with one fixed parameter set for all sizes.
+
+        A single ``max_positions`` ceiling (10) is used regardless of universe
+        size. Small universes are naturally bounded by their own symbol count,
+        so the wider ceiling only benefits larger AI-tech baskets without
+        changing behavior for concentrated portfolios. Very small universes
+        (<=2) still use the slower time-series trend contract, which is a
+        strategy-logic switch (no cross-sectional information) rather than a
+        parameter change.
+        """
         sleeve_cfg = dict(self._ensemble_user_cfg)
         if tradable_count <= 2:
             sleeve_cfg.update(self._SINGLE_ASSET_TREND_OVERRIDES)
+        sleeve_cfg["max_positions"] = 10
         return sleeve_cfg
 
     def run(  # noqa: PLR0913 - Preserve the inherited public API.
@@ -5588,6 +6525,16 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 ),
                 "portfolio_symbol_count_curve": symbol_count_curve,
                 "risk_events": self._sort_events(combined_risk_events),
+                "regime_state_series": (
+                    list(results[0].get("regime_state_series", []))
+                    if results
+                    else []
+                ),
+                "regime_final_state": (
+                    results[0].get("regime_final_state", "TREND")
+                    if results
+                    else "TREND"
+                ),
             }
         )
         self.last_result = combined

@@ -15,15 +15,15 @@ require another strategy module at runtime.
 - The same fixed basket is the reference distribution for 10-, 20-, 40-, and
   80-day risk-adjusted momentum. Existing scores therefore do not change merely
   because a tradable symbol is added or removed.
-- When the universe has no more than six symbols, all symbols remain eligible and
-  their independent entry signals decide whether to trade. Above six, a symbol
-  must reach the 50th reference percentile before it can consume one of the six
-  candidate slots.
+- When the universe has no more than ten symbols, all symbols remain eligible
+  and their independent entry signals decide whether to trade. Above ten, a
+  symbol must reach the 50th reference percentile before it can consume one of
+  the ten candidate slots.
 - One- and two-symbol universes have little useful cross-sectional information.
   V17 therefore switches every sleeve to a slower time-series trend contract
   without changing the 60% symbol exposure ceiling.
 - Forced industry-group slots are disabled. The synchronized portfolio
-  coordinator admits at most six distinct symbols across all sleeves, not six
+  coordinator admits at most ten distinct symbols across all sleeves, not ten
   per sleeve, and can ignore weaker additions to a large universe.
 - Allocation horizons are `(3, 5, 10)`, `(5, 10, 20)`, and `(5, 20, 60)` days.
   Candidate horizons are `(10, 20, 40)`, `(10, 20, 40)`, and `(10, 40, 80)`;
@@ -269,7 +269,7 @@ concentration scaling, temporary rearming, terminal locks, signal immutability,
 fair same-symbol allocation, cumulative ADV accounting, missing-data guard
 quorum, strict batch exposure, low-price minimum-fee affordability, detailed
 rejection auditing, data snapshot checksums, signal-only basket isolation, the
-portfolio-wide six-symbol ceiling, all five requested universe sizes, sub-20%
+portfolio-wide ten-symbol ceiling, all five requested universe sizes, sub-20%
 drawdown for the requested warm universes, Cambricon's complete route, the
 2026-06-26 regime-gate event, the complete one-through-22 prefix artifact, and
 the mapped nine-symbol Cambricon artifact. It also checks deterministic detection
