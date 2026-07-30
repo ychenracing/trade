@@ -162,7 +162,7 @@ class Candidate:
 
     @classmethod
     def baseline(cls) -> Candidate:
-        """Return the untouched qf.1 production defaults."""
+        """Return the untouched production defaults."""
         return cls()
 
     def _validate_boundaries(self) -> None:
@@ -679,7 +679,7 @@ class WindowMetrics:
         )
 
 
-class CandidateRunner(Protocol):
+class CandidateRunnerProtocol(Protocol):
     """Minimal runner contract used to unit-test selection without market data."""
 
     def run(
@@ -688,7 +688,7 @@ class CandidateRunner(Protocol):
 
 
 class CandidateRunner:
-    """Execute candidates through the unmodified qf.1 engine."""
+    """Execute candidates through the unmodified Quant Fusion engine."""
 
     def __init__(
         self,
@@ -980,7 +980,7 @@ class WalkForwardOptimizer:
 
     def __init__(
         self,
-        runner: CandidateRunner,
+        runner: CandidateRunnerProtocol,
         folds: list[WalkForwardFold],
         test_window: DateWindow,
         *,
@@ -1173,7 +1173,7 @@ class WalkForwardOptimizer:
                     "checks": promotion_checks,
                     "rule": (
                         "holdout and stressed-holdout drawdown must stay within the "
-                        "hard limit, and return must not fall below the qf.1 baseline"
+                        "hard limit, and return must not fall below the production baseline"
                     ),
                 },
                 "holdout_comparison": {
@@ -1248,7 +1248,7 @@ def render_markdown_summary(report: dict[str, Any]) -> str:
             "| Final holdout | Total return | Maximum drawdown | Sharpe | Calmar |",
             "|---|---:|---:|---:|---:|",
             (
-                f"| qf.1 baseline | {_format_pct(baseline['total_return'])} | "
+                f"| production baseline | {_format_pct(baseline['total_return'])} | "
                 f"{_format_pct(baseline['max_drawdown'])} | "
                 f"{baseline['sharpe']:.3f} | {baseline['calmar']:.3f} |"
             ),
@@ -1264,7 +1264,7 @@ def render_markdown_summary(report: dict[str, Any]) -> str:
             (
                 "Promotion gate: passed."
                 if report["promotion_gate"]["passed"]
-                else "Promotion gate: failed; the qf.1 baseline is retained."
+                else "Promotion gate: failed; the production baseline is retained."
             ),
             "",
             "A positive holdout result is evidence for this frozen snapshot, not a "
@@ -1284,7 +1284,7 @@ def _load_resume_evaluations(
 ) -> dict[str, CandidateEvaluation]:
     """Load a prior report only when its data and selection protocol match."""
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    if payload.get("engine") != "Quant Fusion.1":
+    if payload.get("engine") != "Quant Fusion":
         raise ValueError("Resume report was produced by a different engine")
     metadata = payload.get("run_metadata", {})
     if metadata.get("symbols") != symbols:
@@ -1345,7 +1345,7 @@ def _cache_signature(
 def build_argument_parser() -> argparse.ArgumentParser:
     """Build the deterministic local-data optimizer command line."""
     parser = argparse.ArgumentParser(
-        description="Walk-forward parameter optimizer for Quant Fusion.1"
+        description="Walk-forward parameter optimizer for Quant Fusion"
     )
     parser.add_argument("--symbol", "-s", required=True)
     parser.add_argument("--data-dir", required=True)
