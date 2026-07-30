@@ -1,12 +1,12 @@
-# Quant Fusion v17
+# Quant Fusion
 
-Quant Fusion v17 is a standalone deterministic daily-bar backtester for
+Quant Fusion is a standalone deterministic daily-bar backtester for
 concentrated A-share technology portfolios. The complete data-loading, signal,
 T+1 execution, transaction-cost, exposure, causal-liquidity, allocation, and risk
-implementation is contained in `quant_fusion_v17.py`; it does not import or
+implementation is contained in `quant_fusion.py`; it does not import or
 require another strategy module at runtime.
 
-## Version 17.1 design
+## Design
 
 - Tradable symbols and regime-observation symbols are separate. The default
   signal-only regime basket is `300308`, `300502`, `300394`, `688008`, and
@@ -20,7 +20,7 @@ require another strategy module at runtime.
   symbol must reach the 50th reference percentile before it can consume one of
   the ten candidate slots.
 - One- and two-symbol universes have little useful cross-sectional information.
-  V17 therefore switches every sleeve to a slower time-series trend contract
+  The engine therefore switches every sleeve to a slower time-series trend contract
   without changing the 60% symbol exposure ceiling.
 - Forced industry-group slots are disabled. The synchronized portfolio
   coordinator admits at most ten distinct symbols across all sleeves, not ten
@@ -67,29 +67,26 @@ should supply its own stable benchmark basket before live use.
 
 ## Repository layout
 
-- `quant_fusion_v17.py`: complete standalone production engine and CLI.
+- `quant_fusion.py`: complete standalone production engine and CLI.
 - `quant_fusion_optimizer.py`: independent automatic parameter-search,
   walk-forward validation, Pareto selection, and final-holdout reporting layer.
-- `test_quant_fusion_v17.py`: unit, isolation, routing, risk, and regression
+- `test_quant_fusion.py`: unit, isolation, routing, risk, and regression
   tests.
 - `test_quant_fusion_optimizer.py`: leakage, constraint, parameter-support,
   dynamic-listing, and deterministic-search tests.
-- `backtest_v17_universes.py`, `stress_test_v17_prefixes.py`, and
-  `backtest_v17_cambricon_universe.py`: reproducible portfolio checks.
-- `market_data_qfq_22_20260720` and `market_data_qfq_9_cambricon_20260720`:
+- `backtest_universes.py`, `stress_test_prefixes.py`, and
+  `backtest_cambricon_universe.py`: reproducible portfolio checks.
+- `market_data`:
   canonical forward-adjusted snapshots required by the regression suite.
-- `v17_universe_backtest_20260720.json`, `v17_prefix_stress_20260720.json`, and
-  `v17_cambricon_universe_backtest_20260720.json`: canonical result artifacts.
-- `STRATEGY_REVIEW_20260722.md`: proposal audit, controlled experiments, and
-  release decisions for the 17.1 review.
-
-Historical implementations remain available on their original Git branches and
-are intentionally not duplicated on `main`.
+- `universe_backtest.json`, `prefix_stress.json`, and
+  `cambricon_universe_backtest.json`: canonical result artifacts.
+- `STRATEGY_REVIEW.md`: proposal audit, controlled experiments, and
+  release decisions.
 
 ## Data
 
 The reproducible 22-symbol Eastmoney forward-adjusted snapshot is stored in
-`market_data_qfq_22_20260720`. Provider volume is converted from board lots to
+`market_data`. Provider volume is converted from board lots to
 shares before the ADV participation rule is applied. `920045` begins on
 2025-12-31 and is unavailable before that date. `SHA256SUMS` freezes the exact
 CSV bytes, and the regression suite fails if a file is truncated or modified.
@@ -110,11 +107,11 @@ The engine supports two explicit data paths:
 
 ```bash
 python -m pip install -r requirements.txt
-python quant_fusion_v17.py \
+python quant_fusion.py \
   --start 2025-04-01 \
   --end 2026-07-20 \
   --capital 2000000 \
-  --data-dir market_data_qfq_22_20260720 \
+  --data-dir market_data \
   --indicator-state warm \
   --no-plot
 ```
@@ -122,7 +119,7 @@ python quant_fusion_v17.py \
 For online data, omit the local directory option:
 
 ```bash
-python quant_fusion_v17.py \
+python quant_fusion.py \
   --start 2025-04-01 \
   --end 2026-07-20 \
   --indicator-state warm \
@@ -135,7 +132,7 @@ tests. Both states start the portfolio flat on the requested first date.
 
 ## Automatic parameter optimization
 
-The optimizer preserves `quant_fusion_v17.py` as the only execution engine. It
+The optimizer preserves `quant_fusion.py` as the only execution engine. It
 changes no signal, fill, T+1, cost, liquidity, or accounting code. It searches
 portfolio controls and route-preserving multipliers around each stock's existing
 industry profile, so an optical-module stock and semiconductor-equipment stock do
@@ -155,14 +152,14 @@ chooses from the validation return/drawdown Pareto frontier. The final holdout i
 run only after parameter selection. It cannot choose a different parameter
 candidate, but it is a mandatory one-time promotion gate: a candidate is not
 recommended if ordinary or stressed holdout drawdown breaches 20%, or if its
-return falls below the already-feasible v17.1 baseline.
+return falls below the already-feasible production baseline.
 
 Example for the five-symbol reference universe:
 
 ```bash
 python quant_fusion_optimizer.py \
   --symbol 300308,300502,300394,688008,603986 \
-  --data-dir market_data_qfq_22_20260720 \
+  --data-dir market_data \
   --start 2024-01-02 \
   --test-start 2026-01-05 \
   --end 2026-07-20 \
@@ -179,7 +176,7 @@ The output directory contains:
 - `optimization_report.json`: every candidate, fold, rejection, Pareto result,
   cost stress, and untouched final-holdout comparison;
 - `recommended_config.json`: the selected compact modifiers plus materialized
-  per-symbol configuration that can be passed back to v17;
+  per-symbol configuration that can be passed back to the engine;
 - `optimization_summary.md`: concise baseline-versus-selected holdout results.
 
 Local data is mandatory for optimization so hundreds of candidate runs share one
@@ -199,19 +196,19 @@ It passed the pre-test 20% constraint but failed the one-time promotion gate:
 
 | Final holdout | Total return | Maximum drawdown | Sharpe | Calmar |
 |---|---:|---:|---:|---:|
-| v17.1 baseline | 152.8439% | -11.3952% | 3.5943 | 44.2142 |
+| production baseline | 152.8439% | -11.3952% | 3.5943 | 44.2142 |
 | validation winner | 124.9701% | -11.1156% | 3.2199 | 34.3196 |
 
 The 0.28 percentage-point drawdown improvement did not justify 27.87 percentage
-points less return, so `recommended_config.json` retains the v17.1 baseline. The
+points less return, so `recommended_config.json` retains the production baseline. The
 complete evidence is stored in
-`optimizer_validation_5_symbols_20260722/optimization_report.json`; the concise
+`optimizer_validation/optimization_report.json`; the concise
 comparison is in the adjacent `optimization_summary.md`. No further parameter
 tuning used the opened 2026 holdout.
 
 ## Cross-universe target results
 
-Initial capital is CNY 2,000,000. All scenarios use identical v17 parameters,
+Initial capital is CNY 2,000,000. All scenarios use identical strategy parameters,
 default costs, 0.1% one-way slippage, and data through 2026-07-20.
 
 | Tradable universe | Cold return | Cold max drawdown | Warm return | Warm max drawdown | Warm Sharpe | Warm Calmar |
@@ -256,14 +253,14 @@ These stress results are an explicit limitation, not an accepted live-risk claim
 Run the standard-library regression suite and the complete cross-universe runner:
 
 ```bash
-python -m py_compile quant_fusion_v17.py quant_fusion_optimizer.py
-python -m unittest -v test_quant_fusion_v17.py test_quant_fusion_optimizer.py
-python backtest_v17_universes.py
-python stress_test_v17_prefixes.py
-python backtest_v17_cambricon_universe.py
+python -m py_compile quant_fusion.py quant_fusion_optimizer.py
+python -m unittest -v test_quant_fusion.py test_quant_fusion_optimizer.py
+python backtest_universes.py
+python stress_test_prefixes.py
+python backtest_cambricon_universe.py
 ```
 
-The tests cover standalone isolated startup, absence of versioned imports,
+The tests cover standalone isolated startup, absence of external imports,
 AKShare provider failover, strict local CSV selection, policy validation,
 concentration scaling, temporary rearming, terminal locks, signal immutability,
 fair same-symbol allocation, cumulative ADV accounting, missing-data guard

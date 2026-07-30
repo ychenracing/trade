@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fast tests for the v17 walk-forward selection layer."""
+"""Fast tests for the walk-forward selection layer."""
 
 from __future__ import annotations
 

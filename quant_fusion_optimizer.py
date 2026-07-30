@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Leakage-resistant parameter search for :mod:`quant_fusion_v17`.
+"""Leakage-resistant parameter search for :mod:`quant_fusion`.
 
 The optimizer is deliberately a separate research layer.  It never reimplements
 signals, fills, T+1 handling, transaction costs, or portfolio accounting.  Every
-candidate is executed by ``quant_fusion_v17.BacktestEngine``.
+candidate is executed by ``quant_fusion.BacktestEngine``.
 
 Selection uses expanding walk-forward training/validation folds. A final holdout
 is executed only after parameter selection and acts as a one-time promotion gate;
@@ -29,7 +29,7 @@ from typing import Any, Iterable, Protocol, cast
 
 import pandas as pd
 
-import quant_fusion_v17 as v17
+import quant_fusion as qf
 
 
 MAX_SYMBOL_WEIGHT = 0.60
@@ -162,7 +162,7 @@ class Candidate:
 
     @classmethod
     def baseline(cls) -> Candidate:
-        """Return the untouched v17.1 production defaults."""
+        """Return the untouched qf.1 production defaults."""
         return cls()
 
     def _validate_boundaries(self) -> None:
@@ -185,7 +185,7 @@ class Candidate:
             raise ValueError("max_total_weight must be in (0, 1.00]")
         if symbol_weight > total_weight:
             raise ValueError("max_symbol_weight must not exceed max_total_weight")
-        scalable = v17.BacktestEngine._PER_SYMBOL_OVERRIDE_KEYS - {
+        scalable = qf.BacktestEngine._PER_SYMBOL_OVERRIDE_KEYS - {
             "atr_method",
             "reversal_turtle_enabled",
             "reversal_dual_ma_enabled",
@@ -197,8 +197,8 @@ class Candidate:
             if not math.isfinite(multiplier) or multiplier <= 0:
                 raise ValueError(f"Multiplier {name} must be finite and positive")
         # Constructors invoke the execution engine's own config and policy checks.
-        policy = v17.V17Policy(**self.policy_overrides)
-        v17.BacktestEngine(cfg=self.engine_config(), policy=policy)
+        policy = qf.PortfolioPolicy(**self.policy_overrides)
+        qf.BacktestEngine(cfg=self.engine_config(), policy=policy)
 
     def engine_config(self, *, stress: bool = False) -> dict[str, Any]:
         """Return hard-capped engine settings, optionally with stressed costs."""
@@ -220,7 +220,7 @@ class Candidate:
             ),
         }
         if stress:
-            defaults = v17.BacktestEngine._default_config()
+            defaults = qf.BacktestEngine._default_config()
             cfg["slippage"] = max(
                 float(cfg.get("slippage", defaults["slippage"])), 0.002
             )
@@ -230,15 +230,15 @@ class Candidate:
             )
         return cfg
 
-    def policy(self) -> v17.V17Policy:
-        """Build the validated v17 policy used by this candidate."""
-        return v17.V17Policy(**self.policy_overrides)
+    def policy(self) -> qf.PortfolioPolicy:
+        """Build the validated portfolio policy used by this candidate."""
+        return qf.PortfolioPolicy(**self.policy_overrides)
 
     def per_symbol_config(self, symbols: dict[str, str]) -> dict[str, dict[str, Any]]:
         """Scale each symbol's routed profile without erasing industry differences."""
         result: dict[str, dict[str, Any]] = {}
         for code, name in symbols.items():
-            base = v17.BacktestEngine.config_for_symbol(code, name=name)
+            base = qf.BacktestEngine.config_for_symbol(code, name=name)
             overrides: dict[str, Any] = {
                 "max_symbol_weight": min(
                     float(base["max_symbol_weight"]), MAX_SYMBOL_WEIGHT
@@ -252,7 +252,7 @@ class Candidate:
                     else raw
                 )
                 overrides[parameter] = value
-            merged = v17.BacktestEngine._validate_config({**base, **overrides})
+            merged = qf.BacktestEngine._validate_config({**base, **overrides})
             if int(merged["exit_period"]) >= int(merged["entry_period"]):
                 raise ValueError(
                     f"{self.candidate_id} makes exit_period >= entry_period for {code}"
@@ -343,8 +343,8 @@ class ParameterSpace:
                 factors.append((section, key, domain))
         seen = {"baseline"}
         candidates = [Candidate.baseline()]
-        defaults = v17.BacktestEngine._default_config()
-        default_policy = v17.V17Policy().as_dict()
+        defaults = qf.BacktestEngine._default_config()
+        default_policy = qf.PortfolioPolicy().as_dict()
 
         def default_value(section: str, key: str) -> Any:
             if section == "engine":
@@ -687,8 +687,8 @@ class CandidateRunner(Protocol):
     ) -> WindowMetrics: ...
 
 
-class V17CandidateRunner:
-    """Execute candidates through the unmodified v17.1 engine."""
+class CandidateRunner:
+    """Execute candidates through the unmodified qf.1 engine."""
 
     def __init__(
         self,
@@ -712,7 +712,7 @@ class V17CandidateRunner:
     ) -> WindowMetrics:
         """Run one candidate/window and verify hard portfolio invariants."""
         symbols = self.catalog.available_symbols(window)
-        engine = v17.BacktestEngine(
+        engine = qf.BacktestEngine(
             self.initial_capital,
             cfg=candidate.engine_config(stress=stress),
             policy=candidate.policy(),
@@ -891,7 +891,7 @@ def _candidate_distance(left: Candidate, right: Candidate) -> int:
             },
         }
         if any(key in candidate.policy_overrides for key in POLICY_RISK_KEYS):
-            defaults = v17.V17Policy().as_dict()
+            defaults = qf.PortfolioPolicy().as_dict()
             flattened[("policy", "risk_profile")] = tuple(
                 candidate.policy_overrides.get(key, defaults[key])
                 for key in POLICY_RISK_KEYS
@@ -1082,8 +1082,7 @@ class WalkForwardOptimizer:
         _apply_parameter_support(evaluations)
         frontier = pareto_frontier(evaluations)
         report: dict[str, Any] = {
-            "optimizer_version": "1.0",
-            "engine": "Quant Fusion v17.1",
+            "engine": "Quant Fusion",
             "selection_protocol": {
                 "test_data_used_for_parameter_selection": False,
                 "test_data_used_for_one_time_promotion_gate": True,
@@ -1174,7 +1173,7 @@ class WalkForwardOptimizer:
                     "checks": promotion_checks,
                     "rule": (
                         "holdout and stressed-holdout drawdown must stay within the "
-                        "hard limit, and return must not fall below the v17.1 baseline"
+                        "hard limit, and return must not fall below the qf.1 baseline"
                     ),
                 },
                 "holdout_comparison": {
@@ -1224,7 +1223,7 @@ def _format_pct(value: float) -> str:
 def render_markdown_summary(report: dict[str, Any]) -> str:
     """Render the selection protocol and honest holdout comparison."""
     lines = [
-        "# Quant Fusion v17 Automatic Optimization Result",
+        "# Quant Fusion Automatic Optimization Result",
         "",
         f"Status: `{report['status']}`.",
         "",
@@ -1249,7 +1248,7 @@ def render_markdown_summary(report: dict[str, Any]) -> str:
             "| Final holdout | Total return | Maximum drawdown | Sharpe | Calmar |",
             "|---|---:|---:|---:|---:|",
             (
-                f"| v17.1 baseline | {_format_pct(baseline['total_return'])} | "
+                f"| qf.1 baseline | {_format_pct(baseline['total_return'])} | "
                 f"{_format_pct(baseline['max_drawdown'])} | "
                 f"{baseline['sharpe']:.3f} | {baseline['calmar']:.3f} |"
             ),
@@ -1265,7 +1264,7 @@ def render_markdown_summary(report: dict[str, Any]) -> str:
             (
                 "Promotion gate: passed."
                 if report["promotion_gate"]["passed"]
-                else "Promotion gate: failed; the v17.1 baseline is retained."
+                else "Promotion gate: failed; the qf.1 baseline is retained."
             ),
             "",
             "A positive holdout result is evidence for this frozen snapshot, not a "
@@ -1285,7 +1284,7 @@ def _load_resume_evaluations(
 ) -> dict[str, CandidateEvaluation]:
     """Load a prior report only when its data and selection protocol match."""
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    if payload.get("engine") != "Quant Fusion v17.1":
+    if payload.get("engine") != "Quant Fusion.1":
         raise ValueError("Resume report was produced by a different engine")
     metadata = payload.get("run_metadata", {})
     if metadata.get("symbols") != symbols:
@@ -1294,9 +1293,9 @@ def _load_resume_evaluations(
         raise ValueError("Resume report uses a different data snapshot")
     if metadata.get("data_fingerprint") not in {None, catalog.fingerprint}:
         raise ValueError("Resume report data bytes do not match the current snapshot")
-    current_engine_sha = hashlib.sha256(Path(v17.__file__).read_bytes()).hexdigest()
+    current_engine_sha = hashlib.sha256(Path(qf.__file__).read_bytes()).hexdigest()
     if metadata.get("engine_sha256") not in {None, current_engine_sha}:
-        raise ValueError("Resume report uses different v17 execution code")
+        raise ValueError("Resume report uses different execution code")
     expected_folds = [
         {
             "name": fold.name,
@@ -1325,7 +1324,7 @@ def _cache_signature(
     initial_capital: float,
 ) -> str:
     """Bind automatic cache reuse to code, data, folds, capital, and limits."""
-    engine_path = Path(v17.__file__).resolve()
+    engine_path = Path(qf.__file__).resolve()
     payload = {
         "engine_sha256": hashlib.sha256(engine_path.read_bytes()).hexdigest(),
         "optimizer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -1346,7 +1345,7 @@ def _cache_signature(
 def build_argument_parser() -> argparse.ArgumentParser:
     """Build the deterministic local-data optimizer command line."""
     parser = argparse.ArgumentParser(
-        description="Walk-forward parameter optimizer for Quant Fusion v17.1"
+        description="Walk-forward parameter optimizer for Quant Fusion.1"
     )
     parser.add_argument("--symbol", "-s", required=True)
     parser.add_argument("--data-dir", required=True)
@@ -1374,11 +1373,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
 def main() -> int:
     """Run automatic selection and save an auditable report plus loadable config."""
     args = build_argument_parser().parse_args()
-    symbols = v17.parse_symbols(args.symbol)
+    symbols = qf.parse_symbols(args.symbol)
     catalog = LocalDataCatalog(
         args.data_dir,
         symbols,
-        v17.V17Policy().regime_symbols,
+        qf.PortfolioPolicy().regime_symbols,
     )
     folds, holdout = build_walk_forward_folds(
         catalog.calendar,
@@ -1396,7 +1395,7 @@ def main() -> int:
         else ParameterSpace.default()
     )
     candidates = space.candidates(args.candidates, args.seed)
-    runner = V17CandidateRunner(symbols, catalog, initial_capital=args.capital)
+    runner = CandidateRunner(symbols, catalog, initial_capital=args.capital)
     optimizer = WalkForwardOptimizer(
         runner,
         folds,
@@ -1435,7 +1434,7 @@ def main() -> int:
         "data_coverage": catalog.coverage(),
         "candidate_count": len(candidates),
         "seed": args.seed,
-        "engine_sha256": hashlib.sha256(Path(v17.__file__).read_bytes()).hexdigest(),
+        "engine_sha256": hashlib.sha256(Path(qf.__file__).read_bytes()).hexdigest(),
         "optimizer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "data_fingerprint": catalog.fingerprint,
         "cache_signature": signature,

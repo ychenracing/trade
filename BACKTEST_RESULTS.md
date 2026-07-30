@@ -2,11 +2,7 @@
 
 Verification date: 2026-07-22 UTC.
 
-Engine revision: 17.1. The trading path and all return, drawdown, trade-count,
-and final-asset figures are identical to the 17.0 baseline at commit `89a4bdb`.
-Revision 17.1 adds Calmar reporting and explicit unmapped-route auditing.
-
-Quant Fusion v17 is a standalone module with built-in AKShare and local CSV
+Quant Fusion is a standalone module with built-in AKShare and local CSV
 data paths. It uses the same code, parameters, costs, and forward-adjusted data
 snapshot across every requested universe. Initial capital is CNY 2,000,000.
 
@@ -42,15 +38,15 @@ The universe contains `300308`, `688256`, `300502`, `300394`, `603986`,
 `688008`, `688347`, `300054`, and `688300`. The sector guard still confirms on
 2026-06-26, so extending the end date through 2026-07-20 does not change final
 assets in this snapshot. Exact metadata is stored in
-`v17_cambricon_universe_backtest_20260720.json` and can be regenerated with
-`python backtest_v17_cambricon_universe.py`.
+`cambricon_universe_backtest.json` and can be regenerated with
+`python backtest_cambricon_universe.py`.
 
 High-cost and weak-regime figures, limitations, and reproducibility commands are
 documented in `README.md`. Exact scenario metadata is stored in
-`v17_universe_backtest_20260720.json`. The one-through-22 ordered-prefix audit is
-stored in `v17_prefix_stress_20260720.json`; its worst adjacent wealth change is
+`universe_backtest.json`. The one-through-22 ordered-prefix audit is
+stored in `prefix_stress.json`; its worst adjacent wealth change is
 -13.23% when moving from 9 to 10 symbols.
 
 The 2026-07-22 proposal audit and controlled before/after experiments are recorded
-in `STRATEGY_REVIEW_20260722.md`. No tested trading-rule candidate was stable
+in `STRATEGY_REVIEW.md`. No tested trading-rule candidate was stable
 enough across time windows and universe sizes to replace the current defaults.

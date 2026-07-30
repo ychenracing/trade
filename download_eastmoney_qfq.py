@@ -125,7 +125,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default="2024-01-01")
     parser.add_argument("--end", default="2026-07-20")
-    parser.add_argument("--output", default="market_data_qfq_22_20260720")
+    parser.add_argument("--output", default="market_data")
     parser.add_argument("--symbol", action="append", dest="symbols")
     args = parser.parse_args()
     symbols = tuple(args.symbols or DEFAULT_SYMBOLS)

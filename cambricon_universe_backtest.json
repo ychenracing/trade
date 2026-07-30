@@ -1,0 +1,187 @@
+{
+  "engine": "Quant Fusion",
+  "data_directory": "market_data",
+  "data_adjustment": "qfq",
+  "data_provider": "Eastmoney push2his",
+  "initial_capital": 2000000.0,
+  "symbols": {
+    "300308": "中际旭创",
+    "688256": "寒武纪",
+    "300502": "新易盛",
+    "300394": "天孚通信",
+    "603986": "兆易创新",
+    "688008": "澜起科技",
+    "688347": "华虹宏力",
+    "300054": "鼎龙股份",
+    "688300": "联瑞新材"
+  },
+  "cambricon_mapping": {
+    "classification": "semiconductor",
+    "risk_group": "domestic_semiconductor",
+    "parameter_profile": "domestic_design"
+  },
+  "results": [
+    {
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "final_assets": 21839909.169737007,
+      "total_return": 9.919954584868504,
+      "annual_return": 6.350721452076635,
+      "max_drawdown": -0.16143190558700346,
+      "sharpe": 3.5636405286553394,
+      "calmar": 39.33993982778035,
+      "total_trades": 266,
+      "max_concurrent_symbols": 6,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "guard_on_dates": [
+        "2026-06-26"
+      ],
+      "cambricon_parameter_route": "domestic_design"
+    },
+    {
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "final_assets": 21839909.169737007,
+      "total_return": 9.919954584868504,
+      "annual_return": 5.728964832698122,
+      "max_drawdown": -0.16143190558700346,
+      "sharpe": 3.4798986285450533,
+      "calmar": 35.48842969960796,
+      "total_trades": 266,
+      "max_concurrent_symbols": 6,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "guard_on_dates": [
+        "2026-06-26"
+      ],
+      "cambricon_parameter_route": "domestic_design"
+    },
+    {
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "final_assets": 25358706.988520507,
+      "total_return": 11.679353494260253,
+      "annual_return": 7.3265508398192,
+      "max_drawdown": -0.15111072478540524,
+      "sharpe": 3.777811789809082,
+      "calmar": 48.4846515707191,
+      "total_trades": 317,
+      "max_concurrent_symbols": 6,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "guard_on_dates": [
+        "2026-06-26"
+      ],
+      "cambricon_parameter_route": "domestic_design"
+    },
+    {
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "final_assets": 25358706.988520507,
+      "total_return": 11.679353494260253,
+      "annual_return": 6.580276319908331,
+      "max_drawdown": -0.15111072478540524,
+      "sharpe": 3.688525139801207,
+      "calmar": 43.54605756310869,
+      "total_trades": 317,
+      "max_concurrent_symbols": 6,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "guard_on_dates": [
+        "2026-06-26"
+      ],
+      "cambricon_parameter_route": "domestic_design"
+    }
+  ],
+  "portfolio_policy": {
+    "allocation_mode": "ensemble",
+    "single_lookbacks": [
+      5,
+      10,
+      20
+    ],
+    "allocation_horizons": [
+      [
+        3,
+        5,
+        10
+      ],
+      [
+        5,
+        10,
+        20
+      ],
+      [
+        5,
+        20,
+        60
+      ]
+    ],
+    "drawdown_alert": 0.18,
+    "confirmed_drawdown": 0.23,
+    "drawdown_confirmations": 2,
+    "emergency_drawdown": 0.27,
+    "adv_lookback": 20,
+    "max_order_adv_ratio": 0.005,
+    "rearm_trading_days": 10,
+    "terminal_drawdown": 0.28,
+    "candidate_lookbacks": [
+      10,
+      20,
+      40
+    ],
+    "candidate_horizons": [
+      [
+        10,
+        20,
+        40
+      ],
+      [
+        10,
+        20,
+        40
+      ],
+      [
+        10,
+        40,
+        80
+      ]
+    ],
+    "concentration_drawdown_adjustment": 0.02,
+    "candidate_reference_percentile": 0.5,
+    "regime_symbols": [
+      "300308",
+      "300502",
+      "300394",
+      "688008",
+      "603986"
+    ],
+    "market_regime_enabled": true,
+    "regime_ewi_lookback": 20,
+    "regime_breadth_ma_long": 20,
+    "regime_adx_trend": 25.0,
+    "regime_adx_choppy": 20.0,
+    "regime_hurst_window": 100,
+    "regime_hurst_trend": 0.55,
+    "regime_hurst_choppy": 0.45,
+    "regime_vol_lookback": 60,
+    "regime_vol_extreme_pct": 0.9,
+    "regime_ewi_slope_trend": 0.02,
+    "regime_ewi_slope_choppy": -0.02,
+    "regime_score_trend": 2,
+    "regime_score_choppy": -3,
+    "regime_choppy_confirmations": 2,
+    "regime_trend_confirmations": 3,
+    "regime_recovery_confirmations": 3,
+    "regime_min_state_hold": 3,
+    "regime_transition_scale": 1.0,
+    "regime_trend_to_transition_confirmations": 3,
+    "regime_choppy_exit_ratio": 0.3,
+    "regime_transition_exit_ratio": 0.0
+  }
+}

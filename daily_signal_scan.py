@@ -2,7 +2,7 @@
 """Daily signal scan for the 26 AI-sector universe.
 
 Fetches the latest forward-adjusted closing data via AKShare (with incremental
-cache), runs the Quant Fusion v17 backtest, and extracts the latest pending
+cache), runs the Quant Fusion backtest, and extracts the latest pending
 signal (buy / sell / hold) for each symbol.
 
 Usage:
@@ -27,7 +27,7 @@ matplotlib.use("Agg")
 
 import pandas as pd
 
-import quant_fusion_v17 as v17
+import quant_fusion as qf
 
 
 # ── 26-stock AI sector universe ──────────────────────────────────────────
@@ -125,7 +125,7 @@ def main() -> int:
     print("-" * 72)
 
     # Configure incremental cache for efficient daily updates
-    v17.DataFetcher._cache_dir = args.cache_dir
+    qf.DataFetcher._cache_dir = args.cache_dir
 
     # ── Pre-screen: skip symbols with no data (e.g. not yet listed) ──
     # The engine loads all symbols at once and raises on any failure, so we
@@ -142,7 +142,7 @@ def main() -> int:
     print("-" * 72)
     for code, name in SYMBOLS.items():
         try:
-            df = v17.DataFetcher.load_stock_data(
+            df = qf.DataFetcher.load_stock_data(
                 code, probe_start, end_date, data_dir=None
             )
             if df is not None and not df.empty:
@@ -170,7 +170,7 @@ def main() -> int:
     print("  正在运行回测，请稍候...")
     print("-" * 72)
 
-    engine = v17.BacktestEngine(INITIAL_CAPITAL)
+    engine = qf.BacktestEngine(INITIAL_CAPITAL)
     result = engine.run(
         tradable,
         START_DATE,
