@@ -6378,16 +6378,21 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
     def _runtime_sleeve_cfg(self, tradable_count: int) -> dict[str, Any]:
         """Return shared overrides with one fixed parameter set for all sizes.
 
-        ``max_positions`` is kept at the default 6 (matching README and frozen
-        artifacts). Small universes are naturally bounded by their own symbol
-        count. Very small universes (<=2) still use the slower time-series
+        The per-sleeve ``max_positions`` is set to 10 so each sleeve has a
+        wide candidate pool for momentum ranking. The portfolio-level
+        ``self.cfg["max_positions"]`` (default 6) limits the total unique
+        symbols held across all sleeves. These are two separate limits:
+        per-sleeve=10 (candidate breadth), portfolio=6 (concentration).
+
+        Small universes are naturally bounded by their own symbol count.
+        Very small universes (<=2) still use the slower time-series
         trend contract, which is a strategy-logic switch (no cross-sectional
         information) rather than a parameter change.
         """
         sleeve_cfg = dict(self._ensemble_user_cfg)
         if tradable_count <= 2:
             sleeve_cfg.update(self._SINGLE_ASSET_TREND_OVERRIDES)
-        # max_positions stays at the default (6) — no override needed
+        sleeve_cfg["max_positions"] = 10
         return sleeve_cfg
 
     def run(  # noqa: PLR0913 - Preserve the inherited public API.
