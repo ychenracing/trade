@@ -5,8 +5,22 @@ Fetches the latest forward-adjusted closing data via AKShare (with incremental
 cache), runs the Quant Fusion backtest, and extracts the latest pending
 signal (buy / sell / hold) for each symbol.
 
+Two modes:
+  - Simulation mode (default): runs a fresh backtest from --start-date.
+    Signals reflect what the strategy *would have* done, not your real portfolio.
+  - Account mode (--account account.json): overlays real cash, positions, and
+    risk state on top of the backtest. Displays simulated vs real holdings side
+    by side with discrepancy warnings.
+
+Risk state (terminal_risk_lock, sector_guard_active, drawdown) is persisted to
+risk_state.json after each run and restored on the next run for continuity.
+
 Usage:
+    # Simulation mode (default)
     python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR]
+
+    # Account-aware mode
+    python daily_signal_scan.py --account account.json [--start-date DATE] [--capital N]
 
 If --end-date is omitted, today's date is used.
 """
@@ -92,6 +106,76 @@ def _extract_positions(trades: list[Any]) -> dict[str, int]:
     return {sym: max(0, sh) for sym, sh in held.items()}
 
 
+def _load_account(path: str) -> dict[str, Any] | None:
+    """Load a real-account JSON snapshot for live-signal mode.
+
+    Expected format::
+
+        {
+          "cash": 500000.0,
+          "peak_equity": 2500000.0,
+          "positions": {
+            "300308": {"shares": 900, "avg_cost": 980.50, "entry_date": "2026-03-18"}
+          },
+          "risk_state": {
+            "terminal_risk_lock": false,
+            "sector_guard_active": false,
+            "cycle_lock_count": 0
+          }
+        }
+    """
+    p = Path(path)
+    if not p.exists():
+        print(f"  错误: 账户文件不存在: {path}")
+        return None
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"  错误: 账户文件解析失败: {exc}")
+        return None
+    if "cash" not in data:
+        print("  错误: 账户文件缺少 'cash' 字段")
+        return None
+    data.setdefault("positions", {})
+    data.setdefault("risk_state", {})
+    data.setdefault("peak_equity", None)
+    return data
+
+
+def _load_prev_risk_state(output_dir: str, end_date: str) -> dict[str, Any] | None:
+    """Load the risk state saved by a previous daily scan run."""
+    state_file = Path(output_dir) / "risk_state.json"
+    if not state_file.exists():
+        return None
+    try:
+        data = json.loads(state_file.read_text(encoding="utf-8"))
+        if data.get("scan_date") == end_date:
+            return None  # same-day state — not "previous"
+        return data
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _save_risk_state(
+    output_dir: str, end_date: str, result: dict[str, Any]
+) -> None:
+    """Persist risk state for restoration by the next daily scan run."""
+    state = {
+        "scan_date": end_date,
+        "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
+        "sector_guard_active": bool(result.get("sector_guard_active", False)),
+        "cycle_lock_count": int(result.get("cycle_lock_count", 0)),
+        "max_drawdown": float(result.get("max_drawdown", 0.0)),
+        "total_return": float(result.get("total_return", 0.0)),
+        "final_assets": float(result.get("final_assets", 0.0)),
+    }
+    state_file = Path(output_dir) / "risk_state.json"
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    state_file.write_text(
+        json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Daily AI-sector signal scan")
     parser.add_argument(
@@ -109,19 +193,81 @@ def main() -> int:
         default=DEFAULT_OUTPUT_DIR,
         help=f"Output directory for results (default: {DEFAULT_OUTPUT_DIR})",
     )
+    parser.add_argument(
+        "--allow-stale",
+        action="store_true",
+        help="Proceed even if cached data is stale (network fetch failed). "
+        "By default, stale data causes immediate exit to prevent misleading signals.",
+    )
+    parser.add_argument(
+        "--account",
+        default="",
+        help="Path to a real-account JSON file (cash, positions, risk_state). "
+        "When provided, signals are overlaid with real holdings. "
+        "When omitted, signals are from a fresh simulation (warning shown).",
+    )
+    parser.add_argument(
+        "--start-date",
+        default="",
+        help=f"Backtest start date YYYY-MM-DD (default: {START_DATE})",
+    )
+    parser.add_argument(
+        "--capital",
+        type=float,
+        default=0.0,
+        help=f"Initial capital (default: {INITIAL_CAPITAL:,.0f}). "
+        "Overridden by account.cash when --account is used.",
+    )
     args = parser.parse_args()
 
     end_date = args.end_date or _today_str()
+    start_date = args.start_date or START_DATE
 
+    # Load real account state if provided
+    account: dict[str, Any] | None = None
+    if args.account:
+        account = _load_account(args.account)
+        if account is None:
+            return 1
+
+    # Resolve capital: account.cash > --capital > default
+    if account is not None:
+        capital = float(account["cash"])
+    elif args.capital > 0:
+        capital = args.capital
+    else:
+        capital = INITIAL_CAPITAL
+
+    # Load previous run's risk state for continuity
+    prev_risk = _load_prev_risk_state(args.output_dir, end_date)
+
+    mode_label = "实盘账户模式" if account else "模拟模式 (无账户文件)"
     print("=" * 72)
     print("  AI 板块 26 标的每日信号扫描")
     print("=" * 72)
+    print(f"  运行模式:   {mode_label}")
     print(f"  标的数量:   {len(SYMBOLS)}")
-    print(f"  回测区间:   {START_DATE} → {end_date}")
-    print(f"  初始资金:   ¥{INITIAL_CAPITAL:,.0f}")
+    print(f"  回测区间:   {start_date} → {end_date}")
+    print(f"  初始资金:   ¥{capital:,.0f}")
+    if account is not None:
+        real_positions = account.get("positions", {})
+        print(f"  实盘持仓:   {len(real_positions)} 个标的")
+        if account.get("peak_equity"):
+            print(f"  峰值权益:   ¥{account['peak_equity']:,.0f}")
+    if prev_risk:
+        print(f"  上次扫描:   {prev_risk.get('scan_date', '?')}")
+        if prev_risk.get("terminal_risk_lock"):
+            print(f"  ⚠ 上次终态锁定已激活 — 请检查是否需要人工干预")
+        if prev_risk.get("sector_guard_active"):
+            print(f"  ⚠ 上次板块风控已激活")
     print(f"  指标状态:   warm")
     print(f"  数据源:     AKShare 在线前复权 (增量缓存)")
     print(f"  缓存目录:   {args.cache_dir}")
+    if account is None:
+        print("-" * 72)
+        print("  ⚠ 模拟模式: 未提供 --account 参数，信号基于从零开始的回测。")
+        print("    实盘持仓、风险状态可能与模拟结果不一致。")
+        print("    建议使用 --account account.json 提供真实账户状态。")
     print("-" * 72)
 
     # Configure incremental cache for efficient daily updates
@@ -132,14 +278,15 @@ def main() -> int:
     # probe each symbol individually and build a tradable universe.
     tradable: dict[str, str] = {}
     skipped: list[tuple[str, str, str]] = []  # (code, name, reason)
-    # Use the warmup start date (1 year before START_DATE) for the probe so
+    # Use the warmup start date (1 year before start_date) for the probe so
     # the engine has enough history for indicator calculation.
     probe_start = (
-        pd.Timestamp(START_DATE) - pd.Timedelta(days=400)
+        pd.Timestamp(start_date) - pd.Timedelta(days=400)
     ).strftime("%Y-%m-%d")
 
     print("  正在检查标的可交易性...")
     print("-" * 72)
+    stale_symbols: list[tuple[str, str, str]] = []  # (code, name, last_cache_date)
     for code, name in SYMBOLS.items():
         try:
             df = qf.DataFetcher.load_stock_data(
@@ -147,7 +294,13 @@ def main() -> int:
             )
             if df is not None and not df.empty:
                 tradable[code] = name
-                print(f"  ✓ {code} {name}: {len(df)} 条数据")
+                stale = df.attrs.get("_stale", False)
+                if stale:
+                    last_date = df.attrs.get("_cache_last_date", "?")
+                    stale_symbols.append((code, name, str(last_date)))
+                    print(f"  ⚠ {code} {name}: {len(df)} 条数据 (缓存过期，截止 {last_date})")
+                else:
+                    print(f"  ✓ {code} {name}: {len(df)} 条数据")
             else:
                 skipped.append((code, name, "无数据"))
                 print(f"  ✗ {code} {name}: 无数据 (可能尚未上市)")
@@ -163,6 +316,27 @@ def main() -> int:
             print(f"    {code} {name}: {reason}")
     print("-" * 72)
 
+    # ── Fail-closed: refuse to produce signals on stale data ──
+    if stale_symbols and not args.allow_stale:
+        print("=" * 72)
+        print("  ✗ 数据过期 — 拒绝生成信号 (fail-closed)")
+        print("=" * 72)
+        for code, name, last_date in stale_symbols:
+            print(f"    {code} {name}: 缓存截止 {last_date}（网络获取失败）")
+        print()
+        print("  信号可能不反映最新交易日，已中止扫描。")
+        print("  如需强制使用缓存数据，请添加 --allow-stale 参数。")
+        print("  ⚠ 使用过期数据生成的信号不可用于实盘决策。")
+        return 1
+    elif stale_symbols and args.allow_stale:
+        print("─" * 72)
+        print("  ⚠ 数据过期警告 (--allow-stale 已启用)")
+        print("─" * 72)
+        for code, name, last_date in stale_symbols:
+            print(f"  {code} {name}: 缓存截止 {last_date}（网络获取失败）")
+        print("  信号可能不反映最新交易日，请勿直接用于实盘决策。")
+        print()
+
     if not tradable:
         print("  错误: 没有可交易的标的，退出。")
         return 1
@@ -170,10 +344,10 @@ def main() -> int:
     print("  正在运行回测，请稍候...")
     print("-" * 72)
 
-    engine = qf.BacktestEngine(INITIAL_CAPITAL)
+    engine = qf.BacktestEngine(capital)
     result = engine.run(
         tradable,
-        START_DATE,
+        start_date,
         end_date,
         data_dir=None,  # online AKShare with cache
         indicator_state="warm",
@@ -188,7 +362,12 @@ def main() -> int:
         symbol_signals[sig.symbol].append(sig)
 
     # Reconstruct current positions from trade ledger
-    positions = _extract_positions(result.get("trades", []))
+    sim_positions = _extract_positions(result.get("trades", []))
+
+    # Real account positions (if provided)
+    real_positions: dict[str, dict[str, Any]] = (
+        account.get("positions", {}) if account else {}
+    )
 
     # ── Build per-symbol signal summary ──────────────────────────────
     # Determine the latest signal for each symbol
@@ -210,11 +389,14 @@ def main() -> int:
                 "signal": "不可交易",
                 "held_shares": 0,
                 "strategies": "无数据/未上市",
+                "industry": qf._CoreBacktestEngine._SYMBOL_GROUP.get(code, "N/A"),
+                "profile": qf._CoreBacktestEngine._SYMBOL_PROFILE.get(code, "N/A"),
+                "real_shares": 0,
             })
             continue
 
         sigs = symbol_signals.get(code, [])
-        held_shares = positions.get(code, 0)
+        held_shares = sim_positions.get(code, 0)
 
         if sigs:
             # Has pending signal(s) — show the direction
@@ -241,6 +423,10 @@ def main() -> int:
             signal_label = "观望"
             strategies = "—"
 
+        # In account mode, use real holdings as the authoritative source
+        if real_positions and code in real_positions:
+            held_shares = int(real_positions[code].get("shares", 0))
+
         rows.append({
             "code": code,
             "name": name,
@@ -249,20 +435,33 @@ def main() -> int:
             "strategies": strategies,
             "industry": qf._CoreBacktestEngine._SYMBOL_GROUP.get(code, "default"),
             "profile": qf._CoreBacktestEngine._SYMBOL_PROFILE.get(code, "default"),
+            "real_shares": int(real_positions[code].get("shares", 0)) if real_positions and code in real_positions else 0,
         })
 
     # ── Print summary table ──────────────────────────────────────────
-    print()
-    print(f"{'代码':<10} {'名称':<10} {'信号':<12} {'行业':<20} {'Profile':<12} {'持仓股数':>12}  {'策略'}")
+    if account:
+        print(f"{'代码':<8} {'名称':<8} {'信号':<12} {'行业':<18} {'模拟持仓':>10} {'实盘持仓':>10}  {'策略'}")
+    else:
+        print(f"{'代码':<10} {'名称':<10} {'信号':<12} {'行业':<20} {'Profile':<12} {'持仓股数':>12}  {'策略'}")
     print("─" * 100)
 
     buy_count = sell_count = hold_count = wait_count = untradeable_count = 0
     for row in rows:
-        print(
-            f"{row['code']:<10} {row['name']:<10} {row['signal']:<12} "
-            f"{row['industry']:<20} {row['profile']:<12} "
-            f"{row['held_shares']:>12,}  {row['strategies']}"
-        )
+        if account:
+            sim_shares = sim_positions.get(row["code"], 0)
+            real_shares = row["real_shares"]
+            mismatch = " ⚠" if sim_shares != real_shares and (sim_shares > 0 or real_shares > 0) else ""
+            print(
+                f"{row['code']:<8} {row['name']:<8} {row['signal']:<12} "
+                f"{row['industry']:<18} {sim_shares:>10,} {real_shares:>10,}  "
+                f"{row['strategies']}{mismatch}"
+            )
+        else:
+            print(
+                f"{row['code']:<10} {row['name']:<10} {row['signal']:<12} "
+                f"{row['industry']:<20} {row['profile']:<12} "
+                f"{row['held_shares']:>12,}  {row['strategies']}"
+            )
         if "买入" in row["signal"]:
             buy_count += 1
         elif "卖出" in row["signal"]:
@@ -298,27 +497,52 @@ def main() -> int:
     print(f"  板块风控激活:   {'是' if guard else '否'}")
     print()
 
-    # ── Stale data warning ──────────────────────────────────────────
-    # If any symbol's data is marked stale (network fetch failed, using cache),
-    # warn the user that signals may not reflect the latest session.
-    stale_symbols = []
-    # Check result for stale data markers
-    for code in tradable:
-        try:
-            df = qf.DataFetcher.load_stock_data(
-                code, probe_start, end_date, data_dir=None
-            )
-            if df is not None and not df.empty and df.attrs.get("_stale", False):
-                stale_symbols.append((code, df.attrs.get("_cache_last_date", "?")))
-        except Exception:
-            pass
-    if stale_symbols:
+    # ── Account-mode: position discrepancy warnings ─────────────────
+    if account and real_positions:
+        discrepancies = []
+        for code in sorted(set(list(sim_positions.keys()) + list(real_positions.keys()))):
+            sim_shares = sim_positions.get(code, 0)
+            real_shares = int(real_positions.get(code, {}).get("shares", 0))
+            if sim_shares != real_shares:
+                name = SYMBOLS.get(code, code)
+                discrepancies.append((code, name, sim_shares, real_shares))
+        if discrepancies:
+            print("─" * 72)
+            print("  ⚠ 持仓差异 (模拟 vs 实盘)")
+            print("─" * 72)
+            for code, name, sim, real in discrepancies:
+                print(f"  {code} {name}: 模拟 {sim:,} 股  |  实盘 {real:,} 股")
+            print("  请核实实盘持仓是否与策略预期一致。")
+            print()
+
+    # ── Risk state continuity check ─────────────────────────────────
+    if prev_risk:
         print("─" * 72)
-        print("  ⚠ 数据过期警告")
+        print("  风险状态连续性检查")
         print("─" * 72)
-        for code, last_date in stale_symbols:
-            print(f"  {code} {SYMBOLS.get(code, '?')}: 缓存截止 {last_date}（网络获取失败）")
-        print("  信号可能不反映最新交易日，请勿直接用于实盘决策。")
+        prev_lock = prev_risk.get("terminal_risk_lock", False)
+        curr_lock = bool(result.get("terminal_risk_lock", False))
+        prev_guard = prev_risk.get("sector_guard_active", False)
+        curr_guard = bool(guard)
+        if prev_lock and not curr_lock:
+            print("  ⚠ 上次终态锁定已激活，但本次回测未检测到 — 可能因回测区间不同")
+            print("    如实盘仍有终态锁定，请勿根据本次信号加仓。")
+        elif prev_lock and curr_lock:
+            print("  终态锁定: 上次 ✓  本次 ✓ (一致)")
+        elif not prev_lock and curr_lock:
+            print("  ⚠ 本次检测到终态锁定 — 上次未激活")
+        else:
+            print("  终态锁定: 上次 ✗  本次 ✗ (正常)")
+        if prev_guard and not curr_guard:
+            print("  ⚠ 上次板块风控已激活，本次已解除 — 确认市场是否真的恢复")
+        elif prev_guard and curr_guard:
+            print("  板块风控: 上次 ✓  本次 ✓ (一致)")
+        elif not prev_guard and curr_guard:
+            print("  ⚠ 本次板块风控已激活 — 上次未激活")
+        else:
+            print("  板块风控: 上次 ✗  本次 ✗ (正常)")
+        print(f"  上次最大回撤: {prev_risk.get('max_drawdown', 0):.2%}")
+        print(f"  本次最大回撤: {result.get('max_drawdown', 0):.2%}")
         print()
 
     # ── Bear market position advisory ────────────────────────────────
@@ -372,9 +596,10 @@ def main() -> int:
 
     artifact = {
         "scan_date": end_date,
+        "mode": "account" if account else "simulation",
         "symbols": SYMBOLS,
-        "start_date": START_DATE,
-        "initial_capital": INITIAL_CAPITAL,
+        "start_date": start_date,
+        "initial_capital": capital,
         "signals": rows,
         "summary": {
             "buy": buy_count,
@@ -392,11 +617,22 @@ def main() -> int:
         },
         "pending_signals": pending_serializable,
     }
+    if account:
+        artifact["account"] = {
+            "cash": float(account["cash"]),
+            "peak_equity": float(account["peak_equity"]) if account.get("peak_equity") else None,
+            "position_count": len(real_positions),
+        }
+    if prev_risk:
+        artifact["previous_risk_state"] = prev_risk
     output_file.write_text(
         json.dumps(artifact, ensure_ascii=False, indent=2, default=str) + "\n",
         encoding="utf-8",
     )
+    # Persist risk state for the next daily run
+    _save_risk_state(args.output_dir, end_date, result)
     print(f"  结果已保存: {output_file}")
+    print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")
     print()
     return 0
 

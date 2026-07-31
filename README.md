@@ -15,15 +15,15 @@ require another strategy module at runtime.
 - The same fixed basket is the reference distribution for 10-, 20-, 40-, and
   80-day risk-adjusted momentum. Existing scores therefore do not change merely
   because a tradable symbol is added or removed.
-- When the universe has no more than ten symbols, all symbols remain eligible
-  and their independent entry signals decide whether to trade. Above ten, a
+- When the universe has no more than six symbols, all symbols remain eligible
+  and their independent entry signals decide whether to trade. Above six, a
   symbol must reach the 50th reference percentile before it can consume one of
-  the ten candidate slots.
+  the six candidate slots.
 - One- and two-symbol universes have little useful cross-sectional information.
   The engine therefore switches every sleeve to a slower time-series trend contract
   without changing the 60% symbol exposure ceiling.
 - Forced industry-group slots are disabled. The synchronized portfolio
-  coordinator admits at most ten distinct symbols across all sleeves, not ten
+  coordinator admits at most six distinct symbols across all sleeves, not six
   per sleeve, and can ignore weaker additions to a large universe.
 - Allocation horizons are `(3, 5, 10)`, `(5, 10, 20)`, and `(5, 20, 60)` days.
   Candidate horizons are `(10, 20, 40)`, `(10, 20, 40)`, and `(10, 40, 80)`;
@@ -55,9 +55,11 @@ require another strategy module at runtime.
   longer offers a synthetic same-close period-end liquidation.
 - Calmar is reported beside return, drawdown, and Sharpe in in-memory results,
   console summaries, saved CSV summaries, and canonical JSON artifacts.
-- A symbol without explicit routing metadata or a recognized name hint still
-  receives the deterministic default profile, but now produces a route warning
-  and appears in `unmapped_symbols` instead of falling back silently.
+- A symbol without explicit routing metadata or a recognized name hint now
+  raises `RuntimeError` by default (`strict_unmapped: True`) instead of silently
+  falling back to the default trend profile. All 26 universe symbols are
+  explicitly mapped in `_SYMBOL_GROUP`, `_SYMBOL_PROFILE`, and
+  `_KNOWN_CLASSIFICATION`. Disable with `strict_unmapped: False` for research.
 
 Universe-size robustness does not mean composition invariance. A universe that
 removes the strongest underlying assets cannot be guaranteed the return of a
@@ -74,8 +76,13 @@ should supply its own stable benchmark basket before live use.
   tests.
 - `test_quant_fusion_optimizer.py`: leakage, constraint, parameter-support,
   dynamic-listing, and deterministic-search tests.
+- `test_daily_signal_scan.py`: account loading, risk state persistence,
+  signal classification, position reconstruction, and symbol mapping tests.
 - `backtest_universes.py`, `stress_test_prefixes.py`, and
   `backtest_cambricon_universe.py`: reproducible portfolio checks.
+- `daily_signal_scan.py`: daily signal scan for the 26-stock AI sector universe
+  with optional real-account integration, stale-data fail-closed, and risk
+  state persistence.
 - `market_data`:
   canonical forward-adjusted snapshots required by the regression suite.
 - `universe_backtest.json`, `prefix_stress.json`, and
@@ -254,7 +261,7 @@ Run the standard-library regression suite and the complete cross-universe runner
 
 ```bash
 python -m py_compile quant_fusion.py quant_fusion_optimizer.py
-python -m unittest -v test_quant_fusion.py test_quant_fusion_optimizer.py
+python -m unittest -v test_quant_fusion.py test_quant_fusion_optimizer.py test_daily_signal_scan.py
 python backtest_universes.py
 python stress_test_prefixes.py
 python backtest_cambricon_universe.py
@@ -266,12 +273,82 @@ concentration scaling, temporary rearming, terminal locks, signal immutability,
 fair same-symbol allocation, cumulative ADV accounting, missing-data guard
 quorum, strict batch exposure, low-price minimum-fee affordability, detailed
 rejection auditing, data snapshot checksums, signal-only basket isolation, the
-portfolio-wide ten-symbol ceiling, all five requested universe sizes, sub-20%
+portfolio-wide six-symbol ceiling, all five requested universe sizes, sub-20%
 drawdown for the requested warm universes, Cambricon's complete route, the
 2026-06-26 regime-gate event, the complete one-through-22 prefix artifact, and
 the mapped nine-symbol Cambricon artifact. It also checks deterministic detection
 of unmapped auto routes and the presence of positive Calmar values in successful
-target-period runs.
+target-period runs. The daily-signal-scan tests verify account JSON loading,
+risk state persistence round-trips, signal classification, position
+reconstruction from trade ledgers, and that all 26 universe symbols are
+explicitly mapped.
+
+## Daily signal scan
+
+`daily_signal_scan.py` fetches the latest forward-adjusted data via AKShare
+(with incremental cache), runs the Quant Fusion backtest, and extracts the
+latest pending signal (buy / sell / hold) for each of the 26 AI-sector symbols.
+
+### Modes
+
+- **Simulation mode** (default): runs a fresh backtest from `--start-date`.
+  Signals reflect what the strategy *would have* done, not your real portfolio.
+- **Account mode** (`--account account.json`): overlays real cash, positions,
+  and risk state on top of the backtest. Displays simulated vs real holdings
+  side by side with discrepancy warnings.
+
+### Stale data fail-closed
+
+If any symbol's cached data is stale (network fetch failed), the scan refuses
+to produce signals and exits with code 1. Override with `--allow-stale` only
+when you understand the risk; stale-data signals must not be used for live
+trading decisions.
+
+### Risk state persistence
+
+After each run, risk state (`terminal_risk_lock`, `sector_guard_active`,
+`max_drawdown`, `cycle_lock_count`) is saved to `risk_state.json` in the
+output directory. On the next run, the previous state is loaded and displayed
+for continuity checking — if the previous run had an active terminal lock or
+sector guard, a warning is shown even if the current backtest doesn't detect
+it (because the backtest starts fresh each time).
+
+### Usage
+
+```bash
+# Simulation mode (default)
+python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR]
+
+# Account-aware mode
+python daily_signal_scan.py \
+  --account account.json \
+  --start-date 2026-07-01 \
+  --output-dir /workspace/trade/daily_signals
+
+# Override capital (simulation mode)
+python daily_signal_scan.py --capital 1500000 --start-date 2026-06-01
+```
+
+### Account JSON format
+
+```json
+{
+  "cash": 500000.0,
+  "peak_equity": 2500000.0,
+  "positions": {
+    "300308": {"shares": 900, "avg_cost": 980.50, "entry_date": "2026-03-18"},
+    "688256": {"shares": 200, "avg_cost": 1250.00, "entry_date": "2026-04-15"}
+  },
+  "risk_state": {
+    "terminal_risk_lock": false,
+    "sector_guard_active": false,
+    "cycle_lock_count": 0
+  }
+}
+```
+
+When `--account` is omitted, a warning is printed indicating that signals are
+from a fresh simulation and may not reflect real portfolio state.
 
 ## Important assumptions
 

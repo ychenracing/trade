@@ -1361,7 +1361,7 @@ class _CoreBacktestEngine:
                 "domestic_semiconductor": 0.8,
             },
             "liquidate_on_circuit_breaker": True,
-            "strict_unmapped": False,  # when True, unmapped auto-routed symbols raise instead of warning
+            "strict_unmapped": True,  # fail-closed: unmapped symbols raise instead of silently using default
             "commission_rate": 0.00025,
             "stamp_duty": 0.0005,
             "slippage": 0.001,
@@ -1599,6 +1599,9 @@ class _CoreBacktestEngine:
         "688008": "default",
         "002409": "default",
         "688300": "default",
+        "688498": "default",
+        "002281": "default",
+        "601869": "default",
         "688256": "semiconductor",
         "603986": "semiconductor",
         "688072": "semiconductor",
@@ -1614,6 +1617,14 @@ class _CoreBacktestEngine:
         "688409": "semiconductor",
         "300666": "semiconductor",
         "600206": "semiconductor",
+        "300223": "semiconductor",
+        "688825": "semiconductor",
+        "688041": "semiconductor",
+        "002371": "semiconductor",
+        "688012": "semiconductor",
+        "688037": "semiconductor",
+        "688019": "semiconductor",
+        "688268": "semiconductor",
     }
     _SYMBOL_GROUP: ClassVar[dict[str, str]] = {
         "300308": "overseas_compute",
@@ -1624,6 +1635,9 @@ class _CoreBacktestEngine:
         "688008": "overseas_compute",
         "002409": "overseas_compute",
         "688300": "overseas_compute",
+        "688498": "overseas_compute",
+        "002281": "overseas_compute",
+        "601869": "overseas_compute",
         "688256": "domestic_semiconductor",
         "603986": "domestic_semiconductor",
         "688072": "domestic_semiconductor",
@@ -1639,6 +1653,14 @@ class _CoreBacktestEngine:
         "688409": "domestic_semiconductor",
         "300666": "domestic_semiconductor",
         "600206": "domestic_semiconductor",
+        "300223": "domestic_semiconductor",
+        "688825": "domestic_semiconductor",
+        "688041": "domestic_semiconductor",
+        "002371": "domestic_semiconductor",
+        "688012": "domestic_semiconductor",
+        "688037": "domestic_semiconductor",
+        "688019": "domestic_semiconductor",
+        "688268": "domestic_semiconductor",
     }
     _SYMBOL_PROFILE: ClassVar[dict[str, str]] = {
         "300308": "overseas_optical",
@@ -1649,6 +1671,9 @@ class _CoreBacktestEngine:
         "688008": "overseas_memory_material",
         "002409": "overseas_memory_material",
         "688300": "overseas_memory_material",
+        "688498": "overseas_optical",
+        "002281": "overseas_optical",
+        "601869": "overseas_optical",
         "688256": "domestic_design",
         "603986": "domestic_design",
         "688072": "domestic_equipment",
@@ -1664,6 +1689,14 @@ class _CoreBacktestEngine:
         "600206": "domestic_material",
         "688249": "domestic_foundry",
         "688347": "domestic_foundry",
+        "300223": "domestic_design",
+        "688825": "domestic_foundry",
+        "688041": "domestic_design",
+        "002371": "domestic_equipment",
+        "688012": "domestic_equipment",
+        "688037": "domestic_equipment",
+        "688019": "domestic_material",
+        "688268": "domestic_material",
     }
 
     @staticmethod
@@ -2352,7 +2385,7 @@ class _CoreBacktestEngine:
                     "using the default trend profile"
                 )
                 print(msg)
-                if self.cfg.get("strict_unmapped", False):
+                if self.cfg.get("strict_unmapped", True):
                     raise RuntimeError(
                         f"strict_unmapped is enabled: {name}({code}) has no "
                         "explicit metadata or recognized name hint. Map it "
@@ -2384,7 +2417,7 @@ class _CoreBacktestEngine:
                 )
         if not scores:
             return set(symbols_dict)
-        max_positions = int(self.cfg.get("max_positions", 2))
+        max_positions = int(self.cfg.get("max_positions", 6))
         ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
         min_slots = min(int(self.cfg.get("group_min_slots", 0)), max_positions // 2)
         selected: list[str] = []
@@ -3210,14 +3243,14 @@ class _CoreBacktestEngine:
             current_assets = self.initial_capital
             current_prices = None
         if signal.symbol not in self.positions and len(self.positions) >= int(
-            global_cfg.get("max_positions", 1)
+            global_cfg.get("max_positions", 6)
         ):
             self._record_buy_rejection(
                 date=date_str,
                 signal=signal,
                 event="rejected_max_positions",
                 current_positions=len(self.positions),
-                max_positions=int(global_cfg.get("max_positions", 1)),
+                max_positions=int(global_cfg.get("max_positions", 6)),
             )
             return False
         if signal.atr > 0:
@@ -4051,7 +4084,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         if requested <= 0 or execution_price <= 0:
             return 0
         if signal.symbol not in self.positions and len(self.positions) >= int(
-            self.cfg.get("max_positions", 1)
+            self.cfg.get("max_positions", 6)
         ):
             return 0
         # All production strategies for one symbol currently share a validated
