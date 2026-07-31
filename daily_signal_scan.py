@@ -352,6 +352,7 @@ def main() -> int:
         data_dir=None,  # online AKShare with cache
         indicator_state="warm",
         warmup_calendar_days=365,
+        risk_state=prev_risk,
     )
 
     # ── Extract latest pending signals ───────────────────────────────

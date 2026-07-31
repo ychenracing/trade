@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -48,7 +49,7 @@ def _run(count: int) -> dict[str, Any]:
 
 def main() -> int:
     """Run all prefixes and persist a deterministic audit artifact."""
-    with ProcessPoolExecutor(max_workers=4) as executor:
+    with ProcessPoolExecutor(max_workers=min(4, os.cpu_count() or 1)) as executor:
         results = list(executor.map(_run, range(1, len(ORDERED_CODES) + 1)))
     results.sort(key=lambda item: item["symbol_count"])
     wealth = [1.0 + item["total_return"] for item in results]

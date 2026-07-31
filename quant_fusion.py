@@ -2018,6 +2018,7 @@ class _CoreBacktestEngine:
         boolean_keys = (
             "liquidate_on_circuit_breaker",
             "sector_guard_enabled",
+            "strict_unmapped",
             "symbol_level_sell_veto",
             "reversal_turtle_enabled",
             "reversal_dual_ma_enabled",
@@ -3016,6 +3017,10 @@ class _CoreBacktestEngine:
             config_route,
             data_dir,
         )
+        # Apply initial risk state for continuity across daily scans
+        initial_risk = self.cfg.get("_initial_risk_state")
+        if initial_risk and initial_risk.get("sector_guard_active", False):
+            self.sector_guard_active = True
         pending_signals: list[tuple[Signal, BaseStrategy]] = []
         for date in all_dates:
             pending_signals = self._process_trading_day(
@@ -4860,6 +4865,7 @@ class _RunRequest:
     data_dir: str | None
     indicator_state: str
     warmup_calendar_days: int
+    risk_state: dict | None = None
 
 
 @dataclass
@@ -5121,6 +5127,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
         indicator_state: str = "cold",
         warmup_calendar_days: int = 365,
         allocation_mode: str | None = None,
+        risk_state: dict | None = None,
     ) -> dict:
         """Run the configured single sleeve or the default three-sleeve ensemble."""
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
@@ -5128,6 +5135,9 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             raise ValueError("allocation_mode must be either 'single' or 'ensemble'")
         if mode == "single":
             self.sleeves = [self]
+            if risk_state:
+                self.cfg = dict(self.cfg)
+                self.cfg["_initial_risk_state"] = risk_state
             result = super().run(
                 symbols_dict,
                 start_date,
@@ -5154,6 +5164,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
                 data_dir=data_dir,
                 indicator_state=indicator_state,
                 warmup_calendar_days=warmup_calendar_days,
+                risk_state=risk_state,
             )
         )
 
@@ -6441,6 +6452,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         indicator_state: str = "cold",
         warmup_calendar_days: int = 365,
         allocation_mode: str | None = None,
+        risk_state: dict | None = None,
     ) -> dict:
         """Run one or several portfolio sleeves under the same effective policy formula."""
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
@@ -6456,6 +6468,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 indicator_state=indicator_state,
                 warmup_calendar_days=warmup_calendar_days,
                 allocation_mode="ensemble",
+                risk_state=risk_state,
             )
         if mode != "single":
             raise ValueError("allocation_mode must be either 'single' or 'ensemble'")
@@ -6470,6 +6483,9 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             allocation_lookbacks=effective_policy.single_lookbacks,
             sleeve_name="single",
         )
+        if risk_state:
+            sleeve.cfg = dict(sleeve.cfg)
+            sleeve.cfg["_initial_risk_state"] = risk_state
         result = sleeve.run(
             symbols_dict,
             start_date,
@@ -6498,6 +6514,17 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         portfolio_risk = RecoverableDrawdownRiskManager(
             {"max_drawdown": effective_policy.confirmed_drawdown}, effective_policy
         )
+        # Restore previous risk state for continuity across daily scans
+        if request.risk_state:
+            if request.risk_state.get("terminal_risk_lock", False):
+                portfolio_risk.terminal_lock = True
+                portfolio_risk.persistent_lock = True
+            portfolio_risk.cycle_lock_count = request.risk_state.get(
+                "cycle_lock_count", 0
+            )
+            if request.risk_state.get("sector_guard_active", False):
+                for state in states:
+                    state.sleeve.sector_guard_active = True
         portfolio_risk_events: list[dict[str, Any]] = []
         symbol_count_curve: list[dict[str, Any]] = []
         for date in reference_dates:

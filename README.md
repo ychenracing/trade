@@ -137,6 +137,31 @@ The CLI defaults to warm indicator state because a live strategy normally has
 pre-start history. Cold state remains available for initialization sensitivity
 tests. Both states start the portfolio flat on the requested first date.
 
+### Risk state continuity
+
+The `BacktestEngine.run()` method accepts an optional `risk_state` parameter
+that restores risk management state from a previous run:
+
+```python
+result = engine.run(
+    symbols_dict, start_date, end_date,
+    risk_state={
+        "terminal_risk_lock": True,
+        "sector_guard_active": False,
+        "cycle_lock_count": 1,
+    },
+)
+```
+
+When `terminal_risk_lock` is `True`, the portfolio-level risk manager starts
+locked and no new trades are entered. When `sector_guard_active` is `True`,
+the sector breadth guard is active from the first trading day. This enables
+daily signal scans to preserve risk continuity across consecutive runs.
+
+The `daily_signal_scan.py` script automatically loads the previous run's risk
+state from `risk_state.json` and passes it to the engine, ensuring that a
+terminal lock or active sector guard persists across daily scans.
+
 ## Automatic parameter optimization
 
 The optimizer preserves `quant_fusion.py` as the only execution engine. It
