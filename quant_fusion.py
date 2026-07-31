@@ -403,6 +403,12 @@ class DataFetcher:
                         f"using cached data only (latest day may be missing)"
                     )
                     combined = cached
+                    # Mark the data as stale so callers can refuse to produce
+                    # signals that look "latest" but are actually from cache.
+                    combined.attrs["_stale"] = True
+                    combined.attrs["_cache_last_date"] = str(last_cached.date())
+                else:
+                    combined.attrs["_stale"] = False
             combined.to_csv(cache_path)
             return combined[(combined.index >= start_ts) & (combined.index <= end_ts)].copy()
         # No cache file: full fetch + save
@@ -1355,6 +1361,7 @@ class _CoreBacktestEngine:
                 "domestic_semiconductor": 0.8,
             },
             "liquidate_on_circuit_breaker": True,
+            "strict_unmapped": False,  # when True, unmapped auto-routed symbols raise instead of warning
             "commission_rate": 0.00025,
             "stamp_duty": 0.0005,
             "slippage": 0.001,
@@ -2340,10 +2347,17 @@ class _CoreBacktestEngine:
                 else str(profile or "default")
             )
             if config_route == "auto" and self._uses_unmapped_auto_route(code, name):
-                print(
+                msg = (
                     f"  [Route warning] {name}({code}) has no explicit metadata; "
                     "using the default trend profile"
                 )
+                print(msg)
+                if self.cfg.get("strict_unmapped", False):
+                    raise RuntimeError(
+                        f"strict_unmapped is enabled: {name}({code}) has no "
+                        "explicit metadata or recognized name hint. Map it "
+                        "explicitly or disable strict_unmapped."
+                    )
             print(f"  [Parameter route] {name}({code}) -> {route}")
             print(
                 f"  {name} ({code}): {len(df)} rows, "
@@ -6364,18 +6378,16 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
     def _runtime_sleeve_cfg(self, tradable_count: int) -> dict[str, Any]:
         """Return shared overrides with one fixed parameter set for all sizes.
 
-        A single ``max_positions`` ceiling (10) is used regardless of universe
-        size. Small universes are naturally bounded by their own symbol count,
-        so the wider ceiling only benefits larger AI-tech baskets without
-        changing behavior for concentrated portfolios. Very small universes
-        (<=2) still use the slower time-series trend contract, which is a
-        strategy-logic switch (no cross-sectional information) rather than a
-        parameter change.
+        ``max_positions`` is kept at the default 6 (matching README and frozen
+        artifacts). Small universes are naturally bounded by their own symbol
+        count. Very small universes (<=2) still use the slower time-series
+        trend contract, which is a strategy-logic switch (no cross-sectional
+        information) rather than a parameter change.
         """
         sleeve_cfg = dict(self._ensemble_user_cfg)
         if tradable_count <= 2:
             sleeve_cfg.update(self._SINGLE_ASSET_TREND_OVERRIDES)
-        sleeve_cfg["max_positions"] = 10
+        # max_positions stays at the default (6) — no override needed
         return sleeve_cfg
 
     def run(  # noqa: PLR0913 - Preserve the inherited public API.

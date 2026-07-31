@@ -247,17 +247,20 @@ def main() -> int:
             "signal": signal_label,
             "held_shares": held_shares,
             "strategies": strategies,
+            "industry": qf._CoreBacktestEngine._SYMBOL_GROUP.get(code, "default"),
+            "profile": qf._CoreBacktestEngine._SYMBOL_PROFILE.get(code, "default"),
         })
 
     # ── Print summary table ──────────────────────────────────────────
     print()
-    print(f"{'代码':<10} {'名称':<10} {'信号':<12} {'持仓股数':>12}  {'策略'}")
-    print("─" * 72)
+    print(f"{'代码':<10} {'名称':<10} {'信号':<12} {'行业':<20} {'Profile':<12} {'持仓股数':>12}  {'策略'}")
+    print("─" * 100)
 
     buy_count = sell_count = hold_count = wait_count = untradeable_count = 0
     for row in rows:
         print(
             f"{row['code']:<10} {row['name']:<10} {row['signal']:<12} "
+            f"{row['industry']:<20} {row['profile']:<12} "
             f"{row['held_shares']:>12,}  {row['strategies']}"
         )
         if "买入" in row["signal"]:
@@ -294,6 +297,43 @@ def main() -> int:
     guard = result.get("sector_guard_active", False)
     print(f"  板块风控激活:   {'是' if guard else '否'}")
     print()
+
+    # ── Stale data warning ──────────────────────────────────────────
+    # If any symbol's data is marked stale (network fetch failed, using cache),
+    # warn the user that signals may not reflect the latest session.
+    stale_symbols = []
+    # Check result for stale data markers
+    for code in tradable:
+        try:
+            df = qf.DataFetcher.load_stock_data(
+                code, probe_start, end_date, data_dir=None
+            )
+            if df is not None and not df.empty and df.attrs.get("_stale", False):
+                stale_symbols.append((code, df.attrs.get("_cache_last_date", "?")))
+        except Exception:
+            pass
+    if stale_symbols:
+        print("─" * 72)
+        print("  ⚠ 数据过期警告")
+        print("─" * 72)
+        for code, last_date in stale_symbols:
+            print(f"  {code} {SYMBOLS.get(code, '?')}: 缓存截止 {last_date}（网络获取失败）")
+        print("  信号可能不反映最新交易日，请勿直接用于实盘决策。")
+        print()
+
+    # ── Bear market position advisory ────────────────────────────────
+    # Run a quick prior-period check to advise on position sizing
+    if result.get("max_drawdown", 0) and abs(result["max_drawdown"]) > 0.15:
+        dd = abs(result["max_drawdown"])
+        if dd > 0.20:
+            advisory = f"  ⚠ 当前组合最大回撤 {dd:.1%}，建议总仓位不超过50%"
+        elif dd > 0.15:
+            advisory = f"  ⚠ 当前组合最大回撤 {dd:.1%}，建议总仓位不超过70%"
+        print("─" * 72)
+        print("  弱市仓位建议")
+        print("─" * 72)
+        print(advisory)
+        print()
 
     # ── Risk events (latest) ─────────────────────────────────────────
     risk_events = result.get("risk_events", [])
