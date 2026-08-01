@@ -14,9 +14,20 @@ defects. It will be re-enabled as a separate account signal engine.
 Risk state (terminal_risk_lock, sector_guard_active, drawdown) is persisted to
 risk_state.json with enhanced identity fields (symbols_hash, run_id) after each
 run and restored on the next run for continuity. Identity uses stable fields
-only (symbol set + count + start date); cash/capital is excluded because it
-changes daily. Old risk state files without symbols_hash are rejected
-(fail-closed) to prevent cross-contamination.
+only (symbol set + count + start date + indicator_state); cash/capital is
+excluded because it changes daily. Old risk state files without symbols_hash
+are rejected (fail-closed) to prevent cross-contamination.
+
+Risk state writes are atomic (temp file + os.replace) to prevent corruption
+from disk full, process kill, or power loss. Corrupted risk state files cause
+the scan to exit with code 1 rather than silently discarding terminal lock
+state. Same-day reruns preserve the previous state so terminal lock and sector
+guard continuity is maintained.
+
+When the risk state identity hash does not match (different symbol set, count,
+or configuration), buy signals are suppressed (fail-closed) to prevent entering
+new positions without verified risk-state continuity. Sell and hold signals
+are still shown. Delete risk_state.json to reset.
 
 Stale data fail-closed: if any symbol's cached data is stale (network fetch
 failed) or data end dates are inconsistent across symbols, the scan refuses to
@@ -34,7 +45,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
+import tempfile
 from collections import defaultdict
 from dataclasses import asdict
 from datetime import date, timedelta
@@ -114,6 +127,11 @@ def _extract_positions(trades: list[Any]) -> dict[str, int]:
 def _load_account(path: str) -> dict[str, Any] | None:
     """Load a real-account JSON snapshot for live-signal mode.
 
+    .. deprecated::
+        The ``--account`` CLI flag is disabled. This function is retained for
+        unit tests and future use by the separate account signal engine. It
+        is not called in the production ``main()`` path.
+
     Expected format::
 
         {
@@ -149,31 +167,45 @@ def _load_account(path: str) -> dict[str, Any] | None:
     return data
 
 
-def _load_prev_risk_state(output_dir: str, end_date: str) -> dict[str, Any] | None:
-    """Load the risk state saved by a previous daily scan run."""
+def _load_prev_risk_state(
+    output_dir: str, end_date: str
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Load the risk state saved by a previous daily scan run.
+
+    Returns a tuple of ``(state, error)``. When the file is missing or the
+    scan_date matches ``end_date`` (same-day rerun), ``state`` is ``None`` and
+    ``error`` is ``None``. When the file is corrupt or unreadable, ``state``
+    is ``None`` and ``error`` is a human-readable message — the caller should
+    treat this as a fail-closed condition.
+
+    Same-day rerun: instead of silently discarding the state, we still return
+    it so the caller can preserve terminal lock and sector guard continuity.
+    The ``scan_date`` field allows the caller to distinguish "previous run"
+    from "same-day rerun" if needed.
+    """
     state_file = Path(output_dir) / "risk_state.json"
     if not state_file.exists():
-        return None
+        return None, None
     try:
-        data = json.loads(state_file.read_text(encoding="utf-8"))
-        if data.get("scan_date") == end_date:
-            return None  # same-day state — not "previous"
-        return data
-    except (OSError, json.JSONDecodeError):
-        return None
+        raw = state_file.read_text(encoding="utf-8")
+        data = json.loads(raw)
+    except (OSError, json.JSONDecodeError) as exc:
+        return None, f"risk_state.json 损坏或无法读取: {exc}"
+    if not isinstance(data, dict):
+        return None, "risk_state.json 内容不是有效 JSON 对象"
+    return data, None
 
 
 def _save_risk_state(
     output_dir: str, end_date: str, result: dict[str, Any],
     tradable: dict[str, str] | None = None,
     config_hash: str = "",
-    account_path: str = "",
 ) -> None:
     """Persist risk state for restoration by the next daily scan run.
 
-    The ``symbols_hash`` now includes symbol set, count, account fingerprint,
-    and an optional config fingerprint so that the same symbol set with
-    different configuration or account is treated as a different identity.
+    The ``symbols_hash`` includes symbol set, count, and config fingerprint
+    so that the same symbol set with different configuration is treated as a
+    different identity.
     """
     state: dict[str, Any] = {
         "scan_date": end_date,
@@ -194,19 +226,33 @@ def _save_risk_state(
         ]
         if config_hash:
             identity_parts.append(config_hash)
-        if account_path:
-            identity_parts.append(account_path)
         state["symbols_hash"] = hashlib.sha256(
             "|".join(identity_parts).encode("utf-8")
         ).hexdigest()[:16]
         state["total_symbols"] = len(tradable)
         state["run_id"] = f"trade_{end_date}"
-        state["account_path"] = account_path
     state_file = Path(output_dir) / "risk_state.json"
     state_file.parent.mkdir(parents=True, exist_ok=True)
-    state_file.write_text(
-        json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    # Atomic write: write to a temp file in the same directory, then
+    # os.replace() to the final path. This prevents partial writes from
+    # corrupting the risk state file on disk full, process kill, or power loss.
+    content = json.dumps(state, ensure_ascii=False, indent=2) + "\n"
+    fd, tmp_path = tempfile.mkstemp(
+        dir=str(state_file.parent), prefix=".risk_state_", suffix=".tmp"
     )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, str(state_file))
+    except OSError:
+        # Clean up the temp file if the replace failed
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def main() -> int:
@@ -247,16 +293,14 @@ def main() -> int:
         "--capital",
         type=float,
         default=0.0,
-        help=f"Initial capital (default: {INITIAL_CAPITAL:,.0f}). "
-        "Overridden by account.cash when --account is used.",
+        help=f"Initial capital (default: {INITIAL_CAPITAL:,.0f}).",
     )
     args = parser.parse_args()
 
     end_date = args.end_date or _today_str()
     start_date = args.start_date or START_DATE
 
-    # Load real account state if provided
-    account: dict[str, Any] | None = None
+    # --account mode is disabled — exit early with an explanatory message
     if args.account:
         print("=" * 72)
         print("  ⚠ --account 模式当前不可用")
@@ -274,103 +318,28 @@ def main() -> int:
         print("  真实账户信号引擎正在重构中。")
         return 1
 
-    # ── Resolve capital: account.cash > --capital > default ──
-    # P0 fix: use cash alone as engine capital because positions are
-    # injected separately via account_state. Using total_equity would
-    # double-count position value (once in cash, once as positions).
-    if account is not None:
-        cash = float(account["cash"])
-        positions = account.get("positions", {})
-        position_value = 0.0
-        for v in positions.values():
-            shares = float(v.get("shares", 0))
-            # Fall back to avg_cost when price is absent — account files
-            # typically store avg_cost, not the current market price.
-            price = float(v.get("price", 0) or v.get("avg_cost", 0))
-            if shares > 0 and price > 0:
-                position_value += shares * price
-        total_equity = cash + position_value
-        capital = cash  # engine cash; positions injected separately
-        # Store derived values for later reporting
-        account["_position_value"] = position_value
-        account["_total_equity"] = total_equity
-    elif args.capital > 0:
+    # ── Resolve capital ──
+    if args.capital > 0:
         capital = args.capital
     else:
         capital = INITIAL_CAPITAL
 
-    # Build AccountState from the loaded account data (None if simulation mode)
-    account_state: qf.AccountState | None = None
-    if account is not None:
-        raw_peak = account.get("peak_equity", 0)
-        peak_equity = float(raw_peak) if raw_peak is not None and raw_peak > 0 else float(account.get("_total_equity", capital))
-        account_state = qf.AccountState(
-            cash=float(account["cash"]),
-            position_value=float(account.get("_position_value", 0)),
-            total_equity=float(account.get("_total_equity", capital)),
-            peak_equity=peak_equity,
-            positions=dict(account.get("positions", {})),
-            risk_state=dict(account.get("risk_state", {})),
-        )
-
     # ── Load previous run's risk state for continuity ──
-    prev_risk = _load_prev_risk_state(args.output_dir, end_date)
+    prev_risk, risk_error = _load_prev_risk_state(args.output_dir, end_date)
+    if risk_error:
+        print(f"  ✗ {risk_error}")
+        print("  风险状态文件损坏 — 拒绝继续运行以防止丢失终态锁定状态。")
+        print("  请删除 risk_state.json 后重试，或检查文件权限。")
+        return 1
 
-    # ── P0: account risk_state takes priority over file risk_state ──
-    # Account risk state is the ground truth — it comes from the real brokerage
-    # account and does not need symbols_hash validation. File risk state is
-    # auxiliary and must pass identity checks (applied after tradable is built).
-    account_risk_used = False
-    if account and isinstance(account.get("risk_state"), dict):
-        account_risk: dict[str, Any] = account["risk_state"]
-        # Account risk state is valid if it contains any risk key — even
-        # all-false means "account explicitly has no lock", which is
-        # different from "no information". We check key presence, not truthiness.
-        has_any_key = any(
-            k in account_risk
-            for k in ("terminal_risk_lock", "sector_guard_active", "cycle_lock_count")
-        )
-        if has_any_key:
-            if prev_risk:
-                # Merge: account fields override file fields (account is truth)
-                merged = dict(prev_risk)
-                for key in ("terminal_risk_lock", "sector_guard_active", "cycle_lock_count"):
-                    if key in account_risk:
-                        merged[key] = account_risk[key]
-                prev_risk = merged
-                print(f"  ℹ 账户风险状态已合并 (账户优先级高于文件)")
-            else:
-                # No file state — use account state directly (no hash needed)
-                prev_risk = dict(account_risk)
-                print(f"  ℹ 使用账户风险状态 (无文件状态)")
-            account_risk_used = True
-            if prev_risk.get("terminal_risk_lock"):
-                print(f"  ⚠ 账户终态锁定已激活")
-            if prev_risk.get("sector_guard_active"):
-                print(f"  ⚠ 账户板块风控已激活")
-        else:
-            print("  ℹ 账户 risk_state 无风险字段，将使用文件/默认状态")
-
-    mode_label = "实盘账户模式" if account else "模拟模式 (无账户文件)"
+    mode_label = "模拟模式"
     print("=" * 72)
     print("  AI 板块 26 标的每日信号扫描")
     print("=" * 72)
     print(f"  运行模式:   {mode_label}")
     print(f"  标的数量:   {len(SYMBOLS)}")
     print(f"  回测区间:   {start_date} → {end_date}")
-    if account is not None:
-        total_equity = account.get("_total_equity", capital)
-        position_value = account.get("_position_value", 0)
-        cash = float(account["cash"])
-        print(f"  初始资金:   ¥{capital:,.0f} (总权益 ¥{total_equity:,.0f} = 现金 ¥{cash:,.0f} + 持仓 ¥{position_value:,.0f})")
-    else:
-        print(f"  初始资金:   ¥{capital:,.0f}")
-    if account is not None:
-        real_positions = account.get("positions", {})
-        print(f"  实盘持仓:   {len(real_positions)} 个标的")
-        peak_equity = account.get("peak_equity")
-        if peak_equity is not None and float(peak_equity) > 0:
-            print(f"  峰值权益:   ¥{float(peak_equity):,.0f}")
+    print(f"  初始资金:   ¥{capital:,.0f}")
     if prev_risk:
         print(f"  上次扫描:   {prev_risk.get('scan_date', '?')}")
         if prev_risk.get("terminal_risk_lock"):
@@ -380,11 +349,8 @@ def main() -> int:
     print(f"  指标状态:   warm")
     print(f"  数据源:     AKShare 在线前复权 (增量缓存)")
     print(f"  缓存目录:   {args.cache_dir}")
-    if account is None:
-        print("-" * 72)
-        print("  ⚠ 模拟模式: 未提供 --account 参数，信号基于从零开始的回测。")
-        print("    实盘持仓、风险状态可能与模拟结果不一致。")
-        print("    建议使用 --account account.json 提供真实账户状态。")
+    print("-" * 72)
+    print("  ℹ 模拟模式: 信号基于从零开始的回测，不代表真实账户持仓。")
     print("-" * 72)
 
     # Configure incremental cache for efficient daily updates
@@ -488,19 +454,19 @@ def main() -> int:
                 return 1
 
     # ── Validate FILE risk state identity to prevent cross-contamination ──
-    # Only applies when using pure file state (no account override).
-    # Account-provided risk state is the ground truth and skips this check.
-    # Identity uses stable fields only (symbol set + count + start date).
-    # Cash/capital is excluded because it changes daily.
-    if prev_risk and not account_risk_used:
+    # Identity uses stable fields only (symbol set + count + start date +
+    # indicator_state). Cash/capital is excluded because it changes daily.
+    # When the identity does not match, buy signals are suppressed (fail-closed)
+    # to prevent entering new positions without verified risk-state continuity.
+    suppress_buys = False
+    if prev_risk:
         identity_parts = [
             "trade",
             str(len(tradable)),
             ",".join(sorted(tradable.keys())),
             f"start={start_date}",
+            f"indicator=warm",
         ]
-        if args.account:
-            identity_parts.append(args.account)
         current_hash = hashlib.sha256(
             "|".join(identity_parts).encode("utf-8")
         ).hexdigest()[:16]
@@ -510,11 +476,15 @@ def main() -> int:
             print("  ⚠ 前次风险状态缺少 symbols_hash (旧格式)，拒绝加载以防止交叉污染。")
             print("    删除 risk_state.json 可清除此警告。")
             prev_risk = None
+            suppress_buys = True
         elif prev_hash != current_hash:
             print("  ⚠ 前次风险状态的标的池不匹配，跳过加载以防止交叉污染。")
             if prev_total != len(tradable):
                 print(f"    标的数: 上次={prev_total} 本次={len(tradable)} (不一致)")
             prev_risk = None
+            suppress_buys = True
+            print("  ⚠ 买入信号将被抑制 (风险状态不匹配 — fail-closed)。")
+            print("    删除 risk_state.json 并重新运行可恢复完整信号。")
 
     print("  正在运行回测，请稍候...")
     print("-" * 72)
@@ -528,7 +498,6 @@ def main() -> int:
         indicator_state="warm",
         warmup_calendar_days=365,
         risk_state=prev_risk,
-        account_state=account_state,
     )
 
     # ── Extract latest pending signals ───────────────────────────────
@@ -540,11 +509,6 @@ def main() -> int:
 
     # Reconstruct current positions from trade ledger
     sim_positions = _extract_positions(result.get("trades", []))
-
-    # Real account positions (if provided)
-    real_positions: dict[str, dict[str, Any]] = (
-        account.get("positions", {}) if account else {}
-    )
 
     # ── Build per-symbol signal summary ──────────────────────────────
     # Determine the latest signal for each symbol
@@ -568,7 +532,6 @@ def main() -> int:
                 "strategies": "无数据/未上市",
                 "industry": qf._CoreBacktestEngine.get_symbol_group(code, "N/A"),
                 "profile": qf._CoreBacktestEngine.get_symbol_profile(code, "N/A"),
-                "real_shares": 0,
             })
             continue
 
@@ -600,9 +563,12 @@ def main() -> int:
             signal_label = "观望"
             strategies = "—"
 
-        # In account mode, use real holdings as the authoritative source
-        if real_positions and code in real_positions:
-            held_shares = int(real_positions[code].get("shares", 0))
+        # Fail-closed: suppress buy signals when risk state identity
+        # doesn't match, to prevent entering positions without verified
+        # terminal-lock continuity.
+        if suppress_buys and "买入" in signal_label:
+            signal_label = "观望 (风险状态不匹配)"
+            strategies = "—"
 
         rows.append({
             "code": code,
@@ -612,39 +578,28 @@ def main() -> int:
             "strategies": strategies,
             "industry": qf._CoreBacktestEngine.get_symbol_group(code, "default"),
             "profile": qf._CoreBacktestEngine.get_symbol_profile(code, "default"),
-            "real_shares": int(real_positions[code].get("shares", 0)) if real_positions and code in real_positions else 0,
         })
 
     # ── Print summary table ──────────────────────────────────────────
-    if account:
-        print(f"{'代码':<8} {'名称':<8} {'信号':<12} {'行业':<18} {'模拟持仓':>10} {'实盘持仓':>10}  {'策略'}")
-    else:
-        print(f"{'代码':<10} {'名称':<10} {'信号':<12} {'行业':<20} {'Profile':<12} {'持仓股数':>12}  {'策略'}")
+    print(f"{'代码':<10} {'名称':<10} {'信号':<12} {'行业':<20} {'Profile':<12} {'持仓股数':>12}  {'策略'}")
     print("─" * 100)
 
     buy_count = sell_count = hold_count = wait_count = untradeable_count = 0
+    suppressed_buy_count = 0
     for row in rows:
-        if account:
-            sim_shares = sim_positions.get(row["code"], 0)
-            real_shares = row["real_shares"]
-            mismatch = " ⚠" if sim_shares != real_shares and (sim_shares > 0 or real_shares > 0) else ""
-            print(
-                f"{row['code']:<8} {row['name']:<8} {row['signal']:<12} "
-                f"{row['industry']:<18} {sim_shares:>10,} {real_shares:>10,}  "
-                f"{row['strategies']}{mismatch}"
-            )
-        else:
-            print(
-                f"{row['code']:<10} {row['name']:<10} {row['signal']:<12} "
-                f"{row['industry']:<20} {row['profile']:<12} "
-                f"{row['held_shares']:>12,}  {row['strategies']}"
-            )
+        print(
+            f"{row['code']:<10} {row['name']:<10} {row['signal']:<12} "
+            f"{row['industry']:<20} {row['profile']:<12} "
+            f"{row['held_shares']:>12,}  {row['strategies']}"
+        )
         if "买入" in row["signal"]:
             buy_count += 1
         elif "卖出" in row["signal"]:
             sell_count += 1
         elif "不可交易" in row["signal"]:
             untradeable_count += 1
+        elif "风险状态不匹配" in row["signal"]:
+            suppressed_buy_count += 1
         elif "观望" in row["signal"]:
             wait_count += 1
         else:
@@ -655,6 +610,8 @@ def main() -> int:
         f"信号汇总:  买入 {buy_count}  |  卖出 {sell_count}  |  "
         f"持有 {hold_count}  |  观望 {wait_count}  |  不可交易 {untradeable_count}"
     )
+    if suppressed_buy_count:
+        print(f"  ⚠ {suppressed_buy_count} 个买入信号已被抑制 (风险状态不匹配)")
     print()
 
     # ── Portfolio metrics ────────────────────────────────────────────
@@ -676,24 +633,6 @@ def main() -> int:
     if safe_mode:
         print(f"  ⚠ 市场状态: CHOPPY (震荡市)")
     print()
-
-    # ── Account-mode: position discrepancy warnings ─────────────────
-    if account and real_positions:
-        discrepancies = []
-        for code in sorted(set(list(sim_positions.keys()) + list(real_positions.keys()))):
-            sim_shares = sim_positions.get(code, 0)
-            real_shares = int(real_positions.get(code, {}).get("shares", 0))
-            if sim_shares != real_shares:
-                name = SYMBOLS.get(code, code)
-                discrepancies.append((code, name, sim_shares, real_shares))
-        if discrepancies:
-            print("─" * 72)
-            print("  ⚠ 持仓差异 (模拟 vs 实盘)")
-            print("─" * 72)
-            for code, name, sim, real in discrepancies:
-                print(f"  {code} {name}: 模拟 {sim:,} 股  |  实盘 {real:,} 股")
-            print("  请核实实盘持仓是否与策略预期一致。")
-            print()
 
     # ── Risk state continuity check ─────────────────────────────────
     if prev_risk:
@@ -776,7 +715,7 @@ def main() -> int:
 
     artifact = {
         "scan_date": end_date,
-        "mode": "account" if account else "simulation",
+        "mode": "simulation",
         "symbols": SYMBOLS,
         "start_date": start_date,
         "initial_capital": capital,
@@ -785,6 +724,10 @@ def main() -> int:
             "buy": buy_count,
             "sell": sell_count,
             "hold": hold_count,
+            "wait": wait_count,
+            "untradeable": untradeable_count,
+            "suppressed_buys": suppressed_buy_count,
+            "buys_suppressed": suppress_buys,
         },
         "portfolio": {
             "final_assets": float(result["final_assets"]),
@@ -798,14 +741,6 @@ def main() -> int:
         },
         "pending_signals": pending_serializable,
     }
-    if account:
-        artifact["account"] = {
-            "cash": float(account["cash"]),
-            "position_value": float(account.get("_position_value", 0)),
-            "total_equity": float(account.get("_total_equity", capital)),
-            "peak_equity": float(account["peak_equity"]) if account.get("peak_equity") else None,
-            "position_count": len(real_positions),
-        }
     if prev_risk:
         artifact["previous_risk_state"] = prev_risk
     output_file.write_text(
@@ -813,12 +748,12 @@ def main() -> int:
         encoding="utf-8",
     )
     # Persist risk state for the next daily run (with enhanced identity fields)
-    # Identity uses stable fields only (symbol set + count + start date).
-    # Cash/capital is excluded because it changes daily.
-    config_fingerprint = f"start={start_date}"
+    # Identity uses stable fields only (symbol set + count + start date +
+    # indicator_state). Cash/capital is excluded because it changes daily.
+    config_fingerprint = f"start={start_date}|indicator=warm"
     _save_risk_state(
         args.output_dir, end_date, result, tradable,
-        config_hash=config_fingerprint, account_path=args.account,
+        config_hash=config_fingerprint,
     )
     print(f"  结果已保存: {output_file}")
     print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")

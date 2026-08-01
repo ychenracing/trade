@@ -797,6 +797,93 @@ class NewFeatureTests(unittest.TestCase):
         self.assertEqual(sig.target_shares, 500)
         self.assertIsNone(strat)  # external positions use None strategy placeholder
 
+    def test_execute_sell_with_none_strategy_does_not_crash(self) -> None:
+        """_execute_sell must handle strategy=None (external_account) without
+        crashing on strategy.name or strategy.position access."""
+        engine = quant._CoreBacktestEngine(initial_capital=1_000_000)
+        engine.positions = {
+            "300308": {
+                "external_account": quant.Position(
+                    symbol="300308",
+                    strategy_name="external_account",
+                    shares=500,
+                    entry_price=800.0,
+                    entry_date="2025-01-15",
+                ),
+            },
+        }
+        # Build a sell signal targeting the external_account position
+        sig = quant.Signal(
+            symbol="300308",
+            strategy_name="external_account",
+            direction="sell",
+            target_shares=500,
+            price=850.0,
+            reason="test liquidation",
+            signal_date="2026-01-01",
+        )
+        # Execute with strategy=None — must not raise AttributeError
+        sold = engine._execute_sell(sig, None, "2026-01-01")
+        self.assertEqual(sold, 500)
+        # Position should be removed after full sell
+        self.assertNotIn("300308", engine.positions)
+        # A trade record should be created
+        self.assertEqual(len(engine.trades), 1)
+        trade = engine.trades[0]
+        self.assertEqual(trade.symbol, "300308")
+        self.assertEqual(trade.direction, "sell")
+        self.assertEqual(trade.shares, 500)
+
+    def test_execute_sell_partial_with_none_strategy(self) -> None:
+        """Partial sell with strategy=None should reduce shares and keep position."""
+        engine = quant._CoreBacktestEngine(initial_capital=1_000_000)
+        engine.positions = {
+            "300308": {
+                "external_account": quant.Position(
+                    symbol="300308",
+                    strategy_name="external_account",
+                    shares=1000,
+                    entry_price=800.0,
+                    entry_date="2025-01-15",
+                ),
+            },
+        }
+        sig = quant.Signal(
+            symbol="300308",
+            strategy_name="external_account",
+            direction="sell",
+            target_shares=400,
+            price=850.0,
+            reason="partial reduction",
+            signal_date="2026-01-01",
+        )
+        sold = engine._execute_sell(sig, None, "2026-01-01")
+        self.assertEqual(sold, 400)
+        # Position should remain with reduced shares
+        remaining_pos = engine.positions["300308"]["external_account"]
+        self.assertEqual(remaining_pos.shares, 600)
+
+    def test_account_state_api_raises_not_implemented(self) -> None:
+        """Core API must raise NotImplementedError when account_state is passed."""
+        engine = quant.BacktestEngine(2_000_000)
+        account_state = quant.AccountState(
+            cash=500_000.0,
+            position_value=1_500_000.0,
+            total_equity=2_000_000.0,
+            peak_equity=2_200_000.0,
+            positions={},
+            risk_state={},
+        )
+        with self.assertRaises(NotImplementedError):
+            engine.run(
+                {"300308": "中际旭创"},
+                "2025-04-01",
+                "2026-07-20",
+                data_dir="market_data",
+                indicator_state="warm",
+                account_state=account_state,
+            )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

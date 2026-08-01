@@ -136,7 +136,8 @@ class RiskStateTests(unittest.TestCase):
             }
             dss._save_risk_state(tmpdir, "2026-07-30", result)
 
-            loaded = dss._load_prev_risk_state(tmpdir, "2026-07-31")
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-31")
+            self.assertIsNone(error)
             self.assertIsNotNone(loaded)
             assert loaded is not None
             self.assertEqual(loaded["scan_date"], "2026-07-30")
@@ -144,33 +145,41 @@ class RiskStateTests(unittest.TestCase):
             self.assertTrue(loaded["sector_guard_active"])
             self.assertEqual(loaded["cycle_lock_count"], 2)
 
-    def test_same_day_state_is_not_previous(self) -> None:
+    def test_same_day_state_still_loaded(self) -> None:
+        """Same-day rerun should still return the state (not silently discard)
+        so the caller can preserve terminal lock continuity."""
         with tempfile.TemporaryDirectory() as tmpdir:
             result = {
-                "terminal_risk_lock": False,
+                "terminal_risk_lock": True,
                 "sector_guard_active": False,
-                "cycle_lock_count": 0,
+                "cycle_lock_count": 1,
                 "max_drawdown": -0.05,
                 "total_return": 0.10,
                 "final_assets": 2200000.0,
             }
             dss._save_risk_state(tmpdir, "2026-07-30", result)
 
-            # Same-day load should return None (not "previous")
-            loaded = dss._load_prev_risk_state(tmpdir, "2026-07-30")
-            self.assertIsNone(loaded)
+            # Same-day load should still return the state with no error
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-30")
+            self.assertIsNone(error)
+            self.assertIsNotNone(loaded)
+            assert loaded is not None
+            self.assertTrue(loaded["terminal_risk_lock"])
 
     def test_missing_state_file_returns_none(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            loaded = dss._load_prev_risk_state(tmpdir, "2026-07-30")
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-30")
             self.assertIsNone(loaded)
+            self.assertIsNone(error)
 
-    def test_corrupted_state_file_returns_none(self) -> None:
+    def test_corrupted_state_file_returns_error(self) -> None:
+        """Corrupted risk state should return an error, not silently None."""
         with tempfile.TemporaryDirectory() as tmpdir:
             state_file = Path(tmpdir) / "risk_state.json"
             state_file.write_text("{corrupted", encoding="utf-8")
-            loaded = dss._load_prev_risk_state(tmpdir, "2026-07-31")
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-31")
             self.assertIsNone(loaded)
+            self.assertIsNotNone(error)
 
 
 # ── Signal classification tests ─────────────────────────────────────
@@ -330,7 +339,8 @@ class AccountRiskWorkflowTests(unittest.TestCase):
                 "final_assets": 1700000.0,
             }
             dss._save_risk_state(tmpdir, "2026-07-28", result)
-            loaded = dss._load_prev_risk_state(tmpdir, "2026-07-30")
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-30")
+            self.assertIsNone(error)
             self.assertIsNotNone(loaded)
             assert loaded is not None
             self.assertTrue(loaded["terminal_risk_lock"])
@@ -372,17 +382,18 @@ class AccountRiskWorkflowTests(unittest.TestCase):
             self.assertIn("run_id", data)
             self.assertEqual(data["total_symbols"], 2)
 
-    def test_risk_state_save_with_account_path_includes_path(self) -> None:
-        """When account_path is provided, it is included in the risk state."""
+    def test_risk_state_save_with_config_hash_includes_hash(self) -> None:
+        """When config_hash is provided, it is included in the symbols_hash."""
         with tempfile.TemporaryDirectory() as tmpdir:
             result = {"terminal_risk_lock": False, "sector_guard_active": False,
                       "cycle_lock_count": 0, "max_drawdown": 0.0,
                       "total_return": 0.0, "final_assets": 2000000.0}
             tradable = {"300308": "中际旭创"}
             dss._save_risk_state(tmpdir, "2026-07-29", result, tradable=tradable,
-                                 account_path="/path/to/account.json")
+                                 config_hash="start=2026-07-01|indicator=warm")
             data = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
-            self.assertEqual(data["account_path"], "/path/to/account.json")
+            self.assertIn("symbols_hash", data)
+            self.assertNotIn("account_path", data)
 
     def test_risk_state_without_hash_is_rejected_by_validation(self) -> None:
         """Risk state without symbols_hash should be rejected (fail-closed)."""

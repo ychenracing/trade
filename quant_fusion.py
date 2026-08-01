@@ -5007,6 +5007,9 @@ class _RunRequest:
     indicator_state: str
     warmup_calendar_days: int
     risk_state: dict | None = None
+    # DEPRECATED: account_state is always None now — the public run() API
+    # raises NotImplementedError before this field is ever set. Retained for
+    # API compatibility until the account signal engine is built.
     account_state: AccountState | None = None
 
 
@@ -5276,6 +5279,13 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
         account_state: AccountState | None = None,
     ) -> dict:
         """Run the configured single sleeve or the default three-sleeve ensemble."""
+        if account_state is not None:
+            raise NotImplementedError(
+                "Real-account mode (account_state) is disabled. "
+                "The account injection logic has known architecture defects. "
+                "Use simulation mode (account_state=None) instead. "
+                "A separate account signal engine is planned."
+            )
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
         if mode not in {"single", "ensemble"}:
             raise ValueError("allocation_mode must be either 'single' or 'ensemble'")
@@ -5799,9 +5809,12 @@ class _UniverseInvariantSleeveMixin:
         self._regime_state_start_pos: int = 0
         self._regime_prev_state: str = "TREND"
         self._regime_latest_observation: MarketRegimeObservation | None = None
-        # Account snapshot injection: when set, the snapshot replaces
-        # simulated positions at the open of the as-of date (the trading day
-        # before the last day).  All prior dates run as a pure simulation.
+        # ── DEPRECATED: Account snapshot injection ─────────────────────
+        # The public run() API now raises NotImplementedError when
+        # account_state is passed. The injection logic below is dead code
+        # retained for reference until the separate account signal engine
+        # is built. Do NOT re-enable without reading the architecture
+        # defects documented in BACKTEST_RESULTS.md.
         self._account_state_to_inject: AccountState | None = None
         self._account_state_injected: bool = False
         self._regime_effective_state: str = "TREND"
@@ -6653,6 +6666,13 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         account_state: AccountState | None = None,
     ) -> dict:
         """Run one or several portfolio sleeves under the same effective policy formula."""
+        if account_state is not None:
+            raise NotImplementedError(
+                "Real-account mode (account_state) is disabled. "
+                "The account injection logic has known architecture defects. "
+                "Use simulation mode (account_state=None) instead. "
+                "A separate account signal engine is planned."
+            )
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
         if mode == "ensemble":
             return super().run(
@@ -6686,8 +6706,10 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             sleeve.cfg = dict(sleeve.cfg)
             sleeve.cfg["_initial_risk_state"] = risk_state
         if account_state:
-            # Defer injection to the as-of date (second-to-last trading day)
-            # so that all prior dates run as a clean simulation.
+            # DEPRECATED: This path is unreachable — the public run() API
+            # raises NotImplementedError when account_state is not None.
+            # Retained for reference until the account signal engine replaces
+            # this injection mechanism.
             sleeve._account_state_to_inject = account_state
         result = sleeve.run(
             symbols_dict,
@@ -6728,10 +6750,9 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             if request.risk_state.get("sector_guard_active", False):
                 for state in states:
                     state.sleeve.sector_guard_active = True
-        # Determine the as-of date for account snapshot injection.
-        # The snapshot is injected at the open of the second-to-last trading
-        # day (the day before end_date / last day) so that prior days run as a
-        # pure simulation while the final segment reflects the real account.
+        # DEPRECATED: account_state is always None — the public run() API
+        # raises NotImplementedError before reaching this code. The entire
+        # account injection block below is dead code, retained for reference.
         account_state = request.account_state
         as_of_idx = max(0, len(reference_dates) - 2) if account_state else -1
         # P0 fix: seed the portfolio-level risk manager with the account's

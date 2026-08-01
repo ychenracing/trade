@@ -57,12 +57,38 @@ enough across time windows and universe sizes to replace the current defaults.
 
 The `risk_state.json` file now includes enhanced identity fields:
 - `symbols_hash`: SHA-256 fingerprint of sorted symbol codes + count + start date
-  (cash/capital is excluded because it changes daily)
+  + indicator_state (cash/capital is excluded because it changes daily)
 - `total_symbols`: number of symbols in the universe
 - `run_id`: unique run identifier for traceability
 
 Old risk state files without `symbols_hash` are rejected (fail-closed) to
 prevent cross-contamination between different universes or configurations.
+
+### Risk State Reliability
+
+- **Atomic writes**: risk state is written to a temp file, flushed with
+  `os.fsync`, then atomically renamed via `os.replace()`. This prevents
+  partial writes from corrupting the file on disk full, process kill, or
+  power loss.
+- **Corruption fail-closed**: if `risk_state.json` is corrupted or
+  unreadable, the scan exits with code 1 instead of silently discarding the
+  previous terminal lock state.
+- **Same-day rerun preservation**: re-running the scan on the same day no
+  longer discards the previous risk state. Terminal lock and sector guard
+  continuity is preserved across same-day reruns.
+- **Identity mismatch buy suppression**: when the identity hash does not
+  match (different symbol set, count, or configuration), buy signals are
+  suppressed and shown as "观望 (风险状态不匹配)" to prevent entering new
+  positions without verified risk-state continuity. Sell and hold signals
+  are still shown. Delete `risk_state.json` to reset.
+
+### Core API Account-State Guard
+
+All public `run()` methods in `BacktestEngine` and `_EnsembleBacktestEngine`
+raise `NotImplementedError` when `account_state` is passed. This ensures the
+broken account injection logic cannot be triggered by any caller — not just
+the daily scan CLI. The old injection code is retained as dead code with
+deprecation comments pending the separate account signal engine.
 
 ### Real Account Mode (disabled)
 

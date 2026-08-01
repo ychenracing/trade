@@ -290,6 +290,9 @@ python stress_test_prefixes.py
 python backtest_cambricon_universe.py
 ```
 
+A GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs the full test
+suite on Python 3.11 and 3.12, plus ruff linting and bandit security scanning.
+
 The tests cover standalone isolated startup, absence of external imports,
 AKShare provider failover, strict local CSV selection, policy validation,
 concentration scaling, temporary rearming, terminal locks, signal immutability,
@@ -302,9 +305,12 @@ drawdown for the requested warm universes, Cambricon's complete route, the
 the mapped nine-symbol Cambricon artifact. It also checks deterministic detection
 of unmapped auto routes and the presence of positive Calmar values in successful
 target-period runs. The daily-signal-scan tests verify account JSON loading,
-risk state persistence round-trips, signal classification, position
+risk state persistence round-trips, corrupted state fail-closed behavior,
+same-day rerun preservation, signal classification, position
 reconstruction from trade ledgers, and that all 26 universe symbols are
-explicitly mapped.
+explicitly mapped. The quant-fusion tests include end-to-end coverage of
+external-account sell execution with `strategy=None` and API contract
+enforcement (`account_state` raises `NotImplementedError`).
 
 ## Daily signal scan
 
@@ -336,14 +342,31 @@ stale-data signals must not be used for live trading decisions.
 After each run, risk state (`terminal_risk_lock`, `sector_guard_active`,
 `max_drawdown`, `cycle_lock_count`) is saved to `risk_state.json` in the
 output directory with enhanced identity fields (`symbols_hash`, `run_id`).
-Identity uses stable fields only (symbol set + count + start date);
-cash/capital is excluded because it changes daily. On the next run, the
-previous state is loaded and displayed for continuity checking — if the
-previous run had an active terminal lock or sector guard, a warning is shown
-even if the current backtest doesn't detect it (because the backtest starts
-fresh each time). Old risk state files without `symbols_hash` are rejected
-(fail-closed) to prevent cross-contamination between different universes or
-configurations.
+Identity uses stable fields only (symbol set + count + start date +
+indicator_state); cash/capital is excluded because it changes daily. On the
+next run, the previous state is loaded and displayed for continuity checking
+— if the previous run had an active terminal lock or sector guard, a warning
+is shown even if the current backtest doesn't detect it (because the backtest
+starts fresh each time). Old risk state files without `symbols_hash` are
+rejected (fail-closed) to prevent cross-contamination between different
+universes or configurations.
+
+Risk state writes are atomic (temp file + `os.replace`) to prevent corruption
+from disk full, process kill, or power loss. Corrupted risk state files cause
+the scan to exit with code 1 rather than silently discarding terminal lock
+state. Same-day reruns preserve the previous state so terminal lock and sector
+guard continuity is maintained.
+
+When the identity hash does not match (different symbol set, count, or
+configuration), buy signals are suppressed (fail-closed) to prevent entering
+new positions without verified risk-state continuity. Sell and hold signals
+are still shown. Delete `risk_state.json` to reset.
+
+### Core API account-state guard
+
+All public `run()` methods raise `NotImplementedError` when `account_state`
+is passed, ensuring the broken account injection logic cannot be triggered by
+any caller — not just the daily scan CLI.
 
 ### Usage
 
