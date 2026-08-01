@@ -341,26 +341,31 @@ stale-data signals must not be used for live trading decisions.
 
 After each run, risk state (`terminal_risk_lock`, `sector_guard_active`,
 `max_drawdown`, `cycle_lock_count`) is saved to `risk_state.json` in the
-output directory with enhanced identity fields (`symbols_hash`, `run_id`).
-Identity uses stable fields only (symbol set + count + start date +
-indicator_state); cash/capital is excluded because it changes daily. On the
-next run, the previous state is loaded and displayed for continuity checking
-— if the previous run had an active terminal lock or sector guard, a warning
-is shown even if the current backtest doesn't detect it (because the backtest
-starts fresh each time). Old risk state files without `symbols_hash` are
-rejected (fail-closed) to prevent cross-contamination between different
-universes or configurations.
+output directory with enhanced identity fields (`schema_version`,
+`symbols_hash`, `run_id`). Identity uses stable fields only (symbol set +
+count + start date + indicator_state); cash/capital is excluded because it
+changes daily. On the next run, the previous state is loaded and displayed
+for continuity checking — if the previous run had an active terminal lock or
+sector guard, a warning is shown even if the current backtest doesn't detect
+it (because the backtest starts fresh each time). Old risk state files
+without `symbols_hash` are rejected (fail-closed) to prevent
+cross-contamination between different universes or configurations.
 
 Risk state writes are atomic (temp file + `os.replace`) to prevent corruption
-from disk full, process kill, or power loss. Corrupted risk state files cause
-the scan to exit with code 1 rather than silently discarding terminal lock
-state. Same-day reruns preserve the previous state so terminal lock and sector
-guard continuity is maintained.
+from disk full, process kill, or power loss. The JSON artifact is also
+written atomically. Corrupted risk state files, or files that fail schema
+validation (wrong field types), cause the scan to exit with code 1 rather
+than silently discarding terminal lock state. Same-day reruns preserve the
+previous state so terminal lock and sector guard continuity is maintained.
 
 When the identity hash does not match (different symbol set, count, or
 configuration), buy signals are suppressed (fail-closed) to prevent entering
-new positions without verified risk-state continuity. Sell and hold signals
-are still shown. Delete `risk_state.json` to reset.
+new positions without verified risk-state continuity. In the display, pure
+buy signals become "观望 (风险状态不匹配)" and mixed buy/sell signals show
+only the sell part with "[买入已抑制]". In the JSON artifact, blocked buy
+signals are marked with `blocked=true` and `executable=false`. The old risk
+state is NOT overwritten — use `--reset-risk-state` to intentionally
+establish a new identity after a configuration change.
 
 ### Core API account-state guard
 
@@ -376,6 +381,9 @@ python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR] [--capital
 
 # Override capital and start date
 python daily_signal_scan.py --capital 1500000 --start-date 2026-06-01
+
+# Reset risk state after intentionally changing configuration
+python daily_signal_scan.py --reset-risk-state
 ```
 
 ### Account JSON format (reference only — `--account` is disabled)

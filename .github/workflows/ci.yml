@@ -60,10 +60,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff bandit
 
-      - name: Run ruff check
+      - name: Run ruff check (gating)
         run: ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quant_fusion.py daily_signal_scan.py
-        continue-on-error: true
 
       - name: Run bandit security scan
-        run: bandit -r quant_fusion.py daily_signal_scan.py -ll || true
+        run: bandit -r quant_fusion.py daily_signal_scan.py -ll
         continue-on-error: true

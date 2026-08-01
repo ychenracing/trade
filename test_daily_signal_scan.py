@@ -363,8 +363,9 @@ class AccountRiskWorkflowTests(unittest.TestCase):
             self.assertTrue(state_path.exists())
             data = json.loads(state_path.read_text(encoding="utf-8"))
             expected_keys = {
-                "scan_date", "terminal_risk_lock", "sector_guard_active",
-                "cycle_lock_count", "max_drawdown", "total_return", "final_assets",
+                "schema_version", "scan_date", "terminal_risk_lock",
+                "sector_guard_active", "cycle_lock_count", "max_drawdown",
+                "total_return", "final_assets",
             }
             self.assertEqual(set(data.keys()), expected_keys)
 
@@ -417,6 +418,123 @@ class AccountRiskWorkflowTests(unittest.TestCase):
         if prev_hash and prev_hash != current_hash:
             prev_risk = None  # reject on mismatch
         self.assertIsNone(prev_risk)
+
+
+# ── Schema validation tests ─────────────────────────────────────────
+
+class SchemaValidationTests(unittest.TestCase):
+    """Verify _validate_risk_state catches type errors and missing fields."""
+
+    def test_valid_state_passes_validation(self) -> None:
+        data = {
+            "terminal_risk_lock": True,
+            "sector_guard_active": False,
+            "cycle_lock_count": 2,
+        }
+        self.assertIsNone(dss._validate_risk_state(data))
+
+    def test_string_bool_rejected(self) -> None:
+        """String 'false' is truthy in Python — must be rejected."""
+        data = {
+            "terminal_risk_lock": "false",
+            "sector_guard_active": False,
+            "cycle_lock_count": 0,
+        }
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("terminal_risk_lock", error)
+
+    def test_string_int_rejected(self) -> None:
+        data = {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+            "cycle_lock_count": "2",
+        }
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("cycle_lock_count", error)
+
+    def test_bool_for_int_rejected(self) -> None:
+        """bool is a subclass of int in Python — must be explicitly rejected."""
+        data = {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+            "cycle_lock_count": True,
+        }
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("cycle_lock_count", error)
+
+    def test_missing_field_rejected(self) -> None:
+        data = {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+        }
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("cycle_lock_count", error)
+
+    def test_non_dict_rejected(self) -> None:
+        error = dss._validate_risk_state([1, 2, 3])
+        self.assertIsNotNone(error)
+
+    def test_schema_version_in_saved_state(self) -> None:
+        """Saved risk state must include schema_version."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = {"terminal_risk_lock": False, "sector_guard_active": False,
+                      "cycle_lock_count": 0, "max_drawdown": 0.0,
+                      "total_return": 0.0, "final_assets": 2000000.0}
+            tradable = {"300308": "中际旭创"}
+            dss._save_risk_state(tmpdir, "2026-07-30", result, tradable=tradable)
+            data = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
+            self.assertIn("schema_version", data)
+            self.assertEqual(data["schema_version"], 1)
+
+    def test_run_id_is_unique(self) -> None:
+        """Two saves on the same date should produce different run_ids."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = {"terminal_risk_lock": False, "sector_guard_active": False,
+                      "cycle_lock_count": 0, "max_drawdown": 0.0,
+                      "total_return": 0.0, "final_assets": 2000000.0}
+            tradable = {"300308": "中际旭创"}
+            dss._save_risk_state(tmpdir, "2026-07-30", result, tradable=tradable)
+            data1 = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
+            dss._save_risk_state(tmpdir, "2026-07-30", result, tradable=tradable)
+            data2 = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
+            self.assertNotEqual(data1["run_id"], data2["run_id"])
+
+    def test_schema_validation_failure_returns_error(self) -> None:
+        """Risk state with wrong types should return error, not state."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_file = Path(tmpdir) / "risk_state.json"
+            state_file.write_text(
+                json.dumps({
+                    "scan_date": "2026-07-30",
+                    "terminal_risk_lock": "true",  # string, not bool
+                    "sector_guard_active": False,
+                    "cycle_lock_count": 0,
+                }),
+                encoding="utf-8",
+            )
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-31")
+            self.assertIsNone(loaded)
+            self.assertIsNotNone(error)
+
+
+# ── Buy suppression tests ───────────────────────────────────────────
+
+class BuySuppressionTests(unittest.TestCase):
+    """Verify buy suppression logic for risk state mismatch."""
+
+    def test_classify_signal_buy(self) -> None:
+        """Buy signals are classified correctly."""
+        sig = FakeSignal("buy", "turtle", "300308", 100, 150.0, "breakout", "2026-07-30")
+        self.assertEqual(dss._classify_signal(sig), "买入")
+
+    def test_classify_signal_sell(self) -> None:
+        """Sell signals are classified correctly."""
+        sig = FakeSignal("sell", "turtle", "300308", 100, 150.0, "stop_loss", "2026-07-30")
+        self.assertEqual(dss._classify_signal(sig), "卖出")
 
 
 if __name__ == "__main__":

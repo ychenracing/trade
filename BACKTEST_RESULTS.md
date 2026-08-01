@@ -56,31 +56,42 @@ enough across time windows and universe sizes to replace the current defaults.
 ### Risk State Identity
 
 The `risk_state.json` file now includes enhanced identity fields:
+- `schema_version`: schema version (currently 1) for forward compatibility
 - `symbols_hash`: SHA-256 fingerprint of sorted symbol codes + count + start date
   + indicator_state (cash/capital is excluded because it changes daily)
 - `total_symbols`: number of symbols in the universe
-- `run_id`: unique run identifier for traceability
+- `run_id`: unique run identifier (UUID4-based) for traceability
 
 Old risk state files without `symbols_hash` are rejected (fail-closed) to
 prevent cross-contamination between different universes or configurations.
 
 ### Risk State Reliability
 
-- **Atomic writes**: risk state is written to a temp file, flushed with
-  `os.fsync`, then atomically renamed via `os.replace()`. This prevents
-  partial writes from corrupting the file on disk full, process kill, or
+- **Atomic writes**: risk state and JSON artifact are written to temp files,
+  flushed with `os.fsync`, then atomically renamed via `os.replace()`. This
+  prevents partial writes from corrupting files on disk full, process kill, or
   power loss.
-- **Corruption fail-closed**: if `risk_state.json` is corrupted or
-  unreadable, the scan exits with code 1 instead of silently discarding the
-  previous terminal lock state.
+- **Corruption fail-closed**: if `risk_state.json` is corrupted, unreadable,
+  or fails schema validation (wrong field types), the scan exits with code 1
+  instead of silently discarding the previous terminal lock state.
+- **Schema validation**: required fields (`terminal_risk_lock`, `sector_guard_active`,
+  `cycle_lock_count`) are validated for correct types. Strings like `"false"`
+  (which are truthy in Python) are rejected to prevent false lock activation.
 - **Same-day rerun preservation**: re-running the scan on the same day no
   longer discards the previous risk state. Terminal lock and sector guard
   continuity is preserved across same-day reruns.
 - **Identity mismatch buy suppression**: when the identity hash does not
   match (different symbol set, count, or configuration), buy signals are
-  suppressed and shown as "观望 (风险状态不匹配)" to prevent entering new
-  positions without verified risk-state continuity. Sell and hold signals
-  are still shown. Delete `risk_state.json` to reset.
+  suppressed (fail-closed) to prevent entering new positions without verified
+  risk-state continuity. In the display, pure buy signals become "观望 (风险
+  状态不匹配)" and mixed buy/sell signals show only the sell part with
+  "[买入已抑制]". In the JSON artifact, blocked buy signals are marked with
+  `blocked=true`, `executable=false`, and `blocked_reason="risk_state_identity_mismatch"`
+  so machine consumers can filter them.
+- **State preservation on mismatch**: when the identity does not match, the
+  old risk state is NOT overwritten — the previous terminal lock and sector
+  guard are preserved. Use `--reset-risk-state` to intentionally establish a
+  new identity after a configuration change.
 
 ### Core API Account-State Guard
 

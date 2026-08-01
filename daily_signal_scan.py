@@ -27,7 +27,19 @@ guard continuity is maintained.
 When the risk state identity hash does not match (different symbol set, count,
 or configuration), buy signals are suppressed (fail-closed) to prevent entering
 new positions without verified risk-state continuity. Sell and hold signals
-are still shown. Delete risk_state.json to reset.
+are still shown, including in mixed buy/sell signals (only the buy part is
+suppressed). In the JSON artifact, blocked buy signals are marked with
+``blocked=true`` and ``executable=false`` so machine consumers can filter them.
+
+When the identity does not match, the old risk state is NOT overwritten —
+the previous terminal lock and sector guard are preserved. The user must use
+``--reset-risk-state`` to intentionally establish a new identity. This ensures
+that a mismatch continues to suppress buys until the user explicitly resolves
+the configuration change.
+
+Risk state includes ``schema_version`` and type-validated fields
+(``terminal_risk_lock``, ``sector_guard_active``, ``cycle_lock_count``).
+Files that fail schema validation are treated as corrupt (exit code 1).
 
 Stale data fail-closed: if any symbol's cached data is stale (network fetch
 failed) or data end dates are inconsistent across symbols, the scan refuses to
@@ -36,6 +48,7 @@ you understand the risk; stale-data signals must not be used for live trading.
 
 Usage:
     python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR] [--capital N]
+    python daily_signal_scan.py --reset-risk-state  # clear old identity
 
 If --end-date is omitted, today's date is used.
 """
@@ -167,21 +180,54 @@ def _load_account(path: str) -> dict[str, Any] | None:
     return data
 
 
+_RISK_STATE_SCHEMA_VERSION = 1
+
+# Required fields and their expected types for risk state validation.
+_RISK_STATE_REQUIRED_FIELDS: dict[str, type] = {
+    "terminal_risk_lock": bool,
+    "sector_guard_active": bool,
+    "cycle_lock_count": int,
+}
+
+
+def _validate_risk_state(data: Any) -> str | None:
+    """Validate risk state fields and types.
+
+    Returns ``None`` if valid, or an error message string if invalid.
+    Checks that required keys exist and have the correct types.
+    In Python, ``bool`` is a subclass of ``int``, so we explicitly reject
+    bools where ints are expected and vice versa.
+    """
+    if not isinstance(data, dict):
+        return "risk_state.json 内容不是有效 JSON 对象"
+    for field, expected_type in _RISK_STATE_REQUIRED_FIELDS.items():
+        if field not in data:
+            return f"risk_state.json 缺少必需字段 '{field}'"
+        val = data[field]
+        if expected_type is bool:
+            if not isinstance(val, bool):
+                return f"risk_state.json 字段 '{field}' 应为 bool，实际为 {type(val).__name__}"
+        elif expected_type is int:
+            if isinstance(val, bool) or not isinstance(val, int):
+                return f"risk_state.json 字段 '{field}' 应为 int，实际为 {type(val).__name__}"
+        elif not isinstance(val, expected_type):
+            return f"risk_state.json 字段 '{field}' 应为 {expected_type.__name__}，实际为 {type(val).__name__}"
+    return None
+
+
 def _load_prev_risk_state(
     output_dir: str, end_date: str
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Load the risk state saved by a previous daily scan run.
 
-    Returns a tuple of ``(state, error)``. When the file is missing or the
-    scan_date matches ``end_date`` (same-day rerun), ``state`` is ``None`` and
-    ``error`` is ``None``. When the file is corrupt or unreadable, ``state``
-    is ``None`` and ``error`` is a human-readable message — the caller should
-    treat this as a fail-closed condition.
+    Returns a tuple of ``(state, error)``:
 
-    Same-day rerun: instead of silently discarding the state, we still return
-    it so the caller can preserve terminal lock and sector guard continuity.
-    The ``scan_date`` field allows the caller to distinguish "previous run"
-    from "same-day rerun" if needed.
+    - File missing: ``(None, None)`` — first run, not an error.
+    - Same-day rerun: ``(state, None)`` — the state is returned so the
+      caller can preserve terminal lock and sector guard continuity.
+    - Corrupt or unreadable file: ``(None, error_msg)`` — the caller
+      should treat this as a fail-closed condition and exit with code 1.
+    - Schema validation failure: ``(None, error_msg)`` — same as corrupt.
     """
     state_file = Path(output_dir) / "risk_state.json"
     if not state_file.exists():
@@ -191,8 +237,9 @@ def _load_prev_risk_state(
         data = json.loads(raw)
     except (OSError, json.JSONDecodeError) as exc:
         return None, f"risk_state.json 损坏或无法读取: {exc}"
-    if not isinstance(data, dict):
-        return None, "risk_state.json 内容不是有效 JSON 对象"
+    validation_error = _validate_risk_state(data)
+    if validation_error:
+        return None, validation_error
     return data, None
 
 
@@ -205,9 +252,13 @@ def _save_risk_state(
 
     The ``symbols_hash`` includes symbol set, count, and config fingerprint
     so that the same symbol set with different configuration is treated as a
-    different identity.
+    different identity. A ``schema_version`` is included for forward
+    compatibility. The ``run_id`` uses a UUID4 for uniqueness across runs.
     """
+    import uuid
+
     state: dict[str, Any] = {
+        "schema_version": _RISK_STATE_SCHEMA_VERSION,
         "scan_date": end_date,
         "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
         "sector_guard_active": bool(result.get("sector_guard_active", False)),
@@ -230,7 +281,7 @@ def _save_risk_state(
             "|".join(identity_parts).encode("utf-8")
         ).hexdigest()[:16]
         state["total_symbols"] = len(tradable)
-        state["run_id"] = f"trade_{end_date}"
+        state["run_id"] = f"trade_{end_date}_{uuid.uuid4().hex[:8]}"
     state_file = Path(output_dir) / "risk_state.json"
     state_file.parent.mkdir(parents=True, exist_ok=True)
     # Atomic write: write to a temp file in the same directory, then
@@ -295,10 +346,26 @@ def main() -> int:
         default=0.0,
         help=f"Initial capital (default: {INITIAL_CAPITAL:,.0f}).",
     )
+    parser.add_argument(
+        "--reset-risk-state",
+        action="store_true",
+        help="Delete risk_state.json before running. Use this when you "
+        "intentionally change symbol set, start date, or configuration to "
+        "establish a new risk-state identity without buy suppression.",
+    )
     args = parser.parse_args()
 
     end_date = args.end_date or _today_str()
     start_date = args.start_date or START_DATE
+
+    # --reset-risk-state: delete the old risk state file before running
+    if args.reset_risk_state:
+        state_file = Path(args.output_dir) / "risk_state.json"
+        if state_file.exists():
+            state_file.unlink()
+            print(f"  ℹ 已删除旧风险状态: {state_file}")
+        else:
+            print(f"  ℹ 无旧风险状态可删除: {state_file}")
 
     # --account mode is disabled — exit early with an explanatory message
     if args.account:
@@ -565,10 +632,24 @@ def main() -> int:
 
         # Fail-closed: suppress buy signals when risk state identity
         # doesn't match, to prevent entering positions without verified
-        # terminal-lock continuity.
-        if suppress_buys and "买入" in signal_label:
-            signal_label = "观望 (风险状态不匹配)"
-            strategies = "—"
+        # terminal-lock continuity. Sell and hold signals are still shown.
+        if suppress_buys and sigs:
+            has_buy = any(s.direction == "buy" for s in sigs)
+            has_non_buy = any(s.direction != "buy" for s in sigs)
+            if has_buy and has_non_buy:
+                # Mixed buy/sell: keep sell, suppress buy
+                non_buy_sigs = [s for s in sigs if s.direction != "buy"]
+                non_buy_dirs = sorted({s.direction for s in non_buy_sigs})
+                parts = []
+                for d in non_buy_dirs:
+                    d_sigs = [s for s in non_buy_sigs if s.direction == d]
+                    parts.append(f"{_classify_signal(d_sigs[0])}({len(d_sigs)})")
+                signal_label = " + ".join(parts) + " [买入已抑制]"
+                strategies = ", ".join(sorted({s.strategy_name for s in non_buy_sigs}))
+            elif has_buy:
+                # Pure buy: suppress entirely
+                signal_label = "观望 (风险状态不匹配)"
+                strategies = "—"
 
         rows.append({
             "code": code,
@@ -592,7 +673,11 @@ def main() -> int:
             f"{row['industry']:<20} {row['profile']:<12} "
             f"{row['held_shares']:>12,}  {row['strategies']}"
         )
-        if "买入" in row["signal"]:
+        if "买入已抑制" in row["signal"]:
+            # Mixed signal with buys suppressed — count as sell (still actionable)
+            sell_count += 1
+            suppressed_buy_count += 1
+        elif "买入" in row["signal"]:
             buy_count += 1
         elif "卖出" in row["signal"]:
             sell_count += 1
@@ -697,13 +782,15 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"signals_{end_date}.json"
 
-    # Serialize pending signals
+    # Serialize pending signals — mark buy signals as blocked when
+    # suppress_buys is active, so machine consumers can distinguish
+    # executable vs blocked signals.
     pending_serializable = []
     for sig in pending:
         try:
-            pending_serializable.append(asdict(sig))
+            entry = asdict(sig)
         except TypeError:
-            pending_serializable.append({
+            entry = {
                 "symbol": getattr(sig, "symbol", ""),
                 "direction": getattr(sig, "direction", ""),
                 "strategy_name": getattr(sig, "strategy_name", ""),
@@ -711,7 +798,15 @@ def main() -> int:
                 "price": getattr(sig, "price", 0.0),
                 "reason": getattr(sig, "reason", ""),
                 "signal_date": getattr(sig, "signal_date", ""),
-            })
+            }
+        if suppress_buys and entry.get("direction") == "buy":
+            entry["blocked"] = True
+            entry["blocked_reason"] = "risk_state_identity_mismatch"
+            entry["executable"] = False
+        else:
+            entry["blocked"] = False
+            entry["executable"] = True
+        pending_serializable.append(entry)
 
     artifact = {
         "scan_date": end_date,
@@ -743,20 +838,41 @@ def main() -> int:
     }
     if prev_risk:
         artifact["previous_risk_state"] = prev_risk
-    output_file.write_text(
-        json.dumps(artifact, ensure_ascii=False, indent=2, default=str) + "\n",
-        encoding="utf-8",
+    # Atomic write for the artifact (same pattern as risk state)
+    artifact_content = json.dumps(artifact, ensure_ascii=False, indent=2, default=str) + "\n"
+    artifact_fd, artifact_tmp = tempfile.mkstemp(
+        dir=str(output_dir), prefix=".signals_", suffix=".tmp"
     )
-    # Persist risk state for the next daily run (with enhanced identity fields)
-    # Identity uses stable fields only (symbol set + count + start date +
-    # indicator_state). Cash/capital is excluded because it changes daily.
-    config_fingerprint = f"start={start_date}|indicator=warm"
-    _save_risk_state(
-        args.output_dir, end_date, result, tradable,
-        config_hash=config_fingerprint,
-    )
-    print(f"  结果已保存: {output_file}")
-    print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")
+    try:
+        with os.fdopen(artifact_fd, "w", encoding="utf-8") as f:
+            f.write(artifact_content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(artifact_tmp, str(output_file))
+    except OSError:
+        try:
+            os.unlink(artifact_tmp)
+        except OSError:
+            pass
+        raise
+
+    # Persist risk state for the next daily run — but NOT when the identity
+    # didn't match (suppress_buys=True), because overwriting the old state
+    # would destroy the previous terminal lock and silently un-suppress
+    # buys on the next run. The user must use --reset-risk-state to
+    # intentionally establish a new identity.
+    if not suppress_buys:
+        config_fingerprint = f"start={start_date}|indicator=warm"
+        _save_risk_state(
+            args.output_dir, end_date, result, tradable,
+            config_hash=config_fingerprint,
+        )
+        print(f"  结果已保存: {output_file}")
+        print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")
+    else:
+        print(f"  结果已保存: {output_file}")
+        print(f"  ⚠ 风险状态未保存 (身份不匹配 — 保留旧状态以维持终态锁连续性)")
+        print(f"  使用 --reset-risk-state 可建立新身份并清除买入抑制。")
     print()
     return 0
 
