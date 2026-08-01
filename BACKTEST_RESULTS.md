@@ -53,32 +53,6 @@ enough across time windows and universe sizes to replace the current defaults.
 
 ## Risk Management Features
 
-### SAFE_PARAMS (Conservative Fallback)
-
-When the market regime transitions to CHOPPY, the system automatically activates
-conservative parameters (tighter trailing stops, lower position sizing, faster
-reversal exits) by applying them directly to each strategy instance's runtime
-configuration. This mechanism is enabled by default and requires no manual
-intervention. When the market recovers to TREND, the original parameters are
-restored automatically.
-
-All six SAFE_PARAMS values are applied dynamically to every strategy instance's
-`cfg` dictionary when the regime enters CHOPPY, and restored when it leaves:
-
-| Parameter | Default | SAFE (CHOPPY) | Dynamic? | Effect on existing positions |
-|---|---|---|---|---|
-| `trail_atr_mult` | ~3.5 | 2.5 | ✅ Fully | Tighter ATR trailing stop (daily) |
-| `profit_lock_giveback` | ~0.35 | 0.25 | ✅ Fully | Tighter profit protection stop (daily) |
-| `reversal_exit_period` | ~15 | 10 | ✅ Fully | Faster reversal low detection (daily) |
-| `hard_stop` | ~0.20 | 0.15 | ✅ Fully | Tighter hard stop loss (daily) |
-| `max_symbol_weight` | ~0.60 | 0.45 | ⚠️ New buys only | Lower single-symbol cap for new entries |
-| `risk_pct` | ~0.025 | 0.015 | ⚠️ New buys only | Smaller position sizing for new entries |
-
-The first four parameters take effect immediately on the next trading day for
-all existing positions. The last two only affect new buy orders, which is the
-conservative design: existing positions are exited via tighter stops rather than
-forced liquidation.
-
 ### Risk State Identity
 
 The `risk_state.json` file now includes enhanced identity fields:

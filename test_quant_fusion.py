@@ -770,60 +770,6 @@ class NewFeatureTests(unittest.TestCase):
         quant._CoreBacktestEngine._apply_account_state(account_state, engine)
         self.assertAlmostEqual(engine.risk.peak_assets, 2_200_000.0)
 
-    def test_safe_params_dynamically_update_strategy_cfg(self) -> None:
-        """When regime enters CHOPPY, SAFE_PARAMS are layered onto every
-        strategy instance's cfg; when it leaves, the original cfg is restored."""
-        SAFE_PARAMS = {
-            "trail_atr_mult": 2.5,
-            "profit_lock_giveback": 0.25,
-            "reversal_exit_period": 10,
-            "hard_stop": 0.15,
-        }
-        # Simulate a strategy with baseline cfg
-        class FakeStrategy:
-            def __init__(self):
-                self.cfg = {
-                    "trail_atr_mult": 3.5,
-                    "profit_lock_giveback": 0.35,
-                    "reversal_exit_period": 15,
-                    "hard_stop": 0.20,
-                    "some_other_param": 42,
-                }
-                self.name = "fake_strategy"
-                self._base_cfg_safe_stash = None
-        strategy = FakeStrategy()
-        strategy_instances = {"TEST": [strategy]}
-        # Simulate regime change to CHOPPY → activate safe mode
-        safe_mode_active = True
-        if safe_mode_active:
-            for strategies in strategy_instances.values():
-                for s in strategies:
-                    if not getattr(s, "_base_cfg_safe_stash", None):
-                        s._base_cfg_safe_stash = dict(s.cfg)
-                    s.cfg = {**s.cfg, **SAFE_PARAMS}
-        # Verify SAFE_PARAMS are applied
-        self.assertEqual(strategy.cfg["trail_atr_mult"], 2.5)
-        self.assertEqual(strategy.cfg["profit_lock_giveback"], 0.25)
-        self.assertEqual(strategy.cfg["reversal_exit_period"], 10)
-        self.assertEqual(strategy.cfg["hard_stop"], 0.15)
-        self.assertEqual(strategy.cfg["some_other_param"], 42)  # preserved
-        self.assertIsNotNone(strategy._base_cfg_safe_stash)
-        # Simulate regime change back to TREND → deactivate safe mode
-        safe_mode_active = False
-        for strategies in strategy_instances.values():
-            for s in strategies:
-                stash = getattr(s, "_base_cfg_safe_stash", None)
-                if stash is not None:
-                    s.cfg = dict(stash)
-                    s._base_cfg_safe_stash = None
-        # Verify original cfg is restored
-        self.assertEqual(strategy.cfg["trail_atr_mult"], 3.5)
-        self.assertEqual(strategy.cfg["profit_lock_giveback"], 0.35)
-        self.assertEqual(strategy.cfg["reversal_exit_period"], 15)
-        self.assertEqual(strategy.cfg["hard_stop"], 0.20)
-        self.assertEqual(strategy.cfg["some_other_param"], 42)
-        self.assertIsNone(strategy._base_cfg_safe_stash)
-
     def test_liquidation_covers_external_account_positions(self) -> None:
         """_generate_liquidation_signals includes external_account positions
         so portfolio-level risk controls can liquidate the entire book."""

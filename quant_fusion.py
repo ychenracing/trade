@@ -1326,9 +1326,7 @@ class _CoreBacktestEngine:
         self.fusion_events: list[dict] = []
         self.risk_events: list[dict] = []
         self.sector_guard_active = False
-        self._safe_mode_active: bool = False  # SAFE_PARAMS: conservative fallback
-        self._safe_params_applied: bool = False  # whether SAFE_PARAMS are currently applied
-        self._safe_param_originals: dict[int, dict[str, Any]] = {}  # saved originals
+        self._safe_mode_active: bool = False  # audit-only flag; no dynamic parameter changes
         self._sector_shock_positions: list[int] = []
         self._sector_recovery_streak = 0
         self.strategy_templates: list[type[BaseStrategy]] = [
@@ -2342,8 +2340,6 @@ class _CoreBacktestEngine:
         self.risk_events = []
         self.sector_guard_active = False
         self._safe_mode_active = False
-        self._safe_params_applied = False
-        self._safe_param_originals = {}
         self._sector_shock_positions = []
         self._sector_recovery_streak = 0
         self.cfg = self._validate_config({**self._default_config(), **self._user_cfg})
@@ -5774,20 +5770,6 @@ class _UniverseInvariantSleeveMixin:
     risk_events: list[dict[str, Any]]
     _risk_lock_logged: bool
 
-    # SAFE_PARAMS: conservative fallback parameters deployed automatically when
-    # the market regime turns CHOPPY. These are tighter than the default values
-    # to reduce risk exposure during adverse conditions. Applied dynamically to
-    # all strategy instances at runtime — when the regime recovers to TREND,
-    # the original parameters are restored.
-    _SAFE_PARAMS: ClassVar[dict[str, Any]] = {
-        "trail_atr_mult": 2.5,          # tighter trailing stop (default ~3.5)
-        "profit_lock_giveback": 0.25,   # exit earlier on giveback (default 0.35)
-        "reversal_exit_period": 10,     # faster reversal exit (default 15)
-        "hard_stop": 0.15,              # tighter hard stop (default 0.20)
-        "max_symbol_weight": 0.45,      # lower single-symbol cap (default 0.60)
-        "risk_pct": 0.015,              # smaller per-trade risk (default 0.025)
-    }
-
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
         """Reset tradable and regime metadata at every independent run."""
         # Concrete classes place this cooperative mixin before the sleeve engine.
@@ -6220,10 +6202,7 @@ class _UniverseInvariantSleeveMixin:
         )
         self._regime_prev_state = previous_state
         self._regime_state = new_state
-        # SAFE_PARAMS: automatically activate conservative mode when regime is CHOPPY
-        # (P1 enhancement). When the market recovers, safe mode is deactivated.
         self._safe_mode_active = (new_state == "CHOPPY")
-        self._propagate_safe_mode()
         self._regime_state_series.append(
             {
                 "date": date.strftime("%Y-%m-%d"),
@@ -6238,49 +6217,6 @@ class _UniverseInvariantSleeveMixin:
                 "vol_percentile": observation.volatility_percentile,
             }
         )
-
-    def _propagate_safe_mode(self) -> None:
-        """Apply or restore SAFE_PARAMS on all strategy instances.
-
-        Called after ``_update_market_regime`` updates ``_safe_mode_active``.
-        When CHOPPY is detected, conservative parameters (tighter stops, lower
-        position sizing, faster exits) are applied to each strategy's ``cfg``
-        dict in-place so they take effect on the next bar. When the regime
-        recovers to TREND, the original parameter values are restored.
-
-        This is a no-op if ``strategy_instances`` has not been populated yet
-        (e.g., during the initial preparation phase before the daily loop).
-        """
-        safe_active = getattr(self, "_safe_mode_active", False)
-        was_active = getattr(self, "_safe_params_applied", False)
-        if safe_active == was_active:
-            return
-        strategy_instances = getattr(self, "strategy_instances", None)
-        if not strategy_instances:
-            return
-        if safe_active and not was_active:
-            # Activate: save originals and apply SAFE_PARAMS
-            originals_map = getattr(self, "_safe_param_originals", {})
-            originals_map.clear()
-            for strategies in strategy_instances.values():
-                for strategy in strategies:
-                    originals: dict[str, Any] = {}
-                    for key, value in self._SAFE_PARAMS.items():
-                        if key in strategy.cfg:
-                            originals[key] = strategy.cfg[key]
-                            strategy.cfg[key] = value
-                    originals_map[id(strategy)] = originals
-            self._safe_params_applied = True
-        elif not safe_active and was_active:
-            # Deactivate: restore originals
-            originals_map = getattr(self, "_safe_param_originals", {})
-            for strategies in strategy_instances.values():
-                for strategy in strategies:
-                    originals = originals_map.get(id(strategy), {})
-                    for key, value in originals.items():
-                        strategy.cfg[key] = value
-            originals_map.clear()
-            self._safe_params_applied = False
 
     def _merge_unblocked_daily_signals(
         self,
@@ -6684,16 +6620,10 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         Very small universes (<=2) still use the slower time-series
         trend contract, which is a strategy-logic switch (no cross-sectional
         information) rather than a parameter change.
-
-        When SAFE_PARAMS is active (market regime CHOPPY) the sleeve inherits
-        the conservative parameter set so that every sleeve runs with tighter
-        risk controls (P1 enhancement).
         """
         sleeve_cfg = dict(self._ensemble_user_cfg)
         if tradable_count <= 2:
             sleeve_cfg.update(self._SINGLE_ASSET_TREND_OVERRIDES)
-        if getattr(self, "_safe_mode_active", False):
-            sleeve_cfg.update(self._SAFE_PARAMS)
         sleeve_cfg["max_positions"] = 10
         return sleeve_cfg
 
