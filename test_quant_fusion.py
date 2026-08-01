@@ -655,10 +655,10 @@ class CambriconArtifactTests(unittest.TestCase):
             },
         )
         expected = {
-            ("cold", "2026-06-30"): (9.919954584868504, -0.16143190558700346),
-            ("cold", "2026-07-20"): (9.919954584868504, -0.16143190558700346),
-            ("warm", "2026-06-30"): (11.679353494260253, -0.15111072478540524),
-            ("warm", "2026-07-20"): (11.679353494260253, -0.15111072478540524),
+            ("cold", "2026-06-30"): (11.87052989357125, -0.15889405827375366),
+            ("cold", "2026-07-20"): (11.87052989357125, -0.15889405827375366),
+            ("warm", "2026-06-30"): (11.4729571937435, -0.15426077361347657),
+            ("warm", "2026-07-20"): (11.4729571937435, -0.15426077361347657),
         }
         results = artifact["results"]
         self.assertEqual(len(results), len(expected))
@@ -671,6 +671,63 @@ class CambriconArtifactTests(unittest.TestCase):
                 self.assertEqual(item["cambricon_parameter_route"], "domestic_design")
                 self.assertEqual(item["guard_on_dates"], ["2026-06-26"])
                 self.assertFalse(item["terminal_risk_lock"])
+
+
+class NewFeatureTests(unittest.TestCase):
+    """Verify AccountState, get_symbol accessors, and other new features."""
+
+    def test_account_state_dataclass(self) -> None:
+        """AccountState fields are correctly populated."""
+        state = quant.AccountState(
+            cash=500000.0,
+            position_value=1500000.0,
+            total_equity=2000000.0,
+            peak_equity=2500000.0,
+            positions={"300308": {"shares": 900, "avg_cost": 980.50}},
+            risk_state={"terminal_risk_lock": False},
+        )
+        self.assertEqual(state.cash, 500000.0)
+        self.assertEqual(state.total_equity, 2000000.0)
+        self.assertEqual(state.peak_equity, 2500000.0)
+        self.assertIn("300308", state.positions)
+
+    def test_engine_state_dataclass(self) -> None:
+        """EngineState defaults are correct."""
+        state = quant.EngineState()
+        self.assertFalse(state.terminal_risk_lock)
+        self.assertFalse(state.sector_guard_active)
+        self.assertEqual(state.cycle_lock_count, 0)
+        self.assertEqual(state.run_id, "")
+
+    def test_get_symbol_group_returns_known_code(self) -> None:
+        """get_symbol_group returns the correct group for a known symbol."""
+        result = quant._CoreBacktestEngine.get_symbol_group("300308")
+        self.assertEqual(result, "overseas_compute")
+
+    def test_get_symbol_group_returns_default_for_unknown(self) -> None:
+        """get_symbol_group returns the default for an unknown symbol."""
+        result = quant._CoreBacktestEngine.get_symbol_group("999999", "UNKNOWN")
+        self.assertEqual(result, "UNKNOWN")
+
+    def test_get_symbol_profile_returns_known_code(self) -> None:
+        """get_symbol_profile returns the correct profile for a known symbol."""
+        result = quant._CoreBacktestEngine.get_symbol_profile("300308")
+        self.assertEqual(result, "overseas_optical")
+
+    def test_get_symbol_profile_returns_default_for_unknown(self) -> None:
+        """get_symbol_profile returns the default for an unknown symbol."""
+        result = quant._CoreBacktestEngine.get_symbol_profile("999999", "UNKNOWN")
+        self.assertEqual(result, "UNKNOWN")
+
+    def test_get_symbol_classification_returns_known_code(self) -> None:
+        """get_symbol_classification returns the correct value for a known symbol."""
+        result = quant._CoreBacktestEngine.get_symbol_classification("300308")
+        self.assertEqual(result, "default")
+
+    def test_get_symbol_classification_returns_default_for_unknown(self) -> None:
+        """get_symbol_classification returns the default for an unknown symbol."""
+        result = quant._CoreBacktestEngine.get_symbol_classification("999999", "UNKNOWN")
+        self.assertEqual(result, "UNKNOWN")
 
 
 if __name__ == "__main__":

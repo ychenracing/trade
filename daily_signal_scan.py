@@ -139,7 +139,9 @@ def _load_account(path: str) -> dict[str, Any] | None:
         return None
     data.setdefault("positions", {})
     data.setdefault("risk_state", {})
-    data.setdefault("peak_equity", None)
+    if "peak_equity" not in data:
+        # Use cash as a fallback when peak_equity is not provided
+        data["peak_equity"] = float(data.get("cash", 0))
     return data
 
 
@@ -160,9 +162,16 @@ def _load_prev_risk_state(output_dir: str, end_date: str) -> dict[str, Any] | No
 def _save_risk_state(
     output_dir: str, end_date: str, result: dict[str, Any],
     tradable: dict[str, str] | None = None,
+    config_hash: str = "",
+    account_path: str = "",
 ) -> None:
-    """Persist risk state for restoration by the next daily scan run."""
-    state = {
+    """Persist risk state for restoration by the next daily scan run.
+
+    The ``symbols_hash`` now includes symbol set, count, account fingerprint,
+    and an optional config fingerprint so that the same symbol set with
+    different configuration or account is treated as a different identity.
+    """
+    state: dict[str, Any] = {
         "scan_date": end_date,
         "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
         "sector_guard_active": bool(result.get("sector_guard_active", False)),
@@ -172,10 +181,23 @@ def _save_risk_state(
         "final_assets": float(result.get("final_assets", 0.0)),
     }
     if tradable:
+        # Build identity hash from multiple identity fields to prevent
+        # cross-contamination between different configurations.
+        identity_parts = [
+            "trade",
+            str(len(tradable)),
+            ",".join(sorted(tradable.keys())),
+        ]
+        if config_hash:
+            identity_parts.append(config_hash)
+        if account_path:
+            identity_parts.append(account_path)
         state["symbols_hash"] = hashlib.sha256(
-            ",".join(sorted(tradable.keys())).encode("utf-8")
+            "|".join(identity_parts).encode("utf-8")
         ).hexdigest()[:16]
         state["total_symbols"] = len(tradable)
+        state["run_id"] = f"trade_{end_date}"
+        state["account_path"] = account_path
     state_file = Path(output_dir) / "risk_state.json"
     state_file.parent.mkdir(parents=True, exist_ok=True)
     state_file.write_text(
@@ -237,16 +259,70 @@ def main() -> int:
         if account is None:
             return 1
 
-    # Resolve capital: account.cash > --capital > default
+    # ── Resolve capital: account total equity > --capital > default ──
+    # P0 fix: use total equity (cash + position value) instead of cash alone
     if account is not None:
-        capital = float(account["cash"])
+        cash = float(account["cash"])
+        positions = account.get("positions", {})
+        position_value = 0.0
+        for v in positions.values():
+            shares = float(v.get("shares", 0))
+            price = float(v.get("price", 0))
+            if shares > 0 and price > 0:
+                position_value += shares * price
+        total_equity = cash + position_value
+        capital = max(total_equity, cash)
+        # Store derived values for later reporting
+        account["_position_value"] = position_value
+        account["_total_equity"] = total_equity
     elif args.capital > 0:
         capital = args.capital
     else:
         capital = INITIAL_CAPITAL
 
-    # Load previous run's risk state for continuity
+    # Build AccountState from the loaded account data (None if simulation mode)
+    account_state: qf.AccountState | None = None
+    if account is not None:
+        raw_peak = account.get("peak_equity", 0)
+        peak_equity = float(raw_peak) if raw_peak is not None and raw_peak > 0 else float(account.get("_total_equity", capital))
+        account_state = qf.AccountState(
+            cash=float(account["cash"]),
+            position_value=float(account.get("_position_value", 0)),
+            total_equity=float(account.get("_total_equity", capital)),
+            peak_equity=peak_equity,
+            positions=dict(account.get("positions", {})),
+            risk_state=dict(account.get("risk_state", {})),
+        )
+
+    # ── Load previous run's risk state for continuity ──
     prev_risk = _load_prev_risk_state(args.output_dir, end_date)
+
+    # ── P0 fix: account risk_state takes priority over file risk_state ──
+    if account and account.get("risk_state"):
+        account_risk: dict[str, Any] = account["risk_state"]
+        # Validate account risk_state has meaningful content
+        account_risk_valid = any(
+            account_risk.get(key) for key in ("terminal_risk_lock", "sector_guard_active", "cycle_lock_count")
+        ) if isinstance(account_risk, dict) else False
+        if not isinstance(account_risk, dict) or not account_risk:
+            print("  ⚠ 账户 risk_state 为空或无效，将仅使用文件风险状态")
+        elif account_risk_valid:
+            if prev_risk:
+                # Merge: account fields override file fields (account is the truth source)
+                merged = dict(prev_risk)
+                for key in ("terminal_risk_lock", "sector_guard_active", "cycle_lock_count"):
+                    if key in account_risk:
+                        merged[key] = account_risk[key]
+                prev_risk = merged
+                print(f"  ℹ 账户风险状态已合并 (账户优先级高于文件)")
+            else:
+                prev_risk = account_risk
+                if prev_risk.get("terminal_risk_lock"):
+                    print(f"  ℹ 从账户文件加载风险状态: 终态锁定已激活")
+                if prev_risk.get("sector_guard_active"):
+                    print(f"  ℹ 从账户文件加载风险状态: 板块风控已激活")
+        elif not prev_risk:
+            print("  ℹ 账户 risk_state 为空，且无文件风险状态，使用默认状态")
 
     mode_label = "实盘账户模式" if account else "模拟模式 (无账户文件)"
     print("=" * 72)
@@ -255,12 +331,19 @@ def main() -> int:
     print(f"  运行模式:   {mode_label}")
     print(f"  标的数量:   {len(SYMBOLS)}")
     print(f"  回测区间:   {start_date} → {end_date}")
-    print(f"  初始资金:   ¥{capital:,.0f}")
+    if account is not None:
+        total_equity = account.get("_total_equity", capital)
+        position_value = account.get("_position_value", 0)
+        cash = float(account["cash"])
+        print(f"  初始资金:   ¥{capital:,.0f} (总权益 ¥{total_equity:,.0f} = 现金 ¥{cash:,.0f} + 持仓 ¥{position_value:,.0f})")
+    else:
+        print(f"  初始资金:   ¥{capital:,.0f}")
     if account is not None:
         real_positions = account.get("positions", {})
         print(f"  实盘持仓:   {len(real_positions)} 个标的")
-        if account.get("peak_equity"):
-            print(f"  峰值权益:   ¥{account['peak_equity']:,.0f}")
+        peak_equity = account.get("peak_equity")
+        if peak_equity is not None and float(peak_equity) > 0:
+            print(f"  峰值权益:   ¥{float(peak_equity):,.0f}")
     if prev_risk:
         print(f"  上次扫描:   {prev_risk.get('scan_date', '?')}")
         if prev_risk.get("terminal_risk_lock"):
@@ -348,14 +431,61 @@ def main() -> int:
         print("  错误: 没有可交易的标的，退出。")
         return 1
 
-    # ── Validate symbols_hash to prevent cross-contamination ──
+    # ── Data freshness cross-check: verify all stocks have data ending on same date ──
+    # P1 fix: ensure no stock is silently lagging behind the others
+    data_end_dates: dict[str, list[str]] = {}
+    for code in tradable:
+        try:
+            df = qf.DataFetcher.load_stock_data(
+                code, probe_start, end_date, data_dir=None
+            )
+            if df is not None and not df.empty:
+                end = str(df.index[-1].date())
+                data_end_dates.setdefault(end, []).append(code)
+        except Exception:
+            pass
+    if len(data_end_dates) > 1 and not args.allow_stale:
+        latest_common = max(data_end_dates.keys())
+        lagging = sorted(d for d in data_end_dates if d < latest_common)
+        if lagging:
+            print("  ⚠ 数据截止日期不一致:")
+            for d in sorted(data_end_dates):
+                count = len(data_end_dates[d])
+                marker = " ← 滞后" if d in lagging else ""
+                print(f"    {d}: {count} 只标的{marker}")
+            print("  ⚠ 标的间数据截止日不一致，信号可能基于不完整信息。")
+            print("  建议检查数据源或等待数据更新后重试。")
+            if not args.allow_stale:
+                print("  ✗ 数据不一致 — 拒绝生成信号 (fail-closed)")
+                print("  如需强制运行，请添加 --allow-stale 参数。")
+                return 1
+
+    # ── Validate risk state identity to prevent cross-contamination ──
+    # P0 fix: reject old state without hash (fail-closed) and enhance identity check
     if prev_risk:
+        # Build current identity hash from symbol set, total count, account, and config
+        identity_parts = [
+            "trade",
+            str(len(tradable)),
+            ",".join(sorted(tradable.keys())),
+        ]
+        if args.account:
+            identity_parts.append(args.account)
         current_hash = hashlib.sha256(
-            ",".join(sorted(tradable.keys())).encode("utf-8")
+            "|".join(identity_parts).encode("utf-8")
         ).hexdigest()[:16]
         prev_hash = prev_risk.get("symbols_hash", "")
-        if prev_hash and prev_hash != current_hash:
+        prev_total = prev_risk.get("total_symbols", 0)
+        if not prev_hash:
+            # P0: old state without hash — fail-closed, do not trust
+            print("  ⚠ 前次风险状态缺少 symbols_hash (旧格式)，拒绝加载以防止交叉污染。")
+            print("    删除 risk_state.json 可清除此警告。")
+            prev_risk = None
+        elif prev_hash != current_hash:
             print("  ⚠ 前次风险状态的标的池不匹配，跳过加载以防止交叉污染。")
+            # Also verify total_symbols as a secondary check
+            if prev_total != len(tradable):
+                print(f"    标的数: 上次={prev_total} 本次={len(tradable)} (不一致)")
             prev_risk = None
 
     print("  正在运行回测，请稍候...")
@@ -370,6 +500,7 @@ def main() -> int:
         indicator_state="warm",
         warmup_calendar_days=365,
         risk_state=prev_risk,
+        account_state=account_state,
     )
 
     # ── Extract latest pending signals ───────────────────────────────
@@ -407,8 +538,8 @@ def main() -> int:
                 "signal": "不可交易",
                 "held_shares": 0,
                 "strategies": "无数据/未上市",
-                "industry": qf._CoreBacktestEngine._SYMBOL_GROUP.get(code, "N/A"),
-                "profile": qf._CoreBacktestEngine._SYMBOL_PROFILE.get(code, "N/A"),
+                "industry": qf._CoreBacktestEngine.get_symbol_group(code, "N/A"),
+                "profile": qf._CoreBacktestEngine.get_symbol_profile(code, "N/A"),
                 "real_shares": 0,
             })
             continue
@@ -451,8 +582,8 @@ def main() -> int:
             "signal": signal_label,
             "held_shares": held_shares,
             "strategies": strategies,
-            "industry": qf._CoreBacktestEngine._SYMBOL_GROUP.get(code, "default"),
-            "profile": qf._CoreBacktestEngine._SYMBOL_PROFILE.get(code, "default"),
+            "industry": qf._CoreBacktestEngine.get_symbol_group(code, "default"),
+            "profile": qf._CoreBacktestEngine.get_symbol_profile(code, "default"),
             "real_shares": int(real_positions[code].get("shares", 0)) if real_positions and code in real_positions else 0,
         })
 
@@ -513,6 +644,9 @@ def main() -> int:
     )
     guard = result.get("sector_guard_active", False)
     print(f"  板块风控激活:   {'是' if guard else '否'}")
+    safe_mode = result.get("safe_mode_active", False)
+    if safe_mode:
+        print(f"  ⚠ 保守参数模式: 已激活 (市场状态为 CHOPPY)")
     print()
 
     # ── Account-mode: position discrepancy warnings ─────────────────
@@ -631,6 +765,7 @@ def main() -> int:
             "sharpe": float(result["sharpe"]),
             "total_trades": int(result["total_trades"]),
             "sector_guard_active": bool(guard),
+            "safe_mode_active": bool(result.get("safe_mode_active", False)),
             "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
         },
         "pending_signals": pending_serializable,
@@ -638,6 +773,8 @@ def main() -> int:
     if account:
         artifact["account"] = {
             "cash": float(account["cash"]),
+            "position_value": float(account.get("_position_value", 0)),
+            "total_equity": float(account.get("_total_equity", capital)),
             "peak_equity": float(account["peak_equity"]) if account.get("peak_equity") else None,
             "position_count": len(real_positions),
         }
@@ -647,8 +784,12 @@ def main() -> int:
         json.dumps(artifact, ensure_ascii=False, indent=2, default=str) + "\n",
         encoding="utf-8",
     )
-    # Persist risk state for the next daily run
-    _save_risk_state(args.output_dir, end_date, result, tradable)
+    # Persist risk state for the next daily run (with enhanced identity fields)
+    config_fingerprint = f"capital={capital:.0f}|start={start_date}"
+    _save_risk_state(
+        args.output_dir, end_date, result, tradable,
+        config_hash=config_fingerprint, account_path=args.account,
+    )
     print(f"  结果已保存: {output_file}")
     print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")
     print()

@@ -87,9 +87,9 @@ def main() -> int:
         "initial_capital": INITIAL_CAPITAL,
         "symbols": SYMBOLS,
         "cambricon_mapping": {
-            "classification": qf.BacktestEngine._KNOWN_CLASSIFICATION.get("688256", "unknown"),
-            "risk_group": qf.BacktestEngine._SYMBOL_GROUP.get("688256", "unknown"),
-            "parameter_profile": qf.BacktestEngine._SYMBOL_PROFILE.get("688256", "unknown"),
+            "classification": qf.BacktestEngine.get_symbol_classification("688256", "unknown"),
+            "risk_group": qf.BacktestEngine.get_symbol_group("688256", "unknown"),
+            "parameter_profile": qf.BacktestEngine.get_symbol_profile("688256", "unknown"),
         },
         "results": results,
     }

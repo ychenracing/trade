@@ -15,13 +15,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 15254331.347447751,
-      "total_return": 6.6271656737238755,
-      "annual_return": 4.448495051864239,
+      "final_assets": 12733259.06083025,
+      "total_return": 5.366629530415125,
+      "annual_return": 3.6861044754281522,
       "max_drawdown": -0.18489640482320607,
-      "sharpe": 3.2933226123108503,
-      "calmar": 24.059391831430112,
-      "total_trades": 18,
+      "sharpe": 3.293795627374347,
+      "calmar": 19.936052726134537,
+      "total_trades": 24,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -94,7 +94,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -158,7 +180,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -169,8 +213,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 5084777.115815917,
-          "total_return": 6.6271656737238755,
+          "final_assets": 4244419.6869434165,
+          "total_return": 5.366629530415126,
           "max_drawdown": -0.18489640482320607,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -183,8 +227,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 5084777.115815917,
-          "total_return": 6.6271656737238755,
+          "final_assets": 4244419.6869434165,
+          "total_return": 5.366629530415126,
           "max_drawdown": -0.18489640482320607,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -197,8 +241,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 5084777.115815917,
-          "total_return": 6.627165673723875,
+          "final_assets": 4244419.6869434165,
+          "total_return": 5.366629530415124,
           "max_drawdown": -0.18489640482320607,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -215,13 +259,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 15254331.347447751,
-      "total_return": 6.6271656737238755,
-      "annual_return": 4.054249923507102,
+      "final_assets": 12733259.06083025,
+      "total_return": 5.366629530415125,
+      "annual_return": 3.3761525147212588,
       "max_drawdown": -0.18489640482320607,
-      "sharpe": 3.2164592597370576,
-      "calmar": 21.927143079843482,
-      "total_trades": 18,
+      "sharpe": 3.216920349894441,
+      "calmar": 18.259698007375874,
+      "total_trades": 24,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -294,7 +338,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -358,7 +424,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -369,8 +457,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 5084777.115815917,
-          "total_return": 6.6271656737238755,
+          "final_assets": 4244419.6869434165,
+          "total_return": 5.366629530415126,
           "max_drawdown": -0.18489640482320607,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -383,8 +471,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 5084777.115815917,
-          "total_return": 6.6271656737238755,
+          "final_assets": 4244419.6869434165,
+          "total_return": 5.366629530415126,
           "max_drawdown": -0.18489640482320607,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -397,8 +485,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 5084777.115815917,
-          "total_return": 6.627165673723875,
+          "final_assets": 4244419.6869434165,
+          "total_return": 5.366629530415124,
           "max_drawdown": -0.18489640482320607,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -415,13 +503,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 14909783.406694997,
-      "total_return": 6.454891703347498,
-      "annual_return": 4.345611696977819,
+      "final_assets": 12617899.50977,
+      "total_return": 5.308949754885,
+      "annual_return": 3.6506520227237447,
       "max_drawdown": -0.1834136674871038,
-      "sharpe": 3.280757116377294,
-      "calmar": 23.692954601016133,
-      "total_trades": 18,
+      "sharpe": 3.2827049112742714,
+      "calmar": 19.90392576922017,
+      "total_trades": 24,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -494,7 +582,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -558,7 +668,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -569,8 +701,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 4969927.802231666,
-          "total_return": 6.454891703347498,
+          "final_assets": 4205966.5032566665,
+          "total_return": 5.308949754885,
           "max_drawdown": -0.18341366748710383,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -583,8 +715,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 4969927.802231666,
-          "total_return": 6.454891703347498,
+          "final_assets": 4205966.5032566665,
+          "total_return": 5.308949754885,
           "max_drawdown": -0.18341366748710383,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -597,8 +729,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 4969927.802231667,
-          "total_return": 6.454891703347498,
+          "final_assets": 4205966.503256667,
+          "total_return": 5.308949754885,
           "max_drawdown": -0.1834136674871038,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -615,13 +747,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 14909783.406694997,
-      "total_return": 6.454891703347498,
-      "annual_return": 3.9630009559245876,
+      "final_assets": 12617899.50977,
+      "total_return": 5.308949754885,
+      "annual_return": 3.34450645827613,
       "max_drawdown": -0.1834136674871038,
-      "sharpe": 3.2042104060018666,
-      "calmar": 21.606901002637844,
-      "total_trades": 18,
+      "sharpe": 3.20610913530197,
+      "calmar": 18.23477227241688,
+      "total_trades": 24,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -694,7 +826,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -758,7 +912,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -769,8 +945,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 4969927.802231666,
-          "total_return": 6.454891703347498,
+          "final_assets": 4205966.5032566665,
+          "total_return": 5.308949754885,
           "max_drawdown": -0.18341366748710383,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -783,8 +959,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 4969927.802231666,
-          "total_return": 6.454891703347498,
+          "final_assets": 4205966.5032566665,
+          "total_return": 5.308949754885,
           "max_drawdown": -0.18341366748710383,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -797,8 +973,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 4969927.802231667,
-          "total_return": 6.454891703347498,
+          "final_assets": 4205966.503256667,
+          "total_return": 5.308949754885,
           "max_drawdown": -0.1834136674871038,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -817,13 +993,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 21842758.79508675,
-      "total_return": 9.921379397543374,
-      "annual_return": 6.35152175759366,
+      "final_assets": 23194332.385086007,
+      "total_return": 10.597166192543003,
+      "annual_return": 6.729202435033019,
       "max_drawdown": -0.18321671687706975,
-      "sharpe": 3.5740350203152365,
-      "calmar": 34.666715274978145,
-      "total_trades": 157,
+      "sharpe": 3.6655521196582166,
+      "calmar": 36.728102924953156,
+      "total_trades": 170,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -896,7 +1072,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -960,7 +1158,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -971,8 +1191,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7328463.473478166,
-          "total_return": 9.99269521021725,
+          "final_assets": 7784634.702884169,
+          "total_return": 10.676952054326254,
           "max_drawdown": -0.1832167168770698,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -985,8 +1205,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7328463.473478166,
-          "total_return": 9.99269521021725,
+          "final_assets": 7784634.702884169,
+          "total_return": 10.676952054326254,
           "max_drawdown": -0.1832167168770698,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -999,8 +1219,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7185831.848130417,
-          "total_return": 9.778747772195624,
+          "final_assets": 7625062.979317669,
+          "total_return": 10.437594468976501,
           "max_drawdown": -0.1832167168770698,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1019,13 +1239,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 21842758.79508675,
-      "total_return": 9.921379397543374,
-      "annual_return": 5.729664985637466,
+      "final_assets": 23194332.385086007,
+      "total_return": 10.597166192543003,
+      "annual_return": 6.0597113257141615,
       "max_drawdown": -0.18321671687706975,
-      "sharpe": 3.490026001967957,
-      "calmar": 31.272610290696434,
-      "total_trades": 157,
+      "sharpe": 3.5791826244108282,
+      "calmar": 33.07400890596657,
+      "total_trades": 170,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -1098,7 +1318,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -1162,7 +1404,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -1173,8 +1437,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7328463.473478166,
-          "total_return": 9.99269521021725,
+          "final_assets": 7784634.702884169,
+          "total_return": 10.676952054326254,
           "max_drawdown": -0.1832167168770698,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1187,8 +1451,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7328463.473478166,
-          "total_return": 9.99269521021725,
+          "final_assets": 7784634.702884169,
+          "total_return": 10.676952054326254,
           "max_drawdown": -0.1832167168770698,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1201,8 +1465,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7185831.848130417,
-          "total_return": 9.778747772195624,
+          "final_assets": 7625062.979317669,
+          "total_return": 10.437594468976501,
           "max_drawdown": -0.1832167168770698,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1221,13 +1485,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 22256158.836322747,
-      "total_return": 10.128079418161374,
-      "annual_return": 6.467441624003376,
+      "final_assets": 23673946.653319005,
+      "total_return": 10.836973326659502,
+      "annual_return": 6.862339926199212,
       "max_drawdown": -0.17918987929749075,
-      "sharpe": 3.684433740162117,
-      "calmar": 36.092672473237954,
-      "total_trades": 187,
+      "sharpe": 3.774488506470061,
+      "calmar": 38.29647049879623,
+      "total_trades": 194,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -1300,7 +1564,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -1364,7 +1650,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -1375,8 +1683,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7549301.202700416,
-          "total_return": 10.323951804050624,
+          "final_assets": 8081850.106543669,
+          "total_return": 11.122775159815504,
           "max_drawdown": -0.18025750409610014,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1389,8 +1697,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7549301.202700416,
-          "total_return": 10.323951804050624,
+          "final_assets": 8081850.106543669,
+          "total_return": 11.122775159815504,
           "max_drawdown": -0.18025750409610014,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1403,8 +1711,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7157556.430921918,
-          "total_return": 9.736334646382875,
+          "final_assets": 7510246.440231668,
+          "total_return": 10.2653696603475,
           "max_drawdown": -0.18459412567192782,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1423,13 +1731,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 22256158.836322747,
-      "total_return": 10.128079418161374,
-      "annual_return": 5.831042825563144,
+      "final_assets": 23673946.653319005,
+      "total_return": 10.836973326659502,
+      "annual_return": 6.175885001063643,
       "max_drawdown": -0.17918987929749075,
-      "sharpe": 3.597575278062025,
-      "calmar": 32.541139312240155,
-      "total_trades": 187,
+      "sharpe": 3.685288563669437,
+      "calmar": 34.465590496941225,
+      "total_trades": 194,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -1502,7 +1810,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -1566,7 +1896,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -1577,8 +1929,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7549301.202700416,
-          "total_return": 10.323951804050624,
+          "final_assets": 8081850.106543669,
+          "total_return": 11.122775159815504,
           "max_drawdown": -0.18025750409610014,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1591,8 +1943,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7549301.202700416,
-          "total_return": 10.323951804050624,
+          "final_assets": 8081850.106543669,
+          "total_return": 11.122775159815504,
           "max_drawdown": -0.18025750409610014,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1605,8 +1957,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7157556.430921918,
-          "total_return": 9.736334646382875,
+          "final_assets": 7510246.440231668,
+          "total_return": 10.2653696603475,
           "max_drawdown": -0.18459412567192782,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -1627,13 +1979,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 23439835.880318508,
-      "total_return": 10.719917940159254,
-      "annual_return": 6.797408805511876,
-      "max_drawdown": -0.15975508835942853,
-      "sharpe": 3.6709007096920785,
-      "calmar": 42.54893459304767,
-      "total_trades": 206,
+      "final_assets": 23573401.137986757,
+      "total_return": 10.786700568993378,
+      "annual_return": 6.834466499113637,
+      "max_drawdown": -0.1680079857774464,
+      "sharpe": 3.7124289235181958,
+      "calmar": 40.67941453787194,
+      "total_trades": 201,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -1706,7 +2058,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -1770,7 +2144,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -1781,9 +2177,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8027970.485747669,
-          "total_return": 11.041955728621504,
-          "max_drawdown": -0.15975508835942856,
+          "final_assets": 7973227.8245266685,
+          "total_return": 10.959841736790002,
+          "max_drawdown": -0.1680079857774464,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1795,9 +2191,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7800752.598979419,
-          "total_return": 10.701128898469129,
-          "max_drawdown": -0.15975508835942856,
+          "final_assets": 7626945.488933419,
+          "total_return": 10.440418233400129,
+          "max_drawdown": -0.1680079857774464,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1809,9 +2205,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7611112.795591419,
-          "total_return": 10.416669193387126,
-          "max_drawdown": -0.1597550883594284,
+          "final_assets": 7973227.8245266685,
+          "total_return": 10.95984173679,
+          "max_drawdown": -0.1680079857774464,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -1831,13 +2227,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 23439835.880318508,
-      "total_return": 10.719917940159254,
-      "annual_return": 6.119238109260809,
-      "max_drawdown": -0.15975508835942853,
-      "sharpe": 3.5843927735642436,
-      "calmar": 38.303869830382524,
-      "total_trades": 206,
+      "final_assets": 23573401.137986757,
+      "total_return": 10.786700568993378,
+      "annual_return": 6.1515703506214185,
+      "max_drawdown": -0.1680079857774464,
+      "sharpe": 3.6248442375120264,
+      "calmar": 36.61474972249332,
+      "total_trades": 201,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -1910,7 +2306,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -1974,7 +2392,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -1985,9 +2425,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8027970.485747669,
-          "total_return": 11.041955728621504,
-          "max_drawdown": -0.15975508835942856,
+          "final_assets": 7973227.8245266685,
+          "total_return": 10.959841736790002,
+          "max_drawdown": -0.1680079857774464,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1999,9 +2439,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7800752.598979419,
-          "total_return": 10.701128898469129,
-          "max_drawdown": -0.15975508835942856,
+          "final_assets": 7626945.488933419,
+          "total_return": 10.440418233400129,
+          "max_drawdown": -0.1680079857774464,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2013,9 +2453,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7611112.795591419,
-          "total_return": 10.416669193387126,
-          "max_drawdown": -0.1597550883594284,
+          "final_assets": 7973227.8245266685,
+          "total_return": 10.95984173679,
+          "max_drawdown": -0.1680079857774464,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -2035,13 +2475,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 24909607.977353252,
-      "total_return": 11.454803988676627,
-      "annual_return": 7.203321427845301,
-      "max_drawdown": -0.149383189130925,
-      "sharpe": 3.7984356659567466,
-      "calmar": 48.22042874939591,
-      "total_trades": 244,
+      "final_assets": 24319847.510915253,
+      "total_return": 11.159923755457626,
+      "annual_return": 7.040934762669732,
+      "max_drawdown": -0.15857336312266856,
+      "sharpe": 3.789946936034223,
+      "calmar": 44.40174960042332,
+      "total_trades": 222,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -2114,7 +2554,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -2178,7 +2640,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -2189,9 +2673,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8506754.171990417,
-          "total_return": 11.760131257985625,
-          "max_drawdown": -0.15052484021711535,
+          "final_assets": 8562667.480297418,
+          "total_return": 11.844001220446128,
+          "max_drawdown": -0.15929378655250936,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2203,9 +2687,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8282948.922913918,
-          "total_return": 11.424423384370877,
-          "max_drawdown": -0.15052484021711535,
+          "final_assets": 8230459.120574668,
+          "total_return": 11.345688680862002,
+          "max_drawdown": -0.15929378655250936,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2217,8 +2701,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 8119904.882448919,
-          "total_return": 11.179857323673376,
+          "final_assets": 7526720.910043169,
+          "total_return": 10.29008136506475,
           "max_drawdown": -0.15956687160799987,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -2239,13 +2723,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 24909607.977353252,
-      "total_return": 11.454803988676627,
-      "annual_return": 6.473026337541072,
-      "max_drawdown": -0.149383189130925,
-      "sharpe": 3.708610440155569,
-      "calmar": 43.331691974174355,
-      "total_trades": 244,
+      "final_assets": 24319847.510915253,
+      "total_return": 11.159923755457626,
+      "annual_return": 6.3315874831665875,
+      "max_drawdown": -0.15857336312266856,
+      "sharpe": 3.7003434871610827,
+      "calmar": 39.92844295210301,
+      "total_trades": 222,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -2318,7 +2802,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -2382,7 +2888,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -2393,9 +2921,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8506754.171990417,
-          "total_return": 11.760131257985625,
-          "max_drawdown": -0.15052484021711535,
+          "final_assets": 8562667.480297418,
+          "total_return": 11.844001220446128,
+          "max_drawdown": -0.15929378655250936,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2407,9 +2935,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8282948.922913918,
-          "total_return": 11.424423384370877,
-          "max_drawdown": -0.15052484021711535,
+          "final_assets": 8230459.120574668,
+          "total_return": 11.345688680862002,
+          "max_drawdown": -0.15929378655250936,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2421,8 +2949,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 8119904.882448919,
-          "total_return": 11.179857323673376,
+          "final_assets": 7526720.910043169,
+          "total_return": 10.29008136506475,
           "max_drawdown": -0.15956687160799987,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -2451,19 +2979,19 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 18706938.871000007,
-      "total_return": 8.353469435500003,
-      "annual_return": 5.45974919801681,
+      "final_assets": 19722314.414724007,
+      "total_return": 8.861157207362004,
+      "annual_return": 5.751033856540302,
       "max_drawdown": -0.16931700894048463,
-      "sharpe": 3.315131531708003,
-      "calmar": 32.24572198730445,
-      "total_trades": 314,
+      "sharpe": 3.5029358565593465,
+      "calmar": 33.96607282710626,
+      "total_trades": 306,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
       "cycle_lock_count": 0,
       "locked_sleeves": [],
-      "open_positions": 2,
+      "open_positions": 5,
       "max_concurrent_symbols": 6,
       "portfolio_max_positions": 6,
       "portfolio_cash_model": "fixed_virtual_subaccounts",
@@ -2530,7 +3058,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -2594,7 +3144,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -2605,8 +3177,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6439913.779330419,
-          "total_return": 8.659870668995628,
+          "final_assets": 6094585.277666917,
+          "total_return": 8.141877916500375,
           "max_drawdown": -0.16090246487617094,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -2619,8 +3191,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6871317.967249669,
-          "total_return": 9.306976950874503,
+          "final_assets": 6648584.910021168,
+          "total_return": 8.972877365031753,
           "max_drawdown": -0.19896651698651266,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -2633,9 +3205,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 5395707.124419919,
-          "total_return": 7.0935606866298775,
-          "max_drawdown": -0.19364847031579502,
+          "final_assets": 6979144.227035919,
+          "total_return": 9.468716340553877,
+          "max_drawdown": -0.1742481216963291,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -2663,13 +3235,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 18729911.44529701,
-      "total_return": 8.364955722648505,
-      "annual_return": 4.953125998439432,
+      "final_assets": 19883122.434803005,
+      "total_return": 8.941561217401503,
+      "annual_return": 5.243648872240488,
       "max_drawdown": -0.16931700894048463,
-      "sharpe": 3.239389209833915,
-      "calmar": 29.253564242801314,
-      "total_trades": 316,
+      "sharpe": 3.4321319405404087,
+      "calmar": 30.96941592019054,
+      "total_trades": 311,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -2742,7 +3314,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -2806,7 +3400,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -2817,8 +3433,8 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6439913.779330419,
-          "total_return": 8.659870668995628,
+          "final_assets": 6146273.569835167,
+          "total_return": 8.219410354752752,
           "max_drawdown": -0.16090246487617094,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -2831,8 +3447,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6877061.110823919,
-          "total_return": 9.315591666235878,
+          "final_assets": 6706016.345763668,
+          "total_return": 9.059024518645503,
           "max_drawdown": -0.19896651698651266,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -2845,9 +3461,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 5412936.555142669,
-          "total_return": 7.119404832714002,
-          "max_drawdown": -0.19364847031579502,
+          "final_assets": 7030832.519204169,
+          "total_return": 9.546248778806252,
+          "max_drawdown": -0.1742481216963291,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -2875,887 +3491,12 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 20832312.217444506,
-      "total_return": 9.416156108722253,
-      "annual_return": 6.066638321531027,
+      "final_assets": 22562313.390281253,
+      "total_return": 10.281156695140627,
+      "annual_return": 6.553059360720431,
       "max_drawdown": -0.18407181266292794,
-      "sharpe": 3.4746834436693144,
-      "calmar": 32.957997391160845,
-      "total_trades": 365,
-      "sector_guard_active": true,
-      "persistent_risk_lock": false,
-      "terminal_risk_lock": false,
-      "cycle_lock_count": 0,
-      "locked_sleeves": [],
-      "open_positions": 3,
-      "max_concurrent_symbols": 6,
-      "portfolio_max_positions": 6,
-      "portfolio_cash_model": "fixed_virtual_subaccounts",
-      "allocation_mode": "ensemble",
-      "portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.23,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.27,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ]
-      },
-      "effective_portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.22846153846153847,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.2684615384615385,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ]
-      },
-      "sleeve_summaries": [
-        {
-          "name": "fast",
-          "allocation_lookbacks": [
-            3,
-            5,
-            10
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 7249776.481819419,
-          "total_return": 9.874664722729129,
-          "max_drawdown": -0.18743341738585065,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "base",
-          "allocation_lookbacks": [
-            5,
-            10,
-            20
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 6984908.946512168,
-          "total_return": 9.477363419768253,
-          "max_drawdown": -0.1859048533526153,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "slow",
-          "allocation_lookbacks": [
-            5,
-            20,
-            60
-          ],
-          "initial_capital": 666666.6666666667,
-          "final_assets": 6597626.789112919,
-          "total_return": 8.896440183669377,
-          "max_drawdown": -0.19411760784845014,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        }
-      ]
-    },
-    {
-      "universe": "13_symbols",
-      "symbol_count": 13,
-      "symbols": [
-        "300308",
-        "300502",
-        "300394",
-        "688008",
-        "603986",
-        "002409",
-        "688072",
-        "688300",
-        "300054",
-        "688205",
-        "920045",
-        "300776",
-        "688535"
-      ],
-      "indicator_state": "warm",
-      "start_date": "2025-04-01",
-      "end_date": "2026-07-20",
-      "initial_capital": 2000000.0,
-      "final_assets": 20906973.083909757,
-      "total_return": 9.453486541954879,
-      "annual_return": 5.498730443851572,
-      "max_drawdown": -0.18407181266292794,
-      "sharpe": 3.3981089878899424,
-      "calmar": 29.87274566541505,
-      "total_trades": 368,
-      "sector_guard_active": true,
-      "persistent_risk_lock": false,
-      "terminal_risk_lock": false,
-      "cycle_lock_count": 0,
-      "locked_sleeves": [],
-      "open_positions": 0,
-      "max_concurrent_symbols": 6,
-      "portfolio_max_positions": 6,
-      "portfolio_cash_model": "fixed_virtual_subaccounts",
-      "allocation_mode": "ensemble",
-      "portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.23,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.27,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ]
-      },
-      "effective_portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.22846153846153847,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.2684615384615385,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ]
-      },
-      "sleeve_summaries": [
-        {
-          "name": "fast",
-          "allocation_lookbacks": [
-            3,
-            5,
-            10
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 7255519.625393669,
-          "total_return": 9.883279438090504,
-          "max_drawdown": -0.18743341738585065,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "base",
-          "allocation_lookbacks": [
-            5,
-            10,
-            20
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 6984908.946512168,
-          "total_return": 9.477363419768253,
-          "max_drawdown": -0.1859048533526153,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "slow",
-          "allocation_lookbacks": [
-            5,
-            20,
-            60
-          ],
-          "initial_capital": 666666.6666666667,
-          "final_assets": 6666544.512003919,
-          "total_return": 8.999816768005877,
-          "max_drawdown": -0.19411760784845014,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        }
-      ]
-    },
-    {
-      "universe": "22_symbols",
-      "symbol_count": 22,
-      "symbols": [
-        "300308",
-        "300502",
-        "300394",
-        "688008",
-        "603986",
-        "002409",
-        "688072",
-        "688300",
-        "300054",
-        "688205",
-        "920045",
-        "300776",
-        "688535",
-        "688249",
-        "688347",
-        "300666",
-        "600206",
-        "688409",
-        "688361",
-        "300604",
-        "688120",
-        "688082"
-      ],
-      "indicator_state": "cold",
-      "start_date": "2025-04-01",
-      "end_date": "2026-06-30",
-      "initial_capital": 2000000.0,
-      "final_assets": 14445109.217196006,
-      "total_return": 6.222554608598003,
-      "annual_return": 4.2062315239139725,
-      "max_drawdown": -0.16525001981828252,
-      "sharpe": 3.1068898861313285,
-      "calmar": 25.45374293170653,
-      "total_trades": 334,
-      "sector_guard_active": true,
-      "persistent_risk_lock": false,
-      "terminal_risk_lock": false,
-      "cycle_lock_count": 0,
-      "locked_sleeves": [],
-      "open_positions": 0,
-      "max_concurrent_symbols": 6,
-      "portfolio_max_positions": 6,
-      "portfolio_cash_model": "fixed_virtual_subaccounts",
-      "allocation_mode": "ensemble",
-      "portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.23,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.27,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ]
-      },
-      "effective_portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.2290909090909091,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.2690909090909091,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ]
-      },
-      "sleeve_summaries": [
-        {
-          "name": "fast",
-          "allocation_lookbacks": [
-            3,
-            5,
-            10
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 5397865.953741668,
-          "total_return": 7.096798930612501,
-          "max_drawdown": -0.16502583998560408,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "base",
-          "allocation_lookbacks": [
-            5,
-            10,
-            20
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 4651906.0926909195,
-          "total_return": 5.97785913903638,
-          "max_drawdown": -0.16942303011953885,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "slow",
-          "allocation_lookbacks": [
-            5,
-            20,
-            60
-          ],
-          "initial_capital": 666666.6666666667,
-          "final_assets": 4395337.170763418,
-          "total_return": 5.593005756145126,
-          "max_drawdown": -0.1706328537368801,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        }
-      ]
-    },
-    {
-      "universe": "22_symbols",
-      "symbol_count": 22,
-      "symbols": [
-        "300308",
-        "300502",
-        "300394",
-        "688008",
-        "603986",
-        "002409",
-        "688072",
-        "688300",
-        "300054",
-        "688205",
-        "920045",
-        "300776",
-        "688535",
-        "688249",
-        "688347",
-        "300666",
-        "600206",
-        "688409",
-        "688361",
-        "300604",
-        "688120",
-        "688082"
-      ],
-      "indicator_state": "cold",
-      "start_date": "2025-04-01",
-      "end_date": "2026-07-20",
-      "initial_capital": 2000000.0,
-      "final_assets": 14445109.217196006,
-      "total_return": 6.222554608598003,
-      "annual_return": 3.83925788633072,
-      "max_drawdown": -0.16525001981828252,
-      "sharpe": 3.034697497249395,
-      "calmar": 23.23302527014863,
-      "total_trades": 334,
-      "sector_guard_active": true,
-      "persistent_risk_lock": false,
-      "terminal_risk_lock": false,
-      "cycle_lock_count": 0,
-      "locked_sleeves": [],
-      "open_positions": 0,
-      "max_concurrent_symbols": 6,
-      "portfolio_max_positions": 6,
-      "portfolio_cash_model": "fixed_virtual_subaccounts",
-      "allocation_mode": "ensemble",
-      "portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.23,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.27,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ]
-      },
-      "effective_portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.2290909090909091,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.2690909090909091,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ]
-      },
-      "sleeve_summaries": [
-        {
-          "name": "fast",
-          "allocation_lookbacks": [
-            3,
-            5,
-            10
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 5397865.953741668,
-          "total_return": 7.096798930612501,
-          "max_drawdown": -0.16502583998560408,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "base",
-          "allocation_lookbacks": [
-            5,
-            10,
-            20
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 4651906.0926909195,
-          "total_return": 5.97785913903638,
-          "max_drawdown": -0.16942303011953885,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "slow",
-          "allocation_lookbacks": [
-            5,
-            20,
-            60
-          ],
-          "initial_capital": 666666.6666666667,
-          "final_assets": 4395337.170763418,
-          "total_return": 5.593005756145126,
-          "max_drawdown": -0.1706328537368801,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        }
-      ]
-    },
-    {
-      "universe": "22_symbols",
-      "symbol_count": 22,
-      "symbols": [
-        "300308",
-        "300502",
-        "300394",
-        "688008",
-        "603986",
-        "002409",
-        "688072",
-        "688300",
-        "300054",
-        "688205",
-        "920045",
-        "300776",
-        "688535",
-        "688249",
-        "688347",
-        "300666",
-        "600206",
-        "688409",
-        "688361",
-        "300604",
-        "688120",
-        "688082"
-      ],
-      "indicator_state": "warm",
-      "start_date": "2025-04-01",
-      "end_date": "2026-06-30",
-      "initial_capital": 2000000.0,
-      "final_assets": 18772394.738420755,
-      "total_return": 8.386197369210377,
-      "annual_return": 5.478604325255969,
-      "max_drawdown": -0.16900028070618606,
-      "sharpe": 3.3971398391169454,
-      "calmar": 32.41772322722202,
+      "sharpe": 3.6825252019465613,
+      "calmar": 35.60055864023236,
       "total_trades": 319,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
@@ -3829,7 +3570,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -3856,9 +3619,9 @@
           ]
         ],
         "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.2290909090909091,
+        "confirmed_drawdown": 0.22846153846153847,
         "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.2690909090909091,
+        "emergency_drawdown": 0.2684615384615385,
         "adv_lookback": 20,
         "max_order_adv_ratio": 0.005,
         "rearm_trading_days": 10,
@@ -3893,7 +3656,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -3904,9 +3689,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6647007.2640291685,
-          "total_return": 8.970510896043752,
-          "max_drawdown": -0.16390546102763898,
+          "final_assets": 7141146.146346168,
+          "total_return": 9.711719219519251,
+          "max_drawdown": -0.18743341738585065,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3918,9 +3703,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6301251.800530168,
-          "total_return": 8.451877700795253,
-          "max_drawdown": -0.16390546102763898,
+          "final_assets": 7035299.969922919,
+          "total_return": 9.552949954884378,
+          "max_drawdown": -0.1859048533526153,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3932,17 +3717,17 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 5824135.673861418,
-          "total_return": 7.736203510792126,
-          "max_drawdown": -0.21753966499263278,
+          "final_assets": 8385867.274012166,
+          "total_return": 11.578800911018247,
+          "max_drawdown": -0.1795898371648426,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
       ]
     },
     {
-      "universe": "22_symbols",
-      "symbol_count": 22,
+      "universe": "13_symbols",
+      "symbol_count": 13,
       "symbols": [
         "300308",
         "300502",
@@ -3956,27 +3741,18 @@
         "688205",
         "920045",
         "300776",
-        "688535",
-        "688249",
-        "688347",
-        "300666",
-        "600206",
-        "688409",
-        "688361",
-        "300604",
-        "688120",
-        "688082"
+        "688535"
       ],
       "indicator_state": "warm",
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 19002120.481390756,
-      "total_return": 8.501060240695377,
-      "annual_return": 5.022021268755202,
-      "max_drawdown": -0.16900028070618606,
-      "sharpe": 3.3342989114022,
-      "calmar": 29.71605282411449,
+      "final_assets": 22774809.702528503,
+      "total_return": 10.387404851264252,
+      "annual_return": 5.957693861774019,
+      "max_drawdown": -0.18407181266292794,
+      "sharpe": 3.6088205350366414,
+      "calmar": 32.36613893015625,
       "total_trades": 324,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
@@ -4050,7 +3826,294 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "effective_portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.22846153846153847,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2684615384615385,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7204320.725662918,
+          "total_return": 9.806481088494376,
+          "max_drawdown": -0.18743341738585065,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7098474.549239669,
+          "total_return": 9.647711823859504,
+          "max_drawdown": -0.1859048533526153,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 8472014.427625917,
+          "total_return": 11.708021641438874,
+          "max_drawdown": -0.1795898371648426,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "22_symbols",
+      "symbol_count": 22,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+        "688249",
+        "688347",
+        "300666",
+        "600206",
+        "688409",
+        "688361",
+        "300604",
+        "688120",
+        "688082"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 18789412.236872002,
+      "total_return": 8.394706118436002,
+      "annual_return": 5.483504578399682,
+      "max_drawdown": -0.17125953942328032,
+      "sharpe": 3.47264451223941,
+      "calmar": 32.018681101592854,
+      "total_trades": 284,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 4,
+      "max_concurrent_symbols": 6,
+      "portfolio_max_positions": 6,
+      "portfolio_cash_model": "fixed_virtual_subaccounts",
+      "allocation_mode": "ensemble",
+      "portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "effective_portfolio_policy": {
         "allocation_mode": "ensemble",
@@ -4114,7 +4177,29 @@
           "300394",
           "688008",
           "603986"
-        ]
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
       },
       "sleeve_summaries": [
         {
@@ -4125,8 +4210,538 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6727411.2740686685,
-          "total_return": 9.091116911103002,
+          "final_assets": 6785906.501626917,
+          "total_return": 9.178859752440376,
+          "max_drawdown": -0.17468260900643376,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6079351.350046418,
+          "total_return": 8.119027025069627,
+          "max_drawdown": -0.1706526572442175,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 5924154.385198668,
+          "total_return": 7.886231577798,
+          "max_drawdown": -0.18014371080627933,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "22_symbols",
+      "symbol_count": 22,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+        "688249",
+        "688347",
+        "300666",
+        "600206",
+        "688409",
+        "688361",
+        "300604",
+        "688120",
+        "688082"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 18869816.246911503,
+      "total_return": 8.434908123455752,
+      "annual_return": 4.988560618299016,
+      "max_drawdown": -0.17125953942328032,
+      "sharpe": 3.397348523732985,
+      "calmar": 29.128658380713194,
+      "total_trades": 288,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "max_concurrent_symbols": 6,
+      "portfolio_max_positions": 6,
+      "portfolio_cash_model": "fixed_virtual_subaccounts",
+      "allocation_mode": "ensemble",
+      "portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "effective_portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.2290909090909091,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2690909090909091,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6803135.932349667,
+          "total_return": 9.204703898524501,
+          "max_drawdown": -0.17468260900643376,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6108067.067917667,
+          "total_return": 8.162100601876501,
+          "max_drawdown": -0.1706526572442175,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 5958613.246644167,
+          "total_return": 7.937919869966249,
+          "max_drawdown": -0.18014371080627933,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "22_symbols",
+      "symbol_count": 22,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+        "688249",
+        "688347",
+        "300666",
+        "600206",
+        "688409",
+        "688361",
+        "300604",
+        "688120",
+        "688082"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 21556568.797280002,
+      "total_return": 9.77828439864,
+      "annual_return": 6.271059722962772,
+      "max_drawdown": -0.1621768950871955,
+      "sharpe": 3.8394531275110504,
+      "calmar": 38.6680218510232,
+      "total_trades": 240,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 4,
+      "max_concurrent_symbols": 6,
+      "portfolio_max_positions": 6,
+      "portfolio_cash_model": "fixed_virtual_subaccounts",
+      "allocation_mode": "ensemble",
+      "portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "effective_portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.2290909090909091,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2690909090909091,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7880629.327536668,
+          "total_return": 10.820943991305002,
           "max_drawdown": -0.16390546102763898,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -4139,8 +4754,8 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6370169.523421168,
-          "total_return": 8.555254285131753,
+          "final_assets": 6655670.433697668,
+          "total_return": 8.983505650546501,
           "max_drawdown": -0.16390546102763898,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -4153,9 +4768,274 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 5904539.683900918,
-          "total_return": 7.856809525851375,
-          "max_drawdown": -0.21753966499263278,
+          "final_assets": 7020269.036045667,
+          "total_return": 9.5304035540685,
+          "max_drawdown": -0.20216190176647686,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "22_symbols",
+      "symbol_count": 22,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+        "688249",
+        "688347",
+        "300666",
+        "600206",
+        "688409",
+        "688361",
+        "300604",
+        "688120",
+        "688082"
+      ],
+      "indicator_state": "warm",
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "final_assets": 21671431.668765,
+      "total_return": 9.835715834382501,
+      "annual_return": 5.687536926372945,
+      "max_drawdown": -0.1621768950871955,
+      "sharpe": 3.7566205186944277,
+      "calmar": 35.069958167068144,
+      "total_trades": 244,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 0,
+      "max_concurrent_symbols": 6,
+      "portfolio_max_positions": 6,
+      "portfolio_cash_model": "fixed_virtual_subaccounts",
+      "allocation_mode": "ensemble",
+      "portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "effective_portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.2290909090909091,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2690909090909091,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 7949547.050427668,
+          "total_return": 10.924320575641502,
+          "max_drawdown": -0.16390546102763898,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6655670.433697668,
+          "total_return": 8.983505650546501,
+          "max_drawdown": -0.16390546102763898,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 7066214.184639666,
+          "total_return": 9.599321276959497,
+          "max_drawdown": -0.20216190176647686,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }

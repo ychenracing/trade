@@ -1,22 +1,22 @@
 # Verified Backtest Results
 
-Verification date: 2026-07-22 UTC.
+Verification date: 2026-08-01 UTC.
 
 Quant Fusion is a standalone module with built-in AKShare and local CSV
 data paths. It uses the same code, parameters, costs, and forward-adjusted data
 snapshot across every requested universe. Initial capital is CNY 2,000,000.
 
 | Universe | Cold return | Cold maximum drawdown | Warm return | Warm maximum drawdown | Warm Sharpe | Warm Calmar |
-|---|---:|---:|---:|---:|---:|---:|
-| 1 symbol | 662.716567% | -18.489640% | 645.489170% | -18.341367% | 3.2042 | 21.6069 |
-| 3 symbols | 992.137940% | -18.321672% | 1,012.807942% | -17.918988% | 3.5976 | 32.5411 |
-| 5 symbols | 1,071.991794% | -15.975509% | 1,145.480399% | -14.938319% | 3.7086 | 43.3317 |
-| 13 symbols | 836.495572% | -16.931701% | 945.348654% | -18.407181% | 3.3981 | 29.8727 |
-| 22 symbols | 622.255461% | -16.525002% | 850.106024% | -16.900028% | 3.3343 | 29.7161 |
+|---|---|---|---:|---:|---:|---:|---:|
+| 1 symbol | 536.66% | -18.49% | 530.89% | -18.34% | 3.21 | 28.95 |
+| 3 symbols | 1059.72% | -18.32% | 1083.70% | -17.92% | 3.69 | 60.48 |
+| 5 symbols | 1078.67% | -16.80% | 1115.99% | -15.86% | 3.70 | 70.38 |
+| 13 symbols | 894.16% | -16.93% | 1038.74% | -18.41% | 3.61 | 56.43 |
+| 22 symbols | 843.49% | -17.13% | 983.57% | -16.22% | 3.76 | 60.65 |
 
 The 2026-06-30 and 2026-07-20 figures are identical for the 1-, 3-, and 5-symbol
 universes. The 13-symbol results increase slightly through July; the 22-symbol
-warm result rises from 838.619737% to 850.106024%.
+warm result rises from 977.83% to 983.57%.
 
 The fixed signal-only regime basket confirmed the defensive gate on 2026-06-26 in
 all requested universes. Risk-only symbols never entered the order or trade ledgers.
@@ -28,11 +28,11 @@ After routing `688256` 寒武纪 through `semiconductor` / `domestic_semiconduct
 deterministic results:
 
 | Indicator state | End date | Total return | Maximum drawdown | Sharpe | Calmar |
-|---|---:|---:|---:|---:|---:|
-| Cold | 2026-06-30 | 991.995458% | -16.143191% | 3.5636 | 39.3399 |
-| Cold | 2026-07-20 | 991.995458% | -16.143191% | 3.4799 | 35.4884 |
-| Warm | 2026-06-30 | 1,167.935349% | -15.111072% | 3.7778 | 48.4847 |
-| Warm | 2026-07-20 | 1,167.935349% | -15.111072% | 3.6885 | 43.5461 |
+|---|---|---|---:|---:|---:|---:|
+| Cold | 2026-06-30 | 991.99% | -16.14% | 3.56 | 39.34 |
+| Cold | 2026-07-20 | 991.99% | -16.14% | 3.48 | 35.49 |
+| Warm | 2026-06-30 | 1167.94% | -15.11% | 3.78 | 48.48 |
+| Warm | 2026-07-20 | 1167.94% | -15.11% | 3.69 | 43.55 |
 
 The universe contains `300308`, `688256`, `300502`, `300394`, `603986`,
 `688008`, `688347`, `300054`, and `688300`. The sector guard still confirms on
@@ -50,3 +50,22 @@ stored in `prefix_stress.json`; its worst adjacent wealth change is
 The 2026-07-22 proposal audit and controlled before/after experiments are recorded
 in `STRATEGY_REVIEW.md`. No tested trading-rule candidate was stable
 enough across time windows and universe sizes to replace the current defaults.
+
+## Risk Management Features
+
+### SAFE_PARAMS (Conservative Fallback)
+
+When the market regime transitions to CHOPPY, the system automatically activates
+conservative parameters (tighter trailing stops, lower position sizing, faster
+reversal exits). This mechanism is enabled by default and requires no manual
+intervention. When the market recovers to TREND, normal parameters are restored.
+
+### Risk State Identity
+
+The `risk_state.json` file now includes enhanced identity fields:
+- `symbols_hash`: SHA-256 fingerprint of sorted symbol codes + count + config
+- `total_symbols`: number of symbols in the universe
+- `run_id`: unique run identifier for traceability
+
+Old risk state files without `symbols_hash` are rejected (fail-closed) to
+prevent cross-contamination between different universes or configurations.

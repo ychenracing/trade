@@ -787,6 +787,35 @@ class SectorObservation:
     normalized_series: tuple[pd.Series, ...]
 
 
+@dataclass
+class AccountState:
+    """Real portfolio state from a live account snapshot.
+
+    Used by the daily signal scanner to derive correct action labels
+    without relying on a simulated replay from scratch.
+    """
+    cash: float
+    position_value: float
+    total_equity: float
+    peak_equity: float
+    positions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    risk_state: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class EngineState:
+    """Cross-day state that survives between successive daily runs.
+
+    Mirrors the fields that BacktestEngine.run() serialises into
+    risk_state.json.
+    """
+    terminal_risk_lock: bool = False
+    sector_guard_active: bool = False
+    cycle_lock_count: int = 0
+    persistent_risk_lock: bool = False
+    run_id: str = ""
+
+
 @dataclass(frozen=True)
 class MarketRegimeObservation:
     """Snapshot the five basket-level regime indicators at one close.
@@ -1283,6 +1312,7 @@ class _CoreBacktestEngine:
         self.cfg = self._validate_config({**self._default_config(), **self._user_cfg})
         self.cash = self.initial_capital
         self.positions: dict[str, dict[str, Position]] = {}
+        self._initial_positions: dict[str, dict[str, Position]] = {}
         self.trades: list[TradeRecord] = []
         self.equity_curve: list[dict] = []
         self.risk = RiskManager(self.cfg)
@@ -1295,6 +1325,7 @@ class _CoreBacktestEngine:
         self.fusion_events: list[dict] = []
         self.risk_events: list[dict] = []
         self.sector_guard_active = False
+        self._safe_mode_active: bool = False  # SAFE_PARAMS: conservative fallback
         self._sector_shock_positions: list[int] = []
         self._sector_recovery_streak = 0
         self.strategy_templates: list[type[BaseStrategy]] = [
@@ -1698,6 +1729,21 @@ class _CoreBacktestEngine:
         "688019": "domestic_material",
         "688268": "domestic_material",
     }
+
+    @classmethod
+    def get_symbol_classification(cls, code: str, default: str = "N/A") -> str:
+        """Return the classification for a symbol (public accessor)."""
+        return cls._KNOWN_CLASSIFICATION.get(code, default)
+
+    @classmethod
+    def get_symbol_group(cls, code: str, default: str = "N/A") -> str:
+        """Return the industry group for a symbol (public accessor)."""
+        return cls._SYMBOL_GROUP.get(code, default)
+
+    @classmethod
+    def get_symbol_profile(cls, code: str, default: str = "N/A") -> str:
+        """Return the parameter profile for a symbol (public accessor)."""
+        return cls._SYMBOL_PROFILE.get(code, default)
 
     @staticmethod
     def config_for_symbol(code: str, name: str = "") -> dict:
@@ -2278,6 +2324,7 @@ class _CoreBacktestEngine:
         self.fusion_events = []
         self.risk_events = []
         self.sector_guard_active = False
+        self._safe_mode_active = False
         self._sector_shock_positions = []
         self._sector_recovery_streak = 0
         self.cfg = self._validate_config({**self._default_config(), **self._user_cfg})
@@ -3115,6 +3162,44 @@ class _CoreBacktestEngine:
                 total += pos.market_value_at(mark)
         return float(total)
 
+    @staticmethod
+    def _apply_account_state(
+        account_state: AccountState | None, engine: _CoreBacktestEngine
+    ) -> dict[str, dict[str, Position]]:
+        """Convert AccountState positions to engine Position objects and set them.
+
+        Uses a "legacy" strategy name for all injected positions. Sets the
+        engine's cash to the account's cash balance and populates both
+        ``positions`` and ``_initial_positions`` so the engine can replay
+        from the correct state without modifying the simulation-only path.
+        """
+        if account_state is None:
+            return {}
+        engine.cash = float(account_state.cash) if account_state.cash is not None else engine.cash
+        converted: dict[str, dict[str, Position]] = {}
+        for code, pos_info in (account_state.positions or {}).items():
+            if not isinstance(pos_info, dict):
+                continue
+            shares = int(pos_info.get("shares", 0))
+            if shares <= 0:
+                continue
+            entry_price = float(pos_info.get("avg_cost", 0.0) or pos_info.get("price", 0.0))
+            if entry_price <= 0:
+                continue
+            entry_date = str(pos_info.get("entry_date", ""))
+            converted[code] = {
+                "legacy": Position(
+                    symbol=code,
+                    strategy_name="legacy",
+                    shares=shares,
+                    entry_price=entry_price,
+                    entry_date=entry_date,
+                )
+            }
+        engine.positions = dict(converted)
+        engine._initial_positions = dict(converted)
+        return converted
+
     def _fit_buy_to_cash(
         self,
         requested_shares: float,
@@ -3546,6 +3631,7 @@ class _CoreBacktestEngine:
             "fusion_events": list(self.fusion_events),
             "risk_events": list(self.risk_events),
             "sector_guard_active": bool(self.sector_guard_active),
+            "safe_mode_active": bool(getattr(self, "_safe_mode_active", False)),
             "reversal_exit_trades": sum(
                 (
                     1
@@ -4866,6 +4952,7 @@ class _RunRequest:
     indicator_state: str
     warmup_calendar_days: int
     risk_state: dict | None = None
+    account_state: AccountState | None = None
 
 
 @dataclass
@@ -5085,6 +5172,9 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             "sector_guard_active": any(
                 result.get("sector_guard_active", False) for result in results
             ),
+            "safe_mode_active": any(
+                result.get("safe_mode_active", False) for result in results
+            ),
             "persistent_risk_lock": any(
                 result.get("persistent_risk_lock", False) for result in results
             ),
@@ -5128,6 +5218,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
         warmup_calendar_days: int = 365,
         allocation_mode: str | None = None,
         risk_state: dict | None = None,
+        account_state: AccountState | None = None,
     ) -> dict:
         """Run the configured single sleeve or the default three-sleeve ensemble."""
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
@@ -5138,6 +5229,10 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             if risk_state:
                 self.cfg = dict(self.cfg)
                 self.cfg["_initial_risk_state"] = risk_state
+            if account_state:
+                self._initial_positions = self._apply_account_state(
+                    account_state, self
+                )
             result = super().run(
                 symbols_dict,
                 start_date,
@@ -5165,6 +5260,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
                 indicator_state=indicator_state,
                 warmup_calendar_days=warmup_calendar_days,
                 risk_state=risk_state,
+                account_state=account_state,
             )
         )
 
@@ -6016,6 +6112,9 @@ class _UniverseInvariantSleeveMixin:
         )
         self._regime_prev_state = previous_state
         self._regime_state = new_state
+        # SAFE_PARAMS: automatically activate conservative mode when regime is CHOPPY
+        # (P1 enhancement). When the market recovers, safe mode is deactivated.
+        self._safe_mode_active = (new_state == "CHOPPY")
         self._regime_state_series.append(
             {
                 "date": date.strftime("%Y-%m-%d"),
@@ -6315,6 +6414,7 @@ class _UniverseInvariantSleeveMixin:
         result.update(
             {
                 "portfolio_policy": self.policy.as_dict(),
+                "safe_mode_active": bool(getattr(self, "_safe_mode_active", False)),
                 "terminal_risk_lock": bool(
                     isinstance(manager, RecoverableDrawdownRiskManager)
                     and manager.terminal_lock
@@ -6354,6 +6454,18 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         "reversal_break_giveback": 0.40,
         "reversal_exit_period": 20,
         "hard_stop": 0.25,
+    }
+
+    # SAFE_PARAMS: conservative fallback parameters deployed automatically when
+    # the market regime turns CHOPPY (P1 enhancement). These are tighter than
+    # the default values to reduce risk exposure during adverse conditions.
+    _SAFE_PARAMS: ClassVar[dict[str, Any]] = {
+        "trail_atr_mult": 2.5,          # tighter trailing stop (default ~3.5)
+        "profit_lock_giveback": 0.25,   # exit earlier on giveback (default 0.35)
+        "reversal_exit_period": 10,      # faster reversal exit (default 15)
+        "hard_stop": 0.15,              # tighter hard stop (default 0.20)
+        "max_symbol_weight": 0.45,      # lower single-symbol cap (default 0.60)
+        "risk_pct": 0.015,              # smaller per-trade risk (default 0.025)
     }
 
     # Policy field names that are mirrored into cfg so a custom PortfolioPolicy can
@@ -6432,10 +6544,16 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         Very small universes (<=2) still use the slower time-series
         trend contract, which is a strategy-logic switch (no cross-sectional
         information) rather than a parameter change.
+
+        When SAFE_PARAMS is active (market regime CHOPPY) the sleeve inherits
+        the conservative parameter set so that every sleeve runs with tighter
+        risk controls (P1 enhancement).
         """
         sleeve_cfg = dict(self._ensemble_user_cfg)
         if tradable_count <= 2:
             sleeve_cfg.update(self._SINGLE_ASSET_TREND_OVERRIDES)
+        if getattr(self, "_safe_mode_active", False):
+            sleeve_cfg.update(self._SAFE_PARAMS)
         sleeve_cfg["max_positions"] = 10
         return sleeve_cfg
 
@@ -6453,6 +6571,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         warmup_calendar_days: int = 365,
         allocation_mode: str | None = None,
         risk_state: dict | None = None,
+        account_state: AccountState | None = None,
     ) -> dict:
         """Run one or several portfolio sleeves under the same effective policy formula."""
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
@@ -6469,6 +6588,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 warmup_calendar_days=warmup_calendar_days,
                 allocation_mode="ensemble",
                 risk_state=risk_state,
+                account_state=account_state,
             )
         if mode != "single":
             raise ValueError("allocation_mode must be either 'single' or 'ensemble'")
@@ -6486,6 +6606,10 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         if risk_state:
             sleeve.cfg = dict(sleeve.cfg)
             sleeve.cfg["_initial_risk_state"] = risk_state
+        if account_state:
+            sleeve._initial_positions = self._apply_account_state(
+                account_state, sleeve
+            )
         result = sleeve.run(
             symbols_dict,
             start_date,
@@ -6525,6 +6649,12 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             if request.risk_state.get("sector_guard_active", False):
                 for state in states:
                     state.sleeve.sector_guard_active = True
+        # Inject account state positions into each sleeve before replay
+        if request.account_state is not None:
+            for state in states:
+                state.sleeve._initial_positions = self._apply_account_state(
+                    request.account_state, state.sleeve
+                )
         portfolio_risk_events: list[dict[str, Any]] = []
         symbol_count_curve: list[dict[str, Any]] = []
         for date in reference_dates:
@@ -6606,6 +6736,9 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                     if results
                     else "TREND"
                 ),
+                "safe_mode_active": any(
+                    result.get("safe_mode_active", False) for result in results
+                ) if results else False,
             }
         )
         self.last_result = combined

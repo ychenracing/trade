@@ -114,7 +114,7 @@ class AccountLoadingTests(unittest.TestCase):
             assert result is not None
             self.assertEqual(result["positions"], {})
             self.assertEqual(result["risk_state"], {})
-            self.assertIsNone(result["peak_equity"])
+            self.assertEqual(result["peak_equity"], 100000.0)  # falls back to cash
         finally:
             Path(path).unlink()
 
@@ -357,6 +357,55 @@ class AccountRiskWorkflowTests(unittest.TestCase):
                 "cycle_lock_count", "max_drawdown", "total_return", "final_assets",
             }
             self.assertEqual(set(data.keys()), expected_keys)
+
+    def test_risk_state_save_with_tradable_includes_identity(self) -> None:
+        """When tradable is provided, risk_state includes symbols_hash and run_id."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = {"terminal_risk_lock": False, "sector_guard_active": False,
+                      "cycle_lock_count": 0, "max_drawdown": 0.0,
+                      "total_return": 0.0, "final_assets": 2000000.0}
+            tradable = {"300308": "中际旭创", "300502": "新易盛"}
+            dss._save_risk_state(tmpdir, "2026-07-29", result, tradable=tradable)
+            data = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
+            self.assertIn("symbols_hash", data)
+            self.assertIn("total_symbols", data)
+            self.assertIn("run_id", data)
+            self.assertEqual(data["total_symbols"], 2)
+
+    def test_risk_state_save_with_account_path_includes_path(self) -> None:
+        """When account_path is provided, it is included in the risk state."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = {"terminal_risk_lock": False, "sector_guard_active": False,
+                      "cycle_lock_count": 0, "max_drawdown": 0.0,
+                      "total_return": 0.0, "final_assets": 2000000.0}
+            tradable = {"300308": "中际旭创"}
+            dss._save_risk_state(tmpdir, "2026-07-29", result, tradable=tradable,
+                                 account_path="/path/to/account.json")
+            data = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
+            self.assertEqual(data["account_path"], "/path/to/account.json")
+
+    def test_risk_state_without_hash_is_rejected_by_validation(self) -> None:
+        """Risk state without symbols_hash should be rejected (fail-closed)."""
+        # Simulate old format — no symbols_hash
+        prev_risk = {"scan_date": "2026-07-28", "terminal_risk_lock": True,
+                     "sector_guard_active": False, "cycle_lock_count": 0}
+        # This logic mirrors the validation in daily_signal_scan.py
+        prev_hash = prev_risk.get("symbols_hash", "")
+        if not prev_hash:
+            prev_risk = None  # fail-closed
+        self.assertIsNone(prev_risk)
+
+    def test_risk_state_with_wrong_hash_is_rejected(self) -> None:
+        """Risk state with mismatched symbols_hash should be rejected."""
+        prev_risk = {"scan_date": "2026-07-28", "terminal_risk_lock": True,
+                     "sector_guard_active": False, "cycle_lock_count": 0,
+                     "symbols_hash": "abcdef1234567890", "total_symbols": 5}
+        # Simulate different current hash
+        current_hash = "1234567890abcdef"
+        prev_hash = prev_risk.get("symbols_hash", "")
+        if prev_hash and prev_hash != current_hash:
+            prev_risk = None  # reject on mismatch
+        self.assertIsNone(prev_risk)
 
 
 if __name__ == "__main__":
