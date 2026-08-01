@@ -375,6 +375,26 @@ python daily_signal_scan.py --capital 1500000 --start-date 2026-06-01
 When `--account` is omitted, a warning is printed indicating that signals are
 from a fresh simulation and may not reflect real portfolio state.
 
+**How account injection works**:
+- The account snapshot is injected at the **as-of date** (the trading day before
+  `--end-date`), not at the historical start. All dates before the injection
+  point run as a pure simulation, so historical signal generation is not
+  contaminated by the real portfolio.
+- Real positions use the strategy name `external_account`. Portfolio-level risk
+  controls (drawdown liquidation, daily loss circuit breaker, sector guard) can
+  liquidate these external positions alongside strategy-generated ones — the
+  full book is covered. Both full liquidation and CHOPPY regime reduction
+  include external_account positions.
+- The account's `peak_equity` seeds both portfolio-level and sleeve-level risk
+  managers, so drawdown calculations start from the real high-water mark
+  instead of building up from zero.
+- The engine uses only the account's **cash** as initial capital. Positions
+  are injected separately via `AccountState`, preventing double-counting of
+  position value.
+- In three-sleeve ensemble mode, positions are injected only into the first
+  sleeve to avoid triple-counting. Cash is not modified so each sleeve
+  retains its proportional share.
+
 ## Important assumptions
 
 - Signals use information available at the current close and execute no earlier

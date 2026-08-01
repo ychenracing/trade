@@ -3188,10 +3188,15 @@ class _CoreBacktestEngine:
     ) -> dict[str, dict[str, Position]]:
         """Convert AccountState positions to engine Position objects and set them.
 
-        Uses a "legacy" strategy name for all injected positions. Sets the
-        engine's cash to the account's cash balance and populates both
-        ``positions`` and ``_initial_positions`` so the engine can replay
-        from the correct state without modifying the simulation-only path.
+        Uses ``"external_account"`` as the strategy name for all injected
+        positions so that portfolio-level risk controls (drawdown, daily loss,
+        sector guard) can liquidate them.  Sets the engine's cash to the
+        account's cash balance and populates both ``positions`` and
+        ``_initial_positions`` so the engine can replay from the correct state
+        without modifying the simulation-only path.
+
+        Also seeds the engine's risk manager with the account's peak equity
+        so drawdown calculations start from the real high-water mark.
 
         When ``set_cash`` is False (ensemble mode), cash is not overridden so
         each sleeve retains its proportional ``sleeve_capital`` and only the
@@ -3214,9 +3219,9 @@ class _CoreBacktestEngine:
                 continue
             entry_date = str(pos_info.get("entry_date", ""))
             converted[code] = {
-                "legacy": Position(
+                "external_account": Position(
                     symbol=code,
-                    strategy_name="legacy",
+                    strategy_name="external_account",
                     shares=shares,
                     entry_price=entry_price,
                     entry_date=entry_date,
@@ -3224,6 +3229,15 @@ class _CoreBacktestEngine:
             }
         engine.positions = dict(converted)
         engine._initial_positions = dict(converted)
+        # P0 fix: seed the sleeve-level risk manager with the account's
+        # lifetime peak so drawdown calculations start from the real
+        # high-water mark rather than building up from zero.
+        peak = getattr(account_state, "peak_equity", None)
+        if peak is not None and peak > 0 and hasattr(engine, "risk") and engine.risk is not None:
+            if hasattr(engine.risk, "peak_assets"):
+                engine.risk.peak_assets = float(peak)
+            if hasattr(engine.risk, "lifetime_peak_assets"):
+                engine.risk.lifetime_peak_assets = float(peak)
         return converted
 
     def _fit_buy_to_cash(
@@ -3517,7 +3531,15 @@ class _CoreBacktestEngine:
     def _generate_liquidation_signals(
         self, date_str: str, reason: str = "circuit breaker liquidation"
     ) -> list[tuple[Signal, BaseStrategy]]:
-        """Queue full-position sells for execution at a later tradable open."""
+        """Queue full-position sells for execution at a later tradable open.
+
+        Covers both strategy-managed positions and externally injected
+        (``external_account``) holdings so that portfolio-level risk controls
+        (drawdown, daily loss, sector guard) can liquidate the entire book.
+        External positions use ``None`` as the strategy placeholder; the
+        execution path handles that case by looking up the position directly
+        from ``self.positions`` using the signal's ``strategy_name``.
+        """
         # These are ordinary pending sell signals. The placeholder price is always
         # replaced by a later tradable opening price before execution.
         signals = []
@@ -3525,7 +3547,7 @@ class _CoreBacktestEngine:
             strategies = {s.name: s for s in self.strategy_instances.get(code, [])}
             for strat_name, pos in positions.items():
                 strategy = strategies.get(strat_name)
-                if strategy is None:
+                if strategy is None and strat_name != "external_account":
                     continue
                 sig = Signal(
                     symbol=code,
@@ -3546,13 +3568,15 @@ class _CoreBacktestEngine:
 
         Unlike full liquidation, only *exit_ratio* of each position is sold,
         reducing exposure without abandoning all trend-following entries.
+        Externally injected (``external_account``) positions are also trimmed
+        so portfolio-level exposure reduction covers the entire book.
         """
         signals = []
         for code, positions in self.positions.items():
             strategies = {s.name: s for s in self.strategy_instances.get(code, [])}
             for strat_name, pos in positions.items():
                 strategy = strategies.get(strat_name)
-                if strategy is None:
+                if strategy is None and strat_name != "external_account":
                     continue
                 sell_shares = max(0, int(pos.shares * exit_ratio))
                 if sell_shares <= 0:
@@ -5784,7 +5808,51 @@ class _UniverseInvariantSleeveMixin:
         self._regime_state_start_pos: int = 0
         self._regime_prev_state: str = "TREND"
         self._regime_latest_observation: MarketRegimeObservation | None = None
+        # Account snapshot injection: when set, the snapshot replaces
+        # simulated positions at the open of the as-of date (the trading day
+        # before the last day).  All prior dates run as a pure simulation.
+        self._account_state_to_inject: AccountState | None = None
+        self._account_state_injected: bool = False
         self._regime_effective_state: str = "TREND"
+
+    def _process_trading_day(
+        self,
+        symbols_dict: dict[str, str],
+        data_map: dict[str, pd.DataFrame],
+        indicator_map: dict[str, dict[str, pd.Series]],
+        all_dates: list[pd.Timestamp],
+        date_to_pos: dict[pd.Timestamp, int],
+        date: pd.Timestamp,
+        pending: list[tuple[Signal, BaseStrategy]],
+    ) -> list[tuple[Signal, BaseStrategy]]:
+        """Inject the account snapshot on the as-of date before delegating.
+
+        When ``_account_state_to_inject`` is set and the current date is the
+        second-to-last trading day (the day before the simulation end / as-of
+        date), the real account state replaces the simulated book before the
+        day's opening execution.  Every date before the injection point runs
+        as an unmodified simulation so historical signal generation is not
+        affected by the snapshot.
+        """
+        if (
+            self._account_state_to_inject is not None
+            and not self._account_state_injected
+        ):
+            as_of_idx = max(0, len(all_dates) - 2)
+            if date_to_pos.get(date, -1) >= as_of_idx:
+                _CoreBacktestEngine._apply_account_state(
+                    self._account_state_to_inject, self
+                )
+                self._account_state_injected = True
+        return super()._process_trading_day(  # pyright: ignore[reportAttributeAccessIssue]
+            symbols_dict,
+            data_map,
+            indicator_map,
+            all_dates,
+            date_to_pos,
+            date,
+            pending,
+        )
 
     def _prepare_run(
         self,
@@ -6679,9 +6747,9 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             sleeve.cfg = dict(sleeve.cfg)
             sleeve.cfg["_initial_risk_state"] = risk_state
         if account_state:
-            sleeve._initial_positions = self._apply_account_state(
-                account_state, sleeve
-            )
+            # Defer injection to the as-of date (second-to-last trading day)
+            # so that all prior dates run as a clean simulation.
+            sleeve._account_state_to_inject = account_state
         result = sleeve.run(
             symbols_dict,
             start_date,
@@ -6721,17 +6789,30 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             if request.risk_state.get("sector_guard_active", False):
                 for state in states:
                     state.sleeve.sector_guard_active = True
-        # Inject account state positions into the first sleeve only to avoid
-        # triple-counting cash and positions across the three-sleeve ensemble.
-        # set_cash=False: each sleeve retains its sleeve_capital so the
-        # portfolio's total cash equals initial_capital, not 3 × account cash.
-        if request.account_state is not None and states:
-            states[0].sleeve._initial_positions = self._apply_account_state(
-                request.account_state, states[0].sleeve, set_cash=False
-            )
+        # Determine the as-of date for account snapshot injection.
+        # The snapshot is injected at the open of the second-to-last trading
+        # day (the day before end_date / last day) so that prior days run as a
+        # pure simulation while the final segment reflects the real account.
+        account_state = request.account_state
+        as_of_idx = max(0, len(reference_dates) - 2) if account_state else -1
+        # P0 fix: seed the portfolio-level risk manager with the account's
+        # lifetime peak so drawdown calculations start from the real
+        # high-water mark rather than building up from zero.
+        if account_state is not None:
+            peak = getattr(account_state, "peak_equity", None)
+            if peak is not None and peak > 0:
+                portfolio_risk.peak_assets = float(peak)
+                portfolio_risk.lifetime_peak_assets = float(peak)
         portfolio_risk_events: list[dict[str, Any]] = []
         symbol_count_curve: list[dict[str, Any]] = []
-        for date in reference_dates:
+        for idx, date in enumerate(reference_dates):
+            # Inject account snapshot at the open of the as-of date so that
+            # everything from this day onward uses the real account state
+            # while all prior dates ran as a clean simulation.
+            if account_state is not None and idx == as_of_idx and states:
+                self._apply_account_state(
+                    account_state, states[0].sleeve, set_cash=False
+                )
             self._execute_ensemble_open(states, date)
             for state in states:
                 state.pending = state.sleeve._evaluate_trading_day(

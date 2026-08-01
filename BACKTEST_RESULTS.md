@@ -62,6 +62,23 @@ configuration. This mechanism is enabled by default and requires no manual
 intervention. When the market recovers to TREND, the original parameters are
 restored automatically.
 
+All six SAFE_PARAMS values are applied dynamically to every strategy instance's
+`cfg` dictionary when the regime enters CHOPPY, and restored when it leaves:
+
+| Parameter | Default | SAFE (CHOPPY) | Dynamic? | Effect on existing positions |
+|---|---|---|---|---|
+| `trail_atr_mult` | ~3.5 | 2.5 | ✅ Fully | Tighter ATR trailing stop (daily) |
+| `profit_lock_giveback` | ~0.35 | 0.25 | ✅ Fully | Tighter profit protection stop (daily) |
+| `reversal_exit_period` | ~15 | 10 | ✅ Fully | Faster reversal low detection (daily) |
+| `hard_stop` | ~0.20 | 0.15 | ✅ Fully | Tighter hard stop loss (daily) |
+| `max_symbol_weight` | ~0.60 | 0.45 | ⚠️ New buys only | Lower single-symbol cap for new entries |
+| `risk_pct` | ~0.025 | 0.015 | ⚠️ New buys only | Smaller position sizing for new entries |
+
+The first four parameters take effect immediately on the next trading day for
+all existing positions. The last two only affect new buy orders, which is the
+conservative design: existing positions are exited via tighter stops rather than
+forced liquidation.
+
 ### Risk State Identity
 
 The `risk_state.json` file now includes enhanced identity fields:
@@ -71,3 +88,35 @@ The `risk_state.json` file now includes enhanced identity fields:
 
 Old risk state files without `symbols_hash` are rejected (fail-closed) to
 prevent cross-contamination between different universes or configurations.
+
+### Real Account Mode
+
+The daily signal scanner supports a `--account account.json` flag that injects
+a real brokerage account snapshot into the simulation. Key features:
+
+- **As-of date injection**: The account snapshot is injected at the open of the
+  second-to-last trading day (the day before `--end`), so all prior dates run
+  as a pure simulation while the final segment reflects the real portfolio.
+  Historical signal generation is not contaminated by the snapshot.
+- **External account positions**: Real holdings use the `external_account`
+  strategy name (not `legacy`) so that portfolio-level risk controls
+  (drawdown liquidation, daily loss circuit breaker, sector guard) can
+  liquidate them alongside strategy-generated positions — the full book is
+  covered. Both full liquidation and CHOPPY regime reduction include
+  external_account positions.
+- **Peak equity seeding**: The account's `peak_equity` seeds both the
+  portfolio-level and sleeve-level risk managers so drawdown calculations
+  start from the real high-water mark, not from zero.
+- **Account risk state priority**: The account's `risk_state` takes priority
+  over the file-based `risk_state.json`. Account state is the ground truth
+  and skips `symbols_hash` validation. File-based state still requires
+  identity verification to prevent cross-contamination.
+- **All-false state is valid**: An account risk state with all boolean flags
+  set to `false` is treated as valid ("explicitly no lock"), not as empty.
+  Key presence determines validity, not truthiness.
+- **Cash-only engine capital**: The engine uses only the account's cash as
+  initial capital. Positions are injected separately via `AccountState`,
+  preventing double-counting of position value.
+- **Ensemble single-sleeve injection**: In three-sleeve ensemble mode,
+  positions are injected only into the first sleeve to avoid triple-counting.
+  Cash is not modified so each sleeve retains its proportional share.

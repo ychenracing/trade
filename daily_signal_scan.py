@@ -266,8 +266,10 @@ def main() -> int:
         if account is None:
             return 1
 
-    # ── Resolve capital: account total equity > --capital > default ──
-    # P0 fix: use total equity (cash + position value) instead of cash alone
+    # ── Resolve capital: account.cash > --capital > default ──
+    # P0 fix: use cash alone as engine capital because positions are
+    # injected separately via account_state. Using total_equity would
+    # double-count position value (once in cash, once as positions).
     if account is not None:
         cash = float(account["cash"])
         positions = account.get("positions", {})
@@ -280,7 +282,7 @@ def main() -> int:
             if shares > 0 and price > 0:
                 position_value += shares * price
         total_equity = cash + position_value
-        capital = max(total_equity, cash)
+        capital = cash  # engine cash; positions injected separately
         # Store derived values for later reporting
         account["_position_value"] = position_value
         account["_total_equity"] = total_equity
@@ -306,18 +308,23 @@ def main() -> int:
     # ── Load previous run's risk state for continuity ──
     prev_risk = _load_prev_risk_state(args.output_dir, end_date)
 
-    # ── P0 fix: account risk_state takes priority over file risk_state ──
-    if account and account.get("risk_state"):
+    # ── P0: account risk_state takes priority over file risk_state ──
+    # Account risk state is the ground truth — it comes from the real brokerage
+    # account and does not need symbols_hash validation. File risk state is
+    # auxiliary and must pass identity checks (applied after tradable is built).
+    account_risk_used = False
+    if account and isinstance(account.get("risk_state"), dict):
         account_risk: dict[str, Any] = account["risk_state"]
-        # Validate account risk_state has meaningful content
-        account_risk_valid = any(
-            account_risk.get(key) for key in ("terminal_risk_lock", "sector_guard_active", "cycle_lock_count")
-        ) if isinstance(account_risk, dict) else False
-        if not isinstance(account_risk, dict) or not account_risk:
-            print("  ⚠ 账户 risk_state 为空或无效，将仅使用文件风险状态")
-        elif account_risk_valid:
+        # Account risk state is valid if it contains any risk key — even
+        # all-false means "account explicitly has no lock", which is
+        # different from "no information". We check key presence, not truthiness.
+        has_any_key = any(
+            k in account_risk
+            for k in ("terminal_risk_lock", "sector_guard_active", "cycle_lock_count")
+        )
+        if has_any_key:
             if prev_risk:
-                # Merge: account fields override file fields (account is the truth source)
+                # Merge: account fields override file fields (account is truth)
                 merged = dict(prev_risk)
                 for key in ("terminal_risk_lock", "sector_guard_active", "cycle_lock_count"):
                     if key in account_risk:
@@ -325,13 +332,16 @@ def main() -> int:
                 prev_risk = merged
                 print(f"  ℹ 账户风险状态已合并 (账户优先级高于文件)")
             else:
-                prev_risk = account_risk
-                if prev_risk.get("terminal_risk_lock"):
-                    print(f"  ℹ 从账户文件加载风险状态: 终态锁定已激活")
-                if prev_risk.get("sector_guard_active"):
-                    print(f"  ℹ 从账户文件加载风险状态: 板块风控已激活")
-        elif not prev_risk:
-            print("  ℹ 账户 risk_state 为空，且无文件风险状态，使用默认状态")
+                # No file state — use account state directly (no hash needed)
+                prev_risk = dict(account_risk)
+                print(f"  ℹ 使用账户风险状态 (无文件状态)")
+            account_risk_used = True
+            if prev_risk.get("terminal_risk_lock"):
+                print(f"  ⚠ 账户终态锁定已激活")
+            if prev_risk.get("sector_guard_active"):
+                print(f"  ⚠ 账户板块风控已激活")
+        else:
+            print("  ℹ 账户 risk_state 无风险字段，将使用文件/默认状态")
 
     mode_label = "实盘账户模式" if account else "模拟模式 (无账户文件)"
     print("=" * 72)
@@ -469,11 +479,10 @@ def main() -> int:
                 print("  如需强制运行，请添加 --allow-stale 参数。")
                 return 1
 
-    # ── Validate risk state identity to prevent cross-contamination ──
-    # P0 fix: reject old state without hash (fail-closed) and enhance identity check
-    # The hash must include the same components as the save path: symbol set,
-    # count, config fingerprint (capital+start), and account path.
-    if prev_risk:
+    # ── Validate FILE risk state identity to prevent cross-contamination ──
+    # Only applies when using pure file state (no account override).
+    # Account-provided risk state is the ground truth and skips this check.
+    if prev_risk and not account_risk_used:
         config_fingerprint = f"capital={capital:.0f}|start={start_date}"
         identity_parts = [
             "trade",
@@ -489,13 +498,11 @@ def main() -> int:
         prev_hash = prev_risk.get("symbols_hash", "")
         prev_total = prev_risk.get("total_symbols", 0)
         if not prev_hash:
-            # P0: old state without hash — fail-closed, do not trust
             print("  ⚠ 前次风险状态缺少 symbols_hash (旧格式)，拒绝加载以防止交叉污染。")
             print("    删除 risk_state.json 可清除此警告。")
             prev_risk = None
         elif prev_hash != current_hash:
             print("  ⚠ 前次风险状态的标的池不匹配，跳过加载以防止交叉污染。")
-            # Also verify total_symbols as a secondary check
             if prev_total != len(tradable):
                 print(f"    标的数: 上次={prev_total} 本次={len(tradable)} (不一致)")
             prev_risk = None
