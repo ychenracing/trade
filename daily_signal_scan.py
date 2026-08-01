@@ -5,17 +5,18 @@ Fetches the latest forward-adjusted closing data via AKShare (with incremental
 cache), runs the Quant Fusion backtest, and extracts the latest pending
 signal (buy / sell / hold) for each symbol.
 
-Two modes:
-  - Simulation mode (default): runs a fresh backtest from --start-date.
-    Signals reflect what the strategy *would have* done, not your real portfolio.
-  - Account mode (--account account.json): overlays real cash, positions, and
-    risk state on top of the backtest. Displays simulated vs real holdings side
-    by side with discrepancy warnings.
+Simulation mode (default): runs a fresh backtest from --start-date.
+Signals reflect what the strategy *would have* done, not your real portfolio.
+
+Account mode (--account) is currently DISABLED due to multiple architecture
+defects. It will be re-enabled as a separate account signal engine.
 
 Risk state (terminal_risk_lock, sector_guard_active, drawdown) is persisted to
-risk_state.json with enhanced identity fields (symbols_hash, run_id, account_path)
-after each run and restored on the next run for continuity. Old risk state files
-without symbols_hash are rejected (fail-closed) to prevent cross-contamination.
+risk_state.json with enhanced identity fields (symbols_hash, run_id) after each
+run and restored on the next run for continuity. Identity uses stable fields
+only (symbol set + count + start date); cash/capital is excluded because it
+changes daily. Old risk state files without symbols_hash are rejected
+(fail-closed) to prevent cross-contamination.
 
 Stale data fail-closed: if any symbol's cached data is stale (network fetch
 failed) or data end dates are inconsistent across symbols, the scan refuses to
@@ -23,11 +24,7 @@ produce signals and exits with code 1. Override with --allow-stale only when
 you understand the risk; stale-data signals must not be used for live trading.
 
 Usage:
-    # Simulation mode (default)
     python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR] [--capital N]
-
-    # Account-aware mode
-    python daily_signal_scan.py --account account.json [--start-date DATE] [--capital N]
 
 If --end-date is omitted, today's date is used.
 """
@@ -238,9 +235,8 @@ def main() -> int:
     parser.add_argument(
         "--account",
         default="",
-        help="Path to a real-account JSON file (cash, positions, risk_state). "
-        "When provided, signals are overlaid with real holdings. "
-        "When omitted, signals are from a fresh simulation (warning shown).",
+        help="DISABLED. Real-account JSON integration is under reconstruction. "
+        "Use simulation mode (default) instead.",
     )
     parser.add_argument(
         "--start-date",
@@ -262,9 +258,21 @@ def main() -> int:
     # Load real account state if provided
     account: dict[str, Any] | None = None
     if args.account:
-        account = _load_account(args.account)
-        if account is None:
-            return 1
+        print("=" * 72)
+        print("  ⚠ --account 模式当前不可用")
+        print("=" * 72)
+        print()
+        print("  真实账户模式存在多个架构缺陷，已暂时停用：")
+        print("    - 单袖套账户快照被 reset 清空，不会实际注入")
+        print("    - 三袖套混合真实和模拟账本")
+        print("    - 外部持仓清仓执行会崩溃 (strategy=None)")
+        print("    - 峰值权益注入时序错误可能误触发终态锁")
+        print("    - 满仓账户(现金为0)无法初始化")
+        print("    - 账户模式绩效指标无经济意义")
+        print()
+        print("  请使用不带 --account 的模拟模式运行。")
+        print("  真实账户信号引擎正在重构中。")
+        return 1
 
     # ── Resolve capital: account.cash > --capital > default ──
     # P0 fix: use cash alone as engine capital because positions are
@@ -482,13 +490,14 @@ def main() -> int:
     # ── Validate FILE risk state identity to prevent cross-contamination ──
     # Only applies when using pure file state (no account override).
     # Account-provided risk state is the ground truth and skips this check.
+    # Identity uses stable fields only (symbol set + count + start date).
+    # Cash/capital is excluded because it changes daily.
     if prev_risk and not account_risk_used:
-        config_fingerprint = f"capital={capital:.0f}|start={start_date}"
         identity_parts = [
             "trade",
             str(len(tradable)),
             ",".join(sorted(tradable.keys())),
-            config_fingerprint,
+            f"start={start_date}",
         ]
         if args.account:
             identity_parts.append(args.account)
@@ -665,7 +674,7 @@ def main() -> int:
     print(f"  板块风控激活:   {'是' if guard else '否'}")
     safe_mode = result.get("safe_mode_active", False)
     if safe_mode:
-        print(f"  ⚠ 保守参数模式: 已激活 (市场状态为 CHOPPY)")
+        print(f"  ⚠ 市场状态: CHOPPY (震荡市)")
     print()
 
     # ── Account-mode: position discrepancy warnings ─────────────────
@@ -804,7 +813,9 @@ def main() -> int:
         encoding="utf-8",
     )
     # Persist risk state for the next daily run (with enhanced identity fields)
-    config_fingerprint = f"capital={capital:.0f}|start={start_date}"
+    # Identity uses stable fields only (symbol set + count + start date).
+    # Cash/capital is excluded because it changes daily.
+    config_fingerprint = f"start={start_date}"
     _save_risk_state(
         args.output_dir, end_date, result, tradable,
         config_hash=config_fingerprint, account_path=args.account,

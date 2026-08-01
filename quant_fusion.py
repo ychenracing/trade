@@ -3460,16 +3460,23 @@ class _CoreBacktestEngine:
         return True
 
     def _execute_sell(
-        self, signal: Signal, strategy: BaseStrategy, date_str: str
+        self, signal: Signal, strategy: BaseStrategy | None, date_str: str
     ) -> int:
-        """Execute a sell and return the filled share count."""
+        """Execute a sell and return the filled share count.
+
+        When ``strategy`` is ``None`` (external-account positions), the
+        signal's ``strategy_name`` field is used to look up the position
+        instead of ``strategy.name``.
+        """
         if signal.target_shares <= 0 or signal.price <= 0:
             return 0
+        strat_name = strategy.name if strategy is not None else signal.strategy_name
         pos = None
         if signal.symbol in self.positions:
-            pos = self.positions[signal.symbol].get(strategy.name)
+            pos = self.positions[signal.symbol].get(strat_name)
         if pos is None:
-            strategy.position = None
+            if strategy is not None:
+                strategy.position = None
             return 0
         cfg = self.cfg
         slippage = float(cfg.get("slippage", 0.001))
@@ -3495,12 +3502,14 @@ class _CoreBacktestEngine:
         self.cash += net_proceeds
         pos.shares -= sell_shares
         if pos.shares <= 0:
-            del self.positions[signal.symbol][strategy.name]
+            del self.positions[signal.symbol][strat_name]
             if not self.positions[signal.symbol]:
                 del self.positions[signal.symbol]
-            strategy.position = None
+            if strategy is not None:
+                strategy.position = None
         else:
-            strategy.position = pos
+            if strategy is not None:
+                strategy.position = pos
         self.trades.append(
             TradeRecord(
                 symbol=signal.symbol,
@@ -4386,7 +4395,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             elif executable_signal.direction == "sell":
                 sold = self._execute_sell(executable_signal, strategy, date_str)
                 remaining = max(executable_signal.target_shares - sold, 0)
-                if remaining > 0 and strategy.position is not None:
+                if remaining > 0 and (strategy is None or strategy.position is not None):
                     unexecuted.append(
                         (replace(signal, target_shares=remaining), strategy)
                     )
@@ -4933,7 +4942,7 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
             self._execution_date = None
 
     def _execute_sell(
-        self, signal: Signal, strategy: BaseStrategy, date_str: str
+        self, signal: Signal, strategy: BaseStrategy | None, date_str: str
     ) -> int:
         """Fill a sell from the remaining shared ADV budget."""
         data_map = self._execution_data_map

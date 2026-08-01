@@ -81,8 +81,9 @@ should supply its own stable benchmark basket before live use.
 - `backtest_universes.py`, `stress_test_prefixes.py`, and
   `backtest_cambricon_universe.py`: reproducible portfolio checks.
 - `daily_signal_scan.py`: daily signal scan for the 26-stock AI sector universe
-  with optional real-account integration, stale-data fail-closed, and risk
-  state persistence.
+  with stale-data fail-closed and risk state persistence. Real-account
+  integration (`--account`) is currently disabled pending reconstruction as a
+  separate account signal engine.
 - `market_data`:
   canonical forward-adjusted snapshots required by the regression suite.
 - `universe_backtest.json`, `prefix_stress.json`, and
@@ -243,13 +244,13 @@ tuning used the opened 2026 holdout.
 Initial capital is CNY 2,000,000. All scenarios use identical strategy parameters,
 default costs, 0.1% one-way slippage, and data through 2026-07-20.
 
-| Tradable universe | Cold return | Cold max drawdown | Warm return | Warm max drawdown | Warm Sharpe | Warm Calmar |
+| Tradable universe | Cold return | Cold max drawdown | Warm return | Warm max drawdown | Warm Sharpe | Warm Calmar | Warm trades |
 |---|---|---|---:|---:|---:|---:|---:|
-| 1 symbol | 536.66% | -18.49% | 530.89% | -18.34% | 3.21 | 28.95 |
-| 3 symbols | 1059.72% | -18.32% | 1083.70% | -17.92% | 3.69 | 60.48 |
-| 5 symbols | 1078.67% | -16.80% | 1115.99% | -15.86% | 3.70 | 70.38 |
-| 13 symbols | 894.16% | -16.93% | 1038.74% | -18.41% | 3.61 | 56.43 |
-| 22 symbols | 843.49% | -17.13% | 983.57% | -16.22% | 3.76 | 60.65 |
+| 1 symbol | 536.66% | -18.49% | 530.89% | -18.34% | 3.21 | 18.23 | 24 |
+| 3 symbols | 1059.72% | -18.32% | 1083.70% | -17.92% | 3.69 | 34.47 | 194 |
+| 5 symbols | 1078.67% | -16.80% | 1115.99% | -15.86% | 3.70 | 39.93 | 222 |
+| 13 symbols | 894.16% | -16.93% | 1038.74% | -18.41% | 3.61 | 32.37 | 324 |
+| 22 symbols | 843.49% | -17.13% | 983.57% | -16.22% | 3.76 | 35.07 | 244 |
 
 The requested multi-symbol warm wealth-factor ratio between the worst and best
 universe is 88.13% (22-symbol vs 5-symbol). The exhaustive ordered-prefix audit
@@ -315,9 +316,13 @@ latest pending signal (buy / sell / hold) for each of the 26 AI-sector symbols.
 
 - **Simulation mode** (default): runs a fresh backtest from `--start-date`.
   Signals reflect what the strategy *would have* done, not your real portfolio.
-- **Account mode** (`--account account.json`): overlays real cash, positions,
-  and risk state on top of the backtest. Displays simulated vs real holdings
-  side by side with discrepancy warnings.
+- **Account mode** (`--account account.json`): **currently disabled**. The
+  real-account integration has multiple architecture defects (single-sleeve
+  snapshot cleared by reset, three-sleeve mixed ledger, external liquidation
+  crash, peak-equity timing errors, zero-cash initialization failure, and
+  meaningless performance metrics). It will be re-enabled as a separate
+  account signal engine that does not patch real-account state into the
+  historical backtest state machine.
 
 ### Stale data fail-closed
 
@@ -330,13 +335,15 @@ stale-data signals must not be used for live trading decisions.
 
 After each run, risk state (`terminal_risk_lock`, `sector_guard_active`,
 `max_drawdown`, `cycle_lock_count`) is saved to `risk_state.json` in the
-output directory with enhanced identity fields (`symbols_hash`, `run_id`,
-`account_path`). On the next run, the previous state is loaded and displayed
-for continuity checking — if the previous run had an active terminal lock or
-sector guard, a warning is shown even if the current backtest doesn't detect
-it (because the backtest starts fresh each time). Old risk state files without
-`symbols_hash` are rejected (fail-closed) to prevent cross-contamination
-between different universes or configurations.
+output directory with enhanced identity fields (`symbols_hash`, `run_id`).
+Identity uses stable fields only (symbol set + count + start date);
+cash/capital is excluded because it changes daily. On the next run, the
+previous state is loaded and displayed for continuity checking — if the
+previous run had an active terminal lock or sector guard, a warning is shown
+even if the current backtest doesn't detect it (because the backtest starts
+fresh each time). Old risk state files without `symbols_hash` are rejected
+(fail-closed) to prevent cross-contamination between different universes or
+configurations.
 
 ### Usage
 
@@ -344,56 +351,16 @@ between different universes or configurations.
 # Simulation mode (default)
 python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR] [--capital N]
 
-# Account-aware mode
-python daily_signal_scan.py \
-  --account account.json \
-  --start-date 2026-07-01 \
-  --output-dir /workspace/trade/daily_signals
-
-# Override capital (simulation mode)
+# Override capital and start date
 python daily_signal_scan.py --capital 1500000 --start-date 2026-06-01
 ```
 
-### Account JSON format
+### Account JSON format (reference only — `--account` is disabled)
 
-```json
-{
-  "cash": 500000.0,
-  "peak_equity": 2500000.0,
-  "positions": {
-    "300308": {"shares": 900, "avg_cost": 980.50, "entry_date": "2026-03-18"},
-    "688256": {"shares": 200, "avg_cost": 1250.00, "entry_date": "2026-04-15"}
-  },
-  "risk_state": {
-    "terminal_risk_lock": false,
-    "sector_guard_active": false,
-    "cycle_lock_count": 0
-  }
-}
-```
-
-When `--account` is omitted, a warning is printed indicating that signals are
-from a fresh simulation and may not reflect real portfolio state.
-
-**How account injection works**:
-- The account snapshot is injected at the **as-of date** (the trading day before
-  `--end-date`), not at the historical start. All dates before the injection
-  point run as a pure simulation, so historical signal generation is not
-  contaminated by the real portfolio.
-- Real positions use the strategy name `external_account`. Portfolio-level risk
-  controls (drawdown liquidation, daily loss circuit breaker, sector guard) can
-  liquidate these external positions alongside strategy-generated ones — the
-  full book is covered. Both full liquidation and CHOPPY regime reduction
-  include external_account positions.
-- The account's `peak_equity` seeds both portfolio-level and sleeve-level risk
-  managers, so drawdown calculations start from the real high-water mark
-  instead of building up from zero.
-- The engine uses only the account's **cash** as initial capital. Positions
-  are injected separately via `AccountState`, preventing double-counting of
-  position value.
-- In three-sleeve ensemble mode, positions are injected only into the first
-  sleeve to avoid triple-counting. Cash is not modified so each sleeve
-  retains its proportional share.
+The `account_example.json` file documents the intended schema for future
+real-account integration. The `--account` flag currently exits with an
+error message explaining the architecture defects that must be resolved
+before this mode can be safely used.
 
 ## Important assumptions
 
