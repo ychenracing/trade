@@ -1313,6 +1313,7 @@ class _CoreBacktestEngine:
         self.cash = self.initial_capital
         self.positions: dict[str, dict[str, Position]] = {}
         self._initial_positions: dict[str, dict[str, Position]] = {}
+        self._initial_cash: float | None = None
         self.trades: list[TradeRecord] = []
         self.equity_curve: list[dict] = []
         self.risk = RiskManager(self.cfg)
@@ -1326,6 +1327,8 @@ class _CoreBacktestEngine:
         self.risk_events: list[dict] = []
         self.sector_guard_active = False
         self._safe_mode_active: bool = False  # SAFE_PARAMS: conservative fallback
+        self._safe_params_applied: bool = False  # whether SAFE_PARAMS are currently applied
+        self._safe_param_originals: dict[int, dict[str, Any]] = {}  # saved originals
         self._sector_shock_positions: list[int] = []
         self._sector_recovery_streak = 0
         self.strategy_templates: list[type[BaseStrategy]] = [
@@ -2310,9 +2313,23 @@ class _CoreBacktestEngine:
             )
 
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
-        """Reset every mutable ledger and state machine for a fresh run."""
-        self.cash = self.initial_capital
-        self.positions = {}
+        """Reset every mutable ledger and state machine for a fresh run.
+
+        If account-state injection populated ``_initial_positions`` and
+        ``_initial_cash`` before this method is called (single-sleeve mode),
+        those values are restored after the reset so the engine replays from
+        the real portfolio state instead of a zero-position, full-capital start.
+        """
+        self.cash = (
+            self._initial_cash
+            if getattr(self, "_initial_cash", None) is not None
+            else self.initial_capital
+        )
+        self.positions = (
+            dict(self._initial_positions)
+            if getattr(self, "_initial_positions", None)
+            else {}
+        )
         self.trades = []
         self.equity_curve = []
         self.strategy_instances = {}
@@ -2325,6 +2342,8 @@ class _CoreBacktestEngine:
         self.risk_events = []
         self.sector_guard_active = False
         self._safe_mode_active = False
+        self._safe_params_applied = False
+        self._safe_param_originals = {}
         self._sector_shock_positions = []
         self._sector_recovery_streak = 0
         self.cfg = self._validate_config({**self._default_config(), **self._user_cfg})
@@ -3164,7 +3183,8 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def _apply_account_state(
-        account_state: AccountState | None, engine: _CoreBacktestEngine
+        account_state: AccountState | None, engine: _CoreBacktestEngine,
+        set_cash: bool = True,
     ) -> dict[str, dict[str, Position]]:
         """Convert AccountState positions to engine Position objects and set them.
 
@@ -3172,10 +3192,16 @@ class _CoreBacktestEngine:
         engine's cash to the account's cash balance and populates both
         ``positions`` and ``_initial_positions`` so the engine can replay
         from the correct state without modifying the simulation-only path.
+
+        When ``set_cash`` is False (ensemble mode), cash is not overridden so
+        each sleeve retains its proportional ``sleeve_capital`` and only the
+        first sleeve receives the positions — preventing triple-counting.
         """
         if account_state is None:
             return {}
-        engine.cash = float(account_state.cash) if account_state.cash is not None else engine.cash
+        if set_cash:
+            engine.cash = float(account_state.cash) if account_state.cash is not None else engine.cash
+            engine._initial_cash = engine.cash
         converted: dict[str, dict[str, Position]] = {}
         for code, pos_info in (account_state.positions or {}).items():
             if not isinstance(pos_info, dict):
@@ -5724,6 +5750,20 @@ class _UniverseInvariantSleeveMixin:
     risk_events: list[dict[str, Any]]
     _risk_lock_logged: bool
 
+    # SAFE_PARAMS: conservative fallback parameters deployed automatically when
+    # the market regime turns CHOPPY. These are tighter than the default values
+    # to reduce risk exposure during adverse conditions. Applied dynamically to
+    # all strategy instances at runtime — when the regime recovers to TREND,
+    # the original parameters are restored.
+    _SAFE_PARAMS: ClassVar[dict[str, Any]] = {
+        "trail_atr_mult": 2.5,          # tighter trailing stop (default ~3.5)
+        "profit_lock_giveback": 0.25,   # exit earlier on giveback (default 0.35)
+        "reversal_exit_period": 10,     # faster reversal exit (default 15)
+        "hard_stop": 0.15,              # tighter hard stop (default 0.20)
+        "max_symbol_weight": 0.45,      # lower single-symbol cap (default 0.60)
+        "risk_pct": 0.015,              # smaller per-trade risk (default 0.025)
+    }
+
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
         """Reset tradable and regime metadata at every independent run."""
         # Concrete classes place this cooperative mixin before the sleeve engine.
@@ -6115,6 +6155,7 @@ class _UniverseInvariantSleeveMixin:
         # SAFE_PARAMS: automatically activate conservative mode when regime is CHOPPY
         # (P1 enhancement). When the market recovers, safe mode is deactivated.
         self._safe_mode_active = (new_state == "CHOPPY")
+        self._propagate_safe_mode()
         self._regime_state_series.append(
             {
                 "date": date.strftime("%Y-%m-%d"),
@@ -6129,6 +6170,49 @@ class _UniverseInvariantSleeveMixin:
                 "vol_percentile": observation.volatility_percentile,
             }
         )
+
+    def _propagate_safe_mode(self) -> None:
+        """Apply or restore SAFE_PARAMS on all strategy instances.
+
+        Called after ``_update_market_regime`` updates ``_safe_mode_active``.
+        When CHOPPY is detected, conservative parameters (tighter stops, lower
+        position sizing, faster exits) are applied to each strategy's ``cfg``
+        dict in-place so they take effect on the next bar. When the regime
+        recovers to TREND, the original parameter values are restored.
+
+        This is a no-op if ``strategy_instances`` has not been populated yet
+        (e.g., during the initial preparation phase before the daily loop).
+        """
+        safe_active = getattr(self, "_safe_mode_active", False)
+        was_active = getattr(self, "_safe_params_applied", False)
+        if safe_active == was_active:
+            return
+        strategy_instances = getattr(self, "strategy_instances", None)
+        if not strategy_instances:
+            return
+        if safe_active and not was_active:
+            # Activate: save originals and apply SAFE_PARAMS
+            originals_map = getattr(self, "_safe_param_originals", {})
+            originals_map.clear()
+            for strategies in strategy_instances.values():
+                for strategy in strategies:
+                    originals: dict[str, Any] = {}
+                    for key, value in self._SAFE_PARAMS.items():
+                        if key in strategy.cfg:
+                            originals[key] = strategy.cfg[key]
+                            strategy.cfg[key] = value
+                    originals_map[id(strategy)] = originals
+            self._safe_params_applied = True
+        elif not safe_active and was_active:
+            # Deactivate: restore originals
+            originals_map = getattr(self, "_safe_param_originals", {})
+            for strategies in strategy_instances.values():
+                for strategy in strategies:
+                    originals = originals_map.get(id(strategy), {})
+                    for key, value in originals.items():
+                        strategy.cfg[key] = value
+            originals_map.clear()
+            self._safe_params_applied = False
 
     def _merge_unblocked_daily_signals(
         self,
@@ -6456,18 +6540,6 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         "hard_stop": 0.25,
     }
 
-    # SAFE_PARAMS: conservative fallback parameters deployed automatically when
-    # the market regime turns CHOPPY (P1 enhancement). These are tighter than
-    # the default values to reduce risk exposure during adverse conditions.
-    _SAFE_PARAMS: ClassVar[dict[str, Any]] = {
-        "trail_atr_mult": 2.5,          # tighter trailing stop (default ~3.5)
-        "profit_lock_giveback": 0.25,   # exit earlier on giveback (default 0.35)
-        "reversal_exit_period": 10,      # faster reversal exit (default 15)
-        "hard_stop": 0.15,              # tighter hard stop (default 0.20)
-        "max_symbol_weight": 0.45,      # lower single-symbol cap (default 0.60)
-        "risk_pct": 0.015,              # smaller per-trade risk (default 0.025)
-    }
-
     # Policy field names that are mirrored into cfg so a custom PortfolioPolicy can
     # drive the regime state machine read by the mixin (self.cfg.get(...)).
     _REGIME_CFG_KEYS: ClassVar[tuple[str, ...]] = (
@@ -6649,12 +6721,14 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             if request.risk_state.get("sector_guard_active", False):
                 for state in states:
                     state.sleeve.sector_guard_active = True
-        # Inject account state positions into each sleeve before replay
-        if request.account_state is not None:
-            for state in states:
-                state.sleeve._initial_positions = self._apply_account_state(
-                    request.account_state, state.sleeve
-                )
+        # Inject account state positions into the first sleeve only to avoid
+        # triple-counting cash and positions across the three-sleeve ensemble.
+        # set_cash=False: each sleeve retains its sleeve_capital so the
+        # portfolio's total cash equals initial_capital, not 3 × account cash.
+        if request.account_state is not None and states:
+            states[0].sleeve._initial_positions = self._apply_account_state(
+                request.account_state, states[0].sleeve, set_cash=False
+            )
         portfolio_risk_events: list[dict[str, Any]] = []
         symbol_count_curve: list[dict[str, Any]] = []
         for date in reference_dates:

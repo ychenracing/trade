@@ -85,8 +85,8 @@ SYMBOLS: dict[str, str] = {
 
 START_DATE = "2026-07-01"
 INITIAL_CAPITAL = 2_000_000.0
-DEFAULT_CACHE_DIR = "/workspace/trade/data_cache"
-DEFAULT_OUTPUT_DIR = "/workspace/trade/daily_signals"
+DEFAULT_CACHE_DIR = "data_cache"
+DEFAULT_OUTPUT_DIR = "daily_signals"
 
 
 def _today_str() -> str:
@@ -274,7 +274,9 @@ def main() -> int:
         position_value = 0.0
         for v in positions.values():
             shares = float(v.get("shares", 0))
-            price = float(v.get("price", 0))
+            # Fall back to avg_cost when price is absent — account files
+            # typically store avg_cost, not the current market price.
+            price = float(v.get("price", 0) or v.get("avg_cost", 0))
             if shares > 0 and price > 0:
                 position_value += shares * price
         total_equity = cash + position_value
@@ -469,12 +471,15 @@ def main() -> int:
 
     # ── Validate risk state identity to prevent cross-contamination ──
     # P0 fix: reject old state without hash (fail-closed) and enhance identity check
+    # The hash must include the same components as the save path: symbol set,
+    # count, config fingerprint (capital+start), and account path.
     if prev_risk:
-        # Build current identity hash from symbol set, total count, account, and config
+        config_fingerprint = f"capital={capital:.0f}|start={start_date}"
         identity_parts = [
             "trade",
             str(len(tradable)),
             ",".join(sorted(tradable.keys())),
+            config_fingerprint,
         ]
         if args.account:
             identity_parts.append(args.account)

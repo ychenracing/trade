@@ -8,11 +8,11 @@ snapshot across every requested universe. Initial capital is CNY 2,000,000.
 
 | Universe | Cold return | Cold maximum drawdown | Warm return | Warm maximum drawdown | Warm Sharpe | Warm Calmar |
 |---|---|---|---:|---:|---:|---:|---:|
-| 1 symbol | 536.66% | -18.49% | 530.89% | -18.34% | 3.21 | 28.95 |
-| 3 symbols | 1059.72% | -18.32% | 1083.70% | -17.92% | 3.69 | 60.48 |
-| 5 symbols | 1078.67% | -16.80% | 1115.99% | -15.86% | 3.70 | 70.38 |
-| 13 symbols | 894.16% | -16.93% | 1038.74% | -18.41% | 3.61 | 56.43 |
-| 22 symbols | 843.49% | -17.13% | 983.57% | -16.22% | 3.76 | 60.65 |
+| 1 symbol | 536.66% | -18.49% | 530.89% | -18.34% | 3.21 | 18.23 |
+| 3 symbols | 1059.72% | -18.32% | 1083.70% | -17.92% | 3.69 | 34.47 |
+| 5 symbols | 1078.67% | -16.80% | 1115.99% | -15.86% | 3.70 | 39.93 |
+| 13 symbols | 894.16% | -16.93% | 1038.74% | -18.41% | 3.61 | 32.37 |
+| 22 symbols | 843.49% | -17.13% | 983.57% | -16.22% | 3.76 | 35.07 |
 
 The 2026-06-30 and 2026-07-20 figures are identical for the 1-, 3-, and 5-symbol
 universes. The 13-symbol results increase slightly through July; the 22-symbol
@@ -29,10 +29,10 @@ deterministic results:
 
 | Indicator state | End date | Total return | Maximum drawdown | Sharpe | Calmar |
 |---|---|---|---:|---:|---:|---:|
-| Cold | 2026-06-30 | 991.99% | -16.14% | 3.56 | 39.34 |
-| Cold | 2026-07-20 | 991.99% | -16.14% | 3.48 | 35.49 |
-| Warm | 2026-06-30 | 1167.94% | -15.11% | 3.78 | 48.48 |
-| Warm | 2026-07-20 | 1167.94% | -15.11% | 3.69 | 43.55 |
+| Cold | 2026-06-30 | 1187.05% | -15.89% | 3.90 | 46.77 |
+| Cold | 2026-07-20 | 1187.05% | -15.89% | 3.81 | 41.99 |
+| Warm | 2026-06-30 | 1147.30% | -15.43% | 3.88 | 46.76 |
+| Warm | 2026-07-20 | 1147.30% | -15.43% | 3.79 | 42.02 |
 
 The universe contains `300308`, `688256`, `300502`, `300394`, `603986`,
 `688008`, `688347`, `300054`, and `688300`. The sector guard still confirms on
@@ -57,8 +57,10 @@ enough across time windows and universe sizes to replace the current defaults.
 
 When the market regime transitions to CHOPPY, the system automatically activates
 conservative parameters (tighter trailing stops, lower position sizing, faster
-reversal exits). This mechanism is enabled by default and requires no manual
-intervention. When the market recovers to TREND, normal parameters are restored.
+reversal exits) by applying them directly to each strategy instance's runtime
+configuration. This mechanism is enabled by default and requires no manual
+intervention. When the market recovers to TREND, the original parameters are
+restored automatically.
 
 ### Risk State Identity
 
