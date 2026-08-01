@@ -13,11 +13,18 @@ Two modes:
     by side with discrepancy warnings.
 
 Risk state (terminal_risk_lock, sector_guard_active, drawdown) is persisted to
-risk_state.json after each run and restored on the next run for continuity.
+risk_state.json with enhanced identity fields (symbols_hash, run_id, account_path)
+after each run and restored on the next run for continuity. Old risk state files
+without symbols_hash are rejected (fail-closed) to prevent cross-contamination.
+
+Stale data fail-closed: if any symbol's cached data is stale (network fetch
+failed) or data end dates are inconsistent across symbols, the scan refuses to
+produce signals and exits with code 1. Override with --allow-stale only when
+you understand the risk; stale-data signals must not be used for live trading.
 
 Usage:
     # Simulation mode (default)
-    python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR]
+    python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR] [--capital N]
 
     # Account-aware mode
     python daily_signal_scan.py --account account.json [--start-date DATE] [--capital N]

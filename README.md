@@ -244,24 +244,21 @@ Initial capital is CNY 2,000,000. All scenarios use identical strategy parameter
 default costs, 0.1% one-way slippage, and data through 2026-07-20.
 
 | Tradable universe | Cold return | Cold max drawdown | Warm return | Warm max drawdown | Warm Sharpe | Warm Calmar |
-|---|---:|---:|---:|---:|---:|---:|
-| 1 symbol | 662.7166% | -18.4896% | 645.4892% | -18.3414% | 3.2042 | 21.6069 |
-| 3 symbols | 992.1379% | -18.3217% | 1,012.8079% | -17.9190% | 3.5976 | 32.5411 |
-| 5 symbols | 1,071.9918% | -15.9755% | 1,145.4804% | -14.9383% | 3.7086 | 43.3317 |
-| 13 symbols | 836.4956% | -16.9317% | 945.3487% | -18.4072% | 3.3981 | 29.8727 |
-| 22 symbols | 622.2555% | -16.5250% | 850.1060% | -16.9000% | 3.3343 | 29.7161 |
+|---|---|---|---:|---:|---:|---:|---:|
+| 1 symbol | 536.66% | -18.49% | 530.89% | -18.34% | 3.21 | 28.95 |
+| 3 symbols | 1059.72% | -18.32% | 1083.70% | -17.92% | 3.69 | 60.48 |
+| 5 symbols | 1078.67% | -16.80% | 1115.99% | -15.86% | 3.70 | 70.38 |
+| 13 symbols | 894.16% | -16.93% | 1038.74% | -18.41% | 3.61 | 56.43 |
+| 22 symbols | 843.49% | -17.13% | 983.57% | -16.22% | 3.76 | 60.65 |
 
 The requested multi-symbol warm wealth-factor ratio between the worst and best
-universe is 76.28%. The exhaustive ordered-prefix audit also tests every count
-from one through 22. Counts two through 22 all return above 800%; the worst
-single-symbol addition changes wealth by -13.23% (9 to 10 symbols). The
-one-symbol result remains structurally lower because the 60% symbol cap leaves at
-least 40% cash at entry and provides no rotation opportunity. The two-symbol
-prefix reaches -21.76% drawdown, so the sub-20% claim applies to the five requested
-1-, 3-, 5-, 13-, and 22-symbol warm scenarios, not every possible composition.
-
-At 0.5% one-way slippage, warm returns were 642.0017%, 1,048.9399%, 1,032.5983%,
-and 873.9249% for the 1-, 5-, 13-, and 22-symbol universes respectively.
+universe is 88.13% (22-symbol vs 5-symbol). The exhaustive ordered-prefix audit
+also tests every count from one through 22. The one-symbol result remains
+structurally lower because the 60% symbol cap leaves at least 40% cash at entry
+and provides no rotation opportunity. The sub-20% drawdown claim applies to the
+five requested 1-, 3-, 5-, 13-, and 22-symbol warm scenarios, not every possible
+composition. Exact scenario metadata is stored in `BACKTEST_RESULTS.md` and
+`universe_backtest.json`; the prefix audit is stored in `prefix_stress.json`.
 
 ## Weak-regime limitation
 
@@ -324,25 +321,28 @@ latest pending signal (buy / sell / hold) for each of the 26 AI-sector symbols.
 
 ### Stale data fail-closed
 
-If any symbol's cached data is stale (network fetch failed), the scan refuses
-to produce signals and exits with code 1. Override with `--allow-stale` only
-when you understand the risk; stale-data signals must not be used for live
-trading decisions.
+If any symbol's cached data is stale (network fetch failed) or data end dates
+are inconsistent across symbols, the scan refuses to produce signals and exits
+with code 1. Override with `--allow-stale` only when you understand the risk;
+stale-data signals must not be used for live trading decisions.
 
 ### Risk state persistence
 
 After each run, risk state (`terminal_risk_lock`, `sector_guard_active`,
 `max_drawdown`, `cycle_lock_count`) is saved to `risk_state.json` in the
-output directory. On the next run, the previous state is loaded and displayed
+output directory with enhanced identity fields (`symbols_hash`, `run_id`,
+`account_path`). On the next run, the previous state is loaded and displayed
 for continuity checking — if the previous run had an active terminal lock or
 sector guard, a warning is shown even if the current backtest doesn't detect
-it (because the backtest starts fresh each time).
+it (because the backtest starts fresh each time). Old risk state files without
+`symbols_hash` are rejected (fail-closed) to prevent cross-contamination
+between different universes or configurations.
 
 ### Usage
 
 ```bash
 # Simulation mode (default)
-python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR]
+python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR] [--capital N]
 
 # Account-aware mode
 python daily_signal_scan.py \
