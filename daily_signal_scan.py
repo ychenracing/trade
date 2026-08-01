@@ -28,6 +28,7 @@ If --end-date is omitted, today's date is used.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from collections import defaultdict
@@ -157,18 +158,24 @@ def _load_prev_risk_state(output_dir: str, end_date: str) -> dict[str, Any] | No
 
 
 def _save_risk_state(
-    output_dir: str, end_date: str, result: dict[str, Any]
+    output_dir: str, end_date: str, result: dict[str, Any],
+    tradable: dict[str, str] | None = None,
 ) -> None:
     """Persist risk state for restoration by the next daily scan run."""
     state = {
         "scan_date": end_date,
         "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
         "sector_guard_active": bool(result.get("sector_guard_active", False)),
-        "cycle_lock_count": int(result.get("cycle_lock_count", 0)),
+        "cycle_lock_count": int(result.get("cycle_lock_count") or 0),
         "max_drawdown": float(result.get("max_drawdown", 0.0)),
         "total_return": float(result.get("total_return", 0.0)),
         "final_assets": float(result.get("final_assets", 0.0)),
     }
+    if tradable:
+        state["symbols_hash"] = hashlib.sha256(
+            ",".join(sorted(tradable.keys())).encode("utf-8")
+        ).hexdigest()[:16]
+        state["total_symbols"] = len(tradable)
     state_file = Path(output_dir) / "risk_state.json"
     state_file.parent.mkdir(parents=True, exist_ok=True)
     state_file.write_text(
@@ -340,6 +347,16 @@ def main() -> int:
     if not tradable:
         print("  错误: 没有可交易的标的，退出。")
         return 1
+
+    # ── Validate symbols_hash to prevent cross-contamination ──
+    if prev_risk:
+        current_hash = hashlib.sha256(
+            ",".join(sorted(tradable.keys())).encode("utf-8")
+        ).hexdigest()[:16]
+        prev_hash = prev_risk.get("symbols_hash", "")
+        if prev_hash and prev_hash != current_hash:
+            print("  ⚠ 前次风险状态的标的池不匹配，跳过加载以防止交叉污染。")
+            prev_risk = None
 
     print("  正在运行回测，请稍候...")
     print("-" * 72)
@@ -631,7 +648,7 @@ def main() -> int:
         encoding="utf-8",
     )
     # Persist risk state for the next daily run
-    _save_risk_state(args.output_dir, end_date, result)
+    _save_risk_state(args.output_dir, end_date, result, tradable)
     print(f"  结果已保存: {output_file}")
     print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")
     print()
