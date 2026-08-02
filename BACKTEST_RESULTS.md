@@ -6,6 +6,12 @@ Quant Fusion is a standalone module with built-in AKShare and local CSV
 data paths. It uses the same code, parameters, costs, and forward-adjusted data
 snapshot across every requested universe. Initial capital is CNY 2,000,000.
 
+The frozen bull table below remains the golden trend-engine baseline. The
+regime-adaptive outer router reproduces its 2026-06-30 return, drawdown and
+trade-count tuples exactly. Separate 2022–2024 weak-market distributions are
+documented in `REGIME_ADAPTIVE_REFACTOR_REPORT.md` and stored per pool in
+`regime_validation_results.json`.
+
 | Universe | Cold return | Cold maximum drawdown | Warm return | Warm maximum drawdown | Warm Sharpe | Warm Calmar | Warm trades |
 |---|---|---|---:|---:|---:|---:|---:|
 | 1 symbol | 536.66% | -18.49% | 530.89% | -18.34% | 3.21 | 18.23 | 24 |

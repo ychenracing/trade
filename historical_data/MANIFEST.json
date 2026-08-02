@@ -1,0 +1,201 @@
+{
+  "adjustment": "qfq",
+  "source": "Eastmoney historical extension with frozen trade tail",
+  "index_adjustment": "unadjusted",
+  "indices": [
+    {
+      "symbol": "000300",
+      "purpose": "non-trading broad-market regime evidence",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-28",
+      "rows": 1105,
+      "sha256": "99ea69b6e8f8153699b9a7f5440192ba4e136599a5383077821cc85b5ccfd80f"
+    },
+    {
+      "symbol": "000682",
+      "purpose": "non-trading technology regime evidence",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-28",
+      "rows": 1105,
+      "sha256": "bd1ace8833bee06a0c248d3e254d55297d3c3bbbd9a2971d091a3b0568cabd93"
+    }
+  ],
+  "files": [
+    {
+      "symbol": "002409",
+      "source": "sz002409.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 484,
+      "volume_scale": 100.0,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.0
+    },
+    {
+      "symbol": "300054",
+      "source": "sz300054.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 484,
+      "volume_scale": 100.0,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.0
+    },
+    {
+      "symbol": "300308",
+      "source": "sz300308.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 484,
+      "volume_scale": 100.0,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.005000000000009663
+    },
+    {
+      "symbol": "300394",
+      "source": "sz300394.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 484,
+      "volume_scale": 100.0,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.005000000000009663
+    },
+    {
+      "symbol": "300502",
+      "source": "sz300502.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 484,
+      "volume_scale": 100.0,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.005000000000109139
+    },
+    {
+      "symbol": "300604",
+      "source": "sz300604.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1093,
+      "historical_rows": 474,
+      "volume_scale": 100.0,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.0
+    },
+    {
+      "symbol": "300666",
+      "source": "sz300666.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1098,
+      "historical_rows": 484,
+      "volume_scale": 100.0,
+      "overlap_rows": 614,
+      "overlap_max_abs_price_difference": 0.004000000000019099
+    },
+    {
+      "symbol": "603986",
+      "source": "sh603986.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 484,
+      "volume_scale": 100.0,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.0
+    },
+    {
+      "symbol": "688008",
+      "source": "sh688008.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 484,
+      "volume_scale": 0.9999999618061141,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.005000000000009663
+    },
+    {
+      "symbol": "688072",
+      "source": "sh688072.csv",
+      "first_date": "2022-04-20",
+      "last_date": "2026-07-24",
+      "rows": 1024,
+      "historical_rows": 415,
+      "volume_scale": 1.0000003615548159,
+      "overlap_rows": 609,
+      "overlap_max_abs_price_difference": 0.005000000000023874
+    },
+    {
+      "symbol": "688082",
+      "source": "sh688082.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 484,
+      "volume_scale": 1.0000009571677024,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.0030000000000143245
+    },
+    {
+      "symbol": "688120",
+      "source": "sh688120.csv",
+      "first_date": "2022-06-08",
+      "last_date": "2026-07-24",
+      "rows": 1003,
+      "historical_rows": 384,
+      "volume_scale": 0.999999751727624,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.005000000000023874
+    },
+    {
+      "symbol": "688256",
+      "source": "sh688256.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 542,
+      "volume_scale": 0.010000001854714408,
+      "overlap_rows": 561,
+      "overlap_max_abs_price_difference": 0.005000000000023874
+    },
+    {
+      "symbol": "688300",
+      "source": "sh688300.csv",
+      "first_date": "2022-01-04",
+      "last_date": "2026-07-24",
+      "rows": 1103,
+      "historical_rows": 484,
+      "volume_scale": 1.0,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.005000000000002558
+    },
+    {
+      "symbol": "688347",
+      "source": "sh688347.csv",
+      "first_date": "2024-01-02",
+      "last_date": "2026-07-24",
+      "rows": 609,
+      "historical_rows": 0,
+      "volume_scale": 1.0000000812902452,
+      "overlap_rows": 609,
+      "overlap_max_abs_price_difference": 0.0
+    },
+    {
+      "symbol": "688361",
+      "source": "sh688361.csv",
+      "first_date": "2023-05-19",
+      "last_date": "2026-07-24",
+      "rows": 772,
+      "historical_rows": 153,
+      "volume_scale": 1.0,
+      "overlap_rows": 619,
+      "overlap_max_abs_price_difference": 0.0
+    }
+  ]
+}

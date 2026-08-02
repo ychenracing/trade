@@ -1,0 +1,5068 @@
+{
+  "protocol": {
+    "adjustment": "qfq",
+    "initial_capital": 2000000.0,
+    "signal_timing": "close signal, next tradable open execution",
+    "development_seed": 20260802,
+    "final_blind_seed": 20260805,
+    "final_blind_opened_after_freeze": true,
+    "final_blind_used_for_tuning": false
+  },
+  "data_integrity": {
+    "file_count": 18,
+    "files": [
+      {
+        "file": "000300.csv",
+        "sha256": "99ea69b6e8f8153699b9a7f5440192ba4e136599a5383077821cc85b5ccfd80f",
+        "rows": 1105,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-28"
+      },
+      {
+        "file": "000682.csv",
+        "sha256": "bd1ace8833bee06a0c248d3e254d55297d3c3bbbd9a2971d091a3b0568cabd93",
+        "rows": 1105,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-28"
+      },
+      {
+        "file": "002409.csv",
+        "sha256": "37fcc5e4d2c1e0b48fe2c0751cc9cd17372617d97e92eb2aef5dcad2a6b6862b",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "300054.csv",
+        "sha256": "1eb0f4002298af63b3537b9e743d3b0e1b575f03cf2ef77f90278d37e2b3f167",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "300308.csv",
+        "sha256": "dfc0577eccf9511f8c87817af26cde5864bc5c4371af442e3e3f46a8838f634d",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "300394.csv",
+        "sha256": "d9b7271d1fe855b5f916b9d81f15642bf3487ca2c89215de15397f92571bec1d",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "300502.csv",
+        "sha256": "23e376b29b71a562be0f16c992e16a38dc28a23a09e1c64cfafb5a0e38dc09f6",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "300604.csv",
+        "sha256": "87b1cff9f2839a3d55ad0a647d5e894d239bfeea6a48b7e406803877eeb68e95",
+        "rows": 1093,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "300666.csv",
+        "sha256": "81c5b98eb9da6c20b48e85097c81bc41a0a123d4f6700799e770a189e32d549f",
+        "rows": 1098,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "603986.csv",
+        "sha256": "c20310f39ff46a8fa792331d88488254d50852ee6f738c26278ca0bde4c99452",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "688008.csv",
+        "sha256": "24cbb4f5a8591241d43ded912d2e8aaf2a26b1b9056fc2a8c9dc37fc740487f9",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "688072.csv",
+        "sha256": "4676d3038a5f8cd26debacef01f4a3a714bc829ea3eb122b41e87ad24b2f65c0",
+        "rows": 1024,
+        "first_date": "2022-04-20",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "688082.csv",
+        "sha256": "9b518c93ec3238113c42b880e760a1440e7ccc28e308fa452916c6ca25eeeab3",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "688120.csv",
+        "sha256": "06f97d5523ac857967f41972a2afcd75cbbd5963e180bda9a24ec6144c990513",
+        "rows": 1003,
+        "first_date": "2022-06-08",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "688256.csv",
+        "sha256": "ab87da7d066e74a0862e181e16bf0796d91df9656179f85064a0114971ac3f4c",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "688300.csv",
+        "sha256": "49ee915d46b872c6853c89541786d76f0df84c818fed22514508d4633c083a55",
+        "rows": 1103,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "688347.csv",
+        "sha256": "547d39794f225125911f5c5a6e77bb7603e2eb9a8b0395198589105b4048224e",
+        "rows": 609,
+        "first_date": "2024-01-02",
+        "last_date": "2026-07-24"
+      },
+      {
+        "file": "688361.csv",
+        "sha256": "fa04a5d35769d57f9a9c9dfc750744c31b14b241071119b070393f8fdf5197f2",
+        "rows": 772,
+        "first_date": "2023-05-19",
+        "last_date": "2026-07-24"
+      }
+    ]
+  },
+  "adaptive_2024": {
+    "deterministic": {
+      "summary": {
+        "count": 16,
+        "profitable_ratio": 0.875,
+        "nonloss_ratio": 1.0,
+        "median_return": 0.22352490372353745,
+        "worst_return": 0.0,
+        "best_return": 0.5007309711617499,
+        "median_drawdown": 0.16276067065457211,
+        "worst_drawdown": 0.21661805233124992,
+        "median_trades": 6.0
+      },
+      "results": [
+        {
+          "name": "det_1_head",
+          "symbols": [
+            "002409"
+          ],
+          "total_return": 0.06394469464687515,
+          "max_drawdown": -0.21661805233124992,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "002409"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_1_spread",
+          "symbols": [
+            "688008"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "688008"
+          ]
+        },
+        {
+          "name": "det_1_tail",
+          "symbols": [
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "688361"
+          ]
+        },
+        {
+          "name": "det_3_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308"
+          ],
+          "total_return": 0.2540408595138751,
+          "max_drawdown": -0.21268748839824997,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300054",
+            "002409"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_3_spread",
+          "symbols": [
+            "002409",
+            "603986",
+            "688361"
+          ],
+          "total_return": 0.06394469464687515,
+          "max_drawdown": -0.21661805233124992,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "002409"
+          ],
+          "unavailable_symbols": [
+            "603986",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_3_tail",
+          "symbols": [
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.04350171295049996,
+          "max_drawdown": -0.06593378704950004,
+          "total_trades": 1,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688300"
+          ],
+          "unavailable_symbols": [
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_5_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054"
+          ]
+        },
+        {
+          "name": "det_5_spread",
+          "symbols": [
+            "002409",
+            "300394",
+            "603986",
+            "688120",
+            "688361"
+          ],
+          "total_return": 0.31794065420425033,
+          "max_drawdown": -0.15365005354137487,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394",
+            "688120",
+            "002409"
+          ],
+          "unavailable_symbols": [
+            "603986",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_5_tail",
+          "symbols": [
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.13205121506832493,
+          "max_drawdown": -0.10293062437967514,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688256",
+            "688300",
+            "688120"
+          ],
+          "unavailable_symbols": [
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_8_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "603986"
+          ]
+        },
+        {
+          "name": "det_8_spread",
+          "symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300666",
+            "688008",
+            "688082",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.3074330467204498,
+          "max_drawdown": -0.12925480308113613,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300666",
+            "688008",
+            "688082",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_8_tail",
+          "symbols": [
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.10354397395020001,
+          "max_drawdown": -0.16573591185730008,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688256",
+            "688072",
+            "688300"
+          ],
+          "unavailable_symbols": [
+            "688008",
+            "688082",
+            "688120",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_12_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120"
+          ]
+        },
+        {
+          "name": "det_12_spread",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "total_return": 0.3074330467204498,
+          "max_drawdown": -0.12925480308113613,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688300",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_12_tail",
+          "symbols": [
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.1930089479331998,
+          "max_drawdown": -0.15978542945184412,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "688256",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_16_all",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        }
+      ]
+    },
+    "development": {
+      "summary": {
+        "count": 50,
+        "profitable_ratio": 0.9,
+        "nonloss_ratio": 1.0,
+        "median_return": 0.25740498556447494,
+        "worst_return": 0.0,
+        "best_return": 0.5007309711617499,
+        "median_drawdown": 0.14239409966761896,
+        "worst_drawdown": 0.2392504924107499,
+        "median_trades": 5.0
+      },
+      "results": [
+        {
+          "name": "development_1_0",
+          "symbols": [
+            "603986"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "603986"
+          ]
+        },
+        {
+          "name": "development_1_1",
+          "symbols": [
+            "002409"
+          ],
+          "total_return": 0.06394469464687515,
+          "max_drawdown": -0.21661805233124992,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "002409"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_2",
+          "symbols": [
+            "300666"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "300666"
+          ]
+        },
+        {
+          "name": "development_1_3",
+          "symbols": [
+            "688072"
+          ],
+          "total_return": 0.1022266171578751,
+          "max_drawdown": -0.178796550455875,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688072"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_4",
+          "symbols": [
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "688361"
+          ]
+        },
+        {
+          "name": "development_1_5",
+          "symbols": [
+            "688008"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "688008"
+          ]
+        },
+        {
+          "name": "development_1_6",
+          "symbols": [
+            "300394"
+          ],
+          "total_return": 0.34783671031374996,
+          "max_drawdown": -0.1414267712119938,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_7",
+          "symbols": [
+            "688120"
+          ],
+          "total_return": 0.08544358485162491,
+          "max_drawdown": -0.05713396527605548,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688120"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_8",
+          "symbols": [
+            "688300"
+          ],
+          "total_return": 0.04350171295049996,
+          "max_drawdown": -0.06593378704950004,
+          "total_trades": 1,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688300"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_9",
+          "symbols": [
+            "300054"
+          ],
+          "total_return": 0.0824981478037499,
+          "max_drawdown": -0.17515327162499994,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300054"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_0",
+          "symbols": [
+            "300604",
+            "300666",
+            "603986"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "300604",
+            "300666",
+            "603986"
+          ]
+        },
+        {
+          "name": "development_3_1",
+          "symbols": [
+            "300394",
+            "603986",
+            "688361"
+          ],
+          "total_return": 0.34783671031374996,
+          "max_drawdown": -0.1414267712119938,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394"
+          ],
+          "unavailable_symbols": [
+            "603986",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_3_2",
+          "symbols": [
+            "300502",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.20255594766644994,
+          "max_drawdown": -0.12787150079568424,
+          "total_trades": 4,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "688361"
+          ]
+        },
+        {
+          "name": "development_3_3",
+          "symbols": [
+            "300054",
+            "688082",
+            "688256"
+          ],
+          "total_return": 0.046600290114450035,
+          "max_drawdown": -0.18078313524604997,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688256",
+            "688082",
+            "300054"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_4",
+          "symbols": [
+            "300308",
+            "688120",
+            "688347"
+          ],
+          "total_return": 0.34248424863275,
+          "max_drawdown": -0.1101600273909054,
+          "total_trades": 4,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "688120"
+          ],
+          "unavailable_symbols": [
+            "688347"
+          ]
+        },
+        {
+          "name": "development_3_5",
+          "symbols": [
+            "300394",
+            "300502",
+            "688008"
+          ],
+          "total_return": 0.49405579296149965,
+          "max_drawdown": -0.18451475476926724,
+          "total_trades": 4,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "688008"
+          ]
+        },
+        {
+          "name": "development_3_6",
+          "symbols": [
+            "002409",
+            "300666",
+            "688347"
+          ],
+          "total_return": 0.06394469464687515,
+          "max_drawdown": -0.21661805233124992,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "002409"
+          ],
+          "unavailable_symbols": [
+            "300666",
+            "688347"
+          ]
+        },
+        {
+          "name": "development_3_7",
+          "symbols": [
+            "300308",
+            "300604",
+            "688072"
+          ],
+          "total_return": 0.34373918719350033,
+          "max_drawdown": -0.1633584048566249,
+          "total_trades": 4,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "300604"
+          ]
+        },
+        {
+          "name": "development_3_8",
+          "symbols": [
+            "300308",
+            "300394",
+            "688082"
+          ],
+          "total_return": 0.3646714677285,
+          "max_drawdown": -0.1433614281232441,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "688082"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_9",
+          "symbols": [
+            "300054",
+            "300502",
+            "688300"
+          ],
+          "total_return": 0.22305558923200006,
+          "max_drawdown": -0.17377592974499997,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "688300",
+            "300054"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_0",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "688082",
+            "688361"
+          ],
+          "total_return": 0.3646714677285,
+          "max_drawdown": -0.1433614281232441,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "688082"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_5_1",
+          "symbols": [
+            "300502",
+            "688072",
+            "688082",
+            "688256",
+            "688347"
+          ],
+          "total_return": 0.1930089479331998,
+          "max_drawdown": -0.15978542945184412,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "688256",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "688082",
+            "688347"
+          ]
+        },
+        {
+          "name": "development_5_2",
+          "symbols": [
+            "300394",
+            "300502",
+            "300666",
+            "688072",
+            "688300"
+          ],
+          "total_return": 0.3863068723744999,
+          "max_drawdown": -0.18510048437677018,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394",
+            "300502",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "300666",
+            "688300"
+          ]
+        },
+        {
+          "name": "development_5_3",
+          "symbols": [
+            "002409",
+            "300502",
+            "300666",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.17216583184482484,
+          "max_drawdown": -0.13538015204655007,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "688256",
+            "002409"
+          ],
+          "unavailable_symbols": [
+            "300666",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_5_4",
+          "symbols": [
+            "300308",
+            "300604",
+            "688008",
+            "688082",
+            "688300"
+          ],
+          "total_return": 0.21176933897150005,
+          "max_drawdown": -0.1354191529427499,
+          "total_trades": 4,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "688300",
+            "688082"
+          ],
+          "unavailable_symbols": [
+            "300604",
+            "688008"
+          ]
+        },
+        {
+          "name": "development_5_5",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "688008",
+            "688300"
+          ],
+          "total_return": 0.4112659971787501,
+          "max_drawdown": -0.12703010732821726,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "688300"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "688008"
+          ]
+        },
+        {
+          "name": "development_5_6",
+          "symbols": [
+            "300308",
+            "688008",
+            "688072",
+            "688120",
+            "688256"
+          ],
+          "total_return": 0.23140270352045003,
+          "max_drawdown": -0.11047512318618473,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "688256",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "688008",
+            "688120"
+          ]
+        },
+        {
+          "name": "development_5_7",
+          "symbols": [
+            "300502",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.17957431715019978,
+          "max_drawdown": -0.11123557847725041,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "688256",
+            "688300"
+          ],
+          "unavailable_symbols": [
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_5_8",
+          "symbols": [
+            "300308",
+            "300502",
+            "300604",
+            "688072",
+            "688361"
+          ],
+          "total_return": 0.36126347318775,
+          "max_drawdown": -0.16109373251194828,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300502",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "300604",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_5_9",
+          "symbols": [
+            "002409",
+            "300054",
+            "300502",
+            "300666",
+            "688361"
+          ],
+          "total_return": 0.21564710392662512,
+          "max_drawdown": -0.23011099890024994,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "300054",
+            "002409"
+          ],
+          "unavailable_symbols": [
+            "300666",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_8_0",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300666",
+            "688008",
+            "688256",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.22105354913494993,
+          "max_drawdown": -0.11473805062370088,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "688256",
+            "300054"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300666",
+            "688008",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_8_1",
+          "symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300666",
+            "603986",
+            "688072",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.37087020149445,
+          "max_drawdown": -0.11345888524796435,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300666",
+            "603986",
+            "688072",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_8_2",
+          "symbols": [
+            "002409",
+            "300666",
+            "603986",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688361"
+          ],
+          "total_return": 0.09734524018425006,
+          "max_drawdown": -0.2392504924107499,
+          "total_trades": 4,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688072",
+            "688300",
+            "688082"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300666",
+            "603986",
+            "688120",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_8_3",
+          "symbols": [
+            "300054",
+            "300308",
+            "300666",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688361"
+          ],
+          "total_return": 0.27179849920474997,
+          "max_drawdown": -0.15514622530449998,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "688072",
+            "688300"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "300666",
+            "688082",
+            "688120",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_8_4",
+          "symbols": [
+            "300394",
+            "300502",
+            "300604",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256"
+          ],
+          "total_return": 0.3324764459072,
+          "max_drawdown": -0.1308800698294349,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "300604",
+            "688008",
+            "688072",
+            "688082",
+            "688120"
+          ]
+        },
+        {
+          "name": "development_8_5",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "603986",
+            "688082",
+            "688120",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.17137354328719992,
+          "max_drawdown": -0.09592361516697645,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "688256",
+            "688082"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "603986",
+            "688120",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_8_6",
+          "symbols": [
+            "300394",
+            "300604",
+            "603986",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.24301147192419995,
+          "max_drawdown": -0.10417254904521533,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394",
+            "688256",
+            "688300"
+          ],
+          "unavailable_symbols": [
+            "300604",
+            "603986",
+            "688120",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_8_7",
+          "symbols": [
+            "300308",
+            "300394",
+            "300666",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688347"
+          ],
+          "total_return": 0.4247006279617499,
+          "max_drawdown": -0.1486243997063619,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "300666",
+            "688082",
+            "688120",
+            "688300",
+            "688347"
+          ]
+        },
+        {
+          "name": "development_8_8",
+          "symbols": [
+            "002409",
+            "300054",
+            "300502",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688347"
+          ],
+          "total_return": 0.18681021416724986,
+          "max_drawdown": -0.19629257352898233,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "688072",
+            "688082"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "603986",
+            "688008",
+            "688347"
+          ]
+        },
+        {
+          "name": "development_8_9",
+          "symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688256",
+            "688300"
+          ],
+          "total_return": 0.3074330467204498,
+          "max_drawdown": -0.12925480308113613,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300604",
+            "300666",
+            "688008",
+            "688300"
+          ]
+        },
+        {
+          "name": "development_12_0",
+          "symbols": [
+            "300054",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347"
+          ],
+          "total_return": 0.3324764459072,
+          "max_drawdown": -0.1308800698294349,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688300",
+            "688347"
+          ]
+        },
+        {
+          "name": "development_12_1",
+          "symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_12_2",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "603986",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "603986",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_12_3",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "300604",
+            "300666",
+            "688008",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347"
+          ]
+        },
+        {
+          "name": "development_12_4",
+          "symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300604",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_12_5",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688300"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688300"
+          ]
+        },
+        {
+          "name": "development_12_6",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_12_7",
+          "symbols": [
+            "002409",
+            "300054",
+            "300394",
+            "300502",
+            "300604",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.3324764459072,
+          "max_drawdown": -0.1308800698294349,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_12_8",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.3074330467204498,
+          "max_drawdown": -0.12925480308113613,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "development_12_9",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        }
+      ]
+    },
+    "final_blind": {
+      "summary": {
+        "count": 26,
+        "profitable_ratio": 0.9615384615384616,
+        "nonloss_ratio": 1.0,
+        "median_return": 0.24844979531606243,
+        "worst_return": 0.0,
+        "best_return": 0.5007309711617499,
+        "median_drawdown": 0.16276067065457211,
+        "worst_drawdown": 0.31680182786624994,
+        "median_trades": 6.0
+      },
+      "results": [
+        {
+          "name": "blind_2_0",
+          "symbols": [
+            "300502",
+            "688300"
+          ],
+          "total_return": 0.24295174335074984,
+          "max_drawdown": -0.14747230665406297,
+          "total_trades": 3,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "688300"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "blind_2_1",
+          "symbols": [
+            "300604",
+            "688008"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "300604",
+            "688008"
+          ]
+        },
+        {
+          "name": "blind_2_2",
+          "symbols": [
+            "688256",
+            "688347"
+          ],
+          "total_return": 0.003105917266199947,
+          "max_drawdown": -0.005022811601826851,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "688347"
+          ]
+        },
+        {
+          "name": "blind_2_3",
+          "symbols": [
+            "688072",
+            "688120"
+          ],
+          "total_return": 0.17214210826400014,
+          "max_drawdown": -0.1800293054562578,
+          "total_trades": 4,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688072",
+            "688120"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "blind_2_4",
+          "symbols": [
+            "300604",
+            "688120"
+          ],
+          "total_return": 0.08544358485162491,
+          "max_drawdown": -0.05713396527605548,
+          "total_trades": 2,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688120"
+          ],
+          "unavailable_symbols": [
+            "300604"
+          ]
+        },
+        {
+          "name": "blind_4_0",
+          "symbols": [
+            "300308",
+            "603986",
+            "688072",
+            "688256"
+          ],
+          "total_return": 0.23140270352045003,
+          "max_drawdown": -0.11047512318618473,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "688256",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "603986"
+          ]
+        },
+        {
+          "name": "blind_4_1",
+          "symbols": [
+            "300666",
+            "688072",
+            "688120",
+            "688361"
+          ],
+          "total_return": 0.17214210826400014,
+          "max_drawdown": -0.1800293054562578,
+          "total_trades": 4,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688072",
+            "688120"
+          ],
+          "unavailable_symbols": [
+            "300666",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_4_2",
+          "symbols": [
+            "002409",
+            "300054",
+            "688072",
+            "688082"
+          ],
+          "total_return": 0.10043071658175019,
+          "max_drawdown": -0.27222678816124984,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688072",
+            "688082",
+            "300054"
+          ],
+          "unavailable_symbols": [
+            "002409"
+          ]
+        },
+        {
+          "name": "blind_4_3",
+          "symbols": [
+            "300308",
+            "300604",
+            "688082",
+            "688361"
+          ],
+          "total_return": 0.253947847281375,
+          "max_drawdown": -0.11849402711494342,
+          "total_trades": 3,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "688082"
+          ],
+          "unavailable_symbols": [
+            "300604",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_4_4",
+          "symbols": [
+            "002409",
+            "300054",
+            "688082",
+            "688361"
+          ],
+          "total_return": 0.07958760049337521,
+          "max_drawdown": -0.2988727555044999,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688082",
+            "300054",
+            "002409"
+          ],
+          "unavailable_symbols": [
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_6_0",
+          "symbols": [
+            "603986",
+            "688008",
+            "688072",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "total_return": 0.10354397395020001,
+          "max_drawdown": -0.16573591185730008,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688256",
+            "688072",
+            "688300"
+          ],
+          "unavailable_symbols": [
+            "603986",
+            "688008",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_6_1",
+          "symbols": [
+            "002409",
+            "300054",
+            "300666",
+            "603986",
+            "688008",
+            "688072"
+          ],
+          "total_return": 0.1396167607266251,
+          "max_drawdown": -0.31680182786624994,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688072",
+            "300054",
+            "002409"
+          ],
+          "unavailable_symbols": [
+            "300666",
+            "603986",
+            "688008"
+          ]
+        },
+        {
+          "name": "blind_6_2",
+          "symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "688072",
+            "688300",
+            "688347"
+          ],
+          "total_return": 0.4247006279617499,
+          "max_drawdown": -0.1486243997063619,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "688300",
+            "688347"
+          ]
+        },
+        {
+          "name": "blind_6_3",
+          "symbols": [
+            "002409",
+            "300394",
+            "300666",
+            "688082",
+            "688120",
+            "688361"
+          ],
+          "total_return": 0.2787546100593752,
+          "max_drawdown": -0.12808108600227963,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300394",
+            "688082",
+            "688120"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300666",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_6_4",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "603986",
+            "688072",
+            "688082"
+          ],
+          "total_return": 0.4247006279617499,
+          "max_drawdown": -0.1486243997063619,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "603986",
+            "688082"
+          ]
+        },
+        {
+          "name": "blind_10_0",
+          "symbols": [
+            "002409",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688347"
+          ],
+          "total_return": 0.1930089479331998,
+          "max_drawdown": -0.15978542945184412,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300502",
+            "688256",
+            "688072"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300604",
+            "300666",
+            "688008",
+            "688082",
+            "688120",
+            "688347"
+          ]
+        },
+        {
+          "name": "blind_10_1",
+          "symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300502",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_10_2",
+          "symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300"
+          ],
+          "total_return": 0.10354397395020001,
+          "max_drawdown": -0.16573591185730008,
+          "total_trades": 5,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "688256",
+            "688072",
+            "688300"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688082",
+            "688120"
+          ]
+        },
+        {
+          "name": "blind_10_3",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_10_4",
+          "symbols": [
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688300"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688300"
+          ]
+        },
+        {
+          "name": "blind_14_0",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.3074330467204498,
+          "max_drawdown": -0.12925480308113613,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_14_1",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.3074330467204498,
+          "max_drawdown": -0.12925480308113613,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_14_2",
+          "symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.3074330467204498,
+          "max_drawdown": -0.12925480308113613,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300502",
+            "688256"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_14_3",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_14_4",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "blind_16_control",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.5007309711617499,
+          "max_drawdown": -0.17219488006814201,
+          "total_trades": 6,
+          "deployment_policy": "positive_momentum_hold",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        }
+      ]
+    }
+  },
+  "original_2024": {
+    "skipped": false,
+    "deterministic": {
+      "summary": {
+        "count": 16,
+        "profitable_ratio": 0.4375,
+        "nonloss_ratio": 0.4375,
+        "median_return": -0.02634243149756149,
+        "worst_return": -0.20182513706474914,
+        "best_return": 0.21777840034875084,
+        "median_drawdown": 0.2516644615005375,
+        "worst_drawdown": 0.29053427178127694,
+        "median_trades": 184.5
+      },
+      "results": [
+        {
+          "name": "det_1_head",
+          "symbols": [
+            "002409"
+          ],
+          "total_return": 0.0444718026194999,
+          "max_drawdown": -0.14931685706313524,
+          "total_trades": 27,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_1_spread",
+          "symbols": [
+            "688008"
+          ],
+          "total_return": 0.09443106505087506,
+          "max_drawdown": -0.15448597144359077,
+          "total_trades": 21,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688008"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_1_tail",
+          "symbols": [
+            "688361"
+          ],
+          "total_return": -0.059026584747374655,
+          "max_drawdown": -0.07030855491461273,
+          "total_trades": 39,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_3_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308"
+          ],
+          "total_return": -0.03385207373337451,
+          "max_drawdown": -0.27805858402290895,
+          "total_trades": 145,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_3_spread",
+          "symbols": [
+            "002409",
+            "603986",
+            "688361"
+          ],
+          "total_return": 0.1791962441208752,
+          "max_drawdown": -0.15846987450367458,
+          "total_trades": 84,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "603986",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_3_tail",
+          "symbols": [
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.06995893765424965,
+          "max_drawdown": -0.18437127312159404,
+          "total_trades": 192,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_5_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "total_return": -0.03766822072012421,
+          "max_drawdown": -0.29053427178127694,
+          "total_trades": 147,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_5_spread",
+          "symbols": [
+            "002409",
+            "300394",
+            "603986",
+            "688120",
+            "688361"
+          ],
+          "total_return": -0.028526293277248982,
+          "max_drawdown": -0.2835132986474006,
+          "total_trades": 114,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300394",
+            "603986",
+            "688120",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_5_tail",
+          "symbols": [
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.20182513706474914,
+          "max_drawdown": -0.2541807890896117,
+          "total_trades": 318,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_8_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986"
+          ],
+          "total_return": -0.024158569717874,
+          "max_drawdown": -0.28124969383100046,
+          "total_trades": 177,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_8_spread",
+          "symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300666",
+            "688008",
+            "688082",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.21777840034875084,
+          "max_drawdown": -0.22149692816937971,
+          "total_trades": 243,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300666",
+            "688008",
+            "688082",
+            "688256",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_8_tail",
+          "symbols": [
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.041850745013001456,
+          "max_drawdown": -0.1991635848507416,
+          "total_trades": 356,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_12_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120"
+          ],
+          "total_return": 0.11680184020587614,
+          "max_drawdown": -0.2622090037144384,
+          "total_trades": 243,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_12_spread",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "total_return": -0.13892121057437445,
+          "max_drawdown": -0.2756409895029617,
+          "total_trades": 217,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_12_tail",
+          "symbols": [
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.11143056595634926,
+          "max_drawdown": -0.27806815283666675,
+          "total_trades": 310,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_16_all",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.16876158812925102,
+          "max_drawdown": -0.24914813391146332,
+          "total_trades": 283,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        }
+      ]
+    },
+    "development": {
+      "summary": {
+        "count": 50,
+        "profitable_ratio": 0.36,
+        "nonloss_ratio": 0.36,
+        "median_return": -0.03815541450837412,
+        "worst_return": -0.2075488800757499,
+        "best_return": 0.29874548721050176,
+        "median_drawdown": 0.2601750125010108,
+        "worst_drawdown": 0.32332321498627464,
+        "median_trades": 186.5
+      },
+      "results": [
+        {
+          "name": "development_1_0",
+          "symbols": [
+            "603986"
+          ],
+          "total_return": 0.025903688979000306,
+          "max_drawdown": -0.07815514254245835,
+          "total_trades": 30,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "603986"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_1",
+          "symbols": [
+            "002409"
+          ],
+          "total_return": 0.0444718026194999,
+          "max_drawdown": -0.14931685706313524,
+          "total_trades": 27,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_2",
+          "symbols": [
+            "300666"
+          ],
+          "total_return": -0.0988868741069997,
+          "max_drawdown": -0.10605739943664695,
+          "total_trades": 51,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300666"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_3",
+          "symbols": [
+            "688072"
+          ],
+          "total_return": -0.044669530571250005,
+          "max_drawdown": -0.04466953057125001,
+          "total_trades": 45,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688072"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_4",
+          "symbols": [
+            "688361"
+          ],
+          "total_return": -0.059026584747374655,
+          "max_drawdown": -0.07030855491461273,
+          "total_trades": 39,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_5",
+          "symbols": [
+            "688008"
+          ],
+          "total_return": 0.09443106505087506,
+          "max_drawdown": -0.15448597144359077,
+          "total_trades": 21,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688008"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_6",
+          "symbols": [
+            "300394"
+          ],
+          "total_return": 0.12577929135712518,
+          "max_drawdown": -0.20840704219710302,
+          "total_trades": 33,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300394"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_7",
+          "symbols": [
+            "688120"
+          ],
+          "total_return": -0.06466938394874999,
+          "max_drawdown": -0.0812052194476174,
+          "total_trades": 45,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688120"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_8",
+          "symbols": [
+            "688300"
+          ],
+          "total_return": -0.007638166371749744,
+          "max_drawdown": -0.13646856538799976,
+          "total_trades": 72,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "688300"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_1_9",
+          "symbols": [
+            "300054"
+          ],
+          "total_return": -0.017236975503374774,
+          "max_drawdown": -0.05145942261575251,
+          "total_trades": 51,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_0",
+          "symbols": [
+            "300604",
+            "300666",
+            "603986"
+          ],
+          "total_return": -0.06354067578224987,
+          "max_drawdown": -0.13826166459843325,
+          "total_trades": 96,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300604",
+            "300666",
+            "603986"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_1",
+          "symbols": [
+            "300394",
+            "603986",
+            "688361"
+          ],
+          "total_return": 0.07358448457387623,
+          "max_drawdown": -0.26430971046613216,
+          "total_trades": 138,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300394",
+            "603986",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_2",
+          "symbols": [
+            "300502",
+            "688256",
+            "688361"
+          ],
+          "total_return": -0.2075488800757499,
+          "max_drawdown": -0.2673826095340824,
+          "total_trades": 186,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300502",
+            "688256",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_3",
+          "symbols": [
+            "300054",
+            "688082",
+            "688256"
+          ],
+          "total_return": -0.004446014379375085,
+          "max_drawdown": -0.07853692739442317,
+          "total_trades": 141,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054",
+            "688082",
+            "688256"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_4",
+          "symbols": [
+            "300308",
+            "688120",
+            "688347"
+          ],
+          "total_return": -0.18311166640199905,
+          "max_drawdown": -0.28312531022906734,
+          "total_trades": 141,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300308",
+            "688120",
+            "688347"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_5",
+          "symbols": [
+            "300394",
+            "300502",
+            "688008"
+          ],
+          "total_return": 0.04017646432137667,
+          "max_drawdown": -0.2751296785825466,
+          "total_trades": 187,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300394",
+            "300502",
+            "688008"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_6",
+          "symbols": [
+            "002409",
+            "300666",
+            "688347"
+          ],
+          "total_return": 0.09210110210587552,
+          "max_drawdown": -0.13419618324160712,
+          "total_trades": 122,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300666",
+            "688347"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_7",
+          "symbols": [
+            "300308",
+            "300604",
+            "688072"
+          ],
+          "total_return": -0.18242904796799975,
+          "max_drawdown": -0.28512404794484875,
+          "total_trades": 144,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300308",
+            "300604",
+            "688072"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_8",
+          "symbols": [
+            "300308",
+            "300394",
+            "688082"
+          ],
+          "total_return": -0.03927531310149923,
+          "max_drawdown": -0.3011070678588261,
+          "total_trades": 130,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "688082"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_3_9",
+          "symbols": [
+            "300054",
+            "300502",
+            "688300"
+          ],
+          "total_return": -0.0816697446121245,
+          "max_drawdown": -0.27513107179110785,
+          "total_trades": 240,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054",
+            "300502",
+            "688300"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_0",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "688082",
+            "688361"
+          ],
+          "total_return": -0.04311003644112399,
+          "max_drawdown": -0.2967130642199459,
+          "total_trades": 142,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "688082",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_1",
+          "symbols": [
+            "300502",
+            "688072",
+            "688082",
+            "688256",
+            "688347"
+          ],
+          "total_return": -0.2050471749912498,
+          "max_drawdown": -0.27102753865636553,
+          "total_trades": 222,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300502",
+            "688072",
+            "688082",
+            "688256",
+            "688347"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_2",
+          "symbols": [
+            "300394",
+            "300502",
+            "300666",
+            "688072",
+            "688300"
+          ],
+          "total_return": -0.0518819000596239,
+          "max_drawdown": -0.27775366569344656,
+          "total_trades": 215,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300394",
+            "300502",
+            "300666",
+            "688072",
+            "688300"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_3",
+          "symbols": [
+            "002409",
+            "300502",
+            "300666",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.24744945562762588,
+          "max_drawdown": -0.18667193461183867,
+          "total_trades": 216,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300502",
+            "300666",
+            "688256",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_4",
+          "symbols": [
+            "300308",
+            "300604",
+            "688008",
+            "688082",
+            "688300"
+          ],
+          "total_return": -0.14255257977549896,
+          "max_drawdown": -0.2659672561595221,
+          "total_trades": 209,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300308",
+            "300604",
+            "688008",
+            "688082",
+            "688300"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_5",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "688008",
+            "688300"
+          ],
+          "total_return": -0.02397127250712383,
+          "max_drawdown": -0.2822537972757495,
+          "total_trades": 168,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "688008",
+            "688300"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_6",
+          "symbols": [
+            "300308",
+            "688008",
+            "688072",
+            "688120",
+            "688256"
+          ],
+          "total_return": -0.12864811992512415,
+          "max_drawdown": -0.28453267326259524,
+          "total_trades": 266,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300308",
+            "688008",
+            "688072",
+            "688120",
+            "688256"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_7",
+          "symbols": [
+            "300502",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.08221851480350106,
+          "max_drawdown": -0.2515451302087994,
+          "total_trades": 311,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300502",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_8",
+          "symbols": [
+            "300308",
+            "300502",
+            "300604",
+            "688072",
+            "688361"
+          ],
+          "total_return": -0.18636001849812467,
+          "max_drawdown": -0.2803822232321104,
+          "total_trades": 172,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300308",
+            "300502",
+            "300604",
+            "688072",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_5_9",
+          "symbols": [
+            "002409",
+            "300054",
+            "300502",
+            "300666",
+            "688361"
+          ],
+          "total_return": 0.15290591309437573,
+          "max_drawdown": -0.2021524398430644,
+          "total_trades": 201,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300502",
+            "300666",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_0",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300666",
+            "688008",
+            "688256",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.10916983787612422,
+          "max_drawdown": -0.25588724160288506,
+          "total_trades": 250,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300666",
+            "688008",
+            "688256",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_1",
+          "symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300666",
+            "603986",
+            "688072",
+            "688256",
+            "688361"
+          ],
+          "total_return": -0.04549274242512413,
+          "max_drawdown": -0.2985839421967524,
+          "total_trades": 131,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300666",
+            "603986",
+            "688072",
+            "688256",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_2",
+          "symbols": [
+            "002409",
+            "300666",
+            "603986",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688361"
+          ],
+          "total_return": 0.1492905244128755,
+          "max_drawdown": -0.15579383800263455,
+          "total_trades": 207,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300666",
+            "603986",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_3",
+          "symbols": [
+            "300054",
+            "300308",
+            "300666",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688361"
+          ],
+          "total_return": -0.14831885617349938,
+          "max_drawdown": -0.2827447838700789,
+          "total_trades": 195,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054",
+            "300308",
+            "300666",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_4",
+          "symbols": [
+            "300394",
+            "300502",
+            "300604",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256"
+          ],
+          "total_return": -0.12724491792424864,
+          "max_drawdown": -0.2831646534704249,
+          "total_trades": 276,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300394",
+            "300502",
+            "300604",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_5",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "603986",
+            "688082",
+            "688120",
+            "688256",
+            "688361"
+          ],
+          "total_return": -0.09366987484174949,
+          "max_drawdown": -0.2825855869903575,
+          "total_trades": 175,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "603986",
+            "688082",
+            "688120",
+            "688256",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_6",
+          "symbols": [
+            "300394",
+            "300604",
+            "603986",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.06728115337424889,
+          "max_drawdown": -0.2802621305180278,
+          "total_trades": 204,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300394",
+            "300604",
+            "603986",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_7",
+          "symbols": [
+            "300308",
+            "300394",
+            "300666",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688347"
+          ],
+          "total_return": -0.03955007566237434,
+          "max_drawdown": -0.294251436237856,
+          "total_trades": 167,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300308",
+            "300394",
+            "300666",
+            "688072",
+            "688082",
+            "688120",
+            "688300",
+            "688347"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_8",
+          "symbols": [
+            "002409",
+            "300054",
+            "300502",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688347"
+          ],
+          "total_return": 0.07532121917712531,
+          "max_drawdown": -0.20829787711231845,
+          "total_trades": 238,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300502",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688347"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_8_9",
+          "symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688256",
+            "688300"
+          ],
+          "total_return": 0.07614821759175094,
+          "max_drawdown": -0.22450077592414946,
+          "total_trades": 272,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688256",
+            "688300"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_0",
+          "symbols": [
+            "300054",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347"
+          ],
+          "total_return": 0.29874548721050176,
+          "max_drawdown": -0.20337075166158514,
+          "total_trades": 340,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_1",
+          "symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.12000484888975094,
+          "max_drawdown": -0.2535827810742138,
+          "total_trades": 209,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_2",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "603986",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.08161352245787412,
+          "max_drawdown": -0.32332321498627464,
+          "total_trades": 191,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "603986",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_3",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347"
+          ],
+          "total_return": 0.2798245388606264,
+          "max_drawdown": -0.2285187265473904,
+          "total_trades": 344,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_4",
+          "symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.020417431963124066,
+          "max_drawdown": -0.280643734358917,
+          "total_trades": 171,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "603986",
+            "688008",
+            "688082",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_5",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688300"
+          ],
+          "total_return": 0.08077707963637581,
+          "max_drawdown": -0.2560403145358895,
+          "total_trades": 248,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688300"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_6",
+          "symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.12949213558875128,
+          "max_drawdown": -0.2515126253977838,
+          "total_trades": 285,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688120",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_7",
+          "symbols": [
+            "002409",
+            "300054",
+            "300394",
+            "300502",
+            "300604",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.03430144029524873,
+          "max_drawdown": -0.2713918639464069,
+          "total_trades": 267,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300394",
+            "300502",
+            "300604",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_8",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.13808986975124948,
+          "max_drawdown": -0.27808323493308906,
+          "total_trades": 214,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "development_12_9",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.03703551591524901,
+          "max_drawdown": -0.29441099786753,
+          "total_trades": 215,
+          "deployment_policy": "original",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        }
+      ]
+    }
+  },
+  "adaptive_prior_years": {
+    "2022": {
+      "summary": {
+        "count": 16,
+        "profitable_ratio": 0.0,
+        "nonloss_ratio": 1.0,
+        "median_return": 0.0,
+        "worst_return": 0.0,
+        "best_return": 0.0,
+        "median_drawdown": 0.0,
+        "worst_drawdown": 0.0,
+        "median_trades": 0.0
+      },
+      "results": [
+        {
+          "name": "det_1_head",
+          "symbols": [
+            "002409"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409"
+          ]
+        },
+        {
+          "name": "det_1_spread",
+          "symbols": [
+            "688008"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "688008"
+          ]
+        },
+        {
+          "name": "det_1_tail",
+          "symbols": [
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "688361"
+          ]
+        },
+        {
+          "name": "det_3_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300308"
+          ]
+        },
+        {
+          "name": "det_3_spread",
+          "symbols": [
+            "002409",
+            "603986",
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409",
+            "603986",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_3_tail",
+          "symbols": [
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_5_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502"
+          ]
+        },
+        {
+          "name": "det_5_spread",
+          "symbols": [
+            "002409",
+            "300394",
+            "603986",
+            "688120",
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409",
+            "300394",
+            "603986",
+            "688120",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_5_tail",
+          "symbols": [
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_8_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986"
+          ]
+        },
+        {
+          "name": "det_8_spread",
+          "symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300666",
+            "688008",
+            "688082",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300666",
+            "688008",
+            "688082",
+            "688256",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_8_tail",
+          "symbols": [
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_12_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120"
+          ]
+        },
+        {
+          "name": "det_12_spread",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688300",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_12_tail",
+          "symbols": [
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        },
+        {
+          "name": "det_16_all",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.0,
+          "max_drawdown": 0.0,
+          "total_trades": 0,
+          "deployment_policy": "cash_preservation",
+          "selected_symbols": [],
+          "unavailable_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ]
+        }
+      ]
+    },
+    "2023": {
+      "summary": {
+        "count": 16,
+        "profitable_ratio": 0.6875,
+        "nonloss_ratio": 0.6875,
+        "median_return": 0.13965772309956304,
+        "worst_return": -0.17083968075299982,
+        "best_return": 1.121247073347127,
+        "median_drawdown": 0.2429860177608472,
+        "worst_drawdown": 0.2839452354518086,
+        "median_trades": 208.5
+      },
+      "results": [
+        {
+          "name": "det_1_head",
+          "symbols": [
+            "002409"
+          ],
+          "total_return": -0.055900582820249456,
+          "max_drawdown": -0.14497499951852758,
+          "total_trades": 57,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_1_spread",
+          "symbols": [
+            "688008"
+          ],
+          "total_return": -0.0646170254834999,
+          "max_drawdown": -0.1471107703847676,
+          "total_trades": 18,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "688008"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_1_tail",
+          "symbols": [
+            "688361"
+          ],
+          "total_return": -0.01028014673699984,
+          "max_drawdown": -0.01359127383817239,
+          "total_trades": 6,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_3_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308"
+          ],
+          "total_return": 0.5023990625418757,
+          "max_drawdown": -0.2372156257221114,
+          "total_trades": 210,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_3_spread",
+          "symbols": [
+            "002409",
+            "603986",
+            "688361"
+          ],
+          "total_return": -0.17083968075299982,
+          "max_drawdown": -0.2380137881654919,
+          "total_trades": 111,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409",
+            "603986",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_3_tail",
+          "symbols": [
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.027058678953000292,
+          "max_drawdown": -0.051049808024411884,
+          "total_trades": 114,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "688300",
+            "688361"
+          ],
+          "unavailable_symbols": [
+            "688347"
+          ]
+        },
+        {
+          "name": "det_5_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "total_return": 1.121247073347127,
+          "max_drawdown": -0.2744143016558073,
+          "total_trades": 270,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_5_spread",
+          "symbols": [
+            "002409",
+            "300394",
+            "603986",
+            "688120",
+            "688361"
+          ],
+          "total_return": 0.048818383541126,
+          "max_drawdown": -0.2816036847893027,
+          "total_trades": 188,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409",
+            "300394",
+            "603986",
+            "688120",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_5_tail",
+          "symbols": [
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.07877560468387568,
+          "max_drawdown": -0.12419276905245727,
+          "total_trades": 207,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "688120",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "unavailable_symbols": [
+            "688347"
+          ]
+        },
+        {
+          "name": "det_8_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986"
+          ],
+          "total_return": 0.548363748635252,
+          "max_drawdown": -0.28183216337107647,
+          "total_trades": 252,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_8_spread",
+          "symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300666",
+            "688008",
+            "688082",
+            "688256",
+            "688361"
+          ],
+          "total_return": 0.4780054983613766,
+          "max_drawdown": -0.24527809414720134,
+          "total_trades": 299,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409",
+            "300308",
+            "300502",
+            "300666",
+            "688008",
+            "688082",
+            "688256",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_8_tail",
+          "symbols": [
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": -0.039734401072124226,
+          "max_drawdown": -0.2839452354518086,
+          "total_trades": 306,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "unavailable_symbols": [
+            "688347"
+          ]
+        },
+        {
+          "name": "det_12_head",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120"
+          ],
+          "total_return": 0.23343723301912567,
+          "max_drawdown": -0.28124049447867877,
+          "total_trades": 149,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_12_spread",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "total_return": 0.288357487913502,
+          "max_drawdown": -0.24069394137449304,
+          "total_trades": 351,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300502",
+            "300604",
+            "300666",
+            "688008",
+            "688072",
+            "688082",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "unavailable_symbols": []
+        },
+        {
+          "name": "det_12_tail",
+          "symbols": [
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.2005398415152504,
+          "max_drawdown": -0.25497160733350077,
+          "total_trades": 316,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "unavailable_symbols": [
+            "688347"
+          ]
+        },
+        {
+          "name": "det_16_all",
+          "symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688347",
+            "688361"
+          ],
+          "total_return": 0.3249104719857514,
+          "max_drawdown": -0.28368201113621294,
+          "total_trades": 278,
+          "deployment_policy": "frozen_trend_engine",
+          "selected_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300394",
+            "300502",
+            "300604",
+            "300666",
+            "603986",
+            "688008",
+            "688072",
+            "688082",
+            "688120",
+            "688256",
+            "688300",
+            "688361"
+          ],
+          "unavailable_symbols": [
+            "688347"
+          ]
+        }
+      ]
+    }
+  },
+  "frozen_bull": {
+    "strict_invariant": true,
+    "results": [
+      {
+        "universe": "1_symbol",
+        "symbol_count": 1,
+        "total_return": 5.308949754885,
+        "max_drawdown": -0.1834136674871038,
+        "total_trades": 24,
+        "deployment_policy": "frozen_trend_engine",
+        "golden": {
+          "total_return": 5.308949754885,
+          "max_drawdown": -0.1834136674871038,
+          "total_trades": 24
+        },
+        "strict_invariant": true
+      },
+      {
+        "universe": "3_symbols",
+        "symbol_count": 3,
+        "total_return": 10.836973326659502,
+        "max_drawdown": -0.17918987929749075,
+        "total_trades": 194,
+        "deployment_policy": "frozen_trend_engine",
+        "golden": {
+          "total_return": 10.836973326659502,
+          "max_drawdown": -0.17918987929749075,
+          "total_trades": 194
+        },
+        "strict_invariant": true
+      },
+      {
+        "universe": "5_symbols",
+        "symbol_count": 5,
+        "total_return": 11.159923755457626,
+        "max_drawdown": -0.15857336312266856,
+        "total_trades": 222,
+        "deployment_policy": "frozen_trend_engine",
+        "golden": {
+          "total_return": 11.159923755457626,
+          "max_drawdown": -0.15857336312266856,
+          "total_trades": 222
+        },
+        "strict_invariant": true
+      },
+      {
+        "universe": "13_symbols",
+        "symbol_count": 13,
+        "total_return": 10.281156695140627,
+        "max_drawdown": -0.18407181266292794,
+        "total_trades": 319,
+        "deployment_policy": "frozen_trend_engine",
+        "golden": {
+          "total_return": 10.281156695140627,
+          "max_drawdown": -0.18407181266292794,
+          "total_trades": 319
+        },
+        "strict_invariant": true
+      },
+      {
+        "universe": "22_symbols",
+        "symbol_count": 22,
+        "total_return": 9.77828439864,
+        "max_drawdown": -0.1621768950871955,
+        "total_trades": 240,
+        "deployment_policy": "frozen_trend_engine",
+        "golden": {
+          "total_return": 9.77828439864,
+          "max_drawdown": -0.1621768950871955,
+          "total_trades": 240
+        },
+        "strict_invariant": true
+      }
+    ]
+  },
+  "acceptance": {
+    "deterministic_profitable_at_least_80pct": true,
+    "deterministic_median_return_at_least_20pct": true,
+    "blind_profitable_at_least_80pct": true,
+    "blind_median_return_at_least_20pct": true,
+    "bull_strict_invariant": true
+  }
+}

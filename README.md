@@ -67,6 +67,27 @@ universe that contains them. The fixed default regime basket is appropriate for
 the bundled technology-hardware and semiconductor domain; another investment domain
 should supply its own stable benchmark basket before live use.
 
+## Causal regime-adaptive deployment
+
+`regime_adaptive.py` is an orchestration layer around the frozen production
+engine. It makes one auditable decision using only observations before the
+requested start date:
+
+- Both fixed, non-trading indices (`000300`, `000682`) must have MA20 above
+  MA60 to route into the original `BacktestEngine` unchanged.
+- Otherwise it ranks the requested pool by positive 240-session momentum,
+  selects at most three leaders, and enters once at the next tradable open.
+- Each leader is capped at 59%. A 3-ATR chandelier becomes active only after a
+  30% peak gain; after exit the symbol is not re-entered in that selection
+  period.
+- Missing, stale or insufficient evidence fails closed. If no positive leader
+  is observable, the policy holds cash.
+- Signals still obey the existing T+1, limit, board-lot, fee, slippage, ADV and
+  single-account execution contracts.
+
+This layer is for daily manual decision support, not broker automation. Its
+decision and evidence are included in backtest results and daily signal JSON.
+
 ## Repository layout
 
 - `quant_fusion.py`: complete standalone production engine and CLI.
@@ -76,6 +97,12 @@ should supply its own stable benchmark basket before live use.
   tests.
 - `test_quant_fusion_optimizer.py`: leakage, constraint, parameter-support,
   dynamic-listing, and deterministic-search tests.
+- `regime_adaptive.py`: causal regime router and low-turnover weak-market
+  strategy; it does not modify the frozen trend engine.
+- `run_regime_validation.py`: deterministic development, comparison, blind
+  holdout, prior-year and bull-golden validation protocol.
+- `test_regime_adaptive.py`: causal-boundary, stale-evidence, late-IPO,
+  real-execution and golden-regression tests.
 - `test_daily_signal_scan.py`: account loading, risk state persistence,
   signal classification, position reconstruction, schema validation
   (type, finite, range, version), pre-save NaN/Inf rejection, strict JSON
@@ -95,6 +122,10 @@ should supply its own stable benchmark basket before live use.
   separate account signal engine.
 - `market_data`:
   canonical forward-adjusted snapshots required by the regression suite.
+- `historical_data`: frozen 2022–2026 qfq research snapshot for 16 overlapping
+  AI symbols plus two non-trading indices, with manifest and SHA-256 checks.
+- `regime_validation_results.json`: per-pool machine-readable adaptive
+  validation evidence.
 - `universe_backtest.json`, `prefix_stress.json`, and
   `cambricon_universe_backtest.json`: canonical result artifacts.
 - `STRATEGY_REVIEW.md`: proposal audit, controlled experiments, and
@@ -112,6 +143,10 @@ modified.
 `688256` 寒武纪 is explicitly classified as `semiconductor`, assigned to the
 `domestic_semiconductor` risk group, and routed through the `domestic_design`
 parameter profile. The CLI also recognizes its preset stock name.
+
+The extended `historical_data` snapshot preserves the canonical `market_data`
+tail on every common date. It is used for 2022–2024 research and fixed-index
+evidence only; see `historical_data/README.md` for provenance and limitations.
 
 The engine supports two explicit data paths:
 
@@ -143,6 +178,16 @@ python quant_fusion.py \
   --indicator-state warm \
   --no-plot
 ```
+
+Run the full regime validation and rebuild the machine-readable report:
+
+```bash
+python run_regime_validation.py --workers 4
+```
+
+The final blind seed and pool generator are committed in the script. The blind
+set was first opened after the strategy constants and tests were frozen; later
+runs reproduce that fixed protocol and must not be treated as new holdouts.
 
 The CLI defaults to warm indicator state because a live strategy normally has
 pre-start history. Cold state remains available for initialization sensitivity
@@ -315,30 +360,25 @@ five requested 1-, 3-, 5-, 13-, and 22-symbol warm scenarios, not every possible
 composition. Exact scenario metadata is stored in `BACKTEST_RESULTS.md` and
 `universe_backtest.json`; the prefix audit is stored in `prefix_stress.json`.
 
-## Weak-regime limitation
+## Regime-adaptive validation
 
-For 2024-01-02 through 2025-03-31, cold results remained positive, but concentrated
-gap risk exceeded the target-period drawdowns:
-
-| Available universe | Return | Maximum drawdown |
-|---|---:|---:|
-| 1 symbol | 1.2020% | -22.1571% |
-| 3 symbols | 1.9566% | -32.2830% |
-| 5 symbols | 12.4500% | -28.2286% |
-| 12 symbols, excluding not-yet-listed `920045` | 13.6775% | -27.1750% |
-| 21 symbols, excluding not-yet-listed `920045` | 26.4999% | -28.1595% |
-
-The terminal rule is evaluated at a close and liquidation occurs at a later open.
-It is therefore a decision boundary, not a guaranteed realized-drawdown ceiling.
-These stress results are an explicit limitation, not an accepted live-risk claim.
+The frozen 2024 protocol improves the 16 deterministic pools from 43.75%
+profitable and -2.63% median return to 87.50% and +22.35%. The final 26-pool
+seed `20260805`, opened after rule freeze, is 96.15% profitable, 100% non-loss
+and +24.84% median return. Its worst drawdown is 31.68%, so the release does not
+claim a hard 20% drawdown ceiling or future mathematical optimality. Complete
+per-pool evidence and limitations are in `REGIME_ADAPTIVE_REFACTOR_REPORT.md`
+and `regime_validation_results.json`.
 
 ## Verification
 
 Run the standard-library regression suite and the complete cross-universe runner:
 
 ```bash
-python -m py_compile quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py
+python -m py_compile quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+  regime_adaptive.py run_regime_validation.py
 python -m pytest -v --tb=short
+python run_regime_validation.py --workers 4
 python backtest_universes.py
 python stress_test_prefixes.py
 python backtest_cambricon_universe.py
@@ -416,14 +456,18 @@ are inconsistent across symbols, the scan refuses to produce signals and exits
 with code 1. Override with `--allow-stale` only when you understand the risk;
 stale-data signals must not be used for live trading decisions.
 
-### Market regime state display
+### Causal deployment route
 
-When the engine detects a choppy market regime (TREND/CHOPPY/TRANSITION state
-machine), the scan displays a warning ("⚠ 市场状态: CHOPPY (震荡市)") and
-includes `safe_mode_active: true` in the JSON artifact. In choppy mode, the
-engine suppresses new buy entries and may generate partial position reduction
-signals. This is an automatic risk-reduction feature — no configuration is
-required.
+The daily scan defaults to `--deployment-mode auto`. Fixed-index regime
+evidence comes from `historical_data`; leader momentum comes from the same
+incremental qfq cache already refreshed during the tradability pre-screen. The
+JSON artifact records the route, boundary, fixed-index observations, requested
+pool, selected leaders and unavailable symbols under `deployment`.
+
+If index evidence is stale or incomplete, the outer router fails closed into
+the weak policy and may hold cash. `--deployment-mode trend` and
+`--deployment-mode weak` are diagnostic overrides, not tuning switches for
+choosing whichever historical result is better.
 
 ### Risk state persistence
 
@@ -482,6 +526,10 @@ python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR] [--capital
 
 # Override capital and start date
 python daily_signal_scan.py --capital 1500000 --start-date 2026-06-01
+
+# Diagnostic route override and alternate fixed-index snapshot
+python daily_signal_scan.py --deployment-mode weak \
+  --regime-data-dir historical_data
 
 # Reset risk state after intentionally changing configuration
 python daily_signal_scan.py --reset-risk-state

@@ -1321,7 +1321,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
 
             with patch.object(dss.qf.DataFetcher, "load_stock_data",
                               return_value=mock_df), \
-                 patch.object(dss.qf.BacktestEngine, "run",
+                 patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                               return_value=mock_result), \
                  patch.object(dss, "_save_risk_state",
                               side_effect=OSError("disk full")):
@@ -1362,7 +1362,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
 
             with patch.object(dss.qf.DataFetcher, "load_stock_data",
                               return_value=mock_df), \
-                 patch.object(dss.qf.BacktestEngine, "run",
+                 patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                               return_value=mock_result), \
                  patch.object(dss, "_save_risk_state",
                               side_effect=ValueError("拒绝保存非有限值")):
@@ -1416,7 +1416,7 @@ class ArtifactStrictJSONTests(unittest.TestCase):
         )
         with patch.object(dss.qf.DataFetcher, "load_stock_data",
                           return_value=mock_df), \
-             patch.object(dss.qf.BacktestEngine, "run",
+             patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                           return_value=mock_result):
             with patch("sys.argv", [
                 "daily_signal_scan.py",
@@ -1582,7 +1582,7 @@ class LastGoodArtifactProtectionTests(unittest.TestCase):
         )
         with patch.object(dss.qf.DataFetcher, "load_stock_data",
                           return_value=mock_df), \
-             patch.object(dss.qf.BacktestEngine, "run",
+             patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                           return_value=mock_result):
             with patch("sys.argv", [
                 "daily_signal_scan.py",
@@ -1731,7 +1731,7 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
         )
         with patch.object(dss.qf.DataFetcher, "load_stock_data",
                           return_value=mock_df), \
-             patch.object(dss.qf.BacktestEngine, "run",
+             patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                           return_value=mock_result):
             with patch("sys.argv", [
                 "daily_signal_scan.py",
@@ -1820,7 +1820,7 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
 
             with patch.object(dss.qf.DataFetcher, "load_stock_data",
                               return_value=mock_df), \
-                 patch.object(dss.qf.BacktestEngine, "run",
+                 patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                               return_value=mock_result), \
                  patch("os.replace", side_effect=fail_replace):
                 with patch("sys.argv", [
@@ -2078,7 +2078,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
         )
         with patch.object(dss.qf.DataFetcher, "load_stock_data",
                           return_value=mock_df), \
-             patch.object(dss.qf.BacktestEngine, "run",
+             patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                           return_value=mock_result):
             with patch("sys.argv", [
                 "daily_signal_scan.py",
@@ -2110,7 +2110,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
 
             with patch.object(dss.qf.DataFetcher, "load_stock_data",
                               return_value=mock_df), \
-                 patch.object(dss.qf.BacktestEngine, "run",
+                 patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                               return_value=mock_result), \
                  patch("os.replace", side_effect=fail_artifact_replace):
                 with patch("sys.argv", [
@@ -2140,7 +2140,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
 
             with patch.object(dss.qf.DataFetcher, "load_stock_data",
                               return_value=mock_df), \
-                 patch.object(dss.qf.BacktestEngine, "run",
+                 patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                               return_value=mock_result), \
                  patch.object(dss, "_save_risk_state",
                               side_effect=OSError("simulated disk full")):
@@ -2198,7 +2198,7 @@ class RunIdConsistencyTests(unittest.TestCase):
 
             with patch.object(dss.qf.DataFetcher, "load_stock_data",
                               return_value=mock_df), \
-                 patch.object(dss.qf.BacktestEngine, "run",
+                 patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                               return_value=mock_result):
                 with patch("sys.argv", [
                     "daily_signal_scan.py",
@@ -2275,7 +2275,7 @@ class RiskStateNotInjectedTests(unittest.TestCase):
             # Capture the actual call arguments
             captured_kwargs: dict = {}
 
-            original_run = dss.qf.BacktestEngine.run
+            original_run = dss.ra.RegimeAdaptiveBacktestEngine.run
 
             def capture_run(self, *args, **kwargs):
                 captured_kwargs.update(kwargs)
@@ -2283,7 +2283,7 @@ class RiskStateNotInjectedTests(unittest.TestCase):
 
             with patch.object(dss.qf.DataFetcher, "load_stock_data",
                               return_value=mock_df), \
-                 patch.object(dss.qf.BacktestEngine, "run", new=capture_run):
+                 patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run", new=capture_run):
                 with patch("sys.argv", [
                     "daily_signal_scan.py",
                     "--output-dir", tmpdir,

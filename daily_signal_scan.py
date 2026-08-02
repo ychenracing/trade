@@ -117,7 +117,7 @@ from collections import defaultdict
 from dataclasses import asdict
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import matplotlib
 matplotlib.use("Agg")
@@ -125,6 +125,7 @@ matplotlib.use("Agg")
 import pandas as pd
 
 import quant_fusion as qf
+import regime_adaptive as ra
 
 
 # ── 26-stock AI sector universe ──────────────────────────────────────────
@@ -162,6 +163,7 @@ START_DATE = "2026-07-01"
 INITIAL_CAPITAL = 2_000_000.0
 DEFAULT_CACHE_DIR = "data_cache"
 DEFAULT_OUTPUT_DIR = "daily_signals"
+DEFAULT_REGIME_DATA_DIR = str(Path(__file__).resolve().parent / "historical_data")
 
 
 def _today_str() -> str:
@@ -720,7 +722,7 @@ def _serialize_pending_signals(
     return executable, blocked
 
 
-def main() -> int:
+def _run_main() -> int:
     parser = argparse.ArgumentParser(description="Daily AI-sector signal scan")
     parser.add_argument(
         "--end-date",
@@ -759,6 +761,17 @@ def main() -> int:
         type=float,
         default=0.0,
         help=f"Initial capital (default: {INITIAL_CAPITAL:,.0f}).",
+    )
+    parser.add_argument(
+        "--deployment-mode",
+        choices=("auto", "trend", "weak"),
+        default="auto",
+        help="Causal strategy route (default: auto). trend/weak are diagnostic overrides.",
+    )
+    parser.add_argument(
+        "--regime-data-dir",
+        default=DEFAULT_REGIME_DATA_DIR,
+        help="Local fixed-index evidence directory used by the causal router.",
     )
     parser.add_argument(
         "--reset-risk-state",
@@ -854,9 +867,10 @@ def main() -> int:
     # engine has enough warmup history for indicator calculation.
     # (400 calendar days ≈ 13 months, slightly more than the 365-day
     # warmup_calendar_days used by the engine, to ensure coverage.)
-    probe_start = (
-        pd.Timestamp(start_date) - pd.Timedelta(days=400)
-    ).strftime("%Y-%m-%d")
+    probe_start_ts = cast(
+        pd.Timestamp, pd.Timestamp(start_date) - pd.Timedelta(days=400)
+    )
+    probe_start = probe_start_ts.strftime("%Y-%m-%d")
 
     print("  正在检查标的可交易性...")
     print("-" * 72)
@@ -924,7 +938,7 @@ def main() -> int:
                 code, probe_start, end_date, data_dir=None
             )
             if df is not None and not df.empty:
-                end = str(df.index[-1].date())
+                end = str(pd.Timestamp(cast(Any, df.index[-1])).date())
                 data_end_dates.setdefault(end, []).append(code)
         except Exception:
             pass
@@ -952,7 +966,7 @@ def main() -> int:
     # to prevent entering new positions without verified risk-state continuity.
     config_fingerprint = (
         f"start={start_date}|indicator=warm"
-        f"|capital={capital}|warmup=365"
+        f"|capital={capital}|warmup=365|deployment={args.deployment_mode}"
     )
     suppress_buys = False
     if prev_risk:
@@ -985,7 +999,7 @@ def main() -> int:
     # actual historical data. The saved risk_state.json is loaded for
     # display and continuity checking only — it does NOT influence the
     # current backtest.
-    engine = qf.BacktestEngine(capital)
+    engine = ra.RegimeAdaptiveBacktestEngine(capital)
     result = engine.run(
         tradable,
         start_date,
@@ -993,6 +1007,9 @@ def main() -> int:
         data_dir=None,  # online AKShare with cache
         indicator_state="warm",
         warmup_calendar_days=365,
+        deployment_mode=args.deployment_mode,
+        regime_data_dir=args.regime_data_dir,
+        leader_data_dir=args.cache_dir,
     )
 
     # ── Validate result IMMEDIATELY after engine.run() ──────────────
@@ -1165,6 +1182,7 @@ def main() -> int:
     print(f"  最大回撤:       {result['max_drawdown']:>14.2%}")
     print(f"  Sharpe:         {result['sharpe']:>14.2f}")
     print(f"  总交易次数:     {result['total_trades']:>14}")
+    print(f"  自动策略路由:   {result.get('deployment_policy', 'unknown'):>14}")
     print(
         f"  风险锁定:       "
         f"{'是' if result.get('terminal_risk_lock') else '否'}"
@@ -1210,6 +1228,7 @@ def main() -> int:
     # Check current backtest drawdown to advise on position sizing
     if result.get("max_drawdown", 0) and abs(result["max_drawdown"]) > 0.15:
         dd = abs(result["max_drawdown"])
+        advisory = ""
         if dd > 0.20:
             advisory = f"  ⚠ 当前组合最大回撤 {dd:.1%}，建议总仓位不超过50%"
         elif dd > 0.15:
@@ -1281,6 +1300,14 @@ def main() -> int:
             "sector_guard_active": bool(guard),
             "safe_mode_active": bool(result.get("safe_mode_active", False)),
             "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
+        },
+        "deployment": {
+            "mode": args.deployment_mode,
+            "policy": result.get("deployment_policy", "unknown"),
+            "decision": result.get("deployment_decision", {}),
+            "requested_symbols": result.get("requested_symbols", sorted(tradable)),
+            "selected_symbols": result.get("selected_symbols", sorted(tradable)),
+            "unavailable_symbols": result.get("unavailable_symbols", []),
         },
         "pending_signals": pending_serializable,
         "blocked_signals": blocked_serializable,
@@ -1457,6 +1484,15 @@ def main() -> int:
     if risk_state_save_error:
         return 1
     return 0
+
+
+def main() -> int:
+    """Run one scan without leaking process-global cache configuration."""
+    previous_cache_dir = qf.DataFetcher._cache_dir
+    try:
+        return _run_main()
+    finally:
+        qf.DataFetcher._cache_dir = previous_cache_dir
 
 
 if __name__ == "__main__":

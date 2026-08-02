@@ -69,6 +69,26 @@ a compact and economically coherent tradable universe, keep the fixed independen
 regime basket, and require future trading-rule changes to pass the same multi-window
 and complete-prefix comparison before release.
 
+## 2026-08 regime-adaptive release
+
+The earlier proposal audit correctly rejected in-place trend-rule changes: none
+improved weak periods without damaging at least one frozen bull universe. The
+new release therefore leaves the trend engine untouched and adds a causal outer
+router. In a non-confirmed trend it selects at most three positive 240-session
+leaders, enters once, and activates a 3-ATR chandelier only after a 30% peak
+gain. Missing evidence holds cash.
+
+Across 16 deterministic 2024 pools, profitability rises from 43.75% to 87.50%
+and median return from -2.63% to +22.35%. A separately frozen 26-pool seed is
+96.15% profitable with +24.84% median return. All five 2025-04～2026-06 bull
+return/drawdown/trade tuples remain exactly equal to the baseline. The release
+is promoted as a manual-decision aid with an explicit 31.68% blind-set tail
+drawdown limitation, not as an automated or globally optimal trading system.
+
+The complete selection protocol, per-pool results and rejected-claim boundaries
+are in `REGIME_ADAPTIVE_REFACTOR_REPORT.md` and
+`regime_validation_results.json`.
+
 ## Code quality and reliability improvements
 
 The following infrastructure and reliability improvements were made after an
