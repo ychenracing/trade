@@ -108,15 +108,14 @@ prevent cross-contamination between different universes or configurations.
   old risk state is NOT overwritten — the previous terminal lock and sector
   guard are preserved. Use `--reset-risk-state` to intentionally establish a
   new identity after a configuration change.
-- **Artifact-before-state ordering**: the JSON artifact is fully serialized
-  (with `allow_nan=False`) BEFORE risk state is saved. This ensures that if
-  serialization fails (e.g. NaN in nested structures like
-  `pending_signals`), the risk state has NOT been saved yet — preventing
-  state/artifact inconsistency. If the state save subsequently fails (e.g.
-  disk full, permission error, invalid values), the artifact includes
-  `risk_state_saved: false` and an error message. The scan exits with
-  code 1 so scripts, cron jobs, and external schedulers can detect the
-  failure and alert.
+- **Artifact-first transaction ordering**: the JSON artifact is written to
+  disk BEFORE risk state is saved. This is a true two-phase commit: if the
+  artifact write fails, no risk state has been committed — preventing
+  state/artifact inconsistency. If the risk state save subsequently fails
+  (e.g. disk full, permission error, invalid values), the artifact already
+  exists on disk with `risk_state_saved: false` and an error message. The
+  scan exits with code 1 so scripts, cron jobs, and external schedulers
+  can detect the failure and alert.
 - **Last-good artifact protection**: when a run fails (NaN/Inf in result,
   wrong-type fields, missing fields, or nested NaN during serialization),
   the error artifact is written to a SEPARATE file
@@ -128,9 +127,12 @@ prevent cross-contamination between different universes or configurations.
   for traceability.
 - **Result validation timing**: the backtest result is validated
   IMMEDIATELY after `engine.run()` returns — before any printing or
-  formatting — for finite values in `final_assets`, `total_return`,
-  `max_drawdown`, and `sharpe`. This prevents `TypeError`/`KeyError`
-  from None, string, or missing fields during f-string formatting.
+  formatting — for type, finiteness, and presence of `final_assets`,
+  `total_return`, `max_drawdown`, `sharpe`, and `total_trades`.
+  Strict type checking rejects strings (even if float-convertible like
+  `"1.23"`), `bool` (which is a subclass of `int` in Python), `None`,
+  and non-dict results. This prevents `TypeError`/`KeyError` from
+  None, string, or missing fields during f-string formatting.
 - **Strict JSON compliance**: both risk state and JSON artifact are
   serialized with `allow_nan=False` to guarantee strict JSON (ECMA-404)
   output. Non-standard tokens (`NaN`, `Infinity`, `-Infinity`) are rejected
@@ -139,12 +141,30 @@ prevent cross-contamination between different universes or configurations.
   JavaScript `JSON.parse`, Go `encoding/json`) can always parse the files.
 - **Result validation before formatting**: the backtest result is validated
   IMMEDIATELY after `engine.run()` returns — before any printing or
-  formatting — for finite values (`final_assets`, `total_return`,
-  `max_drawdown`, `sharpe`). If any field is None, wrong type, or contains
-  NaN/Inf, an error artifact is written to a SEPARATE file
-  (`signals_<date>.error.json`) and the scan exits with code 1. The last
-  successful artifact (`signals_<date>.json`) is never overwritten.
-  This catches upstream computation bugs before they reach signal consumers.
+  formatting — for type, finiteness, and presence of `final_assets`,
+  `total_return`, `max_drawdown`, `sharpe`, and `total_trades`. Strict
+  type checking rejects strings (even if float-convertible like `"1.23"`),
+  `bool` (which is a subclass of `int` in Python), `None`, and non-dict
+  results. If any field is invalid, an error artifact is written to a
+  SEPARATE file (`signals_<date>.error.json`) and the scan exits with
+  code 1. The last successful artifact (`signals_<date>.json`) is never
+  overwritten. This catches upstream computation bugs before they reach
+  signal consumers.
+- **Risk state not injected into engine**: the daily scan replays the
+  full history from `--start-date` to `--end-date` each time without
+  passing the previous run's end-state to the engine. This prevents the
+  time-direction error where a future末端 state (e.g.
+  `terminal_risk_lock=True` from July 30) would change the past
+  historical path when replaying from July 1. The saved
+  `risk_state.json` is loaded for display and continuity checking only.
+- **Risk state date validation**: the saved `scan_date` must be <= the
+  requested `end_date`. Loading a risk state from a future date (e.g.
+  August 1 state into a July 20 replay) is rejected (fail-closed, exit
+  code 1) to prevent forward contamination / look-ahead bias.
+- **Run ID consistency**: the artifact, `risk_state.json`, and
+  `latest_success.json` pointer all share the same `run_id` for
+  traceability — a single `run_id` is generated per run and passed to
+  all three artifacts.
 - **Reset-account safety**: `--account` is checked before `--reset-risk-state`
   in the CLI, so combining both flags does not silently delete the old risk
   state before the account error is reported. This is verified by real CLI
@@ -160,7 +180,23 @@ prevent cross-contamination between different universes or configurations.
   to update only on success and remain unchanged on failure.
 - **State/artifact transaction tests**: nested NaN in `pending_signals` is
   verified to prevent risk state from being saved (state/artifact
-  consistency). Artifact write failures are verified to exit with code 1.
+  consistency). Artifact write failures are verified to exit with code 1
+  and NOT save risk state (artifact-first transaction). Risk state save
+  failures are verified to leave the artifact on disk with
+  `risk_state_saved: false`.
+- **Risk state date validation tests**: loading a risk state with
+  `scan_date > end_date` is verified to be rejected (fail-closed) to
+  prevent forward contamination. Same-day and past-date states are
+  verified to be accepted.
+- **Strict result validation tests**: strings (even float-convertible like
+  `"1.23"`), `bool`, `None`, and non-dict results are verified to be
+  rejected by the result validator. `total_trades` is verified to be
+  checked for type (int, not bool/float/string) and non-negativity.
+- **Run ID consistency tests**: the artifact, `risk_state.json`, and
+  `latest_success.json` pointer are verified to all share the same
+  `run_id`.
+- **Risk state not injected tests**: `engine.run()` is verified to NOT
+  receive a `risk_state` parameter, preventing the time-direction error.
 - **Strict JSON artifact tests**: the artifact and risk state files are
   verified to never contain NaN/Infinity tokens as JSON values (using a
   strict constant-rejecting JSON parser). Error-only artifact production is

@@ -97,10 +97,29 @@ or backtest results:
   missing fields, nested NaN) write error artifacts to `.error.json` — the
   last successful `signals_<date>.json` is never overwritten. A
   `latest_success.json` pointer file is updated only on success.
-- **State/artifact transaction safety**: the JSON artifact is fully serialized
-  before risk state is saved. If serialization fails (nested NaN), state is
-  NOT saved — preventing state/artifact inconsistency.
+- **State/artifact transaction safety**: the JSON artifact is written to
+  disk BEFORE risk state is saved (artifact-first transaction ordering).
+  If the artifact write fails, no risk state has been committed —
+  preventing state/artifact inconsistency. If the risk state save
+  subsequently fails, the artifact already exists with
+  `risk_state_saved: false`.
+- **Risk state not injected into engine**: the daily scan replays the
+  full history from `--start-date` to `--end-date` each time. The
+  previous run's end-state (e.g. `terminal_risk_lock=True` from July 30)
+  is NOT injected into the engine — this prevents the time-direction
+  error where a future末端 state would change the past historical path.
+  The saved `risk_state.json` is loaded for display and continuity
+  checking only.
+- **Risk state date validation**: the saved `scan_date` must be <= the
+  requested `end_date`. Loading an August 1 risk state into a July 20
+  replay is rejected (fail-closed, exit code 1) to prevent forward
+  contamination.
+- **Run ID consistency**: the artifact, `risk_state.json`, and
+  `latest_success.json` pointer all share the same `run_id` for
+  traceability.
 - **Result validation timing**: the backtest result is validated immediately
   after `engine.run()` returns, before any printing or formatting, for
-  finite values and correct types in `final_assets`, `total_return`,
-  `max_drawdown`, and `sharpe`.
+  type, finiteness, and presence of `final_assets`, `total_return`,
+  `max_drawdown`, `sharpe`, and `total_trades`. Strict type checking
+  rejects strings (even if float-convertible like `"1.23"`), `bool`
+  (which is a subclass of `int`), `None`, and non-dict results.

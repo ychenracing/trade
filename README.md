@@ -82,7 +82,11 @@ should supply its own stable benchmark basket before live use.
   compliance (artifact and risk state), error-only artifact on invalid
   results, buy suppression with blocked-signal separation, CLI integration
   via subprocess (exit codes, `--account` rejection, `--reset-risk-state`
-  safety, corrupted state fail-closed), and symbol mapping tests.
+  safety, corrupted state fail-closed), symbol mapping tests, risk state
+  date validation (forward contamination prevention), strict result type
+  checking (rejects strings, bool, None, non-dict), artifact-first
+  transaction ordering, run_id consistency, and risk state not injected
+  into engine (time-direction error prevention).
 - `backtest_universes.py`, `stress_test_prefixes.py`, and
   `backtest_cambricon_universe.py`: reproducible portfolio checks.
 - `daily_signal_scan.py`: daily signal scan for the 26-stock AI sector universe
@@ -147,27 +151,31 @@ tests. Both states start the portfolio flat on the requested first date.
 ### Risk state continuity
 
 The `BacktestEngine.run()` method accepts an optional `risk_state` parameter
-that restores risk management state from a previous run:
+that restores risk management state from a previous run. However, the daily
+scan does **NOT** use this parameter — see below.
 
 ```python
+# The engine *can* accept risk_state, but the daily scan does NOT pass it.
 result = engine.run(
     symbols_dict, start_date, end_date,
-    risk_state={
-        "terminal_risk_lock": True,
-        "sector_guard_active": False,
-        "cycle_lock_count": 1,
-    },
+    # risk_state is intentionally omitted by the daily scan
 )
 ```
 
-When `terminal_risk_lock` is `True`, the portfolio-level risk manager starts
-locked and no new trades are entered. When `sector_guard_active` is `True`,
-the sector breadth guard is active from the first trading day. This enables
-daily signal scans to preserve risk continuity across consecutive runs.
+**Risk state is NOT injected into the engine.** The daily scan replays the
+full history from `--start-date` to `--end-date` every time. Injecting the
+previous run's end-state (e.g. `terminal_risk_lock=True` from July 30) into
+a fresh replay starting from July 1 would create a time-direction error:
+the future末端 state would change the past historical path. Instead, the
+engine independently rebuilds all risk states from the actual historical
+data. The saved `risk_state.json` is loaded for **display and continuity
+checking only** — it shows the user what the previous run detected, but
+does NOT influence the current backtest.
 
-The `daily_signal_scan.py` script automatically loads the previous run's risk
-state from `risk_state.json` and passes it to the engine, ensuring that a
-terminal lock or active sector guard persists across daily scans.
+**Risk state date validation:** the saved `scan_date` must be <= the
+requested `end_date`. This prevents forward contamination — e.g. loading an
+August 1 risk state into a July 20 replay would be direct look-ahead bias.
+Violations are rejected (fail-closed, exit code 1).
 
 Risk state includes `schema_version` for forward compatibility. Unknown
 schema versions are rejected (fail-closed) to prevent misinterpreting fields
@@ -187,26 +195,27 @@ so downstream consumers that check `direction` on `pending_signals` will
 never see blocked buys. The old risk state is preserved (not overwritten)
 until the user runs `--reset-risk-state`.
 
-The JSON artifact is fully serialized (with `allow_nan=False`) BEFORE risk
-state is saved. This ensures that if serialization fails (e.g. NaN in nested
-structures like `pending_signals`), the risk state has NOT been saved yet —
-preventing state/artifact inconsistency. If the state save subsequently
-fails (e.g. disk full, invalid values), the artifact includes
-`risk_state_saved: false` and an error message, and the scan exits with
-code 1 so scripts and schedulers can detect the failure.
+**Artifact-first transaction ordering:** the JSON artifact is written to
+disk BEFORE risk state is saved. This is a true two-phase commit: if the
+artifact write fails, no risk state has been committed — preventing
+state/artifact inconsistency. If the risk state save subsequently fails,
+the artifact already exists on disk with `risk_state_saved: false` and an
+error message, and the scan exits with code 1.
 
 Both risk state and JSON artifact are serialized with `allow_nan=False` to
 guarantee strict JSON (ECMA-404) output. The backtest result is validated
 IMMEDIATELY after `engine.run()` returns — before any printing or
-formatting — for finite values in `final_assets`, `total_return`,
-`max_drawdown`, and `sharpe`. When any of these fields are None, wrong
-type, or contain NaN/Inf, an error artifact is written to a SEPARATE file
+formatting — for type, finiteness, and presence of `final_assets`,
+`total_return`, `max_drawdown`, `sharpe`, and `total_trades`. Strict type
+checking rejects strings (even if float-convertible like `"1.23"`), `bool`
+(which is a subclass of `int` in Python), `None`, and non-dict results.
+When any field is invalid, an error artifact is written to a SEPARATE file
 (`signals_<date>.error.json`) and the scan exits with code 1. The last
 successful artifact (`signals_<date>.json`) is never overwritten by an
 error artifact. A `latest_success.json` pointer file is updated only on
 successful artifact write, providing a stable reference for downstream
-consumers to find the last good signals. Each artifact includes a unique
-`run_id` for traceability.
+consumers to find the last good signals. The artifact, `risk_state.json`,
+and `latest_success.json` all share the same `run_id` for traceability.
 
 ## Automatic parameter optimization
 
@@ -370,7 +379,14 @@ are explicitly mapped. They also verify last-good artifact protection
 successful `signals_<date>.json`), nested NaN detection (state is not
 saved when artifact serialization fails), `latest_success.json` pointer
 file updates, wrong-type/missing field error artifacts, and artifact
-write failure exit codes. The
+write failure exit codes. Additional tests verify: risk state is NOT
+injected into `engine.run()` (prevents time-direction error), risk state
+date validation (rejects `scan_date > end_date` to prevent forward
+contamination), strict result type checking (rejects strings, bool, None,
+non-dict results, and validates `total_trades`), artifact-first transaction
+ordering (artifact written before risk state, no state saved on artifact
+write failure), and run_id consistency (artifact, risk state, and
+latest_success pointer share the same run_id). The
 quant-fusion tests include end-to-end coverage of external-account sell
 execution with `strategy=None` and API contract enforcement (`account_state`
 raises `NotImplementedError`).
@@ -426,16 +442,20 @@ cross-contamination between different universes or configurations.
 
 Risk state writes are atomic (temp file + `os.replace`) to prevent corruption
 from disk full, process kill, or power loss. The JSON artifact is also
-written atomically. Both risk state and artifact are serialized with
+written atomically and is committed to disk BEFORE risk state (artifact-first
+transaction). Both risk state and artifact are serialized with
 `allow_nan=False` to guarantee strict JSON (ECMA-404) output. Corrupted
 risk state files, or files that fail schema validation (wrong field types,
 NaN/Inf, negative values, unknown schema version), cause the scan to exit
-with code 1 rather than silently discarding terminal lock state. Same-day reruns preserve the previous state so terminal
+with code 1 rather than silently discarding terminal lock state. Risk state
+date validation ensures `scan_date <= end_date` — loading a future-dated
+state is rejected (fail-closed) to prevent forward contamination. Same-day reruns preserve the previous state so terminal
 lock and sector guard continuity is maintained. Numeric values are validated
 before saving — NaN/Inf and negative `cycle_lock_count` are rejected at write
 time to prevent creating an invalid state file. If the risk state save fails
 (disk full, permission error, invalid values), the scan exits with code 1 so
-scripts and schedulers can detect the failure.
+scripts and schedulers can detect the failure. The artifact, `risk_state.json`,
+and `latest_success.json` pointer all share the same `run_id` for traceability.
 
 When the identity hash does not match (different symbol set, count, or
 configuration), buy signals are suppressed (fail-closed) to prevent entering

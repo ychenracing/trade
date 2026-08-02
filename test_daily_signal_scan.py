@@ -1833,5 +1833,469 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
             self.assertEqual(exit_code, 1)
 
 
+class RiskStateDateValidationTests(unittest.TestCase):
+    """Verify that risk state with scan_date > end_date is rejected
+    (prevents forward contamination / look-ahead bias).
+    """
+
+    def test_future_scan_date_rejected(self) -> None:
+        """Risk state from August 1 must be rejected when end_date is July 20."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state = dict(VALID_RISK_STATE)
+            state["scan_date"] = "2026-08-01"
+            state["symbols_hash"] = "a" * 16
+            state["total_symbols"] = 5
+            state_file = Path(tmpdir) / "risk_state.json"
+            state_file.write_text(
+                json.dumps(state, allow_nan=False), encoding="utf-8"
+            )
+
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-20")
+            self.assertIsNone(loaded)
+            self.assertIsNotNone(error)
+            self.assertIn("前视污染", error)
+
+    def test_same_day_scan_date_accepted(self) -> None:
+        """Risk state from same day must be accepted (same-day rerun)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state = dict(VALID_RISK_STATE)
+            state["scan_date"] = "2026-07-30"
+            state["symbols_hash"] = "a" * 16
+            state["total_symbols"] = 5
+            state_file = Path(tmpdir) / "risk_state.json"
+            state_file.write_text(
+                json.dumps(state, allow_nan=False), encoding="utf-8"
+            )
+
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-30")
+            self.assertIsNotNone(loaded)
+            self.assertIsNone(error)
+
+    def test_past_scan_date_accepted(self) -> None:
+        """Risk state from July 20 must be accepted when end_date is July 30."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state = dict(VALID_RISK_STATE)
+            state["scan_date"] = "2026-07-20"
+            state["symbols_hash"] = "a" * 16
+            state["total_symbols"] = 5
+            state_file = Path(tmpdir) / "risk_state.json"
+            state_file.write_text(
+                json.dumps(state, allow_nan=False), encoding="utf-8"
+            )
+
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-30")
+            self.assertIsNotNone(loaded)
+            self.assertIsNone(error)
+
+    def test_future_scan_date_cli_exits_1(self) -> None:
+        """CLI must exit 1 when risk state scan_date > end_date."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state = dict(VALID_RISK_STATE)
+            state["scan_date"] = "2026-08-01"
+            state["symbols_hash"] = "a" * 16
+            state["total_symbols"] = 5
+            state_file = Path(tmpdir) / "risk_state.json"
+            state_file.write_text(
+                json.dumps(state, allow_nan=False), encoding="utf-8"
+            )
+
+            with patch("sys.argv", [
+                "daily_signal_scan.py",
+                "--output-dir", tmpdir,
+                "--end-date", "2026-07-20",
+            ]):
+                exit_code = dss.main()
+
+            self.assertEqual(exit_code, 1)
+
+
+class StrictResultValidationTests(unittest.TestCase):
+    """Verify _validate_result_fields uses strict type checking —
+    strings (even float-convertible), bool, None, and non-dict results
+    are all rejected.
+    """
+
+    def test_float_convertible_string_rejected(self) -> None:
+        """String '1.23' must be rejected even though float('1.23') works."""
+        result = {
+            "final_assets": 2200000.0,
+            "total_return": "1.23",  # float-convertible string
+            "max_drawdown": -0.05,
+            "sharpe": 2.5,
+            "total_trades": 50,
+        }
+        errors = dss._validate_result_fields(result)
+        self.assertTrue(any("total_return" in e and "str" in e for e in errors),
+                        f"Expected str rejection for total_return, got: {errors}")
+
+    def test_bool_for_numeric_field_rejected(self) -> None:
+        """bool must be rejected for numeric fields."""
+        result = {
+            "final_assets": True,  # bool, not a number
+            "total_return": 0.10,
+            "max_drawdown": -0.05,
+            "sharpe": 2.5,
+            "total_trades": 50,
+        }
+        errors = dss._validate_result_fields(result)
+        self.assertTrue(any("final_assets" in e and "bool" in e for e in errors),
+                        f"Expected bool rejection for final_assets, got: {errors}")
+
+    def test_none_result_rejected(self) -> None:
+        """None result must return errors, not crash."""
+        errors = dss._validate_result_fields(None)
+        self.assertTrue(len(errors) > 0)
+        self.assertIn("dict", errors[0])
+
+    def test_list_result_rejected(self) -> None:
+        """List result must return errors, not crash."""
+        errors = dss._validate_result_fields([1, 2, 3])
+        self.assertTrue(len(errors) > 0)
+        self.assertIn("dict", errors[0])
+
+    def test_total_trades_missing_rejected(self) -> None:
+        """Missing total_trades must be flagged."""
+        result = {
+            "final_assets": 2200000.0,
+            "total_return": 0.10,
+            "max_drawdown": -0.05,
+            "sharpe": 2.5,
+            # total_trades missing
+        }
+        errors = dss._validate_result_fields(result)
+        self.assertTrue(any("total_trades" in e for e in errors),
+                        f"Expected total_trades missing error, got: {errors}")
+
+    def test_total_trades_string_rejected(self) -> None:
+        """String total_trades must be rejected."""
+        result = {
+            "final_assets": 2200000.0,
+            "total_return": 0.10,
+            "max_drawdown": -0.05,
+            "sharpe": 2.5,
+            "total_trades": "50",
+        }
+        errors = dss._validate_result_fields(result)
+        self.assertTrue(any("total_trades" in e and "str" in e for e in errors),
+                        f"Expected str rejection for total_trades, got: {errors}")
+
+    def test_total_trades_bool_rejected(self) -> None:
+        """bool total_trades must be rejected."""
+        result = {
+            "final_assets": 2200000.0,
+            "total_return": 0.10,
+            "max_drawdown": -0.05,
+            "sharpe": 2.5,
+            "total_trades": True,
+        }
+        errors = dss._validate_result_fields(result)
+        self.assertTrue(any("total_trades" in e and "bool" in e for e in errors),
+                        f"Expected bool rejection for total_trades, got: {errors}")
+
+    def test_total_trades_negative_rejected(self) -> None:
+        """Negative total_trades must be rejected."""
+        result = {
+            "final_assets": 2200000.0,
+            "total_return": 0.10,
+            "max_drawdown": -0.05,
+            "sharpe": 2.5,
+            "total_trades": -5,
+        }
+        errors = dss._validate_result_fields(result)
+        self.assertTrue(any("total_trades" in e and "negative" in e for e in errors),
+                        f"Expected negative rejection for total_trades, got: {errors}")
+
+    def test_total_trades_float_rejected(self) -> None:
+        """Float total_trades must be rejected (must be int)."""
+        result = {
+            "final_assets": 2200000.0,
+            "total_return": 0.10,
+            "max_drawdown": -0.05,
+            "sharpe": 2.5,
+            "total_trades": 50.0,
+        }
+        errors = dss._validate_result_fields(result)
+        self.assertTrue(any("total_trades" in e for e in errors),
+                        f"Expected float rejection for total_trades, got: {errors}")
+
+    def test_valid_result_no_errors(self) -> None:
+        """A fully valid result must produce no errors."""
+        result = {
+            "final_assets": 2200000.0,
+            "total_return": 0.10,
+            "max_drawdown": -0.05,
+            "sharpe": 2.5,
+            "total_trades": 50,
+        }
+        errors = dss._validate_result_fields(result)
+        self.assertEqual(errors, [])
+
+    def test_int_accepted_for_float_fields(self) -> None:
+        """int must be accepted where float is expected."""
+        result = {
+            "final_assets": 2200000,  # int, not float
+            "total_return": 0,  # int
+            "max_drawdown": -5,  # int
+            "sharpe": 2,  # int
+            "total_trades": 50,
+        }
+        errors = dss._validate_result_fields(result)
+        self.assertEqual(errors, [])
+
+
+class ArtifactFirstTransactionTests(unittest.TestCase):
+    """Verify artifact-first transaction ordering: artifact is written
+    BEFORE risk state is saved. If artifact write fails, no risk state
+    is committed.
+    """
+
+    def _make_mock_result(self, **overrides) -> dict:
+        base = {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+            "cycle_lock_count": 0,
+            "max_drawdown": -0.05,
+            "total_return": 0.10,
+            "final_assets": 2200000.0,
+            "sharpe": 2.5,
+            "total_trades": 50,
+            "risk_events": [],
+            "pending_signals": [],
+            "trades": [],
+            "safe_mode_active": False,
+        }
+        base.update(overrides)
+        return base
+
+    def _run_main_with_mock(self, tmpdir: str, mock_result: dict,
+                            end_date: str = "2026-07-30") -> int:
+        """Run main() with mocked data and return exit code."""
+        import pandas as pd
+        mock_df = pd.DataFrame(
+            {"open": [10.0], "high": [11.0], "low": [9.0],
+             "close": [10.5], "volume": [1000000]},
+            index=pd.DatetimeIndex([end_date], name="date"),
+        )
+        with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                          return_value=mock_df), \
+             patch.object(dss.qf.BacktestEngine, "run",
+                          return_value=mock_result):
+            with patch("sys.argv", [
+                "daily_signal_scan.py",
+                "--output-dir", tmpdir,
+                "--end-date", end_date,
+            ]):
+                return dss.main()
+
+    def test_artifact_write_failure_no_risk_state(self) -> None:
+        """When artifact write fails, risk state must NOT be saved."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result()
+
+            import pandas as pd
+            mock_df = pd.DataFrame(
+                {"open": [10.0], "high": [11.0], "low": [9.0],
+                 "close": [10.5], "volume": [1000000]},
+                index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+            )
+
+            original_replace = os.replace
+
+            def fail_artifact_replace(src, dst):
+                dst_str = str(dst)
+                # Fail only on the main artifact write (not error, pointer, or risk_state)
+                if "signals_2026-07-30.json" in dst_str and ".error" not in dst_str:
+                    raise OSError("simulated disk full")
+                return original_replace(src, dst)
+
+            with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                              return_value=mock_df), \
+                 patch.object(dss.qf.BacktestEngine, "run",
+                              return_value=mock_result), \
+                 patch("os.replace", side_effect=fail_artifact_replace):
+                with patch("sys.argv", [
+                    "daily_signal_scan.py",
+                    "--output-dir", tmpdir,
+                    "--end-date", "2026-07-30",
+                ]):
+                    exit_code = dss.main()
+
+            self.assertEqual(exit_code, 1)
+            # Risk state must NOT exist
+            state_file = Path(tmpdir) / "risk_state.json"
+            self.assertFalse(state_file.exists(),
+                             "Risk state must not be saved when artifact write fails")
+
+    def test_risk_state_save_failure_artifact_exists(self) -> None:
+        """When risk state save fails, artifact must exist with risk_state_saved=false."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result()
+
+            import pandas as pd
+            mock_df = pd.DataFrame(
+                {"open": [10.0], "high": [11.0], "low": [9.0],
+                 "close": [10.5], "volume": [1000000]},
+                index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+            )
+
+            with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                              return_value=mock_df), \
+                 patch.object(dss.qf.BacktestEngine, "run",
+                              return_value=mock_result), \
+                 patch.object(dss, "_save_risk_state",
+                              side_effect=OSError("simulated disk full")):
+                with patch("sys.argv", [
+                    "daily_signal_scan.py",
+                    "--output-dir", tmpdir,
+                    "--end-date", "2026-07-30",
+                ]):
+                    exit_code = dss.main()
+
+            self.assertEqual(exit_code, 1)
+            # Artifact must exist with risk_state_saved=false
+            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
+            self.assertTrue(artifact_file.exists(),
+                            "Artifact must exist even when risk state save fails")
+            artifact = json.loads(artifact_file.read_text(encoding="utf-8"))
+            self.assertFalse(artifact["risk_state_saved"])
+            # Risk state must NOT exist
+            state_file = Path(tmpdir) / "risk_state.json"
+            self.assertFalse(state_file.exists())
+
+
+class RunIdConsistencyTests(unittest.TestCase):
+    """Verify that artifact, risk state, and latest_success.json
+    all share the same run_id.
+    """
+
+    def _make_mock_result(self) -> dict:
+        return {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+            "cycle_lock_count": 0,
+            "max_drawdown": -0.05,
+            "total_return": 0.10,
+            "final_assets": 2200000.0,
+            "sharpe": 2.5,
+            "total_trades": 50,
+            "risk_events": [],
+            "pending_signals": [],
+            "trades": [],
+            "safe_mode_active": False,
+        }
+
+    def test_all_artifacts_share_same_run_id(self) -> None:
+        """Artifact, risk_state.json, and latest_success.json must share run_id."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result()
+
+            import pandas as pd
+            mock_df = pd.DataFrame(
+                {"open": [10.0], "high": [11.0], "low": [9.0],
+                 "close": [10.5], "volume": [1000000]},
+                index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+            )
+
+            with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                              return_value=mock_df), \
+                 patch.object(dss.qf.BacktestEngine, "run",
+                              return_value=mock_result):
+                with patch("sys.argv", [
+                    "daily_signal_scan.py",
+                    "--output-dir", tmpdir,
+                    "--end-date", "2026-07-30",
+                ]):
+                    exit_code = dss.main()
+
+            self.assertEqual(exit_code, 0)
+
+            # Read all three files and compare run_id
+            artifact = json.loads(
+                (Path(tmpdir) / "signals_2026-07-30.json").read_text("utf-8")
+            )
+            risk_state = json.loads(
+                (Path(tmpdir) / "risk_state.json").read_text("utf-8")
+            )
+            pointer = json.loads(
+                (Path(tmpdir) / "latest_success.json").read_text("utf-8")
+            )
+
+            artifact_run_id = artifact["run_id"]
+            state_run_id = risk_state.get("run_id", "")
+            pointer_run_id = pointer["run_id"]
+
+            self.assertTrue(artifact_run_id,
+                            "Artifact must have a non-empty run_id")
+            self.assertEqual(artifact_run_id, state_run_id,
+                             "Artifact and risk_state run_id must match")
+            self.assertEqual(artifact_run_id, pointer_run_id,
+                             "Artifact and latest_success run_id must match")
+
+
+class RiskStateNotInjectedTests(unittest.TestCase):
+    """Verify that risk_state is NOT passed to engine.run() — preventing
+    the time-direction error where future end-state changes past history.
+    """
+
+    def test_engine_run_not_called_with_risk_state(self) -> None:
+        """engine.run() must NOT receive a risk_state parameter."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a valid risk state file so prev_risk is loaded
+            state = dict(VALID_RISK_STATE)
+            state["scan_date"] = "2026-07-29"
+            state["symbols_hash"] = "a" * 16
+            state["total_symbols"] = 1
+            state_file = Path(tmpdir) / "risk_state.json"
+            state_file.write_text(
+                json.dumps(state, allow_nan=False), encoding="utf-8"
+            )
+
+            mock_result = {
+                "terminal_risk_lock": False,
+                "sector_guard_active": False,
+                "cycle_lock_count": 0,
+                "max_drawdown": -0.05,
+                "total_return": 0.10,
+                "final_assets": 2200000.0,
+                "sharpe": 2.5,
+                "total_trades": 50,
+                "risk_events": [],
+                "pending_signals": [],
+                "trades": [],
+                "safe_mode_active": False,
+            }
+
+            import pandas as pd
+            mock_df = pd.DataFrame(
+                {"open": [10.0], "high": [11.0], "low": [9.0],
+                 "close": [10.5], "volume": [1000000]},
+                index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+            )
+
+            # Capture the actual call arguments
+            captured_kwargs: dict = {}
+
+            original_run = dss.qf.BacktestEngine.run
+
+            def capture_run(self, *args, **kwargs):
+                captured_kwargs.update(kwargs)
+                return mock_result
+
+            with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                              return_value=mock_df), \
+                 patch.object(dss.qf.BacktestEngine, "run", new=capture_run):
+                with patch("sys.argv", [
+                    "daily_signal_scan.py",
+                    "--output-dir", tmpdir,
+                    "--end-date", "2026-07-30",
+                ]):
+                    exit_code = dss.main()
+
+            self.assertEqual(exit_code, 0)
+            # risk_state must NOT be in the kwargs passed to engine.run()
+            self.assertNotIn("risk_state", captured_kwargs,
+                             "risk_state must NOT be passed to engine.run()")
+
+
 if __name__ == "__main__":
     unittest.main()

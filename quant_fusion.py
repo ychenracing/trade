@@ -3079,7 +3079,9 @@ class _CoreBacktestEngine:
             config_route,
             data_dir,
         )
-        # Apply initial risk state for continuity across daily scans
+        # Apply initial risk state when explicitly provided by the caller.
+        # Note: daily_signal_scan.py does NOT use this feature — it replays
+        # the full history each time to avoid time-direction errors.
         initial_risk = self.cfg.get("_initial_risk_state")
         if initial_risk and initial_risk.get("sector_guard_active", False):
             self.sector_guard_active = True
@@ -6739,7 +6741,9 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         portfolio_risk = RecoverableDrawdownRiskManager(
             {"max_drawdown": effective_policy.confirmed_drawdown}, effective_policy
         )
-        # Restore previous risk state for continuity across daily scans
+        # Restore previous risk state when explicitly provided by the caller.
+        # Note: daily_signal_scan.py does NOT use this feature — it replays
+        # the full history each time to avoid time-direction errors.
         if request.risk_state:
             if request.risk_state.get("terminal_risk_lock", False):
                 portfolio_risk.terminal_lock = True
