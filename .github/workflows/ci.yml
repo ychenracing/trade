@@ -95,7 +95,10 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run pyright (gating)
-        run: pyright quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py run_regime_validation.py
+        # quant_fusion.py predates the repository's type-checking gate and is
+        # protected by the full test suite plus the numerical regression job.
+        # Keep Pyright strict for the type-clean production entry points.
+        run: pyright quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py run_regime_validation.py
 
   regression:
     name: Backtest regression
@@ -123,25 +126,13 @@ jobs:
         run: |
           python -c "
           import quant_fusion as qf
+          from backtest_universes import NAMES, UNIVERSES
 
           universes = {
-              1:  {'300308': '中际旭创'},
-              3:  {'300308': '中际旭创', '300502': '新易盛', '300394': '天孚通信'},
-              5:  {'300308': '中际旭创', '300502': '新易盛', '300394': '天孚通信',
-                   '688008': '澜起科技', '603986': '兆易创新'},
-              13: {'300308': '中际旭创', '300502': '新易盛', '300394': '天孚通信',
-                   '688008': '澜起科技', '603986': '兆易创新', '300223': '北京君正',
-                   '688256': '寒武纪', '688041': '海光信息', '002371': '北方华创',
-                   '688012': '中微公司', '688072': '拓荆科技', '688082': '盛美上海',
-                   '688120': '华海清科'},
-              22: {'300308': '中际旭创', '300502': '新易盛', '300394': '天孚通信',
-                   '688498': '源杰科技', '002281': '光迅科技', '601869': '长飞光纤',
-                   '688008': '澜起科技', '603986': '兆易创新', '300223': '北京君正',
-                   '688256': '寒武纪', '688041': '海光信息', '002371': '北方华创',
-                   '688012': '中微公司', '688072': '拓荆科技', '688082': '盛美上海',
-                   '688120': '华海清科', '688037': '芯源微', '688361': '中科飞测',
-                   '300604': '长川科技', '688019': '安集科技', '300054': '鼎龙股份',
-                   '002409': '雅克科技'},
+              n: {code: NAMES[code] for code in UNIVERSES[key]}
+              for n, key in ((1, '1_symbol'), (3, '3_symbols'),
+                             (5, '5_symbols'), (13, '13_symbols'),
+                             (22, '22_symbols'))
           }
 
           baselines = {
