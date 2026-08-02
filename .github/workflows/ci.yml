@@ -64,10 +64,10 @@ jobs:
           pip install ruff bandit pip-audit
 
       - name: Run ruff check (gating)
-        run: ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py
+        run: ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py run_regime_validation.py
 
       - name: Run bandit security scan (gating)
-        run: bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py -ll
+        run: bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py run_regime_validation.py -ll
 
       - name: Run pip-audit on project dependencies (gating)
         run: pip-audit --strict
@@ -95,7 +95,7 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run pyright (gating)
-        run: pyright quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py
+        run: pyright quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py run_regime_validation.py
 
   regression:
     name: Backtest regression
