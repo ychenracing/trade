@@ -44,16 +44,24 @@ Risk state includes ``schema_version`` and type-validated fields
 ``sector_guard_active``, ``cycle_lock_count``, ``max_drawdown``,
 ``total_return``, ``final_assets``). Unknown schema versions are rejected
 (fail-closed) to enforce forward compatibility. Numeric fields are validated
-for finiteness (no NaN/Inf) and non-negativity where applicable. Files that
-fail schema validation are treated as corrupt (exit code 1). Values are also
-validated before saving — NaN/Inf and negative ``cycle_lock_count`` are
-rejected at write time to prevent creating an invalid state file.
+for finiteness (no NaN/Inf) and non-negativity where applicable.
+``scan_date`` is validated as a valid ``YYYY-MM-DD`` date,
+``total_return`` must be >= -1.0, and ``symbols_hash`` (if present) must be
+a 16-char hex string. Files that fail schema validation are treated as
+corrupt (exit code 1). Values are also validated before saving — NaN/Inf and
+negative ``cycle_lock_count`` are rejected at write time to prevent creating
+an invalid state file.
+
+Both risk state and JSON artifact are serialized with ``allow_nan=False`` to
+guarantee strict JSON (ECMA-404) output. When the backtest result contains
+NaN/Inf, an error-only artifact (``status: "error"``) is produced instead of
+publishing signals with corrupt metrics, and the scan exits with code 1.
 
 Risk state is saved BEFORE the JSON artifact. If the state save fails (e.g.
 disk full, invalid values), the artifact includes ``risk_state_saved: false``
 and an error message so the user knows the state was not persisted. The scan
-exits with code 1 when the state save fails, so scripts and schedulers can
-detect the failure.
+exits with code 1 when the state save fails or the artifact write fails, so
+scripts and schedulers can detect the failure.
 
 Stale data fail-closed: if any symbol's cached data is stale (network fetch
 failed) or data end dates are inconsistent across symbols, the scan refuses to
@@ -77,7 +85,7 @@ import os
 import tempfile
 from collections import defaultdict
 from dataclasses import asdict
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -229,6 +237,10 @@ def _validate_risk_state(data: Any) -> str | None:
     5. Numeric fields (``max_drawdown``, ``total_return``, ``final_assets``)
        are finite (no NaN/Inf).
     6. ``cycle_lock_count`` and ``final_assets`` are non-negative.
+    7. ``total_return`` >= -1.0 (cannot lose more than 100%).
+    8. ``scan_date`` is a valid ``YYYY-MM-DD`` date.
+    9. ``symbols_hash`` (if present) is a 16-char hex string.
+    10. ``total_symbols`` (if present) is a non-negative int.
 
     Unknown ``schema_version`` values are rejected to enforce forward
     compatibility — a future version with changed field semantics must not
@@ -295,6 +307,43 @@ def _validate_risk_state(data: Any) -> str | None:
         return "risk_state.json 字段 'cycle_lock_count' 不能为负数"
     if data.get("final_assets", 0) < 0:
         return "risk_state.json 字段 'final_assets' 不能为负数"
+
+    # Semantic range validation
+    total_ret = data.get("total_return")
+    if isinstance(total_ret, (int, float)) and total_ret < -1.0:
+        return f"risk_state.json 字段 'total_return' 不能小于 -1 ({total_ret})"
+
+    # Validate scan_date is a valid YYYY-MM-DD date
+    scan_date = data.get("scan_date")
+    if isinstance(scan_date, str):
+        try:
+            datetime.strptime(scan_date, "%Y-%m-%d")
+        except ValueError:
+            return (
+                f"risk_state.json 字段 'scan_date' 不是有效的 YYYY-MM-DD 日期: "
+                f"{scan_date!r}"
+            )
+
+    # Validate symbols_hash format if present (16-char hex)
+    symbols_hash = data.get("symbols_hash")
+    if symbols_hash is not None:
+        if not isinstance(symbols_hash, str) or len(symbols_hash) != 16:
+            return (
+                f"risk_state.json 字段 'symbols_hash' 应为 16 字符十六进制，"
+                f"实际为 {type(symbols_hash).__name__} 长度 {len(symbols_hash) if isinstance(symbols_hash, str) else 'N/A'}"
+            )
+        try:
+            int(symbols_hash, 16)
+        except ValueError:
+            return f"risk_state.json 字段 'symbols_hash' 不是有效的十六进制: {symbols_hash!r}"
+
+    # Validate total_symbols if present
+    total_symbols = data.get("total_symbols")
+    if total_symbols is not None:
+        if isinstance(total_symbols, bool) or not isinstance(total_symbols, int):
+            return f"risk_state.json 字段 'total_symbols' 应为 int，实际为 {type(total_symbols).__name__}"
+        if total_symbols < 0:
+            return f"risk_state.json 字段 'total_symbols' 不能为负数 ({total_symbols})"
 
     return None
 
@@ -394,7 +443,7 @@ def _save_risk_state(
     # Atomic write: write to a temp file in the same directory, then
     # os.replace() to the final path. This prevents partial writes from
     # corrupting the risk state file on disk full, process kill, or power loss.
-    content = json.dumps(state, ensure_ascii=False, indent=2) + "\n"
+    content = json.dumps(state, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
     fd, tmp_path = tempfile.mkstemp(
         dir=str(state_file.parent), prefix=".risk_state_", suffix=".tmp"
     )
@@ -966,13 +1015,32 @@ def main() -> int:
             )
         print()
 
+    # ── Validate backtest result before constructing artifact ──────
+    # The pre-save validation in _save_risk_state only protects risk_state.
+    # The artifact must also be protected: if the result contains NaN/Inf,
+    # json.dumps without allow_nan=False would write non-standard JSON
+    # tokens (NaN, Infinity) that strict consumers reject. We validate
+    # here and, if invalid, produce an error-only artifact instead of
+    # publishing signals with corrupt metrics.
+    result_invalid_fields: list[str] = []
+    for field in ("final_assets", "total_return", "max_drawdown", "sharpe"):
+        val = result.get(field)
+        if val is not None:
+            try:
+                fval = float(val)
+                if not math.isfinite(fval):
+                    result_invalid_fields.append(f"{field}={fval}")
+            except (TypeError, ValueError):
+                result_invalid_fields.append(f"{field}={val!r}")
+    result_is_valid = len(result_invalid_fields) == 0
+
     # ── Save risk state BEFORE artifact ──────────────────────────────
     # Save risk state first so that if the save fails, the artifact can
     # record the failure. This prevents the user from using an artifact
     # that implies state was saved when it wasn't.
     risk_state_saved = False
     risk_state_save_error = ""
-    if not suppress_buys:
+    if not suppress_buys and result_is_valid:
         config_fingerprint = f"start={start_date}|indicator=warm"
         try:
             _save_risk_state(
@@ -980,63 +1048,97 @@ def main() -> int:
                 config_hash=config_fingerprint,
             )
             risk_state_saved = True
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, TypeError) as exc:
             risk_state_save_error = str(exc)
             # Error is printed later with full context (exit code, advisory)
+    elif not result_is_valid:
+        risk_state_save_error = (
+            "回测结果包含非有限值 — 跳过风险状态保存: "
+            + ", ".join(result_invalid_fields)
+        )
 
     # ── Save JSON artifact ───────────────────────────────────────────
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"signals_{end_date}.json"
 
-    # Serialize pending signals — blocked buys are separated into a
-    # dedicated ``blocked_signals`` list so ``pending_signals`` only
-    # contains executable signals. This is the true fail-closed approach:
-    # downstream consumers that only check ``direction`` on
-    # ``pending_signals`` will never see blocked buys.
-    pending_serializable, blocked_serializable = _serialize_pending_signals(
-        pending, suppress_buys
-    )
+    if not result_is_valid:
+        # Error-only artifact: do not publish signals with corrupt metrics.
+        # The artifact records the failure so downstream consumers can
+        # detect it without parsing NaN/Infinity tokens.
+        artifact: dict[str, Any] = {
+            "scan_date": end_date,
+            "mode": "simulation",
+            "status": "error",
+            "error": "回测结果包含非有限值 (NaN/Inf) — 信号不可用",
+            "invalid_fields": result_invalid_fields,
+            "risk_state_saved": risk_state_saved,
+        }
+        if risk_state_save_error:
+            artifact["risk_state_save_error"] = risk_state_save_error
+    else:
+        # Serialize pending signals — blocked buys are separated into a
+        # dedicated ``blocked_signals`` list so ``pending_signals`` only
+        # contains executable signals. This is the true fail-closed
+        # approach: downstream consumers that only check ``direction`` on
+        # ``pending_signals`` will never see blocked buys.
+        pending_serializable, blocked_serializable = _serialize_pending_signals(
+            pending, suppress_buys
+        )
 
-    artifact = {
-        "scan_date": end_date,
-        "mode": "simulation",
-        "symbols": SYMBOLS,
-        "start_date": start_date,
-        "initial_capital": capital,
-        "signals": rows,
-        "summary": {
-            "buy": buy_count,
-            "sell": sell_count,
-            "hold": hold_count,
-            "wait": wait_count,
-            "untradeable": untradeable_count,
-            "suppressed_buys": suppressed_buy_count,
-            "buys_suppressed": suppress_buys,
-        },
-        "portfolio": {
-            "final_assets": float(result["final_assets"]),
-            "total_return": float(result["total_return"]),
-            "max_drawdown": float(result["max_drawdown"]),
-            "sharpe": float(result["sharpe"]),
-            "total_trades": int(result["total_trades"]),
-            "sector_guard_active": bool(guard),
-            "safe_mode_active": bool(result.get("safe_mode_active", False)),
-            "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
-        },
-        # Only executable signals — blocked buys are in blocked_signals
-        "pending_signals": pending_serializable,
-        # Blocked buy signals (empty unless suppress_buys is active)
-        "blocked_signals": blocked_serializable,
-        # Risk state save status for operational visibility
-        "risk_state_saved": risk_state_saved,
-    }
-    if risk_state_save_error:
-        artifact["risk_state_save_error"] = risk_state_save_error
-    if prev_risk:
-        artifact["previous_risk_state"] = prev_risk
-    # Atomic write for the artifact (same pattern as risk state)
-    artifact_content = json.dumps(artifact, ensure_ascii=False, indent=2, default=str) + "\n"
+        artifact = {
+            "scan_date": end_date,
+            "mode": "simulation",
+            "status": "ok",
+            "symbols": SYMBOLS,
+            "start_date": start_date,
+            "initial_capital": capital,
+            "signals": rows,
+            "summary": {
+                "buy": buy_count,
+                "sell": sell_count,
+                "hold": hold_count,
+                "wait": wait_count,
+                "untradeable": untradeable_count,
+                "suppressed_buys": suppressed_buy_count,
+                "buys_suppressed": suppress_buys,
+            },
+            "portfolio": {
+                "final_assets": float(result["final_assets"]),
+                "total_return": float(result["total_return"]),
+                "max_drawdown": float(result["max_drawdown"]),
+                "sharpe": float(result["sharpe"]),
+                "total_trades": int(result["total_trades"]),
+                "sector_guard_active": bool(guard),
+                "safe_mode_active": bool(result.get("safe_mode_active", False)),
+                "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
+            },
+            # Only executable signals — blocked buys are in blocked_signals
+            "pending_signals": pending_serializable,
+            # Blocked buy signals (empty unless suppress_buys is active)
+            "blocked_signals": blocked_serializable,
+            # Risk state save status for operational visibility
+            "risk_state_saved": risk_state_saved,
+        }
+        if risk_state_save_error:
+            artifact["risk_state_save_error"] = risk_state_save_error
+        if prev_risk:
+            artifact["previous_risk_state"] = prev_risk
+
+    # Atomic write for the artifact (same pattern as risk state).
+    # allow_nan=False ensures the output is strict JSON (ECMA-404) —
+    # NaN/Infinity tokens are rejected at serialization time, not silently
+    # written as non-standard literals.
+    try:
+        artifact_content = json.dumps(
+            artifact, ensure_ascii=False, indent=2, default=str,
+            allow_nan=False,
+        ) + "\n"
+    except ValueError as exc:
+        # This should not happen after the result_is_valid check, but
+        # if it does (e.g. NaN in nested structures), fail explicitly.
+        print(f"  ✗ 信号文件序列化失败 (非有限值): {exc}")
+        return 1
     artifact_fd, artifact_tmp = tempfile.mkstemp(
         dir=str(output_dir), prefix=".signals_", suffix=".tmp"
     )
@@ -1046,15 +1148,21 @@ def main() -> int:
             f.flush()
             os.fsync(f.fileno())
         os.replace(artifact_tmp, str(output_file))
-    except OSError:
+    except OSError as exc:
         try:
             os.unlink(artifact_tmp)
         except OSError:
             pass
-        raise
+        print(f"  ✗ 信号文件保存失败: {exc}")
+        print("  信号文件未保存属于运行失败 — 请检查磁盘空间和权限后重试。")
+        return 1
 
     # Print final save status
-    if risk_state_saved:
+    if not result_is_valid:
+        print(f"  ✗ 错误信号文件已保存: {output_file}")
+        print(f"  ✗ 回测结果包含非有限值: {', '.join(result_invalid_fields)}")
+        print("  信号不可用 — 请检查数据完整性后重试。")
+    elif risk_state_saved:
         print(f"  结果已保存: {output_file}")
         print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")
     elif suppress_buys:
@@ -1068,11 +1176,11 @@ def main() -> int:
             print("  跨日终态锁未保存属于运行失败 — 请检查磁盘空间和权限后重试。")
     print()
 
-    # Risk state save failure is a runtime error — the terminal lock and
-    # sector guard will not persist to the next daily scan, breaking risk
-    # continuity. Return 1 so scripts, cron jobs, and external schedulers
-    # can detect the failure and alert.
-    if risk_state_save_error:
+    # Risk state save failure or invalid result is a runtime error.
+    # The terminal lock and sector guard will not persist to the next
+    # daily scan, breaking risk continuity. Return 1 so scripts, cron
+    # jobs, and external schedulers can detect the failure and alert.
+    if risk_state_save_error or not result_is_valid:
         return 1
     return 0
 

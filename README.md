@@ -78,9 +78,10 @@ should supply its own stable benchmark basket before live use.
   dynamic-listing, and deterministic-search tests.
 - `test_daily_signal_scan.py`: account loading, risk state persistence,
   signal classification, position reconstruction, schema validation
-  (type, finite, range, version), pre-save NaN/Inf rejection, buy
-  suppression with blocked-signal separation, CLI integration via
-  subprocess (exit codes, `--account` rejection, `--reset-risk-state`
+  (type, finite, range, version), pre-save NaN/Inf rejection, strict JSON
+  compliance (artifact and risk state), error-only artifact on invalid
+  results, buy suppression with blocked-signal separation, CLI integration
+  via subprocess (exit codes, `--account` rejection, `--reset-risk-state`
   safety, corrupted state fail-closed), and symbol mapping tests.
 - `backtest_universes.py`, `stress_test_prefixes.py`, and
   `backtest_cambricon_universe.py`: reproducible portfolio checks.
@@ -189,6 +190,13 @@ Risk state is saved before the JSON artifact. If the state save fails (e.g.
 disk full, invalid values), the artifact includes `risk_state_saved: false`
 and an error message, and the scan exits with code 1 so scripts and
 schedulers can detect the failure.
+
+Both risk state and JSON artifact are serialized with `allow_nan=False` to
+guarantee strict JSON (ECMA-404) output. When the backtest result contains
+NaN/Inf values, an error-only artifact (`status: "error"`) is produced
+instead of publishing signals with corrupt metrics, and the scan exits with
+code 1. This prevents non-standard JSON tokens (`NaN`, `Infinity`) from
+reaching downstream consumers.
 
 ## Automatic parameter optimization
 
@@ -310,18 +318,20 @@ These stress results are an explicit limitation, not an accepted live-risk claim
 Run the standard-library regression suite and the complete cross-universe runner:
 
 ```bash
-python -m py_compile quant_fusion.py quant_fusion_optimizer.py
-python -m unittest -v test_quant_fusion.py test_quant_fusion_optimizer.py test_daily_signal_scan.py
+python -m py_compile quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py
+python -m pytest -v --tb=short
 python backtest_universes.py
 python stress_test_prefixes.py
 python backtest_cambricon_universe.py
 ```
 
 A GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs the full test
-suite (including optimizer tests) on Python 3.11 and 3.12, plus ruff linting,
-bandit security scanning, pip-audit dependency vulnerability scanning, and
-pyright type checking. All checks are gating — a lint, security, type, or
-test failure blocks the pipeline.
+suite (auto-discovered via pytest, including optimizer tests) on Python 3.11
+and 3.12, plus ruff linting, bandit security scanning, pip-audit dependency
+vulnerability scanning, pyright type checking, and a dedicated backtest
+regression job that verifies the 5-symbol warm metrics (return, drawdown,
+trade count) against frozen baselines. All checks are gating — a lint,
+security, type, test, or regression failure blocks the pipeline.
 
 The tests cover standalone isolated startup, absence of external imports,
 AKShare provider failover, strict local CSV selection, policy validation,
@@ -339,9 +349,12 @@ risk state persistence round-trips, corrupted state fail-closed behavior,
 same-day rerun preservation, signal classification, position
 reconstruction from trade ledgers, schema validation (type, finite, range,
 and version checks), pre-save NaN/Inf rejection, buy suppression with
-blocked-signal separation, CLI integration via subprocess (exit codes,
-`--account` rejection, `--reset-risk-state` safety, corrupted state
-fail-closed), and that all 26 universe symbols are explicitly mapped. The
+blocked-signal separation, strict JSON compliance (artifact and risk state
+must never contain NaN/Infinity tokens as JSON values), error-only
+artifact production when results contain NaN/Inf, CLI integration via
+subprocess (exit codes, `--account` rejection, `--reset-risk-state`
+safety, corrupted state fail-closed), and that all 26 universe symbols
+are explicitly mapped. The
 quant-fusion tests include end-to-end coverage of external-account sell
 execution with `strategy=None` and API contract enforcement (`account_state`
 raises `NotImplementedError`).
@@ -387,10 +400,11 @@ cross-contamination between different universes or configurations.
 
 Risk state writes are atomic (temp file + `os.replace`) to prevent corruption
 from disk full, process kill, or power loss. The JSON artifact is also
-written atomically. Corrupted risk state files, or files that fail schema
-validation (wrong field types, NaN/Inf, negative values, unknown schema
-version), cause the scan to exit with code 1 rather than silently discarding
-terminal lock state. Same-day reruns preserve the previous state so terminal
+written atomically. Both risk state and artifact are serialized with
+`allow_nan=False` to guarantee strict JSON (ECMA-404) output. Corrupted
+risk state files, or files that fail schema validation (wrong field types,
+NaN/Inf, negative values, unknown schema version), cause the scan to exit
+with code 1 rather than silently discarding terminal lock state. Same-day reruns preserve the previous state so terminal
 lock and sector guard continuity is maintained. Numeric values are validated
 before saving — NaN/Inf and negative `cycle_lock_count` are rejected at write
 time to prevent creating an invalid state file. If the risk state save fails

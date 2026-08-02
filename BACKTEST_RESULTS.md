@@ -112,6 +112,18 @@ prevent cross-contamination between different universes or configurations.
   values), the artifact includes `risk_state_saved: false` and an error
   message. The scan exits with code 1 so scripts, cron jobs, and external
   schedulers can detect the failure and alert.
+- **Strict JSON compliance**: both risk state and JSON artifact are
+  serialized with `allow_nan=False` to guarantee strict JSON (ECMA-404)
+  output. Non-standard tokens (`NaN`, `Infinity`, `-Infinity`) are rejected
+  at serialization time, not silently written as non-standard literals.
+  This ensures downstream consumers using strict JSON parsers (e.g.
+  JavaScript `JSON.parse`, Go `encoding/json`) can always parse the files.
+- **Result validation before artifact**: the backtest result is validated
+  for finite values (`final_assets`, `total_return`, `max_drawdown`,
+  `sharpe`) before constructing the artifact. If any field is NaN or Inf,
+  an error-only artifact (`status: "error"`) is produced instead of
+  publishing signals with corrupt metrics, and the scan exits with code 1.
+  This catches upstream computation bugs before they reach signal consumers.
 - **Reset-account safety**: `--account` is checked before `--reset-risk-state`
   in the CLI, so combining both flags does not silently delete the old risk
   state before the account error is reported. This is verified by real CLI
@@ -120,6 +132,11 @@ prevent cross-contamination between different universes or configurations.
   calls that verify exit codes for `--account` rejection, `--reset-risk-state`
   safety, corrupted state fail-closed, schema-invalid state fail-closed, and
   unknown schema version rejection.
+- **Strict JSON artifact tests**: the artifact and risk state files are
+  verified to never contain NaN/Infinity tokens as JSON values (using a
+  strict constant-rejecting JSON parser). Error-only artifact production is
+  tested when results contain NaN or Inf in `max_drawdown`, `total_return`,
+  or `sharpe`. Valid results are verified to produce a normal `ok` artifact.
 
 ### Core API Account-State Guard
 

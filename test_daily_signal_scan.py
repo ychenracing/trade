@@ -624,6 +624,89 @@ class SchemaValidationTests(unittest.TestCase):
         data["max_drawdown"] = -0.95
         self.assertIsNone(dss._validate_risk_state(data))
 
+    # ── Semantic range and format validation ──
+
+    def test_total_return_below_negative_one_rejected(self) -> None:
+        """total_return < -1.0 is impossible (cannot lose more than 100%)."""
+        data = dict(VALID_RISK_STATE)
+        data["total_return"] = -1.5
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("total_return", error)
+
+    def test_total_return_exactly_negative_one_accepted(self) -> None:
+        """total_return = -1.0 (total loss) is valid."""
+        data = dict(VALID_RISK_STATE)
+        data["total_return"] = -1.0
+        self.assertIsNone(dss._validate_risk_state(data))
+
+    def test_invalid_scan_date_rejected(self) -> None:
+        """scan_date must be a valid YYYY-MM-DD date."""
+        data = dict(VALID_RISK_STATE)
+        data["scan_date"] = "2026-13-45"
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("scan_date", error)
+
+    def test_scan_date_wrong_format_rejected(self) -> None:
+        """scan_date must be YYYY-MM-DD, not DD/MM/YYYY."""
+        data = dict(VALID_RISK_STATE)
+        data["scan_date"] = "30/07/2026"
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("scan_date", error)
+
+    def test_symbols_hash_wrong_length_rejected(self) -> None:
+        """symbols_hash must be exactly 16 hex chars."""
+        data = dict(VALID_RISK_STATE)
+        data["symbols_hash"] = "abc123"
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("symbols_hash", error)
+
+    def test_symbols_hash_non_hex_rejected(self) -> None:
+        """symbols_hash must be valid hex."""
+        data = dict(VALID_RISK_STATE)
+        data["symbols_hash"] = "zzzzzzzzzzzzzzzz"
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("symbols_hash", error)
+
+    def test_symbols_hash_valid_hex_accepted(self) -> None:
+        """Valid 16-char hex symbols_hash is accepted."""
+        data = dict(VALID_RISK_STATE)
+        data["symbols_hash"] = "abc123def456abcd"
+        data["total_symbols"] = 5
+        self.assertIsNone(dss._validate_risk_state(data))
+
+    def test_total_symbols_negative_rejected(self) -> None:
+        """total_symbols must be non-negative."""
+        data = dict(VALID_RISK_STATE)
+        data["symbols_hash"] = "abc123def456abcd"
+        data["total_symbols"] = -1
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("total_symbols", error)
+
+    def test_saved_state_passes_full_validation(self) -> None:
+        """A state saved by _save_risk_state must pass _validate_risk_state."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = {
+                "terminal_risk_lock": True,
+                "sector_guard_active": True,
+                "cycle_lock_count": 2,
+                "max_drawdown": -0.1825,
+                "total_return": 0.4532,
+                "final_assets": 2906400.0,
+            }
+            tradable = {"300308": "中际旭创", "300502": "新易盛"}
+            dss._save_risk_state(tmpdir, "2026-07-30", result,
+                                 tradable=tradable,
+                                 config_hash="start=2026-07-01|indicator=warm")
+            loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-31")
+            self.assertIsNone(error)
+            self.assertIsNotNone(loaded)
+
     # ── Schema version in saved state ──
 
     def test_schema_version_in_saved_state(self) -> None:
@@ -1291,6 +1374,157 @@ class SaveFailureExitCodeTests(unittest.TestCase):
                     exit_code = dss.main()
 
             self.assertEqual(exit_code, 1)
+
+
+# ── Artifact strict JSON and NaN result tests ──────────────────────
+
+class ArtifactStrictJSONTests(unittest.TestCase):
+    """Verify artifact is strict JSON (ECMA-404) even with NaN/Inf results.
+
+    Python's json.dumps() writes NaN/Infinity as non-standard tokens by
+    default. The code must use allow_nan=False and produce an error-only
+    artifact when the result is invalid.
+    """
+
+    def _make_mock_result(self, **overrides) -> dict:
+        base = {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+            "cycle_lock_count": 0,
+            "max_drawdown": -0.05,
+            "total_return": 0.10,
+            "final_assets": 2200000.0,
+            "sharpe": 2.5,
+            "total_trades": 50,
+            "risk_events": [],
+            "pending_signals": [],
+            "trades": [],
+            "safe_mode_active": False,
+        }
+        base.update(overrides)
+        return base
+
+    def _run_main_with_mock(self, tmpdir: str, mock_result: dict) -> int:
+        """Run main() with mocked data and return exit code."""
+        import pandas as pd
+        mock_df = pd.DataFrame(
+            {"open": [10.0], "high": [11.0], "low": [9.0],
+             "close": [10.5], "volume": [1000000]},
+            index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+        )
+        with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                          return_value=mock_df), \
+             patch.object(dss.qf.BacktestEngine, "run",
+                          return_value=mock_result):
+            with patch("sys.argv", [
+                "daily_signal_scan.py",
+                "--output-dir", tmpdir,
+                "--end-date", "2026-07-30",
+            ]):
+                return dss.main()
+
+    def test_nan_result_produces_error_artifact(self) -> None:
+        """NaN in result must produce error-only artifact, not signals."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result(
+                max_drawdown=float("nan"),
+            )
+            exit_code = self._run_main_with_mock(tmpdir, mock_result)
+            self.assertEqual(exit_code, 1)
+
+            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
+            self.assertTrue(artifact_file.exists())
+            content = artifact_file.read_text(encoding="utf-8")
+            data = json.loads(content)  # must parse as strict JSON
+            self.assertEqual(data["status"], "error")
+            self.assertNotIn("pending_signals", data)
+            self.assertNotIn("portfolio", data)
+
+    def test_inf_result_produces_error_artifact(self) -> None:
+        """Inf in result must produce error-only artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result(
+                total_return=float("inf"),
+            )
+            exit_code = self._run_main_with_mock(tmpdir, mock_result)
+            self.assertEqual(exit_code, 1)
+
+            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
+            content = artifact_file.read_text(encoding="utf-8")
+            data = json.loads(content)
+            self.assertEqual(data["status"], "error")
+
+    def test_nan_sharpe_produces_error_artifact(self) -> None:
+        """NaN in sharpe must also trigger error artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result(
+                sharpe=float("nan"),
+            )
+            exit_code = self._run_main_with_mock(tmpdir, mock_result)
+            self.assertEqual(exit_code, 1)
+
+            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
+            content = artifact_file.read_text(encoding="utf-8")
+            data = json.loads(content)
+            self.assertEqual(data["status"], "error")
+
+    def test_valid_result_produces_ok_artifact(self) -> None:
+        """Valid result must produce normal artifact with status=ok."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result()
+            exit_code = self._run_main_with_mock(tmpdir, mock_result)
+            self.assertEqual(exit_code, 0)
+
+            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
+            content = artifact_file.read_text(encoding="utf-8")
+            data = json.loads(content)
+            self.assertEqual(data["status"], "ok")
+            self.assertIn("pending_signals", data)
+            self.assertIn("portfolio", data)
+
+    def test_artifact_is_strict_json_no_nan_tokens(self) -> None:
+        """Artifact file must never contain NaN/Infinity as JSON values.
+
+        We verify by parsing with a strict constant handler that rejects
+        NaN/Infinity tokens. String fields (like error messages) may contain
+        the word "NaN" in prose — that's valid JSON.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result(
+                max_drawdown=float("nan"),
+                total_return=float("inf"),
+            )
+            self._run_main_with_mock(tmpdir, mock_result)
+
+            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
+            content = artifact_file.read_text(encoding="utf-8")
+
+            # Parse with a strict constant handler — this rejects
+            # NaN, Infinity, -Infinity as JSON values (not in strings).
+            def reject_constants(s):
+                raise ValueError(f"Non-standard JSON token: {s}")
+            json.loads(content, parse_constant=reject_constants)
+
+    def test_risk_state_file_is_strict_json(self) -> None:
+        """Saved risk_state.json must be strict JSON (no NaN tokens)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = {
+                "terminal_risk_lock": False,
+                "sector_guard_active": False,
+                "cycle_lock_count": 0,
+                "max_drawdown": -0.12,
+                "total_return": 0.08,
+                "final_assets": 2160000.0,
+            }
+            dss._save_risk_state(tmpdir, "2026-07-30", result,
+                                 tradable={"300308": "test"})
+            state_content = (Path(tmpdir) / "risk_state.json").read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn("NaN", state_content)
+            self.assertNotIn("Infinity", state_content)
+            # Must parse as strict JSON
+            json.loads(state_content)
 
 
 if __name__ == "__main__":

@@ -68,3 +68,27 @@ in-sample scalar. It is to preserve the six-position causal execution model, sel
 a compact and economically coherent tradable universe, keep the fixed independent
 regime basket, and require future trading-rule changes to pass the same multi-window
 and complete-prefix comparison before release.
+
+## Code quality and reliability improvements
+
+The following infrastructure and reliability improvements were made after an
+external code audit. None of these changes alter the trading path, signal logic,
+or backtest results:
+
+- **Strict JSON compliance**: both risk state and JSON artifact are serialized
+  with `allow_nan=False` to guarantee strict JSON (ECMA-404) output.
+  Non-standard tokens (`NaN`, `Infinity`) are rejected at serialization time.
+- **Result validation before artifact**: the backtest result is validated for
+  finite values before constructing the artifact. Invalid results produce an
+  error-only artifact and exit code 1.
+- **Pre-save validation**: NaN/Inf in `max_drawdown`, `total_return`, or
+  `final_assets`, and negative `cycle_lock_count`, are rejected at write time.
+- **Schema validation**: all required fields are validated for correct types,
+  finiteness, non-negativity, date format (`YYYY-MM-DD`), and string format
+  (`symbols_hash` must be 16-char hex). Unknown schema versions are rejected.
+- **CI pipeline**: all checks are gating — ruff, bandit, pip-audit, pyright,
+  pytest auto-discovery, and a dedicated backtest regression job that verifies
+  frozen 5-symbol warm metrics (return, drawdown, trade count).
+- **CLI integration tests**: exit codes verified via real subprocess calls for
+  `--account` rejection, `--reset-risk-state` safety, corrupted state
+  fail-closed, schema-invalid state fail-closed, and unknown schema version.
