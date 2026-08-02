@@ -41,7 +41,7 @@ jobs:
           python -m pytest test_quant_fusion.py test_daily_signal_scan.py -v --tb=short
 
   lint:
-    name: Lint (ruff + bandit)
+    name: Lint (ruff + bandit + pip-audit)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -55,14 +55,42 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
 
-      - name: Install ruff and bandit
+      - name: Install lint tools
         run: |
           python -m pip install --upgrade pip
-          pip install ruff bandit
+          pip install ruff bandit pip-audit
 
       - name: Run ruff check (gating)
         run: ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quant_fusion.py daily_signal_scan.py
 
-      - name: Run bandit security scan
+      - name: Run bandit security scan (gating)
         run: bandit -r quant_fusion.py daily_signal_scan.py -ll
+
+      - name: Run pip-audit (gating)
+        run: pip-audit --strict
+
+  typecheck:
+    name: Type check (pyright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run pyright
+        run: pyright quant_fusion.py daily_signal_scan.py
         continue-on-error: true

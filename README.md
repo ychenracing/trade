@@ -77,7 +77,8 @@ should supply its own stable benchmark basket before live use.
 - `test_quant_fusion_optimizer.py`: leakage, constraint, parameter-support,
   dynamic-listing, and deterministic-search tests.
 - `test_daily_signal_scan.py`: account loading, risk state persistence,
-  signal classification, position reconstruction, and symbol mapping tests.
+  signal classification, position reconstruction, schema validation,
+  buy suppression, state preservation, and symbol mapping tests.
 - `backtest_universes.py`, `stress_test_prefixes.py`, and
   `backtest_cambricon_universe.py`: reproducible portfolio checks.
 - `daily_signal_scan.py`: daily signal scan for the 26-stock AI sector universe
@@ -162,6 +163,25 @@ daily signal scans to preserve risk continuity across consecutive runs.
 The `daily_signal_scan.py` script automatically loads the previous run's risk
 state from `risk_state.json` and passes it to the engine, ensuring that a
 terminal lock or active sector guard persists across daily scans.
+
+Risk state includes `schema_version` for forward compatibility. Unknown
+schema versions are rejected (fail-closed) to prevent misinterpreting fields
+with changed semantics. All state fields are type-validated on load:
+`schema_version` (int), `scan_date` (str), `terminal_risk_lock` (bool),
+`sector_guard_active` (bool), `cycle_lock_count` (int), `max_drawdown`
+(number), `total_return` (number), `final_assets` (number).
+
+When the risk state identity hash does not match (different symbol set,
+count, or configuration), buy signals are suppressed (fail-closed). In the
+JSON artifact, blocked buy signals are placed in a separate
+`blocked_signals` list — `pending_signals` only contains executable signals,
+so downstream consumers that check `direction` on `pending_signals` will
+never see blocked buys. The old risk state is preserved (not overwritten)
+until the user runs `--reset-risk-state`.
+
+Risk state is saved before the JSON artifact. If the state save fails (e.g.
+disk full), the artifact includes `risk_state_saved: false` and an error
+message so the user knows the state was not persisted.
 
 ## Automatic parameter optimization
 

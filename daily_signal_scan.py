@@ -28,8 +28,10 @@ When the risk state identity hash does not match (different symbol set, count,
 or configuration), buy signals are suppressed (fail-closed) to prevent entering
 new positions without verified risk-state continuity. Sell and hold signals
 are still shown, including in mixed buy/sell signals (only the buy part is
-suppressed). In the JSON artifact, blocked buy signals are marked with
-``blocked=true`` and ``executable=false`` so machine consumers can filter them.
+suppressed). In the JSON artifact, blocked buy signals are placed in a
+separate ``blocked_signals`` list — ``pending_signals`` only contains
+executable signals, so downstream consumers that check ``direction`` on
+``pending_signals`` will never see blocked buys.
 
 When the identity does not match, the old risk state is NOT overwritten —
 the previous terminal lock and sector guard are preserved. The user must use
@@ -38,8 +40,15 @@ that a mismatch continues to suppress buys until the user explicitly resolves
 the configuration change.
 
 Risk state includes ``schema_version`` and type-validated fields
-(``terminal_risk_lock``, ``sector_guard_active``, ``cycle_lock_count``).
-Files that fail schema validation are treated as corrupt (exit code 1).
+(``schema_version``, ``scan_date``, ``terminal_risk_lock``,
+``sector_guard_active``, ``cycle_lock_count``, ``max_drawdown``,
+``total_return``, ``final_assets``). Unknown schema versions are rejected
+(fail-closed) to enforce forward compatibility. Files that fail schema
+validation are treated as corrupt (exit code 1).
+
+Risk state is saved BEFORE the JSON artifact. If the state save fails (e.g.
+disk full), the artifact includes ``risk_state_saved: false`` and an error
+message so the user knows the state was not persisted.
 
 Stale data fail-closed: if any symbol's cached data is stale (network fetch
 failed) or data end dates are inconsistent across symbols, the scan refuses to
@@ -59,11 +68,10 @@ import argparse
 import hashlib
 import json
 import os
-import sys
 import tempfile
 from collections import defaultdict
 from dataclasses import asdict
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -182,36 +190,90 @@ def _load_account(path: str) -> dict[str, Any] | None:
 
 _RISK_STATE_SCHEMA_VERSION = 1
 
+# Set of known schema versions. Unknown versions are rejected (fail-closed)
+# to prevent misinterpreting fields with changed semantics in future versions.
+_KNOWN_SCHEMA_VERSIONS: set[int] = {1}
+
 # Required fields and their expected types for risk state validation.
-_RISK_STATE_REQUIRED_FIELDS: dict[str, type] = {
+# ``bool`` fields use ``bool`` explicitly; numeric fields use ``(int, float)``
+# but ``bool`` is always rejected for numeric fields (bool is a subclass of
+# int in Python).
+_RISK_STATE_REQUIRED_FIELDS: dict[str, type | tuple[type, ...]] = {
+    "schema_version": int,
+    "scan_date": str,
     "terminal_risk_lock": bool,
     "sector_guard_active": bool,
     "cycle_lock_count": int,
+    "max_drawdown": (int, float),
+    "total_return": (int, float),
+    "final_assets": (int, float),
 }
 
 
 def _validate_risk_state(data: Any) -> str | None:
-    """Validate risk state fields and types.
+    """Validate risk state schema, fields, and types.
 
     Returns ``None`` if valid, or an error message string if invalid.
-    Checks that required keys exist and have the correct types.
-    In Python, ``bool`` is a subclass of ``int``, so we explicitly reject
-    bools where ints are expected and vice versa.
+
+    Checks performed (in order):
+    1. Data is a dict.
+    2. ``schema_version`` exists, is an int (not bool), and is a known version.
+    3. All required fields exist with correct types.
+    4. ``bool`` is never accepted where ``int`` or ``float`` is expected.
+
+    Unknown ``schema_version`` values are rejected to enforce forward
+    compatibility — a future version with changed field semantics must not
+    be silently loaded by this code.
     """
     if not isinstance(data, dict):
         return "risk_state.json 内容不是有效 JSON 对象"
+
+    # Validate schema_version first — unknown versions are rejected
+    sv = data.get("schema_version")
+    if sv is None:
+        return "risk_state.json 缺少必需字段 'schema_version'"
+    if isinstance(sv, bool) or not isinstance(sv, int):
+        return (
+            f"risk_state.json 字段 'schema_version' 应为 int，"
+            f"实际为 {type(sv).__name__}"
+        )
+    if sv not in _KNOWN_SCHEMA_VERSIONS:
+        return (
+            f"risk_state.json schema_version={sv} 不是已知版本 "
+            f"(支持: {sorted(_KNOWN_SCHEMA_VERSIONS)})"
+        )
+
+    # Validate remaining required fields
     for field, expected_type in _RISK_STATE_REQUIRED_FIELDS.items():
+        if field == "schema_version":
+            continue  # already validated above
         if field not in data:
             return f"risk_state.json 缺少必需字段 '{field}'"
         val = data[field]
         if expected_type is bool:
             if not isinstance(val, bool):
-                return f"risk_state.json 字段 '{field}' 应为 bool，实际为 {type(val).__name__}"
+                return (
+                    f"risk_state.json 字段 '{field}' 应为 bool，"
+                    f"实际为 {type(val).__name__}"
+                )
         elif expected_type is int:
             if isinstance(val, bool) or not isinstance(val, int):
-                return f"risk_state.json 字段 '{field}' 应为 int，实际为 {type(val).__name__}"
+                return (
+                    f"risk_state.json 字段 '{field}' 应为 int，"
+                    f"实际为 {type(val).__name__}"
+                )
+        elif isinstance(expected_type, tuple):
+            # Numeric type: accept int or float but reject bool
+            if isinstance(val, bool) or not isinstance(val, expected_type):
+                return (
+                    f"risk_state.json 字段 '{field}' 应为 number，"
+                    f"实际为 {type(val).__name__}"
+                )
         elif not isinstance(val, expected_type):
-            return f"risk_state.json 字段 '{field}' 应为 {expected_type.__name__}，实际为 {type(val).__name__}"
+            return (
+                f"risk_state.json 字段 '{field}' 应为 "
+                f"{expected_type.__name__}，实际为 {type(val).__name__}"
+            )
     return None
 
 
@@ -306,6 +368,105 @@ def _save_risk_state(
         raise
 
 
+def _apply_buy_suppression(
+    sigs: list[Any], suppress_buys: bool
+) -> tuple[str, str, bool]:
+    """Apply buy suppression to a list of pending signals for one symbol.
+
+    Returns ``(signal_label, strategies, was_suppressed)``.
+
+    When ``suppress_buys`` is ``True``:
+    - Pure buy signals are replaced with "观望 (风险状态不匹配)".
+    - Mixed buy/sell signals keep only the sell signals and append
+      "[买入已抑制]" to the label.
+    - Pure sell (or non-buy) signals are shown unchanged.
+
+    Only ``sell`` directions are retained in mixed signals — other
+    non-buy directions (e.g. ``hold``) are excluded to avoid mislabeling.
+    """
+    if not sigs:
+        return ("", "", False)
+
+    directions = sorted({s.direction for s in sigs})
+    if len(directions) == 1:
+        signal_label = _classify_signal(sigs[0])
+        strategies = ", ".join(sorted({s.strategy_name for s in sigs}))
+    else:
+        parts = []
+        for d in directions:
+            d_sigs = [s for s in sigs if s.direction == d]
+            parts.append(f"{_classify_signal(d_sigs[0])}({len(d_sigs)})")
+        signal_label = " + ".join(parts)
+        strategies = ", ".join(sorted({s.strategy_name for s in sigs}))
+
+    was_suppressed = False
+    if suppress_buys:
+        buy_sigs = [s for s in sigs if s.direction == "buy"]
+        sell_sigs = [s for s in sigs if s.direction == "sell"]
+        if buy_sigs and sell_sigs:
+            # Mixed buy/sell: keep only sell, suppress buy
+            sell_dirs = sorted({s.direction for s in sell_sigs})
+            parts = []
+            for d in sell_dirs:
+                d_sigs = [s for s in sell_sigs if s.direction == d]
+                parts.append(f"{_classify_signal(d_sigs[0])}({len(d_sigs)})")
+            signal_label = " + ".join(parts) + " [买入已抑制]"
+            strategies = ", ".join(
+                sorted({s.strategy_name for s in sell_sigs})
+            )
+            was_suppressed = True
+        elif buy_sigs:
+            # Pure buy (or buy + non-sell): suppress entirely
+            signal_label = "观望 (风险状态不匹配)"
+            strategies = "—"
+            was_suppressed = True
+
+    return (signal_label, strategies, was_suppressed)
+
+
+def _serialize_pending_signals(
+    pending: list[Any], suppress_buys: bool
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Serialize pending signals into executable and blocked lists.
+
+    Returns ``(executable_signals, blocked_signals)``.
+
+    Blocked buy signals are moved to a separate ``blocked_signals`` list so
+    that ``pending_signals`` only contains executable signals. This is the
+    true fail-closed approach: downstream consumers that only check
+    ``direction == "buy"`` on ``pending_signals`` will never see blocked
+    buys, without needing to check the ``executable`` flag.
+
+    Each entry in both lists includes ``blocked`` and ``executable`` flags
+    for explicit machine consumption.
+    """
+    executable: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = []
+    for sig in pending:
+        try:
+            entry = asdict(sig)
+        except TypeError:
+            entry = {
+                "symbol": getattr(sig, "symbol", ""),
+                "direction": getattr(sig, "direction", ""),
+                "strategy_name": getattr(sig, "strategy_name", ""),
+                "target_shares": getattr(sig, "target_shares", 0),
+                "price": getattr(sig, "price", 0.0),
+                "reason": getattr(sig, "reason", ""),
+                "signal_date": getattr(sig, "signal_date", ""),
+            }
+        if suppress_buys and entry.get("direction") == "buy":
+            entry["blocked"] = True
+            entry["blocked_reason"] = "risk_state_identity_mismatch"
+            entry["executable"] = False
+            blocked.append(entry)
+        else:
+            entry["blocked"] = False
+            entry["executable"] = True
+            executable.append(entry)
+    return executable, blocked
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Daily AI-sector signal scan")
     parser.add_argument(
@@ -358,16 +519,9 @@ def main() -> int:
     end_date = args.end_date or _today_str()
     start_date = args.start_date or START_DATE
 
-    # --reset-risk-state: delete the old risk state file before running
-    if args.reset_risk_state:
-        state_file = Path(args.output_dir) / "risk_state.json"
-        if state_file.exists():
-            state_file.unlink()
-            print(f"  ℹ 已删除旧风险状态: {state_file}")
-        else:
-            print(f"  ℹ 无旧风险状态可删除: {state_file}")
-
-    # --account mode is disabled — exit early with an explanatory message
+    # --account mode is disabled — check this BEFORE --reset-risk-state so
+    # that combining --reset-risk-state --account does not silently delete
+    # the old risk state and then immediately exit with an account error.
     if args.account:
         print("=" * 72)
         print("  ⚠ --account 模式当前不可用")
@@ -384,6 +538,21 @@ def main() -> int:
         print("  请使用不带 --account 的模拟模式运行。")
         print("  真实账户信号引擎正在重构中。")
         return 1
+
+    # --reset-risk-state: delete the old risk state file before running.
+    # This runs only after the --account check passes, so the user cannot
+    # accidentally lose state while trying to use a disabled mode.
+    if args.reset_risk_state:
+        state_file = Path(args.output_dir) / "risk_state.json"
+        if state_file.exists():
+            try:
+                state_file.unlink()
+                print(f"  ℹ 已删除旧风险状态: {state_file}")
+            except OSError as exc:
+                print(f"  ✗ 删除风险状态文件失败: {exc}")
+                return 1
+        else:
+            print(f"  ℹ 无旧风险状态可删除: {state_file}")
 
     # ── Resolve capital ──
     if args.capital > 0:
@@ -410,11 +579,11 @@ def main() -> int:
     if prev_risk:
         print(f"  上次扫描:   {prev_risk.get('scan_date', '?')}")
         if prev_risk.get("terminal_risk_lock"):
-            print(f"  ⚠ 上次终态锁定已激活 — 请检查是否需要人工干预")
+            print("  ⚠ 上次终态锁定已激活 — 请检查是否需要人工干预")
         if prev_risk.get("sector_guard_active"):
-            print(f"  ⚠ 上次板块风控已激活")
-    print(f"  指标状态:   warm")
-    print(f"  数据源:     AKShare 在线前复权 (增量缓存)")
+            print("  ⚠ 上次板块风控已激活")
+    print("  指标状态:   warm")
+    print("  数据源:     AKShare 在线前复权 (增量缓存)")
     print(f"  缓存目录:   {args.cache_dir}")
     print("-" * 72)
     print("  ℹ 模拟模式: 信号基于从零开始的回测，不代表真实账户持仓。")
@@ -532,7 +701,7 @@ def main() -> int:
             str(len(tradable)),
             ",".join(sorted(tradable.keys())),
             f"start={start_date}",
-            f"indicator=warm",
+            "indicator=warm",
         ]
         current_hash = hashlib.sha256(
             "|".join(identity_parts).encode("utf-8")
@@ -606,50 +775,17 @@ def main() -> int:
         held_shares = sim_positions.get(code, 0)
 
         if sigs:
-            # Has pending signal(s) — show the direction
-            # If multiple signals (from different sleeves), show all unique directions
-            directions = sorted({s.direction for s in sigs})
-            if len(directions) == 1:
-                signal_label = _classify_signal(sigs[0])
-                strategies = ", ".join(sorted({s.strategy_name for s in sigs}))
-            else:
-                # Mixed signals (e.g., buy from one sleeve, sell from another)
-                parts = []
-                for d in directions:
-                    d_sigs = [s for s in sigs if s.direction == d]
-                    parts.append(
-                        f"{_classify_signal(d_sigs[0])}"
-                        f"({len(d_sigs)})"
-                    )
-                signal_label = " + ".join(parts)
-                strategies = ", ".join(sorted({s.strategy_name for s in sigs}))
+            # Use the extracted suppression function for testability and
+            # consistent behavior between display and artifact.
+            signal_label, strategies, _ = _apply_buy_suppression(
+                sigs, suppress_buys
+            )
         elif held_shares > 0:
             signal_label = "持有"
             strategies = "—"
         else:
             signal_label = "观望"
             strategies = "—"
-
-        # Fail-closed: suppress buy signals when risk state identity
-        # doesn't match, to prevent entering positions without verified
-        # terminal-lock continuity. Sell and hold signals are still shown.
-        if suppress_buys and sigs:
-            has_buy = any(s.direction == "buy" for s in sigs)
-            has_non_buy = any(s.direction != "buy" for s in sigs)
-            if has_buy and has_non_buy:
-                # Mixed buy/sell: keep sell, suppress buy
-                non_buy_sigs = [s for s in sigs if s.direction != "buy"]
-                non_buy_dirs = sorted({s.direction for s in non_buy_sigs})
-                parts = []
-                for d in non_buy_dirs:
-                    d_sigs = [s for s in non_buy_sigs if s.direction == d]
-                    parts.append(f"{_classify_signal(d_sigs[0])}({len(d_sigs)})")
-                signal_label = " + ".join(parts) + " [买入已抑制]"
-                strategies = ", ".join(sorted({s.strategy_name for s in non_buy_sigs}))
-            elif has_buy:
-                # Pure buy: suppress entirely
-                signal_label = "观望 (风险状态不匹配)"
-                strategies = "—"
 
         rows.append({
             "code": code,
@@ -674,17 +810,25 @@ def main() -> int:
             f"{row['held_shares']:>12,}  {row['strategies']}"
         )
         if "买入已抑制" in row["signal"]:
-            # Mixed signal with buys suppressed — count as sell (still actionable)
-            sell_count += 1
+            # Mixed signal with buys suppressed — count based on what
+            # remains visible (sell), not blindly as sell.
             suppressed_buy_count += 1
+            if "卖出" in row["signal"]:
+                sell_count += 1
+            elif "持有" in row["signal"]:
+                hold_count += 1
+            else:
+                wait_count += 1
+        elif "风险状态不匹配" in row["signal"]:
+            # Pure buy suppressed — count as wait
+            suppressed_buy_count += 1
+            wait_count += 1
         elif "买入" in row["signal"]:
             buy_count += 1
         elif "卖出" in row["signal"]:
             sell_count += 1
         elif "不可交易" in row["signal"]:
             untradeable_count += 1
-        elif "风险状态不匹配" in row["signal"]:
-            suppressed_buy_count += 1
         elif "观望" in row["signal"]:
             wait_count += 1
         else:
@@ -716,7 +860,7 @@ def main() -> int:
     print(f"  板块风控激活:   {'是' if guard else '否'}")
     safe_mode = result.get("safe_mode_active", False)
     if safe_mode:
-        print(f"  ⚠ 市场状态: CHOPPY (震荡市)")
+        print("  ⚠ 市场状态: CHOPPY (震荡市)")
     print()
 
     # ── Risk state continuity check ─────────────────────────────────
@@ -777,36 +921,37 @@ def main() -> int:
             )
         print()
 
+    # ── Save risk state BEFORE artifact ──────────────────────────────
+    # Save risk state first so that if the save fails, the artifact can
+    # record the failure. This prevents the user from using an artifact
+    # that implies state was saved when it wasn't.
+    risk_state_saved = False
+    risk_state_save_error = ""
+    if not suppress_buys:
+        config_fingerprint = f"start={start_date}|indicator=warm"
+        try:
+            _save_risk_state(
+                args.output_dir, end_date, result, tradable,
+                config_hash=config_fingerprint,
+            )
+            risk_state_saved = True
+        except OSError as exc:
+            risk_state_save_error = str(exc)
+            print(f"  ⚠ 风险状态保存失败: {exc}")
+
     # ── Save JSON artifact ───────────────────────────────────────────
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"signals_{end_date}.json"
 
-    # Serialize pending signals — mark buy signals as blocked when
-    # suppress_buys is active, so machine consumers can distinguish
-    # executable vs blocked signals.
-    pending_serializable = []
-    for sig in pending:
-        try:
-            entry = asdict(sig)
-        except TypeError:
-            entry = {
-                "symbol": getattr(sig, "symbol", ""),
-                "direction": getattr(sig, "direction", ""),
-                "strategy_name": getattr(sig, "strategy_name", ""),
-                "target_shares": getattr(sig, "target_shares", 0),
-                "price": getattr(sig, "price", 0.0),
-                "reason": getattr(sig, "reason", ""),
-                "signal_date": getattr(sig, "signal_date", ""),
-            }
-        if suppress_buys and entry.get("direction") == "buy":
-            entry["blocked"] = True
-            entry["blocked_reason"] = "risk_state_identity_mismatch"
-            entry["executable"] = False
-        else:
-            entry["blocked"] = False
-            entry["executable"] = True
-        pending_serializable.append(entry)
+    # Serialize pending signals — blocked buys are separated into a
+    # dedicated ``blocked_signals`` list so ``pending_signals`` only
+    # contains executable signals. This is the true fail-closed approach:
+    # downstream consumers that only check ``direction`` on
+    # ``pending_signals`` will never see blocked buys.
+    pending_serializable, blocked_serializable = _serialize_pending_signals(
+        pending, suppress_buys
+    )
 
     artifact = {
         "scan_date": end_date,
@@ -834,8 +979,15 @@ def main() -> int:
             "safe_mode_active": bool(result.get("safe_mode_active", False)),
             "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
         },
+        # Only executable signals — blocked buys are in blocked_signals
         "pending_signals": pending_serializable,
+        # Blocked buy signals (empty unless suppress_buys is active)
+        "blocked_signals": blocked_serializable,
+        # Risk state save status for operational visibility
+        "risk_state_saved": risk_state_saved,
     }
+    if risk_state_save_error:
+        artifact["risk_state_save_error"] = risk_state_save_error
     if prev_risk:
         artifact["previous_risk_state"] = prev_risk
     # Atomic write for the artifact (same pattern as risk state)
@@ -856,23 +1008,18 @@ def main() -> int:
             pass
         raise
 
-    # Persist risk state for the next daily run — but NOT when the identity
-    # didn't match (suppress_buys=True), because overwriting the old state
-    # would destroy the previous terminal lock and silently un-suppress
-    # buys on the next run. The user must use --reset-risk-state to
-    # intentionally establish a new identity.
-    if not suppress_buys:
-        config_fingerprint = f"start={start_date}|indicator=warm"
-        _save_risk_state(
-            args.output_dir, end_date, result, tradable,
-            config_hash=config_fingerprint,
-        )
+    # Print final save status
+    if risk_state_saved:
         print(f"  结果已保存: {output_file}")
         print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")
+    elif suppress_buys:
+        print(f"  结果已保存: {output_file}")
+        print("  ⚠ 风险状态未保存 (身份不匹配 — 保留旧状态以维持终态锁连续性)")
+        print("  使用 --reset-risk-state 可建立新身份并清除买入抑制。")
     else:
         print(f"  结果已保存: {output_file}")
-        print(f"  ⚠ 风险状态未保存 (身份不匹配 — 保留旧状态以维持终态锁连续性)")
-        print(f"  使用 --reset-risk-state 可建立新身份并清除买入抑制。")
+        if risk_state_save_error:
+            print(f"  ⚠ 风险状态保存失败: {risk_state_save_error}")
     print()
     return 0
 
