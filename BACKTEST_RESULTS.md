@@ -140,11 +140,13 @@ prevent cross-contamination between different universes or configurations.
 
 ### Core API Account-State Guard
 
-All public `run()` methods in `BacktestEngine` and `_EnsembleBacktestEngine`
-raise `NotImplementedError` when `account_state` is passed. This ensures the
-broken account injection logic cannot be triggered by any caller — not just
-the daily scan CLI. The old injection code is retained as dead code with
-deprecation comments pending the separate account signal engine.
+The public `run()` method in `BacktestEngine` raises `NotImplementedError`
+when `account_state` is passed. This ensures the broken account injection
+logic cannot be triggered by any caller — not just the daily scan CLI.
+`_EnsembleBacktestEngine` inherits `run()` from `_CausalBacktestEngine`,
+which does not accept an `account_state` parameter at all, so the guard is
+redundant but harmless. The old injection code is retained as dead code
+with deprecation comments pending the separate account signal engine.
 
 ### Real Account Mode (disabled)
 

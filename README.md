@@ -98,11 +98,12 @@ should supply its own stable benchmark basket before live use.
 
 ## Data
 
-The reproducible 22-symbol Eastmoney forward-adjusted snapshot is stored in
-`market_data`. Provider volume is converted from board lots to
-shares before the ADV participation rule is applied. `920045` begins on
-2025-12-31 and is unavailable before that date. `SHA256SUMS` freezes the exact
-CSV bytes, and the regression suite fails if a file is truncated or modified.
+The reproducible 23-symbol Eastmoney forward-adjusted snapshot is stored in
+`market_data` (22 symbols with full history from 2024-01-01 plus `920045`
+which begins on 2025-12-31). Provider volume is converted from board lots to
+shares before the ADV participation rule is applied. `SHA256SUMS` freezes the
+exact CSV bytes, and the regression suite fails if a file is truncated or
+modified.
 
 `688256` 寒武纪 is explicitly classified as `semiconductor`, assigned to the
 `domestic_semiconductor` risk group, and routed through the `domestic_design`
@@ -384,6 +385,15 @@ are inconsistent across symbols, the scan refuses to produce signals and exits
 with code 1. Override with `--allow-stale` only when you understand the risk;
 stale-data signals must not be used for live trading decisions.
 
+### Market regime state display
+
+When the engine detects a choppy market regime (TREND/CHOPPY/TRANSITION state
+machine), the scan displays a warning ("⚠ 市场状态: CHOPPY (震荡市)") and
+includes `safe_mode_active: true` in the JSON artifact. In choppy mode, the
+engine suppresses new buy entries and may generate partial position reduction
+signals. This is an automatic risk-reduction feature — no configuration is
+required.
+
 ### Risk state persistence
 
 After each run, risk state (`terminal_risk_lock`, `sector_guard_active`,
@@ -422,9 +432,11 @@ establish a new identity after a configuration change.
 
 ### Core API account-state guard
 
-All public `run()` methods raise `NotImplementedError` when `account_state`
-is passed, ensuring the broken account injection logic cannot be triggered by
-any caller — not just the daily scan CLI.
+The public `run()` method in `BacktestEngine` raises `NotImplementedError`
+when `account_state` is passed, ensuring the broken account injection logic
+cannot be triggered by any caller — not just the daily scan CLI.
+`_EnsembleBacktestEngine` inherits `run()` from `_CausalBacktestEngine`,
+which does not accept an `account_state` parameter at all.
 
 ### Usage
 

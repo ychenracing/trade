@@ -53,9 +53,14 @@ negative ``cycle_lock_count`` are rejected at write time to prevent creating
 an invalid state file.
 
 Both risk state and JSON artifact are serialized with ``allow_nan=False`` to
-guarantee strict JSON (ECMA-404) output. When the backtest result contains
-NaN/Inf, an error-only artifact (``status: "error"``) is produced instead of
-publishing signals with corrupt metrics, and the scan exits with code 1.
+guarantee strict JSON (ECMA-404) output. The backtest result is validated
+for finite values in ``final_assets``, ``total_return``, ``max_drawdown``,
+and ``sharpe`` before constructing the artifact. When any of these fields
+contain NaN/Inf, an error-only artifact (``status: "error"``) is produced
+instead of publishing signals with corrupt metrics, and the scan exits with
+code 1. If NaN/Inf appears in nested structures that bypass the result
+check, ``json.dumps(allow_nan=False)`` raises ``ValueError`` at
+serialization time and the scan exits with code 1 without writing a file.
 
 Risk state is saved BEFORE the JSON artifact. If the state save fails (e.g.
 disk full, invalid values), the artifact includes ``risk_state_saved: false``
@@ -383,10 +388,11 @@ def _save_risk_state(
 ) -> None:
     """Persist risk state for restoration by the next daily scan run.
 
-    The ``symbols_hash`` includes symbol set, count, and config fingerprint
-    so that the same symbol set with different configuration is treated as a
-    different identity. A ``schema_version`` is included for forward
-    compatibility. The ``run_id`` uses a UUID4 for uniqueness across runs.
+    The ``symbols_hash`` includes symbol set, count, and (when provided)
+    config fingerprint so that the same symbol set with different
+    configuration is treated as a different identity. A ``schema_version``
+    is included for forward compatibility. The ``run_id`` uses a UUID4 for
+    uniqueness across runs.
 
     Raises ``ValueError`` if any numeric field is NaN/Inf or if
     ``cycle_lock_count`` is negative. This prevents creating an invalid
@@ -395,9 +401,10 @@ def _save_risk_state(
     import uuid
 
     # Extract numeric values and validate they are finite before saving.
-    # NaN/Inf in the backtest result would be written to JSON as invalid
-    # tokens (Python's json.dumps writes "NaN"/"Infinity" by default),
-    # which would be rejected on the next load. Fail early instead.
+    # NaN/Inf would cause json.dumps(allow_nan=False) to raise ValueError
+    # at serialization time (below), preventing the file from being written.
+    # We validate here to give a clear error message and to prevent
+    # reaching the serialization stage with invalid data.
     max_dd = float(result.get("max_drawdown", 0.0))
     total_ret = float(result.get("total_return", 0.0))
     final_assets = float(result.get("final_assets", 0.0))
@@ -691,8 +698,10 @@ def main() -> int:
     # probe each symbol individually and build a tradable universe.
     tradable: dict[str, str] = {}
     skipped: list[tuple[str, str, str]] = []  # (code, name, reason)
-    # Use the warmup start date (1 year before start_date) for the probe so
-    # the engine has enough history for indicator calculation.
+    # Use a start date ~400 days before start_date for the probe so the
+    # engine has enough warmup history for indicator calculation.
+    # (400 calendar days ≈ 13 months, slightly more than the 365-day
+    # warmup_calendar_days used by the engine, to ensure coverage.)
     probe_start = (
         pd.Timestamp(start_date) - pd.Timedelta(days=400)
     ).strftime("%Y-%m-%d")
@@ -778,10 +787,9 @@ def main() -> int:
                 print(f"    {d}: {count} 只标的{marker}")
             print("  ⚠ 标的间数据截止日不一致，信号可能基于不完整信息。")
             print("  建议检查数据源或等待数据更新后重试。")
-            if not args.allow_stale:
-                print("  ✗ 数据不一致 — 拒绝生成信号 (fail-closed)")
-                print("  如需强制运行，请添加 --allow-stale 参数。")
-                return 1
+            print("  ✗ 数据不一致 — 拒绝生成信号 (fail-closed)")
+            print("  如需强制运行，请添加 --allow-stale 参数。")
+            return 1
 
     # ── Validate FILE risk state identity to prevent cross-contamination ──
     # Identity uses stable fields only (symbol set + count + start date +
@@ -904,13 +912,12 @@ def main() -> int:
             f"{row['held_shares']:>12,}  {row['strategies']}"
         )
         if "买入已抑制" in row["signal"]:
-            # Mixed signal with buys suppressed — count based on what
-            # remains visible (sell), not blindly as sell.
+            # Mixed signal with buys suppressed — only the sell part
+            # remains visible (buy suppression removes buy labels and
+            # appends "[买入已抑制]" to the remaining sell signals).
             suppressed_buy_count += 1
             if "卖出" in row["signal"]:
                 sell_count += 1
-            elif "持有" in row["signal"]:
-                hold_count += 1
             else:
                 wait_count += 1
         elif "风险状态不匹配" in row["signal"]:
@@ -988,7 +995,7 @@ def main() -> int:
         print()
 
     # ── Bear market position advisory ────────────────────────────────
-    # Run a quick prior-period check to advise on position sizing
+    # Check current backtest drawdown to advise on position sizing
     if result.get("max_drawdown", 0) and abs(result["max_drawdown"]) > 0.15:
         dd = abs(result["max_drawdown"])
         if dd > 0.20:
