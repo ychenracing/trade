@@ -60,7 +60,8 @@ The `risk_state.json` file now includes enhanced identity fields:
   Unknown versions are rejected on load (fail-closed) to prevent
   misinterpreting fields with changed semantics.
 - `symbols_hash`: SHA-256 fingerprint of sorted symbol codes + count + start date
-  + indicator_state (cash/capital is excluded because it changes daily)
+  + indicator_state + capital + warmup days. Capital is included because
+  different capital means different position sizing and risk exposure.
 - `total_symbols`: number of symbols in the universe
 - `run_id`: unique run identifier (UUID4-based) for traceability
 
@@ -107,22 +108,42 @@ prevent cross-contamination between different universes or configurations.
   old risk state is NOT overwritten — the previous terminal lock and sector
   guard are preserved. Use `--reset-risk-state` to intentionally establish a
   new identity after a configuration change.
-- **State-before-artifact ordering**: risk state is saved before the JSON
-  artifact. If the state save fails (e.g. disk full, permission error, invalid
-  values), the artifact includes `risk_state_saved: false` and an error
-  message. The scan exits with code 1 so scripts, cron jobs, and external
-  schedulers can detect the failure and alert.
+- **Artifact-before-state ordering**: the JSON artifact is fully serialized
+  (with `allow_nan=False`) BEFORE risk state is saved. This ensures that if
+  serialization fails (e.g. NaN in nested structures like
+  `pending_signals`), the risk state has NOT been saved yet — preventing
+  state/artifact inconsistency. If the state save subsequently fails (e.g.
+  disk full, permission error, invalid values), the artifact includes
+  `risk_state_saved: false` and an error message. The scan exits with
+  code 1 so scripts, cron jobs, and external schedulers can detect the
+  failure and alert.
+- **Last-good artifact protection**: when a run fails (NaN/Inf in result,
+  wrong-type fields, missing fields, or nested NaN during serialization),
+  the error artifact is written to a SEPARATE file
+  (`signals_<date>.error.json`) — the last successful
+  (`signals_<date>.json`) is never overwritten. A
+  `latest_success.json` pointer file is updated only on successful
+  artifact write, providing a stable reference for downstream consumers
+  to find the last good signals. Each artifact includes a unique `run_id`
+  for traceability.
+- **Result validation timing**: the backtest result is validated
+  IMMEDIATELY after `engine.run()` returns — before any printing or
+  formatting — for finite values in `final_assets`, `total_return`,
+  `max_drawdown`, and `sharpe`. This prevents `TypeError`/`KeyError`
+  from None, string, or missing fields during f-string formatting.
 - **Strict JSON compliance**: both risk state and JSON artifact are
   serialized with `allow_nan=False` to guarantee strict JSON (ECMA-404)
   output. Non-standard tokens (`NaN`, `Infinity`, `-Infinity`) are rejected
   at serialization time, not silently written as non-standard literals.
   This ensures downstream consumers using strict JSON parsers (e.g.
   JavaScript `JSON.parse`, Go `encoding/json`) can always parse the files.
-- **Result validation before artifact**: the backtest result is validated
-  for finite values (`final_assets`, `total_return`, `max_drawdown`,
-  `sharpe`) before constructing the artifact. If any field is NaN or Inf,
-  an error-only artifact (`status: "error"`) is produced instead of
-  publishing signals with corrupt metrics, and the scan exits with code 1.
+- **Result validation before formatting**: the backtest result is validated
+  IMMEDIATELY after `engine.run()` returns — before any printing or
+  formatting — for finite values (`final_assets`, `total_return`,
+  `max_drawdown`, `sharpe`). If any field is None, wrong type, or contains
+  NaN/Inf, an error artifact is written to a SEPARATE file
+  (`signals_<date>.error.json`) and the scan exits with code 1. The last
+  successful artifact (`signals_<date>.json`) is never overwritten.
   This catches upstream computation bugs before they reach signal consumers.
 - **Reset-account safety**: `--account` is checked before `--reset-risk-state`
   in the CLI, so combining both flags does not silently delete the old risk
@@ -132,6 +153,14 @@ prevent cross-contamination between different universes or configurations.
   calls that verify exit codes for `--account` rejection, `--reset-risk-state`
   safety, corrupted state fail-closed, schema-invalid state fail-closed, and
   unknown schema version rejection.
+- **Last-good artifact protection tests**: failed runs (NaN/Inf, wrong-type
+  fields, missing fields, nested NaN) are verified to write error artifacts
+  to `.error.json` without overwriting the last successful
+  `signals_<date>.json`. The `latest_success.json` pointer file is verified
+  to update only on success and remain unchanged on failure.
+- **State/artifact transaction tests**: nested NaN in `pending_signals` is
+  verified to prevent risk state from being saved (state/artifact
+  consistency). Artifact write failures are verified to exit with code 1.
 - **Strict JSON artifact tests**: the artifact and risk state files are
   verified to never contain NaN/Infinity tokens as JSON values (using a
   strict constant-rejecting JSON parser). Error-only artifact production is

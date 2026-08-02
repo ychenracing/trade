@@ -187,17 +187,26 @@ so downstream consumers that check `direction` on `pending_signals` will
 never see blocked buys. The old risk state is preserved (not overwritten)
 until the user runs `--reset-risk-state`.
 
-Risk state is saved before the JSON artifact. If the state save fails (e.g.
-disk full, invalid values), the artifact includes `risk_state_saved: false`
-and an error message, and the scan exits with code 1 so scripts and
-schedulers can detect the failure.
+The JSON artifact is fully serialized (with `allow_nan=False`) BEFORE risk
+state is saved. This ensures that if serialization fails (e.g. NaN in nested
+structures like `pending_signals`), the risk state has NOT been saved yet —
+preventing state/artifact inconsistency. If the state save subsequently
+fails (e.g. disk full, invalid values), the artifact includes
+`risk_state_saved: false` and an error message, and the scan exits with
+code 1 so scripts and schedulers can detect the failure.
 
 Both risk state and JSON artifact are serialized with `allow_nan=False` to
-guarantee strict JSON (ECMA-404) output. When the backtest result contains
-NaN/Inf values, an error-only artifact (`status: "error"`) is produced
-instead of publishing signals with corrupt metrics, and the scan exits with
-code 1. This prevents non-standard JSON tokens (`NaN`, `Infinity`) from
-reaching downstream consumers.
+guarantee strict JSON (ECMA-404) output. The backtest result is validated
+IMMEDIATELY after `engine.run()` returns — before any printing or
+formatting — for finite values in `final_assets`, `total_return`,
+`max_drawdown`, and `sharpe`. When any of these fields are None, wrong
+type, or contain NaN/Inf, an error artifact is written to a SEPARATE file
+(`signals_<date>.error.json`) and the scan exits with code 1. The last
+successful artifact (`signals_<date>.json`) is never overwritten by an
+error artifact. A `latest_success.json` pointer file is updated only on
+successful artifact write, providing a stable reference for downstream
+consumers to find the last good signals. Each artifact includes a unique
+`run_id` for traceability.
 
 ## Automatic parameter optimization
 
@@ -330,9 +339,10 @@ A GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs the full test
 suite (auto-discovered via pytest, including optimizer tests) on Python 3.11
 and 3.12, plus ruff linting, bandit security scanning, pip-audit dependency
 vulnerability scanning, pyright type checking, and a dedicated backtest
-regression job that verifies the 5-symbol warm metrics (return, drawdown,
-trade count) against frozen baselines. All checks are gating — a lint,
-security, type, test, or regression failure blocks the pipeline.
+regression job that verifies multi-universe warm metrics (1, 3, 5, 13, and
+22-symbol — return, drawdown, trade count) against frozen baselines. All
+checks are gating — a lint, security, type, test, or regression failure
+blocks the pipeline.
 
 The tests cover standalone isolated startup, absence of external imports,
 AKShare provider failover, strict local CSV selection, policy validation,
@@ -355,7 +365,12 @@ must never contain NaN/Infinity tokens as JSON values), error-only
 artifact production when results contain NaN/Inf, CLI integration via
 subprocess (exit codes, `--account` rejection, `--reset-risk-state`
 safety, corrupted state fail-closed), and that all 26 universe symbols
-are explicitly mapped. The
+are explicitly mapped. They also verify last-good artifact protection
+(failed runs write to `.error.json` and never overwrite the last
+successful `signals_<date>.json`), nested NaN detection (state is not
+saved when artifact serialization fails), `latest_success.json` pointer
+file updates, wrong-type/missing field error artifacts, and artifact
+write failure exit codes. The
 quant-fusion tests include end-to-end coverage of external-account sell
 execution with `strategy=None` and API contract enforcement (`account_state`
 raises `NotImplementedError`).
@@ -400,8 +415,9 @@ After each run, risk state (`terminal_risk_lock`, `sector_guard_active`,
 `max_drawdown`, `cycle_lock_count`) is saved to `risk_state.json` in the
 output directory with enhanced identity fields (`schema_version`,
 `symbols_hash`, `run_id`). Identity uses stable fields only (symbol set +
-count + start date + indicator_state); cash/capital is excluded because it
-changes daily. On the next run, the previous state is loaded and displayed
+count + start date + indicator state + capital + warmup days). Capital is
+included because different capital means different position sizing and risk
+exposure. On the next run, the previous state is loaded and displayed
 for continuity checking — if the previous run had an active terminal lock or
 sector guard, a warning is shown even if the current backtest doesn't detect
 it (because the backtest starts fresh each time). Old risk state files

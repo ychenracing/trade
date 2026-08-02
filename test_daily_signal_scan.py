@@ -1383,7 +1383,9 @@ class ArtifactStrictJSONTests(unittest.TestCase):
 
     Python's json.dumps() writes NaN/Infinity as non-standard tokens by
     default. The code must use allow_nan=False and produce an error-only
-    artifact when the result is invalid.
+    artifact (in a separate .error.json file) when the result is invalid.
+    The last successful artifact (signals_<date>.json) is never overwritten
+    by an error artifact.
     """
 
     def _make_mock_result(self, **overrides) -> dict:
@@ -1424,7 +1426,7 @@ class ArtifactStrictJSONTests(unittest.TestCase):
                 return dss.main()
 
     def test_nan_result_produces_error_artifact(self) -> None:
-        """NaN in result must produce error-only artifact, not signals."""
+        """NaN in result must produce error artifact in .error.json, not .json."""
         with tempfile.TemporaryDirectory() as tmpdir:
             mock_result = self._make_mock_result(
                 max_drawdown=float("nan"),
@@ -1432,16 +1434,21 @@ class ArtifactStrictJSONTests(unittest.TestCase):
             exit_code = self._run_main_with_mock(tmpdir, mock_result)
             self.assertEqual(exit_code, 1)
 
-            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
-            self.assertTrue(artifact_file.exists())
-            content = artifact_file.read_text(encoding="utf-8")
+            # Error artifact goes to .error.json — success file must NOT exist
+            error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
+            success_file = Path(tmpdir) / "signals_2026-07-30.json"
+            self.assertTrue(error_file.exists())
+            self.assertFalse(success_file.exists())
+
+            content = error_file.read_text(encoding="utf-8")
             data = json.loads(content)  # must parse as strict JSON
             self.assertEqual(data["status"], "error")
-            self.assertNotIn("pending_signals", data)
-            self.assertNotIn("portfolio", data)
+            self.assertIn("invalid_fields", data)
+            self.assertFalse(data["risk_state_saved"])
+            self.assertIn("run_id", data)
 
     def test_inf_result_produces_error_artifact(self) -> None:
-        """Inf in result must produce error-only artifact."""
+        """Inf in result must produce error artifact in .error.json."""
         with tempfile.TemporaryDirectory() as tmpdir:
             mock_result = self._make_mock_result(
                 total_return=float("inf"),
@@ -1449,13 +1456,17 @@ class ArtifactStrictJSONTests(unittest.TestCase):
             exit_code = self._run_main_with_mock(tmpdir, mock_result)
             self.assertEqual(exit_code, 1)
 
-            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
-            content = artifact_file.read_text(encoding="utf-8")
+            error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
+            success_file = Path(tmpdir) / "signals_2026-07-30.json"
+            self.assertTrue(error_file.exists())
+            self.assertFalse(success_file.exists())
+
+            content = error_file.read_text(encoding="utf-8")
             data = json.loads(content)
             self.assertEqual(data["status"], "error")
 
     def test_nan_sharpe_produces_error_artifact(self) -> None:
-        """NaN in sharpe must also trigger error artifact."""
+        """NaN in sharpe must also trigger error artifact in .error.json."""
         with tempfile.TemporaryDirectory() as tmpdir:
             mock_result = self._make_mock_result(
                 sharpe=float("nan"),
@@ -1463,8 +1474,12 @@ class ArtifactStrictJSONTests(unittest.TestCase):
             exit_code = self._run_main_with_mock(tmpdir, mock_result)
             self.assertEqual(exit_code, 1)
 
-            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
-            content = artifact_file.read_text(encoding="utf-8")
+            error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
+            success_file = Path(tmpdir) / "signals_2026-07-30.json"
+            self.assertTrue(error_file.exists())
+            self.assertFalse(success_file.exists())
+
+            content = error_file.read_text(encoding="utf-8")
             data = json.loads(content)
             self.assertEqual(data["status"], "error")
 
@@ -1483,7 +1498,7 @@ class ArtifactStrictJSONTests(unittest.TestCase):
             self.assertIn("portfolio", data)
 
     def test_artifact_is_strict_json_no_nan_tokens(self) -> None:
-        """Artifact file must never contain NaN/Infinity as JSON values.
+        """Error artifact file must never contain NaN/Infinity as JSON values.
 
         We verify by parsing with a strict constant handler that rejects
         NaN/Infinity tokens. String fields (like error messages) may contain
@@ -1496,8 +1511,9 @@ class ArtifactStrictJSONTests(unittest.TestCase):
             )
             self._run_main_with_mock(tmpdir, mock_result)
 
-            artifact_file = Path(tmpdir) / "signals_2026-07-30.json"
-            content = artifact_file.read_text(encoding="utf-8")
+            # Error artifact goes to .error.json
+            error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
+            content = error_file.read_text(encoding="utf-8")
 
             # Parse with a strict constant handler — this rejects
             # NaN, Infinity, -Infinity as JSON values (not in strings).
@@ -1525,6 +1541,296 @@ class ArtifactStrictJSONTests(unittest.TestCase):
             self.assertNotIn("Infinity", state_content)
             # Must parse as strict JSON
             json.loads(state_content)
+
+
+# ── Last-good artifact protection tests ────────────────────────────
+
+class LastGoodArtifactProtectionTests(unittest.TestCase):
+    """Verify failed runs do NOT overwrite the last successful artifact.
+
+    P1-high: when a run fails (NaN/Inf in result, wrong-type fields,
+    missing fields, or nested NaN during serialization), the error
+    artifact is written to ``signals_<date>.error.json`` — the last
+    successful ``signals_<date>.json`` is preserved unchanged.
+    """
+
+    def _make_mock_result(self, **overrides) -> dict:
+        base = {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+            "cycle_lock_count": 0,
+            "max_drawdown": -0.15,
+            "total_return": 1.2,
+            "final_assets": 2500000.0,
+            "sharpe": 2.5,
+            "total_trades": 50,
+            "risk_events": [],
+            "pending_signals": [],
+            "trades": [],
+            "safe_mode_active": False,
+        }
+        base.update(overrides)
+        return base
+
+    def _run_main_with_mock(self, tmpdir: str, mock_result: dict) -> int:
+        """Run main() with mocked data and return exit code."""
+        import pandas as pd
+        mock_df = pd.DataFrame(
+            {"open": [10.0], "high": [11.0], "low": [9.0],
+             "close": [10.5], "volume": [1000000]},
+            index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+        )
+        with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                          return_value=mock_df), \
+             patch.object(dss.qf.BacktestEngine, "run",
+                          return_value=mock_result):
+            with patch("sys.argv", [
+                "daily_signal_scan.py",
+                "--output-dir", tmpdir,
+                "--end-date", "2026-07-30",
+            ]):
+                return dss.main()
+
+    def test_failure_does_not_overwrite_previous_success(self) -> None:
+        """A failed run must not overwrite the last successful artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # First run with valid result
+            valid_result = self._make_mock_result()
+            self._run_main_with_mock(tmpdir, valid_result)
+
+            success_file = Path(tmpdir) / "signals_2026-07-30.json"
+            self.assertTrue(success_file.exists())
+            success_content = json.loads(success_file.read_text(encoding="utf-8"))
+            self.assertEqual(success_content["status"], "ok")
+
+            # Second run with invalid result (NaN max_drawdown)
+            invalid_result = self._make_mock_result(max_drawdown=float("nan"))
+            exit_code = self._run_main_with_mock(tmpdir, invalid_result)
+            self.assertEqual(exit_code, 1)
+
+            # Original success file must be unchanged
+            self.assertTrue(success_file.exists())
+            new_content = json.loads(success_file.read_text(encoding="utf-8"))
+            self.assertEqual(new_content, success_content)
+
+            # Error file must exist separately
+            error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
+            self.assertTrue(error_file.exists())
+            error_content = json.loads(error_file.read_text(encoding="utf-8"))
+            self.assertEqual(error_content["status"], "error")
+
+    def test_wrong_type_field_produces_error_artifact(self) -> None:
+        """None or string in top-level fields must produce error artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # final_assets is None — would cause TypeError in formatting
+            mock_result = self._make_mock_result(final_assets=None)
+            exit_code = self._run_main_with_mock(tmpdir, mock_result)
+            self.assertEqual(exit_code, 1)
+
+            error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
+            success_file = Path(tmpdir) / "signals_2026-07-30.json"
+            self.assertTrue(error_file.exists())
+            self.assertFalse(success_file.exists())
+
+            data = json.loads(error_file.read_text(encoding="utf-8"))
+            self.assertEqual(data["status"], "error")
+            self.assertIn("final_assets", str(data.get("invalid_fields", [])))
+
+    def test_string_type_field_produces_error_artifact(self) -> None:
+        """String where number expected must produce error artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result(sharpe="bad")
+            exit_code = self._run_main_with_mock(tmpdir, mock_result)
+            self.assertEqual(exit_code, 1)
+
+            error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
+            self.assertTrue(error_file.exists())
+            data = json.loads(error_file.read_text(encoding="utf-8"))
+            self.assertEqual(data["status"], "error")
+
+    def test_missing_field_produces_error_artifact(self) -> None:
+        """Missing top-level field must produce error artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result()
+            del mock_result["max_drawdown"]
+            exit_code = self._run_main_with_mock(tmpdir, mock_result)
+            self.assertEqual(exit_code, 1)
+
+            error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
+            self.assertTrue(error_file.exists())
+            data = json.loads(error_file.read_text(encoding="utf-8"))
+            self.assertEqual(data["status"], "error")
+            self.assertIn("max_drawdown", str(data.get("invalid_fields", [])))
+
+    def test_latest_success_json_updated_on_success(self) -> None:
+        """latest_success.json pointer must be updated on successful run."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result()
+            self._run_main_with_mock(tmpdir, mock_result)
+
+            pointer_file = Path(tmpdir) / "latest_success.json"
+            self.assertTrue(pointer_file.exists())
+            pointer = json.loads(pointer_file.read_text(encoding="utf-8"))
+            self.assertEqual(pointer["file"], "signals_2026-07-30.json")
+            self.assertEqual(pointer["scan_date"], "2026-07-30")
+            self.assertIn("run_id", pointer)
+
+    def test_latest_success_json_not_updated_on_failure(self) -> None:
+        """latest_success.json must NOT be updated when run fails."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # First run: success
+            valid_result = self._make_mock_result()
+            self._run_main_with_mock(tmpdir, valid_result)
+
+            pointer_file = Path(tmpdir) / "latest_success.json"
+            self.assertTrue(pointer_file.exists())
+            original_pointer = json.loads(pointer_file.read_text(encoding="utf-8"))
+
+            # Second run: failure (NaN)
+            invalid_result = self._make_mock_result(max_drawdown=float("nan"))
+            self._run_main_with_mock(tmpdir, invalid_result)
+
+            # Pointer must be unchanged
+            new_pointer = json.loads(pointer_file.read_text(encoding="utf-8"))
+            self.assertEqual(new_pointer, original_pointer)
+
+
+# ── Nested NaN and state/artifact consistency tests ────────────────
+
+class NestedNaNAndTransactionTests(unittest.TestCase):
+    """Verify state is NOT saved when nested NaN is detected during
+    artifact serialization, and that state/artifact consistency is
+    maintained.
+    """
+
+    def _make_mock_result(self, **overrides) -> dict:
+        base = {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+            "cycle_lock_count": 0,
+            "max_drawdown": -0.05,
+            "total_return": 0.10,
+            "final_assets": 2200000.0,
+            "sharpe": 2.5,
+            "total_trades": 50,
+            "risk_events": [],
+            "pending_signals": [],
+            "trades": [],
+            "safe_mode_active": False,
+        }
+        base.update(overrides)
+        return base
+
+    def _run_main_with_mock(self, tmpdir: str, mock_result: dict) -> int:
+        """Run main() with mocked data and return exit code."""
+        import pandas as pd
+        mock_df = pd.DataFrame(
+            {"open": [10.0], "high": [11.0], "low": [9.0],
+             "close": [10.5], "volume": [1000000]},
+            index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+        )
+        with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                          return_value=mock_df), \
+             patch.object(dss.qf.BacktestEngine, "run",
+                          return_value=mock_result):
+            with patch("sys.argv", [
+                "daily_signal_scan.py",
+                "--output-dir", tmpdir,
+                "--end-date", "2026-07-30",
+            ]):
+                return dss.main()
+
+    def test_nested_nan_does_not_save_state(self) -> None:
+        """When artifact serialization fails (nested NaN in pending_signals),
+        state must NOT be saved — preventing state/artifact inconsistency."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Top-level fields are valid, but pending_signals contains NaN
+            # in the price field. This NaN is NOT caught by the top-level
+            # validation but IS caught during json.dumps(allow_nan=False).
+            nan_signal = FakeSignal(
+                direction="buy", strategy_name="turtle", symbol="300308",
+                target_shares=100, price=float("nan"),
+                reason="test", signal_date="2026-07-30",
+            )
+            mock_result = self._make_mock_result(
+                pending_signals=[nan_signal],
+            )
+            exit_code = self._run_main_with_mock(tmpdir, mock_result)
+            self.assertEqual(exit_code, 1)
+
+            # Risk state must NOT be saved
+            state_file = Path(tmpdir) / "risk_state.json"
+            self.assertFalse(state_file.exists())
+
+            # Error artifact must exist
+            error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
+            self.assertTrue(error_file.exists())
+            error_data = json.loads(error_file.read_text(encoding="utf-8"))
+            self.assertEqual(error_data["status"], "error")
+            self.assertFalse(error_data["risk_state_saved"])
+
+    def test_nested_nan_does_not_overwrite_success(self) -> None:
+        """Nested NaN must not overwrite the last successful artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # First run: success
+            valid_result = self._make_mock_result()
+            self._run_main_with_mock(tmpdir, valid_result)
+            success_file = Path(tmpdir) / "signals_2026-07-30.json"
+            success_content = json.loads(success_file.read_text(encoding="utf-8"))
+
+            # Second run: nested NaN in pending_signals price field
+            with patch.object(dss, "_save_risk_state") as mock_save:
+                nan_signal = FakeSignal(
+                    direction="buy", strategy_name="turtle", symbol="300308",
+                    target_shares=100, price=float("nan"),
+                    reason="test", signal_date="2026-07-30",
+                )
+                mock_result = self._make_mock_result(
+                    pending_signals=[nan_signal],
+                )
+                exit_code = self._run_main_with_mock(tmpdir, mock_result)
+                self.assertEqual(exit_code, 1)
+                # _save_risk_state must NOT have been called
+                mock_save.assert_not_called()
+
+            # Success file must be unchanged
+            new_content = json.loads(success_file.read_text(encoding="utf-8"))
+            self.assertEqual(new_content, success_content)
+
+    def test_artifact_write_failure_exits_1(self) -> None:
+        """When artifact file write fails, scan must exit with code 1."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_result = self._make_mock_result()
+
+            import pandas as pd
+            mock_df = pd.DataFrame(
+                {"open": [10.0], "high": [11.0], "low": [9.0],
+                 "close": [10.5], "volume": [1000000]},
+                index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+            )
+
+            # Mock os.replace to fail when writing the artifact
+            original_replace = os.replace
+
+            def fail_replace(src, dst):
+                dst_str = str(dst)
+                if "signals_2026-07-30.json" in dst_str and ".error" not in dst_str:
+                    raise OSError("simulated disk full")
+                return original_replace(src, dst)
+
+            with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                              return_value=mock_df), \
+                 patch.object(dss.qf.BacktestEngine, "run",
+                              return_value=mock_result), \
+                 patch("os.replace", side_effect=fail_replace):
+                with patch("sys.argv", [
+                    "daily_signal_scan.py",
+                    "--output-dir", tmpdir,
+                    "--end-date", "2026-07-30",
+                ]):
+                    exit_code = dss.main()
+
+            self.assertEqual(exit_code, 1)
 
 
 if __name__ == "__main__":

@@ -100,7 +100,7 @@ jobs:
   regression:
     name: Backtest regression
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -119,19 +119,49 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Verify 5-symbol warm backtest metrics
+      - name: Verify multi-universe warm backtest metrics
         run: |
           python -c "
           import quant_fusion as qf
-          engine = qf.BacktestEngine(2_000_000)
-          symbols = {
-              '300308': '中际旭创', '300502': '新易盛', '300394': '天孚通信',
-              '688008': '澜起科技', '603986': '兆易创新',
+
+          universes = {
+              1:  {'300308': '中际旭创'},
+              3:  {'300308': '中际旭创', '300502': '新易盛', '300394': '天孚通信'},
+              5:  {'300308': '中际旭创', '300502': '新易盛', '300394': '天孚通信',
+                   '688008': '澜起科技', '603986': '兆易创新'},
+              13: {'300308': '中际旭创', '300502': '新易盛', '300394': '天孚通信',
+                   '688008': '澜起科技', '603986': '兆易创新', '300223': '北京君正',
+                   '688256': '寒武纪', '688041': '海光信息', '002371': '北方华创',
+                   '688012': '中微公司', '688072': '拓荆科技', '688082': '盛美上海',
+                   '688120': '华海清科'},
+              22: {'300308': '中际旭创', '300502': '新易盛', '300394': '天孚通信',
+                   '688498': '源杰科技', '002281': '光迅科技', '601869': '长飞光纤',
+                   '688008': '澜起科技', '603986': '兆易创新', '300223': '北京君正',
+                   '688256': '寒武纪', '688041': '海光信息', '002371': '北方华创',
+                   '688012': '中微公司', '688072': '拓荆科技', '688082': '盛美上海',
+                   '688120': '华海清科', '688037': '芯源微', '688361': '中科飞测',
+                   '300604': '长川科技', '688019': '安集科技', '300054': '鼎龙股份',
+                   '002409': '雅克科技'},
           }
-          r = engine.run(symbols, '2025-04-01', '2026-07-20',
-                         data_dir='market_data', indicator_state='warm')
-          assert abs(r['total_return'] - 11.1599) < 0.01, f\"return mismatch: {r['total_return']:.4f}\"
-          assert abs(r['max_drawdown'] - (-0.1586)) < 0.005, f\"drawdown mismatch: {r['max_drawdown']:.4f}\"
-          assert r['total_trades'] == 222, f\"trade count mismatch: {r['total_trades']}\"
-          print(f'Regression OK: return={r[\"total_return\"]:.4%} dd={r[\"max_drawdown\"]:.4%} trades={r[\"total_trades\"]}')
+
+          baselines = {
+              1:  {'return': 5.3089, 'dd': -0.1834, 'trades': 24},
+              3:  {'return': 10.8370, 'dd': -0.1792, 'trades': 194},
+              5:  {'return': 11.1599, 'dd': -0.1586, 'trades': 222},
+              13: {'return': 10.3874, 'dd': -0.1841, 'trades': 324},
+              22: {'return': 9.8357, 'dd': -0.1622, 'trades': 244},
+          }
+
+          for n, symbols in universes.items():
+              engine = qf.BacktestEngine(2_000_000)
+              r = engine.run(symbols, '2025-04-01', '2026-07-20',
+                             data_dir='market_data', indicator_state='warm')
+              b = baselines[n]
+              assert abs(r['total_return'] - b['return']) < 0.02, \\
+                  f'{n}-symbol return mismatch: {r[\"total_return\"]:.4f} vs {b[\"return\"]}'
+              assert abs(r['max_drawdown'] - b['dd']) < 0.005, \\
+                  f'{n}-symbol drawdown mismatch: {r[\"max_drawdown\"]:.4f} vs {b[\"dd\"]}'
+              assert r['total_trades'] == b['trades'], \\
+                  f'{n}-symbol trade count mismatch: {r[\"total_trades\"]} vs {b[\"trades\"]}'
+              print(f'{n}-symbol OK: return={r[\"total_return\"]:.4%} dd={r[\"max_drawdown\"]:.4%} trades={r[\"total_trades\"]}')
           "

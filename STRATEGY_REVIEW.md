@@ -88,7 +88,19 @@ or backtest results:
   (`symbols_hash` must be 16-char hex). Unknown schema versions are rejected.
 - **CI pipeline**: all checks are gating — ruff, bandit, pip-audit, pyright,
   pytest auto-discovery, and a dedicated backtest regression job that verifies
-  frozen 5-symbol warm metrics (return, drawdown, trade count).
+  multi-universe warm metrics (1, 3, 5, 13, and 22-symbol — return,
+  drawdown, trade count) against frozen baselines.
 - **CLI integration tests**: exit codes verified via real subprocess calls for
   `--account` rejection, `--reset-risk-state` safety, corrupted state
   fail-closed, schema-invalid state fail-closed, and unknown schema version.
+- **Last-good artifact protection**: failed runs (NaN/Inf, wrong-type fields,
+  missing fields, nested NaN) write error artifacts to `.error.json` — the
+  last successful `signals_<date>.json` is never overwritten. A
+  `latest_success.json` pointer file is updated only on success.
+- **State/artifact transaction safety**: the JSON artifact is fully serialized
+  before risk state is saved. If serialization fails (nested NaN), state is
+  NOT saved — preventing state/artifact inconsistency.
+- **Result validation timing**: the backtest result is validated immediately
+  after `engine.run()` returns, before any printing or formatting, for
+  finite values and correct types in `final_assets`, `total_return`,
+  `max_drawdown`, and `sharpe`.
