@@ -74,15 +74,23 @@ prevent cross-contamination between different universes or configurations.
   prevents partial writes from corrupting files on disk full, process kill, or
   power loss.
 - **Corruption fail-closed**: if `risk_state.json` is corrupted, unreadable,
-  or fails schema validation (wrong field types), the scan exits with code 1
-  instead of silently discarding the previous terminal lock state.
+  or fails schema validation (wrong field types, NaN/Inf, negative values,
+  unknown schema version), the scan exits with code 1 instead of silently
+  discarding the previous terminal lock state.
 - **Schema validation**: all required fields are validated for correct types:
   `schema_version` (int, must be known version), `scan_date` (str),
   `terminal_risk_lock` (bool), `sector_guard_active` (bool),
-  `cycle_lock_count` (int), `max_drawdown` (number), `total_return` (number),
-  `final_assets` (number). Strings like `"false"` (which are truthy in
-  Python) are rejected. Unknown `schema_version` values are rejected to
-  enforce forward compatibility.
+  `cycle_lock_count` (int, non-negative), `max_drawdown` (finite number),
+  `total_return` (finite number), `final_assets` (finite number,
+  non-negative). Strings like `"false"` (which are truthy in Python) are
+  rejected. Unknown `schema_version` values are rejected to enforce forward
+  compatibility. NaN and Inf are rejected because they break comparisons and
+  formatting.
+- **Pre-save validation**: numeric values are validated before writing —
+  NaN/Inf in `max_drawdown`, `total_return`, or `final_assets` raise
+  `ValueError`, and negative `cycle_lock_count` raises `ValueError`. This
+  prevents creating an invalid state file that would be rejected on the next
+  load.
 - **Same-day rerun preservation**: re-running the scan on the same day no
   longer discards the previous risk state. Terminal lock and sector guard
   continuity is preserved across same-day reruns.
@@ -100,12 +108,18 @@ prevent cross-contamination between different universes or configurations.
   guard are preserved. Use `--reset-risk-state` to intentionally establish a
   new identity after a configuration change.
 - **State-before-artifact ordering**: risk state is saved before the JSON
-  artifact. If the state save fails (e.g. disk full), the artifact includes
-  `risk_state_saved: false` and an error message so the user knows the state
-  was not persisted.
+  artifact. If the state save fails (e.g. disk full, permission error, invalid
+  values), the artifact includes `risk_state_saved: false` and an error
+  message. The scan exits with code 1 so scripts, cron jobs, and external
+  schedulers can detect the failure and alert.
 - **Reset-account safety**: `--account` is checked before `--reset-risk-state`
   in the CLI, so combining both flags does not silently delete the old risk
-  state before the account error is reported.
+  state before the account error is reported. This is verified by real CLI
+  integration tests using subprocess.
+- **CLI integration tests**: the daily scan is tested through real subprocess
+  calls that verify exit codes for `--account` rejection, `--reset-risk-state`
+  safety, corrupted state fail-closed, schema-invalid state fail-closed, and
+  unknown schema version rejection.
 
 ### Core API Account-State Guard
 

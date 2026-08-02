@@ -43,12 +43,17 @@ Risk state includes ``schema_version`` and type-validated fields
 (``schema_version``, ``scan_date``, ``terminal_risk_lock``,
 ``sector_guard_active``, ``cycle_lock_count``, ``max_drawdown``,
 ``total_return``, ``final_assets``). Unknown schema versions are rejected
-(fail-closed) to enforce forward compatibility. Files that fail schema
-validation are treated as corrupt (exit code 1).
+(fail-closed) to enforce forward compatibility. Numeric fields are validated
+for finiteness (no NaN/Inf) and non-negativity where applicable. Files that
+fail schema validation are treated as corrupt (exit code 1). Values are also
+validated before saving — NaN/Inf and negative ``cycle_lock_count`` are
+rejected at write time to prevent creating an invalid state file.
 
 Risk state is saved BEFORE the JSON artifact. If the state save fails (e.g.
-disk full), the artifact includes ``risk_state_saved: false`` and an error
-message so the user knows the state was not persisted.
+disk full, invalid values), the artifact includes ``risk_state_saved: false``
+and an error message so the user knows the state was not persisted. The scan
+exits with code 1 when the state save fails, so scripts and schedulers can
+detect the failure.
 
 Stale data fail-closed: if any symbol's cached data is stale (network fetch
 failed) or data end dates are inconsistent across symbols, the scan refuses to
@@ -67,6 +72,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import tempfile
 from collections import defaultdict
@@ -220,6 +226,9 @@ def _validate_risk_state(data: Any) -> str | None:
     2. ``schema_version`` exists, is an int (not bool), and is a known version.
     3. All required fields exist with correct types.
     4. ``bool`` is never accepted where ``int`` or ``float`` is expected.
+    5. Numeric fields (``max_drawdown``, ``total_return``, ``final_assets``)
+       are finite (no NaN/Inf).
+    6. ``cycle_lock_count`` and ``final_assets`` are non-negative.
 
     Unknown ``schema_version`` values are rejected to enforce forward
     compatibility — a future version with changed field semantics must not
@@ -269,11 +278,24 @@ def _validate_risk_state(data: Any) -> str | None:
                     f"risk_state.json 字段 '{field}' 应为 number，"
                     f"实际为 {type(val).__name__}"
                 )
+            # Reject NaN and Inf — they break comparisons and formatting
+            if isinstance(val, float) and not math.isfinite(val):
+                return (
+                    f"risk_state.json 字段 '{field}' 包含非有限值 "
+                    f"(NaN/Inf)"
+                )
         elif not isinstance(val, expected_type):
             return (
                 f"risk_state.json 字段 '{field}' 应为 "
                 f"{expected_type.__name__}，实际为 {type(val).__name__}"
             )
+
+    # Range validation for specific fields
+    if data.get("cycle_lock_count", 0) < 0:
+        return "risk_state.json 字段 'cycle_lock_count' 不能为负数"
+    if data.get("final_assets", 0) < 0:
+        return "risk_state.json 字段 'final_assets' 不能为负数"
+
     return None
 
 
@@ -316,18 +338,41 @@ def _save_risk_state(
     so that the same symbol set with different configuration is treated as a
     different identity. A ``schema_version`` is included for forward
     compatibility. The ``run_id`` uses a UUID4 for uniqueness across runs.
+
+    Raises ``ValueError`` if any numeric field is NaN/Inf or if
+    ``cycle_lock_count`` is negative. This prevents creating an invalid
+    state file that would be rejected on the next load.
     """
     import uuid
+
+    # Extract numeric values and validate they are finite before saving.
+    # NaN/Inf in the backtest result would be written to JSON as invalid
+    # tokens (Python's json.dumps writes "NaN"/"Infinity" by default),
+    # which would be rejected on the next load. Fail early instead.
+    max_dd = float(result.get("max_drawdown", 0.0))
+    total_ret = float(result.get("total_return", 0.0))
+    final_assets = float(result.get("final_assets", 0.0))
+    for name, val in [("max_drawdown", max_dd), ("total_return", total_ret),
+                      ("final_assets", final_assets)]:
+        if not math.isfinite(val):
+            raise ValueError(
+                f"拒绝保存非有限值: {name}={val} (NaN/Inf)"
+            )
+    cycle_lock = int(result.get("cycle_lock_count") or 0)
+    if cycle_lock < 0:
+        raise ValueError(
+            f"拒绝保存负值: cycle_lock_count={cycle_lock}"
+        )
 
     state: dict[str, Any] = {
         "schema_version": _RISK_STATE_SCHEMA_VERSION,
         "scan_date": end_date,
         "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
         "sector_guard_active": bool(result.get("sector_guard_active", False)),
-        "cycle_lock_count": int(result.get("cycle_lock_count") or 0),
-        "max_drawdown": float(result.get("max_drawdown", 0.0)),
-        "total_return": float(result.get("total_return", 0.0)),
-        "final_assets": float(result.get("final_assets", 0.0)),
+        "cycle_lock_count": cycle_lock,
+        "max_drawdown": max_dd,
+        "total_return": total_ret,
+        "final_assets": final_assets,
     }
     if tradable:
         # Build identity hash from multiple identity fields to prevent
@@ -530,7 +575,7 @@ def main() -> int:
         print("  真实账户模式存在多个架构缺陷，已暂时停用：")
         print("    - 单袖套账户快照被 reset 清空，不会实际注入")
         print("    - 三袖套混合真实和模拟账本")
-        print("    - 外部持仓清仓执行会崩溃 (strategy=None)")
+        print("    - 外部持仓清仓执行有架构缺陷 (strategy=None 已加防护但未修复)")
         print("    - 峰值权益注入时序错误可能误触发终态锁")
         print("    - 满仓账户(现金为0)无法初始化")
         print("    - 账户模式绩效指标无经济意义")
@@ -935,9 +980,9 @@ def main() -> int:
                 config_hash=config_fingerprint,
             )
             risk_state_saved = True
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             risk_state_save_error = str(exc)
-            print(f"  ⚠ 风险状态保存失败: {exc}")
+            # Error is printed later with full context (exit code, advisory)
 
     # ── Save JSON artifact ───────────────────────────────────────────
     output_dir = Path(args.output_dir)
@@ -1019,8 +1064,16 @@ def main() -> int:
     else:
         print(f"  结果已保存: {output_file}")
         if risk_state_save_error:
-            print(f"  ⚠ 风险状态保存失败: {risk_state_save_error}")
+            print(f"  ✗ 风险状态保存失败: {risk_state_save_error}")
+            print("  跨日终态锁未保存属于运行失败 — 请检查磁盘空间和权限后重试。")
     print()
+
+    # Risk state save failure is a runtime error — the terminal lock and
+    # sector guard will not persist to the next daily scan, breaking risk
+    # continuity. Return 1 so scripts, cron jobs, and external schedulers
+    # can detect the failure and alert.
+    if risk_state_save_error:
+        return 1
     return 0
 
 

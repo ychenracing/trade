@@ -2,13 +2,17 @@
 """End-to-end tests for daily_signal_scan.py utility functions.
 
 Tests account loading, risk state persistence, signal classification,
-position reconstruction, buy suppression, schema validation, and CLI
-argument parsing without requiring network access.
+position reconstruction, buy suppression, schema validation, pre-save
+validation, CLI integration (subprocess), and CLI argument parsing
+without requiring network access.
 """
 
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from collections import namedtuple
@@ -564,6 +568,62 @@ class SchemaValidationTests(unittest.TestCase):
         data["final_assets"] = 2000000
         self.assertIsNone(dss._validate_risk_state(data))
 
+    # ── Finite and range validation ──
+
+    def test_nan_max_drawdown_rejected(self) -> None:
+        """NaN values must be rejected — they break comparisons."""
+        data = dict(VALID_RISK_STATE)
+        data["max_drawdown"] = float("nan")
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("非有限值", error)
+
+    def test_inf_total_return_rejected(self) -> None:
+        """Inf values must be rejected."""
+        data = dict(VALID_RISK_STATE)
+        data["total_return"] = float("inf")
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("非有限值", error)
+
+    def test_neg_inf_final_assets_rejected(self) -> None:
+        """-Inf values must be rejected."""
+        data = dict(VALID_RISK_STATE)
+        data["final_assets"] = float("-inf")
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("非有限值", error)
+
+    def test_negative_cycle_lock_count_rejected(self) -> None:
+        """cycle_lock_count must not be negative."""
+        data = dict(VALID_RISK_STATE)
+        data["cycle_lock_count"] = -1
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("cycle_lock_count", error)
+        self.assertIn("负数", error)
+
+    def test_negative_final_assets_rejected(self) -> None:
+        """final_assets must not be negative."""
+        data = dict(VALID_RISK_STATE)
+        data["final_assets"] = -100.0
+        error = dss._validate_risk_state(data)
+        self.assertIsNotNone(error)
+        self.assertIn("final_assets", error)
+        self.assertIn("负数", error)
+
+    def test_zero_final_assets_accepted(self) -> None:
+        """final_assets=0 is valid (account fully depleted)."""
+        data = dict(VALID_RISK_STATE)
+        data["final_assets"] = 0
+        self.assertIsNone(dss._validate_risk_state(data))
+
+    def test_large_negative_drawdown_accepted(self) -> None:
+        """Large negative drawdown is valid (e.g. -0.95)."""
+        data = dict(VALID_RISK_STATE)
+        data["max_drawdown"] = -0.95
+        self.assertIsNone(dss._validate_risk_state(data))
+
     # ── Schema version in saved state ──
 
     def test_schema_version_in_saved_state(self) -> None:
@@ -928,6 +988,309 @@ class ResetAccountConflictTests(unittest.TestCase):
             elif reset_mode:
                 state_file.unlink()
                 self.assertFalse(state_file.exists())
+
+
+# ── Pre-save validation tests ──────────────────────────────────────
+
+class PreSaveValidationTests(unittest.TestCase):
+    """Verify _save_risk_state rejects NaN/Inf/negative before writing."""
+
+    def _base_result(self) -> dict:
+        return {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+            "cycle_lock_count": 0,
+            "max_drawdown": 0.0,
+            "total_return": 0.0,
+            "final_assets": 2000000.0,
+        }
+
+    def test_nan_max_drawdown_rejected_on_save(self) -> None:
+        """NaN in max_drawdown must raise ValueError before writing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._base_result()
+            result["max_drawdown"] = float("nan")
+            with self.assertRaises(ValueError) as ctx:
+                dss._save_risk_state(tmpdir, "2026-07-30", result)
+            self.assertIn("max_drawdown", str(ctx.exception))
+            self.assertIn("NaN", str(ctx.exception))
+            # File must NOT be created
+            self.assertFalse((Path(tmpdir) / "risk_state.json").exists())
+
+    def test_inf_total_return_rejected_on_save(self) -> None:
+        """Inf in total_return must raise ValueError before writing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._base_result()
+            result["total_return"] = float("inf")
+            with self.assertRaises(ValueError) as ctx:
+                dss._save_risk_state(tmpdir, "2026-07-30", result)
+            self.assertIn("total_return", str(ctx.exception))
+
+    def test_neg_inf_final_assets_rejected_on_save(self) -> None:
+        """-Inf in final_assets must raise ValueError before writing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._base_result()
+            result["final_assets"] = float("-inf")
+            with self.assertRaises(ValueError) as ctx:
+                dss._save_risk_state(tmpdir, "2026-07-30", result)
+            self.assertIn("final_assets", str(ctx.exception))
+
+    def test_negative_cycle_lock_count_rejected_on_save(self) -> None:
+        """Negative cycle_lock_count must raise ValueError before writing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._base_result()
+            result["cycle_lock_count"] = -1
+            with self.assertRaises(ValueError) as ctx:
+                dss._save_risk_state(tmpdir, "2026-07-30", result)
+            self.assertIn("cycle_lock_count", str(ctx.exception))
+            self.assertIn("负值", str(ctx.exception))
+
+    def test_valid_values_saved_successfully(self) -> None:
+        """Finite, valid values must save without error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._base_result()
+            dss._save_risk_state(
+                tmpdir, "2026-07-30", result,
+                tradable={"300308": "test"},
+                config_hash="start=2026-07-01|indicator=warm",
+            )
+            state_file = Path(tmpdir) / "risk_state.json"
+            self.assertTrue(state_file.exists())
+            data = json.loads(state_file.read_text(encoding="utf-8"))
+            self.assertEqual(data["schema_version"], 1)
+            self.assertEqual(data["final_assets"], 2000000.0)
+
+
+# ── CLI integration tests (subprocess) ─────────────────────────────
+
+class CLIIntegrationTests(unittest.TestCase):
+    """Verify CLI behavior through real subprocess calls.
+
+    These tests exercise the actual ``main()`` entry point via
+    ``subprocess.run`` to catch issues that unit-level mocking would
+    miss (argument parsing, exit codes, file system side effects).
+
+    Only paths that exit *before* network data fetching are tested,
+    so no AKShare connection is required.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._project_dir = str(Path(__file__).resolve().parent)
+
+    def _run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
+        """Run daily_signal_scan.py with the given arguments."""
+        return subprocess.run(
+            [sys.executable, "daily_signal_scan.py", *args],
+            capture_output=True,
+            text=True,
+            cwd=self._project_dir,
+            timeout=15,
+        )
+
+    def test_account_mode_exits_1(self) -> None:
+        """--account must exit with code 1 (mode is disabled)."""
+        result = self._run_cli("--account", "dummy.json")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("不可用", result.stdout)
+
+    def test_account_with_reset_preserves_state(self) -> None:
+        """--account + --reset-risk-state must NOT delete risk_state.json.
+
+        The --account check runs before --reset-risk-state, so the old
+        state file must survive even when both flags are combined.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a risk state file with terminal lock
+            state_file = Path(tmpdir) / "risk_state.json"
+            state_data = dict(VALID_RISK_STATE)
+            state_data["symbols_hash"] = "abc123"
+            state_data["total_symbols"] = 2
+            state_data["run_id"] = "trade_2026-07-28_abc12345"
+            state_file.write_text(
+                json.dumps(state_data), encoding="utf-8"
+            )
+
+            result = self._run_cli(
+                "--output-dir", tmpdir,
+                "--account", "dummy.json",
+                "--reset-risk-state",
+            )
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("不可用", result.stdout)
+
+            # State file must still exist and contain the terminal lock
+            self.assertTrue(state_file.exists())
+            data = json.loads(state_file.read_text(encoding="utf-8"))
+            self.assertFalse(data["terminal_risk_lock"])  # VALID_RISK_STATE has False
+            # But the file was not deleted
+            self.assertIn("schema_version", data)
+
+    def test_corrupted_risk_state_exits_1(self) -> None:
+        """Corrupted risk_state.json must cause exit code 1 (fail-closed).
+
+        The scan loads risk state before fetching data, so a corrupt
+        file triggers the fail-closed path without needing network access.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_file = Path(tmpdir) / "risk_state.json"
+            state_file.write_text("{corrupted json", encoding="utf-8")
+
+            result = self._run_cli(
+                "--output-dir", tmpdir,
+                "--end-date", "2026-07-30",
+            )
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("损坏", result.stdout)
+
+    def test_schema_invalid_risk_state_exits_1(self) -> None:
+        """Risk state with wrong types must cause exit code 1."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_file = Path(tmpdir) / "risk_state.json"
+            # terminal_risk_lock is a string instead of bool
+            state_file.write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "scan_date": "2026-07-30",
+                    "terminal_risk_lock": "true",
+                    "sector_guard_active": False,
+                    "cycle_lock_count": 0,
+                    "max_drawdown": 0.0,
+                    "total_return": 0.0,
+                    "final_assets": 2000000.0,
+                }),
+                encoding="utf-8",
+            )
+
+            result = self._run_cli(
+                "--output-dir", tmpdir,
+                "--end-date", "2026-07-30",
+            )
+
+            self.assertEqual(result.returncode, 1)
+
+    def test_unknown_schema_version_exits_1(self) -> None:
+        """Risk state with unknown schema_version must exit 1."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_file = Path(tmpdir) / "risk_state.json"
+            state_file.write_text(
+                json.dumps({
+                    "schema_version": 999,
+                    "scan_date": "2026-07-30",
+                    "terminal_risk_lock": False,
+                    "sector_guard_active": False,
+                    "cycle_lock_count": 0,
+                    "max_drawdown": 0.0,
+                    "total_return": 0.0,
+                    "final_assets": 2000000.0,
+                }),
+                encoding="utf-8",
+            )
+
+            result = self._run_cli(
+                "--output-dir", tmpdir,
+                "--end-date", "2026-07-30",
+            )
+
+            self.assertEqual(result.returncode, 1)
+
+
+# ── Save failure exit code test (mock-based) ───────────────────────
+
+class SaveFailureExitCodeTests(unittest.TestCase):
+    """Verify main() returns exit code 1 when risk state save fails.
+
+    Uses mock to simulate a save failure without requiring network data.
+    """
+
+    def test_save_failure_returns_exit_code_1(self) -> None:
+        """When _save_risk_state raises OSError, main() must return 1."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # No risk_state.json — first run, so suppress_buys stays False
+            # and the save path is exercised.
+
+            # Mock the backtest to return quickly without network
+            mock_result = {
+                "terminal_risk_lock": False,
+                "sector_guard_active": False,
+                "cycle_lock_count": 0,
+                "max_drawdown": -0.05,
+                "total_return": 0.10,
+                "final_assets": 2200000.0,
+                "sharpe": 2.5,
+                "total_trades": 50,
+                "risk_events": [],
+                "pending_signals": [],
+                "trades": [],
+                "safe_mode_active": False,
+            }
+
+            # Mock DataFetcher.load_stock_data to return a simple frame
+            # so the pre-screen step passes without network access
+            import pandas as pd
+            mock_df = pd.DataFrame(
+                {"open": [10.0], "high": [11.0], "low": [9.0],
+                 "close": [10.5], "volume": [1000000]},
+                index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+            )
+
+            with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                              return_value=mock_df), \
+                 patch.object(dss.qf.BacktestEngine, "run",
+                              return_value=mock_result), \
+                 patch.object(dss, "_save_risk_state",
+                              side_effect=OSError("disk full")):
+                with patch("sys.argv", [
+                    "daily_signal_scan.py",
+                    "--output-dir", tmpdir,
+                    "--end-date", "2026-07-30",
+                ]):
+                    exit_code = dss.main()
+
+            self.assertEqual(exit_code, 1)
+
+    def test_save_value_error_returns_exit_code_1(self) -> None:
+        """When _save_risk_state raises ValueError (NaN/Inf), return 1."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # No risk_state.json — first run, so suppress_buys stays False
+            mock_result = {
+                "terminal_risk_lock": False,
+                "sector_guard_active": False,
+                "cycle_lock_count": 0,
+                "max_drawdown": -0.05,
+                "total_return": 0.10,
+                "final_assets": 2200000.0,
+                "sharpe": 2.5,
+                "total_trades": 50,
+                "risk_events": [],
+                "pending_signals": [],
+                "trades": [],
+                "safe_mode_active": False,
+            }
+
+            import pandas as pd
+            mock_df = pd.DataFrame(
+                {"open": [10.0], "high": [11.0], "low": [9.0],
+                 "close": [10.5], "volume": [1000000]},
+                index=pd.DatetimeIndex(["2026-07-30"], name="date"),
+            )
+
+            with patch.object(dss.qf.DataFetcher, "load_stock_data",
+                              return_value=mock_df), \
+                 patch.object(dss.qf.BacktestEngine, "run",
+                              return_value=mock_result), \
+                 patch.object(dss, "_save_risk_state",
+                              side_effect=ValueError("拒绝保存非有限值")):
+                with patch("sys.argv", [
+                    "daily_signal_scan.py",
+                    "--output-dir", tmpdir,
+                    "--end-date", "2026-07-30",
+                ]):
+                    exit_code = dss.main()
+
+            self.assertEqual(exit_code, 1)
 
 
 if __name__ == "__main__":

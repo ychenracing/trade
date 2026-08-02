@@ -77,8 +77,11 @@ should supply its own stable benchmark basket before live use.
 - `test_quant_fusion_optimizer.py`: leakage, constraint, parameter-support,
   dynamic-listing, and deterministic-search tests.
 - `test_daily_signal_scan.py`: account loading, risk state persistence,
-  signal classification, position reconstruction, schema validation,
-  buy suppression, state preservation, and symbol mapping tests.
+  signal classification, position reconstruction, schema validation
+  (type, finite, range, version), pre-save NaN/Inf rejection, buy
+  suppression with blocked-signal separation, CLI integration via
+  subprocess (exit codes, `--account` rejection, `--reset-risk-state`
+  safety, corrupted state fail-closed), and symbol mapping tests.
 - `backtest_universes.py`, `stress_test_prefixes.py`, and
   `backtest_cambricon_universe.py`: reproducible portfolio checks.
 - `daily_signal_scan.py`: daily signal scan for the 26-stock AI sector universe
@@ -168,8 +171,11 @@ Risk state includes `schema_version` for forward compatibility. Unknown
 schema versions are rejected (fail-closed) to prevent misinterpreting fields
 with changed semantics. All state fields are type-validated on load:
 `schema_version` (int), `scan_date` (str), `terminal_risk_lock` (bool),
-`sector_guard_active` (bool), `cycle_lock_count` (int), `max_drawdown`
-(number), `total_return` (number), `final_assets` (number).
+`sector_guard_active` (bool), `cycle_lock_count` (int, non-negative),
+`max_drawdown` (finite number), `total_return` (finite number),
+`final_assets` (finite number, non-negative). Numeric values are also
+validated before saving — NaN/Inf and negative `cycle_lock_count` are
+rejected at write time.
 
 When the risk state identity hash does not match (different symbol set,
 count, or configuration), buy signals are suppressed (fail-closed). In the
@@ -180,8 +186,9 @@ never see blocked buys. The old risk state is preserved (not overwritten)
 until the user runs `--reset-risk-state`.
 
 Risk state is saved before the JSON artifact. If the state save fails (e.g.
-disk full), the artifact includes `risk_state_saved: false` and an error
-message so the user knows the state was not persisted.
+disk full, invalid values), the artifact includes `risk_state_saved: false`
+and an error message, and the scan exits with code 1 so scripts and
+schedulers can detect the failure.
 
 ## Automatic parameter optimization
 
@@ -311,7 +318,10 @@ python backtest_cambricon_universe.py
 ```
 
 A GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs the full test
-suite on Python 3.11 and 3.12, plus ruff linting and bandit security scanning.
+suite (including optimizer tests) on Python 3.11 and 3.12, plus ruff linting,
+bandit security scanning, pip-audit dependency vulnerability scanning, and
+pyright type checking. All checks are gating — a lint, security, type, or
+test failure blocks the pipeline.
 
 The tests cover standalone isolated startup, absence of external imports,
 AKShare provider failover, strict local CSV selection, policy validation,
@@ -327,10 +337,14 @@ of unmapped auto routes and the presence of positive Calmar values in successful
 target-period runs. The daily-signal-scan tests verify account JSON loading,
 risk state persistence round-trips, corrupted state fail-closed behavior,
 same-day rerun preservation, signal classification, position
-reconstruction from trade ledgers, and that all 26 universe symbols are
-explicitly mapped. The quant-fusion tests include end-to-end coverage of
-external-account sell execution with `strategy=None` and API contract
-enforcement (`account_state` raises `NotImplementedError`).
+reconstruction from trade ledgers, schema validation (type, finite, range,
+and version checks), pre-save NaN/Inf rejection, buy suppression with
+blocked-signal separation, CLI integration via subprocess (exit codes,
+`--account` rejection, `--reset-risk-state` safety, corrupted state
+fail-closed), and that all 26 universe symbols are explicitly mapped. The
+quant-fusion tests include end-to-end coverage of external-account sell
+execution with `strategy=None` and API contract enforcement (`account_state`
+raises `NotImplementedError`).
 
 ## Daily signal scan
 
@@ -374,9 +388,14 @@ cross-contamination between different universes or configurations.
 Risk state writes are atomic (temp file + `os.replace`) to prevent corruption
 from disk full, process kill, or power loss. The JSON artifact is also
 written atomically. Corrupted risk state files, or files that fail schema
-validation (wrong field types), cause the scan to exit with code 1 rather
-than silently discarding terminal lock state. Same-day reruns preserve the
-previous state so terminal lock and sector guard continuity is maintained.
+validation (wrong field types, NaN/Inf, negative values, unknown schema
+version), cause the scan to exit with code 1 rather than silently discarding
+terminal lock state. Same-day reruns preserve the previous state so terminal
+lock and sector guard continuity is maintained. Numeric values are validated
+before saving — NaN/Inf and negative `cycle_lock_count` are rejected at write
+time to prevent creating an invalid state file. If the risk state save fails
+(disk full, permission error, invalid values), the scan exits with code 1 so
+scripts and schedulers can detect the failure.
 
 When the identity hash does not match (different symbol set, count, or
 configuration), buy signals are suppressed (fail-closed) to prevent entering
