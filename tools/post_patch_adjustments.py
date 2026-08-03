@@ -7,9 +7,37 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+_GENERATED_PYTHON = (
+    "account_signal_engine.py",
+    "benchmark_validation.py",
+    "market_data_contracts.py",
+    "test_review_fixes.py",
+)
+
+
+def _normalize_generated_python(path: Path) -> None:
+    """Undo outer-template escape expansion before parsing generated modules."""
+    text = path.read_text(encoding="utf-8")
+    # The generated templates have one module-level line stripped by lstrip(),
+    # while all remaining lines retain the template's eight-space margin when a
+    # target ``\n`` escape was expanded too early. Remove that uniform margin.
+    lines = text.splitlines(keepends=True)
+    if len(lines) >= 3 and lines[2].startswith("        "):
+        lines = [line[8:] if line.startswith("        ") else line for line in lines]
+        text = "".join(lines)
+    # Restore target-source newline escapes that the outer template interpreted.
+    text = text.replace('+ "\n"', '+ "\\n"')
+    text = text.replace(
+        '"date,open,close,high,low,volume\n2026-01-01,1,1,1,1,10\n"',
+        '"date,open,close,high,low,volume\\n2026-01-01,1,1,1,1,10\\n"',
+    )
+    path.write_text(text, encoding="utf-8")
 
 
 def main() -> int:
+    for generated in _GENERATED_PYTHON:
+        _normalize_generated_python(ROOT / generated)
+
     path = ROOT / "market_data_contracts.py"
     text = path.read_text(encoding="utf-8")
     pattern = re.compile(
