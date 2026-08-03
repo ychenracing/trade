@@ -1,42 +1,27 @@
-# Historical validation snapshot
+# 历史验证冻结数据
 
-This directory is the reproducible evidence set for regime routing and the
-2022–2024 validation. It is separate from `market_data`: the latter remains
-byte-for-byte frozen for the published 2025–2026 regression baseline.
+本目录保存外层行情路由和 2022—2024 年验证所需的可复现证据集。它与 `market_data/` 分开：后者继续作为 2025—2026 年生产趋势回归的字节级冻结基线。
 
-## Contents
+## 目录内容
 
-- 16 A-share AI hardware / semiconductor stocks, forward-adjusted (`qfq`).
-- `000300` (CSI 300) and `000682` (technology risk index), unadjusted and used
-  only as non-trading regime evidence.
-- `SHA256SUMS`, which freezes every CSV byte.
-- `MANIFEST.json`, which records dates, row counts, splice counts, overlap
-  comparisons and volume-unit normalization.
+- 16 只 A 股 AI 硬件和半导体股票的前复权日线；
+- `000300` 沪深 300 与 `000682` 科技风险指数的非复权日线，只作为非交易路由证据；
+- `SHA256SUMS`：冻结每个 CSV 文件的字节内容；
+- `MANIFEST.json`：记录日期范围、行数、拼接次数、重叠比较和成交量单位规范化信息。
 
-The historical prefix came from the audited Eastmoney/Tencent validation
-snapshot. The existing repository's 2024+ `market_data` rows were retained as
-the authoritative tail wherever the two snapshots overlapped. Common-date OHLC
-was compared before the splice; the largest absolute difference is recorded per
-symbol in `MANIFEST.json`. Volume units were normalized from lots to shares when
-needed, including the source-specific `688256` scale.
+历史前缀来自已审计的东方财富和腾讯验证快照。与仓库现有 `market_data/` 重叠的 2024 年以后数据，以生产冻结数据为准。拼接前会比较共同日期的 OHLC，最大绝对差异记录在 `MANIFEST.json`。成交量统一换算为股，包括 `688256` 的来源特定比例处理。
 
-## Reproduce integrity checks
+## 完整性检查
 
 ```bash
 cd historical_data
 sha256sum -c SHA256SUMS
 ```
 
-`run_regime_validation.py` independently records SHA-256, first/last date and
-row count in `regime_validation_results.json`.
+`run_regime_validation.py` 还会在 `regime_validation_results.json` 中独立记录 SHA-256、首尾日期和行数。
 
-## Methodological limits
+## 方法限制
 
-- The snapshot has no 2021 stock history, so a 240-session selector cannot
-  form valid evidence at the start of 2022. The router deliberately holds cash
-  rather than shorten the lookback after observing the year.
-- IPOs retain their true shorter histories. A symbol with no usable history is
-  omitted without invalidating the rest of a requested pool.
-- Public qfq histories can be restated after corporate actions. Refreshing this
-  directory creates a new research snapshot and requires a new manifest and
-  regression review; it must not silently overwrite these results.
+- 本目录没有 2021 年股票历史，因此 2022 年开始时无法形成完整的 240 交易日动量证据。路由按设计持有现金，不会在观察结果后缩短窗口。
+- 晚上市股票保留真实的较短历史。没有足够历史的股票会被排除，但不会导致整个股票池失效。
+- 公共前复权历史可能在后续公司行动后被数据源重述。刷新本目录等同于创建新的研究快照，必须重新生成清单和回归结果，不能静默覆盖当前证据。
