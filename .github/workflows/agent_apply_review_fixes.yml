@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 concurrency:
   group: full-production-review-fixes-pr-${{ github.event.pull_request.number }}
@@ -18,6 +20,8 @@ jobs:
     timeout-minutes: 90
     env:
       PYTHONPATH: .
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,23 +58,49 @@ jobs:
       - name: Compile and lint
         run: |
           set +e
-          {
-            python -m compileall -q .
-            ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
-              quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
-              regime_adaptive.py account_signal_engine.py market_data_contracts.py \
-              benchmark_validation.py run_regime_validation.py test_review_fixes.py
-          } > /tmp/lint.log 2>&1
-          status=$?
-          cat /tmp/lint.log
-          if [ "$status" -ne 0 ]; then
-            cp /tmp/lint.log .agent_lint_failure.log
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add .agent_lint_failure.log
-            git commit -m 'ci: capture generated lint failures'
-            git push origin HEAD:agent/full-review-fixes
-            exit "$status"
+          python -m compileall -q . > /tmp/compile.log 2>&1
+          compile_status=$?
+          ruff check --fix --select=E,F,W --ignore=E501,E402,E731,E741 \
+            quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+            regime_adaptive.py account_signal_engine.py market_data_contracts.py \
+            benchmark_validation.py run_regime_validation.py test_review_fixes.py \
+            > /tmp/ruff-fix.log 2>&1
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
+            quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+            regime_adaptive.py account_signal_engine.py market_data_contracts.py \
+            benchmark_validation.py run_regime_validation.py test_review_fixes.py \
+            > /tmp/ruff.log 2>&1
+          ruff_status=$?
+          cat /tmp/compile.log /tmp/ruff-fix.log /tmp/ruff.log
+          if [ "$compile_status" -ne 0 ] || [ "$ruff_status" -ne 0 ]; then
+            {
+              echo '### Generated implementation compile/lint failure'
+              echo
+              echo '**Exact frozen baseline captured before migration:**'
+              echo '```json'
+              cat /tmp/bull-baseline.json
+              echo '```'
+              echo
+              echo '**compileall:**'
+              echo '```text'
+              head -c 30000 /tmp/compile.log
+              echo
+              echo '```'
+              echo
+              echo '**Ruff auto-fix:**'
+              echo '```text'
+              head -c 30000 /tmp/ruff-fix.log
+              echo
+              echo '```'
+              echo
+              echo '**Remaining Ruff errors:**'
+              echo '```text'
+              head -c 30000 /tmp/ruff.log
+              echo
+              echo '```'
+            } > /tmp/pr-comment.md
+            gh pr comment "$PR_NUMBER" --body-file /tmp/pr-comment.md
+            exit 1
           fi
 
       - name: Run complete test suite
@@ -80,12 +110,15 @@ jobs:
           status=$?
           cat /tmp/pytest.log
           if [ "$status" -ne 0 ]; then
-            cp /tmp/pytest.log .agent_pytest_failure.log
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add .agent_pytest_failure.log
-            git commit -m 'ci: capture production fix test failures'
-            git push origin HEAD:agent/full-review-fixes
+            {
+              echo '### Generated implementation test failure'
+              echo
+              echo '```text'
+              head -c 60000 /tmp/pytest.log
+              echo
+              echo '```'
+            } > /tmp/pr-comment.md
+            gh pr comment "$PR_NUMBER" --body-file /tmp/pr-comment.md
             exit "$status"
           fi
 
@@ -123,11 +156,32 @@ jobs:
 
       - name: Core type and security checks
         run: |
-          pyright --project pyrightconfig.json
-          bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
-            regime_adaptive.py account_signal_engine.py market_data_contracts.py \
-            benchmark_validation.py run_regime_validation.py -ll
-          pip-audit --strict -r requirements-lock.txt
+          set +e
+          {
+            pyright --project pyrightconfig.json
+            pyright_status=$?
+            bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+              regime_adaptive.py account_signal_engine.py market_data_contracts.py \
+              benchmark_validation.py run_regime_validation.py -ll
+            bandit_status=$?
+            pip-audit --strict -r requirements-lock.txt
+            audit_status=$?
+            exit $((pyright_status || bandit_status || audit_status))
+          } > /tmp/static.log 2>&1
+          status=$?
+          cat /tmp/static.log
+          if [ "$status" -ne 0 ]; then
+            {
+              echo '### Generated implementation static/security failure'
+              echo
+              echo '```text'
+              head -c 60000 /tmp/static.log
+              echo
+              echo '```'
+            } > /tmp/pr-comment.md
+            gh pr comment "$PR_NUMBER" --body-file /tmp/pr-comment.md
+            exit "$status"
+          fi
 
       - name: Remove one-shot migration machinery
         run: |
