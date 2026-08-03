@@ -53,11 +53,25 @@ jobs:
 
       - name: Compile and lint
         run: |
-          python -m compileall -q .
-          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
-            quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
-            regime_adaptive.py account_signal_engine.py market_data_contracts.py \
-            benchmark_validation.py run_regime_validation.py test_review_fixes.py
+          set +e
+          {
+            python -m compileall -q .
+            ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
+              quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+              regime_adaptive.py account_signal_engine.py market_data_contracts.py \
+              benchmark_validation.py run_regime_validation.py test_review_fixes.py
+          } > /tmp/lint.log 2>&1
+          status=$?
+          cat /tmp/lint.log
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/lint.log .agent_lint_failure.log
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add .agent_lint_failure.log
+            git commit -m 'ci: capture generated lint failures'
+            git push origin HEAD:agent/full-review-fixes
+            exit "$status"
+          fi
 
       - name: Run complete test suite
         run: |
@@ -119,7 +133,7 @@ jobs:
         run: |
           rm -f tools/apply_review_fixes.py tools/post_patch_adjustments.py
           rm -f .github/workflows/agent_apply_review_fixes.yml
-          rm -f .agent_pytest_failure.log
+          rm -f .agent_lint_failure.log .agent_pytest_failure.log
 
       - name: Commit validated implementation
         run: |
