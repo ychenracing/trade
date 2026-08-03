@@ -1,0 +1,63 @@
+name: Publish generated review snapshot
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: generated-review-snapshot-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/full-review-fixes
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: |
+          python -m pip install --upgrade pip uv
+          pip install -r requirements-dev.txt
+      - name: Generate implementation
+        run: |
+          cp backtest_golden_metrics.json /tmp/bull-baseline.json
+          python tools/prepare_migration_templates.py
+          python tools/apply_review_fixes.py --apply /tmp/bull-baseline.json
+          python tools/post_patch_adjustments.py
+          uv pip compile --generate-hashes --python-version 3.12 \
+            --output-file requirements-lock.txt requirements-dev.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-review-tree-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            quant_fusion.py
+            regime_adaptive.py
+            daily_signal_scan.py
+            account_signal_engine.py
+            market_data_contracts.py
+            benchmark_validation.py
+            test_regime_adaptive.py
+            test_daily_signal_scan.py
+            test_review_fixes.py
+            requirements-lock.txt
+            pyrightconfig.json
+            backtest_golden_metrics.json
+            README.md
+            BACKTEST_RESULTS.md
+            STRATEGY_REVIEW.md
+            PRODUCTION_REVIEW_FIXES.md
+            .github/workflows/ci.yml
