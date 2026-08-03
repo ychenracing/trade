@@ -78,9 +78,10 @@ def _normalize_index_frame(frame: pd.DataFrame, *, end_date: str) -> pd.DataFram
     if not all(name in names for name in required):
         raise ValueError(f"unexpected index columns: {list(frame.columns)}")
 
+    has_volume = "volume" in names
     volume = (
         pd.to_numeric(frame[names["volume"]], errors="coerce")
-        if "volume" in names
+        if has_volume
         else pd.Series(0.0, index=frame.index)
     )
     out = pd.DataFrame(
@@ -92,7 +93,11 @@ def _normalize_index_frame(frame: pd.DataFrame, *, end_date: str) -> pd.DataFram
             "low": pd.to_numeric(frame[names["low"]], errors="coerce"),
             "volume": volume,
         }
-    ).dropna(subset=["date", *_REQUIRED_PRICE_COLUMNS])
+    )
+    if out[list(required)].isna().any().any():
+        raise ValueError("index response contains an unparseable date or OHLC value")
+    if has_volume and out["volume"].isna().any():
+        raise ValueError("index response contains an unparseable volume value")
 
     boundary = pd.Timestamp(end_date)
     if boundary is pd.NaT:
@@ -109,10 +114,10 @@ def _normalize_index_frame(frame: pd.DataFrame, *, end_date: str) -> pd.DataFram
         raise ValueError("index OHLC prices must be finite")
     if (prices <= 0).any().any():
         raise ValueError("index OHLC prices must be positive")
-    volume_values = out["volume"].dropna().to_numpy(dtype=float)
+    volume_values = out["volume"].to_numpy(dtype=float)
     if not np.isfinite(volume_values).all():
         raise ValueError("index volume must be finite")
-    if (out["volume"].dropna() < 0).any():
+    if (out["volume"] < 0).any():
         raise ValueError("index volume must be non-negative")
     if (
         (out["high"] < out[["open", "close"]].max(axis=1)).any()
@@ -121,7 +126,6 @@ def _normalize_index_frame(frame: pd.DataFrame, *, end_date: str) -> pd.DataFram
     ):
         raise ValueError("index OHLC relationships are invalid")
 
-    out["volume"] = out["volume"].fillna(0.0)
     out["date"] = out["date"].dt.strftime("%Y-%m-%d")
     return out.reset_index(drop=True)
 
