@@ -12,6 +12,7 @@ import quant_fusion as qf
 
 
 ROOT = Path(__file__).resolve().parent
+THIS_FILE = Path(__file__).resolve().relative_to(ROOT)
 EXPECTED_MARKDOWN = {
     Path("README.md"),
     Path("BACKTEST_RESULTS.md"),
@@ -85,7 +86,8 @@ class MarkdownConsistencyTests(unittest.TestCase):
         tracked_text = "\n".join(
             (ROOT / path).read_text(encoding="utf-8")
             for path in _tracked_paths()
-            if path.suffix in {".py", ".md", ".yml", ".yaml"}
+            if path != THIS_FILE
+            and path.suffix in {".py", ".md", ".yml", ".yaml"}
         )
         for name in OBSOLETE_DOCUMENTS:
             self.assertNotIn(name, tracked_text)
