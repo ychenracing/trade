@@ -41,8 +41,8 @@ jobs:
           python -m pip install --upgrade pip uv
           pip install -r requirements-dev.txt
 
-      - name: Capture exact pre-change bull baselines
-        run: python tools/apply_review_fixes.py --capture-baseline /tmp/bull-baseline.json
+      - name: Load exact pre-change bull baselines
+        run: cp backtest_golden_metrics.json /tmp/bull-baseline.json
 
       - name: Apply audited fixes
         run: |
@@ -76,7 +76,7 @@ jobs:
             {
               echo '### Generated implementation compile/lint failure'
               echo
-              echo '**Exact frozen baseline captured before migration:**'
+              echo '**Exact frozen baseline:**'
               echo '```json'
               cat /tmp/bull-baseline.json
               echo '```'
