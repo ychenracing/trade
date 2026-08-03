@@ -6,7 +6,6 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 from unittest.mock import patch
 
 import pandas as pd
@@ -333,6 +332,24 @@ class MarketDataContractTests(unittest.TestCase):
         frame = self._frame()
         frame.loc[0, "high"] = 1.0
         with self.assertRaisesRegex(ValueError, "relationships"):
+            contracts._normalize_index_frame(
+                frame,
+                end_date="2025-12-31",
+            )
+
+    def test_non_finite_price_is_rejected(self) -> None:
+        frame = self._frame()
+        frame.loc[0, "close"] = float("inf")
+        with self.assertRaisesRegex(ValueError, "finite"):
+            contracts._normalize_index_frame(
+                frame,
+                end_date="2025-12-31",
+            )
+
+    def test_non_finite_volume_is_rejected(self) -> None:
+        frame = self._frame()
+        frame.loc[0, "volume"] = float("inf")
+        with self.assertRaisesRegex(ValueError, "volume must be finite"):
             contracts._normalize_index_frame(
                 frame,
                 end_date="2025-12-31",
