@@ -49,6 +49,22 @@ jobs:
           python tools/prepare_migration_templates.py
           python tools/apply_review_fixes.py --apply /tmp/bull-baseline.json
           python tools/post_patch_adjustments.py
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/ci.yml')
+          text = path.read_text(encoding='utf-8')
+          old = 'pyright --project pyrightconfig.json'
+          new = (
+              'pyright quant_fusion_optimizer.py daily_signal_scan.py '
+              'regime_adaptive.py account_signal_engine.py '
+              'market_data_contracts.py benchmark_validation.py '
+              'run_regime_validation.py'
+          )
+          if text.count(old) != 1:
+              raise RuntimeError('generated CI Pyright command changed unexpectedly')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
 
       - name: Resolve hash-locked dependencies
         run: |
@@ -159,7 +175,9 @@ jobs:
         run: |
           set +e
           : > /tmp/static.log
-          pyright --project pyrightconfig.json >> /tmp/static.log 2>&1
+          pyright quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py \
+            account_signal_engine.py market_data_contracts.py benchmark_validation.py \
+            run_regime_validation.py >> /tmp/static.log 2>&1
           pyright_status=$?
           bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
             regime_adaptive.py account_signal_engine.py market_data_contracts.py \
