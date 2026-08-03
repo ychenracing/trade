@@ -116,6 +116,71 @@ def _scope_pyright_to_production_entrypoints(path: Path) -> None:
     path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
 
 
+def _tighten_generated_pandas_types() -> None:
+    """Make scalar and timestamp boundaries explicit for Pyright and readers."""
+    account_path = ROOT / "account_signal_engine.py"
+    account = account_path.read_text(encoding="utf-8")
+    account = account.replace(
+        "from typing import Any\n",
+        "from typing import Any, cast\n",
+        1,
+    )
+    old_peak = (
+        "                observed_peak = float(since_entry.max()) "
+        "if not since_entry.empty else close\n"
+    )
+    new_peak = (
+        "                observed_peak = (\n"
+        "                    float(cast(Any, since_entry.max()))\n"
+        "                    if not since_entry.empty\n"
+        "                    else close\n"
+        "                )\n"
+    )
+    if account.count(old_peak) != 1:
+        raise RuntimeError("account observed-peak marker missing or duplicated")
+    account_path.write_text(account.replace(old_peak, new_peak, 1), encoding="utf-8")
+
+    market_path = ROOT / "market_data_contracts.py"
+    market = market_path.read_text(encoding="utf-8")
+    market = market.replace(
+        "from typing import Any\n",
+        "from typing import Any, cast\n",
+        1,
+    )
+    old_date = "    if pd.Timestamp(end_date).normalize() < (\n"
+    new_date = (
+        "    end_timestamp = pd.Timestamp(end_date)\n"
+        "    if pd.isna(end_timestamp):\n"
+        "        raise ValueError(\"end_date must resolve to a valid timestamp\")\n"
+        "    end_timestamp = cast(pd.Timestamp, end_timestamp)\n"
+        "    if end_timestamp.normalize() < (\n"
+    )
+    if market.count(old_date) != 1:
+        raise RuntimeError("market end-date marker missing or duplicated")
+    market_path.write_text(market.replace(old_date, new_date, 1), encoding="utf-8")
+
+    regime_path = ROOT / "regime_adaptive.py"
+    regime = regime_path.read_text(encoding="utf-8")
+    old_search = (
+        "        try:\n"
+        "            entry_index = int(ctx.df.index.searchsorted(pd.Timestamp(position.entry_date)))\n"
+        "            held_days = max(ctx.i - entry_index, 0)\n"
+    )
+    new_search = (
+        "        try:\n"
+        "            entry_timestamp = pd.Timestamp(position.entry_date)\n"
+        "            if pd.isna(entry_timestamp):\n"
+        "                raise ValueError(\"entry_date must resolve to a valid timestamp\")\n"
+        "            entry_index = int(\n"
+        "                cast(Any, ctx.df.index).searchsorted(entry_timestamp)\n"
+        "            )\n"
+        "            held_days = max(ctx.i - entry_index, 0)\n"
+    )
+    if regime.count(old_search) != 1:
+        raise RuntimeError("weak-regime entry-date marker missing or duplicated")
+    regime_path.write_text(regime.replace(old_search, new_search, 1), encoding="utf-8")
+
+
 def main() -> int:
     for generated in _GENERATED_PYTHON:
         _normalize_generated_python(ROOT / generated)
@@ -153,6 +218,7 @@ def main() -> int:
         f"{indent}if ak is None:\n"
     )
     path.write_text(text[: match.start()] + replacement + text[match.end() :], encoding="utf-8")
+    _tighten_generated_pandas_types()
 
     test_path = ROOT / "test_daily_signal_scan.py"
     tests = test_path.read_text(encoding="utf-8")
