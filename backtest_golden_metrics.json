@@ -1,0 +1,27 @@
+{
+  "1": {
+    "max_drawdown": -0.1834136674871038,
+    "total_return": 5.308949754885,
+    "total_trades": 24
+  },
+  "13": {
+    "max_drawdown": -0.18407181266292794,
+    "total_return": 10.387404851264252,
+    "total_trades": 324
+  },
+  "22": {
+    "max_drawdown": -0.1621768950871955,
+    "total_return": 9.835715834382501,
+    "total_trades": 244
+  },
+  "3": {
+    "max_drawdown": -0.17918987929749075,
+    "total_return": 10.836973326659502,
+    "total_trades": 194
+  },
+  "5": {
+    "max_drawdown": -0.15857336312266856,
+    "total_return": 11.159923755457626,
+    "total_trades": 222
+  }
+}

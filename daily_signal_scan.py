@@ -8,8 +8,8 @@ signal (buy / sell / hold) for each symbol.
 Simulation mode (default): runs a fresh backtest from --start-date.
 Signals reflect what the strategy *would have* done, not your real portfolio.
 
-Account mode (--account) is currently DISABLED due to multiple architecture
-defects. It will be re-enabled as a separate account signal engine.
+Account mode (--account) is handled by a separate point-in-time account
+signal engine. It never injects real holdings into the historical backtest.
 
 Risk state (terminal_risk_lock, sector_guard_active, drawdown) is persisted to
 risk_state.json with enhanced identity fields (symbols_hash, run_id) after each
@@ -124,6 +124,8 @@ matplotlib.use("Agg")
 
 import pandas as pd
 
+import account_signal_engine as account_scan
+import market_data_contracts
 import quant_fusion as qf
 import regime_adaptive as ra
 
@@ -748,8 +750,7 @@ def _run_main() -> int:
     parser.add_argument(
         "--account",
         default="",
-        help="DISABLED. Real-account JSON integration is under reconstruction. "
-        "Use simulation mode (default) instead.",
+        help="Real-account JSON snapshot for separate point-in-time decision support.",
     )
     parser.add_argument(
         "--start-date",
@@ -785,25 +786,18 @@ def _run_main() -> int:
     end_date = args.end_date or _today_str()
     start_date = args.start_date or START_DATE
 
-    # --account mode is disabled — check this BEFORE --reset-risk-state so
-    # that combining --reset-risk-state --account does not silently delete
-    # the old risk state and then immediately exit with an account error.
+    # Real holdings use a separate point-in-time engine. They are never
+    # injected into the historical simulator, so account advice cannot create
+    # a hybrid or look-ahead-contaminated equity curve.
     if args.account:
-        print("=" * 72)
-        print("  ⚠ --account 模式当前不可用")
-        print("=" * 72)
-        print()
-        print("  真实账户模式存在多个架构缺陷，已暂时停用：")
-        print("    - 单袖套账户快照被 reset 清空，不会实际注入")
-        print("    - 三袖套混合真实和模拟账本")
-        print("    - 外部持仓清仓执行有架构缺陷 (strategy=None 已加防护但未修复)")
-        print("    - 峰值权益注入时序错误可能误触发终态锁")
-        print("    - 满仓账户(现金为0)无法初始化")
-        print("    - 账户模式绩效指标无经济意义")
-        print()
-        print("  请使用不带 --account 的模拟模式运行。")
-        print("  真实账户信号引擎正在重构中。")
-        return 1
+        return account_scan.run_account_scan(
+            account_path=args.account,
+            symbols=SYMBOLS,
+            end_date=end_date,
+            cache_dir=args.cache_dir,
+            regime_data_dir=args.regime_data_dir,
+            output_dir=args.output_dir,
+        )
 
     # --reset-risk-state: delete the old risk state file before running.
     # This runs only after the --account check passes, so the user cannot
@@ -855,8 +849,12 @@ def _run_main() -> int:
     print("  ℹ 模拟模式: 信号基于从零开始的回测，不代表真实账户持仓。")
     print("-" * 72)
 
-    # Configure incremental cache for efficient daily updates
+    # Configure incremental cache for efficient daily updates. Legacy
+    # caches without an explicit share-volume contract are rebuilt.
     qf.DataFetcher._cache_dir = args.cache_dir
+    index_refresh = market_data_contracts.refresh_regime_indices(
+        args.regime_data_dir, end_date=end_date, strict=False
+    )
 
     # ── Pre-screen: skip symbols with no data (e.g. not yet listed) ──
     # The engine loads all symbols at once and raises on any failure, so we
@@ -875,6 +873,8 @@ def _run_main() -> int:
     print("  正在检查标的可交易性...")
     print("-" * 72)
     stale_symbols: list[tuple[str, str, str]] = []  # (code, name, last_cache_date)
+    fatal_data_errors: list[tuple[str, str, str]] = []
+    known_listing_dates = {"688825": "2026-07-27"}
     for code, name in SYMBOLS.items():
         try:
             df = qf.DataFetcher.load_stock_data(
@@ -890,11 +890,27 @@ def _run_main() -> int:
                 else:
                     print(f"  ✓ {code} {name}: {len(df)} 条数据")
             else:
-                skipped.append((code, name, "无数据"))
-                print(f"  ✗ {code} {name}: 无数据 (可能尚未上市)")
+                listing = known_listing_dates.get(code)
+                if listing and pd.Timestamp(listing) > pd.Timestamp(end_date):
+                    skipped.append((code, name, f"尚未上市 ({listing})"))
+                    print(f"  ✗ {code} {name}: 尚未上市 ({listing})")
+                else:
+                    fatal_data_errors.append((code, name, "返回空数据"))
+                    print(f"  ✗ {code} {name}: 预期可交易但返回空数据")
         except Exception as exc:
-            skipped.append((code, name, str(exc)[:80]))
-            print(f"  ✗ {code} {name}: 数据获取失败 — {str(exc)[:60]}")
+            listing = known_listing_dates.get(code)
+            if listing and pd.Timestamp(listing) > pd.Timestamp(end_date):
+                skipped.append((code, name, f"尚未上市 ({listing})"))
+                print(f"  ✗ {code} {name}: 尚未上市 ({listing})")
+            else:
+                fatal_data_errors.append((code, name, str(exc)[:160]))
+                print(f"  ✗ {code} {name}: 数据获取失败 — {str(exc)[:60]}")
+
+    if fatal_data_errors and not args.allow_stale:
+        print("  ✗ 预期可交易标的数据失败，拒绝缩小股票池后继续运行。")
+        for code, name, reason in fatal_data_errors:
+            print(f"    {code} {name}: {reason}")
+        return 1
 
     print("-" * 72)
     print(f"  可交易标的: {len(tradable)}  |  跳过: {len(skipped)}")
@@ -987,6 +1003,18 @@ def _run_main() -> int:
             print("  ⚠ 买入信号将被抑制 (风险状态不匹配 — fail-closed)。")
             print("    删除 risk_state.json 并重新运行可恢复完整信号。")
 
+    # Risk-state identity and current-route safety are independent. A route
+    # change blocks new buys but must not disable the state/artifact transaction.
+    risk_identity_mismatch = suppress_buys
+
+    current_decision = ra.RegimeAdaptiveBacktestEngine(capital).decide_current(
+        tradable,
+        as_of=max(data_end_dates) if data_end_dates else end_date,
+        data_dir=args.regime_data_dir,
+        leader_data_dir=args.cache_dir,
+    )
+    print(f"  当前点位路由: {current_decision.name} (边界 {current_decision.boundary})")
+
     print("  正在运行回测，请稍候...")
     print("-" * 72)
 
@@ -1069,6 +1097,24 @@ def _run_main() -> int:
 
     # ── Extract latest pending signals ───────────────────────────────
     pending = result.get("pending_signals", [])
+    historical_decision = result.get("deployment_decision", {})
+    current_selected = (
+        set(current_decision.leaders.selected_symbols)
+        if current_decision.leaders is not None
+        else set()
+    )
+    historical_selected = set(result.get("selected_symbols", []))
+    live_route_mismatch = (
+        historical_decision.get("name") != current_decision.name
+        or (
+            current_decision.name == "positive_momentum_hold"
+            and historical_selected != current_selected
+        )
+    )
+    if live_route_mismatch:
+        suppress_buys = True
+        print("  ⚠ 当前路由与历史回放起点路由不同，所有新增买入已失败关闭。")
+        print("    卖出信号仍保留；真实持仓请使用 --account 点位引擎。")
     # Group by symbol: collect all pending signals per symbol
     symbol_signals: dict[str, list[Any]] = defaultdict(list)
     for sig in pending:
@@ -1290,6 +1336,8 @@ def _run_main() -> int:
             "untradeable": untradeable_count,
             "suppressed_buys": suppressed_buy_count,
             "buys_suppressed": suppress_buys,
+            "risk_state_identity_mismatch": risk_identity_mismatch,
+            "current_route_mismatch": live_route_mismatch,
         },
         "portfolio": {
             "final_assets": float(result["final_assets"]),
@@ -1305,6 +1353,9 @@ def _run_main() -> int:
             "mode": args.deployment_mode,
             "policy": result.get("deployment_policy", "unknown"),
             "decision": result.get("deployment_decision", {}),
+            "current_decision": asdict(current_decision),
+            "current_route_buy_suppression": live_route_mismatch,
+            "index_refresh": index_refresh,
             "requested_symbols": result.get("requested_symbols", sorted(tradable)),
             "selected_symbols": result.get("selected_symbols", sorted(tradable)),
             "unavailable_symbols": result.get("unavailable_symbols", []),
@@ -1401,7 +1452,7 @@ def _run_main() -> int:
     # Both artifact and risk state share the same run_id for traceability.
     risk_state_saved = False
     risk_state_save_error = ""
-    if not suppress_buys:
+    if not risk_identity_mismatch:
         try:
             _save_risk_state(
                 args.output_dir, end_date, result, tradable,
@@ -1469,7 +1520,7 @@ def _run_main() -> int:
     if risk_state_saved:
         print(f"  结果已保存: {output_file}")
         print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")
-    elif suppress_buys:
+    elif risk_identity_mismatch:
         print(f"  结果已保存: {output_file}")
         print("  ⚠ 风险状态未保存 (身份不匹配 — 保留旧状态以维持终态锁连续性)")
         print("  使用 --reset-risk-state 可建立新身份并清除买入抑制。")

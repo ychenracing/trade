@@ -1171,11 +1171,11 @@ class CLIIntegrationTests(unittest.TestCase):
             timeout=15,
         )
 
-    def test_account_mode_exits_1(self) -> None:
-        """--account must exit with code 1 (mode is disabled)."""
+    def test_missing_account_file_exits_1(self) -> None:
+        """A missing account snapshot must fail without touching simulation state."""
         result = self._run_cli("--account", "dummy.json")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("不可用", result.stdout)
+        self.assertIn("Account signal scan failed", result.stdout)
 
     def test_account_with_reset_preserves_state(self) -> None:
         """--account + --reset-risk-state must NOT delete risk_state.json.
@@ -1201,7 +1201,7 @@ class CLIIntegrationTests(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 1)
-            self.assertIn("不可用", result.stdout)
+            self.assertIn("Account signal scan failed", result.stdout)
 
             # State file must still exist and contain the terminal lock
             self.assertTrue(state_file.exists())

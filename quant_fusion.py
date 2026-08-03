@@ -235,7 +235,80 @@ class DataFetcher:
         "vol": "volume",
     }
 
+
     _cache_dir: str | None = None
+    _PROVIDER_VOLUME_UNITS: ClassVar[dict[str, str]] = {
+        "Eastmoney": "lots",
+        "Sina": "shares",
+        "Tencent": "lots",
+    }
+    _CACHE_SCHEMA_VERSION = 1
+
+    @staticmethod
+    def _normalize_provider_volume(
+        frame: pd.DataFrame, provider_name: str
+    ) -> pd.DataFrame:
+        """Convert every online provider's volume field to shares.
+
+        Eastmoney and the Tencent k-line endpoint report A-share volume in
+        board lots, while Sina reports shares. The execution engine's ADV
+        participation limit is defined in shares, so provider output must be
+        normalized before the common OHLCV validator runs.
+        """
+        if provider_name not in DataFetcher._PROVIDER_VOLUME_UNITS:
+            raise ValueError(f"Unknown market-data provider: {provider_name}")
+        out = frame.copy()
+        normalized = DataFetcher._normalized_column_names(out.columns)
+        volume_positions = [i for i, name in enumerate(normalized) if name == "volume"]
+        if len(volume_positions) != 1:
+            raise ValueError(
+                f"{provider_name} response must contain exactly one volume column"
+            )
+        column = out.columns[volume_positions[0]]
+        volume = pd.to_numeric(out[column], errors="coerce")
+        if volume.isna().any() or (volume < 0).any():
+            raise ValueError(f"{provider_name} returned invalid volume values")
+        if DataFetcher._PROVIDER_VOLUME_UNITS[provider_name] == "lots":
+            volume = volume * A_SHARE_LOT_SIZE
+        out[column] = volume.astype(float)
+        out.attrs["volume_unit"] = "shares"
+        out.attrs["volume_provider"] = provider_name
+        return out
+
+    @staticmethod
+    def _cache_contract_path(cache_path: Path) -> Path:
+        return cache_path.with_suffix(cache_path.suffix + ".meta.json")
+
+    @staticmethod
+    def _cache_has_share_volume_contract(cache_path: Path) -> bool:
+        """Accept only caches that explicitly declare share-based volume."""
+        meta_path = DataFetcher._cache_contract_path(cache_path)
+        if not meta_path.is_file():
+            return False
+        try:
+            payload = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        return (
+            payload.get("schema_version") == DataFetcher._CACHE_SCHEMA_VERSION
+            and payload.get("volume_unit") == "shares"
+        )
+
+    @staticmethod
+    def _write_cache_contract(cache_path: Path) -> None:
+        """Persist the unit contract next to an atomically replaceable cache."""
+        meta_path = DataFetcher._cache_contract_path(cache_path)
+        meta_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": DataFetcher._CACHE_SCHEMA_VERSION,
+                    "volume_unit": "shares",
+                },
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     @staticmethod
     def _exchange_symbol(symbol: str) -> str:
@@ -328,6 +401,9 @@ class DataFetcher:
                 try:
                     frame = provider(symbol, start_date, end_date)
                     if frame is not None and not frame.empty:
+                        frame = DataFetcher._normalize_provider_volume(
+                            frame, provider_name
+                        )
                         frame = DataFetcher._normalize_columns(frame)
                         print(
                             f"  [Data] {symbol}: {provider_name} source, "
@@ -376,7 +452,7 @@ class DataFetcher:
         cache_path = Path(DataFetcher._cache_dir).expanduser() / f"{symbol}.csv"  # type: ignore[arg-type]
         start_ts = pd.Timestamp(start_date)
         end_ts = pd.Timestamp(end_date)
-        if cache_path.is_file():
+        if cache_path.is_file() and DataFetcher._cache_has_share_volume_contract(cache_path):
             cached = DataFetcher._normalize_columns(pd.read_csv(cache_path))
             last_cached = cached.index[-1]
             fetch_start = (last_cached + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
@@ -410,12 +486,19 @@ class DataFetcher:
                 else:
                     combined.attrs["_stale"] = False
             combined.to_csv(cache_path)
+            DataFetcher._write_cache_contract(cache_path)
             return combined[(combined.index >= start_ts) & (combined.index <= end_ts)].copy()
-        # No cache file: full fetch + save
+        if cache_path.is_file():
+            _log(
+                f"  [Cache] {symbol}: legacy cache lacks a verified share-volume "
+                "contract; rebuilding from providers"
+            )
+        # No valid cache file: full fetch + save
         _log(f"  [Cache] {symbol}: no cache file, full fetch {start_date} ~ {end_date}")
         df = DataFetcher.fetch_stock_data(symbol, start_date, end_date)
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(cache_path)
+        DataFetcher._write_cache_contract(cache_path)
         return df
 
     @staticmethod
@@ -433,7 +516,10 @@ class DataFetcher:
             )
         out = DataFetcher._with_datetime_index(df, normalized_names)
         DataFetcher._validate_ohlcv(out)
-        return out[["open", "close", "high", "low", "volume"]].copy()
+        normalized = out[["open", "close", "high", "low", "volume"]].copy()
+        normalized.attrs.update(getattr(df, "attrs", {}))
+        normalized.attrs.setdefault("volume_unit", "shares")
+        return normalized
 
     @staticmethod
     def _normalized_column_names(columns: pd.Index) -> list[str]:

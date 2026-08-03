@@ -143,3 +143,33 @@ or backtest results:
   `max_drawdown`, `sharpe`, and `total_trades`. Strict type checking
   rejects strings (even if float-convertible like `"1.23"`), `bool`
   (which is a subclass of `int`), `None`, and non-dict results.
+
+## Production review fixes (2026-08-04)
+
+The daily decision path now enforces an explicit share-volume contract for
+every online provider. Eastmoney and Tencent board-lot volumes are converted
+to shares before ADV limits are applied; Sina share volumes are not scaled.
+Legacy caches without a unit sidecar are rebuilt instead of being guessed.
+
+Historical performance routing and the current point-in-time route are now
+separate artifacts. The backtest remains causal from its original boundary,
+while the daily scan refreshes fixed-index evidence and recomputes the current
+route at the latest common market date. If the current route differs from the
+historical replay route, new buys fail closed and sells remain visible.
+
+Weak-regime entries now have a loose disaster stop and a long-horizon time
+stop before profit protection activates. This closes the prior unlimited
+pre-30%-profit downside gap without turning the strategy into a tight-stop
+high-turnover system.
+
+Real holdings are processed by `account_signal_engine.py`, never injected
+into the simulator. `--account` produces point-in-time hold/reduce/sell and
+buy-candidate advice with a dedicated JSON artifact; it does not invent a
+historical real-account equity curve or send broker orders.
+
+`requirements-lock.txt` freezes the resolved dependency graph. CI now checks
+the core engine under a Pyright basic contract and compares full-precision
+frozen bull metrics with a 1e-12 absolute tolerance. Simple equal-weight and
+causal Top-3 buy-and-hold attribution is available through
+`benchmark_validation.py`.
+

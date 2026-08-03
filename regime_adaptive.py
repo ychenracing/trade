@@ -23,6 +23,10 @@ MAX_LEADERS = 3
 MAX_SYMBOL_WEIGHT = 0.59
 PROFIT_ACTIVATION = 0.30
 TRAILING_ATR_MULTIPLIER = 3.0
+WEAK_ENTRY_ATR_MULTIPLIER = 5.0
+WEAK_HARD_STOP = 0.22
+WEAK_TIME_STOP_DAYS = 80
+WEAK_TIME_STOP_RETURN = -0.10
 MAX_EVIDENCE_STALENESS_DAYS = 10
 
 
@@ -152,17 +156,21 @@ def select_positive_momentum_leaders(
         raise ValueError("symbols must be a non-empty set without duplicates")
     if maximum < 1:
         raise ValueError("maximum must be positive")
+    boundary = _normalized_timestamp(as_of)
     observations: list[tuple[float, str]] = []
     observed = 0
     for code in normalized:
         try:
-            frame = _local_frame(data_dir, code, as_of)
+            frame = _local_frame(data_dir, code, str(boundary.date()))
             closes = pd.Series(
                 pd.to_numeric(frame["close"], errors="coerce"), index=frame.index
             ).dropna()
         except (OSError, RuntimeError, ValueError):
             continue
         if len(closes) < LEADER_LOOKBACK + 1:
+            continue
+        observed_date = _normalized_timestamp(str(closes.index[-1]))
+        if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
             continue
         observed += 1
         momentum = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
@@ -199,11 +207,19 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
             )
             if shares <= 0:
                 return None
+            atr = ctx.indicators.get("atr")
+            atr_value = float(atr.iloc[ctx.i]) if atr is not None else float("nan")
+            hard_stop = close * (1.0 - WEAK_HARD_STOP)
+            atr_stop = (
+                close - WEAK_ENTRY_ATR_MULTIPLIER * atr_value
+                if math.isfinite(atr_value) and atr_value > 0
+                else hard_stop
+            )
             return self._make_buy_signal(
                 ctx,
                 shares,
-                stop_loss=0.0,
-                reason="causal positive-240-session leader entry",
+                stop_loss=max(hard_stop, atr_stop),
+                reason="causal positive-240-session leader entry with disaster stop",
             )
 
         self._has_entered = True
@@ -211,6 +227,24 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
         position.highest_close_since_entry = max(
             position.highest_close_since_entry, close
         )
+        if position.stop_loss > 0 and close <= position.stop_loss:
+            return self._make_sell_signal(ctx, "weak-regime disaster stop")
+        try:
+            entry_timestamp = pd.Timestamp(position.entry_date)
+            if pd.isna(entry_timestamp):
+                raise ValueError("entry_date must resolve to a valid timestamp")
+            entry_index = int(
+                cast(Any, ctx.df.index).searchsorted(entry_timestamp)
+            )
+            held_days = max(ctx.i - entry_index, 0)
+        except (TypeError, ValueError):
+            held_days = 0
+        return_since_entry = close / position.entry_price - 1.0
+        if (
+            held_days >= WEAK_TIME_STOP_DAYS
+            and return_since_entry <= WEAK_TIME_STOP_RETURN
+        ):
+            return self._make_sell_signal(ctx, "weak-regime time stop")
         peak_gain = position.highest_close_since_entry / position.entry_price - 1.0
         if peak_gain < PROFIT_ACTIVATION:
             return None
@@ -324,6 +358,32 @@ class RegimeAdaptiveBacktestEngine:
                 raise ValueError("selection_boundary must be before start_date")
             return str(boundary.date())
         return str((_normalized_timestamp(start_date) - pd.Timedelta(days=1)).date())
+
+
+    def decide_current(
+        self,
+        symbols_dict: dict[str, str],
+        *,
+        as_of: str,
+        data_dir: str | Path,
+        leader_data_dir: str | Path | None = None,
+    ) -> DeploymentDecision:
+        """Make a point-in-time route decision from data through ``as_of``.
+
+        This is the live/manual-decision entry point. It deliberately does
+        not rewrite a historical backtest path with information learned
+        later; callers keep historical performance and current routing as
+        separate artifacts.
+        """
+        boundary = _normalized_timestamp(as_of)
+        next_day = boundary + pd.Timedelta(days=1)
+        return self.decide(
+            symbols_dict,
+            start_date=str(next_day.date()),
+            data_dir=data_dir,
+            leader_data_dir=leader_data_dir,
+            selection_boundary=str(boundary.date()),
+        )
 
     def decide(
         self,
