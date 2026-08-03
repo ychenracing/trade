@@ -19,20 +19,15 @@ _GENERATED_PYTHON = (
 def _normalize_generated_python(path: Path) -> None:
     """Undo outer-template escape expansion before parsing generated modules."""
     text = path.read_text(encoding="utf-8")
-    # The generated templates have one module-level line stripped by lstrip(),
-    # while all remaining lines retain the template's eight-space margin when a
-    # target ``\n`` escape was expanded too early. Remove that uniform margin.
     lines = text.splitlines(keepends=True)
     if len(lines) >= 3 and lines[2].startswith("        "):
         lines = [line[8:] if line.startswith("        ") else line for line in lines]
         text = "".join(lines)
-    # Restore target-source newline escapes that the outer template interpreted.
     text = text.replace('+ "\n"', '+ "\\n"')
     text = text.replace(
         '"date,open,close,high,low,volume\n2026-01-01,1,1,1,1,10\n"',
         '"date,open,close,high,low,volume\\n2026-01-01,1,1,1,1,10\\n"',
     )
-    # Keep generated code deterministic and reject hidden whitespace-only lines.
     text = "\n".join(line.rstrip() for line in text.splitlines()) + "\n"
     path.write_text(text, encoding="utf-8")
 
@@ -59,10 +54,49 @@ def _repair_data_fetcher_contract(path: Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def _separate_route_and_identity_suppression(path: Path) -> None:
+    """Allow current-route buy blocking without suppressing risk-state writes."""
+    text = path.read_text(encoding="utf-8")
+    marker = "    current_decision = ra.RegimeAdaptiveBacktestEngine(capital).decide_current(\n"
+    replacement = (
+        "    # Risk-state identity and current-route safety are independent. A route\n"
+        "    # change blocks new buys but must not disable the state/artifact transaction.\n"
+        "    risk_identity_mismatch = suppress_buys\n\n"
+        + marker
+    )
+    if text.count(marker) != 1:
+        raise RuntimeError("current route decision marker missing or duplicated")
+    text = text.replace(marker, replacement, 1)
+
+    old = "    if not suppress_buys:\n        try:\n            _save_risk_state(\n"
+    new = "    if not risk_identity_mismatch:\n        try:\n            _save_risk_state(\n"
+    if text.count(old) != 1:
+        raise RuntimeError("risk-state save guard marker missing or duplicated")
+    text = text.replace(old, new, 1)
+
+    old = "    elif suppress_buys:\n        print(f\"  结果已保存: {output_file}\")\n"
+    new = "    elif risk_identity_mismatch:\n        print(f\"  结果已保存: {output_file}\")\n"
+    if text.count(old) != 1:
+        raise RuntimeError("risk-state final-status guard marker missing or duplicated")
+    text = text.replace(old, new, 1)
+
+    summary_marker = '            "buys_suppressed": suppress_buys,\n'
+    summary_replacement = (
+        summary_marker
+        + '            "risk_state_identity_mismatch": risk_identity_mismatch,\n'
+        + '            "current_route_mismatch": live_route_mismatch,\n'
+    )
+    if text.count(summary_marker) != 1:
+        raise RuntimeError("artifact suppression summary marker missing or duplicated")
+    text = text.replace(summary_marker, summary_replacement, 1)
+    path.write_text(text, encoding="utf-8")
+
+
 def main() -> int:
     for generated in _GENERATED_PYTHON:
         _normalize_generated_python(ROOT / generated)
     _repair_data_fetcher_contract(ROOT / "quant_fusion.py")
+    _separate_route_and_identity_suppression(ROOT / "daily_signal_scan.py")
 
     path = ROOT / "market_data_contracts.py"
     text = path.read_text(encoding="utf-8")
