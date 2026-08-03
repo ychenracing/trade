@@ -1,275 +1,147 @@
-# Verified Backtest Results
+# 当前有效回测与验证结果
 
-Verification date: 2026-08-01 UTC.
+## 结论
 
-Quant Fusion is a standalone module with built-in AKShare and local CSV
-data paths. It uses the same code, parameters, costs, and forward-adjusted data
-snapshot across every requested universe. Initial capital is CNY 2,000,000.
+本文件只保留当前代码对应的有效验证结果，不记录历史重构过程或旧版本对比。生产趋势引擎的收益、最大回撤和交易次数由 `backtest_golden_metrics.json` 与 CI 精确保护；弱市路由、参数优化和压力测试属于补充证据，不能替代未来样本验证。
 
-The frozen bull table below remains the golden trend-engine baseline. The
-regime-adaptive outer router reproduces its 2026-06-30 return, drawdown and
-trade-count tuples exactly. Separate 2022–2024 weak-market distributions are
-documented in `REGIME_ADAPTIVE_REFACTOR_REPORT.md` and stored per pool in
-`regime_validation_results.json`.
+## 生产趋势基线
 
-| Universe | Cold return | Cold maximum drawdown | Warm return | Warm maximum drawdown | Warm Sharpe | Warm Calmar | Warm trades |
-|---|---|---|---:|---:|---:|---:|---:|
-| 1 symbol | 536.66% | -18.49% | 530.89% | -18.34% | 3.21 | 18.23 | 24 |
-| 3 symbols | 1059.72% | -18.32% | 1083.70% | -17.92% | 3.69 | 34.47 | 194 |
-| 5 symbols | 1078.67% | -16.80% | 1115.99% | -15.86% | 3.70 | 39.93 | 222 |
-| 13 symbols | 894.16% | -16.93% | 1038.74% | -18.41% | 3.61 | 32.37 | 324 |
-| 22 symbols | 843.49% | -17.13% | 983.57% | -16.22% | 3.76 | 35.07 | 244 |
+统一条件：
 
-The 2026-06-30 and 2026-07-20 figures are identical for the 1-, 3-, and 5-symbol
-universes. The 13-symbol results increase slightly through July; the 22-symbol
-warm result rises from 977.83% to 983.57%.
+- 初始资金：200 万元；
+- 数据：`market_data/` 前复权冻结日线；
+- 区间：2025-04-01 至 2026-07-20；
+- 指标状态：`warm`；
+- 费用、滑点、涨跌停、T+1、100 股手数和成交量容量均启用；
+- 收益、最大回撤和交易次数使用完整浮点精度比较。
 
-The fixed signal-only regime basket confirmed the defensive gate on 2026-06-26 in
-all requested universes. Risk-only symbols never entered the order or trade ledgers.
+| 股票数量 | 总收益 | 最大回撤 | 夏普比率 | 交易次数 |
+|---:|---:|---:|---:|---:|
+| 1 | 530.8950% | -18.3414% | 3.21 | 24 |
+| 3 | 1083.6973% | -17.9190% | 3.69 | 194 |
+| 5 | 1115.9924% | -15.8573% | 3.70 | 222 |
+| 13 | 1038.7405% | -18.4072% | 3.61 | 324 |
+| 22 | 983.5716% | -16.2177% | 3.76 | 244 |
 
-## Cambricon mapping regression
+这些数值表示特定科技产业链股票池在特定历史阶段的结果，不代表任意股票池、任意时间或未来行情都能取得类似收益。
 
-After routing `688256` 寒武纪 through `semiconductor` / `domestic_semiconductor` /
-`domestic_design`, the requested nine-symbol universe produced the following
-deterministic results:
+## 冷启动与预热
 
-| Indicator state | End date | Total return | Maximum drawdown | Sharpe | Calmar | Trades |
-|---|---|---|---:|---:|---:|---:|---:|
-| Cold | 2026-06-30 | 1187.05% | -15.89% | 3.90 | 46.77 | 225 |
-| Cold | 2026-07-20 | 1187.05% | -15.89% | 3.81 | 41.99 | 225 |
-| Warm | 2026-06-30 | 1147.30% | -15.43% | 3.88 | 46.76 | 277 |
-| Warm | 2026-07-20 | 1147.30% | -15.43% | 3.79 | 42.02 | 277 |
+`cold` 从回测开始日才计算指标；`warm` 会读取开始日前的历史，只在开始日之后允许交易。生产基线使用 `warm`，更接近日常滚动运行。两种模式都只使用当时可见数据。
 
-The universe contains `300308`, `688256`, `300502`, `300394`, `603986`,
-`688008`, `688347`, `300054`, and `688300`. The sector guard still confirms on
-2026-06-26, so extending the end date through 2026-07-20 does not change final
-assets in this snapshot. Exact metadata is stored in
-`cambricon_universe_backtest.json` and can be regenerated with
-`python backtest_cambricon_universe.py`.
+历史验证中，预热模式的五组股票池结果如下：
 
-High-cost and weak-regime figures, limitations, and reproducibility commands are
-documented in `README.md`. Exact scenario metadata is stored in
-`universe_backtest.json`. The one-through-22 ordered-prefix audit is
-stored in `prefix_stress.json`; its worst adjacent wealth change is
--13.23% when moving from 9 to 10 symbols.
+| 股票数量 | 冷启动收益 | 冷启动最大回撤 | 预热收益 | 预热最大回撤 |
+|---:|---:|---:|---:|---:|
+| 1 | 536.66% | -18.49% | 530.89% | -18.34% |
+| 3 | 1059.72% | -18.32% | 1083.70% | -17.92% |
+| 5 | 1078.67% | -16.80% | 1115.99% | -15.86% |
+| 13 | 894.16% | -16.93% | 1038.74% | -18.41% |
+| 22 | 843.49% | -17.13% | 983.57% | -16.22% |
 
-The 2026-07-22 proposal audit and controlled before/after experiments are recorded
-in `STRATEGY_REVIEW.md`. No tested trading-rule candidate was stable
-enough across time windows and universe sizes to replace the current defaults.
+## 寒武纪映射回归
 
-## Risk Management Features
+寒武纪 `688256` 显式映射为半导体、国产半导体组和国产设计参数画像。九股股票池：
 
-### Risk State Identity
+`300308`、`688256`、`300502`、`300394`、`603986`、`688008`、`688347`、`300054`、`688300`。
 
-The `risk_state.json` file now includes enhanced identity fields:
-- `schema_version`: schema version (currently 1) for forward compatibility.
-  Unknown versions are rejected on load (fail-closed) to prevent
-  misinterpreting fields with changed semantics.
-- `symbols_hash`: SHA-256 fingerprint of sorted symbol codes + count + start date
-  + indicator_state + capital + warmup days. Capital is included because
-  different capital means different position sizing and risk exposure.
-- `total_symbols`: number of symbols in the universe
-- `run_id`: unique run identifier (UUID4-based) for traceability
+| 指标状态 | 结束日期 | 总收益 | 最大回撤 | 夏普比率 | 交易次数 |
+|---|---|---:|---:|---:|---:|
+| 冷启动 | 2026-06-30 | 1187.05% | -15.89% | 3.90 | 225 |
+| 冷启动 | 2026-07-20 | 1187.05% | -15.89% | 3.81 | 225 |
+| 预热 | 2026-06-30 | 1147.30% | -15.43% | 3.88 | 277 |
+| 预热 | 2026-07-20 | 1147.30% | -15.43% | 3.79 | 277 |
 
-Old risk state files without `symbols_hash` are rejected (fail-closed) to
-prevent cross-contamination between different universes or configurations.
+精确元数据保存在 `cambricon_universe_backtest.json`，可运行 `python backtest_cambricon_universe.py` 重建。
 
-### Risk State Reliability
+## 股票池前缀压力测试
 
-- **Atomic writes**: risk state and JSON artifact are written to temp files,
-  flushed with `os.fsync`, then atomically renamed via `os.replace()`. This
-  prevents partial writes from corrupting files on disk full, process kill, or
-  power loss.
-- **Corruption fail-closed**: if `risk_state.json` is corrupted, unreadable,
-  or fails schema validation (wrong field types, NaN/Inf, negative values,
-  unknown schema version), the scan exits with code 1 instead of silently
-  discarding the previous terminal lock state.
-- **Schema validation**: all required fields are validated for correct types:
-  `schema_version` (int, must be known version), `scan_date` (str),
-  `terminal_risk_lock` (bool), `sector_guard_active` (bool),
-  `cycle_lock_count` (int, non-negative), `max_drawdown` (finite number),
-  `total_return` (finite number), `final_assets` (finite number,
-  non-negative). Strings like `"false"` (which are truthy in Python) are
-  rejected. Unknown `schema_version` values are rejected to enforce forward
-  compatibility. NaN and Inf are rejected because they break comparisons and
-  formatting.
-- **Pre-save validation**: numeric values are validated before writing —
-  NaN/Inf in `max_drawdown`, `total_return`, or `final_assets` raise
-  `ValueError`, and negative `cycle_lock_count` raises `ValueError`. This
-  prevents creating an invalid state file that would be rejected on the next
-  load.
-- **Same-day rerun preservation**: re-running the scan on the same day no
-  longer discards the previous risk state. Terminal lock and sector guard
-  continuity is preserved across same-day reruns.
-- **Identity mismatch buy suppression**: when the identity hash does not
-  match (different symbol set, count, or configuration), buy signals are
-  suppressed (fail-closed) to prevent entering new positions without verified
-  risk-state continuity. In the display, pure buy signals become "观望 (风险
-  状态不匹配)" and mixed buy/sell signals show only the sell part with
-  "[买入已抑制]". In the JSON artifact, blocked buy signals are placed in a
-  separate `blocked_signals` list — `pending_signals` only contains
-  executable signals, so downstream consumers that check `direction` on
-  `pending_signals` will never see blocked buys.
-- **State preservation on mismatch**: when the identity does not match, the
-  old risk state is NOT overwritten — the previous terminal lock and sector
-  guard are preserved. Use `--reset-risk-state` to intentionally establish a
-  new identity after a configuration change.
-- **Artifact-first transaction ordering**: the JSON artifact is written to
-  disk BEFORE risk state is saved. This is a true two-phase commit: if the
-  artifact write fails, no risk state has been committed — preventing
-  state/artifact inconsistency. If the risk state save subsequently fails
-  (e.g. disk full, permission error, invalid values), the artifact already
-  exists on disk with `risk_state_saved: false` and an error message. The
-  scan exits with code 1 so scripts, cron jobs, and external schedulers
-  can detect the failure and alert.
-- **Last-good artifact protection**: when a run fails (NaN/Inf in result,
-  wrong-type fields, missing fields, or nested NaN during serialization),
-  the error artifact is written to a SEPARATE file
-  (`signals_<date>.error.json`) — the last successful
-  (`signals_<date>.json`) is never overwritten. A
-  `latest_success.json` pointer file is updated only on successful
-  artifact write, providing a stable reference for downstream consumers
-  to find the last good signals. Each artifact includes a unique `run_id`
-  for traceability.
-- **Result validation timing**: the backtest result is validated
-  IMMEDIATELY after `engine.run()` returns — before any printing or
-  formatting — for type, finiteness, and presence of `final_assets`,
-  `total_return`, `max_drawdown`, `sharpe`, and `total_trades`.
-  Strict type checking rejects strings (even if float-convertible like
-  `"1.23"`), `bool` (which is a subclass of `int` in Python), `None`,
-  and non-dict results. This prevents `TypeError`/`KeyError` from
-  None, string, or missing fields during f-string formatting.
-- **Strict JSON compliance**: both risk state and JSON artifact are
-  serialized with `allow_nan=False` to guarantee strict JSON (ECMA-404)
-  output. Non-standard tokens (`NaN`, `Infinity`, `-Infinity`) are rejected
-  at serialization time, not silently written as non-standard literals.
-  This ensures downstream consumers using strict JSON parsers (e.g.
-  JavaScript `JSON.parse`, Go `encoding/json`) can always parse the files.
-- **Result validation before formatting**: the backtest result is validated
-  IMMEDIATELY after `engine.run()` returns — before any printing or
-  formatting — for type, finiteness, and presence of `final_assets`,
-  `total_return`, `max_drawdown`, `sharpe`, and `total_trades`. Strict
-  type checking rejects strings (even if float-convertible like `"1.23"`),
-  `bool` (which is a subclass of `int` in Python), `None`, and non-dict
-  results. If any field is invalid, an error artifact is written to a
-  SEPARATE file (`signals_<date>.error.json`) and the scan exits with
-  code 1. The last successful artifact (`signals_<date>.json`) is never
-  overwritten. This catches upstream computation bugs before they reach
-  signal consumers.
-- **Risk state not injected into engine**: the daily scan replays the
-  full history from `--start-date` to `--end-date` each time without
-  passing the previous run's end-state to the engine. This prevents the
-  time-direction error where a future末端 state (e.g.
-  `terminal_risk_lock=True` from July 30) would change the past
-  historical path when replaying from July 1. The saved
-  `risk_state.json` is loaded for display and continuity checking only.
-- **Risk state date validation**: the saved `scan_date` must be <= the
-  requested `end_date`. Loading a risk state from a future date (e.g.
-  August 1 state into a July 20 replay) is rejected (fail-closed, exit
-  code 1) to prevent forward contamination / look-ahead bias.
-- **Run ID consistency**: the artifact, `risk_state.json`, and
-  `latest_success.json` pointer all share the same `run_id` for
-  traceability — a single `run_id` is generated per run and passed to
-  all three artifacts.
-- **Reset-account safety**: `--account` is checked before `--reset-risk-state`
-  in the CLI, so combining both flags does not silently delete the old risk
-  state before the account error is reported. This is verified by real CLI
-  integration tests using subprocess.
-- **CLI integration tests**: the daily scan is tested through real subprocess
-  calls that verify exit codes for `--account` rejection, `--reset-risk-state`
-  safety, corrupted state fail-closed, schema-invalid state fail-closed, and
-  unknown schema version rejection.
-- **Last-good artifact protection tests**: failed runs (NaN/Inf, wrong-type
-  fields, missing fields, nested NaN) are verified to write error artifacts
-  to `.error.json` without overwriting the last successful
-  `signals_<date>.json`. The `latest_success.json` pointer file is verified
-  to update only on success and remain unchanged on failure.
-- **State/artifact transaction tests**: nested NaN in `pending_signals` is
-  verified to prevent risk state from being saved (state/artifact
-  consistency). Artifact write failures are verified to exit with code 1
-  and NOT save risk state (artifact-first transaction). Risk state save
-  failures are verified to leave the artifact on disk with
-  `risk_state_saved: false`.
-- **Risk state date validation tests**: loading a risk state with
-  `scan_date > end_date` is verified to be rejected (fail-closed) to
-  prevent forward contamination. Same-day and past-date states are
-  verified to be accepted.
-- **Strict result validation tests**: strings (even float-convertible like
-  `"1.23"`), `bool`, `None`, and non-dict results are verified to be
-  rejected by the result validator. `total_trades` is verified to be
-  checked for type (int, not bool/float/string) and non-negativity.
-- **Run ID consistency tests**: the artifact, `risk_state.json`, and
-  `latest_success.json` pointer are verified to all share the same
-  `run_id`.
-- **Risk state not injected tests**: `engine.run()` is verified to NOT
-  receive a `risk_state` parameter, preventing the time-direction error.
-- **Strict JSON artifact tests**: the artifact and risk state files are
-  verified to never contain NaN/Infinity tokens as JSON values (using a
-  strict constant-rejecting JSON parser). Error-only artifact production is
-  tested when results contain NaN or Inf in `max_drawdown`, `total_return`,
-  or `sharpe`. Valid results are verified to produce a normal `ok` artifact.
+`stress_test_prefixes.py` 依次验证 1 至 22 只股票的有序前缀。结果保存在 `prefix_stress.json`。历史快照中，相邻股票数量变化造成的最差财富变化为从 9 只增加到 10 只时的 -13.23%。
 
-### Core API Account-State Guard
+该结果说明系统并非“股票越多收益越高”，也不能保证增删股票后结果平滑。股票池组成仍然是主要风险来源之一。
 
-The public `run()` method in `BacktestEngine` raises `NotImplementedError`
-when `account_state` is passed. This ensures the broken account injection
-logic cannot be triggered by any caller — not just the daily scan CLI.
-`_EnsembleBacktestEngine` inherits `run()` from `_CausalBacktestEngine`,
-which does not accept an `account_state` parameter at all, so the guard is
-redundant but harmless. The old injection code is retained as dead code
-with deprecation comments pending the separate account signal engine.
+## 外层因果路由验证
 
-### Real Account Mode (disabled)
+外层路由使用部署日前可见的两只固定指数：
 
-The `--account` flag in `daily_signal_scan.py` is currently **disabled**. The
-real-account integration has multiple architecture defects that prevent safe
-use:
+- `000300` 沪深 300；
+- `000682` 科技风险指数。
 
-- Single-sleeve account snapshot is cleared by `_reset_run_state()` before
-  the historical loop begins, so no real positions are actually injected.
-- Three-sleeve ensemble mode mixes real and simulated ledgers — only the
-  first sleeve receives real positions while the other two retain full
-  simulated accounts.
-- External-account liquidation signals carry `strategy=None`, which would
-  crash the execution path (now defensively handled, but the broader
-  architecture is still unsound).
-- Peak equity is seeded before positions are injected, potentially
-  triggering a false terminal lock on the first historical day.
-- Full-investment accounts with zero cash cannot initialize the engine.
-- Account-mode performance metrics (return, drawdown, Sharpe) have no
-  economic meaning because the equity curve is a hybrid of simulated
-  history and a late-injected real snapshot.
+两者 MA20 都高于 MA60 时进入趋势引擎；否则选择正 240 日动量的前三只股票；没有完整证据或没有正动量股票时持有现金。
 
-The correct fix is to build a separate account signal engine that does not
-patch real-account state into the historical backtest state machine. Until
-then, only simulation mode (default) should be used.
+2024 年历史样本结果：
 
-## Production review fixes (2026-08-04)
+| 验证集合 | 股票池数 | 盈利股票池比例 | 中位收益 | 最差最大回撤 |
+|---|---:|---:|---:|---:|
+| 固定开发集合 | 16 | 87.50% | 22.35% | 21.66% |
+| 随机开发集合 | 50 | 90.00% | 25.74% | 23.93% |
+| 独立随机种子集合 | 26 | 96.15% | 24.84% | 31.68% |
 
-The daily decision path now enforces an explicit share-volume contract for
-every online provider. Eastmoney and Tencent board-lot volumes are converted
-to shares before ADV limits are applied; Sina share volumes are not scaled.
-Legacy caches without a unit sidecar are rebuilt instead of being guessed.
+2022 年因缺少足够的 2021 年 240 日前置数据，路由按设计持有现金。2023 年验证股票池中 68.75% 盈利。
 
-Historical performance routing and the current point-in-time route are now
-separate artifacts. The backtest remains causal from its original boundary,
-while the daily scan refreshes fixed-index evidence and recomputes the current
-route at the latest common market date. If the current route differs from the
-historical replay route, new buys fail closed and sells remain visible.
+这些股票池来自相近的 AI 硬件与半导体样本，彼此高度相关，不能把 26 个股票池理解为 26 个完全独立实验。31.68% 的最差回撤也说明弱市策略没有 20% 硬回撤保证。
 
-Weak-regime entries now have a loose disaster stop and a long-horizon time
-stop before profit protection activates. This closes the prior unlimited
-pre-30%-profit downside gap without turning the strategy into a tight-stop
-high-turnover system.
+详细逐股票池数据保存在 `regime_validation_results.json`，重建命令：
 
-Real holdings are processed by `account_signal_engine.py`, never injected
-into the simulator. `--account` produces point-in-time hold/reduce/sell and
-buy-candidate advice with a dedicated JSON artifact; it does not invent a
-historical real-account equity curve or send broker orders.
+```bash
+python run_regime_validation.py --workers 4
+```
 
-`requirements-lock.txt` freezes the resolved dependency graph. CI now checks
-the core engine under a Pyright basic contract and compares full-precision
-frozen bull metrics with a 1e-12 absolute tolerance. Simple equal-weight and
-causal Top-3 buy-and-hold attribution is available through
-`benchmark_validation.py`.
+## 简单基准归因
 
+`benchmark_validation.py` 同时计算：
+
+1. 等权买入持有；
+2. 在开始日前选出的因果 240 日动量前三名买入持有；
+3. 当前自适应策略。
+
+它用于判断收益来自策略管理、简单行业暴露还是事后选出的强势股。基准输入必须是非空、无重复的六位股票代码，输出使用严格 JSON 和原子替换。
+
+## 参数优化验证
+
+`quant_fusion_optimizer.py` 使用扩展训练窗口、非重叠验证窗口、参数邻域支持、帕累托筛选和一次性最终留出集。优化器要求：
+
+- 单只股票不超过 60%；
+- 总仓位不超过 100%；
+- 最多持有 6 只；
+- 验证与压力窗口分别检查回撤；
+- 最终留出集只在晋级时使用一次。
+
+`optimizer_validation/optimization_report.json` 是研究工件，不是生产参数自动升级证明。只有在多时间段、多股票池和高成本情景下稳定，且通过全部精确回归，候选参数才可能替换默认值。
+
+## 数据与执行限制
+
+1. 前复权历史可能因后续公司行动被数据源重述。
+2. 冻结股票池含有事后仍然存续和受到关注的科技公司，存在幸存者偏差。
+3. 日线开盘模型无法重现盘中路径、排队和真实冲击成本。
+4. 涨跌停、停牌和特殊交易规则使用近似模型。
+5. 高度集中的科技上涨阶段放大了历史收益。
+6. 开盘跳空可能使实际回撤超过风险触发阈值。
+7. 弱市路由按部署边界选择，不会每天用未来信息重写历史持仓。
+8. 真实账户建议没有自动下单，也不把部分持仓估值当成完整总资产。
+
+## 可复现工件
+
+- `backtest_golden_metrics.json`：五组生产精确基线；
+- `universe_backtest.json`：冷启动与预热组合结果；
+- `cambricon_universe_backtest.json`：寒武纪映射回归；
+- `prefix_stress.json`：1 至 22 只股票前缀压力测试；
+- `regime_validation_results.json`：弱市和路由验证；
+- `optimizer_validation/optimization_report.json`：优化研究报告；
+- `market_data/SHA256SUMS`：生产冻结数据哈希；
+- `historical_data/SHA256SUMS`：历史路由数据哈希。
+
+## CI 验收标准
+
+持续集成必须同时通过：
+
+- Python 3.11 和 3.12 完整测试；
+- 全仓库 Python 编译；
+- Ruff 语法与基础质量检查；
+- Pyright 维护模块类型检查；
+- Bandit 安全检查；
+- `pip-audit` 依赖漏洞检查；
+- Markdown 中文和文档参数一致性检查；
+- 1、3、5、13、22 只股票的精确收益、最大回撤和交易次数回归。
+
+任何策略、费用、数据、股票映射或执行逻辑变化，都必须重新运行以上检查。只要精确回归发生变化，就应明确说明原因，而不能静默更新基线。

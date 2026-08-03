@@ -1,165 +1,318 @@
-# Quant Fusion
+# Quant Fusion A股科技趋势决策系统
 
-Quant Fusion is a standalone deterministic daily-bar backtester for
-concentrated A-share technology portfolios. The complete data-loading, signal,
-T+1 execution, transaction-cost, exposure, causal-liquidity, allocation, and risk
-implementation is contained in `quant_fusion.py`; it does not import or
-require another strategy module at runtime.
+## 项目定位
 
-## Design
+Quant Fusion 是一个面向 A 股 AI 硬件、光通信和半导体产业链的日线量化研究与人工决策支持项目。它用于收盘后回测、组合验证、日常信号扫描和真实账户持仓审视，不连接券商，不自动下单，也不承诺未来收益。
 
-- Tradable symbols and regime-observation symbols are separate. The default
-  signal-only regime basket is `300308`, `300502`, `300394`, `688008`, and
-  `603986`; these symbols are never traded unless the caller also includes them
-  in the tradable universe.
-- The same fixed basket is the reference distribution for 10-, 20-, 40-, and
-  80-day risk-adjusted momentum. Existing scores therefore do not change merely
-  because a tradable symbol is added or removed.
-- When the universe has no more than six symbols, all symbols remain eligible
-  and their independent entry signals decide whether to trade. Above six, a
-  symbol must reach the 50th reference percentile before it can consume one of
-  the six candidate slots.
-- One- and two-symbol universes have little useful cross-sectional information.
-  The engine therefore switches every sleeve to a slower time-series trend contract
-  without changing the 60% symbol exposure ceiling.
-- Forced industry-group slots are disabled. The synchronized portfolio
-  coordinator admits at most six distinct symbols across all sleeves, not six
-  per sleeve, and can ignore weaker additions to a large universe.
-- Allocation horizons are `(3, 5, 10)`, `(5, 10, 20)`, and `(5, 20, 60)` days.
-  Candidate horizons are `(10, 20, 40)`, `(10, 20, 40)`, and `(10, 40, 80)`;
-  the long sleeve reduces dependence on one ranking horizon.
-- The confirmed cycle-drawdown threshold is `23% - 2% / N`, where `N` is the
-  number of tradable symbols. A confirmed cycle lock waits ten trading days in
-  cash and may then rearm.
-- The emergency cycle threshold is `27% - 2% / N`. A separate 28% lifetime
-  drawdown boundary is terminal for the affected sleeve.
-- The 18% shadow alert remains audit-only. Orders still execute no earlier than a
-  later tradable open, so gaps can exceed a decision threshold.
-- The three sleeves retain fixed virtual subaccounts, so unused cash is not
-  borrowed by another sleeve. They advance on one shared trading calendar: all
-  sells execute before globally ranked new symbols are admitted, then buys run.
-- The portfolio ADV budget is 0.5% of the prior 20 daily volumes. Each sleeve
-  receives one-third and all same-date, same-symbol, same-side orders consume a
-  shared balance; no strategy order receives a fresh capacity allowance.
-- Same-symbol strategy confirmations share cash, exposure, and ADV capacity
-  proportionally before execution. Board-lot rounding can create at most a
-  one-lot attribution difference. Batch validation applies the strictest
-  strategy exposure cap and rejects mixed-symbol or mixed-price batches.
-- Buy rejections identify the concrete failed execution check. If a
-  portfolio-level liquidation supersedes an existing strategy sell, the prior
-  reason and requested size remain in the order audit trail.
-- The breadth guard requires four of five regime symbols. Missing observations
-  are audited and pause recovery without erasing prior shock confirmations or
-  releasing an active guard.
-- Open positions are marked to market at the requested end date. The engine no
-  longer offers a synthetic same-close period-end liquidation.
-- Calmar is reported beside return, drawdown, and Sharpe in in-memory results,
-  console summaries, saved CSV summaries, and canonical JSON artifacts.
-- A symbol without explicit routing metadata or a recognized name hint now
-  raises `RuntimeError` by default (`strict_unmapped: True`) instead of silently
-  falling back to the default trend profile. All 26 universe symbols are
-  explicitly mapped in `_SYMBOL_GROUP`, `_SYMBOL_PROFILE`, and
-  `_KNOWN_CLASSIFICATION`. Disable with `strict_unmapped: False` for research.
+生产回测核心集中在 `quant_fusion.py`。系统同时提供：
 
-Universe-size robustness does not mean composition invariance. A universe that
-removes the strongest underlying assets cannot be guaranteed the return of a
-universe that contains them. The fixed default regime basket is appropriate for
-the bundled technology-hardware and semiconductor domain; another investment domain
-should supply its own stable benchmark basket before live use.
+- 趋势行情下的三策略、三袖套组合引擎；
+- 弱市或趋势证据不足时的因果路由；
+- 真实账户时点建议；
+- 参数搜索、跨股票池回归、压力测试和简单基准归因；
+- 冻结行情、哈希校验、严格 JSON 工件和持续集成门禁。
 
-## Causal regime-adaptive deployment
+## 最重要的使用边界
 
-`regime_adaptive.py` is an orchestration layer around the frozen production
-engine. It makes one auditable decision using only observations before the
-requested start date:
+1. 本项目只处理日线数据，不适用于高频、分时或盘中自动交易。
+2. 所有信号在收盘后形成，最早在后续可交易日开盘执行。
+3. 回测结果来自固定历史样本，不能视为未来收益保证。
+4. 实际成交会受到停牌、涨跌停、冲击成本、成交量和人工执行偏差影响。
+5. `--account` 只生成真实持仓的时点建议，不把持仓注入历史回测，也不计算伪造的实盘历史收益。
+6. 新股票必须先完成行业、参数和风险分组映射；默认 `strict_unmapped=True`，未映射股票会失败关闭。
 
-- Both fixed, non-trading indices (`000300`, `000682`) must have MA20 above
-  MA60 to route into the original `BacktestEngine` unchanged.
-- Otherwise it ranks the requested pool by positive 240-session momentum,
-  selects at most three leaders, and enters once at the next tradable open.
-- Each leader is capped at 59%. A 3-ATR chandelier becomes active only after a
-  30% peak gain; after exit the symbol is not re-entered in that selection
-  period.
-- Missing, stale or insufficient evidence fails closed. If no positive leader
-  is observable, the policy holds cash.
-- Signals still obey the existing T+1, limit, board-lot, fee, slippage, ADV and
-  single-account execution contracts.
+## 当前策略结构
 
-This layer is for daily manual decision support, not broker automation. Its
-decision and evidence are included in backtest results and daily signal JSON.
+### 1. 趋势生产引擎
 
-## Repository layout
+趋势引擎同时运行三类策略：
 
-- `quant_fusion.py`: complete standalone production engine and CLI.
-- `quant_fusion_optimizer.py`: independent automatic parameter-search,
-  walk-forward validation, Pareto selection, and final-holdout reporting layer.
-- `test_quant_fusion.py`: unit, isolation, routing, risk, and regression
-  tests.
-- `test_quant_fusion_optimizer.py`: leakage, constraint, parameter-support,
-  dynamic-listing, and deterministic-search tests.
-- `regime_adaptive.py`: causal regime router and low-turnover weak-market
-  strategy; it does not modify the frozen trend engine.
-- `run_regime_validation.py`: deterministic development, comparison, blind
-  holdout, prior-year and bull-golden validation protocol.
-- `test_regime_adaptive.py`: causal-boundary, stale-evidence, late-IPO,
-  real-execution and golden-regression tests.
-- `test_daily_signal_scan.py`: account loading, risk state persistence,
-  signal classification, position reconstruction, schema validation
-  (type, finite, range, version), pre-save NaN/Inf rejection, strict JSON
-  compliance (artifact and risk state), error-only artifact on invalid
-  results, buy suppression with blocked-signal separation, CLI integration
-  via subprocess (exit codes, `--account` rejection, `--reset-risk-state`
-  safety, corrupted state fail-closed), symbol mapping tests, risk state
-  date validation (forward contamination prevention), strict result type
-  checking (rejects strings, bool, None, non-dict), artifact-first
-  transaction ordering, run_id consistency, and risk state not injected
-  into engine (time-direction error prevention).
-- `backtest_universes.py`, `stress_test_prefixes.py`, and
-  `backtest_cambricon_universe.py`: reproducible portfolio checks.
-- `daily_signal_scan.py`: daily signal scan for the 26-stock AI sector universe
-  with stale-data fail-closed and risk state persistence. Real-account
-  integration (`--account`) is currently disabled pending reconstruction as a
-  separate account signal engine.
-- `market_data`:
-  canonical forward-adjusted snapshots required by the regression suite.
-- `historical_data`: frozen 2022–2026 qfq research snapshot for 16 overlapping
-  AI symbols plus two non-trading indices, with manifest and SHA-256 checks.
-- `regime_validation_results.json`: per-pool machine-readable adaptive
-  validation evidence.
-- `universe_backtest.json`, `prefix_stress.json`, and
-  `cambricon_universe_backtest.json`: canonical result artifacts.
-- `STRATEGY_REVIEW.md`: proposal audit, controlled experiments, and
-  release decisions.
+- **唐奇安突破**：在滞后一日的通道上轨突破后入场，在下轨、硬止损、盈利保护或快速反转条件下退出。
+- **双均线趋势**：使用短长期均线、趋势强度和风险约束识别持续趋势。
+- **ATR 通道**：使用波动率通道确认价格扩张，并以 ATR 跟踪止损保护趋势利润。
 
-## Data
+三类策略不是简单投票后共用一个虚拟仓位，而是保留独立子持仓和审计轨迹。同一股票同一交易日的买入会按确认数量缩放；卖出优先于买入，默认启用股票级卖出否决。
 
-The reproducible 23-symbol Eastmoney forward-adjusted snapshot is stored in
-`market_data` (22 symbols with full history from 2024-01-01 plus `920045`
-which begins on 2025-12-31). Provider volume is converted from board lots to
-shares before the ADV participation rule is applied. `SHA256SUMS` freezes the
-exact CSV bytes, and the regression suite fails if a file is truncated or
-modified.
+### 2. 三袖套组合
 
-`688256` 寒武纪 is explicitly classified as `semiconductor`, assigned to the
-`domestic_semiconductor` risk group, and routed through the `domestic_design`
-parameter profile. The CLI also recognizes its preset stock name.
+默认 `allocation_mode=ensemble`，初始资金被分成三个固定虚拟袖套：
 
-The extended `historical_data` snapshot preserves the canonical `market_data`
-tail on every common date. It is used for 2022–2024 research and fixed-index
-evidence only; see `historical_data/README.md` for provenance and limitations.
+- 短袖套：分配窗口 `(3, 5, 10)`；
+- 中袖套：分配窗口 `(5, 10, 20)`；
+- 长袖套：分配窗口 `(5, 20, 60)`。
 
-The engine supports two explicit data paths:
+三个袖套共享交易日历、股票数量上限、成交量容量和同步执行顺序，但不互相借用闲置现金。所有卖出先执行，再按全局排序接纳新股票。
 
-- Omit `--data-dir` to fetch forward-adjusted daily data through AKShare. The
-  online loader tries Eastmoney, Sina, and Tencent in deterministic failover
-  order and validates every returned frame.
-- Pass `--data-dir PATH` to read `PATH/<symbol>.csv`. Local files must contain
-  forward-adjusted daily OHLCV data and pass the same validation contract.
+### 3. 候选与集中度控制
 
-## Quick start
+- 股票池不超过 6 只时，所有股票保留候选资格，由各自信号决定是否入场。
+- 股票池超过 6 只时，候选需要达到固定参考篮子的第 50 分位，并受最多 6 只持仓限制。
+- 单只股票最大权重为 60%，总仓位最大 100%。
+- 一只或两只股票缺少有效横截面信息时，系统使用更慢的时间序列趋势契约。
+- 默认固定参考篮子为中际旭创、新易盛、天孚通信、澜起科技和兆易创新。改变投资领域时，应提供新的稳定参考篮子，而不是直接复用本项目的科技硬件篮子。
+
+### 4. 内部市场状态机
+
+趋势引擎内部使用固定篮子的等权指数斜率、均线广度、ADX 中位数、Hurst 指数和波动率分位，对市场标记为 `TREND`、`TRANSITION` 或 `CHOPPY`。状态变化必须经过多日确认和最短保持期，避免单日噪声频繁改变仓位。
+
+内部状态机属于趋势引擎的一部分；它与外层 `regime_adaptive.py` 的部署路由不是同一个概念。
+
+### 5. 外层因果部署路由
+
+`regime_adaptive.py` 在部署边界只使用当时可见的数据：
+
+- 沪深 300 `000300` 与科技风险指数 `000682` 都满足 MA20 大于 MA60：使用原趋势生产引擎；
+- 否则：在请求股票池中选择 240 个交易日动量为正的前三名，使用低换手持有策略；
+- 没有完整、新鲜的指数证据或没有正动量股票：持有现金。
+
+历史回测的路由边界固定在开始日前，不会用后来的行情改写过去。日常扫描会另外计算“当前路由”。若当前路由与历史回放路由不同，新增买入失败关闭，卖出仍保留。
+
+### 6. 弱市策略
+
+弱市策略最多持有三只正 240 日动量龙头，每只不超过 59%。主要退出规则：
+
+- 入场时使用 22% 灾难止损和 5 ATR 止损，取更严格者；
+- 持仓至少 80 个交易日且收益不高于 -10% 时触发时间止损；
+- 峰值收益达到 30% 后启用 3 ATR 吊灯止损；
+- 一次退出后，在该次选择周期内不重新入场；
+- 行情证据超过 10 个自然日视为陈旧。
+
+弱市策略故意把底层组合回撤阈值放宽到接近 100%，避免趋势引擎的组合熔断干扰该独立策略。因此弱市风险主要由逐股票止损承担，不能把它理解为最大回撤有硬性 20% 保证。
+
+## 交易、费用和因果性
+
+- 信号使用当日收盘及之前的数据生成。
+- 唐奇安通道和反转低点均向后移动一日，避免当日高低价进入当日决策。
+- 订单最早在后续可交易日开盘执行。
+- A 股最小交易单位为 100 股。
+- 模拟佣金率 0.025%，最低佣金 5 元，卖出印花税 0.05%，单边滑点 0.1%。
+- 按股票代码估计主板、创业板、科创板、北交所及 ST 涨跌停限制。
+- 买入受现金、单股权重、总仓位、行业权重、持仓数量和成交量容量共同约束。
+- 组合每日最多参与前 20 日平均成交量的 0.5%，同日同股票同方向订单共享容量。
+- 开放持仓在结束日按收盘价计价，不做虚构的期末强制平仓。
+
+## 风险控制
+
+### 周期回撤
+
+有效确认阈值随股票池数量变化：
+
+```text
+确认阈值 = 23% - 2% / 股票数量
+紧急阈值 = 27% - 2% / 股票数量
+```
+
+触发周期锁后，系统清仓并等待 10 个交易日，再重置周期高水位。独立的终身峰值回撤线为 28%，一旦触发不自动恢复。18% 仅为审计预警，开盘跳空可能使实际回撤超过决策阈值。
+
+### 板块广度保护
+
+固定五股篮子用于识别同步冲击。至少需要四只有效观测；缺失数据会暂停恢复确认，而不会清除已确认的风险状态。板块冲击触发后，新增买入受限，并按配置生成清仓信号。
+
+### 风险状态连续性
+
+日扫每次都从 `--start-date` 完整回放历史，不把上次结束时的风险状态注入过去。保存的 `risk_state.json` 只用于身份校验、连续性展示和终态审计。
+
+身份包含股票池、开始日期、指标状态、资金和预热天数。身份不一致时：
+
+- 买入信号进入 `blocked_signals`；
+- 卖出和持有信号继续显示；
+- 旧风险状态不被覆盖；
+- 只有显式使用 `--reset-risk-state` 才建立新身份。
+
+工件先写入，风险状态后提交；两者使用临时文件、`fsync` 和原子替换，并共享 `run_id`。
+
+## 真实账户模式
+
+`daily_signal_scan.py --account 账户文件.json` 调用独立的 `account_signal_engine.py`。它读取真实现金、成本、建仓日期和历史最高收盘价，生成：
+
+- `HOLD`：没有触发账户级退出条件；
+- `SELL`：触发保护止损或均线趋势破坏；
+- `REDUCE_REVIEW`：当前路由偏防守，或持仓不在弱市龙头内；
+- `BUY_CANDIDATE`：现金大于零且存在新的弱市龙头候选；
+- `DATA_ERROR`：持仓行情无法可靠获取。
+
+只要任一持仓无法定价，`valuation_complete` 为 `false`，`estimated_market_value` 和 `estimated_equity` 为 `null`，避免把部分持仓估值伪装成完整总资产。`priced_market_value` 仅表示已成功定价部分。
+
+账户文件示例：
+
+```json
+{
+  "cash": 370000,
+  "peak_equity": 3000000,
+  "positions": {
+    "300308": {
+      "shares": 900,
+      "avg_cost": 100.0,
+      "entry_date": "2026-01-02",
+      "highest_close": 160.0
+    }
+  }
+}
+```
+
+股票代码必须为六位字符串，股数必须为正整数，价格必须为正有限数。
+
+## 默认策略参数
+
+以下表格直接对应 `_CoreBacktestEngine._default_config()`。行业配置和逐股票覆盖只修改表中允许覆盖的字段，最终生效值会写入回测结果的 `resolved_symbol_configs`。
+
+| 参数 | 默认值 | 含义 |
+|---|---:|---|
+| `entry_period` | `8` | 唐奇安入场通道窗口 |
+| `exit_period` | `3` | 唐奇安退出通道窗口 |
+| `adx_threshold` | `12` | 趋势强度最低阈值 |
+| `adx_period` | `10` | ADX 计算窗口 |
+| `atr_period` | `10` | ATR 计算窗口 |
+| `rsi_period` | `20` | RSI 计算窗口 |
+| `ma_short` | `15` | 短期均线窗口 |
+| `ma_long` | `60` | 长期均线窗口 |
+| `atr_multiplier` | `1.0` | 风险定仓使用的 ATR 倍数 |
+| `trail_atr_mult` | `4.0` | 盈利后跟踪止损的 ATR 倍数 |
+| `channel_mult` | `2.0` | ATR 通道上轨倍数 |
+| `channel_lower_mult` | `3.0` | ATR 通道下轨倍数 |
+| `risk_pct` | `0.03` | 单次理论风险预算比例 |
+| `hard_stop` | `0.15` | 相对成本价的硬止损比例 |
+| `strategy_weight` | `0.98` | 单策略可使用的资金比例 |
+| `max_symbol_weight` | `0.60` | 单只股票最大权重 |
+| `max_total_weight` | `1.00` | 组合最大总仓位 |
+| `max_units` | `20` | 单策略最多加仓单元 |
+| `max_drawdown` | `0.165` | 底层兼容配置中的最大回撤阈值 |
+| `daily_loss_limit` | `0.06` | 单日损失保护阈值 |
+| `sector_guard_enabled` | `True` | 是否启用板块广度保护 |
+| `sector_guard_min_symbols` | `5` | 启用板块保护所需最少观测数 |
+| `sector_shock_return` | `-0.05` | 板块冲击收益阈值 |
+| `sector_shock_breadth` | `0.20` | 板块冲击广度阈值 |
+| `sector_shock_ma` | `5` | 板块冲击均线窗口 |
+| `sector_shock_window` | `4` | 板块冲击确认窗口 |
+| `sector_shock_confirmations` | `2` | 板块冲击确认次数 |
+| `sector_recovery_ma` | `5` | 板块恢复均线窗口 |
+| `sector_recovery_breadth` | `0.80` | 板块恢复广度阈值 |
+| `sector_recovery_confirmations` | `2` | 板块恢复确认次数 |
+| `symbol_level_sell_veto` | `True` | 同一股票卖出信号是否否决全部买入信号 |
+| `momentum_lookback` | `5` | 兼容候选排序动量窗口 |
+| `max_positions` | `6` | 最多同时持有股票数 |
+| `group_min_slots` | `2` | 兼容行业保底槽位；当前协调器可忽略弱候选 |
+| `fusion_single_scale` | `0.9` | 单策略确认时的目标仓位缩放 |
+| `fusion_double_scale` | `1.0` | 双策略确认时的目标仓位缩放 |
+| `fusion_triple_scale` | `1.1` | 三策略确认时的目标仓位缩放 |
+| `profit_lock_activation` | `0.20` | 启动盈利保护所需峰值收益 |
+| `profit_lock_giveback` | `0.22` | 盈利保护允许的回撤比例 |
+| `reversal_break_giveback` | `0.22` | 趋势破坏退出允许的峰值回撤 |
+| `reversal_exit_period` | `6` | 快速反转低点窗口 |
+| `reversal_loss_cut` | `0.10` | 反转亏损退出比例 |
+| `reversal_turtle_enabled` | `True` | 唐奇安策略是否启用快速反转退出 |
+| `reversal_dual_ma_enabled` | `True` | 双均线策略是否启用快速反转退出 |
+| `reversal_atr_channel_enabled` | `True` | ATR 通道策略是否启用快速反转退出 |
+| `combined_group_weight_limits` | `海外算力 1.0；国产半导体 0.8` | 行业组合权重上限 |
+| `liquidate_on_circuit_breaker` | `True` | 触发组合熔断后是否生成清仓信号 |
+| `strict_unmapped` | `True` | 未映射股票是否失败关闭 |
+| `commission_rate` | `0.00025` | 佣金率 |
+| `stamp_duty` | `0.0005` | 卖出印花税率 |
+| `slippage` | `0.001` | 单边滑点比例 |
+| `min_commission` | `5.0` | 单笔最低佣金 |
+| `max_pending_buy_days` | `5` | 未成交买单最多保留交易日 |
+| `pyramid_add_atr` | `1.0` | 加仓所需价格推进 ATR 倍数 |
+| `pyramid_risk_decay` | `1.0` | 后续加仓风险预算衰减 |
+| `atr_method` | `wilder` | ATR 平滑方式 |
+| `limit_price_epsilon` | `0.001` | 涨跌停判定容差 |
+| `per_symbol_limit_pct` | `空映射` | 逐股票涨跌停比例覆盖 |
+| `st_symbols` | `空集合` | 按 5% 涨跌停处理的股票集合 |
+| `risk_free_rate` | `0.0` | 夏普比率使用的年化无风险利率 |
+| `market_regime_enabled` | `True` | 是否启用内部市场状态机 |
+| `regime_ewi_lookback` | `20` | 等权指数斜率窗口 |
+| `regime_breadth_ma_long` | `20` | 广度长期均线窗口 |
+| `regime_adx_trend` | `25` | 趋势状态 ADX 阈值 |
+| `regime_adx_choppy` | `20` | 震荡状态 ADX 阈值 |
+| `regime_hurst_window` | `100` | Hurst 指数窗口 |
+| `regime_hurst_trend` | `0.55` | 趋势状态 Hurst 阈值 |
+| `regime_hurst_choppy` | `0.45` | 震荡状态 Hurst 阈值 |
+| `regime_vol_lookback` | `60` | 波动率分位窗口 |
+| `regime_vol_extreme_pct` | `0.90` | 极端波动分位阈值 |
+| `regime_ewi_slope_trend` | `0.02` | 趋势状态等权指数斜率阈值 |
+| `regime_ewi_slope_choppy` | `-0.02` | 震荡状态等权指数斜率阈值 |
+| `regime_score_trend` | `2` | 趋势候选总分阈值 |
+| `regime_score_choppy` | `-3` | 震荡候选总分阈值 |
+| `regime_choppy_confirmations` | `2` | 进入震荡状态确认次数 |
+| `regime_trend_confirmations` | `3` | 进入趋势状态确认次数 |
+| `regime_recovery_confirmations` | `3` | 从震荡状态恢复确认次数 |
+| `regime_min_state_hold` | `3` | 状态最少保持交易日 |
+| `regime_transition_scale` | `1.0` | 过渡状态仓位缩放 |
+| `regime_trend_to_transition_confirmations` | `3` | 趋势转过渡确认次数 |
+| `regime_choppy_exit_ratio` | `0.30` | 震荡状态退出比例 |
+| `regime_transition_exit_ratio` | `0.0` | 过渡状态退出比例 |
+
+## 组合策略参数
+
+以下字段来自 `PortfolioPolicy`，控制袖套、候选、成交量和回撤状态机。
+
+| 参数 | 默认值 | 含义 |
+|---|---:|---|
+| `allocation_mode` | `ensemble` | 默认使用三袖套组合 |
+| `single_lookbacks` | `(5, 10, 20)` | 单袖套分配动量窗口 |
+| `allocation_horizons` | `(3,5,10)/(5,10,20)/(5,20,60)` | 三袖套分配窗口 |
+| `drawdown_alert` | `0.18` | 审计型回撤预警 |
+| `confirmed_drawdown` | `0.23` | 周期回撤确认基准 |
+| `drawdown_confirmations` | `2` | 周期回撤确认次数 |
+| `emergency_drawdown` | `0.27` | 周期紧急回撤基准 |
+| `adv_lookback` | `20` | 成交量容量回看窗口 |
+| `max_order_adv_ratio` | `0.005` | 组合单日参与前 20 日均量的最大比例 |
+| `candidate_lookbacks` | `(10, 20, 40)` | 候选动量参考窗口 |
+| `candidate_horizons` | `(10,20,40)/(10,20,40)/(10,40,80)` | 各袖套候选窗口 |
+| `rearm_trading_days` | `10` | 周期锁定后的现金冷却交易日 |
+| `terminal_drawdown` | `0.28` | 终身峰值回撤终止线 |
+| `concentration_drawdown_adjustment` | `0.02` | 集中度回撤收紧系数 |
+| `candidate_reference_percentile` | `0.50` | 大股票池候选最低参考分位 |
+| `regime_symbols` | `300308/300502/300394/688008/603986` | 固定非交易状态篮子 |
+| `market_regime_enabled` | `True` | 是否启用内部市场状态机 |
+| `regime_ewi_lookback` | `20` | 等权指数斜率窗口 |
+| `regime_breadth_ma_long` | `20` | 广度长期均线窗口 |
+| `regime_adx_trend` | `25` | 趋势状态 ADX 阈值 |
+| `regime_adx_choppy` | `20` | 震荡状态 ADX 阈值 |
+| `regime_hurst_window` | `100` | Hurst 指数窗口 |
+| `regime_hurst_trend` | `0.55` | 趋势状态 Hurst 阈值 |
+| `regime_hurst_choppy` | `0.45` | 震荡状态 Hurst 阈值 |
+| `regime_vol_lookback` | `60` | 波动率分位窗口 |
+| `regime_vol_extreme_pct` | `0.90` | 极端波动分位阈值 |
+| `regime_ewi_slope_trend` | `0.02` | 趋势状态等权指数斜率阈值 |
+| `regime_ewi_slope_choppy` | `-0.02` | 震荡状态等权指数斜率阈值 |
+| `regime_score_trend` | `2` | 趋势候选总分阈值 |
+| `regime_score_choppy` | `-3` | 震荡候选总分阈值 |
+| `regime_choppy_confirmations` | `2` | 进入震荡状态确认次数 |
+| `regime_trend_confirmations` | `3` | 进入趋势状态确认次数 |
+| `regime_recovery_confirmations` | `3` | 从震荡状态恢复确认次数 |
+| `regime_min_state_hold` | `3` | 状态最少保持交易日 |
+| `regime_transition_scale` | `1.0` | 过渡状态仓位缩放 |
+| `regime_trend_to_transition_confirmations` | `3` | 趋势转过渡确认次数 |
+| `regime_choppy_exit_ratio` | `0.30` | 震荡状态退出比例 |
+| `regime_transition_exit_ratio` | `0.0` | 过渡状态退出比例 |
+
+### 集中度后的有效阈值
+
+`confirmed_drawdown` 和 `emergency_drawdown` 会按股票数量减去 `concentration_drawdown_adjustment / N`。`terminal_drawdown` 不随股票数量变化。
+
+## 参数路由与扩展
+
+系统按股票显式映射到光模块、海外存储材料、国产设计、国产材料、晶圆制造、半导体设备等参数画像。`per_symbol_config` 只允许覆盖策略级字段，组合级字段必须在全局配置或 `PortfolioPolicy` 中修改。
+
+新增股票的正确步骤：
+
+1. 补充分类、行业组、参数画像和执行优先级；
+2. 使用冻结前复权数据；
+3. 运行单股、少量股票和大股票池回归；
+4. 检查收益、最大回撤、交易次数、成交量容量和参数邻域；
+5. 更新文档与测试后再纳入日扫股票池。
+
+## 快速开始
+
+安装运行依赖：
 
 ```bash
 python -m pip install -r requirements.txt
+```
+
+使用冻结数据运行五股趋势回测：
+
+```bash
 python quant_fusion.py \
   --start 2025-04-01 \
   --end 2026-07-20 \
@@ -169,124 +322,45 @@ python quant_fusion.py \
   --no-plot
 ```
 
-For online data, omit the local directory option:
+不传 `--data-dir` 时，通过 AKShare 按东方财富、新浪、腾讯顺序容错。东方财富和腾讯的手数会转换为股；新浪已是股。缓存必须带成交量单位侧车文件，旧缓存不会被猜测复用。
+
+运行日常模拟信号：
 
 ```bash
-python quant_fusion.py \
-  --start 2025-04-01 \
-  --end 2026-07-20 \
-  --indicator-state warm \
-  --no-plot
+python daily_signal_scan.py \
+  --end-date 2026-08-04 \
+  --cache-dir data_cache \
+  --output-dir daily_signals
 ```
 
-Run the full regime validation and rebuild the machine-readable report:
+运行真实账户时点建议：
+
+```bash
+python daily_signal_scan.py \
+  --account account.json \
+  --end-date 2026-08-04 \
+  --cache-dir data_cache \
+  --output-dir daily_signals
+```
+
+运行外层路由验证：
 
 ```bash
 python run_regime_validation.py --workers 4
 ```
 
-The final blind seed and pool generator are committed in the script. The blind
-set was first opened after the strategy constants and tests were frozen; later
-runs reproduce that fixed protocol and must not be treated as new holdouts.
+运行简单基准：
 
-The CLI defaults to warm indicator state because a live strategy normally has
-pre-start history. Cold state remains available for initialization sensitivity
-tests. Both states start the portfolio flat on the requested first date.
-
-### Risk state continuity
-
-The `BacktestEngine.run()` method accepts an optional `risk_state` parameter
-that restores risk management state from a previous run. However, the daily
-scan does **NOT** use this parameter — see below.
-
-```python
-# The engine *can* accept risk_state, but the daily scan does NOT pass it.
-result = engine.run(
-    symbols_dict, start_date, end_date,
-    # risk_state is intentionally omitted by the daily scan
-)
+```bash
+python benchmark_validation.py \
+  --symbols 300308,300502,300394,688008,603986 \
+  --data-dir market_data \
+  --regime-data-dir historical_data \
+  --start 2025-04-01 \
+  --end 2026-07-20
 ```
 
-**Risk state is NOT injected into the engine.** The daily scan replays the
-full history from `--start-date` to `--end-date` every time. Injecting the
-previous run's end-state (e.g. `terminal_risk_lock=True` from July 30) into
-a fresh replay starting from July 1 would create a time-direction error:
-the future末端 state would change the past historical path. Instead, the
-engine independently rebuilds all risk states from the actual historical
-data. The saved `risk_state.json` is loaded for **display and continuity
-checking only** — it shows the user what the previous run detected, but
-does NOT influence the current backtest.
-
-**Risk state date validation:** the saved `scan_date` must be <= the
-requested `end_date`. This prevents forward contamination — e.g. loading an
-August 1 risk state into a July 20 replay would be direct look-ahead bias.
-Violations are rejected (fail-closed, exit code 1).
-
-Risk state includes `schema_version` for forward compatibility. Unknown
-schema versions are rejected (fail-closed) to prevent misinterpreting fields
-with changed semantics. All state fields are type-validated on load:
-`schema_version` (int), `scan_date` (str), `terminal_risk_lock` (bool),
-`sector_guard_active` (bool), `cycle_lock_count` (int, non-negative),
-`max_drawdown` (finite number), `total_return` (finite number),
-`final_assets` (finite number, non-negative). Numeric values are also
-validated before saving — NaN/Inf and negative `cycle_lock_count` are
-rejected at write time.
-
-When the risk state identity hash does not match (different symbol set,
-count, or configuration), buy signals are suppressed (fail-closed). In the
-JSON artifact, blocked buy signals are placed in a separate
-`blocked_signals` list — `pending_signals` only contains executable signals,
-so downstream consumers that check `direction` on `pending_signals` will
-never see blocked buys. The old risk state is preserved (not overwritten)
-until the user runs `--reset-risk-state`.
-
-**Artifact-first transaction ordering:** the JSON artifact is written to
-disk BEFORE risk state is saved. This is a true two-phase commit: if the
-artifact write fails, no risk state has been committed — preventing
-state/artifact inconsistency. If the risk state save subsequently fails,
-the artifact already exists on disk with `risk_state_saved: false` and an
-error message, and the scan exits with code 1.
-
-Both risk state and JSON artifact are serialized with `allow_nan=False` to
-guarantee strict JSON (ECMA-404) output. The backtest result is validated
-IMMEDIATELY after `engine.run()` returns — before any printing or
-formatting — for type, finiteness, and presence of `final_assets`,
-`total_return`, `max_drawdown`, `sharpe`, and `total_trades`. Strict type
-checking rejects strings (even if float-convertible like `"1.23"`), `bool`
-(which is a subclass of `int` in Python), `None`, and non-dict results.
-When any field is invalid, an error artifact is written to a SEPARATE file
-(`signals_<date>.error.json`) and the scan exits with code 1. The last
-successful artifact (`signals_<date>.json`) is never overwritten by an
-error artifact. A `latest_success.json` pointer file is updated only on
-successful artifact write, providing a stable reference for downstream
-consumers to find the last good signals. The artifact, `risk_state.json`,
-and `latest_success.json` all share the same `run_id` for traceability.
-
-## Automatic parameter optimization
-
-The optimizer preserves `quant_fusion.py` as the only execution engine. It
-changes no signal, fill, T+1, cost, liquidity, or accounting code. It searches
-portfolio controls and route-preserving multipliers around each stock's existing
-industry profile, so an optical-module stock and semiconductor-equipment stock do
-not silently receive one identical absolute parameter set.
-
-The default protocol enforces these hard limits before a candidate can run:
-
-- maximum symbol weight: 60%;
-- maximum total weight: 100%;
-- maximum concurrent symbols: six;
-- maximum validation and higher-cost validation drawdown: 20%.
-
-Selection uses expanding training windows followed by non-overlapping validation
-windows. It penalizes performance instability and training-to-validation
-degradation, rejects isolated parameter spikes without a one-axis neighbor, and
-chooses from the validation return/drawdown Pareto frontier. The final holdout is
-run only after parameter selection. It cannot choose a different parameter
-candidate, but it is a mandatory one-time promotion gate: a candidate is not
-recommended if ordinary or stressed holdout drawdown breaches 20%, or if its
-return falls below the already-feasible production baseline.
-
-Example for the five-symbol reference universe:
+运行参数优化：
 
 ```bash
 python quant_fusion_optimizer.py \
@@ -303,285 +377,124 @@ python quant_fusion_optimizer.py \
   --output-dir optimizer_output
 ```
 
-The output directory contains:
+优化器采用扩展训练窗口、非重叠验证窗口、参数邻域支持、收益/回撤帕累托筛选和一次性最终留出集。优化结果仍然是历史研究结果，不代表未来最优。
 
-- `optimization_report.json`: every candidate, fold, rejection, Pareto result,
-  cost stress, and untouched final-holdout comparison;
-- `recommended_config.json`: the selected compact modifiers plus materialized
-  per-symbol configuration that can be passed back to the engine;
-- `optimization_summary.md`: concise baseline-versus-selected holdout results.
+## 数据目录
 
-Local data is mandatory for optimization so hundreds of candidate runs share one
-frozen snapshot. A stock with no observations in an early fold is excluded from
-that fold and becomes eligible only after it has enough historical rows; the
-optimizer never backfills a pre-listing period. A custom finite search space can
-be supplied with `--search-space`. Historical best parameters remain research
-results, not a promise of future optimality.
+- `market_data/`：2025—2026 生产回归使用的前复权冻结快照和 SHA-256 清单。
+- `historical_data/`：2022—2024 弱市验证及两只固定指数证据。
+- 在线缓存：由 `data_cache/` 保存，并通过成交量单位元数据避免不同提供方口径混用。
 
-### Frozen five-symbol validation on 2026 data
+刷新冻结数据属于新的研究快照，必须重新生成哈希、回归结果和文档，不能静默覆盖。
 
-The canonical 40-candidate run used 2024-01-02 through 2025-12-31 only for
-parameter selection and first opened 2026-01-05 through 2026-07-20 after the
-validation winner was frozen. The research winner combined a three-position
-ceiling, the moderate portfolio-risk bundle, and a 0.8 per-route risk multiplier.
-It passed the pre-test 20% constraint but failed the one-time promotion gate:
+## 已验证基线
 
-| Final holdout | Total return | Maximum drawdown | Sharpe | Calmar |
-|---|---:|---:|---:|---:|
-| production baseline | 152.8439% | -11.3952% | 3.5943 | 44.2142 |
-| validation winner | 124.9701% | -11.1156% | 3.2199 | 34.3196 |
+初始资金 200 万元、2025-04-01 至 2026-07-20、前复权冻结数据、指标预热模式：
 
-The 0.28 percentage-point drawdown improvement did not justify 27.87 percentage
-points less return, so `recommended_config.json` retains the production baseline. The
-complete evidence is stored in
-`optimizer_validation/optimization_report.json`; the concise
-comparison is in the adjacent `optimization_summary.md`. No further parameter
-tuning used the opened 2026 holdout.
+| 股票数量 | 总收益 | 最大回撤 | 交易次数 |
+|---:|---:|---:|---:|
+| 1 | 530.8950% | -18.3414% | 24 |
+| 3 | 1083.6973% | -17.9190% | 194 |
+| 5 | 1115.9924% | -15.8573% | 222 |
+| 13 | 1038.7405% | -18.4072% | 324 |
+| 22 | 983.5716% | -16.2177% | 244 |
 
-## Cross-universe target results
+精确数值由 `backtest_golden_metrics.json` 和 CI 的 `Exact backtest regression` 门禁保护。更详细的验证和限制见 `BACKTEST_RESULTS.md`。
 
-Initial capital is CNY 2,000,000. All scenarios use identical strategy parameters,
-default costs, 0.1% one-way slippage, and data through 2026-07-20.
+## 优势
 
-| Tradable universe | Cold return | Cold max drawdown | Warm return | Warm max drawdown | Warm Sharpe | Warm Calmar | Warm trades |
-|---|---|---|---:|---:|---:|---:|---:|
-| 1 symbol | 536.66% | -18.49% | 530.89% | -18.34% | 3.21 | 18.23 | 24 |
-| 3 symbols | 1059.72% | -18.32% | 1083.70% | -17.92% | 3.69 | 34.47 | 194 |
-| 5 symbols | 1078.67% | -16.80% | 1115.99% | -15.86% | 3.70 | 39.93 | 222 |
-| 13 symbols | 894.16% | -16.93% | 1038.74% | -18.41% | 3.61 | 32.37 | 324 |
-| 22 symbols | 843.49% | -17.13% | 983.57% | -16.22% | 3.76 | 35.07 | 244 |
+- **因果性明确**：信号与执行分离，通道滞后，历史路由不使用未来数据。
+- **A 股执行约束较完整**：T+1、手数、费用、滑点、涨跌停、成交量容量均纳入。
+- **多层风险控制**：逐持仓止损、板块广度、周期回撤和终身回撤互相独立。
+- **股票池扩展有明确边界**：显式映射、固定参考篮子和严格失败关闭。
+- **结果可审计**：成交、拒单、融合、风险事件、有效配置和工件身份可追踪。
+- **测试强**：包含未来数据变动、陈旧证据、晚上市股票、严格 JSON、原子写入、CLI 和精确收益回归。
+- **实盘与回测隔离**：真实账户只做时点建议，不污染历史状态机。
 
-The requested multi-symbol warm wealth-factor ratio between the worst and best
-universe is 88.13% (22-symbol vs 5-symbol). The exhaustive ordered-prefix audit
-also tests every count from one through 22. The one-symbol result remains
-structurally lower because the 60% symbol cap leaves at least 40% cash at entry
-and provides no rotation opportunity. The sub-20% drawdown claim applies to the
-five requested 1-, 3-, 5-, 13-, and 22-symbol warm scenarios, not every possible
-composition. Exact scenario metadata is stored in `BACKTEST_RESULTS.md` and
-`universe_backtest.json`; the prefix audit is stored in `prefix_stress.json`.
+## 缺点和已知限制
 
-## Regime-adaptive validation
+- 核心文件较大，状态机和多袖套协调复杂，修改成本高。
+- 参数画像含有较强的行业与股票先验，不适合直接迁移到消费、医药或周期行业。
+- 股票池结果依赖资产组成，不能保证增加或删除股票后收益不变。
+- 日线开盘成交模型无法模拟盘中路径、排队成交和真实冲击成本。
+- 涨跌停判断属于估计模型，不能完全覆盖复牌、除权和交易所特殊规则。
+- 外层路由是边界决策，不是每天改写历史持仓的动态切换器。
+- 弱市样本存在幸存者偏差、股票池相关性和有效独立样本不足。
+- 历史前复权数据可能因后续公司行动被数据源重述。
+- 回测收益很高，部分来自科技产业链集中上涨阶段，不应外推为长期稳定收益。
+- 当前账户建议不给出自动下单股数，需人工结合可用资金、税费和执行价格确认。
 
-The frozen 2024 protocol improves the 16 deterministic pools from 43.75%
-profitable and -2.63% median return to 87.50% and +22.35%. The final 26-pool
-seed `20260805`, opened after rule freeze, is 96.15% profitable, 100% non-loss
-and +24.84% median return. Its worst drawdown is 31.68%, so the release does not
-claim a hard 20% drawdown ceiling or future mathematical optimality. Complete
-per-pool evidence and limitations are in `REGIME_ADAPTIVE_REFACTOR_REPORT.md`
-and `regime_validation_results.json`.
+## 适用行情
 
-## Verification
+- AI 硬件和半导体产业链的中长期趋势上涨；
+- 高波动但趋势延续、能够让盈利头寸持续扩张的行情；
+- 股票池中存在明显强弱分化，龙头动量具有延续性的行情；
+- 收盘后人工复核、次日执行的低频决策场景。
 
-Run the standard-library regression suite and the complete cross-universe runner:
+## 不适用行情
 
-```bash
-python -m py_compile quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
-  regime_adaptive.py run_regime_validation.py
-python -m pytest -v --tb=short
-python run_regime_validation.py --workers 4
-python backtest_universes.py
-python stress_test_prefixes.py
-python backtest_cambricon_universe.py
-```
+- 无方向、快速来回反转的窄幅震荡；
+- 连续一字涨跌停、长期停牌或流动性极差的股票；
+- 需要分钟级止损或盘中择时的场景；
+- 非科技产业链且没有重新建立参考篮子和参数画像的股票池；
+- 指数和个股数据不完整、陈旧或来源口径不清的日期；
+- 需要自动托管真实账户、自动下单或保证最大亏损的场景。
 
-A GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs the full test
-suite (auto-discovered via pytest, including optimizer tests) on Python 3.11
-and 3.12, plus ruff linting, bandit security scanning, pip-audit dependency
-vulnerability scanning, pyright type checking, and a dedicated backtest
-regression job that verifies multi-universe warm metrics (1, 3, 5, 13, and
-22-symbol — return, drawdown, trade count) against frozen baselines. All
-checks are gating — a lint, security, type, test, or regression failure
-blocks the pipeline.
+## 健壮性与灵活性
 
-The tests cover standalone isolated startup, absence of external imports,
-AKShare provider failover, strict local CSV selection, policy validation,
-concentration scaling, temporary rearming, terminal locks, signal immutability,
-fair same-symbol allocation, cumulative ADV accounting, missing-data guard
-quorum, strict batch exposure, low-price minimum-fee affordability, detailed
-rejection auditing, data snapshot checksums, signal-only basket isolation, the
-portfolio-wide six-symbol ceiling, all five requested universe sizes, sub-20%
-drawdown for the requested warm universes, Cambricon's complete route, the
-2026-06-26 regime-gate event, the complete one-through-22 prefix artifact, and
-the mapped nine-symbol Cambricon artifact. It also checks deterministic detection
-of unmapped auto routes and the presence of positive Calmar values in successful
-target-period runs. The daily-signal-scan tests verify account JSON loading,
-risk state persistence round-trips, corrupted state fail-closed behavior,
-same-day rerun preservation, signal classification, position
-reconstruction from trade ledgers, schema validation (type, finite, range,
-and version checks), pre-save NaN/Inf rejection, buy suppression with
-blocked-signal separation, strict JSON compliance (artifact and risk state
-must never contain NaN/Infinity tokens as JSON values), error-only
-artifact production when results contain NaN/Inf, CLI integration via
-subprocess (exit codes, `--account` rejection, `--reset-risk-state`
-safety, corrupted state fail-closed), and that all 26 universe symbols
-are explicitly mapped. They also verify last-good artifact protection
-(failed runs write to `.error.json` and never overwrite the last
-successful `signals_<date>.json`), nested NaN detection (state is not
-saved when artifact serialization fails), `latest_success.json` pointer
-file updates, wrong-type/missing field error artifacts, and artifact
-write failure exit codes. Additional tests verify: risk state is NOT
-injected into `engine.run()` (prevents time-direction error), risk state
-date validation (rejects `scan_date > end_date` to prevent forward
-contamination), strict result type checking (rejects strings, bool, None,
-non-dict results, and validates `total_trades`), artifact-first transaction
-ordering (artifact written before risk state, no state saved on artifact
-write failure), and run_id consistency (artifact, risk state, and
-latest_success pointer share the same run_id). The
-quant-fusion tests include end-to-end coverage of external-account sell
-execution with `strategy=None` and API contract enforcement (`account_state`
-raises `NotImplementedError`).
+健壮性来自输入校验、行情哈希、提供方单位契约、严格映射、因果测试、精确回归和失败关闭。灵活性来自逐股票配置、行业画像、单袖套/三袖套选择、冷/热指标状态、外层部署模式、参数优化和本地/在线数据双路径。
 
-## Daily signal scan
+这种灵活性不是“任意改参数都安全”。任何策略参数、参考篮子、交易费用、股票分类或冻结数据变化，都必须重新通过完整测试和收益/回撤/交易次数回归。
 
-`daily_signal_scan.py` fetches the latest forward-adjusted data via AKShare
-(with incremental cache), runs the Quant Fusion backtest, and extracts the
-latest pending signal (buy / sell / hold) for each of the 26 AI-sector symbols.
+## 还能继续提升的方向
 
-### Modes
+1. 将大核心文件按数据、信号、执行、组合、风险和报告拆分，同时保持公共接口和精确回归不变。
+2. 为所有新增股票建立时间点可得的行业和上市状态数据库，减少幸存者偏差。
+3. 增加退市、停牌、复牌和不同板块规则的历史时间变化模型。
+4. 使用滚动样本外、区块自助法和多成本情景报告置信区间，而不只报告点估计。
+5. 增加真实人工执行记录，与模型开盘价、滑点和未成交原因做持续对账。
+6. 扩大弱市验证年份和非重叠股票池，提升有效独立样本量。
+7. 为账户模式增加人工确认后的目标仓位计算，但仍保持不自动下单。
+8. 在不降低精确回归保护的前提下，提高核心模块的静态类型覆盖率。
 
-- **Simulation mode** (default): runs a fresh backtest from `--start-date`.
-  Signals reflect what the strategy *would have* done, not your real portfolio.
-- **Account mode** (`--account account.json`): **currently disabled**. The
-  real-account integration has multiple architecture defects (single-sleeve
-  snapshot cleared by reset, three-sleeve mixed ledger, external liquidation
-  crash, peak-equity timing errors, zero-cash initialization failure, and
-  meaningless performance metrics). It will be re-enabled as a separate
-  account signal engine that does not patch real-account state into the
-  historical backtest state machine.
+## 仓库结构
 
-### Stale data fail-closed
+- `quant_fusion.py`：生产回测、执行、组合和风险核心。
+- `regime_adaptive.py`：外层因果路由和弱市策略。
+- `daily_signal_scan.py`：日常模拟信号和风险状态工件。
+- `account_signal_engine.py`：真实账户时点建议。
+- `market_data_contracts.py`：指数刷新和行情契约。
+- `quant_fusion_optimizer.py`：走步验证和参数搜索。
+- `benchmark_validation.py`：简单基准归因。
+- `run_regime_validation.py`：弱市、留出集和牛市基线验证。
+- `backtest_universes.py`、`stress_test_prefixes.py`、`backtest_cambricon_universe.py`：组合回归脚本。
+- `test_*.py`：单元、集成、文档一致性和精确回归测试。
+- `BACKTEST_RESULTS.md`：当前有效验证结果。
+- `historical_data/README.md`：历史冻结数据说明。
 
-If any symbol's cached data is stale (network fetch failed) or data end dates
-are inconsistent across symbols, the scan refuses to produce signals and exits
-with code 1. Override with `--allow-stale` only when you understand the risk;
-stale-data signals must not be used for live trading decisions.
+## 开发与质量门禁
 
-### Causal deployment route
-
-The daily scan defaults to `--deployment-mode auto`. Fixed-index regime
-evidence comes from `historical_data`; leader momentum comes from the same
-incremental qfq cache already refreshed during the tradability pre-screen. The
-JSON artifact records the route, boundary, fixed-index observations, requested
-pool, selected leaders and unavailable symbols under `deployment`.
-
-If index evidence is stale or incomplete, the outer router fails closed into
-the weak policy and may hold cash. `--deployment-mode trend` and
-`--deployment-mode weak` are diagnostic overrides, not tuning switches for
-choosing whichever historical result is better.
-
-### Risk state persistence
-
-After each run, risk state (`terminal_risk_lock`, `sector_guard_active`,
-`max_drawdown`, `cycle_lock_count`) is saved to `risk_state.json` in the
-output directory with enhanced identity fields (`schema_version`,
-`symbols_hash`, `run_id`). Identity uses stable fields only (symbol set +
-count + start date + indicator state + capital + warmup days). Capital is
-included because different capital means different position sizing and risk
-exposure. On the next run, the previous state is loaded and displayed
-for continuity checking — if the previous run had an active terminal lock or
-sector guard, a warning is shown even if the current backtest doesn't detect
-it (because the backtest starts fresh each time). Old risk state files
-without `symbols_hash` are rejected (fail-closed) to prevent
-cross-contamination between different universes or configurations.
-
-Risk state writes are atomic (temp file + `os.replace`) to prevent corruption
-from disk full, process kill, or power loss. The JSON artifact is also
-written atomically and is committed to disk BEFORE risk state (artifact-first
-transaction). Both risk state and artifact are serialized with
-`allow_nan=False` to guarantee strict JSON (ECMA-404) output. Corrupted
-risk state files, or files that fail schema validation (wrong field types,
-NaN/Inf, negative values, unknown schema version), cause the scan to exit
-with code 1 rather than silently discarding terminal lock state. Risk state
-date validation ensures `scan_date <= end_date` — loading a future-dated
-state is rejected (fail-closed) to prevent forward contamination. Same-day reruns preserve the previous state so terminal
-lock and sector guard continuity is maintained. Numeric values are validated
-before saving — NaN/Inf and negative `cycle_lock_count` are rejected at write
-time to prevent creating an invalid state file. If the risk state save fails
-(disk full, permission error, invalid values), the scan exits with code 1 so
-scripts and schedulers can detect the failure. The artifact, `risk_state.json`,
-and `latest_success.json` pointer all share the same `run_id` for traceability.
-
-When the identity hash does not match (different symbol set, count, or
-configuration), buy signals are suppressed (fail-closed) to prevent entering
-new positions without verified risk-state continuity. In the display, pure
-buy signals become "观望 (风险状态不匹配)" and mixed buy/sell signals show
-only the sell part with "[买入已抑制]". In the JSON artifact, blocked buy
-signals are marked with `blocked=true` and `executable=false`. The old risk
-state is NOT overwritten — use `--reset-risk-state` to intentionally
-establish a new identity after a configuration change.
-
-### Core API account-state guard
-
-The public `run()` method in `BacktestEngine` raises `NotImplementedError`
-when `account_state` is passed, ensuring the broken account injection logic
-cannot be triggered by any caller — not just the daily scan CLI.
-`_EnsembleBacktestEngine` inherits `run()` from `_CausalBacktestEngine`,
-which does not accept an `account_state` parameter at all.
-
-### Usage
+安装锁定开发依赖：
 
 ```bash
-# Simulation mode (default)
-python daily_signal_scan.py [--end-date YYYY-MM-DD] [--cache-dir DIR] [--capital N]
-
-# Override capital and start date
-python daily_signal_scan.py --capital 1500000 --start-date 2026-06-01
-
-# Diagnostic route override and alternate fixed-index snapshot
-python daily_signal_scan.py --deployment-mode weak \
-  --regime-data-dir historical_data
-
-# Reset risk state after intentionally changing configuration
-python daily_signal_scan.py --reset-risk-state
+python -m pip install -r requirements-lock.txt
 ```
 
-### Account JSON format (reference only — `--account` is disabled)
+本地检查：
 
-The `account_example.json` file documents the intended schema for future
-real-account integration. The `--account` flag currently exits with an
-error message explaining the architecture defects that must be resolved
-before this mode can be safely used.
+```bash
+python -m compileall -q .
+ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
+python -m pytest -q
+pyright quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py \
+  account_signal_engine.py market_data_contracts.py benchmark_validation.py \
+  run_regime_validation.py
+bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+  regime_adaptive.py account_signal_engine.py market_data_contracts.py \
+  benchmark_validation.py run_regime_validation.py validate_basket.py \
+  download_eastmoney_qfq.py backtest_universes.py \
+  backtest_cambricon_universe.py stress_test_prefixes.py -ll
+pip-audit --strict -r requirements-lock.txt
+```
 
-## Important assumptions
-
-- Signals use information available at the current close and execute no earlier
-  than a later tradable open.
-- The simulator includes commission, minimum commission, stamp duty, slippage,
-  A-share lot sizing, approximate board-limit handling, and prior-volume ADV caps.
-- It does not reproduce opening-auction depth, queue priority, intraday impact, or
-  guaranteed exits during continuous limit-down sequences.
-- The target period and the default regime basket were used during development.
-  Cross-universe regression reduces one form of overfitting but is not independent
-  out-of-sample evidence.
-- Results are deterministic historical simulations, not future-return guarantees
-  or investment advice.
-
-## Production review fixes (2026-08-04)
-
-The daily decision path now enforces an explicit share-volume contract for
-every online provider. Eastmoney and Tencent board-lot volumes are converted
-to shares before ADV limits are applied; Sina share volumes are not scaled.
-Legacy caches without a unit sidecar are rebuilt instead of being guessed.
-
-Historical performance routing and the current point-in-time route are now
-separate artifacts. The backtest remains causal from its original boundary,
-while the daily scan refreshes fixed-index evidence and recomputes the current
-route at the latest common market date. If the current route differs from the
-historical replay route, new buys fail closed and sells remain visible.
-
-Weak-regime entries now have a loose disaster stop and a long-horizon time
-stop before profit protection activates. This closes the prior unlimited
-pre-30%-profit downside gap without turning the strategy into a tight-stop
-high-turnover system.
-
-Real holdings are processed by `account_signal_engine.py`, never injected
-into the simulator. `--account` produces point-in-time hold/reduce/sell and
-buy-candidate advice with a dedicated JSON artifact; it does not invent a
-historical real-account equity curve or send broker orders.
-
-`requirements-lock.txt` freezes the resolved dependency graph. CI now checks
-the core engine under a Pyright basic contract and compares full-precision
-frozen bull metrics with a 1e-12 absolute tolerance. Simple equal-weight and
-causal Top-3 buy-and-hold attribution is available through
-`benchmark_validation.py`.
-
+CI 同时在 Python 3.11 和 3.12 运行完整测试，并重新计算 1、3、5、13、22 只股票的精确收益、最大回撤和交易次数。
