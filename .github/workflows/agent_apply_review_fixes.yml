@@ -65,6 +65,7 @@ jobs:
               raise RuntimeError('generated CI Pyright command changed unexpectedly')
           path.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
+          rm -f pyrightconfig.json
 
       - name: Resolve hash-locked dependencies
         run: |
