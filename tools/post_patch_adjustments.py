@@ -11,6 +11,7 @@ _GENERATED_PYTHON = (
     "account_signal_engine.py",
     "benchmark_validation.py",
     "market_data_contracts.py",
+    "regime_adaptive.py",
     "test_review_fixes.py",
 )
 
@@ -31,6 +32,8 @@ def _normalize_generated_python(path: Path) -> None:
         '"date,open,close,high,low,volume\n2026-01-01,1,1,1,1,10\n"',
         '"date,open,close,high,low,volume\\n2026-01-01,1,1,1,1,10\\n"',
     )
+    # Keep generated code deterministic and reject hidden whitespace-only lines.
+    text = "\n".join(line.rstrip() for line in text.splitlines()) + "\n"
     path.write_text(text, encoding="utf-8")
 
 
