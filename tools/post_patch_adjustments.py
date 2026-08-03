@@ -37,9 +37,32 @@ def _normalize_generated_python(path: Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def _repair_data_fetcher_contract(path: Path) -> None:
+    """Keep the provider-volume and cache helpers inside ``DataFetcher``."""
+    text = path.read_text(encoding="utf-8")
+    start_marker = "\n_cache_dir: str | None = None\n"
+    end_marker = "    @staticmethod\n    def _exchange_symbol"
+    start = text.find(start_marker)
+    if start < 0:
+        raise RuntimeError("DataFetcher provider-contract start marker missing")
+    start += 1
+    end = text.find(end_marker, start)
+    if end < 0:
+        raise RuntimeError("DataFetcher provider-contract end marker missing")
+    block = text[start:end]
+    indented = "".join(
+        f"    {line}" if line.strip() else line
+        for line in block.splitlines(keepends=True)
+    )
+    text = text[:start] + indented + text[end:]
+    text = "\n".join(line.rstrip() for line in text.splitlines()) + "\n"
+    path.write_text(text, encoding="utf-8")
+
+
 def main() -> int:
     for generated in _GENERATED_PYTHON:
         _normalize_generated_python(ROOT / generated)
+    _repair_data_fetcher_contract(ROOT / "quant_fusion.py")
 
     path = ROOT / "market_data_contracts.py"
     text = path.read_text(encoding="utf-8")
