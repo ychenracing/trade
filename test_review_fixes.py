@@ -330,7 +330,7 @@ class MarketDataContractTests(unittest.TestCase):
 
     def test_invalid_ohlc_relationship_is_rejected(self) -> None:
         frame = self._frame()
-        frame.loc[0, "high"] = 1.0
+        frame.loc[1, "high"] = 1.0
         with self.assertRaisesRegex(ValueError, "relationships"):
             contracts._normalize_index_frame(
                 frame,
@@ -339,7 +339,7 @@ class MarketDataContractTests(unittest.TestCase):
 
     def test_non_finite_price_is_rejected(self) -> None:
         frame = self._frame()
-        frame.loc[0, "close"] = float("inf")
+        frame.loc[1, "close"] = float("inf")
         with self.assertRaisesRegex(ValueError, "finite"):
             contracts._normalize_index_frame(
                 frame,
@@ -348,7 +348,7 @@ class MarketDataContractTests(unittest.TestCase):
 
     def test_non_finite_volume_is_rejected(self) -> None:
         frame = self._frame()
-        frame.loc[0, "volume"] = float("inf")
+        frame.loc[1, "volume"] = float("inf")
         with self.assertRaisesRegex(ValueError, "volume must be finite"):
             contracts._normalize_index_frame(
                 frame,
