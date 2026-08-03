@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -11,6 +12,7 @@ import quant_fusion as qf
 
 
 ROOT = Path(__file__).resolve().parent
+THIS_FILE = Path(__file__).resolve()
 EXPECTED_MARKDOWN = {
     Path("README.md"),
     Path("BACKTEST_RESULTS.md"),
@@ -43,6 +45,22 @@ def _markdown_prose_lines(content: str) -> list[str]:
     return lines
 
 
+def _tracked_paths() -> tuple[Path, ...]:
+    """读取 Git 索引，而不是把测试运行产生的缓存误认为已提交文件。"""
+    completed = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=False,
+    )
+    return tuple(
+        Path(raw.decode("utf-8"))
+        for raw in completed.stdout.split(b"\0")
+        if raw
+    )
+
+
 class MarkdownConsistencyTests(unittest.TestCase):
     """保证仓库只保留当前有效中文文档。"""
 
@@ -70,12 +88,16 @@ class MarkdownConsistencyTests(unittest.TestCase):
                     )
 
     def test_obsolete_documents_and_references_are_absent(self) -> None:
-        all_text = "\n".join(
-            path.read_text(encoding="utf-8")
+        scanned_paths = (
+            path
             for path in ROOT.rglob("*")
             if path.is_file()
+            and path.resolve() != THIS_FILE
             and path.suffix in {".py", ".md", ".yml", ".yaml"}
             and ".git" not in path.parts
+        )
+        all_text = "\n".join(
+            path.read_text(encoding="utf-8") for path in scanned_paths
         )
         for name in OBSOLETE_DOCUMENTS:
             self.assertNotIn(name, all_text)
@@ -139,22 +161,44 @@ class SourceDocumentationTests(unittest.TestCase):
 
 
 class RepositoryHygieneTests(unittest.TestCase):
-    """保证本地缓存、编辑器配置和生成工件不会进入仓库。"""
+    """保证本地缓存、编辑器配置和生成工件不会进入 Git 索引。"""
 
     def test_generated_directories_are_not_committed(self) -> None:
-        forbidden = (
+        forbidden_parts = {
+            "__pycache__",
             ".pytest_cache",
             ".ruff_cache",
             ".mypy_cache",
             ".pyright",
             ".venv",
             "venv",
+            ".idea",
+            ".vscode",
             "daily_signals",
             "data_cache",
             "optimizer_output",
-        )
-        for name in forbidden:
-            self.assertFalse((ROOT / name).exists(), msg=f"{name} must not be committed")
+        }
+        violations = [
+            str(path)
+            for path in _tracked_paths()
+            if forbidden_parts.intersection(path.parts)
+        ]
+        self.assertEqual(violations, [])
+
+    def test_generated_files_are_not_committed(self) -> None:
+        forbidden_names = {
+            ".DS_Store",
+            ".coverage",
+            "benchmark_validation.json",
+            "live_refresh_manifest.json",
+        }
+        violations = [
+            str(path)
+            for path in _tracked_paths()
+            if path.name in forbidden_names
+            or path.suffix in {".pyc", ".pyo", ".log", ".tmp"}
+        ]
+        self.assertEqual(violations, [])
 
 
 if __name__ == "__main__":
