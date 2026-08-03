@@ -209,6 +209,10 @@ class AccountSignalEngine:
         actions: list[dict[str, Any]] = []
         priced_market_value = 0.0
         unpriced_symbols: list[str] = []
+        as_of_timestamp = pd.Timestamp(as_of)
+        if as_of_timestamp is pd.NaT:
+            raise ValueError("as_of must resolve to a valid date")
+        as_of_timestamp = cast(pd.Timestamp, as_of_timestamp).normalize()
 
         for position in snapshot.positions:
             code = position.symbol
@@ -227,7 +231,11 @@ class AccountSignalEngine:
                 ma_short = self._latest_value(indicators.get("ma_short"), i)
                 ma_long = self._latest_value(indicators.get("ma_long"), i)
                 if position.entry_date:
-                    entry_timestamp = pd.Timestamp(position.entry_date)
+                    entry_timestamp = pd.Timestamp(position.entry_date).normalize()
+                    if entry_timestamp > as_of_timestamp:
+                        raise ValueError(
+                            f"position {code} entry_date is later than as_of"
+                        )
                     since_entry = frame.loc[
                         frame.index >= entry_timestamp,
                         "close",
@@ -314,12 +322,17 @@ class AccountSignalEngine:
                     }
                 )
 
+        valuation_complete = not unpriced_symbols
         selected = (
             decision.leaders.selected_symbols
             if decision.leaders is not None
             else ()
         )
-        if decision.name == "positive_momentum_hold" and snapshot.cash > 0:
+        if (
+            valuation_complete
+            and decision.name == "positive_momentum_hold"
+            and snapshot.cash > 0
+        ):
             for code in selected:
                 if code not in held:
                     actions.append(
@@ -334,7 +347,6 @@ class AccountSignalEngine:
                         }
                     )
 
-        valuation_complete = not unpriced_symbols
         estimated_market_value: float | None = (
             priced_market_value if valuation_complete else None
         )
@@ -350,6 +362,7 @@ class AccountSignalEngine:
             "estimated_equity": estimated_equity,
             "valuation_complete": valuation_complete,
             "unpriced_symbols": sorted(unpriced_symbols),
+            "buys_suppressed": not valuation_complete,
             "peak_equity": snapshot.peak_equity,
             "deployment_decision": asdict(decision),
             "actions": actions,
