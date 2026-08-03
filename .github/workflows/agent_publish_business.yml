@@ -3,6 +3,8 @@ name: Publish validated business implementation
 on:
   push:
     branches: [agent/publish-business]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
