@@ -210,12 +210,13 @@ jobs:
         run: |
           rm -f tools/apply_review_fixes.py tools/post_patch_adjustments.py
           rm -f tools/prepare_migration_templates.py
-          rm -f .github/workflows/agent_apply_review_fixes.yml
-          rm -f .github/workflows/agent_publish_generated_tree.yml
           rm -f .agent_lint_failure.log .agent_pytest_failure.log
 
-      - name: Commit validated implementation
+      - name: Commit validated business implementation
         run: |
+          # Workflow files are finalized through the GitHub connector because
+          # the Actions token cannot create or delete workflow definitions.
+          git restore --source=HEAD -- .github/workflows/ci.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
