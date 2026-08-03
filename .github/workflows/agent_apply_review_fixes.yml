@@ -46,6 +46,7 @@ jobs:
 
       - name: Apply audited fixes
         run: |
+          python tools/prepare_migration_templates.py
           python tools/apply_review_fixes.py --apply /tmp/bull-baseline.json
           python tools/post_patch_adjustments.py
 
@@ -186,6 +187,7 @@ jobs:
       - name: Remove one-shot migration machinery
         run: |
           rm -f tools/apply_review_fixes.py tools/post_patch_adjustments.py
+          rm -f tools/prepare_migration_templates.py
           rm -f .github/workflows/agent_apply_review_fixes.yml
           rm -f .agent_lint_failure.log .agent_pytest_failure.log
 
