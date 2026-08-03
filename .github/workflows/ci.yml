@@ -2,18 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - agent/**
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   test:
-    name: Test (Python ${{ matrix.python-version }})
+    name: Python ${{ matrix.python-version }} tests
     runs-on: ubuntu-latest
-    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -24,76 +24,132 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: requirements-lock.txt
-      - run: python -m pip install --upgrade pip && pip install -r requirements-lock.txt
-      - run: python -m pytest -v --tb=short
-
-  lint:
-    name: Lint and dependency audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements-lock.txt
-      - run: python -m pip install --upgrade pip && pip install -r requirements-lock.txt
-      - run: >-
-          ruff check --select=E,F,W --ignore=E501,E402,E731,E741
-          quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py
-          regime_adaptive.py account_signal_engine.py market_data_contracts.py
-          benchmark_validation.py run_regime_validation.py
-      - run: >-
-          bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py
-          regime_adaptive.py account_signal_engine.py market_data_contracts.py
-          benchmark_validation.py run_regime_validation.py -ll
-      - run: pip-audit --strict -r requirements-lock.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-lock.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Compile every Python file
+        run: python -m compileall -q .
+      - name: Lint every Python file
+        run: ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
+      - name: Run complete test suite
+        run: python -m pytest -q
 
   typecheck:
-    name: Core type check (Pyright basic)
+    name: Maintained module typecheck
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements-lock.txt
-      - run: python -m pip install --upgrade pip && pip install -r requirements-lock.txt
-      - run: pyright quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py account_signal_engine.py market_data_contracts.py benchmark_validation.py run_regime_validation.py
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-lock.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Run Pyright
+        run: >-
+          pyright
+          quant_fusion_optimizer.py
+          daily_signal_scan.py
+          regime_adaptive.py
+          account_signal_engine.py
+          market_data_contracts.py
+          benchmark_validation.py
+          run_regime_validation.py
+
+  security:
+    name: Security and dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-lock.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Run Bandit
+        run: >-
+          bandit -r
+          quant_fusion.py
+          quant_fusion_optimizer.py
+          daily_signal_scan.py
+          regime_adaptive.py
+          account_signal_engine.py
+          market_data_contracts.py
+          benchmark_validation.py
+          run_regime_validation.py
+          validate_basket.py
+          download_eastmoney_qfq.py
+          backtest_universes.py
+          backtest_cambricon_universe.py
+          stress_test_prefixes.py
+          -ll
+      - name: Audit locked dependencies
+        run: pip-audit --strict -r requirements-lock.txt
 
   regression:
     name: Exact backtest regression
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    needs: [test, typecheck, security]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements-lock.txt
-      - run: python -m pip install --upgrade pip && pip install -r requirements-lock.txt
-      - name: Verify frozen bull metrics exactly
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Verify five frozen universes exactly
         run: |
           python - <<'PY'
+          import contextlib
+          import io
           import json
-          import math
-          import quant_fusion as qf
-          from backtest_universes import NAMES, UNIVERSES
+          from pathlib import Path
 
-          baseline = json.load(open('backtest_golden_metrics.json', encoding='utf-8'))
-          for n, key in ((1, '1_symbol'), (3, '3_symbols'), (5, '5_symbols'),
-                         (13, '13_symbols'), (22, '22_symbols')):
-              symbols = {code: NAMES[code] for code in UNIVERSES[key]}
-              result = qf.BacktestEngine(2_000_000).run(
-                  symbols, '2025-04-01', '2026-07-20',
-                  data_dir='market_data', indicator_state='warm')
-              expected = baseline[str(n)]
-              assert math.isclose(result['total_return'], expected['total_return'], rel_tol=0, abs_tol=1e-12)
-              assert math.isclose(result['max_drawdown'], expected['max_drawdown'], rel_tol=0, abs_tol=1e-12)
-              assert result['total_trades'] == expected['total_trades']
+          import quant_fusion as qf
+          from backtest_universes import DATA_DIR, NAMES, UNIVERSES
+
+          baselines = json.loads(
+              Path("backtest_golden_metrics.json").read_text(encoding="utf-8")
+          )
+          for name, codes in UNIVERSES.items():
+              with contextlib.redirect_stdout(io.StringIO()):
+                  result = qf.BacktestEngine(2_000_000).run(
+                      {code: NAMES[code] for code in codes},
+                      "2025-04-01",
+                      "2026-07-20",
+                      data_dir=str(DATA_DIR),
+                      indicator_state="warm",
+                  )
+              actual = (
+                  float(result["total_return"]),
+                  float(result["max_drawdown"]),
+                  int(result["total_trades"]),
+              )
+              expected_item = baselines[name]
+              expected = (
+                  float(expected_item["total_return"]),
+                  float(expected_item["max_drawdown"]),
+                  int(expected_item["total_trades"]),
+              )
+              if actual != expected:
+                  raise SystemExit(
+                      f"{name} regression: expected {expected}, got {actual}"
+                  )
+              print(name, actual)
           PY
