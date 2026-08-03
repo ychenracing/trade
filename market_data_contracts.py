@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, cast
 
+import numpy as np
 import pandas as pd
 
 try:
@@ -104,8 +105,13 @@ def _normalize_index_frame(frame: pd.DataFrame, *, end_date: str) -> pd.DataFram
     if len(out) < 60:
         raise ValueError("insufficient index history")
     prices = out[list(_REQUIRED_PRICE_COLUMNS)]
+    if not np.isfinite(prices.to_numpy(dtype=float)).all():
+        raise ValueError("index OHLC prices must be finite")
     if (prices <= 0).any().any():
         raise ValueError("index OHLC prices must be positive")
+    volume_values = out["volume"].dropna().to_numpy(dtype=float)
+    if not np.isfinite(volume_values).all():
+        raise ValueError("index volume must be finite")
     if (out["volume"].dropna() < 0).any():
         raise ValueError("index volume must be non-negative")
     if (
