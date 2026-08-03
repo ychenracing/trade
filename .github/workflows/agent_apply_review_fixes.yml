@@ -61,7 +61,20 @@ jobs:
             benchmark_validation.py run_regime_validation.py test_review_fixes.py
 
       - name: Run complete test suite
-        run: python -m pytest -v --tb=short
+        run: |
+          set +e
+          python -m pytest -v --tb=short > /tmp/pytest.log 2>&1
+          status=$?
+          cat /tmp/pytest.log
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/pytest.log .agent_pytest_failure.log
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add .agent_pytest_failure.log
+            git commit -m 'ci: capture production fix test failures'
+            git push origin HEAD:agent/full-review-fixes
+            exit "$status"
+          fi
 
       - name: Verify exact frozen bull invariants
         run: python tools/apply_review_fixes.py --verify /tmp/bull-baseline.json
@@ -107,6 +120,7 @@ jobs:
         run: |
           rm -f tools/apply_review_fixes.py tools/post_patch_adjustments.py
           rm -f .github/workflows/agent_apply_review_fixes.yml
+          rm -f .agent_pytest_failure.log
 
       - name: Commit validated implementation
         run: |
