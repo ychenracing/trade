@@ -7,6 +7,8 @@ on:
       - tools/apply_review_fixes.py
       - tools/post_patch_adjustments.py
       - .github/workflows/agent_apply_review_fixes.yml
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
