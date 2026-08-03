@@ -1,12 +1,6 @@
 name: Apply full production review fixes
 
 on:
-  push:
-    branches: [agent/full-review-fixes]
-    paths:
-      - tools/apply_review_fixes.py
-      - tools/post_patch_adjustments.py
-      - .github/workflows/agent_apply_review_fixes.yml
   pull_request:
     branches: [main]
 
@@ -14,8 +8,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: full-production-review-fixes
-  cancel-in-progress: false
+  group: full-production-review-fixes-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   apply-and-validate:
