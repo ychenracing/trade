@@ -158,22 +158,25 @@ jobs:
       - name: Core type and security checks
         run: |
           set +e
-          {
-            pyright --project pyrightconfig.json
-            pyright_status=$?
-            bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
-              regime_adaptive.py account_signal_engine.py market_data_contracts.py \
-              benchmark_validation.py run_regime_validation.py -ll
-            bandit_status=$?
-            pip-audit --strict -r requirements-lock.txt
-            audit_status=$?
-            exit $((pyright_status || bandit_status || audit_status))
-          } > /tmp/static.log 2>&1
-          status=$?
+          : > /tmp/static.log
+          pyright --project pyrightconfig.json >> /tmp/static.log 2>&1
+          pyright_status=$?
+          bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+            regime_adaptive.py account_signal_engine.py market_data_contracts.py \
+            benchmark_validation.py run_regime_validation.py -ll \
+            >> /tmp/static.log 2>&1
+          bandit_status=$?
+          pip-audit --strict -r requirements-lock.txt >> /tmp/static.log 2>&1
+          audit_status=$?
+          status=$((pyright_status || bandit_status || audit_status))
           cat /tmp/static.log
           if [ "$status" -ne 0 ]; then
             {
               echo '### Generated implementation static/security failure'
+              echo
+              echo "- pyright exit: $pyright_status"
+              echo "- bandit exit: $bandit_status"
+              echo "- pip-audit exit: $audit_status"
               echo
               echo '```text'
               head -c 60000 /tmp/static.log
@@ -189,6 +192,7 @@ jobs:
           rm -f tools/apply_review_fixes.py tools/post_patch_adjustments.py
           rm -f tools/prepare_migration_templates.py
           rm -f .github/workflows/agent_apply_review_fixes.yml
+          rm -f .github/workflows/agent_publish_generated_tree.yml
           rm -f .agent_lint_failure.log .agent_pytest_failure.log
 
       - name: Commit validated implementation
