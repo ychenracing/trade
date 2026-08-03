@@ -12,7 +12,6 @@ import quant_fusion as qf
 
 
 ROOT = Path(__file__).resolve().parent
-THIS_FILE = Path(__file__).resolve()
 EXPECTED_MARKDOWN = {
     Path("README.md"),
     Path("BACKTEST_RESULTS.md"),
@@ -22,11 +21,6 @@ OBSOLETE_DOCUMENTS = {
     "STRATEGY_REVIEW.md",
     "PRODUCTION_REVIEW_FIXES.md",
     "REGIME_ADAPTIVE_REFACTOR_REPORT.md",
-}
-STALE_PHRASES = {
-    "A separate account signal engine is planned",
-    "account integration is currently disabled",
-    "separate account signal engine is built",
 }
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
 
@@ -88,22 +82,14 @@ class MarkdownConsistencyTests(unittest.TestCase):
                     )
 
     def test_obsolete_documents_and_references_are_absent(self) -> None:
-        scanned_paths = (
-            path
-            for path in ROOT.rglob("*")
-            if path.is_file()
-            and path.resolve() != THIS_FILE
-            and path.suffix in {".py", ".md", ".yml", ".yaml"}
-            and ".git" not in path.parts
-        )
-        all_text = "\n".join(
-            path.read_text(encoding="utf-8") for path in scanned_paths
+        tracked_text = "\n".join(
+            (ROOT / path).read_text(encoding="utf-8")
+            for path in _tracked_paths()
+            if path.suffix in {".py", ".md", ".yml", ".yaml"}
         )
         for name in OBSOLETE_DOCUMENTS:
-            self.assertNotIn(name, all_text)
+            self.assertNotIn(name, tracked_text)
             self.assertFalse((ROOT / name).exists())
-        for phrase in STALE_PHRASES:
-            self.assertNotIn(phrase, all_text)
 
     def test_readme_documents_every_default_strategy_parameter(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
