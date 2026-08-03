@@ -34,9 +34,8 @@ jobs:
 
       - name: Install migration dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip uv
           pip install -r requirements-dev.txt
-          pip install pip-tools
 
       - name: Capture exact pre-change bull baselines
         run: python tools/apply_review_fixes.py --capture-baseline /tmp/bull-baseline.json
@@ -48,8 +47,8 @@ jobs:
 
       - name: Resolve hash-locked dependencies
         run: |
-          pip-compile --generate-hashes --allow-unsafe --resolver=backtracking \
-            --output-file=requirements-lock.txt requirements-dev.txt
+          uv pip compile --generate-hashes --python-version 3.12 \
+            --output-file requirements-lock.txt requirements-dev.txt
           pip install -r requirements-lock.txt
 
       - name: Compile and lint
