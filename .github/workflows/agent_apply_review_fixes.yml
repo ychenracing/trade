@@ -1,0 +1,119 @@
+name: Apply full production review fixes
+
+on:
+  push:
+    branches: [agent/full-review-fixes]
+    paths:
+      - tools/apply_review_fixes.py
+      - tools/post_patch_adjustments.py
+      - .github/workflows/agent_apply_review_fixes.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: full-production-review-fixes
+  cancel-in-progress: false
+
+jobs:
+  apply-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/full-review-fixes
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install migration dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install pip-tools
+
+      - name: Capture exact pre-change bull baselines
+        run: python tools/apply_review_fixes.py --capture-baseline /tmp/bull-baseline.json
+
+      - name: Apply audited fixes
+        run: |
+          python tools/apply_review_fixes.py --apply /tmp/bull-baseline.json
+          python tools/post_patch_adjustments.py
+
+      - name: Resolve hash-locked dependencies
+        run: |
+          pip-compile --generate-hashes --allow-unsafe --resolver=backtracking \
+            --output-file=requirements-lock.txt requirements-dev.txt
+          pip install -r requirements-lock.txt
+
+      - name: Compile and lint
+        run: |
+          python -m compileall -q .
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
+            quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+            regime_adaptive.py account_signal_engine.py market_data_contracts.py \
+            benchmark_validation.py run_regime_validation.py test_review_fixes.py
+
+      - name: Run complete test suite
+        run: python -m pytest -v --tb=short
+
+      - name: Verify exact frozen bull invariants
+        run: python tools/apply_review_fixes.py --verify /tmp/bull-baseline.json
+
+      - name: Verify weak-regime acceptance window
+        run: |
+          python - <<'PY'
+          import regime_adaptive as ra
+          symbols = {
+              '002409': '雅克科技',
+              '300054': '鼎龙股份',
+              '300308': '中际旭创',
+              '300394': '天孚通信',
+              '300502': '新易盛',
+          }
+          result = ra.RegimeAdaptiveBacktestEngine().run(
+              symbols, '2024-01-02', '2024-12-31',
+              data_dir='historical_data', indicator_state='warm')
+          assert result['total_return'] >= 0.45, result['total_return']
+          assert result['max_drawdown'] >= -0.20, result['max_drawdown']
+          assert result['total_trades'] <= 8, result['total_trades']
+          PY
+
+      - name: Run simple benchmark attribution smoke test
+        run: |
+          python benchmark_validation.py \
+            --symbols 300308,300502,300394,002409,300054 \
+            --data-dir historical_data \
+            --regime-data-dir historical_data \
+            --start 2024-01-02 --end 2024-12-31 \
+            --output /tmp/benchmark-validation.json
+          python -m json.tool /tmp/benchmark-validation.json >/dev/null
+
+      - name: Core type and security checks
+        run: |
+          pyright --project pyrightconfig.json
+          bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+            regime_adaptive.py account_signal_engine.py market_data_contracts.py \
+            benchmark_validation.py run_regime_validation.py -ll
+          pip-audit --strict -r requirements-lock.txt
+
+      - name: Remove one-shot migration machinery
+        run: |
+          rm -f tools/apply_review_fixes.py tools/post_patch_adjustments.py
+          rm -f .github/workflows/agent_apply_review_fixes.yml
+
+      - name: Commit validated implementation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: harden data contracts routing and account signals'
+          git push origin HEAD:agent/full-review-fixes
