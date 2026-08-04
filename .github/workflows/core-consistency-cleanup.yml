@@ -1,0 +1,176 @@
+name: One-time account description cleanup
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Align account-mode descriptions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(text: str, old: str, new: str, expected: int, label: str) -> str:
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f"{label}: expected {expected} matches, found {count}")
+              return text.replace(old, new)
+
+          quant_path = Path("quant_fusion.py")
+          quant = quant_path.read_text(encoding="utf-8")
+          replacements = (
+              (
+                  '''    """Real portfolio state from a live account snapshot.
+
+    Used by the daily signal scanner to derive correct action labels
+    without relying on a simulated replay from scratch.
+    """''',
+                  '''    """Legacy account-state shape retained for API compatibility tests.
+
+    Historical backtests reject account snapshot injection. Point-in-time
+    account decisions are handled by ``account_signal_engine.py`` instead.
+    """''',
+                  1,
+                  "AccountState documentation",
+              ),
+              (
+                  '''        """Convert AccountState positions to engine Position objects and set them.
+
+        Uses ``"external_account"`` as the strategy name for all injected
+        positions so that portfolio-level risk controls (drawdown, daily loss,
+        sector guard) can liquidate them.  Sets the engine's cash to the
+        account's cash balance and populates both ``positions`` and
+        ``_initial_positions`` so the engine can replay from the correct state
+        without modifying the simulation-only path.
+
+        Also seeds the engine's risk manager with the account's peak equity
+        so drawdown calculations start from the real high-water mark.
+
+        When ``set_cash`` is False (ensemble mode), cash is not overridden so
+        each sleeve retains its proportional ``sleeve_capital`` and only the
+        first sleeve receives the positions — preventing triple-counting.
+        """''',
+                  '''        """Convert a legacy AccountState into engine positions for tests.
+
+        Public historical backtests reject ``account_state`` before this helper
+        can run. The helper remains only for backward-compatible unit coverage;
+        production account decisions use ``account_signal_engine.py``.
+        """''',
+                  1,
+                  "account conversion documentation",
+              ),
+              (
+                  '''    # DEPRECATED: account_state is always None now — the public run() API
+    # raises NotImplementedError before this field is ever set. Retained for
+    # API compatibility until the account signal engine is built.''',
+                  '''    # Public run methods reject non-None account_state values. The field is
+    # retained only for compatibility with older internal request fixtures.''',
+                  1,
+                  "request account comment",
+              ),
+              (
+                  '''                "Real-account mode (account_state) is disabled. "
+                "The account injection logic has known architecture defects. "
+                "Use simulation mode (account_state=None) instead. "
+                "A separate account signal engine is planned."''',
+                  '''                "Historical account_state injection is disabled. "
+                "Use account_signal_engine.py or daily_signal_scan.py --account "
+                "for point-in-time account decision support."''',
+                  2,
+                  "public account-state error",
+              ),
+              (
+                  '''        # ── DEPRECATED: Account snapshot injection ─────────────────────
+        # The public run() API now raises NotImplementedError when
+        # account_state is passed. The injection logic below is dead code
+        # retained for reference until the separate account signal engine
+        # is built. Do NOT re-enable without reading the architecture
+        # defects documented in BACKTEST_RESULTS.md.''',
+                  '''        # Legacy account-injection state retained for compatibility tests.
+        # Public historical runs reject account_state; production account
+        # decisions are handled by account_signal_engine.py.''',
+                  1,
+                  "legacy account fields comment",
+              ),
+              (
+                  '''        """Inject the account snapshot on the as-of date before delegating.
+
+        When ``_account_state_to_inject`` is set and the current date is the
+        second-to-last trading day (the day before the simulation end / as-of
+        date), the real account state replaces the simulated book before the
+        day's opening execution.  Every date before the injection point runs
+        as an unmodified simulation so historical signal generation is not
+        affected by the snapshot.
+        """''',
+                  '''        """Exercise the legacy account-injection hook for compatibility tests.
+
+        Public historical runs never set this hook. Point-in-time account
+        decisions are generated by ``account_signal_engine.py`` instead.
+        """''',
+                  1,
+                  "legacy hook documentation",
+              ),
+              (
+                  '''            # DEPRECATED: This path is unreachable — the public run() API
+            # raises NotImplementedError when account_state is not None.
+            # Retained for reference until the account signal engine replaces
+            # this injection mechanism.''',
+                  '''            # Compatibility-only hook. Public historical runs reject this
+            # value; account_signal_engine.py owns production account advice.''',
+                  1,
+                  "single sleeve compatibility comment",
+              ),
+              (
+                  '''        # DEPRECATED: account_state is always None — the public run() API
+        # raises NotImplementedError before reaching this code. The entire
+        # account injection block below is dead code, retained for reference.''',
+                  '''        # Compatibility-only branch for historical unit fixtures. Public run
+        # methods reject account_state; production account advice is separate.''',
+                  1,
+                  "coordinator account comment",
+              ),
+          )
+          for old, new, expected, label in replacements:
+              quant = replace_exact(quant, old, new, expected, label)
+          quant_path.write_text(quant, encoding="utf-8")
+
+          daily_path = Path("daily_signal_scan.py")
+          daily = daily_path.read_text(encoding="utf-8")
+          daily = replace_exact(
+              daily,
+              '''    .. deprecated::
+        The ``--account`` CLI flag is disabled. This function is retained for
+        unit tests and future use by the separate account signal engine. It
+        is not called in the production ``main()`` path.''',
+              '''    This legacy parser remains for backward-compatible tests. Production
+    ``--account`` handling delegates to ``account_signal_engine.py`` and never
+    injects real holdings into the historical backtest.''',
+              1,
+              "daily account parser documentation",
+          )
+          daily_path.write_text(daily, encoding="utf-8")
+          PY
+      - name: Validate focused change
+        run: |
+          python -m py_compile quant_fusion.py daily_signal_scan.py account_signal_engine.py
+          ! grep -R -n --include='*.py' 'A separate account signal engine is planned' .
+          ! grep -R -n --include='*.py' 'until the separate account signal engine is built' .
+          ! grep -R -n --include='*.py' 'The --account CLI flag is disabled' .
+          ! grep -R -n --include='*.py' 'future use by the separate account signal engine' .
+          git diff --check
+      - name: Commit source cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add quant_fusion.py daily_signal_scan.py
+          git commit -m "docs: align account-mode descriptions with current engine"
+          git push origin HEAD:main
