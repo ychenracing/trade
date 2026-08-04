@@ -1,7 +1,7 @@
 name: One-time account description cleanup
 
 on:
-  push:
+  pull_request:
     branches: [main]
 
 permissions:
@@ -9,11 +9,12 @@ permissions:
 
 jobs:
   cleanup:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-slim
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Align account-mode descriptions
         run: |
           python - <<'PY'
