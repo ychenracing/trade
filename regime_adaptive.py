@@ -1,6 +1,6 @@
 """Causal regime routing layered over the frozen Quant Fusion engine.
 
-The production trend engine remains untouched.  This module selects between
+The production trend engine remains untouched. This module selects between
 that engine and a low-turnover weak-regime policy using information available
 strictly before the requested deployment period.
 """
@@ -28,6 +28,16 @@ WEAK_HARD_STOP = 0.22
 WEAK_TIME_STOP_DAYS = 80
 WEAK_TIME_STOP_RETURN = -0.10
 MAX_EVIDENCE_STALENESS_DAYS = 10
+
+# The weak route retains its low-turnover stock-level protection, but no longer
+# disables portfolio risk almost completely. These thresholds leave validated
+# sub-20% paths unchanged while forcing correlated weak-market books to de-risk
+# after a confirmed portfolio drawdown.
+WEAK_DRAWDOWN_ALERT = 0.15
+WEAK_CONFIRMED_DRAWDOWN = 0.20
+WEAK_EMERGENCY_DRAWDOWN = 0.23
+WEAK_TERMINAL_DRAWDOWN = 0.26
+WEAK_DAILY_LOSS_LIMIT = 0.12
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +70,7 @@ class LeaderSelection:
     observed_symbols: int
     selected_symbols: tuple[str, ...]
     selected_returns: tuple[float, ...]
+    unavailable_symbols: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +93,7 @@ def _timestamp(value: str | pd.Timestamp) -> pd.Timestamp:
 
 
 def _normalized_timestamp(value: str | pd.Timestamp) -> pd.Timestamp:
+    """Return a normalized finite timestamp."""
     return cast(pd.Timestamp, _timestamp(value).normalize())
 
 
@@ -101,7 +113,7 @@ def _local_frame(data_dir: str | Path, code: str, end_date: str) -> pd.DataFrame
 
 
 def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
-    """Require both fixed indices to have MA20 above MA60 for a trend route."""
+    """Require both fixed indices to have fresh, complete trend evidence."""
     boundary = _normalized_timestamp(as_of)
     observations: list[IndexTrend] = []
     for code in REGIME_INDEX_FILES.values():
@@ -117,7 +129,9 @@ def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
         close = float(closes.iloc[-1])
         ma20 = float(closes.tail(20).mean())
         ma60 = float(closes.tail(60).mean())
-        if not all(math.isfinite(value) and value > 0 for value in (close, ma20, ma60)):
+        if not all(
+            math.isfinite(value) and value > 0 for value in (close, ma20, ma60)
+        ):
             continue
         observed_date = _normalized_timestamp(str(closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
@@ -158,7 +172,7 @@ def select_positive_momentum_leaders(
         raise ValueError("maximum must be positive")
     boundary = _normalized_timestamp(as_of)
     observations: list[tuple[float, str]] = []
-    observed = 0
+    observed_codes: set[str] = set()
     for code in normalized:
         try:
             frame = _local_frame(data_dir, code, str(boundary.date()))
@@ -172,7 +186,7 @@ def select_positive_momentum_leaders(
         observed_date = _normalized_timestamp(str(closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
             continue
-        observed += 1
+        observed_codes.add(code)
         momentum = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
         if math.isfinite(momentum) and momentum > 0:
             observations.append((momentum, code))
@@ -180,9 +194,10 @@ def select_positive_momentum_leaders(
     return LeaderSelection(
         as_of=str(_timestamp(as_of).date()),
         requested_symbols=normalized,
-        observed_symbols=observed,
+        observed_symbols=len(observed_codes),
         selected_symbols=tuple(code for _, code in leaders),
         selected_returns=tuple(momentum for momentum, _ in leaders),
+        unavailable_symbols=tuple(sorted(set(normalized) - observed_codes)),
     )
 
 
@@ -233,9 +248,7 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
             entry_timestamp = pd.Timestamp(position.entry_date)
             if pd.isna(entry_timestamp):
                 raise ValueError("entry_date must resolve to a valid timestamp")
-            entry_index = int(
-                cast(Any, ctx.df.index).searchsorted(entry_timestamp)
-            )
+            entry_index = int(cast(Any, ctx.df.index).searchsorted(entry_timestamp))
             held_days = max(ctx.i - entry_index, 0)
         except (TypeError, ValueError):
             held_days = 0
@@ -273,13 +286,13 @@ class CashPreservationStrategy(qf.BaseStrategy):
 
 
 def _weak_regime_policy() -> qf.PortfolioPolicy:
-    """Disable unrelated liquidations while retaining the execution contract."""
+    """Apply independent weak-market portfolio drawdown protection."""
     return qf.PortfolioPolicy(
         allocation_mode="single",
-        drawdown_alert=0.95,
-        confirmed_drawdown=0.97,
-        emergency_drawdown=0.98,
-        terminal_drawdown=0.99,
+        drawdown_alert=WEAK_DRAWDOWN_ALERT,
+        confirmed_drawdown=WEAK_CONFIRMED_DRAWDOWN,
+        emergency_drawdown=WEAK_EMERGENCY_DRAWDOWN,
+        terminal_drawdown=WEAK_TERMINAL_DRAWDOWN,
         concentration_drawdown_adjustment=0.01,
         candidate_reference_percentile=0.0,
         market_regime_enabled=False,
@@ -296,7 +309,7 @@ def _weak_regime_config(symbol_count: int) -> dict[str, Any]:
         "max_positions": slots,
         "max_units": 1,
         "group_min_slots": 0,
-        "daily_loss_limit": 0.99,
+        "daily_loss_limit": WEAK_DAILY_LOSS_LIMIT,
         "sector_guard_enabled": False,
         "market_regime_enabled": False,
         "fusion_single_scale": 1.0,
@@ -333,7 +346,7 @@ class RegimeAdaptiveBacktestEngine:
         end_date: str,
         warmup_calendar_days: int,
     ) -> dict[str, str]:
-        """Drop symbols with no causal observation in the requested window."""
+        """Return symbols with at least one causal observation in the run window."""
         if data_dir is None:
             return dict(symbols_dict)
         earliest = _normalized_timestamp(start_date) - pd.Timedelta(
@@ -359,7 +372,6 @@ class RegimeAdaptiveBacktestEngine:
             return str(boundary.date())
         return str((_normalized_timestamp(start_date) - pd.Timedelta(days=1)).date())
 
-
     def decide_current(
         self,
         symbols_dict: dict[str, str],
@@ -368,13 +380,7 @@ class RegimeAdaptiveBacktestEngine:
         data_dir: str | Path,
         leader_data_dir: str | Path | None = None,
     ) -> DeploymentDecision:
-        """Make a point-in-time route decision from data through ``as_of``.
-
-        This is the live/manual-decision entry point. It deliberately does
-        not rewrite a historical backtest path with information learned
-        later; callers keep historical performance and current routing as
-        separate artifacts.
-        """
+        """Make a point-in-time route decision from data through ``as_of``."""
         boundary = _normalized_timestamp(as_of)
         next_day = boundary + pd.Timedelta(days=1)
         return self.decide(
@@ -394,8 +400,17 @@ class RegimeAdaptiveBacktestEngine:
         leader_data_dir: str | Path | None = None,
         selection_boundary: str | None = None,
     ) -> DeploymentDecision:
+        """Choose a route using only complete evidence available at the boundary."""
         boundary = self._boundary(start_date, selection_boundary)
         regime = detect_regime(data_dir, as_of=boundary)
+        if regime.regime == "unknown":
+            return DeploymentDecision(
+                name="cash_preservation",
+                boundary=boundary,
+                reason="fixed-index evidence is incomplete, invalid, or stale",
+                regime=regime,
+                leaders=None,
+            )
         if regime.regime == "trending":
             return DeploymentDecision(
                 name="frozen_trend_engine",
@@ -438,11 +453,19 @@ class RegimeAdaptiveBacktestEngine:
         deployment_mode: str = "auto",
         regime_data_dir: str | None = None,
         leader_data_dir: str | None = None,
+        allow_unavailable_symbols: bool = False,
     ) -> dict:
-        """Run a trend-preserving or weak-regime deployment with one schema."""
+        """Run a trend-preserving or weak-regime deployment with one schema.
+
+        The trend route fails closed when a requested symbol has no observable
+        local data. Research callers that intentionally evaluate pre-listing
+        universes may opt in to filtering with ``allow_unavailable_symbols``.
+        """
         mode = str(deployment_mode).lower()
         if mode not in {"auto", "trend", "weak"}:
             raise ValueError("deployment_mode must be auto, trend, or weak")
+        if not isinstance(allow_unavailable_symbols, bool):
+            raise ValueError("allow_unavailable_symbols must be bool")
         evidence_dir = regime_data_dir or data_dir
         if evidence_dir is None:
             raise ValueError(
@@ -456,8 +479,12 @@ class RegimeAdaptiveBacktestEngine:
             selection_boundary=selection_boundary,
         )
         if mode == "trend":
-            decision = replace(decision, name="frozen_trend_engine", reason="trend mode forced by caller")
-        elif mode == "weak" and decision.name == "frozen_trend_engine":
+            decision = replace(
+                decision,
+                name="frozen_trend_engine",
+                reason="trend mode forced by caller",
+            )
+        elif mode == "weak":
             leaders = select_positive_momentum_leaders(
                 tuple(symbols_dict),
                 data_dir=leader_data_dir or evidence_dir,
@@ -465,12 +492,17 @@ class RegimeAdaptiveBacktestEngine:
             )
             decision = replace(
                 decision,
-                name=("positive_momentum_hold" if leaders.selected_symbols else "cash_preservation"),
+                name=(
+                    "positive_momentum_hold"
+                    if leaders.selected_symbols
+                    else "cash_preservation"
+                ),
                 reason="weak mode forced by caller",
                 leaders=leaders,
             )
         self.last_decision = decision
         executed_symbols: tuple[str, ...] = ()
+        unavailable_symbols: tuple[str, ...] = ()
         result: dict[str, Any] | None = None
 
         if decision.name == "frozen_trend_engine":
@@ -481,6 +513,14 @@ class RegimeAdaptiveBacktestEngine:
                 end_date=end_date,
                 warmup_calendar_days=warmup_calendar_days,
             )
+            unavailable_symbols = tuple(
+                sorted(set(symbols_dict) - set(tradable_symbols))
+            )
+            if unavailable_symbols and not allow_unavailable_symbols:
+                raise RuntimeError(
+                    "requested trend symbols have no observable data: "
+                    + ", ".join(unavailable_symbols)
+                )
             if not tradable_symbols:
                 leaders = LeaderSelection(
                     as_of=decision.boundary,
@@ -488,6 +528,7 @@ class RegimeAdaptiveBacktestEngine:
                     observed_symbols=0,
                     selected_symbols=(),
                     selected_returns=(),
+                    unavailable_symbols=tuple(sorted(symbols_dict)),
                 )
                 decision = replace(
                     decision,
@@ -497,7 +538,7 @@ class RegimeAdaptiveBacktestEngine:
                 )
                 self.last_decision = decision
             else:
-                executed_symbols = tuple(sorted(tradable_symbols))
+                executed_symbols= tuple(sorted(tradable_symbols))
                 self.delegate = qf.BacktestEngine(
                     self.initial_capital, cfg=self.cfg, policy=self.policy
                 )
@@ -526,13 +567,14 @@ class RegimeAdaptiveBacktestEngine:
                 raise NotImplementedError("weak-regime policy does not inject external state")
             leaders = decision.leaders
             selected = leaders.selected_symbols if leaders is not None else ()
+            unavailable_symbols = (
+                leaders.unavailable_symbols if leaders is not None else ()
+            )
             executed_symbols = tuple(selected)
             run_symbols = (
                 {code: symbols_dict[code] for code in selected}
                 if selected
-                else {
-                    code: code for code in qf.PortfolioPolicy().regime_symbols
-                }
+                else {code: code for code in qf.PortfolioPolicy().regime_symbols}
             )
             self.delegate = qf.SleeveBacktestEngine(
                 self.initial_capital,
@@ -567,5 +609,5 @@ class RegimeAdaptiveBacktestEngine:
         result["deployment_policy"] = decision.name
         result["requested_symbols"] = sorted(symbols_dict)
         result["selected_symbols"] = list(executed_symbols)
-        result["unavailable_symbols"] = sorted(set(symbols_dict) - set(executed_symbols))
+        result["unavailable_symbols"] = list(unavailable_symbols)
         return result
