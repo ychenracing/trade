@@ -1,0 +1,84 @@
+name: Account description cleanup
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply exact consistency fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          q = Path('quant_fusion.py')
+          text = q.read_text(encoding='utf-8')
+          pairs = (
+              (
+                  'A separate account signal engine is planned.',
+                  'Use account_signal_engine.py or daily_signal_scan.py --account for point-in-time account decision support.',
+                  2,
+              ),
+              (
+                  'API compatibility until the account signal engine is built.',
+                  'API compatibility with older internal request fixtures.',
+                  1,
+              ),
+              (
+                  'retained for reference until the separate account signal engine\n        # is built. Do NOT re-enable without reading the architecture\n        # defects documented in BACKTEST_RESULTS.md.',
+                  'retained only for compatibility tests; production account decisions\n        # are handled by account_signal_engine.py.',
+                  1,
+              ),
+              (
+                  'Retained for reference until the account signal engine replaces\n            # this injection mechanism.',
+                  'Retained only for compatibility tests; production account advice\n            # is handled by account_signal_engine.py.',
+                  1,
+              ),
+              (
+                  'The entire\n        # account injection block below is dead code, retained for reference.',
+                  'This compatibility branch is unreachable from public historical runs.',
+                  1,
+              ),
+          )
+          for old, new, expected in pairs:
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'quant replacement mismatch: {old!r}: {count} != {expected}')
+              text = text.replace(old, new)
+          q.write_text(text, encoding='utf-8')
+
+          d = Path('daily_signal_scan.py')
+          text = d.read_text(encoding='utf-8')
+          old = '''    .. deprecated::
+        The ``--account`` CLI flag is disabled. This function is retained for
+        unit tests and future use by the separate account signal engine. It
+        is not called in the production ``main()`` path.'''
+          new = '''    This legacy parser remains for compatibility tests. Production
+    ``--account`` handling delegates to ``account_signal_engine.py`` and does
+    not inject real holdings into the historical backtest.'''
+          if text.count(old) != 1:
+              raise SystemExit('daily account parser documentation mismatch')
+          d.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+      - name: Validate and publish
+        run: |
+          python -m py_compile quant_fusion.py daily_signal_scan.py account_signal_engine.py
+          ! grep -R -n --include='*.py' 'A separate account signal engine is planned' .
+          ! grep -R -n --include='*.py' 'until the account signal engine is built' .
+          ! grep -R -n --include='*.py' 'until the separate account signal engine' .
+          ! grep -R -n --include='*.py' 'The ``--account`` CLI flag is disabled' .
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add quant_fusion.py daily_signal_scan.py
+          git commit -m 'docs: align account-mode descriptions with current engine'
+          git push origin HEAD:main
