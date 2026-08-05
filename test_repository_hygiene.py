@@ -16,6 +16,7 @@ THIS_FILE = Path(__file__).resolve().relative_to(ROOT)
 EXPECTED_MARKDOWN = {
     Path("README.md"),
     Path("BACKTEST_RESULTS.md"),
+    Path("TRANSFORMATION_REPORT.md"),
     Path("historical_data/README.md"),
 }
 OBSOLETE_DOCUMENTS = {
@@ -64,6 +65,8 @@ class MarkdownConsistencyTests(unittest.TestCase):
             path.relative_to(ROOT)
             for path in ROOT.rglob("*.md")
             if ".git" not in path.parts
+            and "optimizer_validation" not in path.parts
+            and ".pytest_cache" not in path.parts
         }
         self.assertEqual(found, EXPECTED_MARKDOWN)
 

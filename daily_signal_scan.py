@@ -1229,6 +1229,8 @@ def _run_main() -> int:
     print(f"  Sharpe:         {result['sharpe']:>14.2f}")
     print(f"  总交易次数:     {result['total_trades']:>14}")
     print(f"  自动策略路由:   {result.get('deployment_policy', 'unknown'):>14}")
+    allocation_mode = result.get("allocation_mode", "ensemble")
+    print(f"  分配模式:       {allocation_mode:>14}")
     print(
         f"  风险锁定:       "
         f"{'是' if result.get('terminal_risk_lock') else '否'}"

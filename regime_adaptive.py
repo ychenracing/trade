@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Sequence, cast
 
+import numpy as np
 import pandas as pd
 
 import quant_fusion as qf
@@ -164,7 +165,15 @@ def select_positive_momentum_leaders(
     as_of: str,
     maximum: int = MAX_LEADERS,
 ) -> LeaderSelection:
-    """Select positive long-horizon leaders with deterministic tie-breaking."""
+    """Select positive long-horizon leaders with deterministic tie-breaking.
+
+    Uses multi-factor weak-market scoring (section 12.2):
+    - 240-day momentum (25%)
+    - 120-day relative strength vs reference basket (25%)
+    - 60-day momentum (20%)
+    - Drawdown resilience (15%)
+    - Trend repair: 5-day vs 20-day momentum (15%)
+    """
     normalized = tuple(sorted(str(symbol) for symbol in symbols))
     if not normalized or len(normalized) != len(set(normalized)):
         raise ValueError("symbols must be a non-empty set without duplicates")
@@ -173,6 +182,24 @@ def select_positive_momentum_leaders(
     boundary = _normalized_timestamp(as_of)
     observations: list[tuple[float, str]] = []
     observed_codes: set[str] = set()
+
+    # Load reference basket for relative strength calculation
+    reference_symbols = ("300308", "300502", "300394", "688008", "603986")
+    ref_returns: list[float] = []
+    for ref_code in reference_symbols:
+        try:
+            ref_frame = _local_frame(data_dir, ref_code, str(boundary.date()))
+            ref_closes = pd.Series(
+                pd.to_numeric(ref_frame["close"], errors="coerce"),
+                index=ref_frame.index,
+            ).dropna()
+            if len(ref_closes) >= 121:
+                ref_ret = float(ref_closes.iloc[-1] / ref_closes.iloc[-121] - 1.0)
+                ref_returns.append(ref_ret)
+        except (OSError, RuntimeError, ValueError):
+            continue
+    ref_avg_return = float(np.mean(ref_returns)) if ref_returns else 0.0
+
     for code in normalized:
         try:
             frame = _local_frame(data_dir, code, str(boundary.date()))
@@ -187,16 +214,58 @@ def select_positive_momentum_leaders(
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
             continue
         observed_codes.add(code)
-        momentum = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
-        if math.isfinite(momentum) and momentum > 0:
-            observations.append((momentum, code))
+        momentum_240 = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
+        if not (math.isfinite(momentum_240) and momentum_240 > 0):
+            continue
+
+        # Multi-factor weak-market scoring (section 12.2)
+        # 60-day momentum
+        if len(closes) >= 61:
+            momentum_60 = float(closes.iloc[-1] / closes.iloc[-61] - 1.0)
+        else:
+            momentum_60 = 0.0
+
+        # Relative strength vs reference basket (120-day): compare the
+        # symbol's own 120-day return against the basket's 120-day return.
+        if len(closes) >= 121:
+            symbol_120 = float(closes.iloc[-1] / closes.iloc[-121] - 1.0)
+            rs_120 = symbol_120 - ref_avg_return if ref_avg_return != 0 else 0.0
+        else:
+            rs_120 = 0.0
+
+        # Drawdown resilience: how far from 60-day peak (lower is better)
+        if len(closes) >= 60:
+            peak_60 = float(closes.iloc[-60:].max())
+            drawdown_from_peak = 1.0 - float(closes.iloc[-1] / peak_60) if peak_60 > 0 else 0.0
+            resilience = 1.0 - min(1.0, drawdown_from_peak)
+        else:
+            resilience = 0.0
+
+        # Trend repair: 5-day vs 20-day momentum
+        if len(closes) >= 21:
+            mom_5 = float(closes.iloc[-1] / closes.iloc[-6] - 1.0)
+            mom_20 = float(closes.iloc[-1] / closes.iloc[-21] - 1.0)
+            trend_repair = mom_5 - mom_20
+        else:
+            trend_repair = 0.0
+
+        # Composite weak-market score
+        weak_score = (
+            0.25 * momentum_240
+            + 0.25 * max(0.0, rs_120)
+            + 0.20 * momentum_60
+            + 0.15 * resilience
+            + 0.15 * max(0.0, trend_repair)
+        )
+        if math.isfinite(weak_score):
+            observations.append((weak_score, code))
     leaders = sorted(observations, key=lambda item: (-item[0], item[1]))[:maximum]
     return LeaderSelection(
         as_of=str(_timestamp(as_of).date()),
         requested_symbols=normalized,
         observed_symbols=len(observed_codes),
         selected_symbols=tuple(code for _, code in leaders),
-        selected_returns=tuple(momentum for momentum, _ in leaders),
+        selected_returns=tuple(score for score, _ in leaders),
         unavailable_symbols=tuple(sorted(set(normalized) - observed_codes)),
     )
 
@@ -539,6 +608,9 @@ class RegimeAdaptiveBacktestEngine:
                 self.last_decision = decision
             else:
                 executed_symbols= tuple(sorted(tradable_symbols))
+                # Trend route keeps the default three-sleeve ensemble
+                # (3x full-capital deployment) to maximize bull-market returns.
+                effective_allocation = allocation_mode or "ensemble"
                 self.delegate = qf.BacktestEngine(
                     self.initial_capital, cfg=self.cfg, policy=self.policy
                 )
@@ -552,7 +624,7 @@ class RegimeAdaptiveBacktestEngine:
                     data_dir=data_dir,
                     indicator_state=indicator_state,
                     warmup_calendar_days=warmup_calendar_days,
-                    allocation_mode=allocation_mode,
+                    allocation_mode=effective_allocation,
                     risk_state=risk_state,
                     account_state=account_state,
                 )

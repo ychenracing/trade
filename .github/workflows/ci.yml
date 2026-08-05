@@ -79,6 +79,7 @@ jobs:
           quant_fusion_optimizer.py
           daily_signal_scan.py
           regime_adaptive.py
+          cross_market_overlay.py
           account_signal_engine.py
           market_data_contracts.py
           benchmark_validation.py

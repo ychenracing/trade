@@ -1521,6 +1521,12 @@ class _CoreBacktestEngine:
             "regime_trend_to_transition_confirmations": 3,
             "regime_choppy_exit_ratio": 0.3,
             "regime_transition_exit_ratio": 0.0,
+            # 穿越牛熊 (cross-market-cycle) overlay: a bull-silent defensive layer
+            # on top of the ensemble. Default ON; only fires on genuine risk so a
+            # clean bull run is untouched. shock_trim is opt-in (the ensemble
+            # already carries regime de-risking + drawdown circuit breakers).
+            "enable_cm_overlay": True,
+            "cm_overlay_shock_trim": False,
         }
 
     _PER_SYMBOL_OVERRIDE_KEYS: ClassVar[set[str]] = {
@@ -4720,7 +4726,7 @@ class _PortfolioPolicyBase:
         """Validate thresholds, horizons, and liquidity controls eagerly."""
         mode = str(self.allocation_mode).lower()
         if mode not in {"single", "ensemble"}:
-            raise ValueError("allocation_mode must be either 'single' or 'ensemble'")
+            raise ValueError("allocation_mode must be 'single' or 'ensemble'")
         object.__setattr__(self, "allocation_mode", mode)
         alert = _require_positive_ratio("drawdown_alert", self.drawdown_alert)
         confirmed = _require_positive_ratio(
@@ -5376,7 +5382,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             )
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
         if mode not in {"single", "ensemble"}:
-            raise ValueError("allocation_mode must be either 'single' or 'ensemble'")
+            raise ValueError("allocation_mode must be 'single' or 'ensemble'")
         if mode == "single":
             self.sleeves = [self]
             if risk_state:
@@ -6778,7 +6784,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 account_state=account_state,
             )
         if mode != "single":
-            raise ValueError("allocation_mode must be either 'single' or 'ensemble'")
+            raise ValueError("allocation_mode must be 'single' or 'ensemble'")
         count = len(symbols_dict)
         effective_policy = replace(
             self._effective_policy(count), allocation_mode="single"
@@ -6855,6 +6861,14 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 portfolio_risk.lifetime_peak_assets = float(peak)
         portfolio_risk_events: list[dict[str, Any]] = []
         symbol_count_curve: list[dict[str, Any]] = []
+        # 穿越牛熊 overlay: bull-silent defensive layer on top of the ensemble.
+        # Default ON, only fires on genuine risk (catastrophe drop / structural
+        # shock + drawdown), so a clean bull run is left untouched.
+        from cross_market_overlay import CrossMarketOverlay
+        cm_overlay = CrossMarketOverlay(
+            enable_shock_trim=bool(self.cfg.get("cm_overlay_shock_trim", False))
+        ) if self.cfg.get("enable_cm_overlay", True) else None
+        cm_overlay_peak = 0.0
         for idx, date in enumerate(reference_dates):
             # Inject account snapshot at the open of the as-of date so that
             # everything from this day onward uses the real account state
@@ -6886,6 +6900,13 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             portfolio_risk_events.extend(portfolio_risk.drain_audit_events())
             if status:
                 self._apply_global_risk_lock(states, date)
+            # 穿越牛熊 overlay check (appends T+1 sell signals to pending).
+            cm_overlay_peak = max(cm_overlay_peak, assets)
+            if cm_overlay is not None and cm_overlay_peak > 0:
+                cm_overlay.on_day(
+                    states, date, idx, assets, cm_overlay_peak,
+                    self._overlay_allocation_score(states, date),
+                )
             held = self._held_portfolio_symbols(states)
             symbol_count_curve.append(
                 {"date": date.strftime("%Y-%m-%d"), "symbol_count": len(held)}
@@ -6897,6 +6918,10 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         combined_risk_events.extend(
             {"sleeve": "portfolio", **event} for event in portfolio_risk_events
         )
+        if cm_overlay is not None:
+            combined_risk_events.extend(
+                {"sleeve": "overlay", **event} for event in cm_overlay.events
+            )
         combined.update(
             {
                 "portfolio_policy": self.policy.as_dict(),
@@ -7034,6 +7059,20 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             for symbol, positions in state.sleeve.positions.items()
             if positions
         }
+
+    @staticmethod
+    def _overlay_allocation_score(states: list[_PreparedSleeveRun], date: pd.Timestamp):
+        """Mean allocation score across sleeves, used to rank laggards for trim."""
+        def _score(symbol: str) -> float:
+            samples = []
+            for state in states:
+                try:
+                    scores = state.sleeve._allocation_scores(state.data_map, date)
+                except Exception:
+                    scores = {}
+                samples.append(float(scores.get(symbol, 0.0)))
+            return float(np.mean(samples)) if samples else 0.0
+        return _score
 
     def _authorize_portfolio_buys(
         self, states: list[_PreparedSleeveRun], date: pd.Timestamp

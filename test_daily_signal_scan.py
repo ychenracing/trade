@@ -290,11 +290,10 @@ class CLIArgumentTests(unittest.TestCase):
 
     def test_default_arguments(self) -> None:
         with patch("sys.argv", ["daily_signal_scan.py"]):
-            parser = dss.__dict__.get("_parser")
-            # We can't easily test main() without network, but we can
-            # verify the parser is constructed with expected defaults
-            # by checking the argparse setup indirectly
-            pass
+            # The real parser is built inside _run_main() (not exposed at
+            # module level), so we can't inspect it here without executing a
+            # full scan. Just confirm the argparse builder is reachable.
+            self.assertTrue(callable(dss._run_main))
 
     def test_all_26_symbols_are_mapped(self) -> None:
         """Verify all SYMBOLS have explicit routing metadata."""
@@ -946,14 +945,6 @@ class RiskStateMismatchTests(unittest.TestCase):
             # _save_risk_state with a different tradable set creates a
             # DIFFERENT hash, confirming the identity check would trigger.
             tradable2 = {"300308": "中际旭创", "688008": "澜起科技"}
-            result2 = {
-                "terminal_risk_lock": False,
-                "sector_guard_active": False,
-                "cycle_lock_count": 0,
-                "max_drawdown": 0.0,
-                "total_return": 0.0,
-                "final_assets": 2000000.0,
-            }
             # Build the hash that main() would compute for tradable1
             import hashlib
             identity1 = ["trade", str(len(tradable1)),
@@ -2274,8 +2265,6 @@ class RiskStateNotInjectedTests(unittest.TestCase):
 
             # Capture the actual call arguments
             captured_kwargs: dict = {}
-
-            original_run = dss.ra.RegimeAdaptiveBacktestEngine.run
 
             def capture_run(self, *args, **kwargs):
                 captured_kwargs.update(kwargs)
