@@ -25,7 +25,7 @@ import time
 from dataclasses import dataclass, field, replace
 from itertools import pairwise
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import Any, Callable, ClassVar, cast
 
 import numpy as np
 import pandas as pd
@@ -1527,6 +1527,23 @@ class _CoreBacktestEngine:
             # already carries regime de-risking + drawdown circuit breakers).
             "enable_cm_overlay": True,
             "cm_overlay_shock_trim": False,
+            # Report P1-3: sticky candidates for large pools. Default ON: a
+            # held symbol is retained until it stops qualifying, and a new name
+            # only replaces one when it clearly beats the weakest held symbol,
+            # reducing daily-rank churn (fee/slippage + selling winners). Set to
+            # False to return to the pure daily cross-sectional top-N.
+            "sticky_candidates": True,
+            # Report P1-2: hierarchical sub-industry parameter shrinkage. Default
+            # ON: each fine sub-industry profile (optical module, chip design,
+            # equipment, test, material, packaging, ...) is pulled part-way back
+            # toward its coarse parent for the report's "allowable" parameters
+            # (max single-symbol weight, ATR multiple, risk budget), so a thin
+            # sub-industry sample cannot over-fit a single stock or a single bull
+            # run. 0.0 converges fully to the coarse parent, 1.0 keeps the fine
+            # override unchanged. Default 0.5. Entry/exit periods, profit
+            # protection, pyramid add-on and regime parameters are shared through
+            # the hierarchy and are never shrunk.
+            "subindustry_shrinkage": 0.5,
         }
 
     _PER_SYMBOL_OVERRIDE_KEYS: ClassVar[set[str]] = {
@@ -2006,7 +2023,7 @@ class _CoreBacktestEngine:
         return cls._SYMBOL_PROFILE.get(code, default)
 
     @staticmethod
-    def config_for_symbol(code: str, name: str = "") -> dict:
+    def config_for_symbol(code: str, name: str = "", shrinkage: float | None = None) -> dict:
         """Resolve the built-in parameter profile for a symbol.
 
         Report 4.6: fine-grained AI sub-industry profiles are resolved first so
@@ -2014,28 +2031,39 @@ class _CoreBacktestEngine:
         material, foundry, or packaging name gets its own trend parameters.
         Unmapped/non-AI names fall back to the coarse overseas/domestic set and
         finally to the default or semiconductor config.
+
+        Report P1-2: a fine sub-industry profile is returned through
+        hierarchical shrinkage toward its coarse parent (``shrinkage`` in [0, 1],
+        default ``DEFAULT_SUBINDUSTRY_SHRINKAGE``) so a thin sub-industry sample
+        does not over-fit a single stock or a single bull run. Coarse profiles
+        (semiconductor / overseas / domestic group / overseas optical) are the
+        sample-validated global reference and are returned unchanged.
         """
         profile = _CoreBacktestEngine._SYMBOL_PROFILE.get(code)
-        if profile == "optical_module":
-            return _CoreBacktestEngine.optical_module_config()
-        if profile == "optical_component":
-            return _CoreBacktestEngine.optical_component_config()
-        if profile == "memory_interface":
-            return _CoreBacktestEngine.memory_interface_config()
-        if profile == "memory_manufacturing":
-            return _CoreBacktestEngine.memory_manufacturing_config()
-        if profile == "chip_design":
-            return _CoreBacktestEngine.chip_design_config()
-        if profile == "semiconductor_equipment":
-            return _CoreBacktestEngine.semiconductor_equipment_config()
-        if profile == "test_measurement":
-            return _CoreBacktestEngine.test_measurement_config()
-        if profile == "semiconductor_material":
-            return _CoreBacktestEngine.semiconductor_material_config()
-        if profile == "advanced_packaging":
-            return _CoreBacktestEngine.advanced_packaging_config()
-        if profile == "electronic_gas":
-            return _CoreBacktestEngine.electronic_gas_config()
+        if profile is None:
+            return (
+                _CoreBacktestEngine.semiconductor_config()
+                if _CoreBacktestEngine.classify_symbol(code, name=name)
+                == "semiconductor"
+                else _CoreBacktestEngine._default_config()
+            )
+        # Fine-grained sub-industry profile (report 4.6): apply hierarchical
+        # shrinkage toward its coarse parent (report P1-2).
+        factory = _CoreBacktestEngine._FINE_PROFILE_FACTORY.get(profile)
+        if factory is not None:
+            sub_cfg = factory()
+            parent_factory = _CoreBacktestEngine._PROFILE_PARENT.get(profile)
+            factor = (
+                _CoreBacktestEngine.DEFAULT_SUBINDUSTRY_SHRINKAGE
+                if shrinkage is None
+                else shrinkage
+            )
+            if parent_factory is not None and 0.0 <= factor < 1.0:
+                return _CoreBacktestEngine._shrink_subindustry(
+                    sub_cfg, parent_factory(), factor
+                )
+            return sub_cfg
+        # Coarse profiles are the validated global reference (unchanged).
         if profile == "overseas_memory_material":
             return _CoreBacktestEngine.overseas_memory_material_config()
         if profile == "domestic_design":
@@ -2052,9 +2080,71 @@ class _CoreBacktestEngine:
             return _CoreBacktestEngine._default_config()
         return (
             _CoreBacktestEngine.semiconductor_config()
-            if _CoreBacktestEngine.classify_symbol(code, name=name) == "semiconductor"
+            if _CoreBacktestEngine.classify_symbol(code, name=name)
+            == "semiconductor"
             else _CoreBacktestEngine._default_config()
         )
+
+    # Report P1-2: hierarchical sub-industry parameter shrinkage. The fine
+    # sub-industry profiles (report 4.6) refine a coarse parent and must not
+    # over-fit a thin sample. Only the report's "allowable" parameters may
+    # retain sub-industry specificity: max single-symbol weight, ATR multiple,
+    # risk budget. Entry/exit periods, profit-protection thresholds, pyramid
+    # add-on and regime parameters are shared verbatim through the hierarchy
+    # (they are NOT allowed to diverge), which is what dampens overfitting
+    # without disturbing the validated coarse trend-following.
+    SHRINKABLE_PARAMS: ClassVar[frozenset[str]] = frozenset(
+        {"max_symbol_weight", "atr_multiplier", "trail_atr_mult", "risk_pct"}
+    )
+    # Default factor applied when the engine does not pass one explicitly.
+    DEFAULT_SUBINDUSTRY_SHRINKAGE = 0.5
+    # The fine sub-industry profile -> its coarse refiner factory. The coarse
+    # profiles themselves are the sample-validated global reference and are
+    # never shrunk.
+    _PROFILE_PARENT: ClassVar[dict[str, Callable[[], dict]]] = {
+        "optical_module": _default_config,
+        "optical_component": optical_module_config,
+        "memory_interface": overseas_memory_material_config,
+        "memory_manufacturing": semiconductor_config,
+        "chip_design": domestic_design_config,
+        "semiconductor_equipment": semiconductor_config,
+        "test_measurement": semiconductor_config,
+        "semiconductor_material": domestic_material_config,
+        "advanced_packaging": domestic_foundry_config,
+        "electronic_gas": domestic_material_config,
+    }
+    _FINE_PROFILE_FACTORY: ClassVar[dict[str, Callable[[], dict]]] = {
+        "optical_module": optical_module_config,
+        "optical_component": optical_component_config,
+        "memory_interface": memory_interface_config,
+        "memory_manufacturing": memory_manufacturing_config,
+        "chip_design": chip_design_config,
+        "semiconductor_equipment": semiconductor_equipment_config,
+        "test_measurement": test_measurement_config,
+        "semiconductor_material": semiconductor_material_config,
+        "advanced_packaging": advanced_packaging_config,
+        "electronic_gas": electronic_gas_config,
+    }
+
+    @staticmethod
+    def _shrink_subindustry(sub_cfg: dict, parent_cfg: dict, shrinkage: float) -> dict:
+        """Pull fine sub-industry overrides toward the coarse parent (P1-2).
+
+        Applies ``effective = parent + shrinkage * (sub - parent)`` to the
+        report's allowable parameters only. ``shrinkage`` in [0, 1]: 0.0
+        converges fully to the coarse parent, 1.0 keeps the fine override.
+        Non-shrinkable keys are copied verbatim so the validated trend
+        structure (entry/exit, profit protection, pyramid, regime) is shared.
+        """
+        out = dict(sub_cfg)
+        for key in _CoreBacktestEngine.SHRINKABLE_PARAMS:
+            if key in sub_cfg and key in parent_cfg:
+                base = parent_cfg[key]
+                effective = base + shrinkage * (sub_cfg[key] - base)
+                if isinstance(sub_cfg[key], int):
+                    effective = int(round(effective))
+                out[key] = effective
+        return out
 
     _INDUSTRY_HINTS: ClassVar[dict[str, str]] = {
         "foundry": "semiconductor",
@@ -2280,6 +2370,13 @@ class _CoreBacktestEngine:
             "risk_free_rate",
             out.get("risk_free_rate", 0.0),
             min_value=-0.99,
+            max_value=1.0,
+        )
+        # Report P1-2: sub-industry shrinkage factor must stay in [0, 1].
+        out["subindustry_shrinkage"] = _require_finite(
+            "subindustry_shrinkage",
+            out.get("subindustry_shrinkage", 0.5),
+            min_value=0.0,
             max_value=1.0,
         )
         for key in [
@@ -2685,7 +2782,9 @@ class _CoreBacktestEngine:
         def _base_for(code: str) -> dict:
             if config_route == "auto":
                 return _CoreBacktestEngine.config_for_symbol(
-                    code, name=symbols_dict.get(code, "")
+                    code,
+                    name=symbols_dict.get(code, ""),
+                    shrinkage=self.cfg.get("subindustry_shrinkage"),
                 )
             return self.cfg
 
@@ -6077,6 +6176,19 @@ class _UniverseInvariantSleeveMixin:
     risk_events: list[dict[str, Any]]
     _risk_lock_logged: bool
 
+    # Report P1-3: sticky candidates reduce large-pool churn. A held name is
+    # retained (incumbent bonus) unless it stops qualifying, and a weak held
+    # non-core name is replaced only when a new candidate CLEARLY beats it by
+    # ``MIN_SCORE_GAP`` for ``STICKY_CONFIRM_DAYS`` consecutive days, at most
+    # ``MAX_NEW_PER_CYCLE`` per ``STICKY_CYCLE_DAYS`` cycle. The strongest
+    # ``STICKY_CORE_LOCK`` held names (core) are never replaced by short-term
+    # ranking noise. Enabled by default via the cfg flag ``sticky_candidates``.
+    MIN_SCORE_GAP = 0.15
+    MAX_NEW_PER_CYCLE = 1
+    STICKY_CONFIRM_DAYS = 4
+    STICKY_CYCLE_DAYS = 5
+    STICKY_CORE_LOCK = 2
+
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
         """Reset tradable and regime metadata at every independent run."""
         # Concrete classes place this cooperative mixin before the sleeve engine.
@@ -6085,6 +6197,14 @@ class _UniverseInvariantSleeveMixin:
         )
         self._tradable_symbol_codes: set[str] = set(symbols_dict)
         self._candidate_score_series: dict[str, dict[int, pd.Series]] = {}
+        # Report P1-3: sticky-candidate rotation state. ``_sticky_beat_days``
+        # counts consecutive days a NEW candidate has clearly beaten the weakest
+        # replaceable held name (confirmation before rotating); ``_sticky_pos``
+        # is the last trading position a rotation happened at (one per cycle);
+        # ``_sticky_rotated`` holds recently rotated-out names for cooldown.
+        self._sticky_beat_days: dict[str, int] = {}
+        self._sticky_last_rotation_pos: int = -1_000_000
+        self._sticky_rotated: set[str] = set()
         # Market regime state machine: start in TREND (full trading) and let the
         # basket indicators demote the state when conditions deteriorate.
         self._regime_state: str = "TREND"
@@ -6753,7 +6873,83 @@ class _UniverseInvariantSleeveMixin:
             >= self.policy.candidate_reference_percentile
         ]
         ranked = sorted(eligible, key=sort_key)
-        return set(ranked[:maximum])
+        scores = {
+            code: totals[code] / observations[code] for code in eligible
+        }
+        # Report P1-3: sticky candidates for large pools. The daily ranking is
+        # noisy, and rotating a held name out because its percentile dipped
+        # slightly is pure churn (fee/slippage + selling a winner). We therefore
+        # retain every eligible held symbol (incumbent bonus) and only rotate
+        # the weakest NON-CORE held name when a NEW candidate CLEARLY beats it
+        # by ``MIN_SCORE_GAP`` for ``STICKY_CONFIRM_DAYS`` consecutive days and
+        # at most ``MAX_NEW_PER_CYCLE`` per ``STICKY_CYCLE_DAYS`` cycle. The
+        # strongest ``STICKY_CORE_LOCK`` held names (core) are never rotated by
+        # short-term noise. When the book is under-deployed (spare slots above
+        # the current holdings) new names are admitted freely from the top of
+        # the ranking, preserving bull growth.
+        sticky_enabled = bool(self.cfg.get("sticky_candidates", True))
+        if not sticky_enabled:
+            return set(ranked[:maximum])
+        self._sticky_eval_pos = getattr(self, "_sticky_eval_pos", 0) + 1
+        held = {
+            code
+            for code, positions in self.positions.items()
+            if any(
+                getattr(position, "shares", 0) > 0
+                for position in positions.values()
+            )
+        }
+        eligible_held = set(eligible) & held
+        # Incumbent bonus: every eligible held name is retained by default.
+        selected = set(eligible_held)
+        # Under-deployed book: fill spare slots freely from the top of the
+        # ranking so a fresh bull / post-rotation book can deploy capital.
+        spare = maximum - len(selected)
+        if spare > 0:
+            for code in ranked:
+                if len(selected) >= maximum:
+                    break
+                if code not in selected:
+                    selected.add(code)
+        # Full book: rotate the weakest non-core held name when a clearly better
+        # new candidate persists. Core (strongest STICKY_CORE_LOCK) names are
+        # locked against short-term ranking noise (report P1-3 "core lock").
+        if len(selected) >= maximum and eligible_held:
+            core = set(
+                sorted(eligible_held, key=lambda c: scores.get(c, 0.0), reverse=True)[
+                    : self.STICKY_CORE_LOCK
+                ]
+            )
+            replaceable = sorted(eligible_held - core, key=lambda c: scores.get(c, 0.0))
+            if (
+                replaceable
+                and self._sticky_eval_pos - self._sticky_last_rotation_pos
+                >= self.STICKY_CYCLE_DAYS
+            ):
+                weakest = replaceable[0]
+                weakest_score = scores.get(weakest, 0.0)
+                # Best new candidate (not held, not recently rotated) that beats
+                # the weakest held name by the minimum score gap.
+                best_new = None
+                for cand in ranked:
+                    if cand in selected or cand in held or cand in self._sticky_rotated:
+                        continue
+                    if scores[cand] >= weakest_score + self.MIN_SCORE_GAP:
+                        best_new = cand
+                        break
+                if best_new is not None:
+                    # Confirmation: the advantage must persist for several
+                    # consecutive days before a rotation is allowed.
+                    self._sticky_beat_days[best_new] = (
+                        self._sticky_beat_days.get(best_new, 0) + 1
+                    )
+                    if self._sticky_beat_days[best_new] >= self.STICKY_CONFIRM_DAYS:
+                        selected.discard(weakest)
+                        selected.add(best_new)
+                        self._sticky_last_rotation_pos = self._sticky_eval_pos
+                        self._sticky_rotated.add(weakest)
+                        self._sticky_beat_days[best_new] = 0
+        return selected
 
     def _update_sector_guard(
         self,
@@ -7071,7 +7267,9 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 self._apply_account_state(
                     account_state, states[0].sleeve, set_cash=False
                 )
-            self._execute_ensemble_open(states, date)
+            # P0-4: pass the overlay so it can hard-block re-entry buys
+            # for any symbol still in catastrophe cooldown (report P0-4).
+            self._execute_ensemble_open(states, date, idx, cm_overlay)
             for state in states:
                 state.pending = state.sleeve._evaluate_trading_day(
                     request.symbols_dict,
@@ -7314,9 +7512,28 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             state.pending = retained
 
     def _execute_ensemble_open(
-        self, states: list[_PreparedSleeveRun], date: pd.Timestamp
+        self,
+        states: list[_PreparedSleeveRun],
+        date: pd.Timestamp,
+        date_pos: int = 0,
+        cm_overlay=None,
     ) -> None:
-        """Execute every sleeve's sells before globally admitting and filling buys."""
+        """Execute every sleeve's sells before globally admitting and filling buys.
+
+        ``cm_overlay`` (the cross-market overlay) is passed so that its
+        catastrophe-cooldown table can hard-block any pending buy for a symbol
+        that just exited via a layered/catastrophe stop (report P0-4). The block
+        runs after sells are executed and before buys are authorized, so re-entry
+        across all three trend sleeves is suppressed for the full cooldown.
+        """
+        # P0-6: residual account-level netting. The three virtual sleeves are
+        # signal sources, not independent books for every symbol: if one sleeve
+        # is selling symbol X today while another wants to buy it, the buy is
+        # netted toward the exit so the account does not both sell and re-buy
+        # the same name on the same day (a pure churn / fee drag). Risk sells
+        # always win over a conflicting buy (report P0-6 step 2 "风险卖出可否决
+        # 买入"). The deferred buy is not lost — the strategy re-signals later.
+        self._net_cross_sleeve_orders(states, date)
         for state in states:
             state.sleeve._start_trading_day()
             state.pending = state.sleeve._execute_pending_signals(
@@ -7326,6 +7543,8 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 state.date_to_pos,
                 frozenset({"sell"}),
             )
+        if cm_overlay is not None:
+            cm_overlay.block_cooldown_buys(states, date, date_pos)
         self._authorize_portfolio_buys(states, date)
         for state in states:
             state.pending = state.sleeve._execute_pending_signals(
@@ -7337,6 +7556,60 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             )
         if len(self._held_portfolio_symbols(states)) > int(self.cfg["max_positions"]):
             raise RuntimeError("portfolio symbol limit exceeded after buy execution")
+
+    @staticmethod
+    def _net_cross_sleeve_orders(
+        states: list[_PreparedSleeveRun], date: pd.Timestamp
+    ) -> None:
+        """Net same-symbol same-day cross-sleeve buys against sells by share.
+
+        Report P0-6: the real account holds at most one position per symbol, so
+        a symbol that is being sold by any sleeve must not also be bought by
+        another sleeve on the same day. But naively CANCelling every buy proved
+        destructive to returns (a sell from one sleeve is rarely a full exit the
+        account wants; a trend sleeve is often concurrently re-entering the same
+        name), which is why the earlier blanket-cancel version over-suppressed
+        re-entry and destroyed ~27% of returns on the 3/5/13 pools. We therefore
+        net by SHARE COUNT toward the larger side:
+
+        - a buy whose target is fully absorbed by the same-day total sell shares
+          (``buy_shares <= sell_shares``) is redundant round-trip churn and is
+          cancelled (recorded as ``netted_cross_sleeve_buy``);
+        - a buy that EXCEEDS the pending sells represents genuine net ADD
+          exposure the account still wants and is retained, so the aggregate
+          cross-sleeve intent survives and the position is not over-sold.
+
+        This removes same-symbol round-trip churn and the fee/slippage drag
+        without suppressing legitimate re-entry, keeping returns intact.
+        """
+        date_str = date.strftime("%Y-%m-%d")
+        sell_shares: dict[str, int] = {}
+        selling: set[str] = set()
+        for state in states:
+            for signal, _ in state.pending:
+                if signal.direction == "sell":
+                    symbol = str(signal.symbol)
+                    selling.add(symbol)
+                    sell_shares[symbol] = sell_shares.get(symbol, 0) + int(
+                        signal.target_shares
+                    )
+        if not selling:
+            return
+        for state in states:
+            retained: list[tuple[Signal, BaseStrategy]] = []
+            for signal, strategy in state.pending:
+                if signal.direction == "buy" and str(signal.symbol) in selling:
+                    if int(signal.target_shares) <= sell_shares[str(signal.symbol)]:
+                        state.sleeve._record_order_event(
+                            date=date_str,
+                            signal=signal,
+                            event="netted_cross_sleeve_buy",
+                            because="same_symbol_sell_pending_absorbs_buy",
+                            sell_shares=int(sell_shares[str(signal.symbol)]),
+                        )
+                        continue
+                retained.append((signal, strategy))
+            state.pending = retained
 
     @staticmethod
     def _apply_global_risk_lock(

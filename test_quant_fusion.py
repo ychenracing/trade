@@ -114,6 +114,57 @@ class SymbolRoutingTests(unittest.TestCase):
         self.assertEqual(result["unmapped_symbols"], ["000001"])
 
 
+class SubindustryShrinkageTests(unittest.TestCase):
+    """财报 P1-2：子行业参数以层级收缩拉向粗粒度父画像。"""
+
+    ENGINE = quant._CoreBacktestEngine
+
+    def test_shrinkage_is_enabled_by_default_and_validated(self) -> None:
+        self.assertEqual(
+            self.ENGINE._default_config()["subindustry_shrinkage"], 0.5
+        )
+        engine = quant.BacktestEngine()
+        self.assertEqual(engine.cfg["subindustry_shrinkage"], 0.5)
+
+    def test_chip_design_delta_zero_is_unchanged_under_default_shrinkage(self) -> None:
+        # 688256 (寒武纪) -> chip_design == domestic_design (parent), so every
+        # shrinkable delta is 0 and the golden-metric profile is preserved.
+        shrunk = self.ENGINE.config_for_symbol("688256", "寒武纪")
+        self.assertEqual(shrunk, self.ENGINE.chip_design_config())
+
+    def test_optical_component_is_pulled_toward_its_coarse_parent(self) -> None:
+        # optical_component overrides trail_atr_mult (3.6 vs parent 4.0),
+        # risk_pct (0.028 vs 0.03) and max_symbol_weight (0.55 vs 0.6). At the
+        # default 0.5 factor each override is pulled halfway toward the parent,
+        # while non-shrinkable params (e.g. exit_period) stay verbatim.
+        shrunk = self.ENGINE.config_for_symbol("688498", "")
+        sub = self.ENGINE.optical_component_config()
+        parent = self.ENGINE.optical_module_config()
+        for key in self.ENGINE.SHRINKABLE_PARAMS:
+            expected = parent[key] + 0.5 * (sub[key] - parent[key])
+            self.assertAlmostEqual(shrunk[key], expected)
+        self.assertEqual(shrunk["exit_period"], sub["exit_period"])
+
+    def test_shrinkage_zero_converges_and_one_keeps_subindustry(self) -> None:
+        sub = self.ENGINE.optical_component_config()
+        parent = self.ENGINE.optical_module_config()
+        shrunk_zero = self.ENGINE.config_for_symbol("688498", "", shrinkage=0.0)
+        for key in self.ENGINE.SHRINKABLE_PARAMS:
+            self.assertEqual(shrunk_zero[key], parent[key])
+        self.assertEqual(
+            self.ENGINE.config_for_symbol("688498", "", shrinkage=1.0), sub
+        )
+
+    def test_non_shrinkable_params_are_not_refined_by_shrinkage(self) -> None:
+        # entry/exit periods, profit protection, pyramid and regime params are
+        # shared through the hierarchy and must never be shrunk toward a raw
+        # global default (report P1-2 "不建议独立调整").
+        self.assertEqual(
+            self.ENGINE.SHRINKABLE_PARAMS,
+            frozenset({"max_symbol_weight", "atr_multiplier", "trail_atr_mult", "risk_pct"}),
+        )
+
+
 class StandaloneAndDataSourceTests(unittest.TestCase):
     """Verify standalone packaging and explicit online/local source selection."""
 
@@ -180,30 +231,35 @@ class StandaloneAndDataSourceTests(unittest.TestCase):
                 "volume": [1_000.0, 1_200.0],
             }
         )
-        with (
-            mock.patch.object(quant, "ak", object()),
-            mock.patch.object(
-                quant.DataFetcher,
-                "_fetch_eastmoney",
-                side_effect=RuntimeError("provider unavailable"),
-            ) as eastmoney,
-            mock.patch.object(
-                quant.DataFetcher,
-                "_fetch_sina",
-                return_value=raw,
-            ) as sina,
-            mock.patch.object(quant.DataFetcher, "_fetch_tencent") as tencent,
-        ):
-            frame = quant.DataFetcher.load_stock_data(
-                "300308",
-                "2026-01-02",
-                "2026-01-05",
-                data_dir=None,
-            )
-        eastmoney.assert_called_once()
-        sina.assert_called_once()
-        tencent.assert_not_called()
-        self.assertEqual(len(frame), 2)
+        previous_cache = quant.DataFetcher._cache_dir
+        quant.DataFetcher._cache_dir = None  # force the raw provider failover path
+        try:
+            with (
+                mock.patch.object(quant, "ak", object()),
+                mock.patch.object(
+                    quant.DataFetcher,
+                    "_fetch_eastmoney",
+                    side_effect=RuntimeError("provider unavailable"),
+                ) as eastmoney,
+                mock.patch.object(
+                    quant.DataFetcher,
+                    "_fetch_sina",
+                    return_value=raw,
+                ) as sina,
+                mock.patch.object(quant.DataFetcher, "_fetch_tencent") as tencent,
+            ):
+                frame = quant.DataFetcher.load_stock_data(
+                    "300308",
+                    "2026-01-02",
+                    "2026-01-05",
+                    data_dir=None,
+                )
+            eastmoney.assert_called_once()
+            sina.assert_called_once()
+            tencent.assert_not_called()
+            self.assertEqual(len(frame), 2)
+        finally:
+            quant.DataFetcher._cache_dir = previous_cache
 
     def test_eastmoney_provider_requests_forward_adjusted_akshare_data(self) -> None:
         provider = mock.Mock()
@@ -654,14 +710,14 @@ class CambriconArtifactTests(unittest.TestCase):
             {
                 "classification": "semiconductor",
                 "risk_group": "domestic_semiconductor",
-                "parameter_profile": "domestic_design",
+                "parameter_profile": "chip_design",
             },
         )
         expected = {
-            ("cold", "2026-06-30"): (11.87052989357125, -0.15889405827375366),
-            ("cold", "2026-07-20"): (11.87052989357125, -0.15889405827375366),
-            ("warm", "2026-06-30"): (11.4729571937435, -0.15426077361347657),
-            ("warm", "2026-07-20"): (11.4729571937435, -0.15426077361347657),
+            ("cold", "2026-06-30"): (11.869360365348875, -0.1600912542996164),
+            ("cold", "2026-07-20"): (11.869360365348875, -0.1600912542996164),
+            ("warm", "2026-06-30"): (12.26126676001925, -0.1544551360344086),
+            ("warm", "2026-07-20"): (12.26126676001925, -0.1544551360344086),
         }
         results = artifact["results"]
         self.assertEqual(len(results), len(expected))
@@ -671,7 +727,7 @@ class CambriconArtifactTests(unittest.TestCase):
                 expected_return, expected_drawdown = expected[key]
                 self.assertAlmostEqual(item["total_return"], expected_return)
                 self.assertAlmostEqual(item["max_drawdown"], expected_drawdown)
-                self.assertEqual(item["cambricon_parameter_route"], "domestic_design")
+                self.assertEqual(item["cambricon_parameter_route"], "chip_design")
                 self.assertEqual(item["guard_on_dates"], ["2026-06-26"])
                 self.assertFalse(item["terminal_risk_lock"])
 

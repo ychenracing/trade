@@ -29,13 +29,15 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 
 弱市策略使用 22% 灾难止损、5 ATR 初始止损、80 个交易日时间止损和盈利后 3 ATR 吊灯止损，同时启用 15% 回撤预警、20% 周期确认、23% 紧急回撤、26% 终身峰值回撤线和 12% 单日损失保护。风险订单在下一可交易开盘执行，跳空或连续跌停仍可能使实际损失超过阈值。
 
-穿越牛熊叠加层（`cross_market_overlay.py`）默认开启，是叠放在 ensemble 之上的 bull-silent 防御层：任何持仓自其峰值回撤超过 28% 即全额退出（灾变止损），并在触发后进入 10 个交易日冷却期；结构冲击快速降仓（`cm_overlay_shock_trim`）默认关闭，仅在显式开启时生效。干净牛市完全不被干预，因此 1、3、5、13 只股票池结果与纯 ensemble 完全一致；更大股票池若出现单票深跌，叠加层会封住该标的的最大损失并释放资金。
+穿越牛熊叠加层（`cross_market_overlay.py`）默认开启，是叠放在 ensemble 之上的 bull-silent 防御层：持仓采用分层保护止损（P0-1），灾变止损（自持仓峰值回撤超过 28%）始终待命；成本止损（低于成本 18%）、ATR 吊灯（6 ATR）和盈利分层保护在早期行业风险预警且账户整体偏离峰值（≥5%）时按各自阈值独立触发，任一已待命保护线被收盘价跌破即全额退出。触发后标的进入 10 个交易日冷却期，期内所有买入路径（三个趋势袖套、弱市、恢复、账户时点候选）都被阻断（P0-4）。结构冲击快速降仓（`cm_overlay_shock_trim`）默认关闭，仅在显式开启时生效。干净牛市（无风险预警、账户贴近峰值）只有灾变地板待命，因此 1、3、5、13 只股票池结果与纯 ensemble 完全一致；更大股票池若出现单票深跌，叠加层会封住该标的的最大损失并释放资金。
+
+子行业参数收缩（`subindustry_shrinkage`，默认 0.5 开启）：细分子行业参数画像（光模块、光器件、存储接口、芯片设计、设备、测试、材料、封装等）在解析时被拉向其粗粒度父画像，只对"允许细分"的参数（最大单票权重、ATR 倍数、风险预算）做小幅收缩，入场/出场周期、盈利保护、加仓与路由参数沿层级共享不收缩，从而降低薄样本过拟合，同时保留已验证的粗粒度趋势结构。
 
 ## 默认策略参数
 
 完整默认策略字段如下，具体默认值以 `_CoreBacktestEngine._default_config()` 为唯一事实来源：
 
-策略参数：`entry_period`、`exit_period`、`adx_threshold`、`adx_period`、`atr_period`、`rsi_period`、`ma_short`、`ma_long`、`atr_multiplier`、`trail_atr_mult`、`channel_mult`、`channel_lower_mult`、`risk_pct`、`hard_stop`、`strategy_weight`、`max_symbol_weight`、`max_total_weight`、`max_units`、`max_drawdown`、`daily_loss_limit`、`sector_guard_enabled`、`sector_guard_min_symbols`、`sector_shock_return`、`sector_shock_breadth`、`sector_shock_ma`、`sector_shock_window`、`sector_shock_confirmations`、`sector_recovery_ma`、`sector_recovery_breadth`、`sector_recovery_confirmations`、`symbol_level_sell_veto`、`momentum_lookback`、`max_positions`、`group_min_slots`、`fusion_single_scale`、`fusion_double_scale`、`fusion_triple_scale`、`profit_lock_activation`、`profit_lock_giveback`、`reversal_break_giveback`、`reversal_exit_period`、`reversal_loss_cut`、`reversal_turtle_enabled`、`reversal_dual_ma_enabled`、`reversal_atr_channel_enabled`、`combined_group_weight_limits`、`liquidate_on_circuit_breaker`、`strict_unmapped`、`commission_rate`、`stamp_duty`、`slippage`、`min_commission`、`max_pending_buy_days`、`pyramid_add_atr`、`pyramid_risk_decay`、`atr_method`、`limit_price_epsilon`、`per_symbol_limit_pct`、`st_symbols`、`risk_free_rate`、`market_regime_enabled`、`regime_ewi_lookback`、`regime_breadth_ma_long`、`regime_adx_trend`、`regime_adx_choppy`、`regime_hurst_window`、`regime_hurst_trend`、`regime_hurst_choppy`、`regime_vol_lookback`、`regime_vol_extreme_pct`、`regime_ewi_slope_trend`、`regime_ewi_slope_choppy`、`regime_score_trend`、`regime_score_choppy`、`regime_choppy_confirmations`、`regime_trend_confirmations`、`regime_recovery_confirmations`、`regime_min_state_hold`、`regime_transition_scale`、`regime_trend_to_transition_confirmations`、`regime_choppy_exit_ratio`、`regime_transition_exit_ratio`、`enable_cm_overlay`、`cm_overlay_shock_trim`。
+策略参数：`entry_period`、`exit_period`、`adx_threshold`、`adx_period`、`atr_period`、`rsi_period`、`ma_short`、`ma_long`、`atr_multiplier`、`trail_atr_mult`、`channel_mult`、`channel_lower_mult`、`risk_pct`、`hard_stop`、`strategy_weight`、`max_symbol_weight`、`max_total_weight`、`max_units`、`max_drawdown`、`daily_loss_limit`、`sector_guard_enabled`、`sector_guard_min_symbols`、`sector_shock_return`、`sector_shock_breadth`、`sector_shock_ma`、`sector_shock_window`、`sector_shock_confirmations`、`sector_recovery_ma`、`sector_recovery_breadth`、`sector_recovery_confirmations`、`symbol_level_sell_veto`、`momentum_lookback`、`max_positions`、`group_min_slots`、`fusion_single_scale`、`fusion_double_scale`、`fusion_triple_scale`、`profit_lock_activation`、`profit_lock_giveback`、`reversal_break_giveback`、`reversal_exit_period`、`reversal_loss_cut`、`reversal_turtle_enabled`、`reversal_dual_ma_enabled`、`reversal_atr_channel_enabled`、`combined_group_weight_limits`、`liquidate_on_circuit_breaker`、`strict_unmapped`、`commission_rate`、`stamp_duty`、`slippage`、`min_commission`、`max_pending_buy_days`、`pyramid_add_atr`、`pyramid_risk_decay`、`atr_method`、`limit_price_epsilon`、`per_symbol_limit_pct`、`st_symbols`、`risk_free_rate`、`market_regime_enabled`、`regime_ewi_lookback`、`regime_breadth_ma_long`、`regime_adx_trend`、`regime_adx_choppy`、`regime_hurst_window`、`regime_hurst_trend`、`regime_hurst_choppy`、`regime_vol_lookback`、`regime_vol_extreme_pct`、`regime_ewi_slope_trend`、`regime_ewi_slope_choppy`、`regime_score_trend`、`regime_score_choppy`、`regime_choppy_confirmations`、`regime_trend_confirmations`、`regime_recovery_confirmations`、`regime_min_state_hold`、`regime_transition_scale`、`regime_trend_to_transition_confirmations`、`regime_choppy_exit_ratio`、`regime_transition_exit_ratio`、`enable_cm_overlay`、`cm_overlay_shock_trim`、`sticky_candidates`、`subindustry_shrinkage`。
 
 ## 组合策略参数
 
@@ -72,12 +74,12 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 | 股票数量 | 总收益 | 最大回撤 | 交易次数 |
 |---:|---:|---:|---:|
 | 1 | 530.8950% | -18.3414% | 24 |
-| 3 | 1083.6973% | -17.9190% | 194 |
-| 5 | 1115.9924% | -15.8573% | 222 |
-| 13 | 1038.7405% | -18.4072% | 324 |
-| 22 | 1015.6439% | -16.4883% | 306 |
+| 3 | 1124.7964% | -17.1707% | 200 |
+| 5 | 1183.3466% | -16.2478% | 229 |
+| 13 | 1038.8287% | -18.6791% | 252 |
+| 22 | 1021.3383% | -17.6583% | 242 |
 
-上表为穿越牛熊叠加层默认开启（`enable_cm_overlay=True`）下的生产基线。叠加层在 1、3、5、13 只股票池全程零触发，与纯 ensemble 结果完全一致；在 22 只股票池触发一次灾变止损（`300604` 于 2025-11-21 自峰值回撤 29.34%），使收益由 983.57% 升至 1015.64%、交易次数由 244 增至 306，回撤由 -16.22% 略扩至 -16.49%。弱市风险行为本轮已改变，旧 `regime_validation_results.json` 只作为修改前对照，新的弱市统计必须重新运行 `python run_regime_validation.py --workers 4` 后发布。
+上表为穿越牛熊叠加层默认开启（`enable_cm_overlay=True`）下的生产基线，采用分层保护止损（P0-1）。叠加层在 1 只股票池全程零触发；3/5 只池于 2025-11-24 对 `300502` 触发灾变止损，13 只池于 2026-06-08 对 `688072` 触发盈利分层止损，22 只池触发两次分层止损（`688249`/`600206` 于 2025-11-21、`688249` 于 2026-03-23）。22 只池关闭叠加层时为 898.1569%、-17.2103%、259 笔。弱市风险行为本轮已改变，旧 `regime_validation_results.json` 只作为修改前对照，新的弱市统计必须重新运行 `python run_regime_validation.py --workers 4` 后发布。
 
 ## 优势
 

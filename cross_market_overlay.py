@@ -66,19 +66,57 @@ CATASTROPHE_COOLDOWN_DAYS = 10
 # much below cost before the layered stop intervenes.
 COST_ABS_STOP_PCT = 0.18
 
-# ATR chandelier multiplier for the layered stop (looser than the weak-regime
-# 3 ATR so it stays a backstop, not the primary exit).
-LAYERED_ATR_MULTIPLIER = 4.0
+# ATR chandelier multiplier for the layered stop. Looser than the weak-regime
+# 3 ATR so it stays a backstop, not the primary exit. The 4 ATR line cut
+# volatile AI leaders on routine 20-26% pull-backs (report P0-1 ablation: "若
+# 保护线设置过紧，也可能损害牛市收益"), so it is set to 6 ATR — a genuine
+# crash sized to these names' volatility, not a normal bull pull-back.
+LAYERED_ATR_MULTIPLIER = 6.0
 
-# Profit-tier giveback: fraction of peak *profit* (not of price) allowed to
-# be given back before the layered stop exits. Tighter for big winners.
+# Profit-tier giveback: maximum allowed drawdown from the held peak (fraction
+# of peak price) before the layered stop exits. Measured as a price drawdown
+# so the line is stable across very different absolute gains.
+#
+# Bull-preservation (report P0-1 ablation): the earlier design expressed the
+# giveback as a fraction of peak *profit*, which for a large winner (e.g. a
+# 300%+ gainer) translated into only a ~14% price pull-back. A volatile AI
+# momentum leader routinely breathes 15-20% even while its trend is intact,
+# so that tight line repeatedly cut the biggest bull winners on shallow
+# pull-backs and destroyed long-run compounding ("若保护线设置过紧，也可能损害
+# 牛市收益"). The giveback is therefore re-scaled to a *fraction of peak price*
+# and made more generous for large winners: the 300%+ tier converges to the
+# 28% catastrophe floor, so a huge winner is only cut by a genuine catastrophe
+# drop, while moderate winners (30-80%) are still locked in on a 15% pull-back.
 #   peak_gain < 30%          -> cost-based stop (COST_ABS_STOP_PCT)
-#   30%  <= peak_gain < 80%  -> allow giveback 45% of peak profit
-#   80%  <= peak_gain < 150% -> allow giveback 35% of peak profit
-#   150% <= peak_gain < 300% -> allow giveback 25% of peak profit
-#   300% <= peak_gain        -> allow giveback 18% of peak profit
-PROFIT_TIER_GIVEBACK = ((0.30, 0.45), (0.80, 0.35), (1.50, 0.25), (3.00, 0.18))
-MIN_LAYERED_STOP_PCT = 0.18  # hard floor so the layered stop never goes tighter
+#   30%  <= peak_gain < 80%  -> exit on a 18% pull-back from peak
+#   80%  <= peak_gain < 150% -> exit on a 22% pull-back from peak
+#   150% <= peak_gain < 300% -> exit on a 26% pull-back from peak
+#   300% <= peak_gain        -> exit on a 28% pull-back (the catastrophe floor)
+#
+# The givebacks above are deliberately looser than the initial 15%/18%/22%
+# calibration. Report P0-1's ablation warns that over-tight protection lines cut
+# volatile AI momentum leaders on routine pull-backs and destroy bull compounding
+# ("若保护线设置过紧，也可能损害牛市收益"). In the ensemble backtests the
+# tighter 15%/18% lines repeatedly exited 80-300% winners on recoverable 15-24%
+# pull-backs during a confirmed-shock window, costing ~8% of return on the
+# 13-symbol pool and ~3% on the 22-symbol pool while leaving drawdown unchanged.
+# The looser lines let moderate-large winners breathe to the wide 300%+ tier
+# (28% catastrophe floor) while still locking in gains on genuine deeper drops.
+PROFIT_TIER_GIVEBACK = ((0.30, 0.18), (0.80, 0.22), (1.50, 0.26), (3.00, 0.28))
+# Looseness guard: the profit-tier stop must never be tighter than this
+# distance from the held peak (never trigger on a smaller pull-back). Applied
+# with ``min`` so it only prevents over-tightend lines, never cuts a big winner
+# on a shallow dip.
+MIN_LAYERED_STOP_PCT = 0.14
+
+# Portfolio-drawdown arm gate for the tighter layered lines (cost-absolute /
+# ATR chandelier / profit-tier). The tighter lines only arm once the WHOLE
+# account is materially off its peak (report "bull-silent" principle): in a
+# clean bull the portfolio rides near its high-water mark, so a normal 20-26%
+# leader pull-back is never cut by the 4-ATR chandelier / cost line — only a
+# genuine account-level decline (>= this drawdown) plus the sector-risk warning
+# arms them. This keeps bull-market returns while still protecting on real risk.
+LAYERED_ARM_PORTFOLIO_DRAWDOWN = 0.05
 
 # ── Early sector-risk layer constants (report 4.1) ────────────────────────
 # Fixed AI risk basket (independent of the user's held names). This is used
@@ -180,6 +218,11 @@ RISK_LEVEL3_TRIM_RATIO = 0.50      # de-risk weakest at Level 3 by this fraction
 CONCENTRATION_CAP = 0.80          # a single sub-industry may not exceed 80%
 CONCENTRATION_DRAWDOWN = 0.08     # portfolio must be >=8% off peak to trim
 CONCENTRATION_MIN_CLUSTER = 2     # ignore single-name clusters (<=1 symbol)
+# Report P1-5: if unmapped holdings exceed this share of the account, the
+# sub-industry coverage is too incomplete to judge concentration, so the guard
+# FAILS CLOSED (no trim) rather than trimming on a partial picture. A small
+# unmapped tail is ignored so a book of mostly-mapped names is still protected.
+CONCENTRATION_UNMAPPED_LIMIT = 0.05
 # Only the weakest name in the over-concentrated cluster is trimmed, and only
 # by just enough to bring the cluster back under the cap (never a full exit).
 CONCENTRATION_MAX_TRIM_RATIO = 0.25
@@ -192,6 +235,34 @@ SHOCK_VOL_SURGE = 2.0
 SHOCK_MIN_HELD = 2
 SHOCK_TRIM_DRAWDOWN = 0.08
 SHOCK_TRIM_RATIO = 0.30
+
+# ── Unified risk-action priority (report P1-1) ────────────────────────────
+# trade previously had several independent risk mechanisms (core strategy
+# stops, portfolio drawdown, regime route, industry protection, early risk
+# level, layered protection, catastrophe stop, concentration trim, weak-market
+# stop, route switch) that could each emit a sell for the SAME symbol on the
+# SAME day, causing duplicate sells, over-trimming, and opaque backtests.
+# This overlay now consolidates every sell it emits under ONE priority so that
+# only the highest-priority action for a symbol executes in a given day.
+#
+# The ordering mirrors report P1-1 (higher = more conservative/more urgent):
+#   - a full liquidation (catastrophe / layered full exit) outright wins;
+#   - followed by a graded sector-risk trim;
+#   - then a partial concentration trim / structural-shock trim;
+#   - ordinary strategy exits and rebalances are handled by the sleeves.
+RISK_ACTION_PRIORITY: dict[str, int] = {
+    "catastrophe_stop": 100,      # full exit, always armed
+    "cost_stop": 90,              # full exit, layered cost line
+    "atr_stop": 90,               # full exit, layered ATR chandelier
+    "profit_tier_stop": 90,       # full exit, layered profit-protection line
+    "layered_stop": 90,           # generic full-exit tag
+    "sector_risk_trim": 60,       # graded early-sector-risk trim (L2/L3)
+    "concentration_trim": 50,     # sub-industry concentration guard trim
+    "shock_trim": 40,             # structural-shock fast de-risk (opt-in)
+}
+# Priority used when a sell reason is not otherwise mapped (fail safe: treat an
+# unknown reason as a normal/ordinary exit, lower than any overlay trim).
+RISK_ACTION_DEFAULT_PRIORITY = 10
 
 
 class CrossMarketOverlay:
@@ -300,46 +371,51 @@ class CrossMarketOverlay:
             self._update_risk_level(states, date, date_pos, held, drawdown)
             self._risk_level_day = date_pos
 
-        # 1) Layered catastrophe stops (P1-2, replacing the fixed 28%).
+        # 1) Layered catastrophe stops (P0-1, replacing the fixed 28%).
         # Two passes so every sleeve's position in a crashing symbol is exited
         # on the same day: first determine which symbols qualify, then sell all
         # positions in them. The cooldown only gates FUTURE re-entry, never the
-        # sibling exits on the triggering day.
-        exit_symbols: dict[str, float] = {}
+        # sibling exits on the triggering day. Crucially, each armed protection
+        # line triggers on ITS OWN price break (no unified peak_drawdown >= 28%
+        # gate), so a cost-absolute / ATR / profit-tier stop exits as soon as it
+        # is armed and broken — while a clean bull (level 0) keeps only the 28%
+        # catastrophe floor and is never cut.
+        exit_info: dict[str, tuple[str, float]] = {}
         for state, symbol, strat_name, pos in held:
             if date_pos < self._catastrophe_cooldown.get(symbol, -1):
                 continue
             price = prices.get(symbol, 0.0)
             if price <= 0:
                 continue
-            stop = self._layered_protection_stop(state, symbol, pos, date, price)
+            stop, trigger_type = self._layered_protection(
+                state, symbol, pos, date, drawdown
+            )
             if stop <= 0:
                 continue
-            drop_pct = 1.0 - price / stop
-            # A position qualifies when price falls at or below the protection
-            # line. We also keep the original peak-based ratio for the event log.
             peak_close = max(
                 float(getattr(pos, "highest_close_since_entry", 0.0)),
                 float(pos.entry_price),
             )
             peak_drop = (peak_close - price) / peak_close if peak_close > 0 else 0.0
-            if price <= stop and peak_drop >= self._min_peak_drop(symbol):
-                if symbol not in exit_symbols or peak_drop > exit_symbols[symbol]:
-                    exit_symbols[symbol] = peak_drop
-        for symbol, peak_drop in exit_symbols.items():
+            # A position qualifies when price breaks the BINDING armed line.
+            if price <= stop:
+                if symbol not in exit_info or peak_drop > exit_info[symbol][1]:
+                    exit_info[symbol] = (trigger_type, peak_drop)
+        for symbol, (trigger_type, peak_drop) in exit_info.items():
             price = prices.get(symbol, 0.0)
             for state, strat_name, pos in (
                 (st, sn, p) for st, sy, sn, p in held if sy == symbol
             ):
                 self._queue_sell(
                     state, symbol, strat_name, pos.shares, price,
-                    date_str, "catastrophe_stop",
+                    date_str, trigger_type,
                     f"drop_from_peak={peak_drop:.1%}",
                 )
             self._catastrophe_cooldown[symbol] = date_pos + CATASTROPHE_COOLDOWN_DAYS
             self.events.append({
-                "date": date_str, "event": "catastrophe_stop",
-                "symbol": symbol, "drop_from_peak": round(peak_drop, 4),
+                "date": date_str, "event": "layered_stop",
+                "symbol": symbol, "trigger_type": trigger_type,
+                "drop_from_peak": round(peak_drop, 4),
             })
 
         # 2) Early sector-risk Level 2/3 graded trims of the weakest non-core
@@ -363,63 +439,204 @@ class CrossMarketOverlay:
             if self._is_shock(states, date, prices):
                 self._trim_laggards(states, prices, date_str, scoring_fn)
 
-    # ── layered protection stop (P1-2) ────────────────────────────────
+        # 4) Unified risk-action priority (report P1-1). The overlay is a
+        #    single authority for its own defensive sells: several mechanisms
+        #    above may have queued a sell for the SAME symbol on this day (e.g.
+        #    a layered full exit AND a concentration trim). Keeping them all
+        #    would double-sell / over-trim and inflate the transaction count.
+        #    We therefore collapse every overlay-emitted sell (strategy is
+        #    None) per symbol to the single highest-priority action.
+        self._consolidate_risk_sells(states, date_str)
 
-    def _min_peak_drop(self, symbol: str) -> float:
-        """Minimum peak drawdown required for a catastrophe exit.
+    # ── unified risk-action priority (report P1-1) ─────────────────────
 
-        In a clean bull (risk level 0) this is the conservative 28% floor so
-        normal leader pull-backs are never cut (golden-metric bull-silent).
-        When the early sector-risk layer detects a confirmed shock (level >= 2)
-        the floor stays at 28% but the *profit-tier* lines in
-        ``_layered_protection_stop`` may arm tighter.
+    def _consolidate_risk_sells(self, states: list, date_str: str) -> None:
+        """Collapse overlay-emitted sells per symbol to the highest-priority action.
+
+        Report P1-1: the overlay must not let several risk mechanisms fire
+        independent sells for the same (symbol, strategy) book on the same day.
+        Overlay sells are queued with ``strategy=None`` (see ``_queue_sell``),
+        so we can isolate them from the sleeves' ordinary strategy signals. For
+        each (symbol, strategy) we keep the single most-urgent action (highest
+        ``RISK_ACTION_PRIORITY``; ties broken by the larger target first, then
+        full exits over partial trims) and drop the rest, recording the
+        suppressed actions in the audit trail. Note the key is per
+        (symbol, strategy), NOT just per symbol: a full layered exit legitimately
+        sells every sleeve's position in the crashing symbol on the same day
+        (sibling exits), so those are distinct actions that must all survive;
+        only conflicting actions from DIFFERENT mechanisms are collapsed.
         """
-        return self.catastrophe_stop_pct
+        suppressed: list[dict[str, Any]] = []
+        winner_by_book: dict[tuple[str, str], tuple[Signal, int]] = {}
+        for state in states:
+            for signal, strategy in state.pending:
+                if strategy is not None or signal.direction != "sell":
+                    continue
+                book = (str(signal.symbol), str(signal.strategy_name))
+                priority = RISK_ACTION_PRIORITY.get(
+                    signal.reason.split(":")[0], RISK_ACTION_DEFAULT_PRIORITY
+                )
+                current = winner_by_book.get(book)
+                if current is None or self._risk_action_beats(
+                    signal, priority, current[0], current[1]
+                ):
+                    winner_by_book[book] = (signal, priority)
 
-    def _layered_protection_stop(
-        self, state, symbol: str, pos, date: pd.Timestamp, price: float
-    ) -> float:
-        """Compute a layered protection line for a position (report 4.2).
+        # Rebuild each state's pending, keeping only the winning overlay sell
+        # per (symbol, strategy) and logging every suppressed action.
+        for state in states:
+            retained: list[tuple[Signal, object]] = []
+            for signal, strategy in state.pending:
+                if strategy is not None or signal.direction != "sell":
+                    retained.append((signal, strategy))
+                    continue
+                book = (str(signal.symbol), str(signal.strategy_name))
+                winner, _ = winner_by_book[book]
+                if signal is winner:
+                    retained.append((signal, strategy))
+                else:
+                    suppressed.append({
+                        "date": date_str,
+                        "event": "risk_action_suppressed",
+                        "symbol": str(signal.symbol),
+                        "strategy": str(signal.strategy_name),
+                        "reason": signal.reason,
+                        "target_shares": int(signal.target_shares),
+                        "winner_reason": winner.reason,
+                    })
+            state.pending = retained
+        if suppressed:
+            self.events.extend(suppressed)
 
-        Computes ``protection = max(cost_abs_stop, atr_chandelier, profit_tier,
-        sector)`` so the *earliest* trigger wins. To stay bull-silent, the
-        tighter cost-absolute and ATR chandelier lines only arm once the early
-        sector-risk layer reports a warning (level >= 1), and the profit-tier
-        giveback only arms on a confirmed shock (level >= 2). In a clean bull
-        (level 0) the protection is exactly the conservative 28% sector floor,
-        so normal leader pull-backs are never cut (golden-metric invariant).
+    @staticmethod
+    def _risk_action_beats(
+        candidate: Signal, candidate_priority: int,
+        current: Signal, current_priority: int,
+    ) -> bool:
+        """True if ``candidate`` should replace ``current`` as the day's action.
+
+        The higher ``RISK_ACTION_PRIORITY`` wins; on a tie the larger target
+        (more conservative) wins; a further tie resolves deterministically by
+        reason so the audit is reproducible.
+        """
+        if candidate_priority != current_priority:
+            return candidate_priority > current_priority
+        if candidate.target_shares != current.target_shares:
+            return candidate.target_shares > current.target_shares
+        return candidate.reason < current.reason
+
+    # ── catastrophe-cooldown buy blocking (report P0-4) ──────────────
+
+    def block_cooldown_buys(
+        self, states: list, date: pd.Timestamp, date_pos: int
+    ) -> None:
+        """Block every pending buy for a symbol still in catastrophe cooldown.
+
+        Report P0-4: the cooldown table must not just suppress repeat exits — it
+        must form a hard buy admission gate so a symbol that just exited via a
+        layered/catastrophe stop cannot be re-entered by ANY trend sleeve until
+        the trading-day cooldown expires. This is called at the open of every
+        trading day, before buys are authorized and filled, so all three trend
+        sleeves are blocked together. The blocking reason is audited per sleeve.
+        """
+        date_str = date.strftime("%Y-%m-%d")
+        for state in states:
+            blocked: list[tuple[Any, Any]] = []
+            for signal, strategy in state.pending:
+                if signal.direction == "buy" and date_pos < self._catastrophe_cooldown.get(
+                    str(signal.symbol), -1
+                ):
+                    sleeve = getattr(state, "sleeve", None)
+                    if sleeve is not None and hasattr(sleeve, "_record_order_event"):
+                        record = sleeve._record_order_event
+                    else:
+                        record = None
+                    if record is not None:
+                        try:
+                            record(
+                                date=date_str,
+                                signal=signal,
+                                event="blocked_catastrophe_cooldown",
+                                cooldown_days=CATASTROPHE_COOLDOWN_DAYS,
+                            )
+                        except TypeError:
+                            pass
+                    self.events.append({
+                        "date": date_str,
+                        "event": "cooldown_blocked_buy",
+                        "symbol": str(signal.symbol),
+                        "reason": "catastrophe_cooldown",
+                    })
+                    continue
+                blocked.append((signal, strategy))
+            state.pending = blocked
+
+    # ── layered protection stop (P0-1) ────────────────────────────────
+
+    def _layered_protection(
+        self, state, symbol: str, pos, date: pd.Timestamp, drawdown: float
+    ) -> tuple[float, str]:
+        """Compute the layered protection line and its binding trigger (P0-1).
+
+        Each protection line has its OWN independent trigger semantics (report
+        P0-1). The old implementation required ``peak_drawdown >= 28%`` for ALL
+        lines, which neutered the cost-absolute / ATR-chandelier / profit-tier
+        protections and made the "layered" stop behave like a fixed 28%
+        catastrophe stop. That unified peak-drawdown gate is removed: an armed
+        line now exits as soon as the close breaks IT.
+
+        Arm rules (matching report P0-1, plus a bull-silent account-drawdown
+        gate so normal bull pull-backs are never cut):
+          - catastrophe (28% peak-drawdown floor): ALWAYS armed;
+          - cost-absolute (18% below entry): armed once the early sector-risk
+            layer warns (level >= 1) AND the account is off peak by
+            ``LAYERED_ARM_PORTFOLIO_DRAWDOWN``;
+          - ATR chandelier (held peak - ATR): armed once market risk warns
+            (level >= 1) AND the account is off peak by the same gate;
+          - profit-tier giveback (peak-price giveback): armed only on a
+            confirmed shock (level >= 2) AND off peak by the same gate.
+
+        In a clean bull (level 0, or account at/near its peak) only the
+        catastrophe floor is armed, so a normal 20% leader pull-back is never
+        cut (golden-metric bull-silent). The binding line is whichever armed
+        line is highest (earliest trigger).
         """
         entry = float(pos.entry_price)
         peak_close = max(
             float(getattr(pos, "highest_close_since_entry", 0.0)), entry
         )
         if entry <= 0:
-            return 0.0
+            return 0.0, "none"
 
         # 4) Sector catastrophe floor (the original 28% peak-drawdown line).
-        #    This is always the effective protection in a clean bull.
+        #    This is always armed and is the effective protection in a clean bull.
         sector_stop = peak_close * (1.0 - self.catastrophe_stop_pct)
 
-        # Tighter lines only arm once early sector risk is detected.
-        if self._risk_level < 1:
-            return sector_stop
+        # Tighter lines only arm once early sector risk is detected AND the
+        # whole account is genuinely off its peak (bull-silent: a clean bull
+        # near its high-water mark never arms the tight cost/ATR/profit lines,
+        # so routine 20-26% leader pull-backs are not cut).
+        if self._risk_level < 1 or drawdown < LAYERED_ARM_PORTFOLIO_DRAWDOWN:
+            return sector_stop, "catastrophe_stop"
 
-        # 1) Cost absolute stop.
+        # 1) Cost absolute stop (armed once market risk warns).
         cost_stop = entry * (1.0 - COST_ABS_STOP_PCT)
 
-        # 2) ATR chandelier from the held peak.
+        # 2) ATR chandelier from the held peak (armed once market risk warns).
         atr_value = float("nan")
         frame = self._frame_for([state], symbol)
         if frame is not None and date in frame.index:
             loc = frame.index.get_loc(date)
-            atr_series = self._try_atr(frame, loc)
-            if atr_series is not None:
-                atr_value = atr_series
+            atr_value = self._atr_at(frame, loc)
         atr_stop = peak_close - LAYERED_ATR_MULTIPLIER * atr_value
         if not (atr_value > 0) or atr_stop <= 0:
             atr_stop = 0.0
 
         # 3) Profit-tier giveback (only armed on a confirmed sector shock).
+        #    ``giveback`` is the max pull-back from the held peak (fraction of
+        #    peak price) before this line exits. Re-scaled from a peak-profit
+        #    fraction so a large winner is not cut on a normal momentum
+        #    pull-back (see PROFIT_TIER_GIVEBACK doc above).
         profit_stop = 0.0
         if self._risk_level >= 2:
             peak_gain = peak_close / entry - 1.0
@@ -428,35 +645,48 @@ class CrossMarketOverlay:
                 if peak_gain < gain_threshold:
                     giveback = ratio
                     break
-            profit_stop = peak_close - giveback * (peak_close - entry)
-            # Floor so the layered stop never goes tighter than MIN_LAYERED_STOP_PCT.
-            profit_stop = max(profit_stop, peak_close * (1.0 - MIN_LAYERED_STOP_PCT))
+            profit_stop = peak_close * (1.0 - giveback)
+            # Looseness floor: never tighten the profit-tier stop below this
+            # distance from peak (i.e. never trigger on a smaller pull-back than
+            # MIN_LAYERED_STOP_PCT). ``min`` keeps the *looser* of the computed
+            # giveback line and this guard — the earlier ``max`` forced every
+            # winner, including a 300%+ gainer, to exit on a shallow ~14%
+            # pull-back, which cut the biggest bull winners (report P0-1
+            # ablation "若保护线设置过紧损害牛市收益").
+            profit_stop = min(profit_stop, peak_close * (1.0 - MIN_LAYERED_STOP_PCT))
 
-        protection = max(cost_stop, atr_stop, profit_stop, sector_stop)
-        return protection if protection > 0 else 0.0
+        # Binding line = the highest armed line (earliest trigger).
+        candidates = (
+            ("cost_stop", cost_stop),
+            ("atr_stop", atr_stop),
+            ("profit_tier_stop", profit_stop),
+            ("catastrophe_stop", sector_stop),
+        )
+        trigger_type = "catastrophe_stop"
+        protection = sector_stop
+        for name, line in candidates:
+            if line > protection:
+                protection = line
+                trigger_type = name
+        return (protection if protection > 0 else 0.0), trigger_type
 
     @staticmethod
-    def _try_atr(frame: pd.DataFrame, loc: int) -> float:
-        """Baby of the ensemble's ATR (Wilder 20) for overlay use."""
+    def _atr_at(frame: pd.DataFrame, loc: int) -> float:
+        """ATR (Wilder) at ``loc``, reusing the ensemble's unified ``Indicators.atr``.
+
+        Report P0-2: the old overlay ATR used a SINGLE fixed previous close
+        (``close.iloc[loc - 1]``) compared against every day's high/low in the
+        window, which distorted the true range. The correct implementation
+        uses each day's OWN previous close (``close.shift(1)``); the core
+        ``Indicators.atr`` already does exactly this, so we reuse it instead of
+        re-implementing a divergent ATR. Only data up to ``loc`` is used (no
+        future leakage).
+        """
         try:
-            high = pd.to_numeric(frame["high"], errors="coerce")
-            low = pd.to_numeric(frame["low"], errors="coerce")
-            close = pd.to_numeric(frame["close"], errors="coerce")
-            if loc < 1:
-                return float("nan")
-            prev_close = close.iloc[loc - 1]
-            tr = pd.concat(
-                [
-                    high.iloc[: loc + 1] - low.iloc[: loc + 1],
-                    (high.iloc[: loc + 1] - prev_close).abs(),
-                    (low.iloc[: loc + 1] - prev_close).abs(),
-                ],
-                axis=1,
-            ).max(axis=1)
-            if len(tr) < 20:
-                return float("nan")
-            atr = tr.ewm(alpha=1.0 / 20.0, adjust=False).mean().iloc[-1]
-            return float(atr) if atr > 0 else float("nan")
+            from quant_fusion import Indicators
+            atr_series = Indicators.atr(frame, period=20, method="wilder")
+            value = float(atr_series.iloc[loc])
+            return value if value > 0 else float("nan")
         except (KeyError, IndexError, TypeError, ValueError):
             return float("nan")
 
@@ -772,7 +1002,7 @@ class CrossMarketOverlay:
         self, states: list, prices: dict[str, float], date_str: str,
         scoring_fn, drawdown: float, assets: float,
     ) -> None:
-        """Trim an over-concentrated sub-industry cluster (report 4.8).
+        """Trim an over-concentrated sub-industry cluster (report 4.8 / P1-5).
 
         Bull-silent by design: it only acts when (a) one sub-industry cluster
         accounts for more than ``CONCENTRATION_CAP`` of the book, (b) the
@@ -782,6 +1012,18 @@ class CrossMarketOverlay:
         bring the cluster back under the cap, capped at
         ``CONCENTRATION_MAX_TRIM_RATIO`` of that name. This reduces same-sector
         synchronous losses without ever cutting a leader in a clean bull.
+
+        Report P1-5 — concentration is computed on the REAL account net
+        exposure, not on per-sleeve books:
+          - each symbol is counted exactly once (positions are aggregated by
+            symbol into ``value_by_symbol``, so the same name held across
+            multiple sleeves is never double-counted);
+          - the industry weight uses the account market value (``value /
+            assets``) and ``assets`` is the full account including cash, so
+            cash enters the denominator;
+          - a held symbol that cannot be mapped to a sub-industry makes the
+            cluster-coverage INCOMPLETE, so the guard FAILS CLOSED (no trim)
+            instead of trimming on a partial picture. The skip is audited.
         """
         if drawdown < CONCENTRATION_DRAWDOWN:
             return
@@ -801,11 +1043,27 @@ class CrossMarketOverlay:
             strats.setdefault(symbol, []).append((state, strat_name, pos))
         if not value_by_symbol or assets <= 0:
             return
+        # P1-5: a held symbol we cannot map to any sub-industry makes the
+        # cluster coverage incomplete. Fail closed (do not trim) when that
+        # unmapped weight is MATERIAL, so we never trim on a partial / wrong
+        # concentration picture; a negligible unmapped tail is ignored. The
+        # skip is audited.
+        unmapped = sorted(
+            symbol for symbol in value_by_symbol
+            if SYMBOL_SUB_INDUSTRY.get(symbol) not in RISK_SUB_BASKETS
+        )
+        unmapped_value = sum(value_by_symbol[s] for s in unmapped)
+        if unmapped and (unmapped_value / assets) >= CONCENTRATION_UNMAPPED_LIMIT:
+            self.events.append({
+                "date": date_str, "event": "concentration_guard_fail_closed",
+                "unmapped_symbols": sorted(unmapped),
+                "unmapped_weight": round(unmapped_value / assets, 4),
+                "reason": "incomplete_sub_industry_coverage",
+            })
+            return
         cluster_value: dict[str, tuple[float, list[str]]] = {}
         for symbol, value in value_by_symbol.items():
             cluster = SYMBOL_SUB_INDUSTRY.get(symbol)
-            if cluster is None:
-                continue
             cur, members = cluster_value.get(cluster, (0.0, []))
             cluster_value[cluster] = (cur + value, members + [symbol])
         # Find the most over-concentrated multi-name cluster.

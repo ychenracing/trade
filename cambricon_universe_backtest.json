@@ -18,84 +18,84 @@
   "cambricon_mapping": {
     "classification": "semiconductor",
     "risk_group": "domestic_semiconductor",
-    "parameter_profile": "domestic_design"
+    "parameter_profile": "chip_design"
   },
   "results": [
     {
       "indicator_state": "cold",
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
-      "final_assets": 25741059.7871425,
-      "total_return": 11.87052989357125,
-      "annual_return": 7.4311809420907675,
-      "max_drawdown": -0.15889405827375366,
-      "sharpe": 3.8995587690418403,
-      "calmar": 46.768148682361776,
-      "total_trades": 225,
+      "final_assets": 25738720.73069775,
+      "total_return": 11.869360365348875,
+      "annual_return": 7.430541649673282,
+      "max_drawdown": -0.1600912542996164,
+      "sharpe": 3.9212020050330483,
+      "calmar": 46.41441334307221,
+      "total_trades": 200,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false,
       "cycle_lock_count": 0,
       "guard_on_dates": [
         "2026-06-26"
       ],
-      "cambricon_parameter_route": "domestic_design"
+      "cambricon_parameter_route": "chip_design"
     },
     {
       "indicator_state": "cold",
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
-      "final_assets": 25741059.7871425,
-      "total_return": 11.87052989357125,
-      "annual_return": 6.671283577770876,
-      "max_drawdown": -0.15889405827375366,
-      "sharpe": 3.8070806538426716,
-      "calmar": 41.985733451889864,
-      "total_trades": 225,
+      "final_assets": 25738720.73069775,
+      "total_return": 11.869360365348875,
+      "annual_return": 6.670727673807208,
+      "max_drawdown": -0.1600912542996164,
+      "sharpe": 3.8281534429156463,
+      "calmar": 41.668282898969025,
+      "total_trades": 200,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false,
       "cycle_lock_count": 0,
       "guard_on_dates": [
         "2026-06-26"
       ],
-      "cambricon_parameter_route": "domestic_design"
+      "cambricon_parameter_route": "chip_design"
     },
     {
       "indicator_state": "warm",
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
-      "final_assets": 24945914.387487,
-      "total_return": 11.4729571937435,
-      "annual_return": 7.213297219477138,
-      "max_drawdown": -0.15426077361347657,
-      "sharpe": 3.883785880528925,
-      "calmar": 46.760411286093586,
-      "total_trades": 277,
+      "final_assets": 26522533.5200385,
+      "total_return": 12.26126676001925,
+      "annual_return": 7.6442350143981574,
+      "max_drawdown": -0.1544551360344086,
+      "sharpe": 4.010515559813542,
+      "calmar": 49.49162074283642,
+      "total_trades": 263,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false,
       "cycle_lock_count": 0,
       "guard_on_dates": [
         "2026-06-26"
       ],
-      "cambricon_parameter_route": "domestic_design"
+      "cambricon_parameter_route": "chip_design"
     },
     {
       "indicator_state": "warm",
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
-      "final_assets": 24945914.387487,
-      "total_return": 11.4729571937435,
-      "annual_return": 6.4817111874916975,
-      "max_drawdown": -0.15426077361347657,
-      "sharpe": 3.7917228950778203,
-      "calmar": 42.01788332614352,
-      "total_trades": 277,
+      "final_assets": 26522533.5200385,
+      "total_return": 12.26126676001925,
+      "annual_return": 6.85644404383474,
+      "max_drawdown": -0.1544551360344086,
+      "sharpe": 3.915102904346371,
+      "calmar": 44.39116898195798,
+      "total_trades": 263,
       "max_concurrent_symbols": 6,
       "terminal_risk_lock": false,
       "cycle_lock_count": 0,
       "guard_on_dates": [
         "2026-06-26"
       ],
-      "cambricon_parameter_route": "domestic_design"
+      "cambricon_parameter_route": "chip_design"
     }
   ]
 }

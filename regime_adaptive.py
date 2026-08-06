@@ -23,6 +23,16 @@ REGIME_INDEX_FILES = {"broad": "000300", "technology": "000682"}
 LEADER_LOOKBACK = 240
 MAX_LEADERS = 3
 MAX_SYMBOL_WEIGHT = 0.59
+# ── Mature / emerging dual-channel leader qualification (report P0-5) ──
+# A "mature" leader needs the full 240-day history and positive 240-day
+# momentum. A "emerging" leader has only a short history (>= 61 days) but shows
+# short-horizon momentum + breakout / volume expansion; it is NOT forced to meet
+# the 240-day gate that previously blocked every genuinely new leader.
+EMERGING_MIN_DAYS = 61
+# At most this many emerging-only (short-history) leaders may be selected in one
+# cycle, so immature names never crowd out the mature core (report P0-5 "新兴
+# 龙头最多10%~30% / 每个周期最多新增1只").
+MAX_EMERGING_LEADERS = 1
 PROFIT_ACTIVATION = 0.30
 TRAILING_ATR_MULTIPLIER = 3.0
 WEAK_ENTRY_ATR_MULTIPLIER = 5.0
@@ -200,47 +210,68 @@ def simulate_route_sequence(
         any_trending = any(trending_flags)
 
         hold_days += 1
-        if current_state in (RegimeRoute.TREND, RegimeRoute.TRANSITION_TO_TREND):
+        # Explicit state-transition table (report P0-3). The direction of every
+        # transition is now correct: a TRANSITION_TO_WEAK confirms WEAK only on
+        # SUSTAINED weakness (`not any_trending`), never on trend repair; CASH
+        # recovers to TRANSITION_TO_TREND (or a WEAK observation state) on
+        # recovery, and never drifts to "转弱" because an index turned strong.
+        # A clean bull stays in TREND; a confirmed deterioration drifts toward
+        # WEAK; recovery re-enters TREND through TRANSITION_TO_TREND.
+        if current_state is RegimeRoute.TREND:
             # Deterioration: at least one index breaks its medium-term
-            # (MA60>MA120) trend -> drift toward weak.
-            if not both_trending:
-                if current_state == RegimeRoute.TREND:
-                    if hold_days >= ROUTE_MIN_HOLD_DAYS:
-                        current_state = RegimeRoute.TRANSITION_TO_WEAK
-                        confirm_count = 1
-                        hold_days = 0
-                else:  # TRANSITION_TO_TREND rolling back (never same-day flip)
-                    current_state = RegimeRoute.TRANSITION_TO_WEAK
-                    confirm_count = 1
-                    hold_days = 0
-            else:
-                if current_state == RegimeRoute.TRANSITION_TO_TREND:
-                    confirm_count += 1
-                    if confirm_count >= ROUTE_CONFIRM_DAYS:
-                        current_state = RegimeRoute.TREND
-                        confirm_count = 0
-        elif current_state in (RegimeRoute.WEAK, RegimeRoute.TRANSITION_TO_WEAK):
-            # Repair: both indices back to a medium-term uptrend.
-            if both_trending:
-                if current_state == RegimeRoute.WEAK:
-                    if hold_days >= ROUTE_MIN_HOLD_DAYS:
-                        current_state = RegimeRoute.TRANSITION_TO_TREND
-                        confirm_count = 1
-                        hold_days = 0
-                else:  # TRANSITION_TO_WEAK
-                    confirm_count += 1
-                    if confirm_count >= ROUTE_CONFIRM_DAYS:
-                        current_state = RegimeRoute.WEAK
-                        confirm_count = 0
-            elif not any_trending and hold_days >= ROUTE_MIN_HOLD_DAYS:
-                # Deep confirmed weakness keeps WEAK (risk route stays).
-                pass
-        # CASH only recovers to WEAK once any trend returns.
-        elif current_state == RegimeRoute.CASH:
-            if any_trending and hold_days >= ROUTE_MIN_HOLD_DAYS:
+            # (MA60>MA120) trend -> drift toward weak (after a minimum hold).
+            if not both_trending and hold_days >= ROUTE_MIN_HOLD_DAYS:
                 current_state = RegimeRoute.TRANSITION_TO_WEAK
                 confirm_count = 1
                 hold_days = 0
+        elif current_state is RegimeRoute.TRANSITION_TO_WEAK:
+            if both_trending:
+                # Indices recovered to a full uptrend -> back to TREND (never
+                # confirm the weak transition with a trend REPAIR).
+                current_state = RegimeRoute.TREND
+                confirm_count = 0
+                hold_days = 0
+            elif not any_trending:
+                # Sustained weakness -> confirm the weak transition.
+                confirm_count += 1
+                if confirm_count >= ROUTE_CONFIRM_DAYS:
+                    current_state = RegimeRoute.WEAK
+                    confirm_count = 0
+                    hold_days = 0
+            # else: mixed evidence -> stay in the transition (no flip).
+        elif current_state is RegimeRoute.WEAK:
+            # Both indices sustained an uptrend -> begin recovering to trend.
+            if both_trending and hold_days >= ROUTE_MIN_HOLD_DAYS:
+                current_state = RegimeRoute.TRANSITION_TO_TREND
+                confirm_count = 1
+                hold_days = 0
+            # else: sustained weakness -> stay WEAK (risk route remains).
+        elif current_state is RegimeRoute.TRANSITION_TO_TREND:
+            if both_trending:
+                confirm_count += 1
+                if confirm_count >= ROUTE_CONFIRM_DAYS:
+                    current_state = RegimeRoute.TREND
+                    confirm_count = 0
+                    hold_days = 0
+            elif not both_trending:
+                # Repair failed and deteriorated again -> back to WEAK.
+                current_state = RegimeRoute.WEAK
+                confirm_count = 0
+                hold_days = 0
+        elif current_state is RegimeRoute.CASH:
+            if both_trending:
+                if hold_days >= ROUTE_MIN_HOLD_DAYS:
+                    current_state = RegimeRoute.TRANSITION_TO_TREND
+                    confirm_count = 1
+                    hold_days = 0
+            elif any_trending:
+                # Partial recovery -> enter a WEAK observation state (NOT a
+                # "转弱" transition) so we hold cash-ish until a full recovery.
+                if hold_days >= ROUTE_MIN_HOLD_DAYS:
+                    current_state = RegimeRoute.WEAK
+                    confirm_count = 0
+                    hold_days = 0
+            # else: no recovery -> stay CASH.
         steps.append(DailyRouteStep(date.strftime("%Y-%m-%d"), current_state.value))
     return tuple(steps)
 
@@ -409,21 +440,32 @@ def select_positive_momentum_leaders(
             ).dropna()
         except (OSError, RuntimeError, ValueError):
             continue
-        if len(closes) < LEADER_LOOKBACK + 1:
+        # Report P0-5: a symbol only needs the SHORT emerging-window history to
+        # be considered (the old hard `len(closes) < LEADER_LOOKBACK + 1`
+        # continue blocked every genuinely new leader). A mature channel still
+        # requires the full 240-day history and positive 240-day momentum; an
+        # emerging channel requires only short-horizon momentum + breakout.
+        if len(closes) < EMERGING_MIN_DAYS:
             continue
         observed_date = _normalized_timestamp(str(closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
             continue
         observed_codes.add(code)
         close = float(closes.iloc[-1])
-        momentum_240 = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
-        if not (math.isfinite(momentum_240) and momentum_240 > 0):
-            continue
 
-        # Multi-factor weak-market scoring (report 4.5: mature + emerging dual
-        # channel). Both channels are scored against a FIXED AI reference pool
-        # (not the caller's pool) so adding/removing a symbol never changes an
-        # unchanged symbol's score.
+        # Mature-channel gate: needs the full 240-day history and positive
+        # long-horizon momentum. Symbols that fail this gate are STILL eligible
+        # for the emerging channel (report P0-5).
+        has_mature_history = len(closes) >= LEADER_LOOKBACK + 1
+        momentum_240 = 0.0
+        if has_mature_history:
+            momentum_240 = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
+        is_mature = has_mature_history and math.isfinite(momentum_240) and momentum_240 > 0
+
+        # Multi-factor scoring (report 4.5: mature + emerging dual channel).
+        # Both channels are scored against a FIXED AI reference pool (not the
+        # caller's pool) so adding/removing a symbol never changes an unchanged
+        # symbol's score.
         # 60-day momentum
         if len(closes) >= 61:
             momentum_60 = float(closes.iloc[-1] / closes.iloc[-61] - 1.0)
@@ -435,6 +477,22 @@ def select_positive_momentum_leaders(
             momentum_20 = float(closes.iloc[-1] / closes.iloc[-21] - 1.0)
         else:
             momentum_20 = 0.0
+
+        # Emerging-channel gate: short history + positive short-horizon momentum
+        # + a real breakout setup (price near its 20-day high). This replaces the
+        # old 240-day requirement for NEW leaders (report P0-5).
+        if len(closes) >= 20:
+            high20 = float(closes.iloc[-20:].max())
+            breakout_quality = close / high20 if high20 > 0 else 0.0
+        else:
+            breakout_quality = 0.0
+        is_emerging = (
+            math.isfinite(momentum_60) and momentum_60 > 0
+            and math.isfinite(momentum_20) and momentum_20 > 0
+            and breakout_quality >= 0.90
+        )
+        if not (is_mature or is_emerging):
+            continue
 
         # Relative strength vs reference basket (120-day): compare the
         # symbol's own 120-day return against the basket's 120-day return.
@@ -460,13 +518,6 @@ def select_positive_momentum_leaders(
         else:
             trend_repair = 0.0
 
-        # Breakout quality: how close the close is to its 20-day high.
-        if len(closes) >= 20:
-            high20 = float(closes.iloc[-20:].max())
-            breakout_quality = close / high20 if high20 > 0 else 0.0
-        else:
-            breakout_quality = 0.0
-
         # Volume expansion over 20 days (from the raw frame, if available).
         volume_expansion = 0.0
         if "volume" in frame.columns and len(frame) >= 21:
@@ -478,7 +529,7 @@ def select_positive_momentum_leaders(
         # Mature-leader channel: long-horizon strength + relative strength +
         # resilience + trend repair (report 4.5).
         mature_score = (
-            0.25 * momentum_240
+            0.25 * max(0.0, momentum_240)
             + 0.25 * max(0.0, rs_120)
             + 0.20 * momentum_60
             + 0.15 * resilience
@@ -486,7 +537,7 @@ def select_positive_momentum_leaders(
         )
         # Emerging-leader channel: short-horizon momentum + breakout quality +
         # volume expansion + trend repair, so new market leaders are captured
-        # even when they have no long 240-day history (report 4.5).
+        # even when they have no long 240-day history (report 4.5/P0-5).
         emerging_score = (
             0.30 * momentum_60
             + 0.25 * momentum_20
@@ -498,8 +549,27 @@ def select_positive_momentum_leaders(
         # leader (positive 60-day momentum) still rise to the top.
         weak_score = 0.6 * mature_score + 0.4 * emerging_score
         if math.isfinite(weak_score):
-            observations.append((weak_score, code))
-    leaders = sorted(observations, key=lambda item: (-item[0], item[1]))[:maximum]
+            observations.append((weak_score, code, is_mature))
+    ranked = sorted(observations, key=lambda item: (-item[0], item[1]))
+    # Report P0-5: cap how many EMERGING-ONLY (immature) leaders enter the
+    # selection so short-history names never crowd out the mature core.
+    selected_codes: list[str] = []
+    emerging_selected = 0
+    for _, code, is_mature in ranked:
+        if not is_mature:
+            if emerging_selected >= MAX_EMERGING_LEADERS:
+                continue
+            emerging_selected += 1
+        selected_codes.append(code)
+        if len(selected_codes) >= maximum:
+            break
+    leaders = [
+        (score, code)
+        for score, code, _ in sorted(
+            observations, key=lambda item: (-item[0], item[1])
+        )
+        if code in selected_codes
+    ]
     return LeaderSelection(
         as_of=str(_timestamp(as_of).date()),
         requested_symbols=normalized,
