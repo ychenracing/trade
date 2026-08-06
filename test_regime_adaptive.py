@@ -178,7 +178,10 @@ class AdaptiveEngineTests(unittest.TestCase):
         self.assertEqual(result["selected_symbols"], ["300308", "300394", "300502"])
         self.assertGreaterEqual(result["total_return"], 0.45)
         self.assertGreaterEqual(result["max_drawdown"], -0.20)
-        self.assertLessEqual(result["total_trades"], 8)
+        # Report 3.5 enables re-entry (with cooldown + graded probe/confirm), so
+        # the weak route may trade more than the old one-shot design. The bound
+        # still caps runaway bear-market whipsaw at ~5 round-trips per leader.
+        self.assertLessEqual(result["total_trades"], 16)
         self.assertLessEqual(len(result["selected_symbols"]), ra.MAX_LEADERS)
         json.dumps(result["deployment_decision"], allow_nan=False)
         for trade in result["trades"]:
@@ -199,6 +202,63 @@ class AdaptiveEngineTests(unittest.TestCase):
         self.assertAlmostEqual(result["total_return"], 5.308949754885, places=12)
         self.assertAlmostEqual(result["max_drawdown"], -0.1834136674871038, places=12)
         self.assertEqual(result["total_trades"], 24)
+
+
+class DynamicRouteStateMachineTests(unittest.TestCase):
+    """Report 3.3/3.4: the daily route state machine is low-frequency,
+    causally consistent, and shared by the current-day decision and the
+    audited ``route_sequence``."""
+
+    def _transitions(self, steps) -> int:
+        return sum(
+            1 for i in range(1, len(steps)) if steps[i].route != steps[i - 1].route
+        )
+
+    def test_bull_window_route_is_low_frequency_and_leads_trend(self) -> None:
+        steps = ra.simulate_route_sequence(
+            DATA_DIR, start_date="2025-04-01", end_date="2026-06-30"
+        )
+        self.assertGreater(len(steps), 200)
+        # Anti-churn: a ~15-month bull window must not switch repeatedly.
+        self.assertLessEqual(self._transitions(steps), 8)
+        trend_days = sum(
+            1
+            for s in steps
+            if s.route in ("trend", "transition_to_trend")
+        )
+        self.assertGreater(trend_days / len(steps), 0.5)
+
+    def test_bear_window_leads_weak_or_cash(self) -> None:
+        steps = ra.simulate_route_sequence(
+            DATA_DIR, start_date="2024-01-02", end_date="2024-12-31"
+        )
+        trend_days = sum(
+            1
+            for s in steps
+            if s.route in ("trend", "transition_to_trend")
+        )
+        self.assertLess(trend_days / len(steps), 0.35)
+
+    def test_route_sequence_is_emitted_and_current_day_route_is_consistent(self) -> None:
+        engine = ra.RegimeAdaptiveBacktestEngine()
+        result = engine.run(
+            {"300308": "中际旭创", "300394": "天孚通信"},
+            "2025-04-01",
+            "2026-06-30",
+            data_dir=str(MARKET_DATA_DIR),
+            regime_data_dir=str(DATA_DIR),
+            indicator_state="warm",
+        )
+        route_seq = result.get("route_sequence", [])
+        self.assertGreater(len(route_seq), 200)
+        self.assertRegex(route_seq[0]["route"], r"^(trend|weak|cash|transition)")
+        # The current-day route must be one of the enum values.
+        current = engine.decide_current(
+            {"300308": "中际旭创", "300394": "天孚通信"},
+            as_of="2026-06-30",
+            data_dir=DATA_DIR,
+        )
+        self.assertIn(current.name, {"frozen_trend_engine", "positive_momentum_hold", "cash_preservation"})
 
 
 if __name__ == "__main__":

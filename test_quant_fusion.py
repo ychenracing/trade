@@ -82,10 +82,13 @@ class SymbolRoutingTests(unittest.TestCase):
             engine._SYMBOL_GROUP[code],
             "domestic_semiconductor",
         )
-        self.assertEqual(engine._SYMBOL_PROFILE[code], "domestic_design")
+        # Report 4.6: fine-grained AI sub-industry profiles. 688256 (寒武纪) is
+        # a chip-design / domestic-compute name, so it resolves to the
+        # fine-grained ``chip_design`` profile (previously ``domestic_design``).
+        self.assertEqual(engine._SYMBOL_PROFILE[code], "chip_design")
         self.assertEqual(
             engine.config_for_symbol(code, name=name),
-            engine.domestic_design_config(),
+            engine.chip_design_config(),
         )
         self.assertEqual(quant.parse_symbols(name), {code: name})
         self.assertIn(code, quant.EXECUTION_PRIORITY)
@@ -710,9 +713,14 @@ class NewFeatureTests(unittest.TestCase):
         self.assertEqual(result, "UNKNOWN")
 
     def test_get_symbol_profile_returns_known_code(self) -> None:
-        """get_symbol_profile returns the correct profile for a known symbol."""
+        """get_symbol_profile returns the correct profile for a known symbol.
+
+        Report 4.6: fine-grained AI sub-industry profiles. 300308 (中际旭创) is
+        an optical-module name, so it resolves to the fine-grained
+        ``optical_module`` profile (previously the coarse ``overseas_optical``).
+        """
         result = quant._CoreBacktestEngine.get_symbol_profile("300308")
-        self.assertEqual(result, "overseas_optical")
+        self.assertEqual(result, "optical_module")
 
     def test_get_symbol_profile_returns_default_for_unknown(self) -> None:
         """get_symbol_profile returns the default for an unknown symbol."""

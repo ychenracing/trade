@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass, replace
+from enum import Enum
 from pathlib import Path
 from typing import Any, Sequence, cast
 
@@ -40,6 +41,34 @@ WEAK_EMERGENCY_DRAWDOWN = 0.23
 WEAK_TERMINAL_DRAWDOWN = 0.26
 WEAK_DAILY_LOSS_LIMIT = 0.12
 
+# ── Weak-market re-entry (report 3.5) ─────────────────────────────────
+# The weak leader strategy may re-enter after a full exit, subject to a
+# per-reason cooldown and graded (probe -> confirmed) position building, so a
+# V-shaped repair or a second true reversal is not missed while a repeated
+# bear-market bottom-fish is filtered out.
+# Exit-reason -> cooldown in trading days (report 3.5 table).
+WEAK_EXIT_COOLDOWN = {
+    "profit_chandelier": 6,   # profitable ATR chandelier take-profit: 5-7 days
+    "time_stop": 12,          # time stop: 10-15 days
+    "hard_stop": 16,          # initial disaster stop: 12-20 days
+    "portfolio_risk": 12,     # external portfolio-risk exit: ~12 days default
+    "catastrophe": 25,        # catastrophe stop: 20-30 days
+}
+DEFAULT_EXIT_COOLDOWN = 12
+# First re-entry uses only this fraction of the normal target weight; after a
+# probe confirm the position is lifted toward the full target (report 3.5).
+WEAK_PROBE_WEIGHT_RATIO = 0.30
+WEAK_CONFIRM_WEIGHT_RATIO = 0.70
+# Hold a probe this many trading days (and meet confirm conditions) before the
+# position is scaled up toward the full target.
+WEAK_PROBE_CONFIRM_DAYS = 5
+# After this many consecutive failed (stop-out) re-entries the cooldown doubles
+# to slow repeated bottom-fishing.
+WEAK_REENTRY_FAIL_LIMIT = 2
+# Portfolio-level drawsgate: the full re-entry target is only reached when the
+# portfolio is within this drawdown of its prior peak (else stay at probe size).
+WEAK_REENTRY_MAX_DRAWDOWN = 0.12
+
 
 @dataclass(frozen=True, slots=True)
 class IndexTrend:
@@ -51,6 +80,178 @@ class IndexTrend:
     ma20: float
     ma60: float
     trending: bool
+
+
+class RegimeRoute(Enum):
+    """Daily dynamic outer route (report 3.3).
+
+    The route is a state machine that persists across trading days and only
+    switches on confirmed, causally-available evidence so a clean bull stays in
+    TREND (frozen trend engine) and a confirmed bear drifts to WEAK, with
+    explicit TRANSITION states that need consecutive-day confirmation.
+    """
+
+    TREND = "trend"
+    WEAK = "weak"
+    CASH = "cash"
+    TRANSITION_TO_TREND = "transition_to_trend"
+    TRANSITION_TO_WEAK = "transition_to_weak"
+
+
+@dataclass(frozen=True, slots=True)
+class DailyRouteStep:
+    """One auditable row of the daily route sequence."""
+
+    date: str
+    route: str
+
+
+# ── Dynamic route state-machine constants (report 3.3) ─────────────────
+# The route is deliberately LOW-FREQUENCY. It uses a medium-term trend
+# signal (MA60 vs MA120) on the two fixed indices — far more stable than the
+# short MA20/MA60 cross, which whipsaws inside a single bull market on normal
+# pull-backs. A minimum hold and consecutive-day confirmation filter the
+# remaining noise, so a clean bull journals TREND and a sustained
+# deterioration drifts toward WEAK without single-day flips (report 3.3
+# "避免状态抖动").
+ROUTE_TREND_FAST_MA = 60
+ROUTE_TREND_SLOW_MA = 120
+# Minimum trading days a state is held before a same-direction transition can
+# complete, and the consecutive-day confirmation required for a completed
+# switch (avoids single-day whipsaw and TREND -> WEAK -> TREND the same day).
+ROUTE_MIN_HOLD_DAYS = 10
+ROUTE_CONFIRM_DAYS = 3
+# A route maps to an engine name for the deployment boundary.
+_ROUTE_TO_ENGINE = {
+    RegimeRoute.TREND: "frozen_trend_engine",
+    RegimeRoute.TRANSITION_TO_TREND: "frozen_trend_engine",
+    RegimeRoute.TRANSITION_TO_WEAK: "positive_momentum_hold",
+    RegimeRoute.WEAK: "positive_momentum_hold",
+    RegimeRoute.CASH: "cash_preservation",
+}
+
+
+def simulate_route_sequence(
+    data_dir: str | Path,
+    *,
+    start_date: str,
+    end_date: str,
+) -> tuple[DailyRouteStep, ...]:
+    """Simulate the daily route state machine over a causal window.
+
+    The state machine uses only the two fixed indices (broad + technology),
+    each evaluated at its own as-of date (never future data). Missing or stale
+    evidence fails closed to CASH. The trend signal is the MEDIUM-TERM
+    ``MA60 > MA120`` cross (not the noisy short MA20/MA60 cross), and every
+    switch requires a minimum hold plus consecutive-day confirmation, so a
+    clean bull journals TREND throughout and a confirmed deterioration drifts
+    toward WEAK without single-day flips or intra-bull whipsaw.
+    """
+    boundary_start = _normalized_timestamp(start_date)
+    boundary_end = _normalized_timestamp(end_date)
+    # Build per-index close series over the window (plus warm-up for MA120).
+    lhs_date = boundary_start - pd.Timedelta(days=700)
+    series: dict[str, pd.Series] = {}
+    for code in REGIME_INDEX_FILES.values():
+        try:
+            frame = _local_frame(data_dir, code, str(boundary_end.date()))
+        except (OSError, RuntimeError, ValueError):
+            series[code] = pd.Series(dtype=float)
+            continue
+        closes = pd.Series(
+            pd.to_numeric(frame["close"], errors="coerce"), index=frame.index
+        ).dropna()
+        series[code] = closes.loc[(closes.index >= lhs_date) & (closes.index <= boundary_end)]
+    # Union of trading dates across both indices.
+    current_state: RegimeRoute = RegimeRoute.CASH
+    all_dates = sorted(
+        set().union(*(s.index for s in series.values() if not s.empty))
+    )
+    all_dates = [d for d in all_dates if boundary_start <= d <= boundary_end]
+    if not all_dates:
+        return (DailyRouteStep(str(boundary_end.date()), "cash"),)
+    hold_days = 0
+    confirm_count = 0
+    steps: list[DailyRouteStep] = []
+    for date in all_dates:
+        # Causal medium-term trend evidence at this date for each index.
+        trending_flags: list[bool] = []
+        evidence_ok = True
+        for code in REGIME_INDEX_FILES.values():
+            s = series.get(code)
+            if s is None or s.empty or date not in s.index:
+                evidence_ok = False
+                break
+            loc = s.index.get_loc(date)
+            if loc < ROUTE_TREND_SLOW_MA:
+                evidence_ok = False
+                break
+            fast = float(s.iloc[loc - ROUTE_TREND_FAST_MA + 1: loc + 1].mean())
+            slow = float(s.iloc[loc - ROUTE_TREND_SLOW_MA + 1: loc + 1].mean())
+            trending_flags.append(fast > slow)
+        if not evidence_ok:
+            current_state = RegimeRoute.CASH
+            hold_days = 0
+            confirm_count = 0
+            steps.append(DailyRouteStep(date.strftime("%Y-%m-%d"), current_state.value))
+            continue
+
+        both_trending = all(trending_flags)
+        any_trending = any(trending_flags)
+
+        hold_days += 1
+        if current_state in (RegimeRoute.TREND, RegimeRoute.TRANSITION_TO_TREND):
+            # Deterioration: at least one index breaks its medium-term
+            # (MA60>MA120) trend -> drift toward weak.
+            if not both_trending:
+                if current_state == RegimeRoute.TREND:
+                    if hold_days >= ROUTE_MIN_HOLD_DAYS:
+                        current_state = RegimeRoute.TRANSITION_TO_WEAK
+                        confirm_count = 1
+                        hold_days = 0
+                else:  # TRANSITION_TO_TREND rolling back (never same-day flip)
+                    current_state = RegimeRoute.TRANSITION_TO_WEAK
+                    confirm_count = 1
+                    hold_days = 0
+            else:
+                if current_state == RegimeRoute.TRANSITION_TO_TREND:
+                    confirm_count += 1
+                    if confirm_count >= ROUTE_CONFIRM_DAYS:
+                        current_state = RegimeRoute.TREND
+                        confirm_count = 0
+        elif current_state in (RegimeRoute.WEAK, RegimeRoute.TRANSITION_TO_WEAK):
+            # Repair: both indices back to a medium-term uptrend.
+            if both_trending:
+                if current_state == RegimeRoute.WEAK:
+                    if hold_days >= ROUTE_MIN_HOLD_DAYS:
+                        current_state = RegimeRoute.TRANSITION_TO_TREND
+                        confirm_count = 1
+                        hold_days = 0
+                else:  # TRANSITION_TO_WEAK
+                    confirm_count += 1
+                    if confirm_count >= ROUTE_CONFIRM_DAYS:
+                        current_state = RegimeRoute.WEAK
+                        confirm_count = 0
+            elif not any_trending and hold_days >= ROUTE_MIN_HOLD_DAYS:
+                # Deep confirmed weakness keeps WEAK (risk route stays).
+                pass
+        # CASH only recovers to WEAK once any trend returns.
+        elif current_state == RegimeRoute.CASH:
+            if any_trending and hold_days >= ROUTE_MIN_HOLD_DAYS:
+                current_state = RegimeRoute.TRANSITION_TO_WEAK
+                confirm_count = 1
+                hold_days = 0
+        steps.append(DailyRouteStep(date.strftime("%Y-%m-%d"), current_state.value))
+    return tuple(steps)
+
+
+def boundary_route(data_dir: str | Path, *, as_of: str) -> RegimeRoute:
+    """Return the state-machine route at ``as_of`` (fail-closed to CASH)."""
+    start = str((_normalized_timestamp(as_of) - pd.Timedelta(days=120)).date())
+    seq = simulate_route_sequence(data_dir, start_date=start, end_date=as_of)
+    if not seq:
+        return RegimeRoute.CASH
+    return RegimeRoute(seq[-1].route)
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,16 +415,26 @@ def select_positive_momentum_leaders(
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
             continue
         observed_codes.add(code)
+        close = float(closes.iloc[-1])
         momentum_240 = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
         if not (math.isfinite(momentum_240) and momentum_240 > 0):
             continue
 
-        # Multi-factor weak-market scoring (section 12.2)
+        # Multi-factor weak-market scoring (report 4.5: mature + emerging dual
+        # channel). Both channels are scored against a FIXED AI reference pool
+        # (not the caller's pool) so adding/removing a symbol never changes an
+        # unchanged symbol's score.
         # 60-day momentum
         if len(closes) >= 61:
             momentum_60 = float(closes.iloc[-1] / closes.iloc[-61] - 1.0)
         else:
             momentum_60 = 0.0
+
+        # 20-day momentum (drives the emerging-leader channel).
+        if len(closes) >= 21:
+            momentum_20 = float(closes.iloc[-1] / closes.iloc[-21] - 1.0)
+        else:
+            momentum_20 = 0.0
 
         # Relative strength vs reference basket (120-day): compare the
         # symbol's own 120-day return against the basket's 120-day return.
@@ -249,14 +460,43 @@ def select_positive_momentum_leaders(
         else:
             trend_repair = 0.0
 
-        # Composite weak-market score
-        weak_score = (
+        # Breakout quality: how close the close is to its 20-day high.
+        if len(closes) >= 20:
+            high20 = float(closes.iloc[-20:].max())
+            breakout_quality = close / high20 if high20 > 0 else 0.0
+        else:
+            breakout_quality = 0.0
+
+        # Volume expansion over 20 days (from the raw frame, if available).
+        volume_expansion = 0.0
+        if "volume" in frame.columns and len(frame) >= 21:
+            cur_vol = float(pd.to_numeric(frame["volume"], errors="coerce").iloc[-1])
+            avg_vol = float(pd.to_numeric(frame["volume"], errors="coerce").iloc[-21:-1].mean())
+            if math.isfinite(cur_vol) and math.isfinite(avg_vol) and avg_vol > 0:
+                volume_expansion = max(0.0, min(2.0, cur_vol / avg_vol))
+
+        # Mature-leader channel: long-horizon strength + relative strength +
+        # resilience + trend repair (report 4.5).
+        mature_score = (
             0.25 * momentum_240
             + 0.25 * max(0.0, rs_120)
             + 0.20 * momentum_60
             + 0.15 * resilience
             + 0.15 * max(0.0, trend_repair)
         )
+        # Emerging-leader channel: short-horizon momentum + breakout quality +
+        # volume expansion + trend repair, so new market leaders are captured
+        # even when they have no long 240-day history (report 4.5).
+        emerging_score = (
+            0.30 * momentum_60
+            + 0.25 * momentum_20
+            + 0.20 * breakout_quality
+            + 0.15 * min(1.0, volume_expansion)
+            + 0.10 * max(0.0, trend_repair)
+        )
+        # Combined score: favor the mature channel but let a strong emerging
+        # leader (positive 60-day momentum) still rise to the top.
+        weak_score = 0.6 * mature_score + 0.4 * emerging_score
         if math.isfinite(weak_score):
             observations.append((weak_score, code))
     leaders = sorted(observations, key=lambda item: (-item[0], item[1]))[:maximum]
@@ -271,24 +511,148 @@ def select_positive_momentum_leaders(
 
 
 class PositiveMomentumHoldStrategy(qf.BaseStrategy):
-    """Enter once, then protect gains with a profit-activated ATR chandelier."""
+    """Hold a causal positive-leader entry, then protect gains, with re-entry.
+
+    Unlike the original one-shot entry, this strategy may RE-ENTER after a full
+    exit (report 3.5): a per-reason trading-day cooldown filters repeated
+    bottom-fishing, and the first re-entry is a small probe (30% of target)
+    that is only scaled up toward the full target once a confirm condition is
+    met. This captures V-shaped repairs and a second true reversal without
+    re-establishing a full position into a falling knife.
+    """
 
     name = "positive_momentum_hold"
 
     def __init__(self, cfg: dict) -> None:
         super().__init__(cfg)
         self._has_entered = False
+        self._was_positioned = False
+        self._pending_exit_reason: str | None = None
+        self._exit_bar: int | None = None
+        self._cooldown_end: int | None = None
+        self._exit_reason: str | None = None
+        self._probe_phase = False
+        self._probe_entry_price = 0.0
+        self._probe_entry_bar = 0
+        self._failures = 0
+        self._assets_peak = 0.0
+
+    # ── helpers ──────────────────────────────────────────────────────
+
+    def _closes(self, ctx: qf.BarContext):
+        return pd.Series(
+            pd.to_numeric(ctx.df["close"], errors="coerce"), index=ctx.df.index
+        ).dropna()
+
+    def _target_shares(self, ctx: qf.BarContext, ratio: float) -> int:
+        """Board-lot shares for ``ratio`` of the normal target weight."""
+        weight = float(self.cfg["strategy_weight"]) * ratio
+        return qf._floor_to_lot(ctx.current_assets * weight / float(ctx.df["close"].iloc[ctx.i]))
+
+    def _reentry_ok(self, ctx: qf.BarContext) -> bool:
+        """Re-entry gates (report 3.5): momentum repaired, trend restored."""
+        closes = self._closes(ctx)
+        i = ctx.i
+        if i < 60 or len(closes) < 61:
+            return False
+        close = float(closes.iloc[i])
+        if not math.isfinite(close) or close <= 0:
+            return False
+        # 240-day momentum must remain positive.
+        if i >= LEADER_LOOKBACK:
+            mom_240 = close / float(closes.iloc[i - LEADER_LOOKBACK]) - 1.0
+            if not (math.isfinite(mom_240) and mom_240 > 0):
+                return False
+        # 60-day momentum re-turned positive.
+        mom_60 = close / float(closes.iloc[i - 60]) - 1.0
+        if not (math.isfinite(mom_60) and mom_60 > 0):
+            return False
+        # Close back above MA20 and MA20 above MA60 (genuine trend repair,
+        # not a dead-cat bounce inside a long downtrend).
+        ma20 = float(closes.iloc[i - 19: i + 1].mean())
+        if not (math.isfinite(ma20) and close > ma20):
+            return False
+        if i >= 60:
+            ma60 = float(closes.iloc[i - 59: i + 1].mean())
+            if not (math.isfinite(ma60) and ma20 > ma60):
+                return False
+        # 5-day trend repair positive (5d momentum > 20d momentum).
+        if i >= 21:
+            mom_5 = close / float(closes.iloc[i - 5]) - 1.0
+            mom_20 = close / float(closes.iloc[i - 20]) - 1.0
+            if not (math.isfinite(mom_5) and math.isfinite(mom_20) and mom_5 > mom_20):
+                return False
+        return True
+
+    def _confirm_ok(self, ctx: qf.BarContext) -> bool:
+        """Confirm conditions to scale a probe toward the full target."""
+        closes = self._closes(ctx)
+        i = ctx.i
+        if i < 40:
+            return False
+        close = float(closes.iloc[i])
+        if not math.isfinite(close) or close <= 0:
+            return False
+        # 20-day trend restored.
+        mom_20 = close / float(closes.iloc[i - 20]) - 1.0
+        if not (math.isfinite(mom_20) and mom_20 > 0):
+            return False
+        # Price above the probe's cost.
+        if self._probe_entry_price > 0 and close <= self._probe_entry_price:
+            return False
+        return True
+
+    def _finalize_exit(self, ctx: qf.BarContext) -> None:
+        """Record an exit and set the re-entry cooldown (report 3.5)."""
+        reason = self._pending_exit_reason or "portfolio_risk"
+        self._exit_reason = reason
+        self._exit_bar = ctx.i
+        cooldown = WEAK_EXIT_COOLDOWN.get(reason, DEFAULT_EXIT_COOLDOWN)
+        if self._failures >= WEAK_REENTRY_FAIL_LIMIT:
+            cooldown *= 2
+        self._cooldown_end = ctx.i + cooldown
+        self._pending_exit_reason = None
+        self._probe_phase = False
+        self._probe_entry_price = 0.0
+        self._probe_entry_bar = 0
 
     def on_bar(self, ctx: qf.BarContext) -> qf.Signal | None:
         close = float(ctx.df["close"].iloc[ctx.i])
         if not math.isfinite(close) or close <= 0:
             return None
+        self._assets_peak = max(self._assets_peak, ctx.current_assets)
+
+        # Detect a full exit that happened since the previous bar (either an
+        # exit this strategy signalled, or an external portfolio-level exit).
+        if self.position is None and self._was_positioned:
+            self._finalize_exit(ctx)
+        self._was_positioned = self.position is not None
+
         if self.position is None:
-            if self._has_entered:
+            if not self._has_entered:
+                # First-ever entry is a full deployment (no cooldown yet).
+                shares = self._target_shares(ctx, 1.0)
+                if shares <= 0:
+                    return None
+                atr = ctx.indicators.get("atr")
+                atr_value = float(atr.iloc[ctx.i]) if atr is not None else float("nan")
+                hard_stop = close * (1.0 - WEAK_HARD_STOP)
+                atr_stop = (
+                    close - WEAK_ENTRY_ATR_MULTIPLIER * atr_value
+                    if math.isfinite(atr_value) and atr_value > 0
+                    else hard_stop
+                )
+                self._has_entered = True
+                return self._make_buy_signal(
+                    ctx, shares, stop_loss=max(hard_stop, atr_stop),
+                    reason="causal positive-240-session leader entry with disaster stop",
+                )
+            # Re-entry path: cooldown must have elapsed and all gates must hold.
+            if self._cooldown_end is not None and ctx.i < self._cooldown_end:
                 return None
-            shares = qf._floor_to_lot(
-                ctx.current_assets * float(self.cfg["strategy_weight"]) / close
-            )
+            if not self._reentry_ok(ctx):
+                return None
+            shares = self._target_shares(ctx, WEAK_PROBE_WEIGHT_RATIO)
             if shares <= 0:
                 return None
             atr = ctx.indicators.get("atr")
@@ -299,19 +663,22 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
                 if math.isfinite(atr_value) and atr_value > 0
                 else hard_stop
             )
+            self._probe_phase = True
+            self._probe_entry_price = close
+            self._probe_entry_bar = ctx.i
             return self._make_buy_signal(
-                ctx,
-                shares,
-                stop_loss=max(hard_stop, atr_stop),
-                reason="causal positive-240-session leader entry with disaster stop",
+                ctx, shares, stop_loss=max(hard_stop, atr_stop),
+                reason="weak-regime re-entry probe after cooldown",
             )
 
-        self._has_entered = True
+        # ── Positioned: manage exits and probe confirmation ──────────
         position = self.position
         position.highest_close_since_entry = max(
             position.highest_close_since_entry, close
         )
         if position.stop_loss > 0 and close <= position.stop_loss:
+            self._pending_exit_reason = "hard_stop"
+            self._failures += 1
             return self._make_sell_signal(ctx, "weak-regime disaster stop")
         try:
             entry_timestamp = pd.Timestamp(position.entry_date)
@@ -326,7 +693,29 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
             held_days >= WEAK_TIME_STOP_DAYS
             and return_since_entry <= WEAK_TIME_STOP_RETURN
         ):
+            self._pending_exit_reason = "time_stop"
             return self._make_sell_signal(ctx, "weak-regime time stop")
+
+        # Probe confirmation: scale a probe toward the full target once the
+        # confirm window elapses and conditions hold, and the portfolio is not
+        # deeply off its peak (never go to full target into a deep drawdown).
+        if self._probe_phase:
+            drawdown = 1.0 - ctx.current_assets / self._assets_peak if self._assets_peak > 0 else 0.0
+            confirm = (
+                held_days >= WEAK_PROBE_CONFIRM_DAYS
+                and ctx.i - self._probe_entry_bar >= WEAK_PROBE_CONFIRM_DAYS
+                and self._confirm_ok(ctx)
+            )
+            full_shares = self._target_shares(ctx, 1.0)
+            add = qf._floor_to_lot(full_shares - position.shares)
+            if confirm and add > 0 and drawdown <= WEAK_REENTRY_MAX_DRAWDOWN:
+                self._probe_phase = False
+                self._failures = 0
+                return self._make_buy_signal(
+                    ctx, add, stop_loss=position.stop_loss,
+                    reason="weak-regime re-entry probe confirmed -> full target",
+                )
+
         peak_gain = position.highest_close_since_entry / position.entry_price - 1.0
         if peak_gain < PROFIT_ACTIVATION:
             return None
@@ -338,6 +727,7 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
         position.stop_loss = max(position.stop_loss, stop)
         if close > position.stop_loss:
             return None
+        self._pending_exit_reason = "profit_chandelier"
         return self._make_sell_signal(
             ctx,
             f"profit-activated {TRAILING_ATR_MULTIPLIER:g}-ATR chandelier",
@@ -449,15 +839,49 @@ class RegimeAdaptiveBacktestEngine:
         data_dir: str | Path,
         leader_data_dir: str | Path | None = None,
     ) -> DeploymentDecision:
-        """Make a point-in-time route decision from data through ``as_of``."""
+        """Make a point-in-time route decision from data through ``as_of``.
+
+        This is the CURRENT-day route used by ``daily_signal_scan`` and the
+        account engine (report 3.3/3.4 "历史和账户使用同一状态机"). It is driven
+        by the same low-frequency daily state machine as the audited
+        ``route_sequence``, so the label the user sees each day matches the
+        route that drives the decision. It fails closed to CASH on stale or
+        incomplete evidence.
+        """
         boundary = _normalized_timestamp(as_of)
-        next_day = boundary + pd.Timedelta(days=1)
-        return self.decide(
-            symbols_dict,
-            start_date=str(next_day.date()),
-            data_dir=data_dir,
-            leader_data_dir=leader_data_dir,
-            selection_boundary=str(boundary.date()),
+        route = boundary_route(data_dir, as_of=str(boundary.date()))
+        regime = detect_regime(data_dir, as_of=str(boundary.date()))
+        when = str(boundary.date())
+        if route == RegimeRoute.CASH:
+            return DeploymentDecision(
+                name="cash_preservation",
+                boundary=when,
+                reason="dynamic route failed closed to CASH (stale/incomplete evidence)",
+                regime=regime,
+                leaders=None,
+            )
+        if route in (RegimeRoute.TREND, RegimeRoute.TRANSITION_TO_TREND):
+            return DeploymentDecision(
+                name="frozen_trend_engine",
+                boundary=when,
+                reason="dynamic route is in a confirmed medium-term uptrend",
+                regime=regime,
+                leaders=None,
+            )
+        leaders = select_positive_momentum_leaders(
+            tuple(symbols_dict),
+            data_dir=leader_data_dir or data_dir,
+            as_of=when,
+        )
+        name = (
+            "positive_momentum_hold" if leaders.selected_symbols else "cash_preservation"
+        )
+        return DeploymentDecision(
+            name,
+            when,
+            "dynamic route drifted to weak; selected only positive leaders",
+            regime,
+            leaders,
         )
 
     def decide(
@@ -608,8 +1032,10 @@ class RegimeAdaptiveBacktestEngine:
                 self.last_decision = decision
             else:
                 executed_symbols= tuple(sorted(tradable_symbols))
-                # Trend route keeps the default three-sleeve ensemble
-                # (3x full-capital deployment) to maximize bull-market returns.
+                # Trend route keeps the default three-sleeve ensemble. The
+                # total capital (e.g. 2,000,000) is split across the fast,
+                # base and slow virtual sub-accounts; the sum never exceeds
+                # the total capital and no leverage is used.
                 effective_allocation = allocation_mode or "ensemble"
                 self.delegate = qf.BacktestEngine(
                     self.initial_capital, cfg=self.cfg, policy=self.policy
@@ -682,4 +1108,16 @@ class RegimeAdaptiveBacktestEngine:
         result["requested_symbols"] = sorted(symbols_dict)
         result["selected_symbols"] = list(executed_symbols)
         result["unavailable_symbols"] = list(unavailable_symbols)
+        # Report 3.3/3.4: emit the auditable daily route sequence so the
+        # historical replay, the current-day account route and the report all
+        # share the same state machine (P0-4 "历史和账户使用同一状态机").
+        try:
+            route_seq = simulate_route_sequence(
+                evidence_dir, start_date=start_date, end_date=end_date
+            )
+            result["route_sequence"] = [
+                {"date": step.date, "route": step.route} for step in route_seq
+            ]
+        except (OSError, RuntimeError, ValueError, TypeError):
+            result["route_sequence"] = []
         return result

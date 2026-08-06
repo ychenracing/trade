@@ -993,13 +993,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 23194332.385086007,
-      "total_return": 10.597166192543003,
-      "annual_return": 6.729202435033019,
-      "max_drawdown": -0.18321671687706975,
-      "sharpe": 3.6655521196582166,
-      "calmar": 36.728102924953156,
-      "total_trades": 170,
+      "final_assets": 21719362.632213756,
+      "total_return": 9.859681316106878,
+      "annual_return": 6.316850586585765,
+      "max_drawdown": -0.15743661581005977,
+      "sharpe": 3.7190269805871976,
+      "calmar": 40.123134977740904,
+      "total_trades": 176,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -1191,9 +1191,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7784634.702884169,
-          "total_return": 10.676952054326254,
-          "max_drawdown": -0.1832167168770698,
+          "final_assets": 6536730.786404418,
+          "total_return": 8.805096179606627,
+          "max_drawdown": -0.1472365651118575,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1205,9 +1205,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7784634.702884169,
-          "total_return": 10.676952054326254,
-          "max_drawdown": -0.1832167168770698,
+          "final_assets": 7557391.133402668,
+          "total_return": 10.336086700104001,
+          "max_drawdown": -0.17059877115787847,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1219,9 +1219,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7625062.979317669,
-          "total_return": 10.437594468976501,
-          "max_drawdown": -0.1832167168770698,
+          "final_assets": 7625240.712406669,
+          "total_return": 10.437861068610001,
+          "max_drawdown": -0.18320588714512795,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -1239,13 +1239,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 23194332.385086007,
-      "total_return": 10.597166192543003,
-      "annual_return": 6.0597113257141615,
-      "max_drawdown": -0.18321671687706975,
-      "sharpe": 3.5791826244108282,
-      "calmar": 33.07400890596657,
-      "total_trades": 170,
+      "final_assets": 21719362.632213756,
+      "total_return": 9.859681316106878,
+      "annual_return": 5.699329565619844,
+      "max_drawdown": -0.15743661581005977,
+      "sharpe": 3.6312709160542442,
+      "calmar": 36.200788084112716,
+      "total_trades": 176,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -1437,9 +1437,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7784634.702884169,
-          "total_return": 10.676952054326254,
-          "max_drawdown": -0.1832167168770698,
+          "final_assets": 6536730.786404418,
+          "total_return": 8.805096179606627,
+          "max_drawdown": -0.1472365651118575,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1451,9 +1451,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7784634.702884169,
-          "total_return": 10.676952054326254,
-          "max_drawdown": -0.1832167168770698,
+          "final_assets": 7557391.133402668,
+          "total_return": 10.336086700104001,
+          "max_drawdown": -0.17059877115787847,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1465,9 +1465,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7625062.979317669,
-          "total_return": 10.437594468976501,
-          "max_drawdown": -0.1832167168770698,
+          "final_assets": 7625240.712406669,
+          "total_return": 10.437861068610001,
+          "max_drawdown": -0.18320588714512795,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -1485,13 +1485,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 23673946.653319005,
-      "total_return": 10.836973326659502,
-      "annual_return": 6.862339926199212,
-      "max_drawdown": -0.17918987929749075,
-      "sharpe": 3.774488506470061,
-      "calmar": 38.29647049879623,
-      "total_trades": 194,
+      "final_assets": 23796499.273613505,
+      "total_return": 10.898249636806753,
+      "annual_return": 6.89628772149397,
+      "max_drawdown": -0.1717071447042325,
+      "sharpe": 3.815021134937856,
+      "calmar": 40.16307960494541,
+      "total_trades": 198,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -1683,9 +1683,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8081850.106543669,
-          "total_return": 11.122775159815504,
-          "max_drawdown": -0.18025750409610014,
+          "final_assets": 8354510.588377417,
+          "total_return": 11.531765882566125,
+          "max_drawdown": -0.15949799567218587,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1697,9 +1697,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8081850.106543669,
-          "total_return": 11.122775159815504,
-          "max_drawdown": -0.18025750409610014,
+          "final_assets": 7931564.511915417,
+          "total_return": 10.897346767873126,
+          "max_drawdown": -0.17852965888760747,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1711,9 +1711,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7510246.440231668,
-          "total_return": 10.2653696603475,
-          "max_drawdown": -0.18459412567192782,
+          "final_assets": 7510424.173320668,
+          "total_return": 10.265636259981001,
+          "max_drawdown": -0.18453886536330782,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -1731,13 +1731,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 23673946.653319005,
-      "total_return": 10.836973326659502,
-      "annual_return": 6.175885001063643,
-      "max_drawdown": -0.17918987929749075,
-      "sharpe": 3.685288563669437,
-      "calmar": 34.465590496941225,
-      "total_trades": 194,
+      "final_assets": 23796499.273613505,
+      "total_return": 10.898249636806753,
+      "annual_return": 6.205493310448581,
+      "max_drawdown": -0.1717071447042325,
+      "sharpe": 3.7247621888744282,
+      "calmar": 36.139983115656676,
+      "total_trades": 198,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -1929,9 +1929,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8081850.106543669,
-          "total_return": 11.122775159815504,
-          "max_drawdown": -0.18025750409610014,
+          "final_assets": 8354510.588377417,
+          "total_return": 11.531765882566125,
+          "max_drawdown": -0.15949799567218587,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1943,9 +1943,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8081850.106543669,
-          "total_return": 11.122775159815504,
-          "max_drawdown": -0.18025750409610014,
+          "final_assets": 7931564.511915417,
+          "total_return": 10.897346767873126,
+          "max_drawdown": -0.17852965888760747,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -1957,9 +1957,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7510246.440231668,
-          "total_return": 10.2653696603475,
-          "max_drawdown": -0.18459412567192782,
+          "final_assets": 7510424.173320668,
+          "total_return": 10.265636259981001,
+          "max_drawdown": -0.18453886536330782,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -1979,13 +1979,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 23573401.137986757,
-      "total_return": 10.786700568993378,
-      "annual_return": 6.834466499113637,
-      "max_drawdown": -0.1680079857774464,
-      "sharpe": 3.7124289235181958,
-      "calmar": 40.67941453787194,
-      "total_trades": 201,
+      "final_assets": 24229229.449346006,
+      "total_return": 11.114614724673004,
+      "annual_return": 7.015926231256737,
+      "max_drawdown": -0.1591896792508326,
+      "sharpe": 3.8313403571693323,
+      "calmar": 44.072745571663944,
+      "total_trades": 200,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -2177,9 +2177,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7973227.8245266685,
-          "total_return": 10.959841736790002,
-          "max_drawdown": -0.1680079857774464,
+          "final_assets": 7615648.730533169,
+          "total_return": 10.423473095799753,
+          "max_drawdown": -0.18093168919569122,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2191,9 +2191,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7626945.488933419,
-          "total_return": 10.440418233400129,
-          "max_drawdown": -0.1680079857774464,
+          "final_assets": 8640352.894286169,
+          "total_return": 11.960529341429254,
+          "max_drawdown": -0.15828829495926278,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2227,13 +2227,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 23573401.137986757,
-      "total_return": 10.786700568993378,
-      "annual_return": 6.1515703506214185,
-      "max_drawdown": -0.1680079857774464,
-      "sharpe": 3.6248442375120264,
-      "calmar": 36.61474972249332,
-      "total_trades": 201,
+      "final_assets": 24229229.449346006,
+      "total_return": 11.114614724673004,
+      "annual_return": 6.30979385762923,
+      "max_drawdown": -0.1591896792508326,
+      "sharpe": 3.7406541252011447,
+      "calmar": 39.63695314497738,
+      "total_trades": 200,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -2425,9 +2425,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7973227.8245266685,
-          "total_return": 10.959841736790002,
-          "max_drawdown": -0.1680079857774464,
+          "final_assets": 7615648.730533169,
+          "total_return": 10.423473095799753,
+          "max_drawdown": -0.18093168919569122,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2439,9 +2439,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7626945.488933419,
-          "total_return": 10.440418233400129,
-          "max_drawdown": -0.1680079857774464,
+          "final_assets": 8640352.894286169,
+          "total_return": 11.960529341429254,
+          "max_drawdown": -0.15828829495926278,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2475,13 +2475,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 24319847.510915253,
-      "total_return": 11.159923755457626,
-      "annual_return": 7.040934762669732,
-      "max_drawdown": -0.15857336312266856,
-      "sharpe": 3.789946936034223,
-      "calmar": 44.40174960042332,
-      "total_trades": 222,
+      "final_assets": 25090557.929798502,
+      "total_return": 11.545278964899252,
+      "annual_return": 7.253016623154144,
+      "max_drawdown": -0.1565906713248322,
+      "sharpe": 3.881489020299946,
+      "calmar": 46.318318720969415,
+      "total_trades": 218,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -2673,9 +2673,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8562667.480297418,
-          "total_return": 11.844001220446128,
-          "max_drawdown": -0.15929378655250936,
+          "final_assets": 8350323.856114168,
+          "total_return": 11.525485784171252,
+          "max_drawdown": -0.17403047604462665,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2687,9 +2687,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8230459.120574668,
-          "total_return": 11.345688680862002,
-          "max_drawdown": -0.15929378655250936,
+          "final_assets": 9213335.430552168,
+          "total_return": 12.820003145828254,
+          "max_drawdown": -0.15795575588279717,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2701,8 +2701,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7526720.910043169,
-          "total_return": 10.29008136506475,
+          "final_assets": 7526898.643132169,
+          "total_return": 10.29034796469825,
           "max_drawdown": -0.15956687160799987,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -2723,13 +2723,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 24319847.510915253,
-      "total_return": 11.159923755457626,
-      "annual_return": 6.3315874831665875,
-      "max_drawdown": -0.15857336312266856,
-      "sharpe": 3.7003434871610827,
-      "calmar": 39.92844295210301,
-      "total_trades": 222,
+      "final_assets": 25090557.929798502,
+      "total_return": 11.545278964899252,
+      "annual_return": 6.5162859759347125,
+      "max_drawdown": -0.1565906713248322,
+      "sharpe": 3.7894864447674523,
+      "calmar": 41.613500477415464,
+      "total_trades": 218,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -2921,9 +2921,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8562667.480297418,
-          "total_return": 11.844001220446128,
-          "max_drawdown": -0.15929378655250936,
+          "final_assets": 8350323.856114168,
+          "total_return": 11.525485784171252,
+          "max_drawdown": -0.17403047604462665,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2935,9 +2935,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 8230459.120574668,
-          "total_return": 11.345688680862002,
-          "max_drawdown": -0.15929378655250936,
+          "final_assets": 9213335.430552168,
+          "total_return": 12.820003145828254,
+          "max_drawdown": -0.15795575588279717,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -2949,8 +2949,8 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7526720.910043169,
-          "total_return": 10.29008136506475,
+          "final_assets": 7526898.643132169,
+          "total_return": 10.29034796469825,
           "max_drawdown": -0.15956687160799987,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
@@ -2979,13 +2979,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 19722314.414724007,
-      "total_return": 8.861157207362004,
-      "annual_return": 5.751033856540302,
-      "max_drawdown": -0.16931700894048463,
-      "sharpe": 3.5029358565593465,
-      "calmar": 33.96607282710626,
-      "total_trades": 306,
+      "final_assets": 18301617.092398256,
+      "total_return": 8.150808546199128,
+      "annual_return": 5.342747718984679,
+      "max_drawdown": -0.16534645117615582,
+      "sharpe": 3.534144910902293,
+      "calmar": 32.31244263774766,
+      "total_trades": 267,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -3177,9 +3177,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6094585.277666917,
-          "total_return": 8.141877916500375,
-          "max_drawdown": -0.16090246487617094,
+          "final_assets": 6318025.952833418,
+          "total_return": 8.477038929250126,
+          "max_drawdown": -0.16508061950257288,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3191,9 +3191,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6648584.910021168,
-          "total_return": 8.972877365031753,
-          "max_drawdown": -0.19896651698651266,
+          "final_assets": 5792296.660712669,
+          "total_return": 7.688444991069003,
+          "max_drawdown": -0.1696591668358226,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3205,9 +3205,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 6979144.227035919,
-          "total_return": 9.468716340553877,
-          "max_drawdown": -0.1742481216963291,
+          "final_assets": 6191294.478852168,
+          "total_return": 8.28694171827825,
+          "max_drawdown": -0.16515017680967337,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -3235,13 +3235,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 19883122.434803005,
-      "total_return": 8.941561217401503,
-      "annual_return": 5.243648872240488,
-      "max_drawdown": -0.16931700894048463,
-      "sharpe": 3.4321319405404087,
-      "calmar": 30.96941592019054,
-      "total_trades": 311,
+      "final_assets": 18462425.112477254,
+      "total_return": 8.231212556238628,
+      "annual_return": 4.885228207039664,
+      "max_drawdown": -0.16534645117615582,
+      "sharpe": 3.4639817266066886,
+      "calmar": 29.545407066735706,
+      "total_trades": 272,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -3433,9 +3433,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6146273.569835167,
-          "total_return": 8.219410354752752,
-          "max_drawdown": -0.16090246487617094,
+          "final_assets": 6415659.3935956685,
+          "total_return": 8.623489090393504,
+          "max_drawdown": -0.16508061950257288,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3447,9 +3447,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6706016.345763668,
-          "total_return": 9.059024518645503,
-          "max_drawdown": -0.19896651698651266,
+          "final_assets": 5838241.809306668,
+          "total_return": 7.757362713960002,
+          "max_drawdown": -0.1696591668358226,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3461,9 +3461,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7030832.519204169,
-          "total_return": 9.546248778806252,
-          "max_drawdown": -0.1742481216963291,
+          "final_assets": 6208523.9095749175,
+          "total_return": 8.312785864362375,
+          "max_drawdown": -0.16515017680967337,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -3491,13 +3491,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 22562313.390281253,
-      "total_return": 10.281156695140627,
-      "annual_return": 6.553059360720431,
-      "max_drawdown": -0.18407181266292794,
-      "sharpe": 3.6825252019465613,
-      "calmar": 35.60055864023236,
-      "total_trades": 319,
+      "final_assets": 22928638.779967003,
+      "total_return": 10.464319389983501,
+      "annual_return": 6.655251957782559,
+      "max_drawdown": -0.1867906176518357,
+      "sharpe": 3.841127741181309,
+      "calmar": 35.62947669131579,
+      "total_trades": 242,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -3689,9 +3689,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7141146.146346168,
-          "total_return": 9.711719219519251,
-          "max_drawdown": -0.18743341738585065,
+          "final_assets": 7924461.822573667,
+          "total_return": 10.886692733860501,
+          "max_drawdown": -0.20073662185238778,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3703,9 +3703,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7035299.969922919,
-          "total_return": 9.552949954884378,
-          "max_drawdown": -0.1859048533526153,
+          "final_assets": 6363496.035370669,
+          "total_return": 8.545244053056004,
+          "max_drawdown": -0.18008338985787134,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3717,9 +3717,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 8385867.274012166,
-          "total_return": 11.578800911018247,
-          "max_drawdown": -0.1795898371648426,
+          "final_assets": 8640680.922022667,
+          "total_return": 11.961021383033998,
+          "max_drawdown": -0.17952466601161748,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -3747,13 +3747,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 22774809.702528503,
-      "total_return": 10.387404851264252,
-      "annual_return": 5.957693861774019,
-      "max_drawdown": -0.18407181266292794,
-      "sharpe": 3.6088205350366414,
-      "calmar": 32.36613893015625,
-      "total_trades": 324,
+      "final_assets": 23175593.95365975,
+      "total_return": 10.587796976829875,
+      "annual_return": 6.05516262567328,
+      "max_drawdown": -0.1867906176518357,
+      "sharpe": 3.7657785440128717,
+      "calmar": 32.41684567347846,
+      "total_trades": 247,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -3945,9 +3945,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7204320.725662918,
-          "total_return": 9.806481088494376,
-          "max_drawdown": -0.18743341738585065,
+          "final_assets": 8016352.119761666,
+          "total_return": 11.0245281796425,
+          "max_drawdown": -0.20073662185238778,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3959,9 +3959,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7098474.549239669,
-          "total_return": 9.647711823859504,
-          "max_drawdown": -0.1859048533526153,
+          "final_assets": 6432413.758261669,
+          "total_return": 8.648620637392504,
+          "max_drawdown": -0.18008338985787134,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -3973,274 +3973,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 8472014.427625917,
-          "total_return": 11.708021641438874,
-          "max_drawdown": -0.1795898371648426,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        }
-      ]
-    },
-    {
-      "universe": "22_symbols",
-      "symbol_count": 22,
-      "symbols": [
-        "300308",
-        "300502",
-        "300394",
-        "688008",
-        "603986",
-        "002409",
-        "688072",
-        "688300",
-        "300054",
-        "688205",
-        "920045",
-        "300776",
-        "688535",
-        "688249",
-        "688347",
-        "300666",
-        "600206",
-        "688409",
-        "688361",
-        "300604",
-        "688120",
-        "688082"
-      ],
-      "indicator_state": "cold",
-      "start_date": "2025-04-01",
-      "end_date": "2026-06-30",
-      "initial_capital": 2000000.0,
-      "final_assets": 18823783.433029752,
-      "total_return": 8.411891716514877,
-      "annual_return": 5.49339965469781,
-      "max_drawdown": -0.17125953942328032,
-      "sharpe": 3.382285614595379,
-      "calmar": 32.07645935050938,
-      "total_trades": 291,
-      "sector_guard_active": true,
-      "persistent_risk_lock": false,
-      "terminal_risk_lock": false,
-      "cycle_lock_count": 0,
-      "locked_sleeves": [],
-      "open_positions": 5,
-      "max_concurrent_symbols": 6,
-      "portfolio_max_positions": 6,
-      "portfolio_cash_model": "fixed_virtual_subaccounts",
-      "allocation_mode": "ensemble",
-      "portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.23,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.27,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ],
-        "market_regime_enabled": true,
-        "regime_ewi_lookback": 20,
-        "regime_breadth_ma_long": 20,
-        "regime_adx_trend": 25.0,
-        "regime_adx_choppy": 20.0,
-        "regime_hurst_window": 100,
-        "regime_hurst_trend": 0.55,
-        "regime_hurst_choppy": 0.45,
-        "regime_vol_lookback": 60,
-        "regime_vol_extreme_pct": 0.9,
-        "regime_ewi_slope_trend": 0.02,
-        "regime_ewi_slope_choppy": -0.02,
-        "regime_score_trend": 2,
-        "regime_score_choppy": -3,
-        "regime_choppy_confirmations": 2,
-        "regime_trend_confirmations": 3,
-        "regime_recovery_confirmations": 3,
-        "regime_min_state_hold": 3,
-        "regime_transition_scale": 1.0,
-        "regime_trend_to_transition_confirmations": 3,
-        "regime_choppy_exit_ratio": 0.3,
-        "regime_transition_exit_ratio": 0.0
-      },
-      "effective_portfolio_policy": {
-        "allocation_mode": "ensemble",
-        "single_lookbacks": [
-          5,
-          10,
-          20
-        ],
-        "allocation_horizons": [
-          [
-            3,
-            5,
-            10
-          ],
-          [
-            5,
-            10,
-            20
-          ],
-          [
-            5,
-            20,
-            60
-          ]
-        ],
-        "drawdown_alert": 0.18,
-        "confirmed_drawdown": 0.2290909090909091,
-        "drawdown_confirmations": 2,
-        "emergency_drawdown": 0.2690909090909091,
-        "adv_lookback": 20,
-        "max_order_adv_ratio": 0.005,
-        "rearm_trading_days": 10,
-        "terminal_drawdown": 0.28,
-        "candidate_lookbacks": [
-          10,
-          20,
-          40
-        ],
-        "candidate_horizons": [
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            20,
-            40
-          ],
-          [
-            10,
-            40,
-            80
-          ]
-        ],
-        "concentration_drawdown_adjustment": 0.02,
-        "candidate_reference_percentile": 0.5,
-        "regime_symbols": [
-          "300308",
-          "300502",
-          "300394",
-          "688008",
-          "603986"
-        ],
-        "market_regime_enabled": true,
-        "regime_ewi_lookback": 20,
-        "regime_breadth_ma_long": 20,
-        "regime_adx_trend": 25.0,
-        "regime_adx_choppy": 20.0,
-        "regime_hurst_window": 100,
-        "regime_hurst_trend": 0.55,
-        "regime_hurst_choppy": 0.45,
-        "regime_vol_lookback": 60,
-        "regime_vol_extreme_pct": 0.9,
-        "regime_ewi_slope_trend": 0.02,
-        "regime_ewi_slope_choppy": -0.02,
-        "regime_score_trend": 2,
-        "regime_score_choppy": -3,
-        "regime_choppy_confirmations": 2,
-        "regime_trend_confirmations": 3,
-        "regime_recovery_confirmations": 3,
-        "regime_min_state_hold": 3,
-        "regime_transition_scale": 1.0,
-        "regime_trend_to_transition_confirmations": 3,
-        "regime_choppy_exit_ratio": 0.3,
-        "regime_transition_exit_ratio": 0.0
-      },
-      "sleeve_summaries": [
-        {
-          "name": "fast",
-          "allocation_lookbacks": [
-            3,
-            5,
-            10
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 6730472.343006417,
-          "total_return": 9.095708514509626,
-          "max_drawdown": -0.17468260900643376,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "base",
-          "allocation_lookbacks": [
-            5,
-            10,
-            20
-          ],
-          "initial_capital": 666666.6666666666,
-          "final_assets": 5994480.002801918,
-          "total_return": 7.991720004202878,
-          "max_drawdown": -0.1706526572442175,
-          "persistent_risk_lock": false,
-          "max_order_adv_ratio": 0.0016666666666666668
-        },
-        {
-          "name": "slow",
-          "allocation_lookbacks": [
-            5,
-            20,
-            60
-          ],
-          "initial_capital": 666666.6666666667,
-          "final_assets": 6098831.0872214185,
-          "total_return": 8.148246630832126,
-          "max_drawdown": -0.18014371080627933,
+          "final_assets": 8726828.075636417,
+          "total_return": 12.090242113454623,
+          "max_drawdown": -0.17952466601161748,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -4275,15 +4010,280 @@
       ],
       "indicator_state": "cold",
       "start_date": "2025-04-01",
+      "end_date": "2026-06-30",
+      "initial_capital": 2000000.0,
+      "final_assets": 18780348.0253795,
+      "total_return": 8.390174012689751,
+      "annual_return": 5.480894595863904,
+      "max_drawdown": -0.16420662850121429,
+      "sharpe": 3.6479895207569872,
+      "calmar": 33.37803501533663,
+      "total_trades": 221,
+      "sector_guard_active": true,
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "locked_sleeves": [],
+      "open_positions": 4,
+      "max_concurrent_symbols": 6,
+      "portfolio_max_positions": 6,
+      "portfolio_cash_model": "fixed_virtual_subaccounts",
+      "allocation_mode": "ensemble",
+      "portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.23,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.27,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "effective_portfolio_policy": {
+        "allocation_mode": "ensemble",
+        "single_lookbacks": [
+          5,
+          10,
+          20
+        ],
+        "allocation_horizons": [
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            5,
+            10,
+            20
+          ],
+          [
+            5,
+            20,
+            60
+          ]
+        ],
+        "drawdown_alert": 0.18,
+        "confirmed_drawdown": 0.2290909090909091,
+        "drawdown_confirmations": 2,
+        "emergency_drawdown": 0.2690909090909091,
+        "adv_lookback": 20,
+        "max_order_adv_ratio": 0.005,
+        "rearm_trading_days": 10,
+        "terminal_drawdown": 0.28,
+        "candidate_lookbacks": [
+          10,
+          20,
+          40
+        ],
+        "candidate_horizons": [
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            20,
+            40
+          ],
+          [
+            10,
+            40,
+            80
+          ]
+        ],
+        "concentration_drawdown_adjustment": 0.02,
+        "candidate_reference_percentile": 0.5,
+        "regime_symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688008",
+          "603986"
+        ],
+        "market_regime_enabled": true,
+        "regime_ewi_lookback": 20,
+        "regime_breadth_ma_long": 20,
+        "regime_adx_trend": 25.0,
+        "regime_adx_choppy": 20.0,
+        "regime_hurst_window": 100,
+        "regime_hurst_trend": 0.55,
+        "regime_hurst_choppy": 0.45,
+        "regime_vol_lookback": 60,
+        "regime_vol_extreme_pct": 0.9,
+        "regime_ewi_slope_trend": 0.02,
+        "regime_ewi_slope_choppy": -0.02,
+        "regime_score_trend": 2,
+        "regime_score_choppy": -3,
+        "regime_choppy_confirmations": 2,
+        "regime_trend_confirmations": 3,
+        "regime_recovery_confirmations": 3,
+        "regime_min_state_hold": 3,
+        "regime_transition_scale": 1.0,
+        "regime_trend_to_transition_confirmations": 3,
+        "regime_choppy_exit_ratio": 0.3,
+        "regime_transition_exit_ratio": 0.0
+      },
+      "sleeve_summaries": [
+        {
+          "name": "fast",
+          "allocation_lookbacks": [
+            3,
+            5,
+            10
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6243111.651886167,
+          "total_return": 8.36466747782925,
+          "max_drawdown": -0.17184345090155156,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "base",
+          "allocation_lookbacks": [
+            5,
+            10,
+            20
+          ],
+          "initial_capital": 666666.6666666666,
+          "final_assets": 6192339.416025168,
+          "total_return": 8.288509124037752,
+          "max_drawdown": -0.1828758415559885,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        },
+        {
+          "name": "slow",
+          "allocation_lookbacks": [
+            5,
+            20,
+            60
+          ],
+          "initial_capital": 666666.6666666667,
+          "final_assets": 6344896.957468167,
+          "total_return": 8.517345436202248,
+          "max_drawdown": -0.1751880379727738,
+          "persistent_risk_lock": false,
+          "max_order_adv_ratio": 0.0016666666666666668
+        }
+      ]
+    },
+    {
+      "universe": "22_symbols",
+      "symbol_count": 22,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+        "688249",
+        "688347",
+        "300666",
+        "600206",
+        "688409",
+        "688361",
+        "300604",
+        "688120",
+        "688082"
+      ],
+      "indicator_state": "cold",
+      "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 18961618.878811754,
-      "total_return": 8.480809439405878,
-      "annual_return": 5.011783161096065,
-      "max_drawdown": -0.17125953942328032,
-      "sharpe": 3.3132039076205433,
-      "calmar": 29.26425691656849,
-      "total_trades": 296,
+      "final_assets": 18900954.040438753,
+      "total_return": 8.450477020219376,
+      "annual_return": 4.996439844014087,
+      "max_drawdown": -0.16420662850121429,
+      "sharpe": 3.5717679731352483,
+      "calmar": 30.42775976596547,
+      "total_trades": 225,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -4475,9 +4475,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6799390.065897417,
-          "total_return": 9.199085098846126,
-          "max_drawdown": -0.17468260900643376,
+          "final_assets": 6335001.949074168,
+          "total_return": 8.502502923611251,
+          "max_drawdown": -0.17184345090155156,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -4489,9 +4489,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6011709.433524668,
-          "total_return": 8.017564150287003,
-          "max_drawdown": -0.1706526572442175,
+          "final_assets": 6198082.559599418,
+          "total_return": 8.297123839399127,
+          "max_drawdown": -0.1828758415559885,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -4503,9 +4503,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 6150519.379389669,
-          "total_return": 8.225779069084501,
-          "max_drawdown": -0.18014371080627933,
+          "final_assets": 6367869.531765167,
+          "total_return": 8.551804297647749,
+          "max_drawdown": -0.1751880379727738,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -4542,19 +4542,19 @@
       "start_date": "2025-04-01",
       "end_date": "2026-06-30",
       "initial_capital": 2000000.0,
-      "final_assets": 22123354.673512254,
-      "total_return": 10.061677336756127,
-      "annual_return": 6.430241714653575,
-      "max_drawdown": -0.1648831356710665,
-      "sharpe": 3.738967230890378,
-      "calmar": 38.998783523146855,
-      "total_trades": 301,
+      "final_assets": 22849990.20834425,
+      "total_return": 10.424995104172126,
+      "annual_return": 6.633334553414205,
+      "max_drawdown": -0.17658282553999188,
+      "sharpe": 3.9104852850244094,
+      "calmar": 37.56500403212718,
+      "total_trades": 246,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
       "cycle_lock_count": 0,
       "locked_sleeves": [],
-      "open_positions": 5,
+      "open_positions": 6,
       "max_concurrent_symbols": 6,
       "portfolio_max_positions": 6,
       "portfolio_cash_model": "fixed_virtual_subaccounts",
@@ -4740,9 +4740,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7841898.879312669,
-          "total_return": 10.762848318969004,
-          "max_drawdown": -0.16794025743123975,
+          "final_assets": 7701009.571571669,
+          "total_return": 10.551514357357503,
+          "max_drawdown": -0.19674036177603335,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -4754,9 +4754,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6752031.0031084195,
-          "total_return": 9.12804650466263,
-          "max_drawdown": -0.17902197161025088,
+          "final_assets": 7303502.977179667,
+          "total_return": 9.955254465769501,
+          "max_drawdown": -0.18134477073426325,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -4768,9 +4768,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7529424.791091167,
-          "total_return": 10.29413718663675,
-          "max_drawdown": -0.20216190176647686,
+          "final_assets": 7845477.659592917,
+          "total_return": 10.768216489389374,
+          "max_drawdown": -0.15649487838954554,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }
@@ -4807,13 +4807,13 @@
       "start_date": "2025-04-01",
       "end_date": "2026-07-20",
       "initial_capital": 2000000.0,
-      "final_assets": 22312878.411462504,
-      "total_return": 10.156439205731251,
-      "annual_return": 5.844922243154424,
-      "max_drawdown": -0.1648831356710665,
-      "sharpe": 3.662972774967899,
-      "calmar": 35.448878500313995,
-      "total_trades": 306,
+      "final_assets": 23079715.951314252,
+      "total_return": 10.539857975657126,
+      "annual_return": 6.031876845255121,
+      "max_drawdown": -0.17658282553999188,
+      "sharpe": 3.8326533002841567,
+      "calmar": 34.158910000503084,
+      "total_trades": 252,
       "sector_guard_active": true,
       "persistent_risk_lock": false,
       "terminal_risk_lock": false,
@@ -5005,9 +5005,9 @@
             10
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 7910816.602203669,
-          "total_return": 10.866224903305504,
-          "max_drawdown": -0.16794025743123975,
+          "final_assets": 7810129.299482419,
+          "total_return": 10.715193949223629,
+          "max_drawdown": -0.19674036177603335,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -5019,9 +5019,9 @@
             20
           ],
           "initial_capital": 666666.6666666666,
-          "final_assets": 6826691.8695736695,
-          "total_return": 9.240037804360504,
-          "max_drawdown": -0.17902197161025088,
+          "final_assets": 7389650.130793417,
+          "total_return": 10.084475196190125,
+          "max_drawdown": -0.18134477073426325,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         },
@@ -5033,9 +5033,9 @@
             60
           ],
           "initial_capital": 666666.6666666667,
-          "final_assets": 7575369.939685167,
-          "total_return": 10.363054909527749,
-          "max_drawdown": -0.20216190176647686,
+          "final_assets": 7879936.521038417,
+          "total_return": 10.819904781557623,
+          "max_drawdown": -0.15649487838954554,
           "persistent_risk_lock": false,
           "max_order_adv_ratio": 0.0016666666666666668
         }

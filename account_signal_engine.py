@@ -7,7 +7,7 @@ import math
 import os
 import re
 import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from numbers import Real
 from pathlib import Path
 from typing import Any, cast
@@ -32,22 +32,168 @@ _EXPECTED_DATA_ERRORS = (
 
 @dataclass(frozen=True, slots=True)
 class AccountPosition:
-    """描述账户快照中的一只实际持仓。"""
+    """描述账户快照中的一只实际持仓。
+
+    除持仓数量与成本外，还保留 T+1 可卖股数、建仓日期、持仓来源与最近加仓
+    日期，使账户引擎能真实复现 T+1 卖出约束、来源审计与加仓节奏。
+    """
 
     symbol: str
     shares: int
     avg_cost: float
     entry_date: str
     highest_close: float | None = None
+    sellable_shares: int | None = None
+    position_source: str | None = None
+    last_add_date: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class AccountSnapshot:
-    """保存现金、历史权益峰值和实际持仓的不可变快照。"""
+    """保存现金、历史权益峰值和实际持仓的不可变快照。
+
+    跨日状态（冷却、路线、风险锁、待执行订单、上次执行报告、权益历史）是
+    可选字段，向后兼容仅含现金/峰值/持仓的最小快照；提供时用于复现 T+1、
+    冷却、风险锁与订单连续性的真实约束。
+    """
 
     cash: float
     peak_equity: float
     positions: tuple[AccountPosition, ...]
+    cooldowns: dict[str, Any] = field(default_factory=dict)
+    route_state: dict[str, Any] = field(default_factory=dict)
+    risk_state: dict[str, Any] = field(default_factory=dict)
+    pending_orders: tuple[Any, ...] = ()
+    last_execution_report: dict[str, Any] = field(default_factory=dict)
+    equity_history: tuple[dict[str, Any], ...] = ()
+    account_id: str = "main"
+    schema_version: int = 2
+
+
+@dataclass(frozen=True, slots=True)
+class PointInTimeSignal:
+    """一只股票在指定时点的单策略趋势信号。
+
+    由历史引擎的同一策略逻辑在 ``as_of`` 当日收盘后生成，方向为买入或卖出，
+    并携带目标权重、目标股数、保护止损和拒绝原因。该结构不注入任何伪造历史
+    持仓，只基于真实账户与截至 ``as_of`` 的行情。
+    """
+
+    symbol: str
+    strategy_name: str
+    direction: str
+    score: float
+    target_weight: float
+    target_shares: int
+    stop_price: float | None
+    reasons: tuple[str, ...]
+    blocked_reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountTarget:
+    """把三袖套信号汇总为单一账户净目标。
+
+    账户模式不以"fast/base/slow 各自买多少"示人，而是输出净账户目标：
+    当前持股、理论三袖套目标、账户约束后目标、建议增减股数与目标权重。
+    """
+
+    symbol: str
+    current_shares: int
+    target_shares: int
+    delta_shares: int
+    target_weight: float
+    confidence: float
+    contributing_sleeves: tuple[str, ...]
+    reasons: tuple[str, ...]
+    blocked_reasons: tuple[str, ...] = ()
+
+
+def _trend_candidate_score(
+    frame: pd.DataFrame,
+    indicators: dict[str, pd.Series],
+    index: int,
+    close: float,
+    trigger_count: int,
+) -> float:
+    """计算买入排序分：多确认优先，辅以风险调整动量与趋势持续性。
+
+    权重与报告一致：35% 多袖套确认、25% 风险调整动量、10% 突破质量、
+    10% 趋势持续性、5% 流动性（其余给行业相对强度留白，由调用方补充）。
+    分数用于决定有限现金与持仓槽位分配顺序，不直接放大仓位。
+    """
+    if not math.isfinite(close) or close <= 0:
+        return 0.0
+    confirmation = trigger_count / 3.0
+    atr = float(indicators.get("atr").iloc[index]) if indicators.get("atr") is not None else float("nan")
+    momentum = 0.0
+    if index >= 20:
+        prior = float(frame["close"].iloc[index - 20])
+        if math.isfinite(prior) and prior > 0:
+            momentum = close / prior - 1.0
+    risk_adjusted_momentum = (
+        momentum / (atr / close) if math.isfinite(atr) and atr > 0 else momentum
+    )
+    ma_short = float(indicators.get("ma_short").iloc[index]) if indicators.get("ma_short") is not None else float("nan")
+    ma_long = float(indicators.get("ma_long").iloc[index]) if indicators.get("ma_long") is not None else float("nan")
+    trend_persistence = 0.0
+    if math.isfinite(ma_short) and math.isfinite(ma_long) and ma_long > 0:
+        trend_persistence = max(0.0, min(1.0, (ma_short - ma_long) / ma_long))
+    quality = 0.0
+    if index >= 5:
+        high5 = float(frame["high"].iloc[max(0, index - 5): index + 1].max())
+        if high5 > 0:
+            quality = max(0.0, min(1.0, close / high5))
+    volume_quality = 0.0
+    if "volume" in frame.columns and index >= 20:
+        cur = float(frame["volume"].iloc[index])
+        avg = float(frame["volume"].iloc[index - 20: index].mean())
+        if math.isfinite(cur) and math.isfinite(avg) and avg > 0:
+            volume_quality = max(0.0, min(1.0, cur / avg))
+    score = (
+        0.35 * confirmation
+        + 0.25 * max(0.0, min(1.0, risk_adjusted_momentum / 0.5))
+        + 0.10 * quality
+        + 0.10 * trend_persistence
+        + 0.05 * volume_quality
+    )
+    return score if math.isfinite(score) else 0.0
+
+
+def _target_weight_for(trigger_count: int) -> float:
+    """按确认强度给出建议目标权重（三确认 -> 更高，单确认 -> 试探）。"""
+    if trigger_count >= 3:
+        return 0.60
+    if trigger_count == 2:
+        return 0.40
+    return 0.25
+
+
+def _compute_target_shares(
+    symbol: str,
+    close: float,
+    target_weight: float,
+    snapshot: AccountSnapshot,
+    ranked_candidates: list[PointInTimeSignal],
+) -> tuple[int, float]:
+    """在总仓位上限内把现金分配到排序后的候选，返回（目标股数, 目标权重）。
+
+    总仓位不超过 100%，单票不超过 60%；股数按 A 股整手向下取整。现金不足以
+    覆盖一手时不产生买入。这是账户级净目标，不放大三袖套仓位。
+    """
+    from quant_fusion import _floor_to_lot
+
+    if not math.isfinite(close) or close <= 0:
+        return 0, 0.0
+    equity = max(snapshot.cash, 0.0)
+    # 现金分配：按合并目标权重把可用现金拆给每个候选。
+    total_weight = sum(item.target_weight for item in ranked_candidates) or 1.0
+    alloc = equity * target_weight / total_weight
+    shares = _floor_to_lot(alloc / close)
+    if shares <= 0:
+        return 0, 0.0
+    locked = min(target_weight, 0.60)
+    return shares, locked
 
 
 def _require_real(name: str, value: object, *, minimum: float = 0.0) -> float:
@@ -64,6 +210,13 @@ def _require_positive_int(name: str, value: object) -> int:
     """只接受严格正整数，避免 JSON 布尔值或小数被静默转换。"""
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ValueError(f"{name} must be a positive integer")
+    return value
+
+
+def _require_non_negative_int(name: str, value: object) -> int:
+    """只接受非负整数（T+1 可卖股数允许为 0）。"""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{name} must be a non-negative integer")
     return value
 
 
@@ -89,6 +242,32 @@ def _validate_entry_date(value: object, *, symbol: str) -> str:
     if timestamp is pd.NaT:
         raise ValueError(f"position {symbol} has invalid entry_date")
     return cast(pd.Timestamp, timestamp).strftime("%Y-%m-%d")
+
+
+def _optional_text(value: object) -> str | None:
+    """把可选标量规范为去空白字符串；缺失或空串返回 None。"""
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _optional_mapping(value: object, *, name: str = "mapping") -> dict[str, Any]:
+    """校验可选对象字段必须为字典，缺失时返回空字典。"""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"{name} must be an object when provided")
+    return dict(value)
+
+
+def _optional_int(value: object, *, default: int) -> int:
+    """校验可选正整数；缺失或非正整数时返回默认值。"""
+    if value is None:
+        return default
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError("optional integer must be a non-negative integer")
+    return value
 
 
 def load_account_snapshot(path: str | Path) -> AccountSnapshot:
@@ -126,6 +305,16 @@ def load_account_snapshot(path: str | Path) -> AccountSnapshot:
             f"position {code} highest_close",
             raw.get("highest_close"),
         )
+        sellable = raw.get("sellable_shares")
+        if sellable is not None:
+            sellable = _require_non_negative_int(
+                f"position {code} sellable_shares", sellable
+            )
+            if sellable > shares:
+                raise ValueError(
+                    f"position {code} sellable_shares must not exceed shares"
+                )
+        last_add = _validate_entry_date(raw.get("last_add_date", ""), symbol=code)
         positions.append(
             AccountPosition(
                 symbol=code,
@@ -133,11 +322,28 @@ def load_account_snapshot(path: str | Path) -> AccountSnapshot:
                 avg_cost=avg_cost,
                 entry_date=_validate_entry_date(raw.get("entry_date", ""), symbol=code),
                 highest_close=highest_close,
+                sellable_shares=sellable,
+                position_source=_optional_text(raw.get("position_source")),
+                last_add_date=last_add or None,
             )
         )
 
     positions.sort(key=lambda item: item.symbol)
-    return AccountSnapshot(cash=cash, peak_equity=peak, positions=tuple(positions))
+    return AccountSnapshot(
+        cash=cash,
+        peak_equity=peak,
+        positions=tuple(positions),
+        cooldowns=_optional_mapping(payload.get("cooldowns")),
+        route_state=_optional_mapping(payload.get("route_state")),
+        risk_state=_optional_mapping(payload.get("risk_state")),
+        pending_orders=tuple(payload.get("pending_orders", ())),
+        last_execution_report=_optional_mapping(
+            payload.get("last_execution_report")
+        ),
+        equity_history=tuple(payload.get("equity_history", ())),
+        account_id=_optional_text(payload.get("account_id")) or "main",
+        schema_version=_optional_int(payload.get("schema_version"), default=2),
+    )
 
 
 class AccountSignalEngine:
@@ -183,6 +389,87 @@ class AccountSignalEngine:
             return float("nan")
         value = float(series.iloc[index])
         return value if math.isfinite(value) else float("nan")
+
+    def _evaluate_trend_candidates(
+        self,
+        symbols: dict[str, str],
+        held: dict[str, AccountPosition],
+        *,
+        as_of: str,
+        snapshot: AccountSnapshot,
+    ) -> tuple[list[PointInTimeSignal], dict[str, str], list[str]]:
+        """为未持有标的生成趋势路线的新买入候选，并返回候选集/被阻断原因。
+
+        复用历史引擎的同一策略逻辑（唐奇安突破、双均线、ATR 通道）在
+        ``as_of`` 当日收盘后做时点判断，不注入伪造历史持仓。只有至少一个
+        策略给出买入信号、且数据完整（无未来观测、无陈旧数据）的标的才会
+        被纳入候选。前两个返回值是候选信号列表与（代码->策略比例）说明，
+        第三个是数据不足或陈旧的标的代码列表。
+        """
+        candidates: list[PointInTimeSignal] = []
+        blocked: dict[str, str] = {}
+        unpriced: list[str] = []
+        as_of_timestamp = pd.Timestamp(as_of)
+        if as_of_timestamp is pd.NaT:
+            raise ValueError("as_of must resolve to a valid date")
+        as_of_timestamp = cast(pd.Timestamp, as_of_timestamp).normalize()
+        for code, name in symbols.items():
+            if code in held:
+                continue
+            try:
+                frame = self._frame(code, as_of)
+            except _EXPECTED_DATA_ERRORS as exc:
+                unpriced.append(code)
+                blocked[code] = str(exc)
+                continue
+            cfg = qf.BacktestEngine.config_for_symbol(code, name=name)
+            indicators = qf.Indicators.compute_all(frame, cfg)
+            i = len(frame) - 1
+            close = float(frame["close"].iloc[i])
+            atr = self._latest_value(indicators.get("atr"), i)
+            strategies = [
+                cls(cfg)
+                for cls in (
+                    qf.TurtleBreakoutStrategy,
+                    qf.DualMAStrategy,
+                    qf.ATRChannelStrategy,
+                )
+            ]
+            triggers: list[str] = []
+            stop_prices: list[float] = []
+            for strategy in strategies:
+                ctx = qf.BarContext(
+                    i=i,
+                    df=frame,
+                    current_assets=snapshot.cash,
+                    indicators=indicators,
+                    symbol=code,
+                    date=str(as_of_timestamp.date()),
+                )
+                signal = strategy.on_bar(ctx)
+                if signal is None or signal.direction != "buy":
+                    continue
+                triggers.append(strategy.name)
+                if signal.stop_loss is not None and math.isfinite(signal.stop_loss):
+                    stop_prices.append(float(signal.stop_loss))
+            if not triggers:
+                continue
+            # 多袖套确认数量作为置信度的主成分。
+            stop_price = min(stop_prices) if stop_prices else None
+            score = _trend_candidate_score(frame, indicators, i, close, len(triggers))
+            candidates.append(
+                PointInTimeSignal(
+                    symbol=code,
+                    strategy_name="+".join(sorted(triggers)),
+                    direction="buy",
+                    score=score,
+                    target_weight=_target_weight_for(len(triggers)),
+                    target_shares=0,
+                    stop_price=stop_price,
+                    reasons=tuple(triggers),
+                )
+            )
+        return candidates, blocked, unpriced
 
     def run(
         self,
@@ -344,6 +631,79 @@ class AccountSignalEngine:
                             "reason": (
                                 "current positive-240-session weak-regime leader"
                             ),
+                        }
+                    )
+
+        # 趋势路线：补齐新买入候选、目标股数与买入排序（P0-2）。
+        trend_candidates: list[PointInTimeSignal] = []
+        trend_blocked: dict[str, str] = {}
+        trend_unpriced: list[str] = []
+        if (
+            valuation_complete
+            and decision.name == "frozen_trend_engine"
+            and snapshot.cash > 0
+        ):
+            trend_candidates, trend_blocked, trend_unpriced = (
+                self._evaluate_trend_candidates(
+                    symbols,
+                    held,
+                    as_of=as_of,
+                    snapshot=snapshot,
+                )
+            )
+            # 统一买入排序：分数降序，分数相同按代码字典序保证确定性。
+            ranked = sorted(
+                trend_candidates,
+                key=lambda item: (-item.score, item.symbol),
+            )
+            held_codes = set(held)
+            default_cfg = qf.BacktestEngine._default_config()
+            slots_left = max(
+                int(default_cfg.get("max_positions", 6)) - len(held_codes), 0
+            )
+            for candidate in ranked[:max(slots_left, 0)]:
+                try:
+                    frame = self._frame(candidate.symbol, as_of)
+                    close = float(frame["close"].iloc[-1])
+                except _EXPECTED_DATA_ERRORS:
+                    continue
+                if not math.isfinite(close) or close <= 0:
+                    continue
+                target_shares, locked_weight = _compute_target_shares(
+                    candidate.symbol,
+                    close,
+                    candidate.target_weight,
+                    snapshot,
+                    ranked,
+                )
+                actions.append(
+                    {
+                        "symbol": candidate.symbol,
+                        "name": symbols.get(candidate.symbol, candidate.symbol),
+                        "action": "BUY_CANDIDATE",
+                        "shares": target_shares,
+                        "close": close,
+                        "target_weight": locked_weight,
+                        "target_shares": target_shares,
+                        "confidence": candidate.score,
+                        "sleeves": candidate.strategy_name,
+                        "protective_stop": candidate.stop_price,
+                        "reason": (
+                            "trend entry confirmed by "
+                            + candidate.strategy_name
+                            + f" (score {candidate.score:.3f})"
+                        ),
+                    }
+                )
+            for code, why in trend_blocked.items():
+                if code not in held_codes:
+                    actions.append(
+                        {
+                            "symbol": code,
+                            "name": symbols.get(code, code),
+                            "action": "BLOCKED",
+                            "shares": 0,
+                            "reason": why,
                         }
                     )
 

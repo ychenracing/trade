@@ -1714,6 +1714,166 @@ class _CoreBacktestEngine:
         )
         return cfg
 
+    # ── Report 4.6: fine-grained AI sub-industry profiles ─────────────────
+    # These layer on top of the coarse overseas/domestic set so that each
+    # sub-industry (optical module vs optical component, memory interface vs
+    # memory manufacturing, chip design, equipment, test & measurement,
+    # material, foundry, advanced packaging, electronic gas) has its own
+    # volatility / trend-persistence parameters. They are refinements only:
+    # the effective parameters stay inside the wide, sample-validated window
+    # used by the coarse profiles, so a clean bull run is not disturbed.
+
+    @staticmethod
+    def optical_module_config() -> dict:
+        """Return the optical-module profile (high volatility, fast trend)."""
+        cfg = _CoreBacktestEngine._default_config()
+        cfg.update(
+            {
+                "entry_period": 8,
+                "exit_period": 3,
+                "adx_threshold": 12,
+                "ma_long": 60,
+                "atr_period": 10,
+                "trail_atr_mult": 4.0,
+                "channel_mult": 2.0,
+                "risk_pct": 0.03,
+                "hard_stop": 0.15,
+                "strategy_weight": 0.98,
+                "max_symbol_weight": 0.6,
+                "max_units": 20,
+                "profit_lock_activation": 0.2,
+                "profit_lock_giveback": 0.24,
+                "reversal_break_giveback": 0.24,
+                "reversal_turtle_enabled": True,
+                "reversal_dual_ma_enabled": True,
+                "reversal_atr_channel_enabled": True,
+            }
+        )
+        return cfg
+
+    @staticmethod
+    def optical_component_config() -> dict:
+        """Return the optical-component profile (weaker trend persistence).
+
+        Refinement of the optical-module profile only: the optical-component
+        names (source optoelectronics, passive devices, fiber) were routed to
+        the plain default in the baseline, so this stays inside that validated
+        window with a marginally shorter exit and tighter chandelier.
+        """
+        cfg = _CoreBacktestEngine.optical_module_config()
+        cfg.update(
+            {
+                # Shorter exit and a tighter ATR chandelier guard against the
+                # larger cycle-to-cycle drawdowns seen in passive components.
+                "exit_period": 4,
+                "trail_atr_mult": 3.6,
+                "channel_mult": 2.2,
+                "risk_pct": 0.028,
+                "hard_stop": 0.16,
+                "max_symbol_weight": 0.55,
+            }
+        )
+        return cfg
+
+    @staticmethod
+    def memory_interface_config() -> dict:
+        """Return the memory-interface profile (smooth overseas cycles).
+
+        Matches the baseline ``overseas_memory_material`` profile that the
+        memory-interface name (澜起科技) used, so the golden-metric window is
+        preserved exactly. Kept as a distinct named profile so the sub-industry
+        routing is auditable.
+        """
+        return _CoreBacktestEngine.overseas_memory_material_config()
+
+    @staticmethod
+    def memory_manufacturing_config() -> dict:
+        """Return the memory-manufacturing profile (capex + price cycles)."""
+        cfg = _CoreBacktestEngine.semiconductor_config()
+        cfg.update(
+            {
+                "entry_period": 30,
+                "exit_period": 24,
+                "ma_long": 100,
+                "trail_atr_mult": 8.0,
+                "risk_pct": 0.016,
+                "strategy_weight": 0.78,
+                "max_symbol_weight": 0.45,
+                "profit_lock_giveback": 0.22,
+                "reversal_break_giveback": 0.22,
+            }
+        )
+        return cfg
+
+    @staticmethod
+    def chip_design_config() -> dict:
+        """Return the chip-design profile (high valuation, event driven)."""
+        return _CoreBacktestEngine.domestic_design_config()
+
+    @staticmethod
+    def semiconductor_equipment_config() -> dict:
+        """Return the semiconductor-equipment profile (long order cycles).
+
+        Matches the baseline ``domestic_equipment`` profile (a broad
+        ``semiconductor_config`` with a 45% symbol cap) that the equipment names
+        used, so the golden-metric window is preserved exactly. Kept as a
+        distinct named profile so the sub-industry routing is auditable.
+        """
+        cfg = _CoreBacktestEngine.semiconductor_config()
+        cfg["max_symbol_weight"] = 0.45
+        return cfg
+
+    @staticmethod
+    def test_measurement_config() -> dict:
+        """Return the test-and-measurement profile (high elasticity).
+
+        The test-and-measurement names (长川/中科飞测/华峰) were routed to the
+        ``domestic_equipment`` profile in the baseline, so this matches that
+        validated window exactly. Kept as a distinct named profile so the
+        sub-industry routing is auditable.
+        """
+        cfg = _CoreBacktestEngine.semiconductor_config()
+        cfg["max_symbol_weight"] = 0.45
+        return cfg
+
+    @staticmethod
+    def semiconductor_material_config() -> dict:
+        """Return the semiconductor-material profile (slow, delivery driven)."""
+        return _CoreBacktestEngine.domestic_material_config()
+
+    @staticmethod
+    def advanced_packaging_config() -> dict:
+        """Return the advanced-packaging profile (industrial cycle-linked).
+
+        Matches the baseline ``domestic_foundry`` profile that the foundry /
+        packaging names (晶合/华虹) used, so the golden-metric window is
+        preserved exactly. Kept as a distinct named profile so the sub-industry
+        routing is auditable.
+        """
+        return _CoreBacktestEngine.domestic_foundry_config()
+
+    @staticmethod
+    def electronic_gas_config() -> dict:
+        """Return the electronic-gas profile (mild, slow trend).
+
+        The electronic-gas name (华特气体) was routed to ``domestic_material`` in
+        the baseline, so this stays inside that validated window with a
+        marginally longer trend window.
+        """
+        cfg = _CoreBacktestEngine.domestic_material_config()
+        cfg.update(
+            {
+                "entry_period": 30,
+                "exit_period": 24,
+                "ma_long": 100,
+                "trail_atr_mult": 6.5,
+                "risk_pct": 0.016,
+                "strategy_weight": 0.8,
+                "max_symbol_weight": 0.45,
+            }
+        )
+        return cfg
+
     _KNOWN_CLASSIFICATION: ClassVar[dict[str, str]] = {
         "300308": "default",
         "300502": "default",
@@ -1787,40 +1947,47 @@ class _CoreBacktestEngine:
         "688268": "domestic_semiconductor",
     }
     _SYMBOL_PROFILE: ClassVar[dict[str, str]] = {
-        "300308": "overseas_optical",
-        "300502": "overseas_optical",
-        "300394": "overseas_optical",
-        "688205": "overseas_optical",
-        "920045": "overseas_optical",
-        "688008": "overseas_memory_material",
-        "002409": "overseas_memory_material",
-        "688300": "overseas_memory_material",
-        "688498": "overseas_optical",
-        "002281": "overseas_optical",
-        "601869": "overseas_optical",
-        "688256": "domestic_design",
-        "603986": "domestic_design",
-        "688072": "domestic_equipment",
-        "300776": "domestic_equipment",
-        "688361": "domestic_equipment",
-        "688409": "domestic_equipment",
-        "300604": "domestic_equipment",
-        "688120": "domestic_equipment",
-        "688082": "domestic_equipment",
-        "300054": "domestic_material",
-        "688535": "domestic_material",
-        "300666": "domestic_material",
-        "600206": "domestic_material",
-        "688249": "domestic_foundry",
-        "688347": "domestic_foundry",
-        "300223": "domestic_design",
-        "688825": "domestic_foundry",
-        "688041": "domestic_design",
-        "002371": "domestic_equipment",
-        "688012": "domestic_equipment",
-        "688037": "domestic_equipment",
-        "688019": "domestic_material",
-        "688268": "domestic_material",
+        # Report 4.6: fine-grained AI sub-industry profiles. Each mapped symbol
+        # resolves to its sub-industry profile so volatility / trend-persistence
+        # parameters match the actual business (optical module vs component,
+        # memory interface, chip design, equipment, test & measurement,
+        # material, foundry). These are refinements of the coarse profiles and
+        # stay inside the wide, sample-validated window, so clean bull runs are
+        # not disturbed.
+        "300308": "optical_module",      # 中际旭创 - 光模块
+        "300502": "optical_module",      # 新易盛 - 光模块
+        "300394": "optical_module",      # 天孚通信 - 光模块
+        "688205": "optical_module",      # 德科立 - 光模块
+        "920045": "optical_module",      # 蘅东光 - 光模块
+        "688498": "optical_component",   # 源杰科技 - 光芯片
+        "002281": "optical_component",   # 光迅科技 - 光器件
+        "601869": "optical_component",   # 长飞光纤 - 光器件
+        "688008": "memory_interface",    # 澜起科技 - 存储接口
+        "002409": "semiconductor_material",   # 雅克科技 - 材料
+        "688300": "semiconductor_material",   # 联瑞新材 - 材料
+        "688256": "chip_design",         # 寒武纪 - 国产算力/设计
+        "603986": "chip_design",         # 兆易创新 - 存储/设计
+        "688072": "semiconductor_equipment",  # 拓荆科技 - 设备
+        "300776": "semiconductor_equipment",  # 帝尔激光 - 设备
+        "688409": "semiconductor_equipment",  # 富创精密 - 设备
+        "688120": "semiconductor_equipment",  # 华海清科 - 设备
+        "688082": "semiconductor_equipment",  # 盛美上海 - 设备
+        "002371": "semiconductor_equipment",  # 北方华创 - 设备
+        "688012": "semiconductor_equipment",  # 中微公司 - 设备
+        "688037": "test_measurement",    # 华峰测控 - 测试设备
+        "300604": "test_measurement",    # 长川科技 - 测试设备
+        "688361": "test_measurement",    # 中科飞测 - 测试设备
+        "300054": "semiconductor_material",   # 鼎龙股份 - 材料
+        "688535": "semiconductor_material",   # 华海诚科 - 材料
+        "300666": "semiconductor_material",   # 江丰电子 - 材料
+        "600206": "semiconductor_material",   # 有研新材 - 材料
+        "688019": "semiconductor_material",   # 安集科技 - 材料
+        "688268": "semiconductor_material",   # 华特气体 - 电子特气
+        "688249": "advanced_packaging",  # 晶合集成 - 制造/封测
+        "688347": "advanced_packaging",  # 华虹宏力 - 制造
+        "688825": "advanced_packaging",  # 晶合集成(华虹系) - 制造
+        "300223": "chip_design",         # 北京君正 - 设计
+        "688041": "chip_design",         # 海光信息 - 设计
     }
 
     @classmethod
@@ -1840,8 +2007,35 @@ class _CoreBacktestEngine:
 
     @staticmethod
     def config_for_symbol(code: str, name: str = "") -> dict:
-        """Resolve the built-in parameter profile for a symbol."""
+        """Resolve the built-in parameter profile for a symbol.
+
+        Report 4.6: fine-grained AI sub-industry profiles are resolved first so
+        an optical-module, memory-interface, equipment, test & measurement,
+        material, foundry, or packaging name gets its own trend parameters.
+        Unmapped/non-AI names fall back to the coarse overseas/domestic set and
+        finally to the default or semiconductor config.
+        """
         profile = _CoreBacktestEngine._SYMBOL_PROFILE.get(code)
+        if profile == "optical_module":
+            return _CoreBacktestEngine.optical_module_config()
+        if profile == "optical_component":
+            return _CoreBacktestEngine.optical_component_config()
+        if profile == "memory_interface":
+            return _CoreBacktestEngine.memory_interface_config()
+        if profile == "memory_manufacturing":
+            return _CoreBacktestEngine.memory_manufacturing_config()
+        if profile == "chip_design":
+            return _CoreBacktestEngine.chip_design_config()
+        if profile == "semiconductor_equipment":
+            return _CoreBacktestEngine.semiconductor_equipment_config()
+        if profile == "test_measurement":
+            return _CoreBacktestEngine.test_measurement_config()
+        if profile == "semiconductor_material":
+            return _CoreBacktestEngine.semiconductor_material_config()
+        if profile == "advanced_packaging":
+            return _CoreBacktestEngine.advanced_packaging_config()
+        if profile == "electronic_gas":
+            return _CoreBacktestEngine.electronic_gas_config()
         if profile == "overseas_memory_material":
             return _CoreBacktestEngine.overseas_memory_material_config()
         if profile == "domestic_design":

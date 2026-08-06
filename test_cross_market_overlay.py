@@ -111,5 +111,60 @@ class CatastropheStopTests(unittest.TestCase):
         self.assertEqual(overlay._catastrophe_cooldown["AAA"], 1 + CATASTROPHE_COOLDOWN_DAYS)
 
 
+class ConcentrationGuardTests(unittest.TestCase):
+    """报告 4.8 行业集中度 / 相关性簇风控的 bull-silent 行为。"""
+
+    def test_trims_overconcentrated_cluster_during_drawdown(self) -> None:
+        """单一子行业簇超过 80% 且组合回撤+下跌时，裁剪簇内最弱股。"""
+        # 300308 与 300502 同属 optical 簇。
+        frame1 = _frame(100.0)
+        frame2 = _frame(50.0)
+        states = [
+            _State(
+                _Sleeve({
+                    "300308": {"fast": _Pos(1000, 100.0, 90.0)},
+                    "300502": {"fast": _Pos(1000, 50.0, 45.0)},
+                }),
+                {"300308": frame1, "300502": frame2},
+            )
+        ]
+        overlay = CrossMarketOverlay()
+        # 组合正处回撤（12%）且近期净值连续下跌（bull-silent 前提）。
+        overlay._assets_history = [155_000, 153_000, 151_000, 150_000]
+        prices = {"300308": 100.0, "300502": 50.0}
+        overlay._apply_concentration_guard(
+            states, prices, "2026-01-06", scoring_fn=None,
+            drawdown=0.12, assets=150_000,
+        )
+        sells = [sig for st in states for sig, _ in st.pending]
+        # 无评分函数时按代码字典序取簇内最弱股（300308），裁剪其超额敞口。
+        self.assertTrue(any(sig.symbol == "300308" for sig in sells))
+        self.assertTrue(any(sig.reason.split(":")[0] == "concentration_trim" for sig in sells))
+        self.assertTrue(overlay.events)
+
+    def test_bull_silent_no_trim_when_no_drawdown(self) -> None:
+        """组合未回撤（牛市）时，即使集中也不裁剪。"""
+        frame1 = _frame(100.0)
+        frame2 = _frame(50.0)
+        states = [
+            _State(
+                _Sleeve({
+                    "300308": {"fast": _Pos(1000, 100.0, 90.0)},
+                    "300502": {"fast": _Pos(1000, 50.0, 45.0)},
+                }),
+                {"300308": frame1, "300502": frame2},
+            )
+        ]
+        overlay = CrossMarketOverlay()
+        overlay._assets_history = [150_000, 150_000, 150_000, 150_000]
+        prices = {"300308": 100.0, "300502": 50.0}
+        overlay._apply_concentration_guard(
+            states, prices, "2026-01-06", scoring_fn=None,
+            drawdown=0.0, assets=150_000,
+        )
+        self.assertEqual(states[0].pending, [])
+        self.assertEqual(overlay.events, [])
+
+
 if __name__ == "__main__":
     unittest.main()
