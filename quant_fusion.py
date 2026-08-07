@@ -2090,9 +2090,11 @@ class _CoreBacktestEngine:
     # over-fit a thin sample. Only the report's "allowable" parameters may
     # retain sub-industry specificity: max single-symbol weight, ATR multiple,
     # risk budget. Entry/exit periods, profit-protection thresholds, pyramid
-    # add-on and regime parameters are shared verbatim through the hierarchy
-    # (they are NOT allowed to diverge), which is what dampens overfitting
-    # without disturbing the validated coarse trend-following.
+    # add-on and regime parameters are NOT shrunk toward the parent: they keep
+    # the fine sub-industry profile's own values verbatim (the coarse parent is
+    # only used as the reference for the shrinkable parameters), which is what
+    # dampens overfitting without disturbing the validated coarse
+    # trend-following.
     SHRINKABLE_PARAMS: ClassVar[frozenset[str]] = frozenset(
         {"max_symbol_weight", "atr_multiplier", "trail_atr_mult", "risk_pct"}
     )
@@ -6188,6 +6190,12 @@ class _UniverseInvariantSleeveMixin:
     STICKY_CONFIRM_DAYS = 4
     STICKY_CYCLE_DAYS = 5
     STICKY_CORE_LOCK = 2
+    # A rotated-out name is blocked from re-entry for this many trading days
+    # (measured in evaluation positions) before it can compete again. Without
+    # this cooldown the ``_sticky_rotated`` set grows without bound and, once it
+    # covers every non-held eligible name in a finite pool, rotation silently
+    # dead-locks (no new candidate can ever qualify).
+    STICKY_ROTATED_COOLDOWN_DAYS = 20
 
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
         """Reset tradable and regime metadata at every independent run."""
@@ -6199,12 +6207,16 @@ class _UniverseInvariantSleeveMixin:
         self._candidate_score_series: dict[str, dict[int, pd.Series]] = {}
         # Report P1-3: sticky-candidate rotation state. ``_sticky_beat_days``
         # counts consecutive days a NEW candidate has clearly beaten the weakest
-        # replaceable held name (confirmation before rotating); ``_sticky_pos``
-        # is the last trading position a rotation happened at (one per cycle);
-        # ``_sticky_rotated`` holds recently rotated-out names for cooldown.
+        # replaceable held name (confirmation before rotating); ``_sticky_leader``
+        # is the candidate currently being confirmed so the count only advances
+        # while the SAME candidate keeps qualifying (consecutive-day rule);
+        # ``_sticky_last_rotation_pos`` is the last trading position a rotation
+        # happened at (one per cycle); ``_sticky_rotated`` maps recently
+        # rotated-out names to their rotation position for a bounded cooldown.
         self._sticky_beat_days: dict[str, int] = {}
+        self._sticky_leader: str | None = None
         self._sticky_last_rotation_pos: int = -1_000_000
-        self._sticky_rotated: set[str] = set()
+        self._sticky_rotated: dict[str, int] = {}
         # Market regime state machine: start in TREND (full trading) and let the
         # basket indicators demote the state when conditions deteriorate.
         self._regime_state: str = "TREND"
@@ -6915,6 +6927,14 @@ class _UniverseInvariantSleeveMixin:
         # new candidate persists. Core (strongest STICKY_CORE_LOCK) names are
         # locked against short-term ranking noise (report P1-3 "core lock").
         if len(selected) >= maximum and eligible_held:
+            # Expire rotated-out names whose cooldown has elapsed so a finite
+            # pool never dead-locks rotation (report P1-3 "recently rotated").
+            cooldown = self.STICKY_ROTATED_COOLDOWN_DAYS
+            self._sticky_rotated = {
+                code: pos
+                for code, pos in self._sticky_rotated.items()
+                if self._sticky_eval_pos - pos < cooldown
+            }
             core = set(
                 sorted(eligible_held, key=lambda c: scores.get(c, 0.0), reverse=True)[
                     : self.STICKY_CORE_LOCK
@@ -6928,7 +6948,7 @@ class _UniverseInvariantSleeveMixin:
             ):
                 weakest = replaceable[0]
                 weakest_score = scores.get(weakest, 0.0)
-                # Best new candidate (not held, not recently rotated) that beats
+                # Best new candidate (not held, not under cooldown) that beats
                 # the weakest held name by the minimum score gap.
                 best_new = None
                 for cand in ranked:
@@ -6937,18 +6957,32 @@ class _UniverseInvariantSleeveMixin:
                     if scores[cand] >= weakest_score + self.MIN_SCORE_GAP:
                         best_new = cand
                         break
-                if best_new is not None:
-                    # Confirmation: the advantage must persist for several
-                    # consecutive days before a rotation is allowed.
+                # Consecutive-day confirmation (report P1-3 "consecutive days"):
+                # the beat counter advances only while the SAME candidate keeps
+                # being the best new option. A switch of leader (or the absence
+                # of any qualifying leader) resets the previous leader's count,
+                # so a candidate's qualifying days must be contiguous.
+                if best_new is not None and best_new == self._sticky_leader:
                     self._sticky_beat_days[best_new] = (
                         self._sticky_beat_days.get(best_new, 0) + 1
                     )
-                    if self._sticky_beat_days[best_new] >= self.STICKY_CONFIRM_DAYS:
-                        selected.discard(weakest)
-                        selected.add(best_new)
-                        self._sticky_last_rotation_pos = self._sticky_eval_pos
-                        self._sticky_rotated.add(weakest)
-                        self._sticky_beat_days[best_new] = 0
+                else:
+                    if self._sticky_leader is not None:
+                        self._sticky_beat_days.pop(self._sticky_leader, None)
+                    self._sticky_leader = best_new
+                    if best_new is not None:
+                        self._sticky_beat_days[best_new] = 1
+                if (
+                    best_new is not None
+                    and self._sticky_beat_days.get(best_new, 0)
+                    >= self.STICKY_CONFIRM_DAYS
+                ):
+                    selected.discard(weakest)
+                    selected.add(best_new)
+                    self._sticky_last_rotation_pos = self._sticky_eval_pos
+                    self._sticky_rotated[weakest] = self._sticky_eval_pos
+                    self._sticky_beat_days.pop(best_new, None)
+                    self._sticky_leader = None
         return selected
 
     def _update_sector_guard(
@@ -7572,12 +7606,15 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         re-entry and destroyed ~27% of returns on the 3/5/13 pools. We therefore
         net by SHARE COUNT toward the larger side:
 
-        - a buy whose target is fully absorbed by the same-day total sell shares
-          (``buy_shares <= sell_shares``) is redundant round-trip churn and is
-          cancelled (recorded as ``netted_cross_sleeve_buy``);
-        - a buy that EXCEEDS the pending sells represents genuine net ADD
-          exposure the account still wants and is retained, so the aggregate
-          cross-sleeve intent survives and the position is not over-sold.
+        - buys are absorbed by the same-day sell pool CUMULATIVELY across all
+          sleeves (each buy nets against the shares still left to sell), so a
+          buy whose target is fully absorbed by the residual sell shares is
+          redundant round-trip churn and is cancelled (recorded as
+          ``netted_cross_sleeve_buy``);
+        - a buy that EXCEEDS the residual sell shares represents genuine net ADD
+          exposure the account still wants and is retained — trimmed down to the
+          residual sell size when it partially overlaps — so the aggregate
+          cross-sleeve intent survives and the position is never over-sold.
 
         This removes same-symbol round-trip churn and the fee/slippage drag
         without suppressing legitimate re-entry, keeping returns intact.
@@ -7595,19 +7632,48 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                     )
         if not selling:
             return
+        # Cumulative remaining sell pool per symbol. This pool is decremented
+        # as buys are absorbed ACROSS all sleeves, so multiple buys for the same
+        # symbol are netted against the same sell pool instead of each buy being
+        # compared to the full sell total (which would over-net and cancel
+        # legitimate net ADD exposure).
+        remaining_sell: dict[str, int] = dict(sell_shares)
         for state in states:
             retained: list[tuple[Signal, BaseStrategy]] = []
             for signal, strategy in state.pending:
                 if signal.direction == "buy" and str(signal.symbol) in selling:
-                    if int(signal.target_shares) <= sell_shares[str(signal.symbol)]:
+                    symbol = str(signal.symbol)
+                    buy_shares = int(signal.target_shares)
+                    rem = remaining_sell[symbol]
+                    if rem <= 0:
+                        # Sell pool already fully absorbed by earlier buys -> the
+                        # whole buy is genuine net ADD exposure; retain it as-is.
+                        retained.append((signal, strategy))
+                        continue
+                    if buy_shares <= rem:
+                        # Fully absorbed by the remaining sell pool -> redundant
+                        # same-day round-trip churn; cancel it and decrement.
                         state.sleeve._record_order_event(
                             date=date_str,
                             signal=signal,
                             event="netted_cross_sleeve_buy",
                             because="same_symbol_sell_pending_absorbs_buy",
-                            sell_shares=int(sell_shares[str(signal.symbol)]),
+                            sell_shares=buy_shares,
                         )
+                        remaining_sell[symbol] = rem - buy_shares
                         continue
+                    # Partially absorbed: keep only the net ADD portion and trim
+                    # the buy down to the remaining sell pool size.
+                    state.sleeve._record_order_event(
+                        date=date_str,
+                        signal=signal,
+                        event="netted_cross_sleeve_buy",
+                        because="same_symbol_sell_pending_absorbs_buy_partial",
+                        sell_shares=rem,
+                    )
+                    retained.append((replace(signal, target_shares=rem), strategy))
+                    remaining_sell[symbol] = 0
+                    continue
                 retained.append((signal, strategy))
             state.pending = retained
 
