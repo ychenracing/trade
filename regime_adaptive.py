@@ -238,7 +238,13 @@ def simulate_route_sequence(
                     current_state = RegimeRoute.WEAK
                     confirm_count = 0
                     hold_days = 0
-            # else: mixed evidence -> stay in the transition (no flip).
+            else:
+                # Mixed evidence (one index strong, one weak): the weak
+                # transition is NOT sustained, so reset the confirmation streak.
+                # Confirmation must be consecutive (report 3.3 "避免状态抖动"),
+                # otherwise a run of weak days interrupted by a strong day could
+                # still accumulate to ROUTE_CONFIRM_DAYS and drift to WEAK.
+                confirm_count = 0
         elif current_state is RegimeRoute.WEAK:
             # Both indices sustained an uptrend -> begin recovering to trend.
             if both_trending and hold_days >= ROUTE_MIN_HOLD_DAYS:
@@ -498,7 +504,11 @@ def select_positive_momentum_leaders(
         # symbol's own 120-day return against the basket's 120-day return.
         if len(closes) >= 121:
             symbol_120 = float(closes.iloc[-1] / closes.iloc[-121] - 1.0)
-            rs_120 = symbol_120 - ref_avg_return if ref_avg_return != 0 else 0.0
+            # Relative strength vs the reference basket. When the basket is
+            # empty/missing its average falls back to 0, in which case the
+            # symbol's own 120-day return is its relative strength (subtracting
+            # 0 is a no-op) rather than being discarded.
+            rs_120 = symbol_120 - ref_avg_return
         else:
             rs_120 = 0.0
 
@@ -606,6 +616,13 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
         self._probe_entry_bar = 0
         self._failures = 0
         self._assets_peak = 0.0
+        # Chandelier trailing stop, tracked separately from the hard disaster
+        # stop. ``position.stop_loss`` is the hard lower bound only; the
+        # profit-activated chandelier line lives here so a trailing take-profit
+        # exit is classified as ``profit_chandelier`` (6-day cooldown) instead
+        # of being mis-reported as a ``hard_stop`` disaster (16-day cooldown
+        # plus a failure count) — see on_bar profit-chandelier branch.
+        self._trail_stop = 0.0
 
     # ── helpers ──────────────────────────────────────────────────────
 
@@ -685,6 +702,8 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
         self._probe_phase = False
         self._probe_entry_price = 0.0
         self._probe_entry_bar = 0
+        # Reset the trailing chandelier so a re-entry starts from a clean slate.
+        self._trail_stop = 0.0
 
     def on_bar(self, ctx: qf.BarContext) -> qf.Signal | None:
         close = float(ctx.df["close"].iloc[ctx.i])
@@ -746,6 +765,9 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
         position.highest_close_since_entry = max(
             position.highest_close_since_entry, close
         )
+        # Hard disaster stop only: ``position.stop_loss`` is the initial entry
+        # cost floor and is never raised by the trailing chandelier (see
+        # ``_trail_stop`` below), so any exit hit here is a genuine disaster.
         if position.stop_loss > 0 and close <= position.stop_loss:
             self._pending_exit_reason = "hard_stop"
             self._failures += 1
@@ -793,9 +815,12 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
         atr_value = float(atr.iloc[ctx.i]) if atr is not None else float("nan")
         if not math.isfinite(atr_value) or atr_value <= 0:
             return None
-        stop = position.highest_close_since_entry - TRAILING_ATR_MULTIPLIER * atr_value
-        position.stop_loss = max(position.stop_loss, stop)
-        if close > position.stop_loss:
+        trail = position.highest_close_since_entry - TRAILING_ATR_MULTIPLIER * atr_value
+        # Track the chandelier line separately so a trailing take-profit exit is
+        # classified as ``profit_chandelier`` (6-day cooldown), never as a
+        # ``hard_stop`` disaster. The line only ratchets up (never down).
+        self._trail_stop = max(self._trail_stop, trail)
+        if close > self._trail_stop:
             return None
         self._pending_exit_reason = "profit_chandelier"
         return self._make_sell_signal(

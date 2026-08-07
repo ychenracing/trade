@@ -1064,7 +1064,21 @@ class WalkForwardOptimizer:
                     flush=True,
                 )
             if evaluation is None:
-                evaluation = self.evaluate(candidate)
+                try:
+                    evaluation = self.evaluate(candidate)
+                except (ValueError, KeyError, TypeError, RuntimeError) as error:
+                    # An invalid parameter combination (e.g. a scaled
+                    # exit_period >= entry_period for a routed symbol) or an
+                    # engine invariant failure makes evaluation raise. Skip the
+                    # candidate instead of crashing the whole optimization, and
+                    # leave a trace in the progress stream so the failure is
+                    # not silent.
+                    if self.progress:
+                        print(
+                            f"  skipping {candidate.candidate_id}: {error}",
+                            flush=True,
+                        )
+                    continue
             if cache_path is not None and not cache_path.is_file():
                 temporary = cache_path.with_suffix(".tmp")
                 temporary.write_text(
@@ -1122,8 +1136,22 @@ class WalkForwardOptimizer:
             return report
         selected = frontier[0]
         baseline = next(
-            item for item in evaluations if item.candidate.candidate_id == "baseline"
+            (
+                item
+                for item in evaluations
+                if item.candidate.candidate_id == "baseline"
+            ),
+            None,
         )
+        if baseline is None:
+            # ``evaluate`` skips candidates that raise (see optimize); if the
+            # baseline itself failed it is absent here. Surface the missing
+            # baseline explicitly instead of an opaque StopIteration, since the
+            # holdout comparison below depends on it.
+            raise RuntimeError(
+                "baseline candidate evaluation is required for the holdout "
+                "comparison but was skipped after failing to evaluate"
+            )
         # This is the first point at which the holdout is visible to the process.
         baseline_test = self.runner.run(baseline.candidate, self.test_window)
         baseline_stress_test = self.runner.run(

@@ -83,12 +83,12 @@
 
 旧弱市验证曾记录独立随机种子集合最差最大回撤 31.68%。该数字证明旧策略缺少有效组合级保护，也是本轮收紧风险阈值的原因。
 
-由于当前弱市策略行为已经改变，以下旧统计暂不再作为当前有效结论：
+由于当前弱市策略行为已经改变，以下旧统计不再作为当前有效结论：
 
 - 2024 年固定、随机和独立随机股票池的盈利比例；
 - 中位收益和最差最大回撤；
 - 2022—2023 年弱市分布；
-- `regime_validation_results.json` 中的逐股票池结果。
+- 旧 `regime_validation_results.json` 中的逐股票池结果（该文件已从仓库清理，重新生成后再提交）。
 
 重新验证命令：
 
@@ -133,9 +133,10 @@ python run_regime_validation.py --workers 4
 - `universe_backtest.json`：冷启动与预热组合结果；
 - `cambricon_universe_backtest.json`：寒武纪映射回归；
 - `prefix_stress.json`：1 至 22 只股票前缀压力测试；
-- `regime_validation_results.json`：旧弱市策略对照，当前需重新生成；
 - `market_data/SHA256SUMS`：趋势冻结数据哈希；
 - `historical_data/SHA256SUMS`：历史路由数据哈希。
+
+> `regime_validation_results.json`（弱市验证工件）和 `optimizer_validation/`（走步优化工件）属于生成产物，默认不在仓库中持久化，按需重新生成。
 
 ## CI 验收标准
 

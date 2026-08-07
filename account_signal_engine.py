@@ -175,6 +175,8 @@ def _compute_target_shares(
     target_weight: float,
     snapshot: AccountSnapshot,
     ranked_candidates: list[PointInTimeSignal],
+    *,
+    total_equity: float | None = None,
 ) -> tuple[int, float]:
     """在总仓位上限内把现金分配到排序后的候选，返回（目标股数, 目标权重）。
 
@@ -185,10 +187,25 @@ def _compute_target_shares(
 
     if not math.isfinite(close) or close <= 0:
         return 0, 0.0
-    equity = max(snapshot.cash, 0.0)
-    # 现金分配：按合并目标权重把可用现金拆给每个候选。
+    cash = max(snapshot.cash, 0.0)
+    # 单票上限以账户净权益为基准（现金 + 已持仓市值），而非仅现金：否则一个
+    # 已有大量持仓的账户会把全部现金投入同一标的，使该票占总权益比例失控。
+    # 未提供总权益时退化为现金（既有行为）。
+    equity = total_equity if total_equity is not None and total_equity > 0 else cash
     total_weight = sum(item.target_weight for item in ranked_candidates) or 1.0
-    alloc = equity * target_weight / total_weight
+    # 现金分配取两个约束的较小者：一是按候选权重把可用现金拆分的份额
+    # （`cash * target_weight / total_weight`，保证所有候选合计不超过现金，
+    # 避免多候选时每只都顶格吃现金导致超配）；二是该候选建议的目标权重占净
+    # 权益的份额（`equity * target_weight`，保留单/双/三确认的 0.25/0.40/0.60
+    # 试探意图，不被归一化抹平）。
+    alloc = min(
+        cash * target_weight / total_weight,
+        equity * target_weight,
+    )
+    # 单票硬上限：任何一只被选中的候选最多动用账户净权益的 60%，即使
+    # 归一化后它原本会吃下全部现金（单候选时 target_weight/total_weight=1）。
+    # 否则单确认（0.25）/双确认（0.40）会被放大成满仓，违反"单票不超过 60%"。
+    alloc = min(alloc, 0.60 * equity)
     shares = _floor_to_lot(alloc / close)
     if shares <= 0:
         return 0, 0.0
@@ -660,7 +677,11 @@ class AccountSignalEngine:
             slots_left = max(
                 int(default_cfg.get("max_positions", 6)) - len(held_codes), 0
             )
-            for candidate in ranked[:max(slots_left, 0)]:
+            # 只对实际将要买入的候选子集计算现金分配：分母必须只由被选中的
+            # 候选构成，否则 total_weight 会包含未选中候选的权重，稀释每只
+            # 选中股票的分配额（account_signal_engine._compute_target_shares）。
+            selected_candidates = ranked[:max(slots_left, 0)]
+            for candidate in selected_candidates:
                 try:
                     frame = self._frame(candidate.symbol, as_of)
                     close = float(frame["close"].iloc[-1])
@@ -673,7 +694,12 @@ class AccountSignalEngine:
                     close,
                     candidate.target_weight,
                     snapshot,
-                    ranked,
+                    selected_candidates,
+                    total_equity=(
+                        snapshot.cash + priced_market_value
+                        if valuation_complete
+                        else None
+                    ),
                 )
                 actions.append(
                     {

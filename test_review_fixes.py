@@ -299,6 +299,58 @@ class AccountEngineTests(unittest.TestCase):
         self.assertIsNone(result["estimated_market_value"])
         self.assertIsNone(result["estimated_equity"])
 
+    def test_target_shares_use_only_selected_candidate_subset(self) -> None:
+        """现金分配只按被选中的候选子集计算，不被未选中候选稀释。"""
+        snapshot = account.AccountSnapshot(
+            cash=1_000_000.0,
+            peak_equity=1_000_000.0,
+            positions=(),
+        )
+        # 三个候选：两个被选中（target_weight 0.60 + 0.40），一个未选中。
+        selected = [
+            account.PointInTimeSignal(
+                symbol="300308",
+                strategy_name="s1",
+                direction="buy",
+                score=0.9,
+                target_weight=0.60,
+                target_shares=0,
+                stop_price=None,
+                reasons=("r",),
+            ),
+            account.PointInTimeSignal(
+                symbol="300502",
+                strategy_name="s2",
+                direction="buy",
+                score=0.8,
+                target_weight=0.40,
+                target_shares=0,
+                stop_price=None,
+                reasons=("r",),
+            ),
+        ]
+        # 修复前传入完整 ranked（含 unselected），分母被放大、分配被稀释。
+        unselected = [
+            account.PointInTimeSignal(
+                symbol="688256",
+                strategy_name="s3",
+                direction="buy",
+                score=0.2,
+                target_weight=0.60,
+                target_shares=0,
+                stop_price=None,
+                reasons=("r",),
+            )
+        ]
+        shares_selected, _ = account._compute_target_shares(
+            "300308", 10.0, 0.60, snapshot, selected
+        )
+        shares_diluted, _ = account._compute_target_shares(
+            "300308", 10.0, 0.60, snapshot, selected + unselected
+        )
+        # 选中子集归一化后应分配全部现金给该股整手；包含未选中候选后份额变小。
+        self.assertGreater(shares_selected, shares_diluted)
+
 
 class MarketDataContractTests(unittest.TestCase):
     """验证指数文件的排序、去重和 OHLC 契约。"""

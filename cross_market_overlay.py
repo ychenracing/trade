@@ -643,11 +643,18 @@ class CrossMarketOverlay:
         profit_stop = 0.0
         if self._risk_level >= 2:
             peak_gain = peak_close / entry - 1.0
-            giveback = PROFIT_TIER_GIVEBACK[-1][1]
+            # Profit-tier giveback: take the LAST tier whose gain threshold the
+            # peak gain reaches (PROFIT_TIER_GIVEBACK doc: 30-80% -> 18%,
+            # 80-150% -> 22%, 150-300% -> 26%, >=300% -> 28%). We must NOT pick
+            # the first tier whose threshold EXCEEDS ``peak_gain`` (that yields
+            # the NEXT tier's looser giveback — 50% would get 0.22 instead of
+            # 0.18, 100% would get 0.26 instead of 0.22, etc.), which would make
+            # the layered stop weaker than calibrated and bleed moderate winners
+            # through to a looser protection line.
+            giveback = PROFIT_TIER_GIVEBACK[0][1]
             for gain_threshold, ratio in PROFIT_TIER_GIVEBACK:
-                if peak_gain < gain_threshold:
+                if peak_gain >= gain_threshold:
                     giveback = ratio
-                    break
             profit_stop = peak_close * (1.0 - giveback)
             # Looseness floor: never tighten the profit-tier stop below this
             # distance from peak (i.e. never trigger on a smaller pull-back than

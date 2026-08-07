@@ -205,8 +205,11 @@ def data_integrity() -> dict[str, Any]:
                 "file": path.name,
                 "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                 "rows": len(frame),
-                "first_date": frame[0],
-                "last_date": frame[-1],
+                # A CSV with only a header (or entirely blank) yields no rows;
+                # guard the first/last access so integrity checks never crash on
+                # an empty file but still surface it for review.
+                "first_date": frame[0] if frame else None,
+                "last_date": frame[-1] if frame else None,
             }
         )
     return {"file_count": len(rows), "files": rows}

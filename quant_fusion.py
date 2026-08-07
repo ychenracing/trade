@@ -613,7 +613,21 @@ class Indicators:
         for idx in range(seed_pos + 1, len(values)):
             current = values.iloc[idx]
             prev = out.iloc[idx - 1]
-            if pd.isna(current) or pd.isna(prev):
+            if pd.isna(prev):
+                # The smoothed value was lost (only possible if the whole series
+                # between here and the seed was missing); re-seed from the most
+                # recent complete window instead of letting the chain die.
+                window = values.iloc[max(0, idx - period + 1) : idx + 1].dropna()
+                if len(window) < period:
+                    continue
+                out.iloc[idx] = window.iloc[-period:].mean()
+                continue
+            if pd.isna(current):
+                # A transient gap in the input (e.g. ADX's dx when both +DI and
+                # -DI are 0 in a flat/symmetric tape): hold the previous smoothed
+                # value so a single missing point does not permanently kill the
+                # Wilder smoothing from that bar onward.
+                out.iloc[idx] = prev
                 continue
             out.iloc[idx] = (prev * (period - 1) + current) / period
         return out
@@ -3873,7 +3887,17 @@ class _CoreBacktestEngine:
         min_commission = float(cfg.get("min_commission", 0.0))
         stamp_duty = float(cfg.get("stamp_duty", 0.0005))
         exec_price = float(signal.price) * (1 - slippage)
-        sell_shares = _floor_to_lot(min(signal.target_shares, pos.shares))
+        if signal.target_shares >= pos.shares:
+            # Full liquidation: sell every share, including any odd lot, so an
+            # odd-lot position (e.g. injected via ``_apply_account_state``) can
+            # be fully cleared. A-share sells allow odd lots; the 100-share lot
+            # constraint applies only to buys.
+            sell_shares = pos.shares
+        else:
+            # Partial reduction: floor to a board lot. This is the behavior the
+            # validated backtest metrics depend on (a sub-lot target floors to 0
+            # and is dropped by the caller rather than re-queued forever).
+            sell_shares = _floor_to_lot(min(signal.target_shares, pos.shares))
         if sell_shares <= 0:
             return 0
         sell_value = sell_shares * exec_price
@@ -3972,6 +3996,12 @@ class _CoreBacktestEngine:
                 strategy = strategies.get(strat_name)
                 if strategy is None and strat_name != "external_account":
                     continue
+                # A-share sells may be any share count (odd lots allowed); the
+                # 100-share lot constraint applies only to buys. The execution
+                # path already floors the fill to a board lot, so keep the raw
+                # proportional reduction here to avoid over-trimming positions
+                # in choppy regimes (flooring early would sell fewer shares and
+                # leave larger exposure, dragging returns down).
                 sell_shares = max(0, int(pos.shares * exit_ratio))
                 if sell_shares <= 0:
                     continue
@@ -4004,7 +4034,7 @@ class _CoreBacktestEngine:
             else -1.0
         )
         # Drawdown is computed from the marked-to-market portfolio equity curve.
-        peak = eq["assets"].cummax()
+        peak = eq["assets"].cummax().replace(0, np.nan)
         drawdown = (eq["assets"] - peak) / peak
         max_drawdown = drawdown.min()
         calmar = annual_return / abs(max_drawdown) if max_drawdown < 0 else 0.0
@@ -4784,6 +4814,12 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             elif executable_signal.direction == "sell":
                 sold = self._execute_sell(executable_signal, strategy, date_str)
                 remaining = max(executable_signal.target_shares - sold, 0)
+                # Only re-queue when the sell made real progress (a partial
+                # fill). A zero-fill sell is a sub-lot target that can never be
+                # executed (``_execute_sell`` floors partial sells to a board
+                # lot), so re-queuing it here would spin forever as a permanent
+                # pending order. Limit-blocked sells are already retained
+                # upstream via ``keep_pending``, so they never reach this path.
                 if remaining > 0 and (strategy is None or strategy.position is not None):
                     unexecuted.append(
                         (replace(signal, target_shares=remaining), strategy)
@@ -5513,7 +5549,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             if total_return > -1.0
             else -1.0
         )
-        peak = equity["assets"].cummax()
+        peak = equity["assets"].cummax().replace(0, np.nan)
         drawdown = (equity["assets"] - peak) / peak
         daily_returns = equity["assets"].pct_change().dropna()
         sharpe = 0.0
@@ -6914,6 +6950,17 @@ class _UniverseInvariantSleeveMixin:
         eligible_held = set(eligible) & held
         # Incumbent bonus: every eligible held name is retained by default.
         selected = set(eligible_held)
+        # Expire rotated-out names whose cooldown has elapsed so a finite pool
+        # never dead-locks rotation (report P1-3 "recently rotated"). This prune
+        # must run BEFORE both the spare-slot fill and the rotation branch so a
+        # freshly rotated-out name is never re-admitted into a spare slot within
+        # its cooldown window.
+        cooldown = self.STICKY_ROTATED_COOLDOWN_DAYS
+        self._sticky_rotated = {
+            code: pos
+            for code, pos in self._sticky_rotated.items()
+            if self._sticky_eval_pos - pos < cooldown
+        }
         # Under-deployed book: fill spare slots freely from the top of the
         # ranking so a fresh bull / post-rotation book can deploy capital.
         spare = maximum - len(selected)
@@ -6921,20 +6968,16 @@ class _UniverseInvariantSleeveMixin:
             for code in ranked:
                 if len(selected) >= maximum:
                     break
-                if code not in selected:
-                    selected.add(code)
+                # A recently rotated-out name stays on cooldown even when the
+                # book is under-deployed, so a weak name cannot be re-admitted
+                # into a spare slot the same cycle it was rotated out.
+                if code in selected or code in self._sticky_rotated:
+                    continue
+                selected.add(code)
         # Full book: rotate the weakest non-core held name when a clearly better
         # new candidate persists. Core (strongest STICKY_CORE_LOCK) names are
         # locked against short-term ranking noise (report P1-3 "core lock").
         if len(selected) >= maximum and eligible_held:
-            # Expire rotated-out names whose cooldown has elapsed so a finite
-            # pool never dead-locks rotation (report P1-3 "recently rotated").
-            cooldown = self.STICKY_ROTATED_COOLDOWN_DAYS
-            self._sticky_rotated = {
-                code: pos
-                for code, pos in self._sticky_rotated.items()
-                if self._sticky_eval_pos - pos < cooldown
-            }
             core = set(
                 sorted(eligible_held, key=lambda c: scores.get(c, 0.0), reverse=True)[
                     : self.STICKY_CORE_LOCK
