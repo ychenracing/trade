@@ -21,8 +21,10 @@ import io
 import itertools
 import json
 import math
+import os
 import random
 import statistics
+import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Protocol, cast
@@ -69,6 +71,23 @@ POLICY_RISK_PROFILES: dict[str, dict[str, float]] = {
         "emergency_drawdown": 0.18,
         "terminal_drawdown": 0.20,
         "concentration_drawdown_adjustment": 0.010,
+    },
+}
+SLEEVE_WEIGHT_PROFILES: dict[str, dict[str, float]] = {
+    "baseline": {
+        "transition_fast_weight": 0.20,
+        "transition_base_weight": 0.35,
+        "transition_slow_weight": 0.45,
+    },
+    "slow_defensive": {
+        "transition_fast_weight": 0.15,
+        "transition_base_weight": 0.35,
+        "transition_slow_weight": 0.50,
+    },
+    "fast_recovery": {
+        "transition_fast_weight": 0.25,
+        "transition_base_weight": 0.30,
+        "transition_slow_weight": 0.45,
     },
 }
 
@@ -145,6 +164,14 @@ class Candidate:
 
     def __post_init__(self) -> None:
         engine = dict(self.engine_overrides)
+        sleeve_profile = engine.pop("dynamic_sleeve_profile", None)
+        if sleeve_profile is not None:
+            try:
+                engine.update(SLEEVE_WEIGHT_PROFILES[str(sleeve_profile)])
+            except KeyError as error:
+                raise ValueError(
+                    f"Unknown dynamic_sleeve_profile: {sleeve_profile!r}"
+                ) from error
         multipliers = {
             key: float(value) for key, value in self.symbol_multipliers.items()
         }
@@ -303,6 +330,60 @@ class ParameterSpace:
                 "risk_profile": ("baseline", "moderate", "defensive"),
             },
         )
+
+    @classmethod
+    def for_stage(cls, stage: str) -> ParameterSpace:
+        """Return one risk -> turnover -> return search stage.
+
+        Stages deliberately isolate parameter families so a candidate cannot
+        hide a risk regression behind an unrelated entry/exit change.
+        """
+        normalized = str(stage).lower()
+        if normalized == "all":
+            return cls.default()
+        if normalized == "risk":
+            return cls(
+                engine={
+                    "cm_risk_continuous_confirm_days": (2, 3, 4),
+                    "cm_risk_level2_drawdown": (0.06, 0.08, 0.10),
+                    "cm_risk_level3_drawdown": (0.10, 0.12, 0.14),
+                    "regime_transition_scale": (0.70, 0.85, 1.0),
+                    "regime_transition_pyramid_scale": (0.0, 0.25, 0.50),
+                },
+                symbol_multipliers={},
+                policy={
+                    "risk_profile": ("baseline", "moderate", "defensive")
+                },
+            )
+        if normalized == "turnover":
+            return cls(
+                engine={
+                    "sticky_min_score_gap": (0.15, 0.20, 0.25),
+                    "sticky_confirm_days": (4, 6, 8),
+                    "sticky_cycle_days": (5, 8, 10),
+                    "sticky_rotated_cooldown_days": (15, 20, 30),
+                    "transition_max_positions": (3, 4, 5),
+                },
+                symbol_multipliers={},
+                policy={"candidate_reference_percentile": (0.45, 0.50, 0.55)},
+            )
+        if normalized == "return":
+            return cls(
+                engine={
+                    "momentum_lookback": (5, 10, 20),
+                    "dynamic_sleeve_profile": (
+                        "baseline", "slow_defensive", "fast_recovery"
+                    ),
+                },
+                symbol_multipliers={
+                    "entry_period": (0.85, 1.0, 1.15),
+                    "exit_period": (0.85, 1.0, 1.15),
+                    "trail_atr_mult": (0.90, 1.0, 1.10),
+                    "risk_pct": (0.90, 1.0, 1.10),
+                },
+                policy={},
+            )
+        raise ValueError("stage must be risk, turnover, return, or all")
 
     @classmethod
     def from_json(cls, path: str | Path) -> ParameterSpace:
@@ -757,6 +838,8 @@ class CandidateEvaluation:
     worst_validation_return: float = field(init=False)
     worst_validation_drawdown: float = field(init=False)
     worst_stress_drawdown: float = field(init=False)
+    median_validation_trades: float = field(init=False)
+    worst_validation_trades: int = field(init=False)
     validation_stability: float = field(init=False)
     generalization_gap: float = field(init=False)
     selection_score: float = field(init=False)
@@ -783,6 +866,9 @@ class CandidateEvaluation:
         self.worst_stress_drawdown = min(
             item.max_drawdown for item in self.stress_validation
         )
+        validation_trades = [item.total_trades for item in self.validation]
+        self.median_validation_trades = float(statistics.median(validation_trades))
+        self.worst_validation_trades = max(validation_trades)
         self.validation_stability = (
             statistics.pstdev(annual) if len(annual) > 1 else 0.0
         )
@@ -795,6 +881,7 @@ class CandidateEvaluation:
             - 0.25 * self.validation_stability
             - 0.10 * self.generalization_gap
             + 0.05 * self.worst_validation_return
+            - 0.02 * (self.median_validation_trades / 100.0)
         )
         self.robust_selection_score = self.selection_score
         self.rejection_reasons = []
@@ -817,6 +904,8 @@ class CandidateEvaluation:
                 "worst_validation_return": self.worst_validation_return,
                 "worst_validation_drawdown": self.worst_validation_drawdown,
                 "worst_stress_drawdown": self.worst_stress_drawdown,
+                "median_validation_trades": self.median_validation_trades,
+                "worst_validation_trades": self.worst_validation_trades,
                 "validation_stability": self.validation_stability,
                 "generalization_gap": self.generalization_gap,
                 "selection_score": self.selection_score,
@@ -937,7 +1026,7 @@ def _apply_parameter_support(evaluations: list[CandidateEvaluation]) -> None:
 def pareto_frontier(
     evaluations: Iterable[CandidateEvaluation],
 ) -> list[CandidateEvaluation]:
-    """Return feasible return/drawdown points not dominated by another candidate."""
+    """Return feasible return/drawdown/trade points not dominated by another."""
     feasible = [item for item in evaluations if item.feasible]
     frontier: list[CandidateEvaluation] = []
     for candidate in feasible:
@@ -953,13 +1042,24 @@ def pareto_frontier(
                 abs(other.worst_validation_drawdown)
                 <= abs(candidate.worst_validation_drawdown) + 1e-12
             )
+            trades_no_worse = (
+                other.median_validation_trades
+                <= candidate.median_validation_trades + 1e-12
+            )
             strictly_better = (
                 other.median_validation_annual_return
                 > candidate.median_validation_annual_return + 1e-12
                 or abs(other.worst_validation_drawdown)
                 < abs(candidate.worst_validation_drawdown) - 1e-12
+                or other.median_validation_trades
+                < candidate.median_validation_trades - 1e-12
             )
-            if return_no_worse and drawdown_no_worse and strictly_better:
+            if (
+                return_no_worse
+                and drawdown_no_worse
+                and trades_no_worse
+                and strictly_better
+            ):
                 dominated = True
                 break
         if not dominated:
@@ -967,9 +1067,10 @@ def pareto_frontier(
     return sorted(
         frontier,
         key=lambda item: (
-            -item.robust_selection_score,
-            -item.median_validation_annual_return,
+            -round(item.median_validation_annual_return / 0.02),
             abs(item.worst_validation_drawdown),
+            item.median_validation_trades,
+            -item.robust_selection_score,
             item.candidate.candidate_id,
         ),
     )
@@ -1102,9 +1203,9 @@ class WalkForwardOptimizer:
                 "test_data_used_for_one_time_promotion_gate": True,
                 "drawdown_limit": self.drawdown_limit,
                 "objective": (
-                    "maximize robust validation return after the drawdown hard limit; "
-                    "penalize fold instability and train-validation degradation; "
-                    "reject isolated parameter spikes without one-axis support"
+                    "hierarchically maximize robust validation return, then reduce "
+                    "drawdown and trades; penalize fold instability and "
+                    "train-validation degradation; reject isolated parameter spikes"
                 ),
                 "stress_costs": "0.2% slippage and 1.5x commission",
                 "hard_constraints": {
@@ -1167,6 +1268,16 @@ class WalkForwardOptimizer:
             if selected.candidate.candidate_id == "baseline"
             else self.runner.run(selected.candidate, self.test_window, stress=True)
         )
+        ordinary_return_ratio = (
+            (1.0 + selected_test.total_return)
+            / max(1.0 + baseline_test.total_return, 1e-12)
+        )
+        stress_return_ratio = (
+            (1.0 + selected_stress_test.total_return)
+            / max(1.0 + baseline_stress_test.total_return, 1e-12)
+        )
+        ordinary_trade_limit = math.ceil(baseline_test.total_trades * 1.03)
+        stress_trade_limit = math.ceil(baseline_stress_test.total_trades * 1.03)
         promotion_checks = {
             "ordinary_drawdown_within_limit": (
                 abs(selected_test.max_drawdown) <= self.drawdown_limit + 1e-12
@@ -1174,12 +1285,27 @@ class WalkForwardOptimizer:
             "stress_drawdown_within_limit": (
                 abs(selected_stress_test.max_drawdown) <= self.drawdown_limit + 1e-12
             ),
-            "ordinary_return_not_below_baseline": (
-                selected_test.total_return >= baseline_test.total_return - 1e-12
+            "ordinary_return_within_one_percent_of_baseline_wealth": (
+                ordinary_return_ratio >= 0.99 - 1e-12
             ),
-            "stress_return_not_below_baseline": (
-                selected_stress_test.total_return
-                >= baseline_stress_test.total_return - 1e-12
+            "stress_return_within_one_percent_of_baseline_wealth": (
+                stress_return_ratio >= 0.99 - 1e-12
+            ),
+            "ordinary_drawdown_not_meaningfully_worse": (
+                abs(selected_test.max_drawdown)
+                <= abs(baseline_test.max_drawdown) + 0.005 + 1e-12
+            ),
+            "stress_drawdown_not_meaningfully_worse": (
+                abs(selected_stress_test.max_drawdown)
+                <= abs(baseline_stress_test.max_drawdown) + 0.005 + 1e-12
+            ),
+            "ordinary_trades_not_meaningfully_higher": (
+                selected_test.total_trades <= ordinary_trade_limit
+                or ordinary_return_ratio >= 1.05
+            ),
+            "stress_trades_not_meaningfully_higher": (
+                selected_stress_test.total_trades <= stress_trade_limit
+                or stress_return_ratio >= 1.05
             ),
         }
         promoted = all(promotion_checks.values())
@@ -1200,8 +1326,10 @@ class WalkForwardOptimizer:
                     "passed": promoted,
                     "checks": promotion_checks,
                     "rule": (
-                        "holdout and stressed-holdout drawdown must stay within the "
-                        "hard limit, and return must not fall below the production baseline"
+                        "holdout and stressed holdout must respect the hard drawdown "
+                        "limit; wealth may trail baseline by at most 1%, drawdown by "
+                        "at most 0.5 percentage point, and trades by at most 3% unless "
+                        "wealth improves by at least 5%"
                     ),
                 },
                 "holdout_comparison": {
@@ -1214,6 +1342,13 @@ class WalkForwardOptimizer:
                     ),
                     "delta_max_drawdown": (
                         selected_test.max_drawdown - baseline_test.max_drawdown
+                    ),
+                    "delta_total_trades": (
+                        selected_test.total_trades - baseline_test.total_trades
+                    ),
+                    "stress_delta_total_trades": (
+                        selected_stress_test.total_trades
+                        - baseline_stress_test.total_trades
                     ),
                     "selected_holdout_drawdown_within_limit": (
                         abs(selected_test.max_drawdown) <= self.drawdown_limit + 1e-12
@@ -1246,6 +1381,24 @@ class WalkForwardOptimizer:
 
 def _format_pct(value: float) -> str:
     return f"{value:.2%}"
+
+
+def _atomic_text(path: Path, content: str) -> None:
+    """Replace an artifact only after its complete bytes reach disk."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=str(path.parent), prefix=f".{path.stem}-", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        Path(temporary_name).replace(path)
+    finally:
+        temporary = Path(temporary_name)
+        if temporary.exists():
+            temporary.unlink()
 
 
 def render_markdown_summary(report: dict[str, Any]) -> str:
@@ -1390,6 +1543,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--capital", type=float, default=2_000_000)
     parser.add_argument("--search-space", default="")
     parser.add_argument(
+        "--stage",
+        choices=("risk", "turnover", "return", "all"),
+        default="risk",
+        help="Optimize one parameter family at a time; start with risk",
+    )
+    parser.add_argument(
         "--resume-report",
         default="",
         help="Reuse compatible pre-test candidate evaluations from a prior report",
@@ -1420,7 +1579,7 @@ def main() -> int:
     space = (
         ParameterSpace.from_json(args.search_space)
         if args.search_space
-        else ParameterSpace.default()
+        else ParameterSpace.for_stage(args.stage)
     )
     candidates = space.candidates(args.candidates, args.seed)
     runner = CandidateRunner(symbols, catalog, initial_capital=args.capital)
@@ -1462,17 +1621,19 @@ def main() -> int:
         "data_coverage": catalog.coverage(),
         "candidate_count": len(candidates),
         "seed": args.seed,
+        "optimization_stage": args.stage,
         "engine_sha256": hashlib.sha256(Path(qf.__file__).read_bytes()).hexdigest(),
         "optimizer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "data_fingerprint": catalog.fingerprint,
         "cache_signature": signature,
     }
-    (output / "optimization_report.json").write_text(
+    _atomic_text(
+        output / "optimization_report.json",
         json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
-        encoding="utf-8",
     )
-    (output / "optimization_summary.md").write_text(
-        render_markdown_summary(report), encoding="utf-8"
+    _atomic_text(
+        output / "optimization_summary.md",
+        render_markdown_summary(report),
     )
     if report.get("recommended_candidate") is not None:
         recommended = dict(report["recommended_candidate"])
@@ -1481,10 +1642,10 @@ def main() -> int:
             recommended["symbol_multipliers"],
             recommended["policy_overrides"],
         ).per_symbol_config(symbols)
-        (output / "recommended_config.json").write_text(
+        _atomic_text(
+            output / "recommended_config.json",
             json.dumps(recommended, ensure_ascii=False, indent=2, allow_nan=False)
             + "\n",
-            encoding="utf-8",
         )
     print(render_markdown_summary(report))
     return 0 if report["status"] != "no_feasible_candidate" else 2

@@ -90,6 +90,25 @@ class CatastropheStopTests(unittest.TestCase):
         self.assertEqual(states[0].pending, [])
         self.assertEqual(overlay.events, [])
 
+    def test_dedicated_weak_route_is_monitor_only(self) -> None:
+        """生产弱市路由持有执行权时，叠加层保留状态但不重复卖出。"""
+        date = pd.Timestamp("2026-01-06")
+        frame = _frame(70.0)
+        state = _State(
+            _Sleeve({"AAA": {"fast": _Pos(100, 100.0, 90.0)}}),
+            {"AAA": frame},
+        )
+        overlay = CrossMarketOverlay()
+        overlay.set_outer_route("weak", date)
+        overlay.on_day(
+            [state], date, date_pos=1,
+            assets=1_700_000, peak=2_000_000, scoring_fn=None,
+        )
+        self.assertEqual(state.pending, [])
+        snapshot = overlay.state_snapshot()
+        self.assertEqual(snapshot["execution_owner"], "production_route")
+        self.assertEqual(snapshot["outer_route"], "weak")
+
     def test_fail_closed_when_material_unmapped_holdings(self) -> None:
         """报告 P1-5：持仓含大量未映射子行业标的时，集中度风控失败关闭。"""
         # 300308 与 300502 同属 optical 簇；999999 未映射到任何子行业。
@@ -391,6 +410,75 @@ class AtrReuseTests(unittest.TestCase):
         ).max(axis=1)
         atr_bug = float(tr_fixed.ewm(alpha=1.0 / 20.0, adjust=False).mean().iloc[-1])
         self.assertNotAlmostEqual(atr_overlay, atr_bug, places=5)
+
+
+class IndependentRiskBasketTests(unittest.TestCase):
+    """The master basket must work even when the user trades a tiny pool."""
+
+    @staticmethod
+    def _declining_frame() -> pd.DataFrame:
+        dates = pd.bdate_range("2026-01-02", periods=25)
+        closes = [100.0] * 20 + [100.0, 94.0, 88.0, 82.0, 76.0]
+        return pd.DataFrame(
+            {
+                "open": closes,
+                "high": [value * 1.01 for value in closes],
+                "low": [value * 0.99 for value in closes],
+                "close": closes,
+                "volume": [1_000_000] * len(closes),
+            },
+            index=dates,
+        )
+
+    def test_continuous_deterioration_escalates_without_recovery_reshock(self) -> None:
+        frame = self._declining_frame()
+        risk_frames = {
+            symbol: frame.copy()
+            for symbol in (
+                "300308", "300502", "688008", "603986", "688072", "688082"
+            )
+        }
+        state = _State(
+            _Sleeve(
+                {
+                    "300308": {"fast": _Pos(100, 100.0, 90.0)},
+                    "300502": {"fast": _Pos(100, 100.0, 90.0)},
+                }
+            ),
+            {},
+        )
+        overlay = CrossMarketOverlay(risk_frames=risk_frames)
+        overlay._assets_history = [100_000.0]
+        for offset, loc in enumerate((22, 23, 24)):
+            overlay.on_day(
+                [state],
+                frame.index[loc],
+                date_pos=loc,
+                assets=95_000.0 - offset * 2_500.0,
+                peak=100_000.0,
+                scoring_fn=None,
+            )
+        self.assertGreaterEqual(overlay.risk_level, 2)
+        self.assertTrue(overlay.blocks_new_positions)
+        loaded_events = [
+            event for event in overlay.events if event.get("event") == "sector_risk_level"
+        ]
+        self.assertTrue(any(event["continuous_stress_days"] >= 3 for event in loaded_events))
+
+    def test_confirmed_risk_blocks_new_entries_and_pyramids_but_not_sells(self) -> None:
+        state = _State(_Sleeve({}), {})
+        state.pending = [
+            (_RiskSignal("NEW", "fast", "buy", 100, "entry"), None),
+            (_RiskSignal("HELD", "fast", "buy", 100, "pyramid"), None),
+            (_RiskSignal("HELD", "fast", "sell", 100, "exit"), None),
+        ]
+        overlay = CrossMarketOverlay()
+        overlay._risk_level = 2
+        overlay.block_risk_buys(
+            [state], pd.Timestamp("2026-01-06"), {"HELD"}
+        )
+        self.assertEqual(len(state.pending), 1)
+        self.assertEqual(state.pending[0][0].direction, "sell")
 
 
 class _RiskSignal:

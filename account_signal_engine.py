@@ -115,6 +115,7 @@ def _trend_candidate_score(
     index: int,
     close: float,
     trigger_count: int,
+    industry_relative_strength: float = 0.0,
 ) -> float:
     """计算买入排序分：多确认优先，辅以风险调整动量与趋势持续性。
 
@@ -125,7 +126,8 @@ def _trend_candidate_score(
     if not math.isfinite(close) or close <= 0:
         return 0.0
     confirmation = trigger_count / 3.0
-    atr = float(indicators.get("atr").iloc[index]) if indicators.get("atr") is not None else float("nan")
+    atr_series = indicators.get("atr")
+    atr = float(atr_series.iloc[index]) if atr_series is not None else float("nan")
     momentum = 0.0
     if index >= 20:
         prior = float(frame["close"].iloc[index - 20])
@@ -134,8 +136,18 @@ def _trend_candidate_score(
     risk_adjusted_momentum = (
         momentum / (atr / close) if math.isfinite(atr) and atr > 0 else momentum
     )
-    ma_short = float(indicators.get("ma_short").iloc[index]) if indicators.get("ma_short") is not None else float("nan")
-    ma_long = float(indicators.get("ma_long").iloc[index]) if indicators.get("ma_long") is not None else float("nan")
+    ma_short_series = indicators.get("ma_short")
+    ma_long_series = indicators.get("ma_long")
+    ma_short = (
+        float(ma_short_series.iloc[index])
+        if ma_short_series is not None
+        else float("nan")
+    )
+    ma_long = (
+        float(ma_long_series.iloc[index])
+        if ma_long_series is not None
+        else float("nan")
+    )
     trend_persistence = 0.0
     if math.isfinite(ma_short) and math.isfinite(ma_long) and ma_long > 0:
         trend_persistence = max(0.0, min(1.0, (ma_short - ma_long) / ma_long))
@@ -156,6 +168,7 @@ def _trend_candidate_score(
         + 0.10 * quality
         + 0.10 * trend_persistence
         + 0.05 * volume_quality
+        + 0.15 * max(0.0, min(1.0, industry_relative_strength))
     )
     return score if math.isfinite(score) else 0.0
 
@@ -377,7 +390,10 @@ class AccountSignalEngine:
         if boundary is pd.NaT:
             raise ValueError("as_of must resolve to a valid date")
         boundary = cast(pd.Timestamp, boundary).normalize()
-        start = (boundary - pd.Timedelta(days=700)).strftime("%Y-%m-%d")
+        start_boundary = cast(
+            pd.Timestamp, boundary - pd.Timedelta(days=700)
+        )
+        start = start_boundary.strftime("%Y-%m-%d")
         frame = qf.DataFetcher.load_stock_data(
             code,
             start,
@@ -386,7 +402,7 @@ class AccountSignalEngine:
         )
         if frame.empty:
             raise ValueError("no market data")
-        observed = pd.Timestamp(frame.index[-1])
+        observed = pd.Timestamp(cast(Any, frame.index[-1]))
         if observed is pd.NaT:
             raise ValueError("latest market-data date is invalid")
         observed = cast(pd.Timestamp, observed).normalize()
@@ -430,17 +446,61 @@ class AccountSignalEngine:
         if as_of_timestamp is pd.NaT:
             raise ValueError("as_of must resolve to a valid date")
         as_of_timestamp = cast(pd.Timestamp, as_of_timestamp).normalize()
+        prepared: dict[
+            str, tuple[pd.DataFrame, dict[str, Any], dict[str, pd.Series]]
+        ] = {}
+        momentum_by_symbol: dict[str, tuple[float, float]] = {}
         for code, name in symbols.items():
-            if code in held:
-                continue
             try:
                 frame = self._frame(code, as_of)
             except _EXPECTED_DATA_ERRORS as exc:
-                unpriced.append(code)
-                blocked[code] = str(exc)
+                if code not in held:
+                    unpriced.append(code)
+                    blocked[code] = str(exc)
                 continue
             cfg = qf.BacktestEngine.config_for_symbol(code, name=name)
             indicators = qf.Indicators.compute_all(frame, cfg)
+            prepared[code] = (frame, cfg, indicators)
+            i = len(frame) - 1
+            close = float(frame["close"].iloc[i])
+            ret20 = (
+                close / float(frame["close"].iloc[i - 20]) - 1.0
+                if i >= 20 and float(frame["close"].iloc[i - 20]) > 0
+                else 0.0
+            )
+            ret60 = (
+                close / float(frame["close"].iloc[i - 60]) - 1.0
+                if i >= 60 and float(frame["close"].iloc[i - 60]) > 0
+                else ret20
+            )
+            momentum_by_symbol[code] = (ret20, ret60)
+
+        group_samples: dict[str, list[tuple[float, float]]] = {}
+        for code, returns in momentum_by_symbol.items():
+            profile_name = qf.BacktestEngine.get_symbol_profile(code, "unmapped")
+            group_samples.setdefault(profile_name, []).append(returns)
+        group_mean = {
+            profile_name: (
+                sum(value[0] for value in values) / len(values),
+                sum(value[1] for value in values) / len(values),
+            )
+            for profile_name, values in group_samples.items()
+        }
+        market20 = (
+            sum(value[0] for value in momentum_by_symbol.values())
+            / len(momentum_by_symbol)
+            if momentum_by_symbol else 0.0
+        )
+        market60 = (
+            sum(value[1] for value in momentum_by_symbol.values())
+            / len(momentum_by_symbol)
+            if momentum_by_symbol else 0.0
+        )
+
+        for code, name in symbols.items():
+            if code in held or code not in prepared:
+                continue
+            frame, cfg, indicators = prepared[code]
             i = len(frame) - 1
             close = float(frame["close"].iloc[i])
             strategies = [
@@ -472,7 +532,23 @@ class AccountSignalEngine:
                 continue
             # 多袖套确认数量作为置信度的主成分。
             stop_price = min(stop_prices) if stop_prices else None
-            score = _trend_candidate_score(frame, indicators, i, close, len(triggers))
+            profile_name = qf.BacktestEngine.get_symbol_profile(code, "unmapped")
+            group20, group60 = group_mean.get(profile_name, (market20, market60))
+            symbol20, symbol60 = momentum_by_symbol.get(code, (0.0, 0.0))
+            relative_raw = (
+                0.5 * (symbol20 - group20)
+                + 0.3 * (symbol60 - group60)
+                + 0.2 * (group20 - market20)
+            )
+            industry_rs = max(0.0, min(1.0, 0.5 + relative_raw / 0.40))
+            score = _trend_candidate_score(
+                frame,
+                indicators,
+                i,
+                close,
+                len(triggers),
+                industry_relative_strength=industry_rs,
+            )
             candidates.append(
                 PointInTimeSignal(
                     symbol=code,
@@ -534,7 +610,10 @@ class AccountSignalEngine:
                 ma_short = self._latest_value(indicators.get("ma_short"), i)
                 ma_long = self._latest_value(indicators.get("ma_long"), i)
                 if position.entry_date:
-                    entry_timestamp = pd.Timestamp(position.entry_date).normalize()
+                    parsed_entry = pd.Timestamp(position.entry_date)
+                    if parsed_entry is pd.NaT:
+                        raise ValueError("entry_date must resolve to a valid date")
+                    entry_timestamp = cast(pd.Timestamp, parsed_entry).normalize()
                     if entry_timestamp > as_of_timestamp:
                         raise ValueError(
                             f"position {code} entry_date is later than as_of"

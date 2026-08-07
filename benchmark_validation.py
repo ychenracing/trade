@@ -9,7 +9,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -26,6 +26,8 @@ def _validate_period(start: str, end: str) -> tuple[pd.Timestamp, pd.Timestamp]:
     end_ts = pd.Timestamp(end)
     if start_ts is pd.NaT or end_ts is pd.NaT:
         raise ValueError("start and end must be valid dates")
+    start_ts = cast(pd.Timestamp, start_ts)
+    end_ts = cast(pd.Timestamp, end_ts)
     if start_ts > end_ts:
         raise ValueError("start must not be later than end")
     return start_ts, end_ts

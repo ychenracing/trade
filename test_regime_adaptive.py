@@ -140,7 +140,7 @@ class AdaptiveEngineTests(unittest.TestCase):
             )
 
     def test_invalid_deployment_mode_is_rejected(self) -> None:
-        with self.assertRaisesRegex(ValueError, "auto, trend, or weak"):
+        with self.assertRaisesRegex(ValueError, "auto, replay, trend, or weak"):
             ra.RegimeAdaptiveBacktestEngine().run(
                 {"300308": "中际旭创"},
                 "2024-01-02",
@@ -174,16 +174,19 @@ class AdaptiveEngineTests(unittest.TestCase):
             data_dir=str(DATA_DIR),
             indicator_state="warm",
         )
-        self.assertEqual(result["deployment_policy"], "positive_momentum_hold")
-        self.assertEqual(result["selected_symbols"], ["300308", "300394", "300502"])
-        self.assertGreaterEqual(result["total_return"], 0.45)
-        self.assertGreaterEqual(result["max_drawdown"], -0.20)
+        self.assertEqual(result["deployment_policy"], "production_daily_replay")
+        self.assertEqual(result["selected_symbols"], sorted(symbols))
+        self.assertGreaterEqual(result["total_return"], 0.50)
+        self.assertGreaterEqual(result["max_drawdown"], -0.18)
         # Report 3.5 enables re-entry (with cooldown + graded probe/confirm), so
         # the weak route may trade more than the old one-shot design. The bound
         # still caps runaway bear-market whipsaw at ~5 round-trips per leader.
         self.assertLessEqual(result["total_trades"], 16)
-        self.assertLessEqual(len(result["selected_symbols"]), ra.MAX_LEADERS)
-        json.dumps(result["deployment_decision"], allow_nan=False)
+        replay = result["production_replay"]
+        self.assertEqual(replay["engine"], "ProductionReplayEngine")
+        self.assertGreater(len(replay["daily_journal"]), 200)
+        self.assertEqual(replay["daily_journal"][0]["route"], "weak")
+        json.dumps(replay, allow_nan=False)
         for trade in result["trades"]:
             signal_date = getattr(trade, "signal_date", None)
             if signal_date:
@@ -198,7 +201,7 @@ class AdaptiveEngineTests(unittest.TestCase):
             regime_data_dir=str(DATA_DIR),
             indicator_state="warm",
         )
-        self.assertEqual(result["deployment_policy"], "frozen_trend_engine")
+        self.assertEqual(result["deployment_policy"], "production_daily_replay")
         self.assertAlmostEqual(result["total_return"], 5.308949754885, places=12)
         self.assertAlmostEqual(result["max_drawdown"], -0.1834136674871038, places=12)
         self.assertEqual(result["total_trades"], 24)

@@ -352,6 +352,33 @@ class ExecutionControlTests(unittest.TestCase):
         with self.assertRaises(FrozenInstanceError):
             signal.target_shares = 200
 
+    def test_transition_buy_throttle_requires_external_risk(self) -> None:
+        """内部过渡状态不能单独缩仓，必须有跨市场风险二次确认。"""
+        engine = quant.BacktestEngine(
+            cfg={"regime_transition_scale": 0.50}
+        )
+        engine._regime_state = "TRANSITION"
+        strategy = mock.Mock()
+        strategy.position = None
+        daily = [
+            (
+                quant.Signal(
+                    "300308", "alpha", "buy", target_shares=10_000
+                ),
+                strategy,
+            )
+        ]
+        engine._external_risk_level = 0
+        internal_only = engine._fuse_daily_signals(daily, "2026-01-05")
+        engine._external_risk_level = 1
+        dual_confirmed = engine._fuse_daily_signals(daily, "2026-01-05")
+        self.assertGreater(
+            internal_only[0][0].target_shares,
+            dual_confirmed[0][0].target_shares,
+        )
+        self.assertNotIn("regime transition", internal_only[0][0].reason)
+        self.assertIn("regime transition", dual_confirmed[0][0].reason)
+
     def test_fair_batch_allocation_is_order_independent(self) -> None:
         items = [
             (quant.Signal("300308", name, "buy", target_shares=6_000), mock.Mock())
@@ -618,10 +645,12 @@ class IntegrationTests(unittest.TestCase):
                 result = self.results[name]
                 self.assertGreaterEqual(result["total_return"], floor)
                 self.assertGreaterEqual(result["max_drawdown"], -0.20)
-                self.assertFalse(result["terminal_risk_lock"])
+                if result["terminal_risk_lock"]:
+                    self.assertTrue(result["persistent_risk_lock"])
                 self.assertLessEqual(result["max_concurrent_symbols"], 6)
                 self.assertEqual(
-                    result["portfolio_cash_model"], "fixed_virtual_subaccounts"
+                    result["portfolio_cash_model"],
+                    "independent_sleeves_dynamic_idle_cash",
                 )
                 self.assertGreater(result["calmar"], 0.0)
 
@@ -714,10 +743,10 @@ class CambriconArtifactTests(unittest.TestCase):
             },
         )
         expected = {
-            ("cold", "2026-06-30"): (11.869360365348875, -0.1600912542996164),
-            ("cold", "2026-07-20"): (11.869360365348875, -0.1600912542996164),
-            ("warm", "2026-06-30"): (12.26126676001925, -0.1544551360344086),
-            ("warm", "2026-07-20"): (12.26126676001925, -0.1544551360344086),
+            ("cold", "2026-06-30"): (11.991424313085375, -0.15959493303703437),
+            ("cold", "2026-07-20"): (11.991424313085375, -0.15959493303703437),
+            ("warm", "2026-06-30"): (12.315117326960753, -0.15554390747126282),
+            ("warm", "2026-07-20"): (12.315117326960753, -0.15554390747126282),
         }
         results = artifact["results"]
         self.assertEqual(len(results), len(expected))

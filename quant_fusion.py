@@ -1532,21 +1532,48 @@ class _CoreBacktestEngine:
             "regime_recovery_confirmations": 3,
             "regime_min_state_hold": 3,
             "regime_transition_scale": 1.0,
+            "regime_transition_pyramid_scale": 1.0,
             "regime_trend_to_transition_confirmations": 3,
             "regime_choppy_exit_ratio": 0.3,
             "regime_transition_exit_ratio": 0.0,
+            "regime_transition_trim_confirmations": 5,
             # 穿越牛熊 (cross-market-cycle) overlay: a bull-silent defensive layer
             # on top of the ensemble. Default ON; only fires on genuine risk so a
             # clean bull run is untouched. shock_trim is opt-in (the ensemble
             # already carries regime de-risking + drawdown circuit breakers).
             "enable_cm_overlay": True,
             "cm_overlay_shock_trim": False,
+            "cm_independent_risk_basket": True,
+            "cm_trend_health_protection": True,
+            "cm_risk_continuous_confirm_days": 3,
+            "cm_risk_level2_drawdown": 0.08,
+            "cm_risk_level3_drawdown": 0.12,
+            "cm_risk_severe_direct_return": -0.10,
+            # Keep the three independent sleeves, but reallocate only their
+            # unused cash after a confirmed regime change. No position or
+            # strategy ledger is merged, and TREND retains equal one-third
+            # funding so bull-market behavior stays unchanged.
+            "dynamic_sleeve_weights": True,
+            "transition_fast_weight": 0.20,
+            "transition_base_weight": 0.35,
+            "transition_slow_weight": 0.45,
+            "choppy_fast_weight": 0.10,
+            "choppy_base_weight": 0.35,
+            "choppy_slow_weight": 0.55,
+            "adaptive_max_positions": True,
+            "transition_max_positions": 4,
+            "choppy_max_positions": 3,
             # Report P1-3: sticky candidates for large pools. Default ON: a
             # held symbol is retained until it stops qualifying, and a new name
             # only replaces one when it clearly beats the weakest held symbol,
             # reducing daily-rank churn (fee/slippage + selling winners). Set to
             # False to return to the pure daily cross-sectional top-N.
             "sticky_candidates": True,
+            "adaptive_sticky_candidates": True,
+            "sticky_min_score_gap": 0.15,
+            "sticky_confirm_days": 4,
+            "sticky_cycle_days": 5,
+            "sticky_rotated_cooldown_days": 20,
             # Report P1-2: hierarchical sub-industry parameter shrinkage. Default
             # ON: each fine sub-industry profile (optical module, chip design,
             # equipment, test, material, packaging, ...) is pulled part-way back
@@ -2300,6 +2327,13 @@ class _CoreBacktestEngine:
             "regime_trend_confirmations": 1,
             "regime_recovery_confirmations": 1,
             "regime_min_state_hold": 1,
+            "regime_transition_trim_confirmations": 1,
+            "cm_risk_continuous_confirm_days": 2,
+            "transition_max_positions": 1,
+            "choppy_max_positions": 1,
+            "sticky_confirm_days": 1,
+            "sticky_cycle_days": 1,
+            "sticky_rotated_cooldown_days": 1,
         }
         for key, minimum in minimums.items():
             out[key] = _require_int(key, out.get(key), min_value=minimum)
@@ -2447,6 +2481,53 @@ class _CoreBacktestEngine:
             min_value=0.0,
             max_value=1.0,
         )
+        out["regime_transition_pyramid_scale"] = _require_finite(
+            "regime_transition_pyramid_scale",
+            out.get("regime_transition_pyramid_scale"),
+            min_value=0.0,
+            max_value=1.0,
+        )
+        for key in (
+            "cm_risk_level2_drawdown",
+            "cm_risk_level3_drawdown",
+        ):
+            out[key] = _require_positive(
+                key, out.get(key), max_value=1.0, inclusive_max=False
+            )
+        if out["cm_risk_level3_drawdown"] <= out["cm_risk_level2_drawdown"]:
+            raise ValueError(
+                "cm_risk_level3_drawdown must exceed cm_risk_level2_drawdown"
+            )
+        out["cm_risk_severe_direct_return"] = _require_finite(
+            "cm_risk_severe_direct_return",
+            out.get("cm_risk_severe_direct_return"),
+            min_value=-1.0,
+            max_value=0.0,
+        )
+        for key in (
+            "transition_fast_weight",
+            "transition_base_weight",
+            "transition_slow_weight",
+            "choppy_fast_weight",
+            "choppy_base_weight",
+            "choppy_slow_weight",
+        ):
+            out[key] = _require_finite(
+                key, out.get(key), min_value=0.0, max_value=1.0
+            )
+        for prefix in ("transition", "choppy"):
+            total = sum(
+                out[f"{prefix}_{sleeve}_weight"]
+                for sleeve in ("fast", "base", "slow")
+            )
+            if not math.isclose(total, 1.0, rel_tol=0.0, abs_tol=1e-9):
+                raise ValueError(f"{prefix} sleeve weights must sum to 1.0")
+        out["sticky_min_score_gap"] = _require_finite(
+            "sticky_min_score_gap",
+            out.get("sticky_min_score_gap"),
+            min_value=0.0,
+            max_value=1.0,
+        )
         if out["regime_adx_trend"] <= out["regime_adx_choppy"]:
             raise ValueError("regime_adx_trend must be greater than regime_adx_choppy")
         if out["regime_hurst_trend"] <= out["regime_hurst_choppy"]:
@@ -2470,6 +2551,14 @@ class _CoreBacktestEngine:
             "reversal_dual_ma_enabled",
             "reversal_atr_channel_enabled",
             "market_regime_enabled",
+            "enable_cm_overlay",
+            "cm_overlay_shock_trim",
+            "cm_independent_risk_basket",
+            "cm_trend_health_protection",
+            "dynamic_sleeve_weights",
+            "adaptive_max_positions",
+            "sticky_candidates",
+            "adaptive_sticky_candidates",
         )
         for key in boolean_keys:
             out[key] = _require_bool(key, out.get(key))
@@ -5432,6 +5521,7 @@ class _RunRequest:
     indicator_state: str
     warmup_calendar_days: int
     risk_state: dict | None = None
+    route_controller: Any | None = None
     # DEPRECATED: account_state is always None now — the public run() API
     # raises NotImplementedError before this field is ever set. Retained for
     # API compatibility until the account signal engine is built.
@@ -5702,6 +5792,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
         allocation_mode: str | None = None,
         risk_state: dict | None = None,
         account_state: AccountState | None = None,
+        route_controller: Any | None = None,
     ) -> dict:
         """Run the configured single sleeve or the default three-sleeve ensemble."""
         if account_state is not None:
@@ -5715,6 +5806,8 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
         if mode not in {"single", "ensemble"}:
             raise ValueError("allocation_mode must be 'single' or 'ensemble'")
         if mode == "single":
+            if route_controller is not None:
+                raise ValueError("route_controller requires allocation_mode='ensemble'")
             self.sleeves = [self]
             if risk_state:
                 self.cfg = dict(self.cfg)
@@ -5750,6 +5843,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
                 indicator_state=indicator_state,
                 warmup_calendar_days=warmup_calendar_days,
                 risk_state=risk_state,
+                route_controller=route_controller,
                 account_state=account_state,
             )
         )
@@ -6265,6 +6359,9 @@ class _UniverseInvariantSleeveMixin:
         self._regime_state_start_pos: int = 0
         self._regime_prev_state: str = "TREND"
         self._regime_latest_observation: MarketRegimeObservation | None = None
+        self._regime_transition_days: int = 0
+        self._regime_transition_trimmed: bool = False
+        self._external_risk_level: int = 0
         # ── DEPRECATED: Account snapshot injection ─────────────────────
         # The public run() API now raises NotImplementedError when
         # account_state is passed. The injection logic below is dead code
@@ -6681,6 +6778,11 @@ class _UniverseInvariantSleeveMixin:
         self._regime_prev_state = previous_state
         self._regime_state = new_state
         self._safe_mode_active = (new_state == "CHOPPY")
+        if new_state == "TRANSITION":
+            self._regime_transition_days += 1
+        else:
+            self._regime_transition_days = 0
+            self._regime_transition_trimmed = False
         self._regime_state_series.append(
             {
                 "date": date.strftime("%Y-%m-%d"),
@@ -6730,15 +6832,19 @@ class _UniverseInvariantSleeveMixin:
         # scales them (handled in _fuse_daily_signals), TREND is fully open.
         allow_buys = self._regime_state != "CHOPPY"
 
-        # --- Regime-mandated sells (state machine transitions only) --------
-        # Forced sells fire ONLY on actual state machine transitions.
-        # TRANSITION defaults to 0.0 (no trim) so only CHOPPY actively cuts
-        # exposure.
+        # --- Regime-mandated sells -----------------------------------------
+        # TRANSITION trims only after sustained weak evidence and only once per
+        # transition episode. CHOPPY still cuts immediately on entry.
         regime_sells: list[tuple[Signal, BaseStrategy]] = []
         if regime_enabled:
             if (
                 self._regime_state == "TRANSITION"
-                and self._regime_prev_state == "TREND"
+                and not self._regime_transition_trimmed
+                and self._regime_transition_days
+                >= int(self.cfg.get("regime_transition_trim_confirmations", 5))
+                and self._external_risk_level >= 1
+                and self._regime_latest_observation is not None
+                and self._regime_latest_observation.raw_score <= 0
             ):
                 trim = float(self.cfg.get("regime_transition_exit_ratio", 0.0))
                 if trim > 0:
@@ -6751,6 +6857,7 @@ class _UniverseInvariantSleeveMixin:
                             f"queue {len(regime_sells)} trim sells "
                             f"({trim:.0%} ratio)"
                         )
+                self._regime_transition_trimmed = True
             elif (
                 self._regime_state == "CHOPPY"
                 and self._regime_prev_state != "CHOPPY"
@@ -6821,14 +6928,23 @@ class _UniverseInvariantSleeveMixin:
         fused = super()._fuse_daily_signals(  # pyright: ignore[reportAttributeAccessIssue]
             daily, date_str
         )
-        if self._regime_state != "TRANSITION":
-            return fused
-        scale = float(self.cfg.get("regime_transition_scale", 1.0))
-        if scale >= 1.0:
+        if self._regime_state != "TRANSITION" or self._external_risk_level < 1:
             return fused
         adjusted: list[tuple[Signal, BaseStrategy]] = []
         for signal, strategy in fused:
             if signal.direction != "buy":
+                adjusted.append((signal, strategy))
+                continue
+            is_pyramid = strategy.position is not None
+            scale = float(
+                self.cfg.get(
+                    "regime_transition_pyramid_scale"
+                    if is_pyramid
+                    else "regime_transition_scale",
+                    0.0 if is_pyramid else 0.85,
+                )
+            )
+            if scale >= 1.0:
                 adjusted.append((signal, strategy))
                 continue
             target_shares = _floor_to_lot(signal.target_shares * scale)
@@ -6878,6 +6994,18 @@ class _UniverseInvariantSleeveMixin:
         if not tradable:
             return set()
         maximum = int(self.cfg.get("max_positions", 6))
+        if (
+            bool(self.cfg.get("adaptive_max_positions", True))
+            and self._external_risk_level >= 1
+        ):
+            if self._regime_state == "TRANSITION":
+                maximum = min(
+                    maximum, int(self.cfg.get("transition_max_positions", 4))
+                )
+            elif self._regime_state == "CHOPPY":
+                maximum = min(
+                    maximum, int(self.cfg.get("choppy_max_positions", 3))
+                )
         if len(tradable) <= maximum:
             return set(tradable)
 
@@ -6955,7 +7083,12 @@ class _UniverseInvariantSleeveMixin:
         # must run BEFORE both the spare-slot fill and the rotation branch so a
         # freshly rotated-out name is never re-admitted into a spare slot within
         # its cooldown window.
-        cooldown = self.STICKY_ROTATED_COOLDOWN_DAYS
+        cooldown = int(
+            self.cfg.get(
+                "sticky_rotated_cooldown_days",
+                self.STICKY_ROTATED_COOLDOWN_DAYS,
+            )
+        )
         self._sticky_rotated = {
             code: pos
             for code, pos in self._sticky_rotated.items()
@@ -6978,16 +7111,43 @@ class _UniverseInvariantSleeveMixin:
         # new candidate persists. Core (strongest STICKY_CORE_LOCK) names are
         # locked against short-term ranking noise (report P1-3 "core lock").
         if len(selected) >= maximum and eligible_held:
+            score_dispersion = (
+                max(scores.values()) - min(scores.values()) if scores else 0.0
+            )
+            gap = float(self.cfg.get("sticky_min_score_gap", self.MIN_SCORE_GAP))
+            confirmations = int(
+                self.cfg.get("sticky_confirm_days", self.STICKY_CONFIRM_DAYS)
+            )
+            cycle_days = int(
+                self.cfg.get("sticky_cycle_days", self.STICKY_CYCLE_DAYS)
+            )
+            if (
+                bool(self.cfg.get("adaptive_sticky_candidates", True))
+                and self._external_risk_level >= 1
+                and score_dispersion < 0.20
+            ):
+                gap = min(1.0, gap * 1.5)
+                confirmations += 2
+            if self._regime_state == "TRANSITION" and self._external_risk_level >= 1:
+                gap = min(1.0, gap * 1.25)
+                confirmations += 2
+                cycle_days += 2
             core = set(
-                sorted(eligible_held, key=lambda c: scores.get(c, 0.0), reverse=True)[
+                sorted(
+                    eligible_held,
+                    key=lambda code: (-scores.get(code, 0.0), code),
+                )[
                     : self.STICKY_CORE_LOCK
                 ]
             )
-            replaceable = sorted(eligible_held - core, key=lambda c: scores.get(c, 0.0))
+            replaceable = sorted(
+                eligible_held - core,
+                key=lambda code: (scores.get(code, 0.0), code),
+            )
             if (
                 replaceable
                 and self._sticky_eval_pos - self._sticky_last_rotation_pos
-                >= self.STICKY_CYCLE_DAYS
+                >= cycle_days
             ):
                 weakest = replaceable[0]
                 weakest_score = scores.get(weakest, 0.0)
@@ -6997,7 +7157,7 @@ class _UniverseInvariantSleeveMixin:
                 for cand in ranked:
                     if cand in selected or cand in held or cand in self._sticky_rotated:
                         continue
-                    if scores[cand] >= weakest_score + self.MIN_SCORE_GAP:
+                    if scores[cand] >= weakest_score + gap:
                         best_new = cand
                         break
                 # Consecutive-day confirmation (report P1-3 "consecutive days"):
@@ -7018,7 +7178,7 @@ class _UniverseInvariantSleeveMixin:
                 if (
                     best_new is not None
                     and self._sticky_beat_days.get(best_new, 0)
-                    >= self.STICKY_CONFIRM_DAYS
+                    >= confirmations
                 ):
                     selected.discard(weakest)
                     selected.add(best_new)
@@ -7179,6 +7339,8 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             cfg=normalized_cfg,
             policy=resolved_policy,
         )
+        self._sleeve_weight_events: list[dict[str, Any]] = []
+        self._last_sleeve_weight_regime: str | None = None
 
     def _effective_policy(self, tradable_count: int) -> PortfolioPolicy:
         """Tighten drawdown gates smoothly as diversification approaches one."""
@@ -7225,6 +7387,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         allocation_mode: str | None = None,
         risk_state: dict | None = None,
         account_state: AccountState | None = None,
+        route_controller: Any | None = None,
     ) -> dict:
         """Run one or several portfolio sleeves under the same effective policy formula."""
         if account_state is not None:
@@ -7248,10 +7411,13 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 warmup_calendar_days=warmup_calendar_days,
                 allocation_mode="ensemble",
                 risk_state=risk_state,
+                route_controller=route_controller,
                 account_state=account_state,
             )
         if mode != "single":
             raise ValueError("allocation_mode must be 'single' or 'ensemble'")
+        if route_controller is not None:
+            raise ValueError("route_controller requires allocation_mode='ensemble'")
         count = len(symbols_dict)
         effective_policy = replace(
             self._effective_policy(count), allocation_mode="single"
@@ -7288,8 +7454,41 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         self.last_result = result
         return result
 
+    def _load_overlay_risk_frames(self, request: _RunRequest) -> dict[str, pd.DataFrame]:
+        """Load a point-in-time AI risk basket independently of the trade pool."""
+        if (
+            not bool(self.cfg.get("cm_independent_risk_basket", True))
+            or not request.data_dir
+        ):
+            return {}
+        from cross_market_overlay import RISK_BASKET
+
+        warm_start = str(
+            (
+                pd.Timestamp(request.start_date)
+                - pd.Timedelta(days=int(request.warmup_calendar_days))
+            ).date()
+        )
+        frames: dict[str, pd.DataFrame] = {}
+        for symbol in RISK_BASKET:
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    frames[symbol] = DataFetcher.load_stock_data(
+                        symbol,
+                        warm_start,
+                        request.end_date,
+                        data_dir=request.data_dir,
+                    )
+            except (OSError, KeyError, RuntimeError, ValueError):
+                # Missing reference evidence never creates a risk-on signal.
+                # The overlay's minimum-industry gate fails toward warning-only.
+                continue
+        return frames
+
     def _run_ensemble(self, request: _RunRequest) -> dict:
         """Replay fixed-capital sleeves on one synchronized portfolio calendar."""
+        self._sleeve_weight_events = []
+        self._last_sleeve_weight_regime = None
         tradable_count = len(request.symbols_dict)
         effective_policy = self._effective_policy(tradable_count)
         states = self._prepare_ensemble_sleeves(request, effective_policy)
@@ -7332,9 +7531,30 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         # Default ON, only fires on genuine risk (catastrophe drop / structural
         # shock + drawdown), so a clean bull run is left untouched.
         from cross_market_overlay import CrossMarketOverlay
+        overlay_risk_frames = self._load_overlay_risk_frames(request)
         cm_overlay = CrossMarketOverlay(
-            enable_shock_trim=bool(self.cfg.get("cm_overlay_shock_trim", False))
+            enable_shock_trim=bool(self.cfg.get("cm_overlay_shock_trim", False)),
+            risk_frames=overlay_risk_frames,
+            enable_trend_health=bool(
+                self.cfg.get("cm_trend_health_protection", True)
+            ),
+            continuous_confirm_days=int(
+                self.cfg.get("cm_risk_continuous_confirm_days", 3)
+            ),
+            level2_drawdown=float(self.cfg.get("cm_risk_level2_drawdown", 0.08)),
+            level3_drawdown=float(self.cfg.get("cm_risk_level3_drawdown", 0.12)),
+            severe_direct_return=float(
+                self.cfg.get("cm_risk_severe_direct_return", -0.10)
+            ),
         ) if self.cfg.get("enable_cm_overlay", True) else None
+        if cm_overlay is not None:
+            cm_overlay.events.append(
+                {
+                    "date": request.start_date,
+                    "event": "independent_risk_basket_loaded",
+                    "observed_symbols": len(overlay_risk_frames),
+                }
+            )
         cm_overlay_peak = 0.0
         for idx, date in enumerate(reference_dates):
             # Inject account snapshot at the open of the as-of date so that
@@ -7357,6 +7577,19 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                     date,
                     state.pending,
                 )
+            if request.route_controller is not None:
+                request.route_controller.after_close(
+                    states,
+                    date,
+                    request.symbols_dict,
+                )
+                if cm_overlay is not None and hasattr(
+                    request.route_controller, "current_route"
+                ):
+                    cm_overlay.set_outer_route(
+                        request.route_controller.current_route,
+                        date,
+                    )
             assets = sum(
                 state.sleeve._total_assets(state.data_map, date) for state in states
             )
@@ -7418,12 +7651,21 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                     else combined["locked_sleeves"]
                 ),
                 "guard_scope_mode": "fixed_signal_only_regime_basket",
-                "portfolio_cash_model": "fixed_virtual_subaccounts",
+                "portfolio_cash_model": (
+                    "independent_sleeves_dynamic_idle_cash"
+                    if bool(self.cfg.get("dynamic_sleeve_weights", True))
+                    else "fixed_virtual_subaccounts"
+                ),
                 "portfolio_max_positions": int(self.cfg["max_positions"]),
                 "max_concurrent_symbols": max(
                     item["symbol_count"] for item in symbol_count_curve
                 ),
                 "portfolio_symbol_count_curve": symbol_count_curve,
+                "sleeve_weight_events": list(self._sleeve_weight_events),
+                "cm_risk_level": cm_overlay.risk_level if cm_overlay else 0,
+                "cm_overlay_state": (
+                    cm_overlay.state_snapshot() if cm_overlay else None
+                ),
                 "risk_events": self._sort_events(combined_risk_events),
                 "regime_state_series": (
                     list(results[0].get("regime_state_series", []))
@@ -7438,6 +7680,11 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 "safe_mode_active": any(
                     result.get("safe_mode_active", False) for result in results
                 ) if results else False,
+                "production_replay": (
+                    request.route_controller.result_snapshot()
+                    if request.route_controller is not None
+                    else None
+                ),
             }
         )
         self.last_result = combined
@@ -7529,6 +7776,89 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             if positions
         }
 
+    def _current_position_limit(
+        self, states: list[_PreparedSleeveRun], external_risk_level: int = 0
+    ) -> int:
+        """Return the causal three-to-six position limit for the current regime."""
+        hard_limit = int(self.cfg["max_positions"])
+        if (
+            not bool(self.cfg.get("adaptive_max_positions", True))
+            or not states
+            or external_risk_level < 1
+        ):
+            return hard_limit
+        regime = str(getattr(states[0].sleeve, "_regime_state", "TREND"))
+        if regime == "CHOPPY":
+            return min(hard_limit, int(self.cfg.get("choppy_max_positions", 3)))
+        if regime == "TRANSITION":
+            return min(
+                hard_limit, int(self.cfg.get("transition_max_positions", 4))
+            )
+        return hard_limit
+
+    def _rebalance_free_sleeve_cash(
+        self, states: list[_PreparedSleeveRun], date: pd.Timestamp
+    ) -> None:
+        """Shift idle cash without merging positions, strategies, or pending orders."""
+        if (
+            not bool(self.cfg.get("dynamic_sleeve_weights", True))
+            or len(states) != 3
+        ):
+            return
+        regime = str(getattr(states[0].sleeve, "_regime_state", "TREND"))
+        if self._last_sleeve_weight_regime is None:
+            self._last_sleeve_weight_regime = regime
+            return
+        if regime == self._last_sleeve_weight_regime:
+            return
+        self._last_sleeve_weight_regime = regime
+        prefix = regime.lower() if regime in {"TRANSITION", "CHOPPY"} else None
+        weights = (
+            [1.0 / 3.0] * 3
+            if prefix is None
+            else [
+                float(self.cfg[f"{prefix}_{name}_weight"])
+                for name in ("fast", "base", "slow")
+            ]
+        )
+        total_cash = sum(float(state.sleeve.cash) for state in states)
+        if total_cash <= 0:
+            return
+        before = [float(state.sleeve.cash) for state in states]
+        targets = [total_cash * weight for weight in weights]
+        targets[-1] = total_cash - sum(targets[:-1])
+        if all(
+            math.isclose(old, new, rel_tol=0.0, abs_tol=0.01)
+            for old, new in zip(before, targets, strict=True)
+        ):
+            return
+        for state, old, target in zip(states, before, targets, strict=True):
+            state.sleeve.cash = target
+            cash_flow = target - old
+            risk = state.sleeve.risk
+            for attribute in (
+                "peak_assets",
+                "lifetime_peak_assets",
+                "daily_start_assets",
+            ):
+                if hasattr(risk, attribute):
+                    adjusted = max(
+                        0.0, float(getattr(risk, attribute, 0.0)) + cash_flow
+                    )
+                    setattr(risk, attribute, adjusted)
+        self._sleeve_weight_events.append(
+            {
+                "date": date.strftime("%Y-%m-%d"),
+                "event": "free_cash_sleeve_reweight",
+                "regime": regime,
+                "weights": dict(
+                    zip(("fast", "base", "slow"), weights, strict=True)
+                ),
+                "cash_before": before,
+                "cash_after": targets,
+            }
+        )
+
     @staticmethod
     def _overlay_allocation_score(states: list[_PreparedSleeveRun], date: pd.Timestamp):
         """Mean allocation score across sleeves, used to rank laggards for trim."""
@@ -7544,12 +7874,16 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         return _score
 
     def _authorize_portfolio_buys(
-        self, states: list[_PreparedSleeveRun], date: pd.Timestamp
+        self,
+        states: list[_PreparedSleeveRun],
+        date: pd.Timestamp,
+        external_risk_level: int = 0,
     ) -> None:
         """Admit symbols by the mean of comparable percentile ranks (Borda score)."""
         held = self._held_portfolio_symbols(states)
-        maximum = int(self.cfg["max_positions"])
-        if len(held) > maximum:
+        hard_limit = int(self.cfg["max_positions"])
+        maximum = self._current_position_limit(states, external_risk_level)
+        if len(held) > hard_limit:
             raise RuntimeError("portfolio symbol limit was already exceeded")
         score_samples: dict[str, list[float]] = {}
         for state in states:
@@ -7620,9 +7954,19 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 state.date_to_pos,
                 frozenset({"sell"}),
             )
+        self._rebalance_free_sleeve_cash(states, date)
         if cm_overlay is not None:
             cm_overlay.block_cooldown_buys(states, date, date_pos)
-        self._authorize_portfolio_buys(states, date)
+            for state in states:
+                state.sleeve._external_risk_level = cm_overlay.risk_level
+            cm_overlay.block_risk_buys(
+                states, date, self._held_portfolio_symbols(states)
+            )
+        self._authorize_portfolio_buys(
+            states,
+            date,
+            cm_overlay.risk_level if cm_overlay is not None else 0,
+        )
         for state in states:
             state.pending = state.sleeve._execute_pending_signals(
                 state.pending,

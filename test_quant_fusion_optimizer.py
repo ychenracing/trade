@@ -18,6 +18,7 @@ def metrics(
     drawdown: float,
     *,
     stressed: bool = False,
+    trades: int = 10,
 ) -> optimizer.WindowMetrics:
     """Build minimal deterministic metrics for selection tests."""
     return optimizer.WindowMetrics(
@@ -30,7 +31,7 @@ def metrics(
         max_drawdown=drawdown,
         sharpe=annual_return / max(abs(drawdown), 0.01),
         calmar=annual_return / max(abs(drawdown), 0.01),
-        total_trades=10,
+        total_trades=trades,
         final_assets=2_000_000 * (1 + annual_return / 2),
     )
 
@@ -135,6 +136,21 @@ class CandidateTests(unittest.TestCase):
                 if candidate.candidate_id != target.candidate_id
             )
         )
+
+    def test_staged_spaces_isolate_parameter_families(self) -> None:
+        risk = optimizer.ParameterSpace.for_stage("risk")
+        turnover = optimizer.ParameterSpace.for_stage("turnover")
+        returns = optimizer.ParameterSpace.for_stage("return")
+        self.assertIn("cm_risk_level2_drawdown", risk.engine)
+        self.assertNotIn("entry_period", risk.symbol_multipliers)
+        self.assertIn("sticky_confirm_days", turnover.engine)
+        self.assertIn("dynamic_sleeve_profile", returns.engine)
+        candidates = returns.candidates(12, 17)
+        self.assertTrue(
+            any("transition_fast_weight" in item.engine_overrides for item in candidates)
+        )
+        with self.assertRaisesRegex(ValueError, "risk, turnover, return, or all"):
+            optimizer.ParameterSpace.for_stage("oracle")
 
 
 class WindowTests(unittest.TestCase):
@@ -258,6 +274,24 @@ class SelectionTests(unittest.TestCase):
         )
         self.assertFalse(evaluation.feasible)
         self.assertEqual(optimizer.pareto_frontier([evaluation]), [])
+
+    def test_pareto_frontier_treats_trades_as_a_third_objective(self) -> None:
+        window = self.folds[0].validation
+        baseline = optimizer.CandidateEvaluation(
+            optimizer.Candidate.baseline(),
+            [metrics(self.folds[0].train, 0.7, -0.12, trades=10)],
+            [metrics(window, 0.7, -0.12, trades=10)],
+            [metrics(window, 0.65, -0.13, stressed=True, trades=10)],
+            0.20,
+        )
+        higher_turnover = optimizer.CandidateEvaluation(
+            optimizer.Candidate(symbol_multipliers={"risk_pct": 0.8}),
+            [metrics(self.folds[0].train, 0.7, -0.12, trades=20)],
+            [metrics(window, 0.7, -0.12, trades=20)],
+            [metrics(window, 0.65, -0.13, stressed=True, trades=20)],
+            0.20,
+        )
+        self.assertEqual(optimizer.pareto_frontier([baseline, higher_turnover]), [baseline])
 
     def test_isolated_two_axis_candidate_cannot_win(self) -> None:
         runner = FakeRunner()

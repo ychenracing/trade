@@ -445,5 +445,32 @@ class BenchmarkValidationTests(unittest.TestCase):
             benchmarks._validate_period("2026-01-02", "2026-01-01")
 
 
+class AccountCandidateScoreTests(unittest.TestCase):
+    """账户候选排序必须真正使用行业相对强度。"""
+
+    def test_industry_relative_strength_changes_score(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "close": [100.0 + index for index in range(21)],
+                "high": [101.0 + index for index in range(21)],
+                "volume": [1_000_000.0] * 21,
+            }
+        )
+        indicators = {
+            "atr": pd.Series([2.0] * 21),
+            "ma_short": pd.Series([110.0] * 21),
+            "ma_long": pd.Series([100.0] * 21),
+        }
+        weak = account._trend_candidate_score(
+            frame, indicators, 20, 120.0, 2,
+            industry_relative_strength=0.0,
+        )
+        strong = account._trend_candidate_score(
+            frame, indicators, 20, 120.0, 2,
+            industry_relative_strength=1.0,
+        )
+        self.assertAlmostEqual(strong - weak, 0.15, places=12)
+
+
 if __name__ == "__main__":
     unittest.main()

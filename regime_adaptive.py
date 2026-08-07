@@ -131,6 +131,13 @@ ROUTE_TREND_SLOW_MA = 120
 # switch (avoids single-day whipsaw and TREND -> WEAK -> TREND the same day).
 ROUTE_MIN_HOLD_DAYS = 10
 ROUTE_CONFIRM_DAYS = 3
+# Recovery needs materially more evidence than de-risking. A premature return
+# to three trend sleeves creates a turnover burst near bear-market rallies;
+# forty consecutive sessions match the slow MA60/MA120 horizon. The weak book
+# remains invested in positive leaders during confirmation, so a V-shaped
+# repair is participated in instead of sitting in cash, while a bull already
+# confirmed during warm history starts directly in TREND.
+ROUTE_RECOVERY_CONFIRM_DAYS = 40
 # A route maps to an engine name for the deployment boundary.
 _ROUTE_TO_ENGINE = {
     RegimeRoute.TREND: "frozen_trend_engine",
@@ -174,10 +181,15 @@ def simulate_route_sequence(
         series[code] = closes.loc[(closes.index >= lhs_date) & (closes.index <= boundary_end)]
     # Union of trading dates across both indices.
     current_state: RegimeRoute = RegimeRoute.CASH
-    all_dates = sorted(
-        set().union(*(s.index for s in series.values() if not s.empty))
+    all_dates: list[pd.Timestamp] = sorted(
+        {
+            _normalized_timestamp(str(date))
+            for values in series.values()
+            if not values.empty
+            for date in values.index
+        }
     )
-    all_dates = [d for d in all_dates if boundary_start <= d <= boundary_end]
+    all_dates = [d for d in all_dates if lhs_date <= d <= boundary_end]
     if not all_dates:
         return (DailyRouteStep(str(boundary_end.date()), "cash"),)
     hold_days = 0
@@ -192,7 +204,7 @@ def simulate_route_sequence(
             if s is None or s.empty or date not in s.index:
                 evidence_ok = False
                 break
-            loc = s.index.get_loc(date)
+            loc = int(cast(Any, s.index).get_loc(date))
             if loc < ROUTE_TREND_SLOW_MA:
                 evidence_ok = False
                 break
@@ -203,7 +215,10 @@ def simulate_route_sequence(
             current_state = RegimeRoute.CASH
             hold_days = 0
             confirm_count = 0
-            steps.append(DailyRouteStep(date.strftime("%Y-%m-%d"), current_state.value))
+            if date >= boundary_start:
+                steps.append(
+                    DailyRouteStep(date.strftime("%Y-%m-%d"), current_state.value)
+                )
             continue
 
         both_trending = all(trending_flags)
@@ -255,7 +270,7 @@ def simulate_route_sequence(
         elif current_state is RegimeRoute.TRANSITION_TO_TREND:
             if both_trending:
                 confirm_count += 1
-                if confirm_count >= ROUTE_CONFIRM_DAYS:
+                if confirm_count >= ROUTE_RECOVERY_CONFIRM_DAYS:
                     current_state = RegimeRoute.TREND
                     confirm_count = 0
                     hold_days = 0
@@ -278,7 +293,8 @@ def simulate_route_sequence(
                     confirm_count = 0
                     hold_days = 0
             # else: no recovery -> stay CASH.
-        steps.append(DailyRouteStep(date.strftime("%Y-%m-%d"), current_state.value))
+        if date >= boundary_start:
+            steps.append(DailyRouteStep(date.strftime("%Y-%m-%d"), current_state.value))
     return tuple(steps)
 
 
@@ -418,7 +434,7 @@ def select_positive_momentum_leaders(
     if maximum < 1:
         raise ValueError("maximum must be positive")
     boundary = _normalized_timestamp(as_of)
-    observations: list[tuple[float, str]] = []
+    observations: list[tuple[float, str, bool]] = []
     observed_codes: set[str] = set()
 
     # Load reference basket for relative strength calculation
@@ -531,8 +547,11 @@ def select_positive_momentum_leaders(
         # Volume expansion over 20 days (from the raw frame, if available).
         volume_expansion = 0.0
         if "volume" in frame.columns and len(frame) >= 21:
-            cur_vol = float(pd.to_numeric(frame["volume"], errors="coerce").iloc[-1])
-            avg_vol = float(pd.to_numeric(frame["volume"], errors="coerce").iloc[-21:-1].mean())
+            volumes = cast(
+                pd.Series, pd.to_numeric(frame["volume"], errors="coerce")
+            )
+            cur_vol = float(volumes.iloc[-1])
+            avg_vol = float(volumes.iloc[-21:-1].mean())
             if math.isfinite(cur_vol) and math.isfinite(avg_vol) and avg_vol > 0:
                 volume_expansion = max(0.0, min(2.0, cur_vol / avg_vol))
 
@@ -774,7 +793,7 @@ class PositiveMomentumHoldStrategy(qf.BaseStrategy):
             return self._make_sell_signal(ctx, "weak-regime disaster stop")
         try:
             entry_timestamp = pd.Timestamp(position.entry_date)
-            if pd.isna(entry_timestamp):
+            if entry_timestamp is pd.NaT:
                 raise ValueError("entry_date must resolve to a valid timestamp")
             entry_index = int(cast(Any, ctx.df.index).searchsorted(entry_timestamp))
             held_days = max(ctx.i - entry_index, 0)
@@ -872,6 +891,392 @@ def _weak_regime_config(symbol_count: int) -> dict[str, Any]:
             "domestic_semiconductor": 1.0,
         },
     }
+
+
+class ProductionRouteController:
+    """Apply the daily outer route inside one persistent production ledger.
+
+    The controller never injects an account snapshot and never replaces the
+    ensemble's execution engine. It filters or adds close-generated T+1 orders
+    while the existing sleeve cash, positions, pending orders, sticky state,
+    risk peaks, cooldowns, and strategy instances continue across every route
+    transition.
+    """
+
+    def __init__(
+        self,
+        route_sequence: Sequence[DailyRouteStep],
+        *,
+        leader_data_dir: str | Path,
+    ) -> None:
+        self.route_by_date = {step.date: step.route for step in route_sequence}
+        self.leader_data_dir = str(leader_data_dir)
+        self.previous_route: str | None = None
+        self.events: list[dict[str, Any]] = []
+        self.journal: list[dict[str, Any]] = []
+        self._leader_cache: dict[str, tuple[str, ...]] = {}
+        self._weak_strategies: dict[
+            tuple[str, str], PositiveMomentumHoldStrategy
+        ] = {}
+        self._weak_episode_leaders: tuple[str, ...] = ()
+        self._carry_trend_book = False
+        self._restoring_trend_cash = False
+
+    @staticmethod
+    def _drop_buys(states: list[Any]) -> None:
+        for state in states:
+            state.pending = [
+                item for item in state.pending if item[0].direction != "buy"
+            ]
+
+    @staticmethod
+    def _queue_liquidations(
+        states: list[Any], date_str: str, *, weak_only: bool
+    ) -> None:
+        for state in states:
+            liquidations = state.sleeve._generate_liquidation_signals(
+                date_str,
+                reason="production outer-route migration",
+            )
+            selected = [
+                item
+                for item in liquidations
+                if (
+                    item[0].strategy_name == PositiveMomentumHoldStrategy.name
+                ) == weak_only
+            ]
+            if not selected:
+                continue
+            state.pending = state.sleeve._dedupe_pending_signals(
+                [item for item in state.pending if item[0].direction == "sell"]
+                + selected
+            )
+
+    def _leaders(self, symbols: Sequence[str], date_str: str) -> tuple[str, ...]:
+        cached = self._leader_cache.get(date_str)
+        if cached is not None:
+            return cached
+        try:
+            selected = select_positive_momentum_leaders(
+                tuple(symbols),
+                data_dir=self.leader_data_dir,
+                as_of=date_str,
+            ).selected_symbols
+        except (OSError, RuntimeError, ValueError):
+            selected = ()
+        self._leader_cache[date_str] = tuple(selected)
+        return tuple(selected)
+
+    def _append_weak_signals(
+        self,
+        states: list[Any],
+        date: pd.Timestamp,
+        symbols_dict: dict[str, str],
+    ) -> tuple[str, ...]:
+        date_str = date.strftime("%Y-%m-%d")
+        leaders = self._weak_episode_leaders
+        if not leaders:
+            return ()
+        # Weak routing uses one account sleeve, not three duplicate weak books.
+        # All idle cash is migrated to this sleeve on the route transition.
+        for state in states[:1]:
+            current_assets = state.sleeve._total_assets(state.data_map, date)
+            for symbol in symbols_dict:
+                key = (str(state.sleeve.sleeve_name), symbol)
+                strategy = self._weak_strategies.get(key)
+                if strategy is None:
+                    cfg = dict(state.sleeve.cfg)
+                    cfg.update(_weak_regime_config(max(len(leaders), 1)))
+                    strategy = PositiveMomentumHoldStrategy(cfg)
+                    self._weak_strategies[key] = strategy
+                if symbol not in leaders and strategy.position is None:
+                    continue
+                frame = state.data_map.get(symbol)
+                indicators = state.indicator_map.get(symbol)
+                if frame is None or indicators is None or date not in frame.index:
+                    continue
+                ctx = qf.BarContext(
+                    i=frame.index.get_loc(date),
+                    df=frame,
+                    current_assets=current_assets,
+                    indicators=indicators,
+                    symbol=symbol,
+                    date=date_str,
+                )
+                signal = strategy.on_bar(ctx)
+                if signal is None:
+                    continue
+                if signal.direction == "buy":
+                    if symbol not in leaders or state.sleeve._pending_has_buy(
+                        state.pending, symbol, strategy.name
+                    ):
+                        continue
+                elif signal.direction == "sell":
+                    if state.sleeve._pending_has_sell(
+                        state.pending, symbol, strategy.name
+                    ):
+                        continue
+                state.pending.append((signal, strategy))
+            state.pending = state.sleeve._dedupe_pending_signals(state.pending)
+        return leaders
+
+    @staticmethod
+    def _shift_free_cash(states: list[Any], weights: Sequence[float]) -> None:
+        """Move idle cash causally and neutralize the external flow in risk peaks."""
+        total_cash = sum(float(state.sleeve.cash) for state in states)
+        if total_cash <= 0:
+            return
+        targets = [total_cash * float(weight) for weight in weights]
+        targets[-1] = total_cash - sum(targets[:-1])
+        for state, target in zip(states, targets, strict=True):
+            old = float(state.sleeve.cash)
+            state.sleeve.cash = target
+            flow = target - old
+            risk = state.sleeve.risk
+            for attribute in (
+                "peak_assets",
+                "lifetime_peak_assets",
+                "daily_start_assets",
+            ):
+                if hasattr(risk, attribute):
+                    setattr(
+                        risk,
+                        attribute,
+                        max(0.0, float(getattr(risk, attribute, 0.0)) + flow),
+                    )
+
+    def after_close(
+        self,
+        states: list[Any],
+        date: pd.Timestamp,
+        symbols_dict: dict[str, str],
+    ) -> None:
+        """Route close-generated orders while preserving all execution state."""
+        date_str = date.strftime("%Y-%m-%d")
+        route = self.route_by_date.get(
+            date_str, self.previous_route or RegimeRoute.CASH.value
+        )
+        changed = route != self.previous_route
+        if changed:
+            self.events.append(
+                {
+                    "date": date_str,
+                    "event": "production_route_transition",
+                    "from": self.previous_route,
+                    "to": route,
+                }
+            )
+
+        leaders: tuple[str, ...] = ()
+        if route == RegimeRoute.TRANSITION_TO_WEAK.value:
+            # The cross-market overlay is the execution owner for an existing
+            # trend book. It applies the dual-confirmed transition throttle;
+            # stacking another route-level scale here changes the downstream
+            # strategy path and double-counts the same risk evidence.
+            pass
+        elif route == RegimeRoute.CASH.value:
+            self._drop_buys(states)
+            if changed:
+                self._queue_liquidations(states, date_str, weak_only=False)
+                self._queue_liquidations(states, date_str, weak_only=True)
+            self._carry_trend_book = False
+            self._weak_episode_leaders = ()
+        elif route in {
+            RegimeRoute.WEAK.value,
+            RegimeRoute.TRANSITION_TO_TREND.value,
+        }:
+            if changed and route == RegimeRoute.WEAK.value:
+                self._carry_trend_book = any(
+                    strat_name != PositiveMomentumHoldStrategy.name
+                    for state in states
+                    for positions in state.sleeve.positions.values()
+                    for strat_name in positions
+                )
+            if self._carry_trend_book:
+                # Preserve an established trend book through an index-led risk
+                # episode. Existing strategies retain their own sell logic;
+                # the cross-market overlay remains the sole buy/trim authority
+                # so route and overlay cannot multiply the same reduction.
+                pass
+            else:
+                self._drop_buys(states)
+                if changed and not self._weak_episode_leaders:
+                    # Freeze the leaders for this weak episode. Re-ranking every
+                    # close turned the defensive book into a hidden rotation
+                    # strategy, increasing trades precisely when conditions are
+                    # least forgiving. A new weak episode receives a new,
+                    # causal selection from its transition close.
+                    self._weak_episode_leaders = self._leaders(
+                        tuple(symbols_dict), date_str
+                    )
+                self._shift_free_cash(states, (1.0, 0.0, 0.0))
+                leaders = self._append_weak_signals(states, date, symbols_dict)
+        else:
+            carried_trend_book = self._carry_trend_book
+            self._carry_trend_book = False
+            self._weak_episode_leaders = ()
+            if changed and self.previous_route in {
+                RegimeRoute.WEAK.value,
+                RegimeRoute.CASH.value,
+                RegimeRoute.TRANSITION_TO_TREND.value,
+            }:
+                self._queue_liquidations(states, date_str, weak_only=True)
+                self._restoring_trend_cash = not carried_trend_book
+            if self._restoring_trend_cash:
+                self._shift_free_cash(states, (1 / 3, 1 / 3, 1 / 3))
+                weak_positions = any(
+                    PositiveMomentumHoldStrategy.name in positions
+                    for state in states
+                    for positions in state.sleeve.positions.values()
+                )
+                if not weak_positions:
+                    self._restoring_trend_cash = False
+
+        sleeve_rows = []
+        for state in states:
+            risk = state.sleeve.risk
+            sleeve_rows.append(
+                {
+                    "name": state.sleeve.sleeve_name,
+                    "cash": float(state.sleeve.cash),
+                    "positions": sorted(state.sleeve.positions),
+                    "pending": len(state.pending),
+                    "risk_lock": bool(getattr(risk, "persistent_lock", False)),
+                    "risk_peak": float(getattr(risk, "peak_assets", 0.0)),
+                    "sticky_leader": getattr(
+                        state.sleeve, "_sticky_leader", None
+                    ),
+                }
+            )
+        self.journal.append(
+            {
+                "date": date_str,
+                "route": route,
+                "leaders": list(leaders),
+                "sleeves": sleeve_rows,
+            }
+        )
+        self.previous_route = route
+
+    def result_snapshot(self) -> dict[str, Any]:
+        """Return the complete serializable route and persistence audit."""
+        cooldowns = {
+            f"{sleeve}:{symbol}": {
+                "cooldown_end": strategy._cooldown_end,
+                "exit_reason": strategy._exit_reason,
+                "failures": strategy._failures,
+            }
+            for (sleeve, symbol), strategy in sorted(self._weak_strategies.items())
+        }
+        return {
+            "engine": "ProductionReplayEngine",
+            "route_sequence": [
+                {"date": date, "route": route}
+                for date, route in sorted(self.route_by_date.items())
+            ],
+            "transition_events": list(self.events),
+            "daily_journal": list(self.journal),
+            "weak_cooldowns": cooldowns,
+        }
+
+    @property
+    def current_route(self) -> str | None:
+        """Return the route only when it owns overlay execution next session."""
+        # An established trend account retains the normal cross-market overlay
+        # as its single risk owner. Only a dedicated weak/cash book suppresses
+        # duplicate overlay execution.
+        if self._carry_trend_book and self.previous_route in {
+            RegimeRoute.WEAK.value,
+            RegimeRoute.TRANSITION_TO_TREND.value,
+        }:
+            return None
+        return self.previous_route
+
+
+class ProductionReplayEngine:
+    """Run daily causal routing through one persistent Quant Fusion account."""
+
+    def __init__(
+        self,
+        initial_capital: float = 2_000_000,
+        cfg: dict | None = None,
+        policy: qf.PortfolioPolicy | None = None,
+    ) -> None:
+        self.initial_capital = qf._require_finite(
+            "initial_capital", initial_capital, min_value=0.01
+        )
+        self.cfg = dict(cfg or {})
+        self.policy = policy
+        self.delegate: qf.BacktestEngine | None = None
+
+    def run(
+        self,
+        symbols_dict: dict[str, str],
+        start_date: str,
+        end_date: str,
+        *,
+        data_dir: str,
+        regime_data_dir: str,
+        leader_data_dir: str | None = None,
+        indicator_state: str = "warm",
+        warmup_calendar_days: int = 365,
+        per_symbol_config: dict[str, dict] | None = None,
+        profile: str | None = None,
+        config_route: str = "auto",
+        risk_state: dict | None = None,
+        account_state: qf.AccountState | None = None,
+    ) -> dict[str, Any]:
+        route_sequence = simulate_route_sequence(
+            regime_data_dir,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        controller = ProductionRouteController(
+            route_sequence,
+            leader_data_dir=leader_data_dir or data_dir,
+        )
+        starts_defensive = bool(route_sequence) and route_sequence[0].route in {
+            RegimeRoute.WEAK.value,
+            RegimeRoute.CASH.value,
+        }
+        replay_policy = self.policy or (
+            replace(
+                qf.PortfolioPolicy(),
+                drawdown_alert=WEAK_DRAWDOWN_ALERT,
+                confirmed_drawdown=WEAK_CONFIRMED_DRAWDOWN,
+                emergency_drawdown=WEAK_EMERGENCY_DRAWDOWN,
+                terminal_drawdown=WEAK_TERMINAL_DRAWDOWN,
+                concentration_drawdown_adjustment=0.01,
+            )
+            if starts_defensive
+            else qf.PortfolioPolicy()
+        )
+        self.delegate = qf.BacktestEngine(
+            self.initial_capital,
+            cfg=self.cfg,
+            policy=replay_policy,
+        )
+        result = self.delegate.run(
+            symbols_dict,
+            start_date,
+            end_date,
+            per_symbol_config=per_symbol_config,
+            profile=profile,
+            config_route=config_route,
+            data_dir=data_dir,
+            indicator_state=indicator_state,
+            warmup_calendar_days=warmup_calendar_days,
+            allocation_mode="ensemble",
+            risk_state=risk_state,
+            account_state=account_state,
+            route_controller=controller,
+        )
+        result["route_sequence"] = result["production_replay"]["route_sequence"]
+        result["deployment_policy"] = "production_daily_replay"
+        result["requested_symbols"] = sorted(symbols_dict)
+        result["selected_symbols"] = sorted(symbols_dict)
+        result["unavailable_symbols"] = []
+        return result
 
 
 class RegimeAdaptiveBacktestEngine:
@@ -1050,8 +1455,8 @@ class RegimeAdaptiveBacktestEngine:
         universes may opt in to filtering with ``allow_unavailable_symbols``.
         """
         mode = str(deployment_mode).lower()
-        if mode not in {"auto", "trend", "weak"}:
-            raise ValueError("deployment_mode must be auto, trend, or weak")
+        if mode not in {"auto", "replay", "trend", "weak"}:
+            raise ValueError("deployment_mode must be auto, replay, trend, or weak")
         if not isinstance(allow_unavailable_symbols, bool):
             raise ValueError("allow_unavailable_symbols must be bool")
         evidence_dir = regime_data_dir or data_dir
@@ -1059,6 +1464,55 @@ class RegimeAdaptiveBacktestEngine:
             raise ValueError(
                 "regime-adaptive mode requires a local data_dir or regime_data_dir"
             )
+        if mode in {"auto", "replay"}:
+            if data_dir is None:
+                raise ValueError("production replay requires a local stock data_dir")
+            tradable_symbols = self._available_local_symbols(
+                symbols_dict,
+                data_dir=data_dir,
+                start_date=start_date,
+                end_date=end_date,
+                warmup_calendar_days=warmup_calendar_days,
+            )
+            unavailable = tuple(sorted(set(symbols_dict) - set(tradable_symbols)))
+            if unavailable and not allow_unavailable_symbols:
+                raise RuntimeError(
+                    "requested replay symbols have no observable data: "
+                    + ", ".join(unavailable)
+                )
+            if not tradable_symbols:
+                raise RuntimeError("production replay has no observable trade symbols")
+            replay = ProductionReplayEngine(
+                self.initial_capital,
+                cfg=self.cfg,
+                policy=self.policy,
+            )
+            result = replay.run(
+                tradable_symbols,
+                start_date,
+                end_date,
+                data_dir=data_dir,
+                regime_data_dir=str(evidence_dir),
+                leader_data_dir=leader_data_dir,
+                indicator_state=indicator_state,
+                warmup_calendar_days=warmup_calendar_days,
+                per_symbol_config=per_symbol_config,
+                profile=profile,
+                config_route=config_route,
+                risk_state=risk_state,
+                account_state=account_state,
+            )
+            self.delegate = replay.delegate
+            decision = self.decide_current(
+                tradable_symbols,
+                as_of=end_date,
+                data_dir=evidence_dir,
+                leader_data_dir=leader_data_dir,
+            )
+            self.last_decision = decision
+            result["deployment_decision"] = asdict(decision)
+            result["unavailable_symbols"] = list(unavailable)
+            return result
         decision = self.decide(
             symbols_dict,
             start_date=start_date,

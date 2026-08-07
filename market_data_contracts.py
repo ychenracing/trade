@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 try:
-    import akshare as ak
+    import akshare as ak  # pyright: ignore[reportMissingImports]
 except ImportError:
     ak = None
 
@@ -94,9 +94,9 @@ def _normalize_index_frame(frame: pd.DataFrame, *, end_date: str) -> pd.DataFram
             "volume": volume,
         }
     )
-    if out[list(required)].isna().any().any():
+    if bool(out.loc[:, list(required)].isna().to_numpy().any()):
         raise ValueError("index response contains an unparseable date or OHLC value")
-    if has_volume and out["volume"].isna().any():
+    if has_volume and bool(out.loc[:, "volume"].isna().to_numpy().any()):
         raise ValueError("index response contains an unparseable volume value")
 
     boundary = pd.Timestamp(end_date)

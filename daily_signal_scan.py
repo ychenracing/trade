@@ -891,7 +891,9 @@ def _run_main() -> int:
                     print(f"  ✓ {code} {name}: {len(df)} 条数据")
             else:
                 listing = known_listing_dates.get(code)
-                if listing and pd.Timestamp(listing) > pd.Timestamp(end_date):
+                if listing and cast(pd.Timestamp, pd.Timestamp(listing)) > cast(
+                    pd.Timestamp, pd.Timestamp(end_date)
+                ):
                     skipped.append((code, name, f"尚未上市 ({listing})"))
                     print(f"  ✗ {code} {name}: 尚未上市 ({listing})")
                 else:
@@ -899,7 +901,9 @@ def _run_main() -> int:
                     print(f"  ✗ {code} {name}: 预期可交易但返回空数据")
         except Exception as exc:
             listing = known_listing_dates.get(code)
-            if listing and pd.Timestamp(listing) > pd.Timestamp(end_date):
+            if listing and cast(pd.Timestamp, pd.Timestamp(listing)) > cast(
+                pd.Timestamp, pd.Timestamp(end_date)
+            ):
                 skipped.append((code, name, f"尚未上市 ({listing})"))
                 print(f"  ✗ {code} {name}: 尚未上市 ({listing})")
             else:

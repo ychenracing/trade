@@ -51,6 +51,7 @@ through the normal ensemble machinery.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
@@ -136,6 +137,19 @@ RISK_BASKET = (
     "688256",  # 寒武纪 - 国产算力
     "300054",  # 鼎龙股份 - 材料
     "688082",  # 盛美上海 - 设备
+    "688300",  # 联瑞新材 - 材料
+    "688205",  # 德科立 - 光通信
+    "920045",  # 蘅东光 - 光通信
+    "300776",  # 帝尔激光 - 设备
+    "688535",  # 华海诚科 - 封装材料
+    "688249",  # 晶合集成 - 晶圆制造
+    "688347",  # 华虹宏力 - 晶圆制造
+    "300666",  # 江丰电子 - 半导体材料
+    "600206",  # 有研新材 - 半导体材料
+    "688409",  # 富创精密 - 设备零部件
+    "688361",  # 中科飞测 - 量测设备
+    "300604",  # 长川科技 - 测试设备
+    "688120",  # 华海清科 - CMP 设备
 )
 
 # Report 4.7: layered / sub-industry risk baskets. The TOTAL AI basket above
@@ -146,11 +160,16 @@ RISK_BASKET = (
 # raise the graded risk level (which requires the same portfolio-drawdown and
 # escalation gates as the total-basket path).
 RISK_SUB_BASKETS = {
-    "optical": ("300308", "300502", "300394"),
+    "optical": ("300308", "300502", "300394", "688205", "920045"),
     "memory": ("688008", "603986"),
     "compute": ("688256",),
-    "equipment": ("688072", "688082"),
-    "material": ("002409", "300054"),
+    "equipment": (
+        "688072", "688082", "300776", "688249", "688347",
+        "688409", "688361", "300604", "688120",
+    ),
+    "material": (
+        "002409", "300054", "688300", "688535", "300666", "600206",
+    ),
 }
 
 # Report 4.7/4.8: a symbol -> sub-industry map used to judge whether a
@@ -160,10 +179,14 @@ RISK_SUB_BASKETS = {
 # an equipment-only stress from trimming an optical winner the user holds.
 SYMBOL_SUB_INDUSTRY: dict[str, str] = {
     "300308": "optical", "300502": "optical", "300394": "optical",
+    "688205": "optical", "920045": "optical",
     "688008": "memory", "603986": "memory",
     "688256": "compute",
-    "688072": "equipment", "688082": "equipment",
-    "002409": "material", "300054": "material",
+    "688072": "equipment", "688082": "equipment", "300776": "equipment",
+    "688249": "equipment", "688347": "equipment", "688409": "equipment",
+    "688361": "equipment", "300604": "equipment", "688120": "equipment",
+    "002409": "material", "300054": "material", "688300": "material",
+    "688535": "material", "300666": "material", "600206": "material",
 }
 # The inverse: sub-industry -> held symbols it covers (only those above).
 _SUB_TO_SYMBOLS: dict[str, tuple[str, ...]] = {}
@@ -188,6 +211,9 @@ RISK_MIN_HELD = 2                  # need at least 2 held names to judge breadth
 # Escalation window: Level 2 ("预警后再次冲击") requires a PRIOR warning
 # within this many trading days, so a one-off pull-back never trims.
 RISK_ESCALATION_DAYS = 5
+RISK_CONTINUOUS_CONFIRM_DAYS = 3
+RISK_SEVERE_DIRECT_RETURN = -0.10
+RISK_SEVERE_DIRECT_BREADTH = 0.80
 
 # Portfolio drawdown gates (report 4.1: Level 2 requires "组合回撤超过5%-8%").
 # A trim only arms once the PORTFOLIO is actually deep off its peak, so the
@@ -279,6 +305,12 @@ class CrossMarketOverlay:
         enable_shock_trim: bool = False,
         *,
         enable_early_sector_risk: bool = True,
+        risk_frames: dict[str, pd.DataFrame] | None = None,
+        enable_trend_health: bool = True,
+        continuous_confirm_days: int = RISK_CONTINUOUS_CONFIRM_DAYS,
+        level2_drawdown: float = RISK_LEVEL2_DRAWDOWN,
+        level3_drawdown: float = RISK_LEVEL3_DRAWDOWN,
+        severe_direct_return: float = RISK_SEVERE_DIRECT_RETURN,
     ) -> None:
         self.catastrophe_stop_pct = float(catastrophe_stop_pct)
         self.shock_trim_drawdown = float(shock_trim_drawdown)
@@ -289,6 +321,12 @@ class CrossMarketOverlay:
         self.enable_shock_trim = bool(enable_shock_trim)
         # Multi-evidence early sector-risk layer is ON by default (bull-silent).
         self.enable_early_sector_risk = bool(enable_early_sector_risk)
+        self.risk_frames = dict(risk_frames or {})
+        self.enable_trend_health = bool(enable_trend_health)
+        self.continuous_confirm_days = max(int(continuous_confirm_days), 2)
+        self.level2_drawdown = float(level2_drawdown)
+        self.level3_drawdown = float(level3_drawdown)
+        self.severe_direct_return = float(severe_direct_return)
         # Industry-concentration / correlation-cluster guard is ON by default
         # (bull-silent report 4.8): only trims an over-concentrated cluster
         # while the portfolio is off peak and declining.
@@ -307,6 +345,14 @@ class CrossMarketOverlay:
         # Report 4.1 "预警后再次冲击" means warning -> recovery -> RE-shock; a
         # trim must not fire on the same continuous shock that first warned.
         self._recovered_since_warning = False
+        self._continuous_stress_days = 0
+        self._transition_trim_active = False
+        # The production outer router owns execution while it is already in a
+        # defensive weak/cash route. The overlay keeps measuring and persisting
+        # market risk there, but must not stack a second set of sells or entry
+        # bans on top of the dedicated weak-market strategy.
+        self._outer_defensive_mode = False
+        self._outer_route: str | None = None
         self.events: list[dict[str, Any]] = []
 
     # ── per-position helpers ──────────────────────────────────────────
@@ -332,13 +378,127 @@ class CrossMarketOverlay:
                     prices[symbol] = float(frame.loc[date]["close"])
         return prices
 
-    @staticmethod
-    def _frame_for(states: list, symbol: str):
+    def _frame_for(self, states: list, symbol: str):
+        reference = self.risk_frames.get(symbol)
+        if reference is not None:
+            return reference
         for state in states:
             frame = state.data_map.get(symbol)
             if frame is not None:
                 return frame
         return None
+
+    @property
+    def blocks_new_positions(self) -> bool:
+        """Whether confirmed market risk must reject every new symbol entry."""
+        return self.enable_early_sector_risk and self._risk_level >= 2
+
+    @property
+    def risk_level(self) -> int:
+        """Expose the current validated integer risk level for result audits."""
+        return int(self._risk_level)
+
+    def state_snapshot(self) -> dict[str, Any]:
+        """Return the persistent warning, cooldown, and escalation state."""
+        return {
+            "risk_level": int(self._risk_level),
+            "continuous_stress_days": int(self._continuous_stress_days),
+            "last_warning_position": int(self._last_warning_pos),
+            "recovered_since_warning": bool(self._recovered_since_warning),
+            "stressed_subindustry": self._stressed_sub,
+            "catastrophe_cooldowns": dict(self._catastrophe_cooldown),
+            "transition_trim_active": bool(self._transition_trim_active),
+            "outer_route": self._outer_route,
+            "execution_owner": (
+                "production_route" if self._outer_defensive_mode else "overlay"
+            ),
+        }
+
+    def set_outer_route(self, route: str | None, date: pd.Timestamp) -> None:
+        """Select one risk-execution owner without discarding overlay evidence."""
+        defensive = route in {"weak", "cash", "transition_to_trend"}
+        if defensive != self._outer_defensive_mode:
+            self.events.append(
+                {
+                    "date": date.strftime("%Y-%m-%d"),
+                    "event": "risk_execution_owner_changed",
+                    "owner": "production_route" if defensive else "overlay",
+                    "route": route,
+                }
+            )
+        self._outer_route = route
+        self._outer_defensive_mode = defensive
+
+    @property
+    def blocks_pyramiding(self) -> bool:
+        """Whether warning-or-worse market risk must reject additions to holdings."""
+        return self.enable_early_sector_risk and self._risk_level >= 1
+
+    def block_risk_buys(
+        self, states: list, date: pd.Timestamp, held_symbols: set[str]
+    ) -> None:
+        """Apply the Level-1 pyramid freeze and Level-2 new-entry freeze.
+
+        The gate runs immediately before portfolio buy authorization. Sells are
+        untouched, and every rejected order is retained in the audit stream.
+        """
+        if self._outer_defensive_mode:
+            return
+        if not self.blocks_pyramiding:
+            return
+        date_str = date.strftime("%Y-%m-%d")
+        transition_confirmed = any(
+            getattr(state.sleeve, "_regime_state", "TREND") == "TRANSITION"
+            and int(getattr(state.sleeve, "_regime_transition_days", 0)) >= 5
+            for state in states
+        )
+        for state in states:
+            retained: list[tuple[Any, Any]] = []
+            for signal, strategy in state.pending:
+                is_buy = signal.direction == "buy"
+                is_held = str(signal.symbol) in held_symbols
+                blocked = is_buy and (
+                    (self.blocks_new_positions and not is_held)
+                    or (self.blocks_pyramiding and is_held)
+                )
+                if (
+                    is_buy
+                    and not is_held
+                    and not self.blocks_new_positions
+                    and transition_confirmed
+                ):
+                    scaled_shares = int(signal.target_shares * 0.75 // 100 * 100)
+                    if scaled_shares > 0:
+                        retained.append(
+                            (replace(signal, target_shares=scaled_shares), strategy)
+                        )
+                        continue
+                    blocked = True
+                if not blocked:
+                    retained.append((signal, strategy))
+                    continue
+                event = (
+                    "blocked_confirmed_market_risk"
+                    if self.blocks_new_positions
+                    else "blocked_market_risk_pyramid"
+                )
+                sleeve = getattr(state, "sleeve", None)
+                if sleeve is not None and hasattr(sleeve, "_record_order_event"):
+                    sleeve._record_order_event(
+                        date=date_str,
+                        signal=signal,
+                        event=event,
+                        market_risk_level=int(self._risk_level),
+                    )
+                self.events.append(
+                    {
+                        "date": date_str,
+                        "event": event,
+                        "symbol": str(signal.symbol),
+                        "level": int(self._risk_level),
+                    }
+                )
+            state.pending = retained
 
     # ── daily entry point ─────────────────────────────────────────────
 
@@ -373,6 +533,13 @@ class CrossMarketOverlay:
         if self.enable_early_sector_risk and date_pos != self._risk_level_day:
             self._update_risk_level(states, date, date_pos, held, drawdown)
             self._risk_level_day = date_pos
+
+        # In a dedicated weak/cash route the same persistent account is already
+        # being managed by the outer defensive strategy. Keep the cross-market
+        # state hot for recovery and re-shock decisions, but do not duplicate
+        # its stops, trims, cooldowns, or buy bans.
+        if self._outer_defensive_mode:
+            return
 
         # 1) Layered catastrophe stops (P0-1, replacing the fixed 28%).
         # Two passes so every sleeve's position in a crashing symbol is exited
@@ -426,6 +593,29 @@ class CrossMarketOverlay:
         #    the trim only arms once the portfolio is genuinely off its peak.
         if self.enable_early_sector_risk and self._risk_level >= 2:
             self._apply_graded_trim(states, prices, date_str, scoring_fn, drawdown)
+
+        # Sustained internal TRANSITION plus an external Level-1 warning is the
+        # only path that trims during transition. This avoids globally reducing
+        # healthy bull exposure while still cutting the weakest name by 10% once
+        # both independent signals agree and the account is genuinely declining.
+        transition_confirmed = any(
+            getattr(state.sleeve, "_regime_state", "TREND") == "TRANSITION"
+            and int(getattr(state.sleeve, "_regime_transition_days", 0)) >= 5
+            for state in states
+        )
+        if (
+            self._risk_level >= 1
+            and transition_confirmed
+            and not self._transition_trim_active
+            and drawdown >= 0.05
+            and self._portfolio_fast_return() < 0
+        ):
+            self._apply_transition_trim(
+                states, prices, date_str, scoring_fn, ratio=0.10
+            )
+            self._transition_trim_active = True
+        elif self._risk_level == 0 or not transition_confirmed:
+            self._transition_trim_active = False
 
         # 2b) Industry-concentration / correlation-cluster guard (report 4.8).
         #     Bull-silent: only trims an over-concentrated sub-industry cluster
@@ -542,6 +732,8 @@ class CrossMarketOverlay:
         trading day, before buys are authorized and filled, so all three trend
         sleeves are blocked together. The blocking reason is audited per sleeve.
         """
+        if self._outer_defensive_mode:
+            return
         date_str = date.strftime("%Y-%m-%d")
         for state in states:
             blocked: list[tuple[Any, Any]] = []
@@ -655,6 +847,18 @@ class CrossMarketOverlay:
             for gain_threshold, ratio in PROFIT_TIER_GIVEBACK:
                 if peak_gain >= gain_threshold:
                     giveback = ratio
+            # Trend-health adaptation is active only inside confirmed market
+            # risk. Healthy leaders above rising MA20/MA60 get three extra
+            # percentage points of breathing room; structurally weak holdings
+            # surrender three points sooner. The catastrophe floor remains the
+            # widest possible line and the looseness guard remains the tightest.
+            giveback += self._trend_health_giveback_adjustment(
+                state, symbol, date
+            )
+            giveback = min(
+                self.catastrophe_stop_pct,
+                max(MIN_LAYERED_STOP_PCT, giveback),
+            )
             profit_stop = peak_close * (1.0 - giveback)
             # Looseness floor: never tighten the profit-tier stop below this
             # distance from peak (i.e. never trigger on a smaller pull-back than
@@ -680,6 +884,29 @@ class CrossMarketOverlay:
                 trigger_type = name
         return (protection if protection > 0 else 0.0), trigger_type
 
+    def _trend_health_giveback_adjustment(
+        self, state, symbol: str, date: pd.Timestamp
+    ) -> float:
+        """Return a bounded giveback adjustment from causal trend health."""
+        if not self.enable_trend_health:
+            return 0.0
+        frame = self._frame_for([state], symbol)
+        if frame is None or date not in frame.index:
+            return 0.0
+        loc = frame.index.get_loc(date)
+        if loc < 59:
+            return 0.0
+        closes = pd.to_numeric(frame["close"], errors="coerce")
+        current = float(closes.iloc[loc])
+        ma20 = float(closes.iloc[loc - 19: loc + 1].mean())
+        ma60 = float(closes.iloc[loc - 59: loc + 1].mean())
+        previous_ma20 = float(closes.iloc[loc - 20: loc].mean())
+        if current > ma20 > ma60 and ma20 >= previous_ma20:
+            return 0.03
+        if current < ma20 <= ma60:
+            return -0.03
+        return 0.0
+
     @staticmethod
     def _atr_at(frame: pd.DataFrame, loc: int) -> float:
         """ATR (Wilder) at ``loc``, reusing the ensemble's unified ``Indicators.atr``.
@@ -703,36 +930,57 @@ class CrossMarketOverlay:
     # ── early sector-risk layer (P1-1) ────────────────────────────────
 
     def _basket_metrics(self, states: list, date: pd.Timestamp) -> dict:
-        """Compute multi-evidence metrics from the fixed risk basket."""
-        fast_returns: list[float] = []
-        declining_3d = 0
-        below_ma20 = 0
+        """Compute sub-industry-equal metrics from the independent risk basket.
+
+        Each available sub-industry contributes one vote regardless of how many
+        constituents it contains. This prevents the large equipment group from
+        dominating the market signal and caps every individual stock's impact.
+        """
+        industry_returns: list[float] = []
+        industry_breadth: list[float] = []
+        industry_below_ma20: list[float] = []
         observed = 0
-        for symbol in RISK_BASKET:
-            frame = self._frame_for(states, symbol)
-            if frame is None or date not in frame.index:
+        observed_industries = 0
+        for members in RISK_SUB_BASKETS.values():
+            returns: list[float] = []
+            declines = 0
+            below_ma20 = 0
+            for symbol in members:
+                frame = self._frame_for(states, symbol)
+                if frame is None or date not in frame.index:
+                    continue
+                loc = frame.index.get_loc(date)
+                closes = pd.to_numeric(frame["close"], errors="coerce")
+                if loc < RISK_FAST_DAYS:
+                    continue
+                recent = closes.iloc[loc - RISK_FAST_DAYS + 1: loc + 1]
+                if len(recent) < 2 or recent.isna().any():
+                    continue
+                fast_return = float(recent.iloc[-1] / recent.iloc[0] - 1.0)
+                returns.append(fast_return)
+                declines += int(fast_return < 0)
+                if loc >= 19:
+                    ma20 = float(closes.iloc[loc - 19: loc + 1].mean())
+                    below_ma20 += int(ma20 > 0 and float(closes.iloc[loc]) < ma20)
+            if not returns:
                 continue
-            loc = frame.index.get_loc(date)
-            closes = pd.to_numeric(frame["close"], errors="coerce")
-            if loc < RISK_FAST_DAYS:
-                continue
-            recent = closes.iloc[loc - RISK_FAST_DAYS + 1: loc + 1]
-            if len(recent) < 2 or recent.isna().any():
-                continue
-            fast_return = float(recent.iloc[-1] / recent.iloc[0] - 1.0)
-            fast_returns.append(fast_return)
-            observed += 1
-            if fast_return < 0:
-                declining_3d += 1
-            if loc >= 19:
-                ma20 = float(closes.iloc[loc - 19: loc + 1].mean())
-                if ma20 > 0 and float(closes.iloc[loc]) < ma20:
-                    below_ma20 += 1
+            observed += len(returns)
+            observed_industries += 1
+            industry_returns.append(sum(returns) / len(returns))
+            industry_breadth.append(declines / len(returns))
+            industry_below_ma20.append(below_ma20 / len(returns))
         return {
             "observed": observed,
-            "fast_returns": fast_returns,
-            "declining_3d": declining_3d,
-            "below_ma20": below_ma20,
+            "observed_industries": observed_industries,
+            "fast_returns": industry_returns,
+            "declining_ratio": (
+                sum(industry_breadth) / len(industry_breadth)
+                if industry_breadth else 0.0
+            ),
+            "below_ma20_ratio": (
+                sum(industry_below_ma20) / len(industry_below_ma20)
+                if industry_below_ma20 else 0.0
+            ),
         }
 
     def _sub_basket_stress(self, states: list, date: pd.Timestamp,
@@ -796,12 +1044,13 @@ class CrossMarketOverlay:
         previous = self._risk_level
         metrics = self._basket_metrics(states, date)
         observed = metrics["observed"]
+        observed_industries = metrics["observed_industries"]
         sub_stress = self._sub_basket_stress(states, date, held)
         # Portfolio fast-window return (bull-silent guard): a Level 2/3 trim
         # only arms when the portfolio is currently declining, never while it
         # is green/holding its gains on the signal day.
         portfolio_fast_return = self._portfolio_fast_return()
-        if observed < RISK_MIN_OBSERVED:
+        if observed < RISK_MIN_OBSERVED or observed_industries < 3:
             # Not enough basket evidence -> cannot confirm a structural shock.
             # Fail toward a warning only if held breadth is bad; keep previous
             # otherwise (never jump to a trim without basket evidence).
@@ -809,8 +1058,8 @@ class CrossMarketOverlay:
             self._risk_level = 1 if held_decline >= RISK_HOLD_BREADTH_SHOCK else min(self._risk_level, 1)
         else:
             avg_return = sum(metrics["fast_returns"]) / len(metrics["fast_returns"])
-            breadth = metrics["declining_3d"] / observed
-            below_ma20_ratio = metrics["below_ma20"] / observed
+            breadth = float(metrics["declining_ratio"])
+            below_ma20_ratio = float(metrics["below_ma20_ratio"])
             held_decline = self._held_decline_breadth(states, date, held)
 
             # A structural break is signalled by a broad part of the basket
@@ -833,13 +1082,31 @@ class CrossMarketOverlay:
                 self._recovered_since_warning
                 and date_pos - self._last_warning_pos <= RISK_ESCALATION_DAYS
             )
+            stressed = (
+                avg_return <= RISK_FAST_RETURN_SHOCK
+                and breadth >= RISK_BREADTH_SHOCK
+                and structural_break
+            )
+            self._continuous_stress_days = (
+                self._continuous_stress_days + 1 if stressed else 0
+            )
+            continuous_escalation = (
+                previous >= 1
+                and self._continuous_stress_days >= self.continuous_confirm_days
+            )
+            severe_direct = (
+                avg_return <= self.severe_direct_return
+                and breadth >= RISK_SEVERE_DIRECT_BREADTH
+                and below_ma20_ratio >= RISK_BELOW_MA20_SHOCK
+                and held_decline >= RISK_HOLD_BREADTH_SHOCK
+            )
 
             # Level 3: sustained failure — prior shock plus a new low, a
             # structural break, and the portfolio materially off peak AND
             # currently declining (bull-silent: never trim a recovering book).
             if (self._risk_level >= 2 and avg_return <= RISK_FAST_RETURN_SHOCK
                     and structural_break
-                    and drawdown >= RISK_LEVEL3_DRAWDOWN
+                    and drawdown >= self.level3_drawdown
                     and portfolio_fast_return < 0):
                 self._risk_level = 3
             # Level 2: confirmed re-shock — requires a warning that has fully
@@ -847,8 +1114,8 @@ class CrossMarketOverlay:
             # peak AND currently declining (bull-silent guard).
             elif (avg_return <= RISK_FAST_RETURN_SHOCK
                     and structural_break
-                    and escalated
-                    and drawdown >= RISK_LEVEL2_DRAWDOWN
+                    and (escalated or continuous_escalation or severe_direct)
+                    and drawdown >= self.level2_drawdown
                     and portfolio_fast_return < 0):
                 self._risk_level = 2
             # Level 1: warning only (no trim). Requires real breadth + return
@@ -860,6 +1127,7 @@ class CrossMarketOverlay:
                 # Recovery: drop back toward 0 one step at a time (never jump
                 # to full deployment in a single day).
                 self._risk_level = max(self._risk_level - 1, 0)
+                self._continuous_stress_days = 0
 
         # Track the currently stressed sub-industry (used to restrict trims).
         self._stressed_sub = sub_stress if self._risk_level >= 2 else None
@@ -880,18 +1148,18 @@ class CrossMarketOverlay:
                 "event": "sector_risk_level",
                 "level": self._risk_level,
                 "basket_observed": observed,
+                "basket_observed_industries": observed_industries,
+                "continuous_stress_days": int(self._continuous_stress_days),
                 "sub_basket_stress": sub_stress,
                 "basket_3d_return": round(
                     sum(metrics["fast_returns"]) / len(metrics["fast_returns"])
                     if metrics["fast_returns"] else 0.0, 4,
                 ),
                 "basket_breadth": round(
-                    metrics["declining_3d"] / observed
-                    if observed else 0.0, 4,
+                    float(metrics["declining_ratio"]), 4,
                 ),
                 "basket_below_ma20": round(
-                    metrics["below_ma20"] / observed
-                    if observed else 0.0, 4,
+                    float(metrics["below_ma20_ratio"]), 4,
                 ),
                 "held_decline_breadth": round(
                     self._held_decline_breadth(states, date, held), 4,
@@ -948,9 +1216,9 @@ class CrossMarketOverlay:
         genuinely off its peak, no trim happens (bull-silent). Only the
         weakest non-core names are trimmed, preserving the strongest name.
         """
-        if self._risk_level >= 3 and drawdown < RISK_LEVEL3_DRAWDOWN:
+        if self._risk_level >= 3 and drawdown < self.level3_drawdown:
             return
-        if self._risk_level == 2 and drawdown < RISK_LEVEL2_DRAWDOWN:
+        if self._risk_level == 2 and drawdown < self.level2_drawdown:
             return
         held = self._held_positions(states)
         shares_by_symbol: dict[str, int] = {}
@@ -1007,6 +1275,63 @@ class CrossMarketOverlay:
                     "symbol": weak, "shares": trimmed,
                     "level": self._risk_level,
                 })
+
+    def _apply_transition_trim(
+        self,
+        states: list,
+        prices: dict[str, float],
+        date_str: str,
+        scoring_fn,
+        *,
+        ratio: float,
+    ) -> None:
+        """Trim only the weakest symbol after sustained dual-signal transition."""
+        held = self._held_positions(states)
+        shares_by_symbol: dict[str, int] = {}
+        books: dict[str, list[tuple]] = {}
+        for state, symbol, strategy_name, position in held:
+            shares_by_symbol[symbol] = (
+                shares_by_symbol.get(symbol, 0) + position.shares
+            )
+            books.setdefault(symbol, []).append(
+                (state, strategy_name, position)
+            )
+        if len(shares_by_symbol) < 2:
+            return
+        weakest = min(
+            shares_by_symbol,
+            key=lambda symbol: (
+                scoring_fn(symbol) if scoring_fn else 0.0,
+                symbol,
+            ),
+        )
+        target = int(shares_by_symbol[weakest] * ratio)
+        trimmed = 0
+        for state, strategy_name, position in books[weakest]:
+            take = min(position.shares, max(target - trimmed, 0))
+            if take <= 0:
+                continue
+            self._queue_sell(
+                state,
+                weakest,
+                strategy_name,
+                take,
+                prices.get(weakest, 0.0),
+                date_str,
+                "sector_risk_trim",
+                "sustained_transition_level1",
+            )
+            trimmed += take
+        if trimmed > 0:
+            self.events.append(
+                {
+                    "date": date_str,
+                    "event": "transition_risk_trim",
+                    "symbol": weakest,
+                    "shares": trimmed,
+                    "ratio": ratio,
+                }
+            )
 
     def _apply_concentration_guard(
         self, states: list, prices: dict[str, float], date_str: str,
