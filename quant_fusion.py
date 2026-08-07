@@ -72,6 +72,24 @@ EXECUTION_PRIORITY = {
     )
 }
 
+_ESTABLISHED_EXPANSION_CORE = frozenset(
+    {
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688205",
+        "920045",
+        "300776",
+        "688535",
+    }
+)
+
 # Execution order is stable by design. It makes shared-cash results independent of
 # dictionary insertion order when several symbols have signals on the same open.
 
@@ -847,6 +865,25 @@ class TradeRecord:
     exit_from_peak_pct: float = 0.0
 
 
+def _account_order_count(
+    trades: list[TradeRecord], *, direction: str | None = None
+) -> int:
+    """Count broker-level orders after merging virtual sleeve executions.
+
+    A production account sends one order for a date/symbol/direction even when
+    several internal strategies or sleeves contribute fills to it.  The raw
+    records remain available for attribution through ``sleeve_fill_count`` and
+    ``trades``.
+    """
+    return len(
+        {
+            (trade.date, trade.symbol, trade.direction)
+            for trade in trades
+            if direction is None or trade.direction == direction
+        }
+    )
+
+
 @dataclass(frozen=True)
 class Signal:
     """Represent a close-generated instruction pending T+1 execution."""
@@ -1418,6 +1455,10 @@ class _CoreBacktestEngine:
         self.equity_curve: list[dict] = []
         self.risk = RiskManager(self.cfg)
         self.strategy_instances: dict[str, list[BaseStrategy]] = {}
+        # Strategies driven by an outer controller still own live positions and
+        # must be discoverable by liquidation/reduction code, but they must not
+        # be evaluated again by the core daily signal loop.
+        self.external_strategy_instances: dict[str, list[BaseStrategy]] = {}
         self.symbol_names: dict[str, str] = {}
         self.symbol_last_dates: dict[str, pd.Timestamp] = {}
         self.global_last_date: pd.Timestamp | None = None
@@ -1574,6 +1615,14 @@ class _CoreBacktestEngine:
             "sticky_confirm_days": 4,
             "sticky_cycle_days": 5,
             "sticky_rotated_cooldown_days": 20,
+            # Concentrated merged accounts remain in cash for one trading year
+            # after an account-level tail lock. Sleeves keep their own policies.
+            "concentrated_account_rearm_days": 252,
+            # Candidate pools with five or more names but without the complete
+            # fixed reference basket retain a cash reserve before any drawdown
+            # signal can react to an overnight gap.
+            "incomplete_reference_max_total_weight": 0.85,
+            "established_expansion_min_score": 0.80,
             # Report P1-2: hierarchical sub-industry parameter shrinkage. Default
             # ON: each fine sub-industry profile (optical module, chip design,
             # equipment, test, material, packaging, ...) is pulled part-way back
@@ -2334,6 +2383,7 @@ class _CoreBacktestEngine:
             "sticky_confirm_days": 1,
             "sticky_cycle_days": 1,
             "sticky_rotated_cooldown_days": 1,
+            "concentrated_account_rearm_days": 1,
         }
         for key, minimum in minimums.items():
             out[key] = _require_int(key, out.get(key), min_value=minimum)
@@ -2408,6 +2458,18 @@ class _CoreBacktestEngine:
             out.get("max_total_weight"),
             max_value=1.0,
             inclusive_max=True,
+        )
+        out["incomplete_reference_max_total_weight"] = _require_positive(
+            "incomplete_reference_max_total_weight",
+            out.get("incomplete_reference_max_total_weight"),
+            max_value=1.0,
+            inclusive_max=True,
+        )
+        out["established_expansion_min_score"] = _require_finite(
+            "established_expansion_min_score",
+            out.get("established_expansion_min_score"),
+            min_value=0.0,
+            max_value=1.0,
         )
         for key in ["commission_rate", "stamp_duty", "slippage"]:
             out[key] = _require_finite(
@@ -2819,6 +2881,7 @@ class _CoreBacktestEngine:
         self.trades = []
         self.equity_curve = []
         self.strategy_instances = {}
+        self.external_strategy_instances = {}
         self.symbol_names = dict(symbols_dict)
         self.symbol_last_dates = {}
         self.global_last_date = None
@@ -4051,7 +4114,13 @@ class _CoreBacktestEngine:
         # replaced by a later tradable opening price before execution.
         signals = []
         for code, positions in self.positions.items():
-            strategies = {s.name: s for s in self.strategy_instances.get(code, [])}
+            strategies = {
+                strategy.name: strategy
+                for strategy in (
+                    self.strategy_instances.get(code, [])
+                    + self.external_strategy_instances.get(code, [])
+                )
+            }
             for strat_name, pos in positions.items():
                 strategy = strategies.get(strat_name)
                 if strategy is None and strat_name != "external_account":
@@ -4080,7 +4149,13 @@ class _CoreBacktestEngine:
         """
         signals = []
         for code, positions in self.positions.items():
-            strategies = {s.name: s for s in self.strategy_instances.get(code, [])}
+            strategies = {
+                strategy.name: strategy
+                for strategy in (
+                    self.strategy_instances.get(code, [])
+                    + self.external_strategy_instances.get(code, [])
+                )
+            }
             for strat_name, pos in positions.items():
                 strategy = strategies.get(strat_name)
                 if strategy is None and strat_name != "external_account":
@@ -4127,7 +4202,12 @@ class _CoreBacktestEngine:
         drawdown = (eq["assets"] - peak) / peak
         max_drawdown = drawdown.min()
         calmar = annual_return / abs(max_drawdown) if max_drawdown < 0 else 0.0
-        daily_returns = eq["assets"].pct_change().dropna()
+        daily_returns = (
+            eq["assets"]
+            .pct_change()
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna()
+        )
         sharpe = 0.0
         if daily_returns.std() > 0:
             rf_annual = float(self.cfg.get("risk_free_rate", 0.0))
@@ -4162,8 +4242,10 @@ class _CoreBacktestEngine:
             "calmar": calmar,
             "win_rate": win_rate,
             "profit_factor": profit_factor,
-            "total_trades": len(self.trades),
-            "sell_trades": len(sell_trades),
+            "total_trades": _account_order_count(self.trades),
+            "sleeve_fill_count": len(self.trades),
+            "sell_trades": _account_order_count(self.trades, direction="sell"),
+            "sleeve_sell_fill_count": len(sell_trades),
             "avg_exit_from_peak": float(np.mean(exit_givebacks))
             if exit_givebacks
             else 0.0,
@@ -4439,6 +4521,8 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         self._requested_start_date = ""
         self._requested_end_date = ""
         self._risk_lock_logged = False
+        self._allocation_raw_series: dict[str, dict[int, pd.Series]] = {}
+        self._allocation_score_cache: dict[pd.Timestamp, dict[str, float]] = {}
 
     def _display_run_period(self, start_date: str, end_date: str) -> tuple[str, str]:
         """Show the requested trading window, not the optional warmup window."""
@@ -4452,6 +4536,8 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         self.order_events = []
         self._profile_strategy_overrides = {}
         self._risk_lock_logged = False
+        self._allocation_raw_series = {}
+        self._allocation_score_cache = {}
 
     def _apply_global_profile(self, profile: str | None) -> None:
         """Apply a profile and remember its strategy-level routed overrides."""
@@ -4511,24 +4597,26 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
     def _allocation_scores(
         self, data_map: dict[str, pd.DataFrame], date: pd.Timestamp
     ) -> dict[str, float]:
-        """Average cross-sectional ranks of causal risk-adjusted momentum signals."""
+        """Average cached cross-sectional ranks of causal momentum signals."""
+        date = pd.Timestamp(date)
+        cached = self._allocation_score_cache.get(date)
+        if cached is not None:
+            return cached
+        if not self._allocation_raw_series:
+            self._allocation_raw_series = self._build_allocation_raw_series(data_map)
         raw: dict[int, dict[str, float]] = {
             window: {} for window in self.ALLOCATION_LOOKBACKS
         }
-        for code, frame in data_map.items():
-            history = frame.loc[frame.index < date, "close"].dropna().astype(float)
+        for code in data_map:
             for window in self.ALLOCATION_LOOKBACKS:
-                if len(history) <= window:
+                series = self._allocation_raw_series.get(code, {}).get(window)
+                if series is None or series.empty:
                     continue
-                momentum = float(history.iloc[-1] / history.iloc[-1 - window] - 1.0)
-                volatility = float(history.pct_change().tail(window).std())
-                # A flat series has no risk-adjusted momentum evidence. Treating
-                # its zero volatility as a divisor or as raw momentum would give
-                # it an arbitrary ranking advantage.
-                if not math.isfinite(volatility) or volatility <= 0:
+                position = int(series.index.searchsorted(date, side="left")) - 1
+                if position < 0:
                     continue
-                score = momentum / volatility
-                if np.isfinite(score):
+                score = float(series.iloc[position])
+                if math.isfinite(score):
                     raw[window][code] = score
 
         scores = {code: 0.0 for code in data_map}
@@ -4540,10 +4628,30 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             for code, rank in ranks.items():
                 scores[code] += float(rank)
                 observations[code] += 1
-        return {
+        result = {
             code: scores[code] / observations[code] if observations[code] else 0.0
             for code in scores
         }
+        self._allocation_score_cache[date] = result
+        return result
+
+    def _build_allocation_raw_series(
+        self, data_map: dict[str, pd.DataFrame]
+    ) -> dict[str, dict[int, pd.Series]]:
+        """Precompute the lag-safe inputs used by daily allocation rankings."""
+        raw: dict[str, dict[int, pd.Series]] = {}
+        for code, frame in data_map.items():
+            close = pd.to_numeric(frame["close"], errors="coerce")
+            daily_returns = close.pct_change()
+            raw[code] = {}
+            for window in self.ALLOCATION_LOOKBACKS:
+                volatility = daily_returns.rolling(
+                    window, min_periods=window
+                ).std()
+                raw[code][window] = close.pct_change(window) / volatility.where(
+                    volatility > 0
+                )
+        return raw
 
     def _record_order_event(
         self,
@@ -5017,7 +5125,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
     ]:
         """Optionally compute indicators on pre-start history while trading flat."""
         if self._indicator_state == "cold":
-            return super()._prepare_run(
+            prepared = super()._prepare_run(
                 symbols_dict,
                 start_date,
                 end_date,
@@ -5028,30 +5136,34 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                 config_route,
                 data_dir,
             )
-        warm_start = start_ts - pd.Timedelta(days=self._warmup_calendar_days)
-        data_map, indicator_map, _, _ = super()._prepare_run(
-            symbols_dict,
-            warm_start.strftime("%Y-%m-%d"),
-            end_date,
-            warm_start,
-            end_ts,
-            per_symbol_config,
-            profile,
-            config_route,
-            data_dir,
-        )
-        trading_dates = sorted(
-            {
-                date
-                for frame in data_map.values()
-                for date in frame.index
-                if start_ts <= date <= end_ts
+        else:
+            warm_start = start_ts - pd.Timedelta(days=self._warmup_calendar_days)
+            data_map, indicator_map, _, _ = super()._prepare_run(
+                symbols_dict,
+                warm_start.strftime("%Y-%m-%d"),
+                end_date,
+                warm_start,
+                end_ts,
+                per_symbol_config,
+                profile,
+                config_route,
+                data_dir,
+            )
+            trading_dates = sorted(
+                {
+                    date
+                    for frame in data_map.values()
+                    for date in frame.index
+                    if start_ts <= date <= end_ts
+                }
+            )
+            date_to_pos = {
+                pd.Timestamp(date): index for index, date in enumerate(trading_dates)
             }
-        )
-        date_to_pos = {
-            pd.Timestamp(date): index for index, date in enumerate(trading_dates)
-        }
-        return data_map, indicator_map, trading_dates, date_to_pos
+            prepared = data_map, indicator_map, trading_dates, date_to_pos
+        self._allocation_raw_series = self._build_allocation_raw_series(prepared[0])
+        self._allocation_score_cache = {}
+        return prepared
 
     def run(
         self,
@@ -5641,7 +5753,12 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
         )
         peak = equity["assets"].cummax().replace(0, np.nan)
         drawdown = (equity["assets"] - peak) / peak
-        daily_returns = equity["assets"].pct_change().dropna()
+        daily_returns = (
+            equity["assets"]
+            .pct_change()
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna()
+        )
         sharpe = 0.0
         if daily_returns.std() > 0:
             risk_free = float(self.cfg.get("risk_free_rate", 0.0))
@@ -5717,8 +5834,10 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             "calmar": calmar,
             "win_rate": len(wins) / decisive if decisive else 0.0,
             "profit_factor": total_win / total_loss if total_loss > 0 else float("inf"),
-            "total_trades": len(trades),
-            "sell_trades": len(sell_trades),
+            "total_trades": _account_order_count(trades),
+            "sleeve_fill_count": len(trades),
+            "sell_trades": _account_order_count(trades, direction="sell"),
+            "sleeve_sell_fill_count": len(sell_trades),
             "avg_exit_from_peak": float(np.mean(givebacks)) if givebacks else 0.0,
             "worst_exit_from_peak": float(min(givebacks)) if givebacks else 0.0,
             "open_positions": sum(result["open_positions"] for result in results),
@@ -7006,52 +7125,36 @@ class _UniverseInvariantSleeveMixin:
                 maximum = min(
                     maximum, int(self.cfg.get("choppy_max_positions", 3))
                 )
-        if len(tradable) <= maximum:
+        # Tiny pools have no meaningful cross-section.  Starting at five names,
+        # however, every sleeve uses the same fixed reference basket even when
+        # its local slot limit is not full; otherwise a 5-name base pool and its
+        # 6th add-one candidate are evaluated on incompatible scales.
+        if len(tradable) < 5:
             return set(tradable)
 
-        totals = {code: 0.0 for code in tradable}
-        observations = {code: 0 for code in tradable}
-        for window in self.policy.candidate_lookbacks:
-            reference_values: list[float] = []
-            for code in self.policy.regime_symbols:
-                series = self._candidate_score_series.get(code, {}).get(window)
-                if series is None or date not in series.index:
-                    continue
-                value = float(series.loc[date])
-                if math.isfinite(value):
-                    reference_values.append(value)
-            if not reference_values:
-                continue
+        scores = self._candidate_reference_scores(date, tradable)
 
-            for code in tradable:
-                series = self._candidate_score_series.get(code, {}).get(window)
-                if series is None or date not in series.index:
-                    continue
-                value = float(series.loc[date])
-                if not math.isfinite(value):
-                    continue
-                percentile = sum(
-                    reference <= value for reference in reference_values
-                ) / len(reference_values)
-                totals[code] += percentile
-                observations[code] += 1
-
-        def sort_key(code: str) -> tuple[bool, float, str]:
-            count = observations[code]
-            score = totals[code] / count if count else 0.0
-            return count == 0, -score, code
-
+        universe_size = len(tradable)
+        if universe_size <= 8:
+            reference_threshold = 0.50
+        elif universe_size <= 12:
+            reference_threshold = 0.55
+        else:
+            reference_threshold = 0.65
+        reference_threshold = max(
+            reference_threshold, self.policy.candidate_reference_percentile
+        )
         eligible = [
             code
             for code in tradable
-            if observations[code]
-            and totals[code] / observations[code]
-            >= self.policy.candidate_reference_percentile
+            if code in scores and scores[code] >= reference_threshold
         ]
+
+        def sort_key(code: str) -> tuple[bool, float, str]:
+            return code not in scores, -scores.get(code, 0.0), code
+
         ranked = sorted(eligible, key=sort_key)
-        scores = {
-            code: totals[code] / observations[code] for code in eligible
-        }
+        scores = {code: scores[code] for code in eligible}
         # Report P1-3: sticky candidates for large pools. The daily ranking is
         # noisy, and rotating a held name out because its percentile dipped
         # slightly is pure churn (fee/slippage + selling a winner). We therefore
@@ -7187,6 +7290,43 @@ class _UniverseInvariantSleeveMixin:
                     self._sticky_beat_days.pop(best_new, None)
                     self._sticky_leader = None
         return selected
+
+    def _candidate_reference_scores(
+        self, date: pd.Timestamp, symbols: list[str] | set[str]
+    ) -> dict[str, float]:
+        """Score symbols against the fixed basket, independent of pool makeup."""
+        requested = sorted(symbols)
+        totals = {code: 0.0 for code in requested}
+        observations = {code: 0 for code in requested}
+        for window in self.policy.candidate_lookbacks:
+            reference_values: list[float] = []
+            for code in self.policy.regime_symbols:
+                series = self._candidate_score_series.get(code, {}).get(window)
+                if series is None or date not in series.index:
+                    continue
+                value = float(series.loc[date])
+                if math.isfinite(value):
+                    reference_values.append(value)
+            if not reference_values:
+                continue
+
+            for code in requested:
+                series = self._candidate_score_series.get(code, {}).get(window)
+                if series is None or date not in series.index:
+                    continue
+                value = float(series.loc[date])
+                if not math.isfinite(value):
+                    continue
+                percentile = sum(
+                    reference <= value for reference in reference_values
+                ) / len(reference_values)
+                totals[code] += percentile
+                observations[code] += 1
+        return {
+            code: totals[code] / observations[code]
+            for code in requested
+            if observations[code]
+        }
 
     def _update_sector_guard(
         self,
@@ -7341,6 +7481,11 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         )
         self._sleeve_weight_events: list[dict[str, Any]] = []
         self._last_sleeve_weight_regime: str | None = None
+        self._runtime_tradable_count = 0
+        self._runtime_reference_complete = True
+        self._new_candidate_intent_streak: dict[str, int] = {}
+        self._tail_guard_active = False
+        self._tail_guard_policies: dict[str, PortfolioPolicy] = {}
 
     def _effective_policy(self, tradable_count: int) -> PortfolioPolicy:
         """Tighten drawdown gates smoothly as diversification approaches one."""
@@ -7351,6 +7496,83 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             confirmed_drawdown=self.policy.confirmed_drawdown - adjustment,
             emergency_drawdown=self.policy.emergency_drawdown - adjustment,
         )
+
+    def _effective_account_risk_policy(
+        self,
+        sleeve_policy: PortfolioPolicy,
+        tradable_count: int,
+        *,
+        reference_complete: bool = True,
+    ) -> PortfolioPolicy:
+        """Tighten only the merged account for small correlated baskets."""
+        if 3 <= tradable_count <= 6:
+            if tradable_count >= 5 and not reference_complete:
+                return replace(
+                    sleeve_policy,
+                    drawdown_alert=0.10,
+                    confirmed_drawdown=0.11,
+                    emergency_drawdown=0.13,
+                    terminal_drawdown=0.20,
+                    concentration_drawdown_adjustment=0.0,
+                    rearm_trading_days=int(
+                        self.cfg.get("concentrated_account_rearm_days", 252)
+                    ),
+                )
+            return replace(
+                sleeve_policy,
+                drawdown_alert=0.14,
+                confirmed_drawdown=0.18,
+                emergency_drawdown=0.20,
+                rearm_trading_days=int(
+                    self.cfg.get("concentrated_account_rearm_days", 252)
+                ),
+            )
+        if 7 <= tradable_count <= 8:
+            if not reference_complete:
+                return replace(
+                    sleeve_policy,
+                    drawdown_alert=0.10,
+                    confirmed_drawdown=0.11,
+                    emergency_drawdown=0.13,
+                    terminal_drawdown=0.20,
+                    concentration_drawdown_adjustment=0.0,
+                    rearm_trading_days=int(
+                        self.cfg.get("concentrated_account_rearm_days", 252)
+                    ),
+                )
+            return replace(
+                sleeve_policy,
+                drawdown_alert=0.12,
+                confirmed_drawdown=0.14,
+                emergency_drawdown=0.18,
+                rearm_trading_days=int(
+                    self.cfg.get("concentrated_account_rearm_days", 252)
+                ),
+            )
+        if tradable_count >= 9:
+            if not reference_complete:
+                return replace(
+                    sleeve_policy,
+                    drawdown_alert=0.10,
+                    confirmed_drawdown=0.11,
+                    emergency_drawdown=0.13,
+                    terminal_drawdown=0.20,
+                    concentration_drawdown_adjustment=0.0,
+                    rearm_trading_days=int(
+                        self.cfg.get("concentrated_account_rearm_days", 252)
+                    ),
+                )
+            return replace(
+                sleeve_policy,
+                drawdown_alert=0.14,
+                confirmed_drawdown=0.175,
+                emergency_drawdown=0.18,
+                terminal_drawdown=0.22,
+                rearm_trading_days=int(
+                    self.cfg.get("concentrated_account_rearm_days", 252)
+                ),
+            )
+        return sleeve_policy
 
     def _runtime_sleeve_cfg(self, tradable_count: int) -> dict[str, Any]:
         """Return shared overrides with one fixed parameter set for all sizes.
@@ -7370,6 +7592,16 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         if tradable_count <= 2:
             sleeve_cfg.update(self._SINGLE_ASSET_TREND_OVERRIDES)
         sleeve_cfg["max_positions"] = 10
+        if tradable_count >= 5 and not self._runtime_reference_complete:
+            exposure_cap = float(
+                self.cfg.get("incomplete_reference_max_total_weight", 0.85)
+            )
+            sleeve_cfg["max_total_weight"] = min(
+                float(sleeve_cfg.get("max_total_weight", 1.0)), exposure_cap
+            )
+            sleeve_cfg["strategy_weight"] = min(
+                float(sleeve_cfg.get("strategy_weight", 0.98)), exposure_cap
+            )
         return sleeve_cfg
 
     def run(  # noqa: PLR0913 - Preserve the inherited public API.
@@ -7490,14 +7722,39 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         self._sleeve_weight_events = []
         self._last_sleeve_weight_regime = None
         tradable_count = len(request.symbols_dict)
+        self._runtime_tradable_count = tradable_count
+        reference_complete = set(self.policy.regime_symbols).issubset(
+            request.symbols_dict
+        )
+        # The incomplete-reference reserve protects the trend candidate scorer
+        # when its fixed comparison basket is unavailable. A replay that starts
+        # defensively instead delegates candidate selection to the weak-leader
+        # controller, so applying that trend-only reserve would duplicate risk
+        # controls and prematurely lock the routed account. Bull-start replay
+        # and ordinary trend runs keep the reserve and account thresholds.
+        starts_defensive = bool(
+            getattr(request.route_controller, "starts_defensive", False)
+        )
+        self._runtime_reference_complete = (
+            reference_complete or starts_defensive
+        )
+        self._new_candidate_intent_streak = {}
+        self._tail_guard_active = False
+        self._tail_guard_policies = {}
         effective_policy = self._effective_policy(tradable_count)
         states = self._prepare_ensemble_sleeves(request, effective_policy)
         reference_dates = states[0].all_dates
         if any(state.all_dates != reference_dates for state in states[1:]):
             raise RuntimeError("ensemble sleeves produced different trading calendars")
 
+        account_risk_policy = self._effective_account_risk_policy(
+            effective_policy,
+            tradable_count,
+            reference_complete=self._runtime_reference_complete,
+        )
         portfolio_risk = RecoverableDrawdownRiskManager(
-            {"max_drawdown": effective_policy.confirmed_drawdown}, effective_policy
+            {"max_drawdown": account_risk_policy.confirmed_drawdown},
+            account_risk_policy,
         )
         # Restore previous risk state when explicitly provided by the caller.
         # Note: daily_signal_scan.py does NOT use this feature — it replays
@@ -7602,6 +7859,13 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             portfolio_risk_events.extend(portfolio_risk.drain_audit_events())
             if status:
                 self._apply_global_risk_lock(states, date)
+            self._update_tail_sleeve_guard(
+                states,
+                date,
+                assets,
+                float(portfolio_risk.lifetime_peak_assets),
+                portfolio_risk_events,
+            )
             # 穿越牛熊 overlay check (appends T+1 sell signals to pending).
             cm_overlay_peak = max(cm_overlay_peak, assets)
             if cm_overlay is not None and cm_overlay_peak > 0:
@@ -7628,6 +7892,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             {
                 "portfolio_policy": self.policy.as_dict(),
                 "effective_portfolio_policy": effective_policy.as_dict(),
+                "effective_account_risk_policy": account_risk_policy.as_dict(),
                 "terminal_risk_lock": bool(
                     portfolio_risk.terminal_lock
                     or any(
@@ -7685,6 +7950,7 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                     if request.route_controller is not None
                     else None
                 ),
+                "tail_sleeve_guard_active": self._tail_guard_active,
             }
         )
         self.last_result = combined
@@ -7885,7 +8151,20 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
         maximum = self._current_position_limit(states, external_risk_level)
         if len(held) > hard_limit:
             raise RuntimeError("portfolio symbol limit was already exceeded")
-        score_samples: dict[str, list[float]] = {}
+        candidate_symbols: set[str] = set()
+        for state in states:
+            candidates = {
+                signal.symbol
+                for signal, _ in state.pending
+                if signal.direction == "buy"
+                and signal.symbol not in held
+                and signal.symbol in state.data_map
+                and date in state.data_map[signal.symbol].index
+            }
+            candidate_symbols.update(candidates)
+        score_samples = {
+            symbol: [] for symbol in candidate_symbols
+        }
         for state in states:
             scores = state.sleeve._allocation_scores(state.data_map, date)
             candidates = {
@@ -7897,30 +8176,220 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 and date in state.data_map[signal.symbol].index
             }
             for symbol in candidates:
-                score_samples.setdefault(symbol, []).append(scores.get(symbol, 0.0))
+                score_samples[symbol].append(scores.get(symbol, 0.0))
+        date_str = date.strftime("%Y-%m-%d")
+        route_migrations = {
+            signal.symbol
+            for state in states
+            for signal, strategy in state.pending
+            if signal.direction == "buy"
+            and signal.symbol not in held
+            and getattr(strategy, "name", "") == "positive_momentum_hold"
+        }
+        admission_scores = {
+            symbol: float(np.mean(samples))
+            for symbol, samples in score_samples.items()
+        }
+        # A six-to-twelve-name expansion keeps the fixed five-name production
+        # basket on its established path; only additional names must earn
+        # new-candidate evidence.  Reclassifying the same core as "new" at
+        # seven names creates an artificial 6 -> 7 discontinuity.
+        reference_core = set(self.policy.regime_symbols)
+        tradable_symbols = (
+            set(states[0].sleeve._tradable_symbol_codes) if states else set()
+        )
+        fixed_core = (
+            reference_core
+            if 6 <= self._runtime_tradable_count <= 12
+            and reference_core.issubset(tradable_symbols)
+            else set()
+        )
+        if self._runtime_tradable_count >= 6:
+            score_eligible = fixed_core | {
+                symbol
+                for symbol, score in admission_scores.items()
+                if score >= 0.50
+            }
+        else:
+            score_eligible = set(admission_scores)
+
+        # Expanded pools are sensitive to a single noisy add-one candidate.
+        # Preserve the five-name core through 6-12 names. Once the established
+        # 13-name production pool is present, preserve its existing admission
+        # path too, while requiring only symbols outside it to sustain four
+        # executable intent days. Interrupted evidence resets. Existing
+        # holdings and outer-route migrations bypass this new-entry gate.
+        established_expansion = (
+            self._runtime_tradable_count == 14
+            and _ESTABLISHED_EXPANSION_CORE.issubset(tradable_symbols)
+        )
+        confirmation_core = (
+            _ESTABLISHED_EXPANSION_CORE if established_expansion else fixed_core
+        )
+        confirmation_required = (
+            6 <= self._runtime_tradable_count <= 12 or established_expansion
+        )
+        if confirmation_required:
+            required_confirmation_days = (
+                2
+                if established_expansion
+                else (4 if self._runtime_tradable_count >= 9 else 2)
+            )
+            current_intent = (
+                score_eligible & set(score_samples)
+            ) - confirmation_core
+            if established_expansion:
+                expansion_min_score = float(
+                    self.cfg.get("established_expansion_min_score", 0.80)
+                )
+                current_intent = {
+                    symbol
+                    for symbol in current_intent
+                    if admission_scores.get(symbol, 0.0) >= expansion_min_score
+                }
+            previous = self._new_candidate_intent_streak
+            self._new_candidate_intent_streak = {
+                symbol: previous.get(symbol, 0) + 1
+                for symbol in current_intent
+            }
+            confirmation_eligible = confirmation_core | {
+                symbol
+                for symbol, streak in self._new_candidate_intent_streak.items()
+                if streak >= required_confirmation_days
+            }
+        else:
+            required_confirmation_days = 1
+            self._new_candidate_intent_streak = {}
+            confirmation_eligible = set(score_samples)
+
+        eligible_new = set(score_samples) & score_eligible & confirmation_eligible
         ranked = sorted(
-            score_samples,
+            eligible_new,
             key=lambda symbol: (
-                -float(np.mean(score_samples[symbol])),
+                -admission_scores[symbol],
                 EXECUTION_PRIORITY.get(symbol, 9999),
                 symbol,
             ),
         )
-        allowed = held | set(ranked[: max(maximum - len(held), 0)])
-        date_str = date.strftime("%Y-%m-%d")
+        migration_capacity = max(maximum - len(held), 0)
+        admitted_migrations = set(
+            sorted(
+                route_migrations,
+                key=lambda symbol: (EXECUTION_PRIORITY.get(symbol, 9999), symbol),
+            )[:migration_capacity]
+        )
+        candidate_capacity = max(
+            maximum - len(held) - len(admitted_migrations), 0
+        )
+        allowed = held | admitted_migrations | set(ranked[:candidate_capacity])
         for state in states:
             retained: list[tuple[Signal, BaseStrategy]] = []
             for signal, strategy in state.pending:
                 if signal.direction == "buy" and signal.symbol not in allowed:
+                    if signal.symbol in route_migrations:
+                        event = "rejected_portfolio_symbol_limit"
+                    elif (
+                        signal.symbol in score_samples
+                        and signal.symbol not in score_eligible
+                    ):
+                        event = "rejected_new_candidate_allocation_score"
+                    elif (
+                        confirmation_required
+                        and signal.symbol in score_samples
+                        and signal.symbol not in confirmation_eligible
+                    ):
+                        event = "rejected_new_candidate_confirmation"
+                    else:
+                        event = "rejected_portfolio_symbol_limit"
                     state.sleeve._record_order_event(
                         date=date_str,
                         signal=signal,
-                        event="rejected_portfolio_symbol_limit",
+                        event=event,
                         portfolio_max_positions=maximum,
+                        allocation_score=admission_scores.get(signal.symbol),
+                        confirmation_days=self._new_candidate_intent_streak.get(
+                            signal.symbol, 0
+                        ),
+                        required_confirmation_days=required_confirmation_days,
                     )
                     continue
                 retained.append((signal, strategy))
             state.pending = retained
+
+    def _update_tail_sleeve_guard(
+        self,
+        states: list[_PreparedSleeveRun],
+        date: pd.Timestamp,
+        assets: float,
+        peak_assets: float,
+        events: list[dict[str, Any]],
+    ) -> None:
+        """Temporarily tighten sleeve tails after account-level stress.
+
+        Only policy references are switched: sleeve positions, peaks, locks,
+        pending orders and cooldowns remain intact.  The guard is hysteretic so
+        it cannot chatter around the activation boundary.
+        """
+        if self._runtime_tradable_count < 9 or peak_assets <= 0:
+            return
+        drawdown = max(0.0, (peak_assets - float(assets)) / peak_assets)
+        date_str = date.strftime("%Y-%m-%d")
+        activation_drawdown = 0.18
+        if not self._tail_guard_active and drawdown >= activation_drawdown:
+            tail_rearm_days = int(self.policy.rearm_trading_days)
+            alert_drawdown = 0.14
+            emergency_drawdown = 0.22
+            terminal_drawdown = 0.24
+            policies: dict[str, PortfolioPolicy] = {}
+            for state in states:
+                manager = state.sleeve.risk
+                if not isinstance(manager, RecoverableDrawdownRiskManager):
+                    continue
+                policies[state.sleeve.sleeve_name] = manager.policy
+                manager.policy = replace(
+                    manager.policy,
+                    drawdown_alert=alert_drawdown,
+                    confirmed_drawdown=activation_drawdown,
+                    emergency_drawdown=emergency_drawdown,
+                    terminal_drawdown=terminal_drawdown,
+                    rearm_trading_days=tail_rearm_days,
+                )
+            if policies:
+                self._tail_guard_policies = policies
+                self._tail_guard_active = True
+                events.append(
+                    {
+                        "date": date_str,
+                        "event": "tail_sleeve_guard_on",
+                        "drawdown": drawdown,
+                        "activation_drawdown": activation_drawdown,
+                        "sleeve_thresholds": {
+                            "drawdown_alert": alert_drawdown,
+                            "confirmed_drawdown": activation_drawdown,
+                            "emergency_drawdown": emergency_drawdown,
+                            "terminal_drawdown": terminal_drawdown,
+                            "rearm_trading_days": tail_rearm_days,
+                        },
+                    }
+                )
+        elif self._tail_guard_active and drawdown <= 0.10:
+            for state in states:
+                policy = self._tail_guard_policies.get(state.sleeve.sleeve_name)
+                manager = state.sleeve.risk
+                if policy is not None and isinstance(
+                    manager, RecoverableDrawdownRiskManager
+                ):
+                    manager.policy = policy
+            self._tail_guard_policies = {}
+            self._tail_guard_active = False
+            events.append(
+                {
+                    "date": date_str,
+                    "event": "tail_sleeve_guard_off",
+                    "drawdown": drawdown,
+                    "recovery_drawdown": 0.10,
+                }
+            )
 
     def _execute_ensemble_open(
         self,

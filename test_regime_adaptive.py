@@ -176,12 +176,14 @@ class AdaptiveEngineTests(unittest.TestCase):
         )
         self.assertEqual(result["deployment_policy"], "production_daily_replay")
         self.assertEqual(result["selected_symbols"], sorted(symbols))
-        self.assertGreaterEqual(result["total_return"], 0.50)
-        self.assertGreaterEqual(result["max_drawdown"], -0.18)
-        # Report 3.5 enables re-entry (with cooldown + graded probe/confirm), so
-        # the weak route may trade more than the old one-shot design. The bound
-        # still caps runaway bear-market whipsaw at ~5 round-trips per leader.
-        self.assertLessEqual(result["total_trades"], 16)
+        # Weak-route positions now participate in portfolio/sector liquidation;
+        # keep the corrected execution path as an exact frozen regression.
+        self.assertAlmostEqual(result["total_return"], 0.5222755503315, places=12)
+        self.assertAlmostEqual(
+            result["max_drawdown"], -0.17219488006814201, places=12
+        )
+        self.assertEqual(result["total_trades"], 18)
+        self.assertEqual(result["sleeve_fill_count"], 18)
         replay = result["production_replay"]
         self.assertEqual(replay["engine"], "ProductionReplayEngine")
         self.assertGreater(len(replay["daily_journal"]), 200)
@@ -204,7 +206,8 @@ class AdaptiveEngineTests(unittest.TestCase):
         self.assertEqual(result["deployment_policy"], "production_daily_replay")
         self.assertAlmostEqual(result["total_return"], 5.308949754885, places=12)
         self.assertAlmostEqual(result["max_drawdown"], -0.1834136674871038, places=12)
-        self.assertEqual(result["total_trades"], 24)
+        self.assertEqual(result["total_trades"], 5)
+        self.assertEqual(result["sleeve_fill_count"], 24)
 
 
 class DynamicRouteStateMachineTests(unittest.TestCase):
@@ -216,6 +219,25 @@ class DynamicRouteStateMachineTests(unittest.TestCase):
         return sum(
             1 for i in range(1, len(steps)) if steps[i].route != steps[i - 1].route
         )
+
+    def test_outer_strategy_is_liquidatable_without_double_registration(self) -> None:
+        engine = ra.qf._CoreBacktestEngine(1_000_000)
+        strategy = ra.PositiveMomentumHoldStrategy(engine._default_config())
+        position = ra.qf.Position(
+            symbol="300308",
+            strategy_name=strategy.name,
+            shares=100,
+            entry_price=10.0,
+            entry_date="2026-01-05",
+        )
+        strategy.position = position
+        engine.positions = {"300308": {strategy.name: position}}
+        engine.strategy_instances = {"300308": []}
+        engine.external_strategy_instances = {"300308": [strategy]}
+        signals = engine._generate_liquidation_signals("2026-01-06")
+        self.assertEqual(len(signals), 1)
+        self.assertIs(signals[0][1], strategy)
+        self.assertNotIn(strategy, engine.strategy_instances["300308"])
 
     def test_bull_window_route_is_low_frequency_and_leads_trend(self) -> None:
         steps = ra.simulate_route_sequence(

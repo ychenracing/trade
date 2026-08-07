@@ -53,6 +53,65 @@ VALID_ACCOUNT = {
     },
 }
 
+
+class FrozenSnapshotTests(unittest.TestCase):
+    """Daily replay must reuse only byte-identical production evidence."""
+
+    def _snapshot(self, root: Path) -> Path:
+        import pandas as pd
+
+        regime = root / "regime"
+        regime.mkdir()
+        for code in dss.ra.REGIME_INDEX_FILES.values():
+            (regime / f"{code}.csv").write_text(
+                "date,open,close,high,low,volume\n"
+                "2026-07-30,1,1,1,1,1\n",
+                encoding="utf-8",
+            )
+        frame = pd.DataFrame(
+            {"open": [1.0], "close": [1.0], "high": [1.0], "low": [1.0]},
+            index=pd.to_datetime(["2026-07-30"]),
+        )
+        target = root / "snapshot"
+        manifest = dss._materialize_frozen_snapshot(
+            snapshot_dir=target,
+            cache_dir=root / "empty-cache",
+            regime_data_dir=regime,
+            frames={"300308": frame},
+            end_date="2026-07-30",
+        )
+        self.assertEqual(manifest["deployment_policy"], "production_daily_replay")
+        self.assertEqual(
+            dss._materialize_frozen_snapshot(
+                snapshot_dir=target,
+                cache_dir=root / "empty-cache",
+                regime_data_dir=regime,
+                frames={"300308": frame},
+                end_date="2026-07-30",
+            ),
+            manifest,
+        )
+        return target
+
+    def test_csv_manifest_and_extra_file_rewrites_are_rejected(self) -> None:
+        mutations = (
+            lambda target: (target / "market_data" / "300308.csv").write_text(
+                "tampered\n", encoding="utf-8"
+            ),
+            lambda target: (target / "manifest.json").write_text(
+                "{}\n", encoding="utf-8"
+            ),
+            lambda target: (target / "regime_data" / "extra.csv").write_text(
+                "date,close\n2026-07-30,1\n", encoding="utf-8"
+            ),
+        )
+        for mutate in mutations:
+            with self.subTest(mutation=mutate), tempfile.TemporaryDirectory() as tmp:
+                target = self._snapshot(Path(tmp))
+                mutate(target)
+                with self.assertRaises(ValueError):
+                    dss._verify_frozen_snapshot(target)
+
 # A complete valid risk state for schema validation tests
 VALID_RISK_STATE = {
     "schema_version": 1,

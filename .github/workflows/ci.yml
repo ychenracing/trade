@@ -134,6 +134,7 @@ jobs:
                   float(result["total_return"]),
                   float(result["max_drawdown"]),
                   int(result["total_trades"]),
+                  int(result["sleeve_fill_count"]),
               )
               baseline_key = str(len(codes))
               expected_item = baselines[baseline_key]
@@ -141,6 +142,7 @@ jobs:
                   float(expected_item["total_return"]),
                   float(expected_item["max_drawdown"]),
                   int(expected_item["total_trades"]),
+                  int(expected_item["sleeve_fill_count"]),
               )
               if actual != expected:
                   raise SystemExit(

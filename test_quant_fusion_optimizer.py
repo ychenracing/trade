@@ -6,6 +6,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import pandas as pd
 
@@ -151,6 +152,44 @@ class CandidateTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "risk, turnover, return, or all"):
             optimizer.ParameterSpace.for_stage("oracle")
+
+    def test_candidate_runner_uses_production_replay_and_regime_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for code in optimizer.ra.REGIME_INDEX_FILES.values():
+                (root / f"{code}.csv").write_text("date,close\n2026-01-05,1\n")
+            catalog = mock.Mock()
+            catalog.data_dir = root
+            catalog.available_symbols.return_value = {"300308": "中际旭创"}
+            replay = mock.Mock()
+            replay.run.return_value = {
+                "total_return": 0.1,
+                "annual_return": 0.2,
+                "max_drawdown": -0.1,
+                "sharpe": 1.0,
+                "calmar": 2.0,
+                "total_trades": 2,
+                "final_assets": 2_200_000.0,
+                "portfolio_max_positions": 6,
+                "max_concurrent_symbols": 1,
+            }
+            with mock.patch.object(
+                optimizer.ra, "ProductionReplayEngine", return_value=replay
+            ):
+                runner = optimizer.CandidateRunner(
+                    {"300308": "中际旭创"},
+                    catalog,
+                    regime_data_dir=root,
+                )
+                runner.run(
+                    optimizer.Candidate.baseline(),
+                    optimizer.DateWindow(
+                        "validation", "2026-01-05", "2026-01-06", "validation"
+                    ),
+                )
+            self.assertEqual(
+                replay.run.call_args.kwargs["regime_data_dir"], str(root)
+            )
 
 
 class WindowTests(unittest.TestCase):

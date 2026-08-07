@@ -52,6 +52,10 @@ class PolicyTests(unittest.TestCase):
         self.assertLess(policy.drawdown_alert, policy.confirmed_drawdown)
         self.assertGreaterEqual(policy.terminal_drawdown, policy.confirmed_drawdown)
         self.assertEqual(len(policy.regime_symbols), 5)
+        self.assertEqual(len(quant._ESTABLISHED_EXPANSION_CORE), 13)
+        self.assertTrue(
+            set(policy.regime_symbols).issubset(quant._ESTABLISHED_EXPANSION_CORE)
+        )
 
     def test_invalid_regime_symbols_are_rejected(self) -> None:
         for symbols in ((), ("300308", "300308"), ("invalid",)):
@@ -67,6 +71,98 @@ class PolicyTests(unittest.TestCase):
         self.assertLess(one.confirmed_drawdown, five.confirmed_drawdown)
         self.assertLess(five.confirmed_drawdown, twenty_two.confirmed_drawdown)
         self.assertEqual(one.terminal_drawdown, engine.policy.terminal_drawdown)
+
+    def test_small_basket_tightening_is_account_only(self) -> None:
+        engine = quant.BacktestEngine()
+        sleeve_policy = engine._effective_policy(3)
+        account_policy = engine._effective_account_risk_policy(sleeve_policy, 3)
+        self.assertGreater(sleeve_policy.confirmed_drawdown, 0.20)
+        self.assertEqual(account_policy.drawdown_alert, 0.14)
+        self.assertEqual(account_policy.confirmed_drawdown, 0.18)
+        self.assertEqual(account_policy.emergency_drawdown, 0.20)
+        self.assertEqual(account_policy.rearm_trading_days, 252)
+        five_policy = engine._effective_policy(5)
+        incomplete_five = engine._effective_account_risk_policy(
+            five_policy,
+            5,
+            reference_complete=False,
+        )
+        self.assertEqual(incomplete_five.drawdown_alert, 0.10)
+        self.assertEqual(incomplete_five.confirmed_drawdown, 0.11)
+        self.assertEqual(incomplete_five.emergency_drawdown, 0.13)
+        self.assertEqual(incomplete_five.terminal_drawdown, 0.20)
+        six_policy = engine._effective_policy(6)
+        self.assertEqual(
+            engine._effective_account_risk_policy(
+                six_policy, 6
+            ).confirmed_drawdown,
+            0.18,
+        )
+        eight_policy = engine._effective_policy(8)
+        eight_account = engine._effective_account_risk_policy(eight_policy, 8)
+        self.assertEqual(eight_account.drawdown_alert, 0.12)
+        self.assertEqual(eight_account.confirmed_drawdown, 0.14)
+        self.assertEqual(eight_account.emergency_drawdown, 0.18)
+        self.assertEqual(eight_account.rearm_trading_days, 252)
+        incomplete_eight = engine._effective_account_risk_policy(
+            eight_policy,
+            8,
+            reference_complete=False,
+        )
+        self.assertEqual(incomplete_eight.drawdown_alert, 0.10)
+        self.assertEqual(incomplete_eight.confirmed_drawdown, 0.11)
+        self.assertEqual(incomplete_eight.emergency_drawdown, 0.13)
+        self.assertEqual(incomplete_eight.terminal_drawdown, 0.20)
+        nine_policy = engine._effective_policy(9)
+        nine_account = engine._effective_account_risk_policy(nine_policy, 9)
+        self.assertEqual(nine_account.drawdown_alert, 0.14)
+        self.assertEqual(nine_account.confirmed_drawdown, 0.175)
+        self.assertEqual(nine_account.emergency_drawdown, 0.18)
+        self.assertEqual(nine_account.terminal_drawdown, 0.22)
+        thirteen_policy = engine._effective_policy(13)
+        thirteen_account = engine._effective_account_risk_policy(
+            thirteen_policy, 13
+        )
+        self.assertEqual(thirteen_account.drawdown_alert, 0.14)
+        self.assertEqual(thirteen_account.confirmed_drawdown, 0.175)
+        self.assertEqual(thirteen_account.emergency_drawdown, 0.18)
+        self.assertEqual(thirteen_account.terminal_drawdown, 0.22)
+        incomplete_account = engine._effective_account_risk_policy(
+            thirteen_policy,
+            13,
+            reference_complete=False,
+        )
+        self.assertEqual(incomplete_account.drawdown_alert, 0.10)
+        self.assertEqual(incomplete_account.confirmed_drawdown, 0.11)
+        self.assertEqual(incomplete_account.emergency_drawdown, 0.13)
+        self.assertEqual(incomplete_account.terminal_drawdown, 0.20)
+        self.assertEqual(incomplete_account.concentration_drawdown_adjustment, 0.0)
+        two_policy = engine._effective_policy(2)
+        self.assertIs(engine._effective_account_risk_policy(two_policy, 2), two_policy)
+
+    def test_incomplete_reference_pool_keeps_cash_reserve(self) -> None:
+        engine = quant.BacktestEngine()
+        engine._runtime_reference_complete = False
+        incomplete = engine._runtime_sleeve_cfg(8)
+        self.assertEqual(incomplete["max_total_weight"], 0.85)
+        self.assertEqual(incomplete["strategy_weight"], 0.85)
+        engine._runtime_reference_complete = True
+        complete = engine._runtime_sleeve_cfg(8)
+        self.assertEqual(complete.get("max_total_weight", 1.0), 1.0)
+
+    def test_account_orders_merge_internal_same_side_fills(self) -> None:
+        trades = [
+            quant.TradeRecord("300308", strategy, direction, 100, 10.0, date)
+            for strategy, direction, date in (
+                ("fast:turtle", "buy", "2026-01-05"),
+                ("slow:dual_ma", "buy", "2026-01-05"),
+                ("fast:turtle", "sell", "2026-01-06"),
+            )
+        ]
+        self.assertEqual(quant._account_order_count(trades), 2)
+        self.assertEqual(
+            quant._account_order_count(trades, direction="sell"), 1
+        )
 
 
 class SymbolRoutingTests(unittest.TestCase):
@@ -281,6 +377,44 @@ class StandaloneAndDataSourceTests(unittest.TestCase):
 
 class RiskManagerTests(unittest.TestCase):
     """Verify temporary rearming and the independent lifetime terminal lock."""
+
+    def test_tail_guard_starts_after_concentrated_account_range(self) -> None:
+        engine = quant.BacktestEngine()
+        original = quant.PortfolioPolicy()
+        manager = quant.RecoverableDrawdownRiskManager(
+            {"max_drawdown": original.confirmed_drawdown}, original
+        )
+        state = mock.Mock()
+        state.sleeve.sleeve_name = "fast"
+        state.sleeve.risk = manager
+        events: list[dict] = []
+        engine._runtime_tradable_count = 8
+
+        engine._update_tail_sleeve_guard(
+            [state], pd.Timestamp("2026-01-05"), 70.0, 100.0, events
+        )
+        self.assertFalse(engine._tail_guard_active)
+
+        engine._runtime_tradable_count = 9
+        engine._update_tail_sleeve_guard(
+            [state], pd.Timestamp("2026-02-06"), 82.0, 100.0, events
+        )
+        self.assertTrue(engine._tail_guard_active)
+        self.assertEqual(manager.policy.confirmed_drawdown, 0.18)
+        self.assertEqual(manager.policy.rearm_trading_days, 10)
+        self.assertEqual(events[-1]["activation_drawdown"], 0.18)
+
+        engine._update_tail_sleeve_guard(
+            [state], pd.Timestamp("2026-02-07"), 90.0, 100.0, events
+        )
+        self.assertFalse(engine._tail_guard_active)
+        self.assertIs(manager.policy, original)
+
+        engine._runtime_tradable_count = 2
+        engine._update_tail_sleeve_guard(
+            [state], pd.Timestamp("2026-02-09"), 70.0, 100.0, events
+        )
+        self.assertFalse(engine._tail_guard_active)
 
     def test_cycle_lock_rearms_then_lifetime_boundary_stays_terminal(self) -> None:
         policy = quant.PortfolioPolicy(
@@ -743,22 +877,38 @@ class CambriconArtifactTests(unittest.TestCase):
             },
         )
         expected = {
-            ("cold", "2026-06-30"): (11.991424313085375, -0.15959493303703437),
-            ("cold", "2026-07-20"): (11.991424313085375, -0.15959493303703437),
-            ("warm", "2026-06-30"): (12.315117326960753, -0.15554390747126282),
-            ("warm", "2026-07-20"): (12.315117326960753, -0.15554390747126282),
+            ("cold", "2026-06-30"): (
+                10.504051406822253,
+                -0.16277236451405883,
+                True,
+            ),
+            ("cold", "2026-07-20"): (
+                10.504051406822253,
+                -0.16277236451405883,
+                True,
+            ),
+            ("warm", "2026-06-30"): (
+                12.527122054938003,
+                -0.16134164875166546,
+                False,
+            ),
+            ("warm", "2026-07-20"): (
+                12.527122054938003,
+                -0.16134164875166546,
+                False,
+            ),
         }
         results = artifact["results"]
         self.assertEqual(len(results), len(expected))
         for item in results:
             key = (item["indicator_state"], item["end_date"])
             with self.subTest(scenario=key):
-                expected_return, expected_drawdown = expected[key]
+                expected_return, expected_drawdown, expected_lock = expected[key]
                 self.assertAlmostEqual(item["total_return"], expected_return)
                 self.assertAlmostEqual(item["max_drawdown"], expected_drawdown)
                 self.assertEqual(item["cambricon_parameter_route"], "chip_design")
                 self.assertEqual(item["guard_on_dates"], ["2026-06-26"])
-                self.assertFalse(item["terminal_risk_lock"])
+                self.assertEqual(item["terminal_risk_lock"], expected_lock)
 
 
 class NewFeatureTests(unittest.TestCase):

@@ -4,7 +4,7 @@
 
 The optimizer is deliberately a separate research layer.  It never reimplements
 signals, fills, T+1 handling, transaction costs, or portfolio accounting.  Every
-candidate is executed by ``quant_fusion.BacktestEngine``.
+candidate is executed by the same production daily-route replay used in deployment.
 
 Selection uses expanding walk-forward training/validation folds. A final holdout
 is executed only after parameter selection and acts as a one-time promotion gate;
@@ -32,6 +32,7 @@ from typing import Any, Iterable, Protocol, cast
 import pandas as pd
 
 import quant_fusion as qf
+import regime_adaptive as ra
 
 
 MAX_SYMBOL_WEIGHT = 0.60
@@ -769,13 +770,14 @@ class CandidateRunnerProtocol(Protocol):
 
 
 class CandidateRunner:
-    """Execute candidates through the unmodified Quant Fusion engine."""
+    """Execute candidates through the production daily-route replay."""
 
     def __init__(
         self,
         symbols: dict[str, str],
         catalog: LocalDataCatalog,
         *,
+        regime_data_dir: str | Path,
         initial_capital: float = 2_000_000,
         indicator_state: str = "warm",
         warmup_calendar_days: int = 365,
@@ -783,6 +785,15 @@ class CandidateRunner:
     ) -> None:
         self.symbols = dict(symbols)
         self.catalog = catalog
+        self.regime_data_dir = Path(regime_data_dir)
+        if not self.regime_data_dir.is_dir():
+            raise ValueError(
+                f"Regime data directory does not exist: {self.regime_data_dir}"
+            )
+        for code in ra.REGIME_INDEX_FILES.values():
+            path = self.regime_data_dir / f"{code}.csv"
+            if not path.is_file():
+                raise ValueError(f"Missing regime index data for {code}: {path}")
         self.initial_capital = float(initial_capital)
         self.indicator_state = indicator_state
         self.warmup_calendar_days = int(warmup_calendar_days)
@@ -793,7 +804,7 @@ class CandidateRunner:
     ) -> WindowMetrics:
         """Run one candidate/window and verify hard portfolio invariants."""
         symbols = self.catalog.available_symbols(window)
-        engine = qf.BacktestEngine(
+        engine = ra.ProductionReplayEngine(
             self.initial_capital,
             cfg=candidate.engine_config(stress=stress),
             policy=candidate.policy(),
@@ -812,6 +823,7 @@ class CandidateRunner:
                 per_symbol_config=candidate.per_symbol_config(symbols),
                 config_route="auto",
                 data_dir=str(self.catalog.data_dir),
+                regime_data_dir=str(self.regime_data_dir),
                 indicator_state=self.indicator_state,
                 warmup_calendar_days=self.warmup_calendar_days,
             )
@@ -1462,6 +1474,7 @@ def _load_resume_evaluations(
     catalog: LocalDataCatalog,
     folds: list[WalkForwardFold],
     drawdown_limit: float,
+    regime_data_fingerprint: str,
 ) -> dict[str, CandidateEvaluation]:
     """Load a prior report only when its data and selection protocol match."""
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -1472,11 +1485,19 @@ def _load_resume_evaluations(
         raise ValueError("Resume report uses a different symbol universe")
     if metadata.get("data_coverage") != catalog.coverage():
         raise ValueError("Resume report uses a different data snapshot")
-    if metadata.get("data_fingerprint") not in {None, catalog.fingerprint}:
+    if metadata.get("data_fingerprint") != catalog.fingerprint:
         raise ValueError("Resume report data bytes do not match the current snapshot")
+    if metadata.get("regime_data_fingerprint") != regime_data_fingerprint:
+        raise ValueError("Resume report regime index bytes do not match the snapshot")
     current_engine_sha = hashlib.sha256(Path(qf.__file__).read_bytes()).hexdigest()
-    if metadata.get("engine_sha256") not in {None, current_engine_sha}:
+    if metadata.get("engine_sha256") != current_engine_sha:
         raise ValueError("Resume report uses different execution code")
+    current_replay_sha = hashlib.sha256(Path(ra.__file__).read_bytes()).hexdigest()
+    if metadata.get("production_replay_sha256") != current_replay_sha:
+        raise ValueError("Resume report uses different production replay code")
+    current_optimizer_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    if metadata.get("optimizer_sha256") != current_optimizer_sha:
+        raise ValueError("Resume report uses different optimizer code")
     expected_folds = [
         {
             "name": fold.name,
@@ -1503,13 +1524,18 @@ def _cache_signature(
     folds: list[WalkForwardFold],
     drawdown_limit: float,
     initial_capital: float,
+    regime_data_fingerprint: str,
 ) -> str:
     """Bind automatic cache reuse to code, data, folds, capital, and limits."""
     engine_path = Path(qf.__file__).resolve()
     payload = {
         "engine_sha256": hashlib.sha256(engine_path.read_bytes()).hexdigest(),
         "optimizer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "production_replay_sha256": hashlib.sha256(
+            Path(ra.__file__).read_bytes()
+        ).hexdigest(),
         "data_fingerprint": catalog.fingerprint,
+        "regime_data_fingerprint": regime_data_fingerprint,
         "symbols": symbols,
         "folds": [
             {"train": asdict(fold.train), "validation": asdict(fold.validation)}
@@ -1530,6 +1556,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--symbol", "-s", required=True)
     parser.add_argument("--data-dir", required=True)
+    parser.add_argument(
+        "--regime-data-dir",
+        required=True,
+        help="Frozen directory containing 000300.csv and 000682.csv",
+    )
     parser.add_argument("--start", default="2024-01-02")
     parser.add_argument("--test-start", default="2026-01-05")
     parser.add_argument("--end", default="2026-07-20")
@@ -1566,6 +1597,15 @@ def main() -> int:
         symbols,
         qf.PortfolioPolicy().regime_symbols,
     )
+    regime_data_dir = Path(args.regime_data_dir)
+    regime_fingerprint = hashlib.sha256()
+    for code in sorted(ra.REGIME_INDEX_FILES.values()):
+        path = regime_data_dir / f"{code}.csv"
+        if not path.is_file():
+            raise ValueError(f"Missing regime index data for {code}: {path}")
+        regime_fingerprint.update(code.encode("ascii"))
+        regime_fingerprint.update(hashlib.sha256(path.read_bytes()).digest())
+    regime_data_fingerprint = regime_fingerprint.hexdigest()
     folds, holdout = build_walk_forward_folds(
         catalog.calendar,
         start=args.start,
@@ -1582,7 +1622,12 @@ def main() -> int:
         else ParameterSpace.for_stage(args.stage)
     )
     candidates = space.candidates(args.candidates, args.seed)
-    runner = CandidateRunner(symbols, catalog, initial_capital=args.capital)
+    runner = CandidateRunner(
+        symbols,
+        catalog,
+        regime_data_dir=regime_data_dir,
+        initial_capital=args.capital,
+    )
     optimizer = WalkForwardOptimizer(
         runner,
         folds,
@@ -1597,6 +1642,7 @@ def main() -> int:
             catalog=catalog,
             folds=folds,
             drawdown_limit=args.drawdown_limit,
+            regime_data_fingerprint=regime_data_fingerprint,
         )
         if args.resume_report
         else {}
@@ -1609,6 +1655,7 @@ def main() -> int:
         folds=folds,
         drawdown_limit=args.drawdown_limit,
         initial_capital=args.capital,
+        regime_data_fingerprint=regime_data_fingerprint,
     )
     report = optimizer.optimize(
         candidates,
@@ -1618,13 +1665,18 @@ def main() -> int:
     report["run_metadata"] = {
         "symbols": symbols,
         "data_directory": str(Path(args.data_dir)),
+        "regime_data_directory": str(regime_data_dir),
         "data_coverage": catalog.coverage(),
         "candidate_count": len(candidates),
         "seed": args.seed,
         "optimization_stage": args.stage,
         "engine_sha256": hashlib.sha256(Path(qf.__file__).read_bytes()).hexdigest(),
+        "production_replay_sha256": hashlib.sha256(
+            Path(ra.__file__).read_bytes()
+        ).hexdigest(),
         "optimizer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "data_fingerprint": catalog.fingerprint,
+        "regime_data_fingerprint": regime_data_fingerprint,
         "cache_signature": signature,
     }
     _atomic_text(

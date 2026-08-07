@@ -2,26 +2,31 @@
   "1": {
     "max_drawdown": -0.1834136674871038,
     "total_return": 5.308949754885001,
-    "total_trades": 24
+    "total_trades": 5,
+    "sleeve_fill_count": 24
   },
   "3": {
     "max_drawdown": -0.1718499740402506,
     "total_return": 11.224308338588003,
-    "total_trades": 176
+    "total_trades": 74,
+    "sleeve_fill_count": 176
   },
   "5": {
-    "max_drawdown": -0.15671634443888668,
-    "total_return": 12.122638251073752,
-    "total_trades": 233
+    "max_drawdown": -0.1562450255600036,
+    "total_return": 12.051038646119627,
+    "total_trades": 94,
+    "sleeve_fill_count": 212
   },
   "13": {
-    "max_drawdown": -0.1769204495836776,
-    "total_return": 9.89792663628325,
-    "total_trades": 234
+    "max_drawdown": -0.17046281882645536,
+    "total_return": 10.314734679378002,
+    "total_trades": 118,
+    "sleeve_fill_count": 233
   },
   "22": {
-    "max_drawdown": -0.1691151189969806,
-    "total_return": 10.665429653811252,
-    "total_trades": 251
+    "max_drawdown": -0.15924818759853113,
+    "total_return": 10.808377540216252,
+    "total_trades": 100,
+    "sleeve_fill_count": 228
   }
 }

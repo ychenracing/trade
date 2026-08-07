@@ -112,6 +112,7 @@ import hashlib
 import json
 import math
 import os
+import shutil
 import tempfile
 from collections import defaultdict
 from dataclasses import asdict
@@ -166,6 +167,130 @@ INITIAL_CAPITAL = 2_000_000.0
 DEFAULT_CACHE_DIR = "data_cache"
 DEFAULT_OUTPUT_DIR = "daily_signals"
 DEFAULT_REGIME_DATA_DIR = str(Path(__file__).resolve().parent / "historical_data")
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _verify_frozen_snapshot(snapshot_dir: str | Path) -> dict[str, Any]:
+    """Verify the hashed manifest, every CSV byte, and the exact file set."""
+    root = Path(snapshot_dir)
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("frozen snapshot root must be a real directory")
+    manifest_path = root / "manifest.json"
+    signature_path = root / "manifest.sha256"
+    if not manifest_path.is_file() or not signature_path.is_file():
+        raise ValueError("frozen snapshot is missing its manifest or signature")
+    expected_manifest_hash = signature_path.read_text(encoding="ascii").strip()
+    if _sha256_file(manifest_path) != expected_manifest_hash:
+        raise ValueError("frozen snapshot manifest bytes were modified")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise ValueError("frozen snapshot manifest must be an object")
+    evidence = manifest.get("evidence", [])
+    if not isinstance(evidence, list) or not evidence:
+        raise ValueError("frozen snapshot manifest contains no evidence files")
+    expected_files = {"manifest.json", "manifest.sha256"}
+    for item in evidence:
+        if not isinstance(item, dict):
+            raise ValueError("frozen snapshot evidence entry must be an object")
+        relative = str(item.get("path", ""))
+        if not relative or relative.startswith("/") or ".." in Path(relative).parts:
+            raise ValueError("frozen snapshot manifest contains an unsafe path")
+        path = root / relative
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"frozen snapshot evidence is missing: {relative}")
+        if _sha256_file(path) != item.get("sha256"):
+            raise ValueError(f"frozen snapshot evidence was modified: {relative}")
+        if path.stat().st_size != int(item.get("bytes", -1)):
+            raise ValueError(f"frozen snapshot evidence size changed: {relative}")
+        expected_files.add(relative)
+    actual_files = {
+        str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()
+    }
+    extra = sorted(actual_files - expected_files)
+    missing = sorted(expected_files - actual_files)
+    if extra or missing:
+        raise ValueError(
+            f"frozen snapshot file set changed (extra={extra}, missing={missing})"
+        )
+    if manifest.get("deployment_policy") != "production_daily_replay":
+        raise ValueError("frozen snapshot is not bound to production daily replay")
+    return manifest
+
+
+def _materialize_frozen_snapshot(
+    *,
+    snapshot_dir: str | Path,
+    cache_dir: str | Path,
+    regime_data_dir: str | Path,
+    frames: dict[str, pd.DataFrame],
+    end_date: str,
+) -> dict[str, Any]:
+    """Create once or strictly reuse one same-day production evidence snapshot."""
+    target = Path(snapshot_dir)
+    if target.exists():
+        manifest = _verify_frozen_snapshot(target)
+        if manifest.get("end_date") != end_date:
+            raise ValueError("frozen snapshot end date does not match this scan")
+        if manifest.get("symbols") != sorted(frames):
+            raise ValueError("frozen snapshot symbol universe does not match this scan")
+        return manifest
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(dir=str(target.parent), prefix=".snapshot-"))
+    try:
+        market_target = temporary / "market_data"
+        regime_target = temporary / "regime_data"
+        market_target.mkdir()
+        regime_target.mkdir()
+        for code, frame in sorted(frames.items()):
+            source = Path(cache_dir) / f"{code}.csv"
+            destination = market_target / f"{code}.csv"
+            if source.is_file():
+                shutil.copyfile(source, destination)
+            else:
+                persisted = frame.copy()
+                persisted.index.name = "date"
+                persisted.to_csv(destination, index=True)
+        for code in sorted(ra.REGIME_INDEX_FILES.values()):
+            source = Path(regime_data_dir) / f"{code}.csv"
+            if not source.is_file():
+                raise ValueError(f"missing frozen regime evidence for {code}")
+            shutil.copyfile(source, regime_target / source.name)
+        evidence = []
+        for path in sorted(temporary.rglob("*.csv")):
+            evidence.append(
+                {
+                    "path": str(path.relative_to(temporary)),
+                    "sha256": _sha256_file(path),
+                    "bytes": path.stat().st_size,
+                }
+            )
+        manifest = {
+            "schema_version": 1,
+            "end_date": end_date,
+            "symbols": sorted(frames),
+            "deployment_policy": "production_daily_replay",
+            "evidence": evidence,
+        }
+        manifest_bytes = (
+            json.dumps(manifest, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+        ).encode("utf-8")
+        (temporary / "manifest.json").write_bytes(manifest_bytes)
+        (temporary / "manifest.sha256").write_text(
+            hashlib.sha256(manifest_bytes).hexdigest() + "\n", encoding="ascii"
+        )
+        os.replace(temporary, target)
+    except Exception:
+        shutil.rmtree(temporary, ignore_errors=True)
+        raise
+    return _verify_frozen_snapshot(target)
 
 
 def _today_str() -> str:
@@ -860,6 +985,7 @@ def _run_main() -> int:
     # The engine loads all symbols at once and raises on any failure, so we
     # probe each symbol individually and build a tradable universe.
     tradable: dict[str, str] = {}
+    snapshot_frames: dict[str, pd.DataFrame] = {}
     skipped: list[tuple[str, str, str]] = []  # (code, name, reason)
     # Use a start date ~400 days before start_date for the probe so the
     # engine has enough warmup history for indicator calculation.
@@ -882,6 +1008,7 @@ def _run_main() -> int:
             )
             if df is not None and not df.empty:
                 tradable[code] = name
+                snapshot_frames[code] = df.copy()
                 stale = df.attrs.get("_stale", False)
                 if stale:
                     last_date = df.attrs.get("_cache_last_date", "?")
@@ -977,6 +1104,28 @@ def _run_main() -> int:
             print("  如需强制运行，请添加 --allow-stale 参数。")
             return 1
 
+    # Freeze the exact stock and index bytes before either the current-route
+    # decision or the historical replay. Same-day reruns reuse this directory
+    # only after checking the hashed manifest, every CSV hash, and the absence
+    # of extra evidence files.
+    run_id = _generate_run_id(end_date)
+    snapshot_dir = Path(args.output_dir) / "snapshots" / end_date
+    try:
+        snapshot_manifest = _materialize_frozen_snapshot(
+            snapshot_dir=snapshot_dir,
+            cache_dir=args.cache_dir,
+            regime_data_dir=args.regime_data_dir,
+            frames=snapshot_frames,
+            end_date=end_date,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"  ✗ 冻结数据快照失败: {exc}")
+        print("  数据证据不可追溯 — 拒绝生成信号 (fail-closed)")
+        return 1
+    snapshot_market_dir = snapshot_dir / "market_data"
+    snapshot_regime_dir = snapshot_dir / "regime_data"
+    print(f"  冻结数据快照: {snapshot_dir}")
+
     # ── Validate FILE risk state identity to prevent cross-contamination ──
     # Identity uses stable fields only (symbol set + count + config
     # fingerprint including start date, indicator state, capital, and
@@ -1014,8 +1163,8 @@ def _run_main() -> int:
     current_decision = ra.RegimeAdaptiveBacktestEngine(capital).decide_current(
         tradable,
         as_of=max(data_end_dates) if data_end_dates else end_date,
-        data_dir=args.regime_data_dir,
-        leader_data_dir=args.cache_dir,
+        data_dir=snapshot_regime_dir,
+        leader_data_dir=snapshot_market_dir,
     )
     print(f"  当前点位路由: {current_decision.name} (边界 {current_decision.boundary})")
 
@@ -1036,12 +1185,12 @@ def _run_main() -> int:
         tradable,
         start_date,
         end_date,
-        data_dir=None,  # online AKShare with cache
+        data_dir=str(snapshot_market_dir),
         indicator_state="warm",
         warmup_calendar_days=365,
         deployment_mode=args.deployment_mode,
-        regime_data_dir=args.regime_data_dir,
-        leader_data_dir=args.cache_dir,
+        regime_data_dir=str(snapshot_regime_dir),
+        leader_data_dir=str(snapshot_market_dir),
     )
 
     # ── Validate result IMMEDIATELY after engine.run() ──────────────
@@ -1050,7 +1199,6 @@ def _run_main() -> int:
     # format specifiers (e.g. {:,.0f}). If invalid, we write an error
     # artifact to a SEPARATE file (signals_<date>.error.json) so the last
     # successful artifact (signals_<date>.json) is never overwritten.
-    run_id = _generate_run_id(end_date)
     result_invalid_fields = _validate_result_fields(result)
     result_is_valid = len(result_invalid_fields) == 0
 
@@ -1365,6 +1513,11 @@ def _run_main() -> int:
             "requested_symbols": result.get("requested_symbols", sorted(tradable)),
             "selected_symbols": result.get("selected_symbols", sorted(tradable)),
             "unavailable_symbols": result.get("unavailable_symbols", []),
+            "snapshot_directory": str(snapshot_dir),
+            "snapshot_manifest_sha256": _sha256_file(
+                snapshot_dir / "manifest.json"
+            ),
+            "snapshot_schema_version": snapshot_manifest["schema_version"],
         },
         "pending_signals": pending_serializable,
         "blocked_signals": blocked_serializable,

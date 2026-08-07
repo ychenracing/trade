@@ -16,7 +16,7 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 
 ## 当前策略结构
 
-趋势生产引擎由唐奇安突破、双均线趋势和 ATR 通道组成，三类策略保留独立子持仓和审计轨迹。默认 `allocation_mode=ensemble`，总资本（如 200 万元）在 fast、base、slow 三个独立袖套之间分配；`dynamic_sleeve_weights=True` 只在确认的内部状态变化后迁移未使用现金，不合并持仓、策略、挂单、峰值或冷却状态。三个袖套合计资本不超过总资本，不使用杠杆；卖出优先于买入，同一股票卖出默认否决新增买入。股票池超过 6 只时使用固定参考篮子进行候选过滤，单股不超过 60%，总仓位不超过 100%，最多持有 6 只。
+趋势生产引擎由唐奇安突破、双均线趋势和 ATR 通道组成，三类策略保留独立子持仓和审计轨迹。默认 `allocation_mode=ensemble`，总资本（如 200 万元）在 fast、base、slow 三个独立袖套之间分配；`dynamic_sleeve_weights=True` 只在确认的内部状态变化后迁移未使用现金，不合并持仓、策略、挂单、峰值或冷却状态。三个袖套合计资本不超过总资本，不使用杠杆；卖出优先于买入，同一股票卖出默认否决新增买入。股票池从 5 只起使用固定参考篮子过滤候选，参考门槛按 1—8、9—12、13 只以上分为 50%/55%/65%；6—8 股池的新候选需连续两个交易日、9—12 股池需连续四个交易日保留可执行买入意图，证据中断即重置，固定五股在扩展区间保持既有核心身份。固定 13 股生产池扩展到 14 股时，核心仍走既有评分准入；核心外新增标的必须连续两个交易日同时保留可执行买入意图且固定参考分数至少为 0.80，任一条件中断即重置。单股不超过 60%，总仓位不超过 100%，最多持有 6 只。
 
 内部状态机使用等权指数斜率、均线广度、ADX、Hurst 和波动率，将市场标记为 `TREND`、`TRANSITION` 或 `CHOPPY`。
 
@@ -28,6 +28,8 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 - 任一指数缺失、不可解析、历史不足或超过 10 个自然日陈旧：持有现金，不进行个股动量选股；
 - 没有正动量股票：持有现金。
 
+3—4 股组合以及包含完整五股固定参考篮子的 5—6 股组合，从回放开始就对“合并账户”使用 14% 预警、18% 确认、20% 紧急回撤线和 252 个交易日再武装期。参考篮子完整时，7—8 股使用 12%/14%/18% 梯度，9 股以上使用 14%/17.5%/18%/22% 梯度；5 股以上但参考篮子不完整时，候选分数缺少固定比较锚，预先保留 15% 现金，并统一改用 10% 预警、11% 两日确认、13% 紧急、20% 终态梯度。以上均不改变各袖套策略。9 股以上组合在账户回撤达到 18% 后还会临时把各袖套风险梯度收紧为 14%/18%/22%/24%，保持正常的 10 个交易日再武装期；账户回撤恢复到 10% 以内后还原原策略。切换只替换风险策略对象，不重置持仓、峰值、锁、挂单或冷却。
+
 弱市策略使用 22% 灾难止损、5 ATR 初始止损、80 个交易日时间止损和盈利后 3 ATR 吊灯止损，同时启用 15% 回撤预警、20% 周期确认、23% 紧急回撤、26% 终身峰值回撤线和 12% 单日损失保护。风险订单在下一可交易开盘执行，跳空或连续跌停仍可能使实际损失超过阈值。
 
 穿越牛熊叠加层（`cross_market_overlay.py`）默认开启，是叠放在 ensemble 之上的 bull-silent 防御层。它从独立的 23 股、子行业等权风险篮子连续采样，支持预警后再冲击、连续恶化和严重多证据直达升级；一级冻结加仓，二级冻结新开仓并只削减最弱非核心持仓，三级进一步降风险。持仓同时采用分层保护止损：灾变止损（自持仓峰值回撤超过 28%）始终待命；成本止损（低于成本 18%）、ATR 吊灯（6 ATR）和盈利分层保护只在相应风险证据与账户回撤门槛同时满足时触发。趋势健康度只在确认风险中将盈利回吐线有界调整 3 个百分点。触发后标的进入 10 个交易日冷却期。专用弱市/现金路由持有执行权时，叠加层继续更新风险状态但不重复卖出或阻断。
@@ -38,7 +40,7 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 
 完整默认策略字段如下，具体默认值以 `_CoreBacktestEngine._default_config()` 为唯一事实来源：
 
-策略参数：`entry_period`、`exit_period`、`adx_threshold`、`adx_period`、`atr_period`、`rsi_period`、`ma_short`、`ma_long`、`atr_multiplier`、`trail_atr_mult`、`channel_mult`、`channel_lower_mult`、`risk_pct`、`hard_stop`、`strategy_weight`、`max_symbol_weight`、`max_total_weight`、`max_units`、`max_drawdown`、`daily_loss_limit`、`sector_guard_enabled`、`sector_guard_min_symbols`、`sector_shock_return`、`sector_shock_breadth`、`sector_shock_ma`、`sector_shock_window`、`sector_shock_confirmations`、`sector_recovery_ma`、`sector_recovery_breadth`、`sector_recovery_confirmations`、`symbol_level_sell_veto`、`momentum_lookback`、`max_positions`、`group_min_slots`、`fusion_single_scale`、`fusion_double_scale`、`fusion_triple_scale`、`profit_lock_activation`、`profit_lock_giveback`、`reversal_break_giveback`、`reversal_exit_period`、`reversal_loss_cut`、`reversal_turtle_enabled`、`reversal_dual_ma_enabled`、`reversal_atr_channel_enabled`、`combined_group_weight_limits`、`liquidate_on_circuit_breaker`、`strict_unmapped`、`commission_rate`、`stamp_duty`、`slippage`、`min_commission`、`max_pending_buy_days`、`pyramid_add_atr`、`pyramid_risk_decay`、`atr_method`、`limit_price_epsilon`、`per_symbol_limit_pct`、`st_symbols`、`risk_free_rate`、`market_regime_enabled`、`regime_ewi_lookback`、`regime_breadth_ma_long`、`regime_adx_trend`、`regime_adx_choppy`、`regime_hurst_window`、`regime_hurst_trend`、`regime_hurst_choppy`、`regime_vol_lookback`、`regime_vol_extreme_pct`、`regime_ewi_slope_trend`、`regime_ewi_slope_choppy`、`regime_score_trend`、`regime_score_choppy`、`regime_choppy_confirmations`、`regime_trend_confirmations`、`regime_recovery_confirmations`、`regime_min_state_hold`、`regime_transition_scale`、`regime_transition_pyramid_scale`、`regime_transition_trim_confirmations`、`regime_trend_to_transition_confirmations`、`regime_choppy_exit_ratio`、`regime_transition_exit_ratio`、`enable_cm_overlay`、`cm_overlay_shock_trim`、`cm_independent_risk_basket`、`cm_trend_health_protection`、`cm_risk_continuous_confirm_days`、`cm_risk_level2_drawdown`、`cm_risk_level3_drawdown`、`cm_risk_severe_direct_return`、`dynamic_sleeve_weights`、`transition_fast_weight`、`transition_base_weight`、`transition_slow_weight`、`choppy_fast_weight`、`choppy_base_weight`、`choppy_slow_weight`、`adaptive_max_positions`、`transition_max_positions`、`choppy_max_positions`、`sticky_candidates`、`adaptive_sticky_candidates`、`sticky_min_score_gap`、`sticky_confirm_days`、`sticky_cycle_days`、`sticky_rotated_cooldown_days`、`subindustry_shrinkage`。
+策略参数：`entry_period`、`exit_period`、`adx_threshold`、`adx_period`、`atr_period`、`rsi_period`、`ma_short`、`ma_long`、`atr_multiplier`、`trail_atr_mult`、`channel_mult`、`channel_lower_mult`、`risk_pct`、`hard_stop`、`strategy_weight`、`max_symbol_weight`、`max_total_weight`、`max_units`、`max_drawdown`、`daily_loss_limit`、`sector_guard_enabled`、`sector_guard_min_symbols`、`sector_shock_return`、`sector_shock_breadth`、`sector_shock_ma`、`sector_shock_window`、`sector_shock_confirmations`、`sector_recovery_ma`、`sector_recovery_breadth`、`sector_recovery_confirmations`、`symbol_level_sell_veto`、`momentum_lookback`、`max_positions`、`group_min_slots`、`fusion_single_scale`、`fusion_double_scale`、`fusion_triple_scale`、`profit_lock_activation`、`profit_lock_giveback`、`reversal_break_giveback`、`reversal_exit_period`、`reversal_loss_cut`、`reversal_turtle_enabled`、`reversal_dual_ma_enabled`、`reversal_atr_channel_enabled`、`combined_group_weight_limits`、`liquidate_on_circuit_breaker`、`strict_unmapped`、`commission_rate`、`stamp_duty`、`slippage`、`min_commission`、`max_pending_buy_days`、`pyramid_add_atr`、`pyramid_risk_decay`、`atr_method`、`limit_price_epsilon`、`per_symbol_limit_pct`、`st_symbols`、`risk_free_rate`、`market_regime_enabled`、`regime_ewi_lookback`、`regime_breadth_ma_long`、`regime_adx_trend`、`regime_adx_choppy`、`regime_hurst_window`、`regime_hurst_trend`、`regime_hurst_choppy`、`regime_vol_lookback`、`regime_vol_extreme_pct`、`regime_ewi_slope_trend`、`regime_ewi_slope_choppy`、`regime_score_trend`、`regime_score_choppy`、`regime_choppy_confirmations`、`regime_trend_confirmations`、`regime_recovery_confirmations`、`regime_min_state_hold`、`regime_transition_scale`、`regime_transition_pyramid_scale`、`regime_transition_trim_confirmations`、`regime_trend_to_transition_confirmations`、`regime_choppy_exit_ratio`、`regime_transition_exit_ratio`、`enable_cm_overlay`、`cm_overlay_shock_trim`、`cm_independent_risk_basket`、`cm_trend_health_protection`、`cm_risk_continuous_confirm_days`、`cm_risk_level2_drawdown`、`cm_risk_level3_drawdown`、`cm_risk_severe_direct_return`、`dynamic_sleeve_weights`、`transition_fast_weight`、`transition_base_weight`、`transition_slow_weight`、`choppy_fast_weight`、`choppy_base_weight`、`choppy_slow_weight`、`adaptive_max_positions`、`transition_max_positions`、`choppy_max_positions`、`sticky_candidates`、`adaptive_sticky_candidates`、`sticky_min_score_gap`、`sticky_confirm_days`、`sticky_cycle_days`、`sticky_rotated_cooldown_days`、`concentrated_account_rearm_days`、`incomplete_reference_max_total_weight`、`established_expansion_min_score`、`subindustry_shrinkage`。
 
 ## 组合策略参数
 
@@ -54,6 +56,7 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 - A 股最小交易单位为 100 股；模拟佣金率 0.025%，最低佣金 5 元，卖出印花税 0.05%，单边滑点 0.1%。
 - 买入受现金、单股权重、总仓位、行业权重、持仓数量和成交量容量共同约束；组合单日最多参与前 20 日平均成交量的 0.5%。
 - 本地和在线数据都经过 OHLCV、日期、成交量单位和新鲜度校验；固定指数证据未知时失败关闭。
+- `total_trades` 是按日期、股票和方向合并后的账户级券商订单数；`sleeve_fill_count` 保留内部策略/袖套成交数，供归因审计，二者不可混用。
 - `requested_symbols` 表示请求股票，`selected_symbols` 表示实际入选股票，`unavailable_symbols` 只表示数据不足或陈旧，不再把有数据但未入选的股票误报为不可用。
 
 ## 快速开始
@@ -92,7 +95,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 ### 参数探索
 
-1. 按 `risk` → `turnover` → `return` 三阶段运行 `quant_fusion_optimizer.py --stage <阶段>`，避免一个参数族掩盖另一个参数族的退化。
+1. 按 `risk` → `turnover` → `return` 三阶段运行 `quant_fusion_optimizer.py --stage <阶段> --data-dir market_data --regime-data-dir historical_data`，避免一个参数族掩盖另一个参数族的退化。优化器和部署都使用 `ProductionReplayEngine`。
 2. 选择同时使用收益、回撤和交易次数三目标 Pareto 前沿，再在近似收益档内优先更低回撤和更少交易。
 3. 候选必须通过普通及压力 holdout 推广门：财富不得落后基线超过 1%，回撤不得恶化超过 0.5 个百分点，交易不得增加超过 3%，除非财富至少提高 5%。
 4. 任何参数变更都必须重新通过五组趋势基线精确回归，且必须能解释收益、回撤和交易次数变化的原因。
@@ -101,11 +104,11 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 1. 新增标的必须在 `quant_fusion.py` 的行业映射中找到对应画像，否则 `strict_unmapped=True` 会直接失败。
 2. 新行业需重新建立参数画像和基线，不能直接套用现有科技参数。
-3. 使用 `stress_test_prefixes.py` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认每个随机规模与顺序各抽样 50 次。
+3. 使用 `stress_test_prefixes.py` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。
 
 ## 日扫信号与账户建议
 
-日扫输出（`daily_signals/` 目录）以 JSON 工件形式给出，核心字段如下：
+日扫输出（`daily_signals/` 目录）以 JSON 工件形式给出。每个扫描日先建立 `snapshots/<日期>/` 冻结目录；同日重跑必须通过 manifest 哈希边车、全部 CSV 内容哈希和精确文件集合校验，任何改写或额外证据文件都失败关闭。核心字段如下：
 
 - `as_of`：信号生成日期（收盘后）。
 - `route`：外层路由结果——`trend`（趋势引擎）、`weak`（弱市龙头）或 `cash`（持有现金）。
@@ -145,15 +148,15 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 初始资金 200 万元、2025-04-01 至 2026-07-20、前复权冻结数据、预热模式：
 
-| 股票数量 | 总收益 | 最大回撤 | 交易次数 |
-|---:|---:|---:|---:|
-| 1 | 530.8950% | -18.3414% | 24 |
-| 3 | 1122.4308% | -17.1850% | 176 |
-| 5 | 1212.2638% | -15.6716% | 233 |
-| 13 | 989.7927% | -17.6920% | 234 |
-| 22 | 1066.5430% | -16.9115% | 251 |
+| 股票数量 | 总收益 | 最大回撤 | 账户订单 | 袖套成交 |
+|---:|---:|---:|---:|---:|
+| 1 | 530.8950% | -18.3414% | 5 | 24 |
+| 3 | 1122.4308% | -17.1850% | 74 | 176 |
+| 5 | 1205.1039% | -15.6245% | 94 | 212 |
+| 13 | 1031.4735% | -17.0463% | 118 | 233 |
+| 22 | 1080.8378% | -15.9248% | 100 | 228 |
 
-上表为全部自动功能默认开启后的精确生产基线。相对旧文档基线，3/5/22 股收益提高，3/5/13 股交易下降，5/13/22 股回撤改善；13 股最终财富约下降 3.9%，但回撤改善约 0.99 个百分点且少 6 笔交易。2024-01-02 至 2024-12-31 的五股生产逐日回放为 54.3787% 收益、-17.2195% 最大回撤、15 笔交易；同一生产回放在牛市 1/5 股池分别与上表趋势结果完全一致。
+上表为全部自动功能默认开启后的精确趋势基线。账户订单是实盘换手口径，袖套成交用于内部归因；旧文档把二者都称为“交易次数”，现已拆开。1/3 股收益逐位不变，5 股只牺牲约 0.55% 最终财富并改善回撤与换手，13/22 股同时提高收益、降低回撤或减少内部成交。弱市生产回放与正式压力分布见 `BACKTEST_RESULTS.md`。
 
 ## 仓库结构
 
@@ -166,8 +169,8 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 | `cross_market_overlay.py` | 穿越牛熊叠加层；分层保护止损、统一风险动作优先级、灾变冷却、净敞口集中度风控 |
 | `account_signal_engine.py` | 真实账户时点建议引擎；读取持仓快照，输出买卖建议与风险信号 |
 | `market_data_contracts.py` | 指数与个股数据契约；OHLCV 校验、新鲜度检查、成交量单位标准化 |
-| `quant_fusion_optimizer.py` | 分阶段走步优化器；收益、回撤、交易三目标 Pareto 与严格 holdout 推广门 |
-| `daily_signal_scan.py` | 日扫入口；拉取数据、路由判断、生成候选与账户建议工件 |
+| `quant_fusion_optimizer.py` | 分阶段生产回放走步优化器；收益、回撤、交易三目标 Pareto 与严格 holdout 推广门 |
+| `daily_signal_scan.py` | 日扫入口；拉取数据、冻结可验证快照、路由判断、生成候选与账户建议工件 |
 
 ### 工具脚本
 
@@ -179,7 +182,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 | `download_eastmoney_qfq.py` | 东方财富前复权数据下载器 |
 | `backtest_universes.py` | 多股票池批量回测，生成 `universe_backtest.json` |
 | `backtest_cambricon_universe.py` | 寒武纪九股池专项回测，生成 `cambricon_universe_backtest.json` |
-| `stress_test_prefixes.py` | 前缀、留一、逐一加入、随机子集与置换压力测试，生成两个原子 JSON 工件 |
+| `stress_test_prefixes.py` | 可续跑的 983 场景生产回放压力测试，记录账户订单、袖套成交和原因归因 |
 
 ### 测试文件
 
@@ -229,7 +232,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 - `data_cache/`：行情数据缓存
 - `benchmark_validation.json`：基准验证输出
 
-仓库持久化的 `prefix_stress.json` 与 `universe_stress.json` 是本次可复现压力工件；后者明确记录抽样数，不能把烟雾抽样解释为完整的 50 次随机统计。
+仓库持久化的 `prefix_stress.json` 与 `universe_stress.json` 是本次可复现压力工件；后者记录三个固定种子、每种规模每种子 50 次随机抽样、50 次顺序置换和全部硬门禁结果。
 
 如需持久化某次验证结果，将对应文件加入 Git 并更新 `BACKTEST_RESULTS.md`。
 

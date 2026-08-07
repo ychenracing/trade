@@ -133,11 +133,12 @@ ROUTE_MIN_HOLD_DAYS = 10
 ROUTE_CONFIRM_DAYS = 3
 # Recovery needs materially more evidence than de-risking. A premature return
 # to three trend sleeves creates a turnover burst near bear-market rallies;
-# forty consecutive sessions match the slow MA60/MA120 horizon. The weak book
+# thirty consecutive sessions keep recovery deliberately slower than de-risking
+# while avoiding an unnecessarily long lag after a durable trend repair. The weak book
 # remains invested in positive leaders during confirmation, so a V-shaped
 # repair is participated in instead of sitting in cash, while a bull already
 # confirmed during warm history starts directly in TREND.
-ROUTE_RECOVERY_CONFIRM_DAYS = 40
+ROUTE_RECOVERY_CONFIRM_DAYS = 30
 # A route maps to an engine name for the deployment boundary.
 _ROUTE_TO_ENGINE = {
     RegimeRoute.TREND: "frozen_trend_engine",
@@ -910,6 +911,10 @@ class ProductionRouteController:
         leader_data_dir: str | Path,
     ) -> None:
         self.route_by_date = {step.date: step.route for step in route_sequence}
+        self.starts_defensive = bool(route_sequence) and route_sequence[0].route in {
+            RegimeRoute.WEAK.value,
+            RegimeRoute.CASH.value,
+        }
         self.leader_data_dir = str(leader_data_dir)
         self.previous_route: str | None = None
         self.events: list[dict[str, Any]] = []
@@ -989,6 +994,16 @@ class ProductionRouteController:
                     cfg.update(_weak_regime_config(max(len(leaders), 1)))
                     strategy = PositiveMomentumHoldStrategy(cfg)
                     self._weak_strategies[key] = strategy
+                # Dynamic weak-route strategies own real positions and therefore
+                # must participate in every liquidation path. Keep them in the
+                # external registry so the sleeve risk/sector/route controls can
+                # find them without the core signal loop evaluating them a second
+                # time on the same close.
+                registered = state.sleeve.external_strategy_instances.setdefault(
+                    symbol, []
+                )
+                if strategy not in registered:
+                    registered.append(strategy)
                 if symbol not in leaders and strategy.position is None:
                     continue
                 frame = state.data_map.get(symbol)
@@ -1235,10 +1250,7 @@ class ProductionReplayEngine:
             route_sequence,
             leader_data_dir=leader_data_dir or data_dir,
         )
-        starts_defensive = bool(route_sequence) and route_sequence[0].route in {
-            RegimeRoute.WEAK.value,
-            RegimeRoute.CASH.value,
-        }
+        starts_defensive = controller.starts_defensive
         replay_policy = self.policy or (
             replace(
                 qf.PortfolioPolicy(),

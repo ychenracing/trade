@@ -46,6 +46,48 @@ class StressScenarioTests(unittest.TestCase):
                 seed=20260807,
             )
 
+    def test_multi_seed_plan_keeps_fixed_scenarios_singleton(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=2,
+            permutation_samples=2,
+            seeds=(1, 2),
+        )
+        self.assertEqual(len(scenarios), 83 + 2 * (10 + 2))
+        self.assertEqual(
+            len([item for item in scenarios if item["scenario_type"] == "prefix"]),
+            len(stress.ORDERED_CODES),
+        )
+
+    def test_multi_seed_plan_rejects_duplicate_seed_ids(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unique"):
+            stress._multi_seed_scenarios(
+                random_samples=1,
+                permutation_samples=1,
+                seeds=(7, 7),
+            )
+
+    def test_checkpoint_rejects_mismatched_scenario_definition(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        result = {
+            **scenarios[0],
+            "symbols": ["tampered"],
+            "total_return": 1.0,
+            "max_drawdown": -0.1,
+            "sharpe": 1.0,
+            "calmar": 1.0,
+            "total_trades": 1,
+            "sleeve_fill_count": 1,
+            "deployment_policy": "production_daily_replay",
+        }
+        with self.assertRaisesRegex(ValueError, "definition changed"):
+            stress._validated_checkpoint_results(
+                {"results": [result]}, scenarios
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
