@@ -426,7 +426,6 @@ class AccountSignalEngine:
             indicators = qf.Indicators.compute_all(frame, cfg)
             i = len(frame) - 1
             close = float(frame["close"].iloc[i])
-            atr = self._latest_value(indicators.get("atr"), i)
             strategies = [
                 cls(cfg)
                 for cls in (

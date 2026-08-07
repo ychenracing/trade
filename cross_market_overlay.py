@@ -51,9 +51,12 @@ through the normal ensemble machinery.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from quant_fusion import Signal
 
 # ── Layered catastrophe-stop constants (report 4.2) ──────────────────────
 # Conservative 28% peak-drawdown floor (unchanged from the original overlay).

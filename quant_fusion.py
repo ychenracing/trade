@@ -7612,9 +7612,10 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
           redundant round-trip churn and is cancelled (recorded as
           ``netted_cross_sleeve_buy``);
         - a buy that EXCEEDS the residual sell shares represents genuine net ADD
-          exposure the account still wants and is retained — trimmed down to the
-          residual sell size when it partially overlaps — so the aggregate
-          cross-sleeve intent survives and the position is never over-sold.
+          exposure the account still wants and is retained — kept as the tail
+          that exceeds the sell pool (``buy_shares - rem``) when it partially
+          overlaps — so the aggregate cross-sleeve intent survives and the
+          position is never over-sold.
 
         This removes same-symbol round-trip churn and the fee/slippage drag
         without suppressing legitimate re-entry, keeping returns intact.
@@ -7662,8 +7663,12 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                         )
                         remaining_sell[symbol] = rem - buy_shares
                         continue
-                    # Partially absorbed: keep only the net ADD portion and trim
-                    # the buy down to the remaining sell pool size.
+                    # Partially absorbed: the overlap with the sell pool is
+                    # redundant churn; only the genuine NET-ADD tail survives.
+                    # The retained buy is the portion that exceeds the residual
+                    # sell (buy_shares - rem), so the cumulative cross-sleeve
+                    # net-add intent is preserved instead of being trimmed down
+                    # to the sell size (which would over-suppress re-entry).
                     state.sleeve._record_order_event(
                         date=date_str,
                         signal=signal,
@@ -7671,7 +7676,9 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                         because="same_symbol_sell_pending_absorbs_buy_partial",
                         sell_shares=rem,
                     )
-                    retained.append((replace(signal, target_shares=rem), strategy))
+                    retained.append(
+                        (replace(signal, target_shares=buy_shares - rem), strategy)
+                    )
                     remaining_sell[symbol] = 0
                     continue
                 retained.append((signal, strategy))

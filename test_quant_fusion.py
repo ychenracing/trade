@@ -949,5 +949,156 @@ class NewFeatureTests(unittest.TestCase):
             )
 
 
+class CrossSleeveNettingTests(unittest.TestCase):
+    """Verify the account-level share-count netting (report P0-6).
+
+    The three virtual sleeves are signal sources, not independent books: a
+    symbol being sold by any sleeve must not also be bought by another on the
+    same day. Buys are absorbed CUMULATIVELY against the residual same-day sell
+    pool, so multiple buys are netted correctly instead of each being compared
+    to the full sell total (which would over-net legitimate net ADD exposure).
+    """
+
+    @staticmethod
+    def _sleeve() -> quant.SleeveBacktestEngine:
+        policy = quant.PortfolioPolicy(allocation_mode="single")
+        return quant.SleeveBacktestEngine(
+            1_000_000,
+            cfg=None,
+            policy=policy,
+            allocation_lookbacks=policy.single_lookbacks,
+            sleeve_name="test",
+        )
+
+    @staticmethod
+    def _states(
+        *sleeves: quant.SleeveBacktestEngine,
+        pending: list[list[tuple[quant.Signal, object]]],
+    ) -> list[quant._PreparedSleeveRun]:
+        return [
+            quant._PreparedSleeveRun(
+                sleeve=sleeve,
+                data_map={},
+                indicator_map={},
+                all_dates=[pd.Timestamp("2026-01-06")],
+                date_to_pos={pd.Timestamp("2026-01-06"): 0},
+                pending=list(orders),
+            )
+            for sleeve, orders in zip(sleeves, pending)
+        ]
+
+    def test_buy_fully_absorbed_by_sell_is_cancelled(self) -> None:
+        sleeve = self._sleeve()
+        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
+        sell = quant.Signal(
+            "300308", strategy.name, "sell", target_shares=100, price=10.0
+        )
+        buy = quant.Signal(
+            "300308", "dual_ma", "buy", target_shares=80, price=10.0
+        )
+        states = self._states(
+            sleeve, sleeve,
+            pending=[
+                [(sell, strategy)],
+                [(buy, strategy)],
+            ],
+        )
+        quant.BacktestEngine._net_cross_sleeve_orders(
+            states, pd.Timestamp("2026-01-06")
+        )
+        # Sell sleeve keeps its sell; the absorbed buy is fully cancelled.
+        self.assertEqual(len(states[0].pending), 1)
+        self.assertEqual(states[0].pending[0][0].direction, "sell")
+        self.assertEqual(len(states[1].pending), 0)
+        events = sleeve.order_events
+        self.assertEqual(events[-1]["event"], "netted_cross_sleeve_buy")
+        self.assertEqual(events[-1]["sell_shares"], 80)
+
+    def test_multiple_buys_net_cumulatively_against_residual_sell(self) -> None:
+        # Sell 100; buy 80 + buy 80. Naive per-buy comparison would cancel BOTH
+        # buys (each <= 100) and over-sell. The fix nets them cumulatively
+        # against the residual pool: first buy absorbs 80 (rem=20), second buy
+        # is partially absorbed and keeps the NET-ADD tail (80 - rem 20 = 60),
+        # so the cumulative net-add intent survives.
+        sleeve = self._sleeve()
+        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
+        order_events_before = len(sleeve.order_events)
+        sell = quant.Signal(
+            "300308", strategy.name, "sell", target_shares=100, price=10.0
+        )
+        buy1 = quant.Signal(
+            "300308", "dual_ma", "buy", target_shares=80, price=10.0
+        )
+        buy2 = quant.Signal(
+            "300308", "atr_channel", "buy", target_shares=80, price=10.0
+        )
+        states = self._states(
+            sleeve, sleeve, sleeve,
+            pending=[
+                [(sell, strategy)],
+                [(buy1, strategy)],
+                [(buy2, strategy)],
+            ],
+        )
+        quant.BacktestEngine._net_cross_sleeve_orders(
+            states, pd.Timestamp("2026-01-06")
+        )
+        # Sell retained; buy1 fully cancelled; buy2 keeps the net-add tail 60.
+        self.assertEqual(len(states[0].pending), 1)
+        self.assertEqual(len(states[1].pending), 0)
+        self.assertEqual(len(states[2].pending), 1)
+        self.assertEqual(states[2].pending[0][0].target_shares, 60)
+        events = sleeve.order_events[order_events_before:]
+        self.assertEqual(events[0]["event"], "netted_cross_sleeve_buy")
+        self.assertEqual(events[0]["sell_shares"], 80)
+        self.assertEqual(events[1]["event"], "netted_cross_sleeve_buy")
+        self.assertEqual(events[1]["sell_shares"], 20)
+        self.assertEqual(
+            events[1]["because"], "same_symbol_sell_pending_absorbs_buy_partial"
+        )
+
+    def test_buy_exceeding_sell_pool_is_genuine_net_add(self) -> None:
+        # Sell 100, buy 250 -> the 100 overlap is churn, the net-ADD tail
+        # (250 - 100 = 150) survives as the retained buy.
+        sleeve = self._sleeve()
+        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
+        sell = quant.Signal(
+            "300308", strategy.name, "sell", target_shares=100, price=10.0
+        )
+        buy = quant.Signal(
+            "300308", "dual_ma", "buy", target_shares=250, price=10.0
+        )
+        states = self._states(
+            sleeve, sleeve,
+            pending=[
+                [(sell, strategy)],
+                [(buy, strategy)],
+            ],
+        )
+        quant.BacktestEngine._net_cross_sleeve_orders(
+            states, pd.Timestamp("2026-01-06")
+        )
+        self.assertEqual(len(states[0].pending), 1)
+        # Buy kept the net ADD portion (250 - 100 = 150).
+        self.assertEqual(len(states[1].pending), 1)
+        self.assertEqual(states[1].pending[0][0].target_shares, 150)
+
+    def test_no_sell_pool_leaves_buy_untouched(self) -> None:
+        sleeve = self._sleeve()
+        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
+        buy = quant.Signal(
+            "300308", "dual_ma", "buy", target_shares=80, price=10.0
+        )
+        states = self._states(
+            sleeve,
+            pending=[[(buy, strategy)]],
+        )
+        quant.BacktestEngine._net_cross_sleeve_orders(
+            states, pd.Timestamp("2026-01-06")
+        )
+        self.assertEqual(len(states[0].pending), 1)
+        self.assertEqual(states[0].pending[0][0].target_shares, 80)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
