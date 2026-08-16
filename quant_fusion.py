@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 """Quant Fusion: a standalone A-share technology trend system.
 
-This single module contains the complete data, indicator, signal, execution,
+This module contains the complete data, indicator, signal, execution,
 portfolio-allocation, and risk-control implementation. It has no runtime
-or import dependency on any other module.
+dependency on any module outside this project; at runtime the ensemble path
+imports the in-project modules ``risk_governance`` and ``cross_market_overlay``
+for the observation-level risk governance layer (see ``_run_ensemble``).
 
 When ``data_dir`` is provided, the engine reads forward-adjusted daily CSV
 files from that directory. Otherwise it fetches forward-adjusted data through
@@ -7813,10 +7815,10 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 }
             )
         cm_overlay_peak = 0.0
-        # ── 风险治理观测层（2026-08-16 报告 P0-1/P0-3/P1-1/P1-2）────────
+        # ── 风险治理观测层（2026-08-16 报告 P0-1/P0-2/P0-3/P1-1/P1-2）───
         # 纯观测与输出：warmup 健康契约、逐日袖套共识、风险篮覆盖置信度、
-        # 独立风险意见与事后风险事件校准。不读取、不修改任何交易决策状态，
-        # 因此对既有回测路径是零行为漂移的（golden 指标不变）。
+        # 独立风险意见与事后风险事件校准。只读取、不修改、不参与任何交易
+        # 决策状态，因此对既有回测路径是零行为漂移的（golden 指标不变）。
         # 注：本段 P0/P1 编号指 2026-08-16 报告，与旧注释中 2026-08-07
         # 报告的编号体系（如 P0-4 灾变冷却、P1-2 子行业收缩）不同。
         import risk_governance as rg

@@ -413,16 +413,6 @@ def build_risk_opinion(
 # ── P0-2: Risk Event Classifier ──────────────────────────────────────────
 
 
-def _daily_returns(assets: Sequence[float]) -> np.ndarray:
-    """由资产序列计算逐日收益率（首日为 0）。"""
-    arr = np.asarray(assets, dtype=float)
-    if len(arr) < 2:
-        return np.zeros_like(arr)
-    out = np.zeros_like(arr)
-    out[1:] = arr[1:] / arr[:-1] - 1.0
-    return out
-
-
 def _forward_max_drawdown(assets: np.ndarray) -> np.ndarray:
     """对每个日期计算未来 SHOCK_HORIZON_DAYS 日内的最大跌幅。"""
     n = len(assets)

@@ -1088,6 +1088,8 @@ def _run_main() -> int:
                 end = str(pd.Timestamp(cast(Any, df.index[-1])).date())
                 data_end_dates.setdefault(end, []).append(code)
         except Exception:
+            # Best-effort probe: a single symbol failing to load here only
+            # omits it from the freshness comparison, never aborts the scan.
             pass
     if len(data_end_dates) > 1 and not args.allow_stale:
         latest_common = max(data_end_dates.keys())

@@ -108,11 +108,6 @@ def _metrics(
     }
 
 
-def _run(count: int) -> dict[str, Any]:
-    """Compatibility helper: run one warm-state ordered prefix."""
-    return _metrics(ORDERED_CODES[:count])
-
-
 def _run_scenario(
     scenario: dict[str, Any],
     *,
@@ -514,10 +509,12 @@ def _promotion_gates(
     inc_random = _summary_or_empty("random_subset", by_id)
     cur_loo = _summary_or_empty("leave_one_out", current_by_id)
     inc_loo = _summary_or_empty("leave_one_out", by_id)
-    cur_all = _summary(
-        [item for item in current_by_id.values()]
-    )
-    inc_all = _summary([item for item in by_id.values()])
+    # ``all_*`` gates must compare the same scenario set on both sides, so
+    # aggregate only scenarios present in both the current and incumbent runs
+    # (random subsets may legitimately differ across runs by seed).
+    shared_ids = sorted(sid for sid in current_by_id if sid in by_id)
+    cur_all = _summary([current_by_id[sid] for sid in shared_ids])
+    inc_all = _summary([by_id[sid] for sid in shared_ids])
 
     def _add_one_min(source: dict[str, dict[str, Any]]) -> float | None:
         pairs = [

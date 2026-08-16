@@ -25,7 +25,7 @@ MAX_LEADERS = 3
 MAX_SYMBOL_WEIGHT = 0.59
 # ── Mature / emerging dual-channel leader qualification (report P0-5) ──
 # A "mature" leader needs the full 240-day history and positive 240-day
-# momentum. A "emerging" leader has only a short history (>= 61 days) but shows
+# momentum. An "emerging" leader has only a short history (>= 61 days) but shows
 # short-horizon momentum + breakout / volume expansion; it is NOT forced to meet
 # the 240-day gate that previously blocked every genuinely new leader.
 EMERGING_MIN_DAYS = 61
@@ -68,7 +68,6 @@ DEFAULT_EXIT_COOLDOWN = 12
 # First re-entry uses only this fraction of the normal target weight; after a
 # probe confirm the position is lifted toward the full target (report 3.5).
 WEAK_PROBE_WEIGHT_RATIO = 0.30
-WEAK_CONFIRM_WEIGHT_RATIO = 0.70
 # Hold a probe this many trading days (and meet confirm conditions) before the
 # position is scaled up toward the full target.
 WEAK_PROBE_CONFIRM_DAYS = 5
@@ -139,14 +138,6 @@ ROUTE_CONFIRM_DAYS = 3
 # repair is participated in instead of sitting in cash, while a bull already
 # confirmed during warm history starts directly in TREND.
 ROUTE_RECOVERY_CONFIRM_DAYS = 30
-# A route maps to an engine name for the deployment boundary.
-_ROUTE_TO_ENGINE = {
-    RegimeRoute.TREND: "frozen_trend_engine",
-    RegimeRoute.TRANSITION_TO_TREND: "frozen_trend_engine",
-    RegimeRoute.TRANSITION_TO_WEAK: "positive_momentum_hold",
-    RegimeRoute.WEAK: "positive_momentum_hold",
-    RegimeRoute.CASH: "cash_preservation",
-}
 
 
 def simulate_route_sequence(

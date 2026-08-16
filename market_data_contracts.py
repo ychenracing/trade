@@ -35,7 +35,7 @@ def _atomic_csv(frame: pd.DataFrame, path: Path) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(tmp, path)
-    except OSError:
+    except Exception:
         try:
             os.unlink(tmp)
         except OSError:
@@ -60,7 +60,7 @@ def _atomic_json(payload: dict[str, Any], path: Path) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(tmp, path)
-    except OSError:
+    except Exception:
         try:
             os.unlink(tmp)
         except OSError:

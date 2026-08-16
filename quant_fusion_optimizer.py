@@ -1525,6 +1525,8 @@ def _cache_signature(
     drawdown_limit: float,
     initial_capital: float,
     regime_data_fingerprint: str,
+    indicator_state: str = "warm",
+    warmup_calendar_days: int = 365,
 ) -> str:
     """Bind automatic cache reuse to code, data, folds, capital, and limits."""
     engine_path = Path(qf.__file__).resolve()
@@ -1543,8 +1545,8 @@ def _cache_signature(
         ],
         "drawdown_limit": drawdown_limit,
         "initial_capital": initial_capital,
-        "indicator_state": "warm",
-        "warmup_calendar_days": 365,
+        "indicator_state": indicator_state,
+        "warmup_calendar_days": warmup_calendar_days,
     }
     return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()[:20]
 
@@ -1656,6 +1658,8 @@ def main() -> int:
         drawdown_limit=args.drawdown_limit,
         initial_capital=args.capital,
         regime_data_fingerprint=regime_data_fingerprint,
+        indicator_state=runner.indicator_state,
+        warmup_calendar_days=runner.warmup_calendar_days,
     )
     report = optimizer.optimize(
         candidates,

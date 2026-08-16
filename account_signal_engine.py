@@ -436,8 +436,8 @@ class AccountSignalEngine:
         复用历史引擎的同一策略逻辑（唐奇安突破、双均线、ATR 通道）在
         ``as_of`` 当日收盘后做时点判断，不注入伪造历史持仓。只有至少一个
         策略给出买入信号、且数据完整（无未来观测、无陈旧数据）的标的才会
-        被纳入候选。前两个返回值是候选信号列表与（代码->策略比例）说明，
-        第三个是数据不足或陈旧的标的代码列表。
+        被纳入候选。返回 (候选信号列表, 代码->被阻断原因字典, 数据不足或
+        陈旧的标的代码列表)。
         """
         candidates: list[PointInTimeSignal] = []
         blocked: dict[str, str] = {}
@@ -723,22 +723,19 @@ class AccountSignalEngine:
                             "name": symbols.get(code, code),
                             "action": "BUY_CANDIDATE",
                             "shares": 0,
-                            "reason": (
-                                "current positive-240-session weak-regime leader"
-                            ),
+                            "reason": "current weak-regime leader",
                         }
                     )
 
         # 趋势路线：补齐新买入候选、目标股数与买入排序（P0-2）。
         trend_candidates: list[PointInTimeSignal] = []
         trend_blocked: dict[str, str] = {}
-        trend_unpriced: list[str] = []
         if (
             valuation_complete
             and decision.name == "frozen_trend_engine"
             and snapshot.cash > 0
         ):
-            trend_candidates, trend_blocked, trend_unpriced = (
+            trend_candidates, trend_blocked, _ = (
                 self._evaluate_trend_candidates(
                     symbols,
                     held,

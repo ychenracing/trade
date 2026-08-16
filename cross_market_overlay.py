@@ -188,12 +188,6 @@ SYMBOL_SUB_INDUSTRY: dict[str, str] = {
     "002409": "material", "300054": "material", "688300": "material",
     "688535": "material", "300666": "material", "600206": "material",
 }
-# The inverse: sub-industry -> held symbols it covers (only those above).
-_SUB_TO_SYMBOLS: dict[str, tuple[str, ...]] = {}
-for _ind, _members in RISK_SUB_BASKETS.items():
-    _SUB_TO_SYMBOLS[_ind] = tuple(
-        s for s in _members if s in SYMBOL_SUB_INDUSTRY
-    )
 # A sub-basket is considered under stress when its equal-weight 3-day return
 # is at or below this shock AND the majority of its observed names declined.
 RISK_SUB_FAST_RETURN_SHOCK = -0.06
@@ -746,7 +740,7 @@ class CrossMarketOverlay:
             return candidate.target_shares > current.target_shares
         return candidate.reason < current.reason
 
-    # ── catastrophe-cooldown buy blocking (report P0-4) ──────────────
+    # ── catastrophe-cooldown buy blocking (2026-08-07 report P0-4) ──
 
     def block_cooldown_buys(
         self, states: list, date: pd.Timestamp, date_pos: int
@@ -888,14 +882,11 @@ class CrossMarketOverlay:
                 max(MIN_LAYERED_STOP_PCT, giveback),
             )
             profit_stop = peak_close * (1.0 - giveback)
-            # Looseness floor: never tighten the profit-tier stop below this
-            # distance from peak (i.e. never trigger on a smaller pull-back than
-            # MIN_LAYERED_STOP_PCT). ``min`` keeps the *looser* of the computed
-            # giveback line and this guard — the earlier ``max`` forced every
-            # winner, including a 300%+ gainer, to exit on a shallow ~14%
-            # pull-back, which cut the biggest bull winners (report P0-1
-            # ablation "若保护线设置过紧损害牛市收益").
-            profit_stop = min(profit_stop, peak_close * (1.0 - MIN_LAYERED_STOP_PCT))
+            # Looseness floor: giveback is already clamped below by
+            # MIN_LAYERED_STOP_PCT (L888), so the stop can never sit tighter
+            # than a ~14% pull-back from peak. This keeps a 300%+ winner from
+            # being cut on a shallow pull-back that would harm bull returns
+            # (report P0-1 ablation "若保护线设置过紧损害牛市收益").
 
         # Binding line = the highest armed line (earliest trigger).
         candidates = (
