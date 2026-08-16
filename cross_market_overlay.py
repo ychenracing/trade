@@ -353,6 +353,9 @@ class CrossMarketOverlay:
         # bans on top of the dedicated weak-market strategy.
         self._outer_defensive_mode = False
         self._outer_route: str | None = None
+        # 2026-08-16 报告 P1-2: latest basket coverage measurement (governance audits).
+        self._last_metrics: dict[str, Any] = {}
+        self._last_metrics_date: pd.Timestamp | None = None
         self.events: list[dict[str, Any]] = []
 
     # ── per-position helpers ──────────────────────────────────────────
@@ -413,6 +416,31 @@ class CrossMarketOverlay:
                 "production_route" if self._outer_defensive_mode else "overlay"
             ),
         }
+
+    def coverage_metrics(self) -> dict[str, Any]:
+        """Return the latest risk-basket coverage measurement (2026-08-16 P1-2).
+
+        Pure audit accessor: exposes how much of the independent risk basket
+        and how many sub-industries were actually observed on the last graded
+        day, so governance layers can compute a risk confidence without
+        re-reading any decision state.
+        """
+        metrics = self._last_metrics or {}
+        return {
+            "observed": int(metrics.get("observed", 0)),
+            "observed_industries": int(metrics.get("observed_industries", 0)),
+            "total_basket": len(RISK_BASKET),
+            "total_industries": len(RISK_SUB_BASKETS),
+            "date": (
+                self._last_metrics_date.strftime("%Y-%m-%d")
+                if self._last_metrics_date is not None
+                else None
+            ),
+        }
+
+    def has_active_catastrophe_cooldown(self, date_pos: int) -> bool:
+        """Whether any symbol is still inside its catastrophe cooldown window."""
+        return any(expiry > date_pos for expiry in self._catastrophe_cooldown.values())
 
     def set_outer_route(self, route: str | None, date: pd.Timestamp) -> None:
         """Select one risk-execution owner without discarding overlay evidence."""
@@ -1043,6 +1071,10 @@ class CrossMarketOverlay:
         """
         previous = self._risk_level
         metrics = self._basket_metrics(states, date)
+        # 2026-08-16 报告 P1-2: keep the latest basket coverage measurement
+        # for governance audits (risk confidence) without altering any decision below.
+        self._last_metrics = dict(metrics)
+        self._last_metrics_date = date
         observed = metrics["observed"]
         observed_industries = metrics["observed_industries"]
         sub_stress = self._sub_basket_stress(states, date, held)

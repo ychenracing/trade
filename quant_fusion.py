@@ -7813,6 +7813,24 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 }
             )
         cm_overlay_peak = 0.0
+        # ── 风险治理观测层（2026-08-16 报告 P0-1/P0-3/P1-1/P1-2）────────
+        # 纯观测与输出：warmup 健康契约、逐日袖套共识、风险篮覆盖置信度、
+        # 独立风险意见与事后风险事件校准。不读取、不修改任何交易决策状态，
+        # 因此对既有回测路径是零行为漂移的（golden 指标不变）。
+        # 注：本段 P0/P1 编号指 2026-08-16 报告，与旧注释中 2026-08-07
+        # 报告的编号体系（如 P0-4 灾变冷却、P1-2 子行业收缩）不同。
+        import risk_governance as rg
+        from cross_market_overlay import SYMBOL_SUB_INDUSTRY
+
+        warmup_health = self._assess_run_warmup_health(
+            request, states, overlay_risk_frames
+        )
+        governance_days: list[dict[str, Any]] = []
+        risk_level_curve: list[int] = []
+        last_opinion: rg.RiskOpinion | None = None
+        last_agreement: rg.SleeveAgreementSnapshot | None = None
+        prev_consensus: float | None = None
+        prev_decline_streak = 0
         for idx, date in enumerate(reference_dates):
             # Inject account snapshot at the open of the as-of date so that
             # everything from this day onward uses the real account state
@@ -7847,9 +7865,10 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                         request.route_controller.current_route,
                         date,
                     )
-            assets = sum(
+            state_assets = [
                 state.sleeve._total_assets(state.data_map, date) for state in states
-            )
+            ]
+            assets = sum(state_assets)
             status = portfolio_risk.check_portfolio_risk(
                 assets,
                 date.strftime("%Y-%m-%d"),
@@ -7876,6 +7895,80 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
             held = self._held_portfolio_symbols(states)
             symbol_count_curve.append(
                 {"date": date.strftime("%Y-%m-%d"), "symbol_count": len(held)}
+            )
+            # ── 每日治理采样（当日交易与 overlay 分级已完成）──────────
+            risk_level_curve.append(
+                int(cm_overlay.risk_level) if cm_overlay is not None else 0
+            )
+            agreement = rg.compute_sleeve_agreement(
+                date.strftime("%Y-%m-%d"),
+                [state.sleeve.sleeve_name for state in states],
+                [
+                    {
+                        symbol
+                        for symbol, positions in state.sleeve.positions.items()
+                        if positions
+                    }
+                    for state in states
+                ],
+                state_assets,
+                [float(state.sleeve.cash) for state in states],
+                previous_consensus=prev_consensus,
+                previous_streak=prev_decline_streak,
+            )
+            prev_consensus = agreement.mean_consensus
+            prev_decline_streak = agreement.decline_streak
+            last_agreement = agreement
+            cov = (
+                cm_overlay.coverage_metrics() if cm_overlay is not None else {}
+            )
+            coverage = rg.basket_coverage_confidence(
+                int(cov.get("observed", 0)),
+                int(cov.get("total_basket", 0)),
+                int(cov.get("observed_industries", 0)),
+                int(cov.get("total_industries", 0)),
+                held,
+                SYMBOL_SUB_INDUSTRY,
+            )
+            overlay_snapshot = (
+                cm_overlay.state_snapshot() if cm_overlay is not None else {}
+            )
+            outer_route = (
+                request.route_controller.current_route
+                if request.route_controller is not None
+                and hasattr(request.route_controller, "current_route")
+                else None
+            )
+            last_opinion = rg.build_risk_opinion(
+                date.strftime("%Y-%m-%d"),
+                int(cm_overlay.risk_level) if cm_overlay is not None else 0,
+                coverage,
+                regime=str(
+                    getattr(states[0].sleeve, "_regime_state", "TREND")
+                ).lower(),
+                stressed_sub_industry=overlay_snapshot.get("stressed_subindustry"),
+                catastrophe_cooldown_active=(
+                    cm_overlay.has_active_catastrophe_cooldown(idx)
+                    if cm_overlay is not None
+                    else False
+                ),
+                outer_route=outer_route,
+                sleeve_consensus=agreement.mean_consensus,
+                sleeve_consensus_decline_streak=agreement.decline_streak,
+            )
+            governance_days.append(
+                {
+                    "date": date.strftime("%Y-%m-%d"),
+                    "risk_level": last_opinion.risk_level,
+                    "risk_confidence": round(last_opinion.risk_confidence, 4),
+                    "regime": last_opinion.regime,
+                    "bull_silent": last_opinion.bull_silent,
+                    "block_new_entries": last_opinion.block_new_entries,
+                    "block_pyramids": last_opinion.block_pyramids,
+                    "sleeve_consensus": round(agreement.mean_consensus, 4),
+                    "sleeve_decline_streak": agreement.decline_streak,
+                    "weakest_sleeve": agreement.weakest_sleeve,
+                }
             )
 
         results = self._finalize_ensemble_sleeves(states)
@@ -7953,8 +8046,111 @@ class BacktestEngine(_UniverseInvariantSleeveMixin, _EnsembleBacktestEngine):
                 "tail_sleeve_guard_active": self._tail_guard_active,
             }
         )
+        # ── 风险治理输出（2026-08-16 报告 P0-1/P0-2/P0-3/P1-1/P1-2）──────
+        # 全部为附加字段：不进入任何决策路径，仅随结果自动输出，供生产
+        # 契约（warmup 分级）、独立风险意见消费方与事后校准使用。
+        combined["warmup_health"] = warmup_health.as_dict()
+        combined["risk_opinion"] = (
+            last_opinion.as_dict() if last_opinion is not None else None
+        )
+        combined["sleeve_agreement"] = (
+            last_agreement.as_dict() if last_agreement is not None else None
+        )
+        combined["risk_governance_series"] = governance_days
+        combined["risk_event_calibration"] = self._calibrate_run_risk_events(
+            combined, risk_level_curve, overlay_risk_frames
+        )
         self.last_result = combined
         return combined
+
+    def _assess_run_warmup_health(
+        self,
+        request: _RunRequest,
+        states: list[_PreparedSleeveRun],
+        overlay_frames: dict[str, pd.DataFrame],
+    ) -> Any:
+        """2026-08-16 报告 P0-1：评估本次运行的预热健康契约（READY/DEGRADED/NOT_READY）。
+
+        - 指标就绪度按交易池逐股统计（cold 运行历史为 0 → NOT_READY）；
+        - 参考篮就绪度按独立 23 股风险篮实际可观察帧统计；
+        - regime 证据按袖套 regime 参考篮在场成员的新鲜度统计。
+        """
+        import risk_governance as rg
+        from cross_market_overlay import RISK_BASKET
+
+        data_map = states[0].data_map if states else {}
+        regime_frames = {
+            symbol: data_map[symbol]
+            for symbol in self.policy.regime_symbols
+            if symbol in data_map
+        }
+        return rg.assess_warmup_health(
+            data_map,
+            request.start_date,
+            request.end_date,
+            reference_symbols=RISK_BASKET,
+            reference_frames=overlay_frames,
+            regime_index_frames=regime_frames,
+        )
+
+    @staticmethod
+    def _basket_daily_returns_series(
+        overlay_frames: dict[str, pd.DataFrame],
+        calendar: Any,
+    ) -> list[float] | None:
+        """等权风险篮逐日收益（对齐回测日历），供事件校准使用。"""
+        frames = {
+            symbol: frame
+            for symbol, frame in overlay_frames.items()
+            if frame is not None and len(frame.index)
+        }
+        if not frames or len(calendar) == 0:
+            return None
+        closes = pd.DataFrame(
+            {
+                symbol: pd.to_numeric(frame["close"], errors="coerce")
+                .reindex(pd.DatetimeIndex(calendar))
+                .ffill()
+                for symbol, frame in frames.items()
+            }
+        )
+        returns = closes.pct_change().fillna(0.0)
+        return [float(v) for v in returns.mean(axis=1).tolist()]
+
+    def _calibrate_run_risk_events(
+        self,
+        combined: dict[str, Any],
+        risk_level_curve: list[int],
+        overlay_frames: dict[str, pd.DataFrame],
+    ) -> dict[str, Any]:
+        """2026-08-16 报告 P0-2：事后校准本次运行的风险事件分类器。
+
+        组合逐日资产来自聚合权益曲线；风险等级来自 overlay 逐日采样；
+        风险篮逐日收益按等权篮计算。日历长度不一致时显式返回
+        ``calendar_mismatch`` 而不是输出错误指标。
+        """
+        import risk_governance as rg
+
+        equity = combined.get("equity_curve")
+        if equity is None or len(equity.index) == 0:
+            return {"status": "insufficient_data", "events": [], "metrics": {}}
+        assets = [float(v) for v in equity["assets"].tolist()]
+        if len(assets) != len(risk_level_curve):
+            return {
+                "status": "calendar_mismatch",
+                "equity_days": len(assets),
+                "risk_level_days": len(risk_level_curve),
+                "events": [],
+                "metrics": {},
+            }
+        dates = [d.strftime("%Y-%m-%d") for d in equity.index]
+        basket = self._basket_daily_returns_series(overlay_frames, equity.index)
+        return rg.calibrate_risk_events(
+            dates,
+            assets,
+            risk_level_curve,
+            basket_daily_returns=basket,
+        )
 
     def _prepare_ensemble_sleeves(
         self, request: _RunRequest, effective_policy: PortfolioPolicy

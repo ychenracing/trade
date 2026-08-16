@@ -36,6 +36,19 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 
 子行业参数收缩（`subindustry_shrinkage`，默认 0.5 开启）：细分子行业参数画像（光模块、光器件、存储接口、芯片设计、设备、测试、材料、封装等）在解析时被拉向其粗粒度父画像，只对"允许细分"的参数（最大单票权重、ATR 倍数、风险预算）做小幅收缩，入场/出场周期、盈利保护、加仓与路由参数沿层级共享不收缩，从而降低薄样本过拟合，同时保留已验证的粗粒度趋势结构。
 
+## 风险治理观测层
+
+`risk_governance.py`（默认随引擎自动开启）在既有决策路径之上输出一套与交易动作分离的风险治理证据。全部为纯函数/纯数据结构，不读取、不修改任何交易决策状态，因此对既有回测路径零行为漂移（五池黄金指标逐位不变）：
+
+- **预热健康契约（P0-1）**：每次运行输出 `READY` / `DEGRADED` / `NOT_READY` 三级预热健康报告。逐股统计回测开始日前的可用交易日数，新上市股票不静默获得与成熟股票相同的置信度；独立风险篮（23 股）就绪度按篮内实际可观察帧统计；regime 证据完全缺失时判 `NOT_READY`（风险层失明，失败关闭），存在但陈旧时降级 `DEGRADED` 并输出 `regime_index_stale` 原因。日扫中 `NOT_READY` 自动抑制全部新增买入（fail-closed），`DEGRADED` 仅显著提示。
+- **风险事件校准（P0-2）**：事后独立检测"已实现冲击"（未来 20 日组合回撤超过 8%），对每次 L1/L2/L3 警报计算 1/3/5/10/20 日组合最低收益、风险篮最低收益、最大回撤与恢复状态，并汇总 Shock Precision / Recall、领先天数、误报机会成本、漏报冲击深度、牛市沉默率与 L1→L2 升级精度。
+- **独立风险意见（P0-3）**：`RiskOpinion` 对象回答"当前风险环境如何"（等级、置信度、市场状态、健康牛市沉默、禁新开仓/冻结加仓语义、建议总敞口上限、最弱簇与原因代码），供人工决策或其他系统作为独立风险裁判意见消费，不直接驱动交易。
+- **袖套共识证据（P1-1）**：逐日计算三袖套持仓共识（每只股票的平均持有袖套数）、按 3/2/1 袖套计数的分布、各袖套部署率、最弱袖套与连续退化计数。空仓簿按惯例记满共识、最弱袖套置空、退化计数清零。共识连续退化 3 日以上作为风险意见证据代码输出，不新增状态机。
+- **风险篮覆盖置信度（P1-2）**：置信度 = 0.45 × 观察成分比例 + 0.35 × 行业覆盖比例 + 0.20 × 持仓子行业映射比例。覆盖不足时置信度下降，风险意见据此降低强度而不是继续输出同样的 L2/L3 确信度；低于 0.60 时标记 `low_basket_coverage`。
+- **L1 冻结机会成本（P1-3）**：峰值停留在 L1（冻结加仓但未升级）的警报段记录其后 20 日组合收益中位数，用于度量 L1 冻结是否多数落在牛市正常回踩上。
+
+以上输出随回测结果自动附出：`warmup_health`、`risk_opinion`、`sleeve_agreement`、`risk_governance_series`（逐日）与 `risk_event_calibration`（事件表与指标）。
+
 ## 默认策略参数
 
 完整默认策略字段如下，具体默认值以 `_CoreBacktestEngine._default_config()` 为唯一事实来源：
@@ -105,6 +118,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 1. 新增标的必须在 `quant_fusion.py` 的行业映射中找到对应画像，否则 `strict_unmapped=True` 会直接失败。
 2. 新行业需重新建立参数画像和基线，不能直接套用现有科技参数。
 3. 使用 `stress_test_prefixes.py` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。
+4. 任何 cross-market / 风险层改动晋级前，还必须通过相对既有正式压力基线的晋级门（P0-4）：固定前缀牛市财富不低于基线 99%，随机子集回撤 P90/P95 最多恶化 0.5 个百分点，全场景最差回撤最多恶化 1 个百分点、最差收益最多恶化 2 个百分点，最差逐一加入财富最多下降 3 个百分点，账户订单 P90/最差最多增加 5/10 笔，风险减仓中位数最多增加 2 笔，且同一 seed 的全排列场景指标必须完全一致。
 
 ## 日扫信号与账户建议
 
@@ -115,6 +129,8 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 - `regime_state`：内部状态机状态——`TREND`、`TRANSITION`、`CHOPPY`。
 - `candidates`：候选股票列表，每只含 `symbol`、`score`、`target_weight`、`direction`、`reasons`（触发原因列表）。
 - `unavailable_symbols`：因数据缺失或陈旧而无法评估的股票（**不**表示"未入选"）。
+- `warmup_health`：预热健康契约（P0-1）——`READY` / `DEGRADED` / `NOT_READY` 三级状态、指标与参考篮就绪比例、新上市与陈旧股票清单及原因代码。`NOT_READY` 时输出不可作为正式交易信号，全部新增买入已失败关闭（`buys_suppressed=true`）；`DEGRADED` 时风险判断保留，仅显著提示。
+- `risk_opinion`：独立风险意见（P0-3）——风险等级与置信度、市场状态、健康牛市沉默标记、禁新开仓/冻结加仓语义、建议总敞口上限、最弱子行业簇、袖套共识与连续退化计数及原因代码。该意见与交易动作分离，只描述环境。
 
 当传入 `--account account.json` 时，额外输出：
 
@@ -167,6 +183,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 | `quant_fusion.py` | 趋势、执行、组合与风险核心引擎；含三袖套 ensemble、内部状态机、成交撮合与资金管理 |
 | `regime_adaptive.py` | 外层因果路由、`ProductionReplayEngine` 与弱市策略；逐日路由沿用同一生产账户和撮合路径 |
 | `cross_market_overlay.py` | 穿越牛熊叠加层；分层保护止损、统一风险动作优先级、灾变冷却、净敞口集中度风控 |
+| `risk_governance.py` | 风险治理观测层；预热健康契约、风险事件校准、独立风险意见、袖套共识与篮覆盖置信度（纯观测，零行为漂移） |
 | `account_signal_engine.py` | 真实账户时点建议引擎；读取持仓快照，输出买卖建议与风险信号 |
 | `market_data_contracts.py` | 指数与个股数据契约；OHLCV 校验、新鲜度检查、成交量单位标准化 |
 | `quant_fusion_optimizer.py` | 分阶段生产回放走步优化器；收益、回撤、交易三目标 Pareto 与严格 holdout 推广门 |
@@ -190,6 +207,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 |------|---------|
 | `test_quant_fusion.py` | 核心引擎单元测试 + 基线回归（黄金指标、前缀压力、寒武纪映射） |
 | `test_cross_market_overlay.py` | 穿越牛熊叠加层机制测试（分层止损、风险优先级、冷却期、集中度） |
+| `test_risk_governance.py` | 风险治理观测层测试（预热健康分级、事件校准指标、风险意见语义、覆盖置信度、袖套共识、overlay 审计接口） |
 | `test_regime_adaptive.py` | 外层路由与弱市策略单元测试 |
 | `test_regime_safety_contracts.py` | 弱市安全契约回归（失败关闭、指数未知、股票池完整性） |
 | `test_daily_signal_scan.py` | 日扫工具集成测试 |
@@ -252,6 +270,8 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 | 候选列表为空 | 所有股票动量为负 / 数据不足 | 正常现象，弱市中持有现金是预期行为 |
 | 回测收益与基线不符 | 数据版本 / 参数配置不一致 | 使用 `market_data/` 冻结数据、`--indicator-state warm`、默认参数，核对 `SHA256SUMS` |
 | 账户建议为零买入 | 现金不足 / 超仓位上限 / 集中度限制 | 检查 `risk_flags` 和 `actions[].reasons`，确认账户快照是否完整 |
+| 日扫提示 `NOT_READY` 并抑制买入 | 预热健康契约失败关闭（指标历史不足或 regime 证据缺失） | 检查 `warmup_health.reasons`（如 `indicator_warmup_incomplete`、`regime_index_missing_or_stale`、`new_symbols_without_full_history`），补齐预热数据或延长回看窗口后重跑 |
+| 日扫提示 `DEGRADED` | 数据陈旧 / 新上市股票 / 参考篮不完整 | 风险判断保留，按 `warmup_health.reasons` 人工确认新增风险动作；刷新数据可消除 `regime_index_stale` 与 `stale_symbols` |
 | 测试失败 | 基线变更未同步 | 检查 `backtest_golden_metrics.json` 是否与代码一致；任何策略变更都必须更新基线并说明原因 |
 
 ## 优势
@@ -298,18 +318,18 @@ python -m pytest -q
 
 # 类型检查（维护模块）
 pyright quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py \
-  account_signal_engine.py market_data_contracts.py benchmark_validation.py \
-  run_regime_validation.py
+  risk_governance.py account_signal_engine.py market_data_contracts.py \
+  benchmark_validation.py run_regime_validation.py
 
 # 安全审计
 bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
-  regime_adaptive.py cross_market_overlay.py account_signal_engine.py \
-  market_data_contracts.py benchmark_validation.py run_regime_validation.py \
-  validate_basket.py download_eastmoney_qfq.py backtest_universes.py \
-  backtest_cambricon_universe.py stress_test_prefixes.py -ll
+  regime_adaptive.py cross_market_overlay.py risk_governance.py \
+  account_signal_engine.py market_data_contracts.py benchmark_validation.py \
+  run_regime_validation.py validate_basket.py download_eastmoney_qfq.py \
+  backtest_universes.py backtest_cambricon_universe.py stress_test_prefixes.py -ll
 
 # 依赖漏洞检查
 pip-audit --strict -r requirements-lock.txt
 ```
 
-CI 在每次推送时自动执行上述全部检查，并额外运行五组趋势基线精确回归（1/3/5/13/22 只股票池）。任何策略、费用、数据或映射变更都必须更新基线并在 `BACKTEST_RESULTS.md` 中说明变化原因。
+CI 在每次推送时自动执行上述全部检查，并额外运行五组趋势基线回归（1/3/5/13/22 只股票池）：账户订单与袖套成交等整数指标要求精确一致，总收益与最大回撤等浮点指标仅容忍跨平台 1-ulp 级别的浮点求和顺序差异（`rel_tol=1e-9`，远小于任何真实行为漂移的量级）。任何策略、费用、数据或映射变更都必须更新基线并在 `BACKTEST_RESULTS.md` 中说明变化原因。

@@ -1247,6 +1247,27 @@ def _run_main() -> int:
         print("  (上次成功的信号文件未被覆盖)")
         return 1
 
+    # ── Warmup health contract (2026-08-16 报告 P0-1) ─────────────────
+    # NOT_READY: 输出不得作为正式交易信号 → 抑制买入（fail-closed）。
+    # DEGRADED: 风险判断保留，仅显著提示（不抑制信号）。
+    warmup_health = result.get("warmup_health") or {}
+    warmup_status = str(warmup_health.get("warmup_status", "UNKNOWN"))
+    risk_opinion = result.get("risk_opinion")
+    warmup_not_ready = warmup_status == "NOT_READY"
+    if warmup_not_ready:
+        suppress_buys = True
+        print("  ✗ 预热健康契约: NOT_READY — 输出不可作为正式交易信号。")
+        print(
+            "    原因: "
+            + "; ".join(warmup_health.get("reasons", []) or ["unknown"])
+        )
+        print("    所有新增买入已失败关闭；请补齐预热数据后重跑。")
+    elif warmup_status == "DEGRADED":
+        print(
+            "  ⚠ 预热健康契约: DEGRADED ("
+            + "; ".join(warmup_health.get("reasons", []) or ["unknown"])
+            + ") — 风险判断保留，新增风险动作建议人工确认。")
+
     # ── Extract latest pending signals ───────────────────────────────
     pending = result.get("pending_signals", [])
     historical_decision = result.get("deployment_decision", {})
@@ -1453,6 +1474,43 @@ def _run_main() -> int:
             )
         print()
 
+    # ── Independent risk opinion (2026-08-16 报告 P0-3) ──────────────
+    if isinstance(risk_opinion, dict):
+        print("─" * 72)
+        print("  独立风险意见 (与交易动作分离)")
+        print("─" * 72)
+        level = int(risk_opinion.get("risk_level", 0))
+        print(f"  日期:           {risk_opinion.get('date', '?')}")
+        print(f"  风险等级:       L{level}")
+        print(
+            f"  风险置信度:     {float(risk_opinion.get('risk_confidence', 0.0)):.2f}"
+            "  (风险篮覆盖度加权)"
+        )
+        print(f"  市场状态:       {risk_opinion.get('regime', '?')}")
+        print(
+            f"  健康牛市沉默:   {'是' if risk_opinion.get('bull_silent') else '否'}"
+        )
+        print(
+            f"  禁止新开仓:     {'是' if risk_opinion.get('block_new_entries') else '否'}"
+            f"   冻结加仓: {'是' if risk_opinion.get('block_pyramids') else '否'}"
+        )
+        print(
+            f"  建议总敞口上限: {float(risk_opinion.get('recommended_gross_cap', 1.0)):.0%}"
+        )
+        clusters = risk_opinion.get("weakest_clusters") or []
+        if clusters:
+            print(f"  最弱集群:       {', '.join(map(str, clusters))}")
+        consensus = risk_opinion.get("sleeve_consensus")
+        if consensus is not None:
+            print(
+                f"  袖套共识:       {float(consensus):.2f}"
+                f" (连续退化 {int(risk_opinion.get('sleeve_consensus_decline_streak', 0))} 日)"
+            )
+        reasons = risk_opinion.get("reason_codes") or []
+        if reasons:
+            print(f"  原因代码:       {', '.join(map(str, reasons))}")
+        print()
+
     # ── Build artifact and pre-serialize to detect nested NaN ───────
     # The artifact is pre-serialized (allow_nan=False) to detect NaN/Inf
     # in nested structures (pending_signals, risk_events) BEFORE writing
@@ -1492,7 +1550,10 @@ def _run_main() -> int:
             "buys_suppressed": suppress_buys,
             "risk_state_identity_mismatch": risk_identity_mismatch,
             "current_route_mismatch": live_route_mismatch,
+            "warmup_not_ready": warmup_not_ready,
         },
+        "warmup_health": warmup_health,
+        "risk_opinion": risk_opinion,
         "portfolio": {
             "final_assets": float(result["final_assets"]),
             "total_return": float(result["total_return"]),

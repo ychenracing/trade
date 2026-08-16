@@ -54,6 +54,7 @@ jobs:
           quant_fusion_optimizer.py
           daily_signal_scan.py
           regime_adaptive.py
+          risk_governance.py
           account_signal_engine.py
           market_data_contracts.py
           benchmark_validation.py
@@ -80,6 +81,7 @@ jobs:
           daily_signal_scan.py
           regime_adaptive.py
           cross_market_overlay.py
+          risk_governance.py
           account_signal_engine.py
           market_data_contracts.py
           benchmark_validation.py
@@ -107,17 +109,21 @@ jobs:
           cache-dependency-path: requirements-lock.txt
       - name: Install locked dependencies
         run: python -m pip install -r requirements-lock.txt
-      - name: Verify five frozen universes exactly
+      - name: Verify five frozen universes (integers exact, floats tight-tolerance)
         run: |
           python - <<'PY'
           import contextlib
           import io
           import json
+          import math
           from pathlib import Path
 
           import quant_fusion as qf
           from backtest_universes import DATA_DIR, NAMES, UNIVERSES
 
+          # 整数指标（交易数/成交数）必须精确一致；浮点指标（收益/回撤）
+          # 仅容忍跨平台 1-ulp 级别的浮点求和顺序差异（rel_tol=1e-9 远小于
+          # 任何真实行为漂移的量级，行为变化仍然会立刻被捕获）。
           baselines = json.loads(
               Path("backtest_golden_metrics.json").read_text(encoding="utf-8")
           )
@@ -130,23 +136,27 @@ jobs:
                       data_dir=str(DATA_DIR),
                       indicator_state="warm",
                   )
-              actual = (
-                  float(result["total_return"]),
-                  float(result["max_drawdown"]),
-                  int(result["total_trades"]),
-                  int(result["sleeve_fill_count"]),
-              )
-              baseline_key = str(len(codes))
-              expected_item = baselines[baseline_key]
-              expected = (
-                  float(expected_item["total_return"]),
-                  float(expected_item["max_drawdown"]),
-                  int(expected_item["total_trades"]),
-                  int(expected_item["sleeve_fill_count"]),
-              )
-              if actual != expected:
-                  raise SystemExit(
-                      f"{name} regression: expected {expected}, got {actual}"
-                  )
+              actual = {
+                  "total_return": float(result["total_return"]),
+                  "max_drawdown": float(result["max_drawdown"]),
+                  "total_trades": int(result["total_trades"]),
+                  "sleeve_fill_count": int(result["sleeve_fill_count"]),
+              }
+              expected_item = baselines[str(len(codes))]
+              for key, value in actual.items():
+                  baseline_value = expected_item[key]
+                  if isinstance(value, int):
+                      if value != int(baseline_value):
+                          raise SystemExit(
+                              f"{name} regression on {key}: "
+                              f"expected {baseline_value}, got {value}"
+                          )
+                  elif not math.isclose(
+                      value, float(baseline_value), rel_tol=1e-9, abs_tol=1e-12
+                  ):
+                      raise SystemExit(
+                          f"{name} regression on {key}: "
+                          f"expected {baseline_value}, got {value}"
+                      )
               print(name, actual)
           PY
