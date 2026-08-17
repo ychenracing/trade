@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import stress_test_prefixes as stress
 
@@ -87,6 +89,19 @@ class StressScenarioTests(unittest.TestCase):
             stress._validated_checkpoint_results(
                 {"results": [result]}, scenarios
             )
+
+    def test_run_signature_fingerprints_canonical_package_sources(self) -> None:
+        captured: list[list[Path]] = []
+
+        def fingerprint(paths: list[Path]) -> str:
+            captured.append(paths)
+            return "fingerprint"
+
+        with patch.object(stress, "_tree_fingerprint", side_effect=fingerprint):
+            stress._run_signature([], stress.DATA_DIR, stress.REGIME_DATA_DIR)
+        source_paths = {path.relative_to(stress.ROOT).as_posix() for path in captured[0]}
+        self.assertIn("quantfusion/engine/core.py", source_paths)
+        self.assertIn("quantfusion/risk/overlay/policy.py", source_paths)
 
 
 if __name__ == "__main__":

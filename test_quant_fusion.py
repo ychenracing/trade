@@ -287,8 +287,9 @@ class StandaloneAndDataSourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             isolated = Path(directory) / source.name
             shutil.copy2(source, isolated)
+            shutil.copytree(ROOT / "quantfusion", Path(directory) / "quantfusion")
             completed = subprocess.run(
-                [sys.executable, "-I", str(isolated), "--help"],
+                [sys.executable, str(isolated), "--help"],
                 cwd=directory,
                 check=False,
                 capture_output=True,
@@ -327,40 +328,35 @@ class StandaloneAndDataSourceTests(unittest.TestCase):
                 "volume": [1_000.0, 1_200.0],
             }
         )
-        previous_cache = quant.DataFetcher._cache_dir
-        quant.DataFetcher._cache_dir = None  # force the raw provider failover path
-        try:
-            with (
-                mock.patch.object(quant, "ak", object()),
-                mock.patch.object(
-                    quant.DataFetcher,
-                    "_fetch_eastmoney",
-                    side_effect=RuntimeError("provider unavailable"),
-                ) as eastmoney,
-                mock.patch.object(
-                    quant.DataFetcher,
-                    "_fetch_sina",
-                    return_value=raw,
-                ) as sina,
-                mock.patch.object(quant.DataFetcher, "_fetch_tencent") as tencent,
-            ):
-                frame = quant.DataFetcher.load_stock_data(
-                    "300308",
-                    "2026-01-02",
-                    "2026-01-05",
-                    data_dir=None,
-                )
-            eastmoney.assert_called_once()
-            sina.assert_called_once()
-            tencent.assert_not_called()
-            self.assertEqual(len(frame), 2)
-        finally:
-            quant.DataFetcher._cache_dir = previous_cache
+        with (
+            mock.patch("quantfusion.data.providers.ak", object()),
+            mock.patch.object(
+                quant.DataFetcher,
+                "_fetch_eastmoney",
+                side_effect=RuntimeError("provider unavailable"),
+            ) as eastmoney,
+            mock.patch.object(
+                quant.DataFetcher,
+                "_fetch_sina",
+                return_value=raw,
+            ) as sina,
+            mock.patch.object(quant.DataFetcher, "_fetch_tencent") as tencent,
+        ):
+            frame = quant.DataFetcher.load_stock_data(
+                "300308",
+                "2026-01-02",
+                "2026-01-05",
+                data_dir=None,
+            )
+        eastmoney.assert_called_once()
+        sina.assert_called_once()
+        tencent.assert_not_called()
+        self.assertEqual(len(frame), 2)
 
     def test_eastmoney_provider_requests_forward_adjusted_akshare_data(self) -> None:
         provider = mock.Mock()
         provider.stock_zh_a_hist.return_value = pd.DataFrame()
-        with mock.patch.object(quant, "ak", provider):
+        with mock.patch("quantfusion.data.providers.ak", provider):
             quant.DataFetcher._fetch_eastmoney(
                 "300308",
                 "2025-04-01",

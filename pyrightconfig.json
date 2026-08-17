@@ -1,0 +1,6 @@
+{
+  "include": ["quantfusion"],
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": false,
+  "reportMissingTypeStubs": "none"
+}

@@ -10,7 +10,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
-import quant_fusion as qf
+from quantfusion.application import engine_api as qf
 
 
 ROOT = Path(__file__).resolve().parent

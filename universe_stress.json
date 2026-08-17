@@ -87,8 +87,8 @@
     "regime_choppy_exit_ratio": 0.3,
     "regime_transition_exit_ratio": 0.0
   },
-  "data_directory": "/workspace/scratch/8e2c32e6d3f6/trade/market_data",
-  "regime_data_directory": "/workspace/scratch/8e2c32e6d3f6/trade/historical_data",
+  "data_directory": "/workspace/scratch/1cf1663a384d/trade/market_data",
+  "regime_data_directory": "/workspace/scratch/1cf1663a384d/trade/historical_data",
   "start_date": "2025-04-01",
   "end_date": "2026-07-20",
   "indicator_state": "warm",
@@ -97,7 +97,7 @@
     20260817,
     20260827
   ],
-  "run_signature": "9131f9e59d66659ade1bbca594c2efda1ec9c35a3b8c93913bffc988218705c2",
+  "run_signature": "b0152bd06e1d8f8d3f8a8dc9479f0683d8b46fdef666be3470ef97ac362a3c2d",
   "scenario_count": 983,
   "random_samples_per_size_per_seed": 50,
   "permutation_samples_per_seed": 50,
@@ -124,97 +124,169 @@
       "all_worst_account_orders": 143.0
     }
   },
+  "promotion_gates": {
+    "baseline": "incumbent_universe_stress",
+    "permutation_invariance": {
+      "checked_groups": 3,
+      "worst_deviation": 0.0,
+      "invariant": true
+    },
+    "status": "compared",
+    "incumbent_scenario_count": 983,
+    "shared_scenario_count": 983,
+    "tolerances": {
+      "prefix_wealth_ratio": 0.99,
+      "dd_p90": 0.005,
+      "dd_p95": 0.005,
+      "worst_dd": 0.01,
+      "worst_return": 0.02,
+      "add_one_wealth": 0.03,
+      "trades_p90": 5.0,
+      "trades_worst": 10.0,
+      "risk_action_median": 2.0
+    },
+    "passed": true,
+    "checks": {
+      "permutation_invariant": true,
+      "fixed_prefix_wealth_at_least_99pct": true,
+      "random_dd_p90_not_worse": true,
+      "random_dd_p95_not_worse": true,
+      "random_worst_return_not_worse": true,
+      "random_trades_p90_not_increased": true,
+      "random_risk_actions_not_increased": true,
+      "all_worst_dd_not_significantly_worse": true,
+      "all_worst_trades_not_increased": true,
+      "leave_one_out_worst_return_not_worse": true,
+      "add_one_discontinuity_not_worse": true
+    },
+    "observed": {
+      "prefix_wealth_ratio_min": 1.0,
+      "random_dd_p90": 0.18848588756503767,
+      "random_dd_p95": 0.193850755202224,
+      "random_worst_return": -0.12105599263799971,
+      "random_trades_p90": 48.0,
+      "random_risk_action_orders_median": 20.0,
+      "all_worst_dd": -0.2120727662037726,
+      "all_worst_trades": 143.0,
+      "leave_one_out_worst_return": 0.9491875556612503,
+      "worst_add_one_wealth_change": -0.1680246566290624
+    }
+  },
   "summary": {
     "all": {
       "scenario_count": 983,
       "return_median": 1.7127882040552498,
       "return_p10": 0.11878029085377523,
+      "return_p05": 0.059915617117999975,
       "return_worst": -0.12105599263799971,
       "drawdown_median": -0.15924818759853113,
       "drawdown_p10": -0.1857051605972202,
+      "drawdown_p50_severity": 0.15924818759853113,
       "drawdown_p90_severity": 0.1857051605972202,
+      "drawdown_p95_severity": 0.19322531160069123,
       "drawdown_worst": -0.2120727662037726,
       "trades_median": 29.0,
       "trades_p90": 100.0,
       "trades_worst": 143.0,
       "sleeve_fills_p90": 228.0,
-      "sleeve_fills_worst": 306.0
+      "sleeve_fills_worst": 306.0,
+      "risk_action_orders_median": 24.0
     },
     "by_type": {
       "add_one": {
         "scenario_count": 39,
         "return_median": 12.371641169892628,
         "return_p10": 10.345208286022729,
+        "return_p05": 9.989653948353338,
         "return_worst": 9.658952804965624,
         "drawdown_median": -0.16121328867129503,
         "drawdown_p10": -0.1797235931587867,
+        "drawdown_p50_severity": 0.16121328867129503,
         "drawdown_p90_severity": 0.1797235931587867,
+        "drawdown_p95_severity": 0.1797235931587867,
         "drawdown_worst": -0.1838853916111568,
         "trades_median": 101.0,
         "trades_p90": 115.4,
         "trades_worst": 130.0,
         "sleeve_fills_p90": 246.0,
-        "sleeve_fills_worst": 293.0
+        "sleeve_fills_worst": 293.0,
+        "risk_action_orders_median": 66.0
       },
       "leave_one_out": {
         "scenario_count": 22,
         "return_median": 10.708367810813,
         "return_p10": 2.076490021744475,
+        "return_p05": 1.5746493697617376,
         "return_worst": 0.9491875556612503,
         "drawdown_median": -0.15924818759853113,
         "drawdown_p10": -0.17416357833338802,
+        "drawdown_p50_severity": 0.15924818759853113,
         "drawdown_p90_severity": 0.17416357833338802,
+        "drawdown_p95_severity": 0.17580284883317712,
         "drawdown_worst": -0.19046660910299124,
         "trades_median": 100.0,
         "trades_p90": 115.50000000000001,
         "trades_worst": 130.0,
         "sleeve_fills_p90": 263.20000000000005,
-        "sleeve_fills_worst": 273.0
+        "sleeve_fills_worst": 273.0,
+        "risk_action_orders_median": 70.0
       },
       "permutation": {
         "scenario_count": 150,
         "return_median": 10.808377540216252,
         "return_p10": 10.808377540216252,
+        "return_p05": 10.808377540216252,
         "return_worst": 10.808377540216252,
         "drawdown_median": -0.15924818759853113,
         "drawdown_p10": -0.15924818759853113,
+        "drawdown_p50_severity": 0.15924818759853113,
         "drawdown_p90_severity": 0.15924818759853113,
+        "drawdown_p95_severity": 0.15924818759853113,
         "drawdown_worst": -0.15924818759853113,
         "trades_median": 100.0,
         "trades_p90": 100.0,
         "trades_worst": 100.0,
         "sleeve_fills_p90": 228.0,
-        "sleeve_fills_worst": 228.0
+        "sleeve_fills_worst": 228.0,
+        "risk_action_orders_median": 70.0
       },
       "prefix": {
         "scenario_count": 22,
         "return_median": 10.72278921807844,
         "return_p10": 8.930098497051626,
+        "return_p05": 6.71599016039407,
         "return_worst": 5.308949754885001,
         "drawdown_median": -0.15924818759853113,
         "drawdown_p10": -0.17843920175185302,
+        "drawdown_p50_severity": 0.15924818759853113,
         "drawdown_p90_severity": 0.17843920175185302,
+        "drawdown_p95_severity": 0.18317947002064955,
         "drawdown_worst": -0.18998415088010956,
         "trades_median": 100.0,
         "trades_p90": 129.70000000000002,
         "trades_worst": 137.0,
         "sleeve_fills_p90": 262.0,
-        "sleeve_fills_worst": 288.0
+        "sleeve_fills_worst": 288.0,
+        "risk_action_orders_median": 72.5
       },
       "random_subset": {
         "scenario_count": 750,
         "return_median": 1.1718911095646878,
         "return_p10": 0.08704760129842522,
+        "return_p05": 0.040205501631750185,
         "return_worst": -0.12105599263799971,
         "drawdown_median": -0.15611406645756798,
         "drawdown_p10": -0.18848588756503765,
+        "drawdown_p50_severity": 0.15611406645756798,
         "drawdown_p90_severity": 0.18848588756503767,
+        "drawdown_p95_severity": 0.193850755202224,
         "drawdown_worst": -0.2120727662037726,
         "trades_median": 23.0,
         "trades_p90": 48.0,
         "trades_worst": 143.0,
         "sleeve_fills_p90": 127.0,
-        "sleeve_fills_worst": 306.0
+        "sleeve_fills_worst": 306.0,
+        "risk_action_orders_median": 20.0
       }
     }
   },

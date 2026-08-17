@@ -163,12 +163,14 @@ class IndexParsingFailClosedTests(unittest.TestCase):
 
     def test_unparseable_price_is_rejected(self) -> None:
         frame = self._frame()
+        frame["open"] = frame["open"].astype(object)
         frame.loc[1, "open"] = "bad"
         with self.assertRaisesRegex(ValueError, "unparseable date or OHLC"):
             contracts._normalize_index_frame(frame, end_date="2025-12-31")
 
     def test_unparseable_volume_is_rejected(self) -> None:
         frame = self._frame()
+        frame["volume"] = frame["volume"].astype(object)
         frame.loc[1, "volume"] = "bad"
         with self.assertRaisesRegex(ValueError, "unparseable volume"):
             contracts._normalize_index_frame(frame, end_date="2025-12-31")

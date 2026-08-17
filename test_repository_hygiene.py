@@ -17,6 +17,8 @@ EXPECTED_MARKDOWN = {
     Path("README.md"),
     Path("BACKTEST_RESULTS.md"),
     Path("TRANSFORMATION_REPORT.md"),
+    Path("docs/ARCHITECTURE.md"),
+    Path("docs/superpowers/plans/2026-08-17-engineering-refactor.md"),
     Path("historical_data/README.md"),
 }
 OBSOLETE_DOCUMENTS = {

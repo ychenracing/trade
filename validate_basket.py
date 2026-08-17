@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pandas as pd
 
-import quant_fusion as qf
+from quantfusion.application import engine_api as qf
 
 REGIME_BASKET = ("300308", "300502", "300394", "688008", "603986")
 BROAD_INDEX = "000300"  # 沪深300

@@ -19,9 +19,9 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
-import quant_fusion as qf
+from quantfusion.application import engine_api as qf
 from backtest_universes import NAMES, UNIVERSES
-from regime_adaptive import RegimeAdaptiveBacktestEngine
+from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
 
 
 ROOT = Path(__file__).resolve().parent

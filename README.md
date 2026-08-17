@@ -4,7 +4,7 @@
 
 Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线量化研究与人工决策支持项目。它用于收盘后回测、组合验证、日常信号扫描和真实账户持仓审视，不连接券商、不自动下单，也不承诺未来收益。
 
-生产趋势引擎位于 `quant_fusion.py`，外层因果路由位于 `regime_adaptive.py`。项目提供冻结行情、哈希校验、严格 JSON 工件、参数搜索、账户时点建议和持续集成门禁。
+规范实现位于 `quantfusion/` 模块化单体，根 `quant_fusion.py`、`regime_adaptive.py` 等文件仅保留兼容 API 或命令行入口。项目提供冻结行情、哈希校验、严格 JSON 工件、参数搜索、账户时点建议和持续集成门禁。
 
 ## 最重要的使用边界
 
@@ -51,7 +51,7 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 
 ## 默认策略参数
 
-完整默认策略字段如下，具体默认值以 `_CoreBacktestEngine._default_config()` 为唯一事实来源：
+完整默认策略字段如下，具体默认值以公共函数 `quantfusion.config.engine.default_engine_config()` 为唯一事实来源；历史 `_CoreBacktestEngine._default_config()` 只做兼容委托：
 
 策略参数：`entry_period`、`exit_period`、`adx_threshold`、`adx_period`、`atr_period`、`rsi_period`、`ma_short`、`ma_long`、`atr_multiplier`、`trail_atr_mult`、`channel_mult`、`channel_lower_mult`、`risk_pct`、`hard_stop`、`strategy_weight`、`max_symbol_weight`、`max_total_weight`、`max_units`、`max_drawdown`、`daily_loss_limit`、`sector_guard_enabled`、`sector_guard_min_symbols`、`sector_shock_return`、`sector_shock_breadth`、`sector_shock_ma`、`sector_shock_window`、`sector_shock_confirmations`、`sector_recovery_ma`、`sector_recovery_breadth`、`sector_recovery_confirmations`、`symbol_level_sell_veto`、`momentum_lookback`、`max_positions`、`group_min_slots`、`fusion_single_scale`、`fusion_double_scale`、`fusion_triple_scale`、`profit_lock_activation`、`profit_lock_giveback`、`reversal_break_giveback`、`reversal_exit_period`、`reversal_loss_cut`、`reversal_turtle_enabled`、`reversal_dual_ma_enabled`、`reversal_atr_channel_enabled`、`combined_group_weight_limits`、`liquidate_on_circuit_breaker`、`strict_unmapped`、`commission_rate`、`stamp_duty`、`slippage`、`min_commission`、`max_pending_buy_days`、`pyramid_add_atr`、`pyramid_risk_decay`、`atr_method`、`limit_price_epsilon`、`per_symbol_limit_pct`、`st_symbols`、`risk_free_rate`、`market_regime_enabled`、`regime_ewi_lookback`、`regime_breadth_ma_long`、`regime_adx_trend`、`regime_adx_choppy`、`regime_hurst_window`、`regime_hurst_trend`、`regime_hurst_choppy`、`regime_vol_lookback`、`regime_vol_extreme_pct`、`regime_ewi_slope_trend`、`regime_ewi_slope_choppy`、`regime_score_trend`、`regime_score_choppy`、`regime_choppy_confirmations`、`regime_trend_confirmations`、`regime_recovery_confirmations`、`regime_min_state_hold`、`regime_transition_scale`、`regime_transition_pyramid_scale`、`regime_transition_trim_confirmations`、`regime_trend_to_transition_confirmations`、`regime_choppy_exit_ratio`、`regime_transition_exit_ratio`、`enable_cm_overlay`、`cm_overlay_shock_trim`、`cm_independent_risk_basket`、`cm_trend_health_protection`、`cm_risk_continuous_confirm_days`、`cm_risk_level2_drawdown`、`cm_risk_level3_drawdown`、`cm_risk_severe_direct_return`、`dynamic_sleeve_weights`、`transition_fast_weight`、`transition_base_weight`、`transition_slow_weight`、`choppy_fast_weight`、`choppy_base_weight`、`choppy_slow_weight`、`adaptive_max_positions`、`transition_max_positions`、`choppy_max_positions`、`sticky_candidates`、`adaptive_sticky_candidates`、`sticky_min_score_gap`、`sticky_confirm_days`、`sticky_cycle_days`、`sticky_rotated_cooldown_days`、`concentrated_account_rearm_days`、`incomplete_reference_max_total_weight`、`established_expansion_min_score`、`subindustry_shrinkage`。
 
@@ -115,7 +115,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 ### 股票池扩展
 
-1. 新增标的必须在 `quant_fusion.py` 的行业映射中找到对应画像，否则 `strict_unmapped=True` 会直接失败。
+1. 新增标的必须在 `quantfusion.engine.configuration` 的行业映射中找到对应画像，否则 `strict_unmapped=True` 会直接失败。
 2. 新行业需重新建立参数画像和基线，不能直接套用现有科技参数。
 3. 使用 `stress_test_prefixes.py` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。
 4. 任何 cross-market / 风险层改动晋级前，还必须通过相对既有正式压力基线的晋级门（P0-4）：固定前缀牛市财富不低于基线 99%，随机子集回撤 P90/P95 最多恶化 0.5 个百分点，全场景最差回撤最多恶化 1 个百分点、最差收益最多恶化 2 个百分点，最差逐一加入财富最多下降 3 个百分点，账户订单 P90/最差最多增加 5/10 笔，风险减仓中位数最多增加 2 笔，且同一 seed 的全排列场景指标必须完全一致。
@@ -176,18 +176,25 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 ## 仓库结构
 
-### 核心模块
+### 规范模块
 
-| 文件 | 职责 |
+| 目录 | 职责 |
 |------|------|
-| `quant_fusion.py` | 趋势、执行、组合与风险核心引擎；含三袖套 ensemble、内部状态机、成交撮合与资金管理 |
-| `regime_adaptive.py` | 外层因果路由、`ProductionReplayEngine` 与弱市策略；逐日路由沿用同一生产账户和撮合路径 |
-| `cross_market_overlay.py` | 穿越牛熊叠加层；分层保护止损、统一风险动作优先级、灾变冷却、净敞口集中度风控 |
-| `risk_governance.py` | 风险治理观测层；预热健康契约、风险事件校准、独立风险意见、袖套共识与篮覆盖置信度（纯观测，零行为漂移） |
-| `account_signal_engine.py` | 真实账户时点建议引擎；读取持仓快照，输出买卖建议与风险信号 |
-| `market_data_contracts.py` | 指数与个股数据契约；OHLCV 校验、新鲜度检查、成交量单位标准化 |
-| `quant_fusion_optimizer.py` | 分阶段生产回放走步优化器；收益、回撤、交易三目标 Pareto 与严格 holdout 推广门 |
-| `daily_signal_scan.py` | 日扫入口；拉取数据、冻结可验证快照、路由判断、生成候选与账户建议工件 |
+| `quantfusion/domain` | 稳定领域模型、数值校验、整手和涨跌停规则 |
+| `quantfusion/config` | 引擎、组合、路由、风险叠加层与冻结股票池配置事实源 |
+| `quantfusion/data` | 行情供应方、数据契约、显式缓存上下文和冻结快照 |
+| `quantfusion/strategy` | 趋势策略和弱市策略 |
+| `quantfusion/execution` | 信号、订单优先级、T+1 队列与成交流程 |
+| `quantfusion/portfolio` | 跨袖套分配、买入授权、订单净额与组合约束 |
+| `quantfusion/risk` | 组合风险、治理观测与输出不可变 `RiskAction` 的跨市场叠加层 |
+| `quantfusion/regime` | 指数证据、路由模型和纯状态转换 |
+| `quantfusion/engine` | 因果回测、袖套组合与唯一 `ProductionReplayEngine` 实现 |
+| `quantfusion/account` | 账户模型、快照校验、候选评分与目标仓位 |
+| `quantfusion/io` | 严格 JSON 工件、连续风险状态与原子发布 |
+| `quantfusion/research` | 研究候选、走步评估、搜索、推广门与可续跑工件 |
+| `quantfusion/application` | 回测、日扫、账户、优化器与正式压力运行编排 |
+
+根 `quant_fusion.py`、`regime_adaptive.py`、`cross_market_overlay.py`、`risk_governance.py`、`account_signal_engine.py`、`market_data_contracts.py`、`daily_signal_scan.py`、`quant_fusion_optimizer.py` 和 `stress_test_prefixes.py` 均为兼容门面或薄命令行；新代码不得反向依赖这些文件。
 
 ### 工具脚本
 
@@ -199,7 +206,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 | `download_eastmoney_qfq.py` | 东方财富前复权数据下载器 |
 | `backtest_universes.py` | 多股票池批量回测，生成 `universe_backtest.json` |
 | `backtest_cambricon_universe.py` | 寒武纪九股池专项回测，生成 `cambricon_universe_backtest.json` |
-| `stress_test_prefixes.py` | 可续跑的 983 场景生产回放压力测试，记录账户订单、袖套成交和原因归因 |
+| `stress_test_prefixes.py` | `quantfusion.application.stress` 的薄命令行；运行可续跑的 983 场景生产回放压力测试 |
 
 ### 测试文件
 
@@ -210,7 +217,9 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 | `test_risk_governance.py` | 风险治理观测层测试（预热健康分级、事件校准指标、风险意见语义、覆盖置信度、袖套共识、overlay 审计接口） |
 | `test_regime_adaptive.py` | 外层路由与弱市策略单元测试 |
 | `test_regime_safety_contracts.py` | 弱市安全契约回归（失败关闭、指数未知、股票池完整性） |
-| `test_daily_signal_scan.py` | 日扫工具集成测试 |
+| `tests/unit/` | 按领域模块组织的叶子模块、配置、缓存、风险动作与研究单元测试 |
+| `tests/integration/test_daily_*.py` | 按冻结快照、状态、信号服务、schema、命令行和工件事务拆分的日扫集成测试 |
+| `tests/contract/test_architecture.py` | 依赖方向、循环、私有导入、兼容 API 与薄门面架构守卫 |
 | `test_fail_closed_boundaries.py` | 失败关闭边界测试（不可解析数据、缺失指数、格式异常） |
 | `test_quant_fusion_optimizer.py` | 优化器单元测试（走步、候选淘汰、holdout 对照） |
 | `test_repository_hygiene.py` | 仓库卫生测试（文档一致性、中文文档、生成工件隔离） |
@@ -231,6 +240,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 | `README.md` | 本文件，项目总览与使用指南 |
 | `BACKTEST_RESULTS.md` | 当前有效回测与验证结论，基线数字的权威来源 |
 | `TRANSFORMATION_REPORT.md` | 本轮 P0/P1 改造的完整设计、验证与决策记录 |
+| `docs/ARCHITECTURE.md` | 模块归属、依赖规则、状态所有权、事务顺序与扩展指南 |
 | `historical_data/README.md` | 历史路由数据契约与使用说明 |
 | `LICENSE` | MIT 开源协议 |
 | `requirements.txt` | 运行时依赖 |
@@ -258,14 +268,15 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 - `BACKTEST_RESULTS.md` 是当前有效基线的权威记录，所有数字以它为准。
 - `TRANSFORMATION_REPORT.md` 是本轮 P0/P1 改造的完整档案，包括设计决策、验证过程和前后对比。
+- `docs/ARCHITECTURE.md` 说明规范包边界、依赖守卫、状态所有权和扩展方式。
 - `historical_data/README.md` 说明路由数据文件格式与校验方式。
-- 三者分工：README 负责"怎么用"，BACKTEST_RESULTS 负责"数字准不准"，TRANSFORMATION_REPORT 负责"为什么这样改"。
+- 各文档分工：README 负责"怎么用"，BACKTEST_RESULTS 负责"数字准不准"，TRANSFORMATION_REPORT 负责"为什么这样改"，ARCHITECTURE 负责"代码放哪里"。
 
 ## 故障排查
 
 | 现象 | 可能原因 | 处理方式 |
 |------|---------|---------|
-| `strict_unmapped` 报错 | 新股票未在行业映射中注册 | 在 `quant_fusion.py` 中添加映射，或临时使用 `strict_unmapped=False`（仅研究用） |
+| `strict_unmapped` 报错 | 新股票未在行业映射中注册 | 在 `quantfusion.engine.configuration` 中添加映射，或临时使用 `strict_unmapped=False`（仅研究用） |
 | 路由结果为 `cash` | 指数数据缺失 / 陈旧 / 不可解析 | 检查 `historical_data/` 中的 `000300.csv` 与 `000682.csv` 是否最新 |
 | 候选列表为空 | 所有股票动量为负 / 数据不足 | 正常现象，弱市中持有现金是预期行为 |
 | 回测收益与基线不符 | 数据版本 / 参数配置不一致 | 使用 `market_data/` 冻结数据、`--indicator-state warm`、默认参数，核对 `SHA256SUMS` |
@@ -276,11 +287,11 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 ## 优势
 
-因果执行边界明确，A 股手数、费用、滑点、涨跌停和成交量容量较完整；数据与风险状态失败关闭；交易、拒单、融合、风险事件和有效配置可审计；趋势基线有精确回归保护。
+模块依赖单向且有架构测试保护；生产、研究和压力验证共享同一回放事实源；因果执行边界明确，A 股手数、费用、滑点、涨跌停和成交量容量较完整；数据与风险状态失败关闭；交易、拒单、融合、风险事件和有效配置可审计；趋势基线有精确回归保护。
 
 ## 缺点和已知限制
 
-核心文件较大且状态机复杂；参数画像包含行业先验；股票池组成会显著影响结果；日线模型不能重现盘中路径和排队成交；弱市样本存在幸存者偏差和相关性；前复权数据可能被数据源重述；高历史收益不能外推为长期稳定收益。
+部分引擎配置和日扫事务编排仍因严格顺序约束而较长；协作式 mixin 的属性关系不能被 Pyright 完整表达；参数画像包含行业先验；股票池组成会显著影响结果；日线模型不能重现盘中路径和排队成交；弱市样本存在幸存者偏差和相关性；前复权数据可能被数据源重述；高历史收益不能外推为长期稳定收益。
 
 ## 适用行情
 
@@ -296,10 +307,10 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 ## 还能继续提升的方向
 
-1. 在保持公共接口和精确回归不变的前提下拆分核心文件。
+1. 在不复制配置事实源的前提下，为协作式 mixin 逐步补充结构化 Protocol。
 2. 建立时间点可得的行业、上市、退市、停牌和交易规则数据库。
 3. 增加滚动样本外、区块自助法、多成本情景和真实人工执行对账。
-4. 扩大弱市验证年份和低相关股票池，并提高核心模块静态类型覆盖率。
+4. 扩大弱市验证年份和低相关股票池，并继续收紧规范包静态类型规则。
 
 ## 开发与质量门禁
 
@@ -316,13 +327,11 @@ ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
 # 完整测试
 python -m pytest -q
 
-# 类型检查（维护模块）
-pyright quant_fusion_optimizer.py daily_signal_scan.py regime_adaptive.py \
-  risk_governance.py account_signal_engine.py market_data_contracts.py \
-  benchmark_validation.py run_regime_validation.py
+# 类型检查（完整规范包）
+pyright quantfusion
 
 # 安全审计
-bandit -r quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
+bandit -r quantfusion quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
   regime_adaptive.py cross_market_overlay.py risk_governance.py \
   account_signal_engine.py market_data_contracts.py benchmark_validation.py \
   run_regime_validation.py validate_basket.py download_eastmoney_qfq.py \

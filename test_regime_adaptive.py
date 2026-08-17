@@ -12,6 +12,7 @@ import pandas as pd
 
 import daily_signal_scan as daily
 import regime_adaptive as ra
+import quantfusion.regime.evidence as regime_evidence
 
 
 ROOT = Path(__file__).resolve().parent
@@ -90,7 +91,7 @@ class LeaderSelectionTests(unittest.TestCase):
             frame.loc[frame.index > pd.Timestamp("2023-12-29"), "close"] *= 1000
             return frame.loc[frame.index <= pd.Timestamp(end_date)]
 
-        with patch.object(ra, "_local_frame", side_effect=with_future):
+        with patch.object(regime_evidence, "_local_frame", side_effect=with_future):
             after = ra.select_positive_momentum_leaders(
                 ("300308", "300394"), data_dir=DATA_DIR, as_of="2023-12-29"
             )
@@ -114,20 +115,11 @@ class LeaderSelectionTests(unittest.TestCase):
 
 
 class AdaptiveEngineTests(unittest.TestCase):
-    def test_daily_entrypoint_restores_global_cache_configuration(self) -> None:
-        previous = daily.qf.DataFetcher._cache_dir
-
-        def mutate_cache() -> int:
-            daily.qf.DataFetcher._cache_dir = "temporary-test-cache"
-            return 0
-
-        try:
-            daily.qf.DataFetcher._cache_dir = "existing-cache"
-            with patch.object(daily, "_run_main", side_effect=mutate_cache):
-                self.assertEqual(daily.main(), 0)
-            self.assertEqual(daily.qf.DataFetcher._cache_dir, "existing-cache")
-        finally:
-            daily.qf.DataFetcher._cache_dir = previous
+    def test_daily_entrypoint_has_no_process_global_cache_configuration(self) -> None:
+        self.assertFalse(hasattr(daily.qf.DataFetcher, "_cache_dir"))
+        with patch.object(daily, "_run_main", return_value=0) as run:
+            self.assertEqual(daily.main(), 0)
+        run.assert_called_once_with()
 
     def test_selection_boundary_must_precede_start(self) -> None:
         engine = ra.RegimeAdaptiveBacktestEngine()

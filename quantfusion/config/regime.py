@@ -1,0 +1,37 @@
+"""Frozen regime, weak-route, and route-confirmation constants."""
+
+REGIME_INDEX_FILES = {"broad": "000300", "technology": "000682"}
+LEADER_LOOKBACK = 240
+MAX_LEADERS = 3
+MAX_SYMBOL_WEIGHT = 0.59
+EMERGING_MIN_DAYS = 61
+MAX_EMERGING_LEADERS = 1
+PROFIT_ACTIVATION = 0.30
+TRAILING_ATR_MULTIPLIER = 3.0
+WEAK_ENTRY_ATR_MULTIPLIER = 5.0
+WEAK_HARD_STOP = 0.22
+WEAK_TIME_STOP_DAYS = 80
+WEAK_TIME_STOP_RETURN = -0.10
+MAX_EVIDENCE_STALENESS_DAYS = 10
+WEAK_DRAWDOWN_ALERT = 0.15
+WEAK_CONFIRMED_DRAWDOWN = 0.20
+WEAK_EMERGENCY_DRAWDOWN = 0.23
+WEAK_TERMINAL_DRAWDOWN = 0.26
+WEAK_DAILY_LOSS_LIMIT = 0.12
+WEAK_EXIT_COOLDOWN = {
+    "profit_chandelier": 6,   # profitable ATR chandelier take-profit: 5-7 days
+    "time_stop": 12,          # time stop: 10-15 days
+    "hard_stop": 16,          # initial disaster stop: 12-20 days
+    "portfolio_risk": 12,     # external portfolio-risk exit: ~12 days default
+    "catastrophe": 25,        # catastrophe stop: 20-30 days
+}
+DEFAULT_EXIT_COOLDOWN = 12
+WEAK_PROBE_WEIGHT_RATIO = 0.30
+WEAK_PROBE_CONFIRM_DAYS = 5
+WEAK_REENTRY_FAIL_LIMIT = 2
+WEAK_REENTRY_MAX_DRAWDOWN = 0.12
+ROUTE_TREND_FAST_MA = 60
+ROUTE_TREND_SLOW_MA = 120
+ROUTE_MIN_HOLD_DAYS = 10
+ROUTE_CONFIRM_DAYS = 3
+ROUTE_RECOVERY_CONFIRM_DAYS = 30

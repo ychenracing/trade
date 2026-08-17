@@ -13,8 +13,8 @@ from typing import Any, cast
 
 import pandas as pd
 
-import quant_fusion as qf
-import regime_adaptive as ra
+from quantfusion.application import engine_api as qf
+from quantfusion.application import regime_api as ra
 
 
 _SYMBOL_RE = re.compile(r"^\d{6}$")

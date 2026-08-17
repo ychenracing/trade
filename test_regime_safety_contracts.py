@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import account_signal_engine as account
 import regime_adaptive as ra
+from quantfusion.engine import replay as replay_module
 
 
 class UnknownEvidenceTests(unittest.TestCase):
@@ -24,9 +25,9 @@ class UnknownEvidenceTests(unittest.TestCase):
     def test_decision_holds_cash_without_leader_selection(self) -> None:
         engine = ra.RegimeAdaptiveBacktestEngine()
         with (
-            patch.object(ra, "detect_regime", return_value=self._unknown()),
+            patch.object(replay_module, "detect_regime", return_value=self._unknown()),
             patch.object(
-                ra,
+                replay_module,
                 "select_positive_momentum_leaders",
                 side_effect=AssertionError(
                     "leader selection must not run without index evidence"
@@ -57,9 +58,9 @@ class UnknownEvidenceTests(unittest.TestCase):
                 "refresh_regime_indices",
                 return_value={},
             ),
-            patch.object(ra, "detect_regime", return_value=self._unknown()),
+            patch.object(replay_module, "detect_regime", return_value=self._unknown()),
             patch.object(
-                ra,
+                replay_module,
                 "select_positive_momentum_leaders",
                 side_effect=AssertionError(
                     "leader selection must not run without index evidence"
@@ -103,7 +104,7 @@ class UniverseIntegrityTests(unittest.TestCase):
             observations=(),
         )
         with (
-            patch.object(ra, "detect_regime", return_value=trending),
+            patch.object(replay_module, "detect_regime", return_value=trending),
             patch.object(
                 engine,
                 "_available_local_symbols",
