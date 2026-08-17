@@ -1,32 +1,87 @@
 {
   "1": {
+    "fusion_event_count": 747,
+    "fusion_events_sha256": "1beba2bd5564c40e9c586179bd021e5653c52f2d8b790be166b72b00cfe8270d",
     "max_drawdown": -0.1834136674871038,
+    "order_event_count": 325,
+    "order_events_sha256": "87499bfc3a1c700b19e8735fd56f5f3f8c04d8329f13c6a5c9a0744ee11593d2",
+    "pending_signal_count": 0,
+    "regime_state_count": 316,
+    "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
+    "risk_event_count": 70,
+    "risk_events_sha256": "76f69e0f9cf6295663f47de44baf73651f838b2c18358915272f1933146a3431",
+    "sleeve_fill_count": 24,
     "total_return": 5.308949754885001,
     "total_trades": 5,
-    "sleeve_fill_count": 24
+    "trade_fill_count": 24,
+    "trades_sha256": "ef72363866c7be4194ab665fe6eb96d580ac3816817e952c27d90bb994f5f31c"
   },
   "3": {
+    "fusion_event_count": 823,
+    "fusion_events_sha256": "0ec667e18cd550326de1f26f5e3709fd24f6c65b0b0e0531adbeff53c2efdc1c",
     "max_drawdown": -0.1718499740402506,
+    "order_event_count": 876,
+    "order_events_sha256": "6139d3f8479c9610737cc3545ca8c5b2d4d3503baba1793a1c63615a60558c47",
+    "pending_signal_count": 2,
+    "regime_state_count": 316,
+    "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
+    "risk_event_count": 69,
+    "risk_events_sha256": "60e49fb70b23e5eaad0191b762aeb9ff5bea49e657d53d9971d2ada374ddd5cd",
+    "sleeve_fill_count": 176,
     "total_return": 11.224308338588003,
     "total_trades": 74,
-    "sleeve_fill_count": 176
+    "trade_fill_count": 176,
+    "trades_sha256": "382287072b8dc62716582d7d1833bed4e853306625c373622ee912ee50e803b3"
   },
   "5": {
+    "fusion_event_count": 1196,
+    "fusion_events_sha256": "8ba72601b7eb527e9c3d9948cd141ab4ac726222d735c0e6fc6a4c4d93e4b0fb",
     "max_drawdown": -0.1562450255600036,
+    "order_event_count": 1075,
+    "order_events_sha256": "5f261d5251ddf5e74eac131b0b38ee041e290c26faf9c247202db5b97265961b",
+    "pending_signal_count": 2,
+    "regime_state_count": 316,
+    "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
+    "risk_event_count": 92,
+    "risk_events_sha256": "7f641ef5534fd9b521b498536c837e416e02d7f8025a7357af3bac6333bef2a0",
+    "sleeve_fill_count": 212,
     "total_return": 12.051038646119627,
     "total_trades": 94,
-    "sleeve_fill_count": 212
+    "trade_fill_count": 212,
+    "trades_sha256": "12885c1ef04e22967ce99b9522bf33dd7e3bf3d59b7fd89bae983943a872c624"
   },
   "13": {
+    "fusion_event_count": 1691,
+    "fusion_events_sha256": "4ed766436b272af109428fb1168aaa27c62083d65f2d6061cfb448beb91f5f2e",
     "max_drawdown": -0.17046281882645536,
+    "order_event_count": 1500,
+    "order_events_sha256": "7a12c1a0da9b726c6a196f923ec242f956145203134928beefea4ed8b638992e",
+    "pending_signal_count": 3,
+    "regime_state_count": 316,
+    "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
+    "risk_event_count": 98,
+    "risk_events_sha256": "bacc4bc1b31284292487c23f7161f50c23abe352ab3d237e1c0beab5a11b235c",
+    "sleeve_fill_count": 233,
     "total_return": 10.314734679378002,
     "total_trades": 118,
-    "sleeve_fill_count": 233
+    "trade_fill_count": 233,
+    "trades_sha256": "b76a7b17467038b44230abc5705120538df9e53cabab6aeb8975e145e67145e9"
   },
   "22": {
+    "fusion_event_count": 2020,
+    "fusion_events_sha256": "ecf132216555976e2290ad5394401a9f94f7f671c20745e9e691bc0ee25f5db0",
     "max_drawdown": -0.15924818759853113,
+    "order_event_count": 2005,
+    "order_events_sha256": "ae81bdabf797c6c869074db1891cc6be3b505ee1f04903247a5d125086c5c204",
+    "pending_signal_count": 2,
+    "regime_state_count": 316,
+    "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
+    "risk_event_count": 90,
+    "risk_events_sha256": "4931db0b2923ab34deb66644d951d7e75ca458fb9f98b72b3bf0725ee0169dba",
+    "sleeve_fill_count": 228,
     "total_return": 10.808377540216252,
     "total_trades": 100,
-    "sleeve_fill_count": 228
+    "trade_fill_count": 228,
+    "trades_sha256": "9a384455e12c7074d5d231b5a67ecbf18854e425d7f6bad135381f6be857f0d6"
   }
 }

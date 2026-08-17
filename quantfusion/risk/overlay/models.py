@@ -16,5 +16,5 @@ class RiskAction:
     signal_date: str
     reason: str
     priority: int
-    state_index: int = 0
     extra: str = ""
+    state_index: int = 0

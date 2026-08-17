@@ -8,7 +8,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
-import quant_fusion as qf
+from quantfusion.config.engine import default_engine_config
+from quantfusion.config.portfolio import PortfolioPolicy
 
 
 ROOT = Path(__file__).resolve().parent
@@ -102,7 +103,7 @@ class MarkdownConsistencyTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         missing = [
             key
-            for key in qf._CoreBacktestEngine._default_config()
+            for key in default_engine_config()
             if f"`{key}`" not in readme
         ]
         self.assertEqual(missing, [])
@@ -111,7 +112,7 @@ class MarkdownConsistencyTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         missing = [
             key
-            for key in qf.PortfolioPolicy.__dataclass_fields__
+            for key in PortfolioPolicy.__dataclass_fields__
             if f"`{key}`" not in readme
         ]
         self.assertEqual(missing, [])

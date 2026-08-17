@@ -7,6 +7,8 @@ import unittest
 from dataclasses import FrozenInstanceError
 from types import SimpleNamespace
 
+import pandas as pd
+
 
 class OverlayModuleContracts(unittest.TestCase):
     """Overlay decisions are canonical immutable actions before adaptation."""
@@ -56,72 +58,70 @@ class OverlayModuleContracts(unittest.TestCase):
         self.assertEqual(signal.reason, "sector_risk_trim:level=2")
         self.assertEqual(signal.target_shares, 100)
 
-    def test_action_priority_is_resolved_before_pending_adaptation(self) -> None:
-        adapter = importlib.import_module("quantfusion.risk.overlay.adapter")
-        models = importlib.import_module("quantfusion.risk.overlay.models")
-        actions = (
-            models.RiskAction(
-                symbol="300308",
-                strategy_name="turtle",
-                shares=100,
-                price=10.0,
-                signal_date="2026-08-17",
-                reason="concentration_trim",
-                priority=40,
-            ),
-            models.RiskAction(
-                symbol="300308",
-                strategy_name="turtle",
-                shares=100,
-                price=10.0,
-                signal_date="2026-08-17",
-                reason="catastrophe_stop",
-                priority=100,
-            ),
-        )
-        winners, suppressed = adapter.resolve_risk_actions(actions)
-        self.assertEqual([action.reason for action in winners], ["catastrophe_stop"])
-        self.assertEqual([action.reason for action in suppressed], ["concentration_trim"])
-
-    def test_adapter_reconciles_new_actions_with_existing_risk_pending(self) -> None:
-        """A carried T+1 action still participates in next-day priority resolution."""
-        adapter = importlib.import_module("quantfusion.risk.overlay.adapter")
-        models = importlib.import_module("quantfusion.risk.overlay.models")
-        states = [SimpleNamespace(pending=[]), SimpleNamespace(pending=[])]
-        carried = models.RiskAction(
-            symbol="300502",
-            strategy_name="turtle_breakout",
-            shares=1_600,
-            price=300.0,
-            signal_date="2026-03-26",
-            reason="concentration_trim",
-            priority=40,
-            state_index=0,
-        )
-        newer = models.RiskAction(
-            symbol="300502",
-            strategy_name="turtle_breakout",
-            shares=600,
-            price=310.0,
-            signal_date="2026-03-27",
-            reason="concentration_trim",
-            priority=40,
-            state_index=1,
-        )
-
-        adapter.apply_risk_actions((carried,), states)
-        winners, suppressed = adapter.apply_risk_actions((newer,), states)
-
-        self.assertEqual([len(state.pending) for state in states], [1, 0])
-        signal = states[0].pending[0][0]
-        self.assertEqual(signal.target_shares, 1_600)
-        self.assertEqual(signal.risk_priority, 40)
-        self.assertEqual([action.shares for action in winners], [1_600])
-        self.assertEqual([action.shares for action in suppressed], [600])
-
-    def test_policy_exposes_evaluation_before_engine_adaptation(self) -> None:
+    def test_policy_evaluate_returns_actions_without_mutating_pending(self) -> None:
+        """Policy decisions stay immutable until the engine adapter applies them."""
         policy = importlib.import_module("quantfusion.risk.overlay.policy")
-        self.assertTrue(callable(policy.CrossMarketOverlay().evaluate_actions))
+        adapter = importlib.import_module("quantfusion.risk.overlay.adapter")
+        date = pd.Timestamp("2026-01-06")
+        index = pd.to_datetime(["2026-01-05", "2026-01-06"])
+        frame = pd.DataFrame(
+            {
+                "open": [70.0, 70.0],
+                "high": [70.0, 70.0],
+                "low": [70.0, 70.0],
+                "close": [70.0, 70.0],
+                "volume": [1_000_000, 1_000_000],
+            },
+            index=index,
+        )
+        position = SimpleNamespace(
+            shares=100,
+            highest_close_since_entry=100.0,
+            entry_price=90.0,
+        )
+        sleeve = SimpleNamespace(positions={"AAA": {"fast": position}})
+        state = SimpleNamespace(sleeve=sleeve, data_map={"AAA": frame}, pending=[])
+        overlay = policy.CrossMarketOverlay()
+
+        actions = overlay.evaluate(
+            [state], date, date_pos=1,
+            assets=2_000_000, peak=2_000_000, scoring_fn=None,
+        )
+
+        self.assertEqual(state.pending, [])
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0].reason, "catastrophe_stop")
+        adapter.apply_risk_actions(
+            actions, [state], date_str="2026-01-06", events=overlay.events
+        )
+        self.assertEqual(state.pending[0][0].reason.split(":")[0], "catastrophe_stop")
+
+    def test_adapter_uses_action_priority_and_existing_pending(self) -> None:
+        """Adaptation consolidates new and carried risk sells by action priority."""
+        adapter = importlib.import_module("quantfusion.risk.overlay.adapter")
+        models = importlib.import_module("quantfusion.risk.overlay.models")
+        carried = adapter.make_sell_signal(
+            "300308", "fast", 100, 10.0, "2026-08-16", "sector_risk_trim"
+        )
+        state = SimpleNamespace(pending=[(carried, None)])
+        action = models.RiskAction(
+            symbol="300308",
+            strategy_name="fast",
+            shares=80,
+            price=9.0,
+            signal_date="2026-08-17",
+            reason="custom_priority_exit",
+            priority=10_000,
+        )
+        events: list[dict] = []
+
+        adapter.apply_risk_actions(
+            (action,), [state], date_str="2026-08-17", events=events
+        )
+
+        self.assertEqual(len(state.pending), 1)
+        self.assertEqual(state.pending[0][0].reason, "custom_priority_exit")
+        self.assertEqual(events[0]["winner_reason"], "custom_priority_exit")
 
 
 if __name__ == "__main__":

@@ -372,6 +372,10 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
             # Risk state must NOT be saved
             state_file = Path(tmpdir) / "risk_state.json"
             self.assertFalse(state_file.exists())
+            self.assertFalse(
+                (Path(tmpdir) / "latest_success.json").exists(),
+                "A failed artifact transaction must not publish a success pointer",
+            )
 
             # Error artifact must exist
             error_file = Path(tmpdir) / "signals_2026-07-30.error.json"
@@ -562,6 +566,10 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
             # Risk state must NOT exist
             state_file = Path(tmpdir) / "risk_state.json"
             self.assertFalse(state_file.exists())
+            self.assertFalse(
+                (Path(tmpdir) / "latest_success.json").exists(),
+                "A failed risk-state commit must not publish a success pointer",
+            )
 
 
 class RunIdConsistencyTests(unittest.TestCase):

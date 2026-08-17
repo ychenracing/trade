@@ -90,10 +90,6 @@ class Signal:
     atr: float = 0.0
     fusion_votes: int = 1
     fusion_label: str = "single_strategy"
-    # Explicit execution metadata for risk-adapter signals.  Ordinary strategy
-    # signals keep ``None``; risk conflict resolution must never infer priority
-    # by parsing the human-readable reason string.
-    risk_priority: int | None = None
 
 
 @dataclass

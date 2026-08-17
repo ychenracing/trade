@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import stress_test_prefixes as stress
@@ -90,18 +91,21 @@ class StressScenarioTests(unittest.TestCase):
                 {"results": [result]}, scenarios
             )
 
-    def test_run_signature_fingerprints_canonical_package_sources(self) -> None:
-        captured: list[list[Path]] = []
+    def test_checkpoint_signature_covers_canonical_source_tree(self) -> None:
+        """A canonical implementation change must invalidate old checkpoints."""
+        fingerprints: list[tuple[Path, ...]] = []
 
-        def fingerprint(paths: list[Path]) -> str:
-            captured.append(paths)
+        def capture(paths: list[Path]) -> str:
+            fingerprints.append(tuple(paths))
             return "fingerprint"
 
-        with patch.object(stress, "_tree_fingerprint", side_effect=fingerprint):
-            stress._run_signature([], stress.DATA_DIR, stress.REGIME_DATA_DIR)
-        source_paths = {path.relative_to(stress.ROOT).as_posix() for path in captured[0]}
-        self.assertIn("quantfusion/engine/core.py", source_paths)
-        self.assertIn("quantfusion/risk/overlay/policy.py", source_paths)
+        with TemporaryDirectory() as tmpdir, patch.object(
+            stress, "_tree_fingerprint", side_effect=capture
+        ):
+            stress._run_signature([], Path(tmpdir), Path(tmpdir))
+
+        canonical_source = stress.ROOT / "quantfusion" / "application" / "stress.py"
+        self.assertIn(canonical_source, fingerprints[0])
 
 
 if __name__ == "__main__":

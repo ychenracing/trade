@@ -13,6 +13,39 @@ from quantfusion.domain.rules import (
 )
 
 
+PER_SYMBOL_OVERRIDE_KEYS: frozenset[str] = frozenset(
+    {
+        "entry_period",
+        "exit_period",
+        "adx_threshold",
+        "adx_period",
+        "atr_period",
+        "rsi_period",
+        "ma_short",
+        "ma_long",
+        "atr_multiplier",
+        "trail_atr_mult",
+        "channel_mult",
+        "channel_lower_mult",
+        "risk_pct",
+        "hard_stop",
+        "strategy_weight",
+        "max_symbol_weight",
+        "max_units",
+        "pyramid_add_atr",
+        "pyramid_risk_decay",
+        "atr_method",
+        "profit_lock_activation",
+        "profit_lock_giveback",
+        "reversal_break_giveback",
+        "reversal_exit_period",
+        "reversal_loss_cut",
+        "reversal_turtle_enabled",
+        "reversal_dual_ma_enabled",
+        "reversal_atr_channel_enabled",
+    }
+)
+
 def default_engine_config() -> dict:
     """Return the complete auditable strategy and execution defaults."""
     # Values are explicit to keep every historical run auditable. Industry
@@ -171,38 +204,6 @@ def default_engine_config() -> dict:
         # the hierarchy and are never shrunk.
         "subindustry_shrinkage": 0.5,
     }
-
-
-PER_SYMBOL_OVERRIDE_KEYS: frozenset[str] = frozenset({
-    "entry_period",
-    "exit_period",
-    "adx_threshold",
-    "adx_period",
-    "atr_period",
-    "rsi_period",
-    "ma_short",
-    "ma_long",
-    "atr_multiplier",
-    "trail_atr_mult",
-    "channel_mult",
-    "channel_lower_mult",
-    "risk_pct",
-    "hard_stop",
-    "strategy_weight",
-    "max_symbol_weight",
-    "max_units",
-    "pyramid_add_atr",
-    "pyramid_risk_decay",
-    "atr_method",
-    "profit_lock_activation",
-    "profit_lock_giveback",
-    "reversal_break_giveback",
-    "reversal_exit_period",
-    "reversal_loss_cut",
-    "reversal_turtle_enabled",
-    "reversal_dual_ma_enabled",
-    "reversal_atr_channel_enabled",
-})
 
 
 def validate_engine_config(cfg: dict) -> dict:
@@ -562,3 +563,10 @@ def _validate_container_config(out: dict) -> None:
     if bad_st:
         raise ValueError(f"st_symbols contains an invalid stock code: {bad_st}")
     out["st_symbols"] = normalized_st_symbols
+
+
+__all__ = [
+    "PER_SYMBOL_OVERRIDE_KEYS",
+    "default_engine_config",
+    "validate_engine_config",
+]

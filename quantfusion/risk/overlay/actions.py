@@ -6,9 +6,6 @@ from __future__ import annotations
 
 # ruff: noqa: F401
 
-from dataclasses import replace
-from typing import Any
-
 import pandas as pd
 
 from quantfusion.config.overlay import (
@@ -56,7 +53,6 @@ from quantfusion.config.overlay import (
     RISK_ACTION_PRIORITY,
     RISK_ACTION_DEFAULT_PRIORITY,
 )
-from quantfusion.domain.models import Signal
 from quantfusion.domain.rules import floor_to_lot
 from quantfusion.risk.overlay.models import RiskAction
 
@@ -67,7 +63,7 @@ class OverlayActionMixin:
     def _apply_graded_trim(
         self, states: list, prices: dict[str, float], date_str: str,
         scoring_fn, drawdown: float,
-    ) -> None:
+    ) -> tuple[RiskAction, ...]:
         """Trim weakest non-core holdings at risk Level 2/3 (P1-1).
 
         Level 2 requires ``drawdown >= RISK_LEVEL2_DRAWDOWN`` and Level 3
@@ -75,10 +71,11 @@ class OverlayActionMixin:
         genuinely off its peak, no trim happens (bull-silent). Only the
         weakest non-core names are trimmed, preserving the strongest name.
         """
+        actions: list[RiskAction] = []
         if self._risk_level >= 3 and drawdown < self.level3_drawdown:
-            return
+            return ()
         if self._risk_level == 2 and drawdown < self.level2_drawdown:
-            return
+            return ()
         held = self._held_positions(states)
         shares_by_symbol: dict[str, int] = {}
         strats: dict[str, list[tuple]] = {}
@@ -86,7 +83,7 @@ class OverlayActionMixin:
             shares_by_symbol[symbol] = shares_by_symbol.get(symbol, 0) + pos.shares
             strats.setdefault(symbol, []).append((state, strat_name, pos))
         if not shares_by_symbol:
-            return
+            return ()
         trim_count = 1 if self._risk_level == 2 else 2
         # Bull-silent bear or relevance guard (report 4.7/4.8): a graded trim
         # only targets holdings that belong to the SAME sub-industry that is
@@ -100,7 +97,7 @@ class OverlayActionMixin:
             or SYMBOL_SUB_INDUSTRY.get(sym) == self._stressed_sub
         ]
         if len(eligible) <= trim_count:
-            return
+            return ()
         ranked = sorted(
             eligible,
             key=lambda sym: (scoring_fn(sym) if scoring_fn else 0.0, sym),
@@ -122,11 +119,12 @@ class OverlayActionMixin:
                 take = max(0, min(pos.shares, trim_shares - trimmed))
                 if take <= 0:
                     continue
-                self._queue_sell(
-                    state, weak, strat_name, take, price, date_str,
-                    "sector_risk_trim",
-                    f"level={self._risk_level}",
+                action = self._sell_action(
+                    states, state, weak, strat_name, take, price, date_str,
+                    "sector_risk_trim", f"level={self._risk_level}",
                 )
+                if action is not None:
+                    actions.append(action)
                 trimmed += take
             if trimmed > 0:
                 self.events.append({
@@ -134,6 +132,7 @@ class OverlayActionMixin:
                     "symbol": weak, "shares": trimmed,
                     "level": self._risk_level,
                 })
+        return tuple(actions)
 
     def _apply_transition_trim(
         self,
@@ -143,8 +142,9 @@ class OverlayActionMixin:
         scoring_fn,
         *,
         ratio: float,
-    ) -> None:
+    ) -> tuple[RiskAction, ...]:
         """Trim only the weakest symbol after sustained dual-signal transition."""
+        actions: list[RiskAction] = []
         held = self._held_positions(states)
         shares_by_symbol: dict[str, int] = {}
         books: dict[str, list[tuple]] = {}
@@ -156,7 +156,7 @@ class OverlayActionMixin:
                 (state, strategy_name, position)
             )
         if len(shares_by_symbol) < 2:
-            return
+            return ()
         weakest = min(
             shares_by_symbol,
             key=lambda symbol: (
@@ -170,7 +170,8 @@ class OverlayActionMixin:
             take = min(position.shares, max(target - trimmed, 0))
             if take <= 0:
                 continue
-            self._queue_sell(
+            action = self._sell_action(
+                states,
                 state,
                 weakest,
                 strategy_name,
@@ -180,6 +181,8 @@ class OverlayActionMixin:
                 "sector_risk_trim",
                 "sustained_transition_level1",
             )
+            if action is not None:
+                actions.append(action)
             trimmed += take
         if trimmed > 0:
             self.events.append(
@@ -191,11 +194,12 @@ class OverlayActionMixin:
                     "ratio": ratio,
                 }
             )
+        return tuple(actions)
 
     def _apply_concentration_guard(
         self, states: list, prices: dict[str, float], date_str: str,
         scoring_fn, drawdown: float, assets: float,
-    ) -> None:
+    ) -> tuple[RiskAction, ...]:
         """Trim an over-concentrated sub-industry cluster (report 4.8 / P1-5).
 
         Bull-silent by design: it only acts when (a) one sub-industry cluster
@@ -219,13 +223,14 @@ class OverlayActionMixin:
             cluster-coverage INCOMPLETE, so the guard FAILS CLOSED (no trim)
             instead of trimming on a partial picture. The skip is audited.
         """
+        actions: list[RiskAction] = []
         if drawdown < CONCENTRATION_DRAWDOWN:
-            return
+            return ()
         if self._portfolio_fast_return() >= 0:
-            return
+            return ()
         held = self._held_positions(states)
         if not held:
-            return
+            return ()
         # Market value of each held symbol, then aggregate by sub-industry.
         value_by_symbol: dict[str, float] = {}
         strats: dict[str, list[tuple]] = {}
@@ -236,7 +241,7 @@ class OverlayActionMixin:
             value_by_symbol[symbol] = value_by_symbol.get(symbol, 0.0) + pos.shares * price
             strats.setdefault(symbol, []).append((state, strat_name, pos))
         if not value_by_symbol or assets <= 0:
-            return
+            return ()
         # P1-5: a held symbol we cannot map to any sub-industry makes the
         # cluster coverage incomplete. Fail closed (do not trim) when that
         # unmapped weight is MATERIAL, so we never trim on a partial / wrong
@@ -254,7 +259,7 @@ class OverlayActionMixin:
                 "unmapped_weight": round(unmapped_value / assets, 4),
                 "reason": "incomplete_sub_industry_coverage",
             })
-            return
+            return ()
         cluster_value: dict[str | None, tuple[float, list[str]]] = {}
         for symbol, value in value_by_symbol.items():
             cluster = SYMBOL_SUB_INDUSTRY.get(symbol)
@@ -271,7 +276,7 @@ class OverlayActionMixin:
                 worst_weight = weight
                 worst_cluster = cluster
         if worst_cluster is None or worst_weight <= CONCENTRATION_CAP:
-            return
+            return ()
         members = cluster_value[worst_cluster][1]
         # Only trim the weakest name inside the over-concentrated cluster.
         ranked = sorted(
@@ -281,18 +286,18 @@ class OverlayActionMixin:
         weak = ranked[0]
         excess_value = cluster_value[worst_cluster][0] - CONCENTRATION_CAP * assets
         if excess_value <= 0:
-            return
+            return ()
         weak_value = value_by_symbol.get(weak, 0.0)
         if weak_value <= 0:
-            return
+            return ()
         trim_value = min(excess_value, weak_value * CONCENTRATION_MAX_TRIM_RATIO)
         price = prices.get(weak, 0.0)
         if price <= 0:
-            return
+            return ()
         trim_shares = int(trim_value / price)
         trim_shares = floor_to_lot(trim_shares)
         if trim_shares <= 0:
-            return
+            return ()
         trimmed = 0
         for state, strat_name, pos in strats[weak]:
             if trimmed >= trim_shares:
@@ -300,11 +305,12 @@ class OverlayActionMixin:
             take = max(0, min(pos.shares, trim_shares - trimmed))
             if take <= 0:
                 continue
-            self._queue_sell(
-                state, weak, strat_name, take, price, date_str,
-                "concentration_trim",
-                f"cluster={worst_cluster}",
+            action = self._sell_action(
+                states, state, weak, strat_name, take, price, date_str,
+                "concentration_trim", f"cluster={worst_cluster}",
             )
+            if action is not None:
+                actions.append(action)
             trimmed += take
         if trimmed > 0:
             self.events.append({
@@ -313,14 +319,19 @@ class OverlayActionMixin:
                 "cluster": worst_cluster,
                 "cluster_weight": round(worst_weight, 4),
             })
+        return tuple(actions)
 
-    def _queue_sell(
-        self, state, symbol: str, strat_name: str, shares: int,
+    @staticmethod
+    def _sell_action(
+        states: list, state, symbol: str, strat_name: str, shares: int,
         price: float, date_str: str, reason: str, extra: str = "",
-    ) -> None:
+    ) -> RiskAction | None:
         if shares <= 0 or price <= 0:
-            return
-        action = RiskAction(
+            return None
+        state_index = next(
+            index for index, candidate in enumerate(states) if candidate is state
+        )
+        return RiskAction(
             symbol=symbol,
             strategy_name=strat_name,
             shares=shares,
@@ -331,12 +342,12 @@ class OverlayActionMixin:
             priority=RISK_ACTION_PRIORITY.get(
                 reason, RISK_ACTION_DEFAULT_PRIORITY
             ),
-            state_index=self._action_state_index(state),
+            state_index=state_index,
         )
-        self._action_buffer.append(action)
 
     def _trim_laggards(self, states: list, prices: dict[str, float],
-                       date_str: str, scoring_fn) -> None:
+                       date_str: str, scoring_fn) -> tuple[RiskAction, ...]:
+        actions: list[RiskAction] = []
         held = self._held_positions(states)
         shares_by_symbol: dict[str, int] = {}
         strats: dict[str, list[tuple]] = {}
@@ -344,7 +355,7 @@ class OverlayActionMixin:
             shares_by_symbol[symbol] = shares_by_symbol.get(symbol, 0) + pos.shares
             strats.setdefault(symbol, []).append((state, strat_name, pos))
         if not shares_by_symbol:
-            return
+            return ()
         ranked = sorted(
             shares_by_symbol,
             key=lambda sym: (scoring_fn(sym) if scoring_fn else 0.0, sym),
@@ -359,11 +370,16 @@ class OverlayActionMixin:
             take = max(0, min(pos.shares, trim_shares - trimmed))
             if take <= 0:
                 continue
-            self._queue_sell(state, weak, strat_name, take, price, date_str,
-                             "shock_trim", "structural_shock_de_risk")
+            action = self._sell_action(
+                states, state, weak, strat_name, take, price, date_str,
+                "shock_trim", "structural_shock_de_risk",
+            )
+            if action is not None:
+                actions.append(action)
             trimmed += take
         if trimmed > 0:
             self.events.append({
                 "date": date_str, "event": "shock_trim",
                 "symbol": weak, "shares": trimmed,
             })
+        return tuple(actions)

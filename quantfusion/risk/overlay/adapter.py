@@ -1,10 +1,18 @@
-"""Translate immutable risk actions into the legacy pending queue."""
+"""Translate immutable overlay decisions into legacy engine pending queues."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from dataclasses import replace
 from typing import Any
 
+import pandas as pd
+
+from quantfusion.config.overlay import (
+    CATASTROPHE_COOLDOWN_DAYS,
+    RISK_ACTION_DEFAULT_PRIORITY,
+    RISK_ACTION_PRIORITY,
+)
 from quantfusion.domain.models import Signal
 from quantfusion.risk.overlay.models import RiskAction
 
@@ -17,7 +25,6 @@ def make_sell_signal(
     signal_date: str,
     reason: str,
     extra: str = "",
-    priority: int | None = None,
 ) -> Signal:
     """Build the exact T+1 sell signal consumed by ensemble sleeves."""
     full_reason = f"{reason}:{extra}" if extra else reason
@@ -29,54 +36,105 @@ def make_sell_signal(
         price=price,
         reason=full_reason,
         signal_date=signal_date,
-        risk_priority=priority,
     )
 
 
-def _action_beats(candidate: RiskAction, current: RiskAction) -> bool:
-    if candidate.priority != current.priority:
-        return candidate.priority > current.priority
-    if candidate.shares != current.shares:
-        return candidate.shares > current.shares
-    candidate_reason = f"{candidate.reason}:{candidate.extra}"
-    current_reason = f"{current.reason}:{current.extra}"
-    return candidate_reason < current_reason
+def _state_sequence(state_or_states: Any) -> list[Any]:
+    """Normalize the legacy one-state call and canonical multi-state call."""
+    if hasattr(state_or_states, "pending"):
+        return [state_or_states]
+    if isinstance(state_or_states, Sequence):
+        return list(state_or_states)
+    return list(state_or_states)
 
 
-def resolve_risk_actions(
-    actions: Iterable[RiskAction],
-) -> tuple[tuple[RiskAction, ...], tuple[RiskAction, ...]]:
-    """Resolve one winning immutable action per strategy book using priority."""
-    ordered = tuple(actions)
-    winner_index: dict[tuple[str, str], int] = {}
-    for index, action in enumerate(ordered):
-        book = (action.symbol, action.strategy_name)
-        current_index = winner_index.get(book)
-        if current_index is None or _action_beats(action, ordered[current_index]):
-            winner_index[book] = index
-    selected = frozenset(winner_index.values())
-    winners = tuple(action for index, action in enumerate(ordered) if index in selected)
-    suppressed = tuple(
-        action for index, action in enumerate(ordered) if index not in selected
-    )
-    return winners, suppressed
+def _risk_action_beats(
+    candidate: Any,
+    candidate_priority: int,
+    current: Any,
+    current_priority: int,
+) -> bool:
+    """Return whether a candidate is the deterministic defensive winner."""
+    if candidate_priority != current_priority:
+        return candidate_priority > current_priority
+    if candidate.target_shares != current.target_shares:
+        return candidate.target_shares > current.target_shares
+    return candidate.reason < current.reason
+
+
+def consolidate_risk_sells(
+    states: Sequence[Any],
+    date_str: str,
+    events: list[dict[str, Any]],
+    *,
+    action_priorities: dict[int, int] | None = None,
+) -> None:
+    """Consolidate new and carried overlay sells across the full queue.
+
+    Existing unfilled risk orders remain part of the comparison. New immutable
+    actions use their explicit priority; carried legacy signals fall back to
+    the stable reason-to-priority mapping.
+    """
+    explicit = action_priorities or {}
+    suppressed: list[dict[str, Any]] = []
+    winner_by_book: dict[tuple[str, str], tuple[Any, int]] = {}
+    for state in states:
+        for signal, strategy in state.pending:
+            if strategy is not None or signal.direction != "sell":
+                continue
+            book = (str(signal.symbol), str(signal.strategy_name))
+            priority = explicit.get(
+                id(signal),
+                RISK_ACTION_PRIORITY.get(
+                    signal.reason.split(":")[0], RISK_ACTION_DEFAULT_PRIORITY
+                ),
+            )
+            current = winner_by_book.get(book)
+            if current is None or _risk_action_beats(
+                signal, priority, current[0], current[1]
+            ):
+                winner_by_book[book] = (signal, priority)
+
+    for state in states:
+        retained: list[tuple[Any, Any]] = []
+        for signal, strategy in state.pending:
+            if strategy is not None or signal.direction != "sell":
+                retained.append((signal, strategy))
+                continue
+            book = (str(signal.symbol), str(signal.strategy_name))
+            winner, _ = winner_by_book[book]
+            if signal is winner:
+                retained.append((signal, strategy))
+            else:
+                suppressed.append(
+                    {
+                        "date": date_str,
+                        "event": "risk_action_suppressed",
+                        "symbol": str(signal.symbol),
+                        "strategy": str(signal.strategy_name),
+                        "reason": signal.reason,
+                        "target_shares": int(signal.target_shares),
+                        "winner_reason": winner.reason,
+                    }
+                )
+        state.pending = retained
+    if suppressed:
+        events.extend(suppressed)
 
 
 def apply_risk_actions(
-    actions: Iterable[RiskAction], state_or_states: Any
-) -> tuple[tuple[RiskAction, ...], tuple[RiskAction, ...]]:
-    """Adapt actions and reconcile them with carried risk-pending signals.
-
-    A risk sell can remain pending across trading days.  The historical engine
-    resolved a newly emitted action against those carried entries as well as
-    against same-day actions.  ``Signal.risk_priority`` preserves the immutable
-    action's priority at the adapter boundary, so this reconciliation never
-    parses the display-oriented reason string.
-    """
-    is_state_sequence = isinstance(state_or_states, (list, tuple))
-    states = tuple(state_or_states) if is_state_sequence else (state_or_states,)
+    actions: Iterable[RiskAction],
+    state_or_states: Any,
+    *,
+    date_str: str | None = None,
+    events: list[dict[str, Any]] | None = None,
+) -> None:
+    """Apply ordered actions, then consolidate against every pending risk sell."""
+    states = _state_sequence(state_or_states)
+    priorities: dict[int, int] = {}
     for action in actions:
-        state = states[action.state_index] if is_state_sequence else states[0]
+        if action.state_index < 0 or action.state_index >= len(states):
+            raise IndexError(f"RiskAction state_index is out of range: {action.state_index}")
         signal = make_sell_signal(
             action.symbol,
             action.strategy_name,
@@ -85,42 +143,132 @@ def apply_risk_actions(
             action.signal_date,
             action.reason,
             action.extra,
-            action.priority,
         )
-        state.pending.append((signal, None))
+        states[action.state_index].pending.append((signal, None))
+        priorities[id(signal)] = action.priority
+    if date_str is not None:
+        consolidate_risk_sells(
+            states,
+            date_str,
+            events if events is not None else [],
+            action_priorities=priorities,
+        )
 
-    action_by_signal_id: dict[int, RiskAction] = {}
-    ordered_actions: list[RiskAction] = []
-    for state_index, state in enumerate(states):
-        for signal, strategy in state.pending:
-            priority = getattr(signal, "risk_priority", None)
-            if (
-                strategy is not None
-                or getattr(signal, "direction", None) != "sell"
-                or priority is None
-            ):
-                continue
-            pending_action = RiskAction(
-                symbol=str(signal.symbol),
-                strategy_name=str(signal.strategy_name),
-                shares=int(signal.target_shares),
-                price=float(signal.price),
-                signal_date=str(signal.signal_date),
-                reason=str(signal.reason),
-                priority=int(priority),
-                state_index=state_index,
-            )
-            action_by_signal_id[id(signal)] = pending_action
-            ordered_actions.append(pending_action)
 
-    winners, suppressed = resolve_risk_actions(ordered_actions)
-    winner_ids = {id(action) for action in winners}
+def apply_cooldown_buy_gate(
+    overlay: Any,
+    states: Sequence[Any],
+    date: pd.Timestamp,
+    date_pos: int,
+) -> None:
+    """Filter pending buys using the overlay's catastrophe cooldown decision."""
+    if overlay._outer_defensive_mode:
+        return
+    date_str = date.strftime("%Y-%m-%d")
     for state in states:
         retained: list[tuple[Any, Any]] = []
-        for entry in state.pending:
-            signal, strategy = entry
-            pending_action = action_by_signal_id.get(id(signal))
-            if pending_action is None or id(pending_action) in winner_ids:
-                retained.append(entry)
+        for signal, strategy in state.pending:
+            in_cooldown = date_pos < overlay._catastrophe_cooldown.get(
+                str(signal.symbol), -1
+            )
+            if signal.direction == "buy" and in_cooldown:
+                sleeve = getattr(state, "sleeve", None)
+                record = (
+                    sleeve._record_order_event
+                    if sleeve is not None and hasattr(sleeve, "_record_order_event")
+                    else None
+                )
+                if record is not None:
+                    try:
+                        record(
+                            date=date_str,
+                            signal=signal,
+                            event="blocked_catastrophe_cooldown",
+                            cooldown_days=CATASTROPHE_COOLDOWN_DAYS,
+                        )
+                    except TypeError:
+                        pass
+                overlay.events.append(
+                    {
+                        "date": date_str,
+                        "event": "cooldown_blocked_buy",
+                        "symbol": str(signal.symbol),
+                        "reason": "catastrophe_cooldown",
+                    }
+                )
+                continue
+            retained.append((signal, strategy))
         state.pending = retained
-    return winners, suppressed
+
+
+def apply_risk_buy_gate(
+    overlay: Any,
+    states: Sequence[Any],
+    date: pd.Timestamp,
+    held_symbols: set[str],
+) -> None:
+    """Adapt overlay admission decisions to pending buy signals."""
+    if overlay._outer_defensive_mode or not overlay.blocks_pyramiding:
+        return
+    date_str = date.strftime("%Y-%m-%d")
+    transition_confirmed = any(
+        getattr(state.sleeve, "_regime_state", "TREND") == "TRANSITION"
+        and int(getattr(state.sleeve, "_regime_transition_days", 0)) >= 5
+        for state in states
+    )
+    for state in states:
+        retained: list[tuple[Any, Any]] = []
+        for signal, strategy in state.pending:
+            is_buy = signal.direction == "buy"
+            is_held = str(signal.symbol) in held_symbols
+            blocked = is_buy and (
+                (overlay.blocks_new_positions and not is_held)
+                or (overlay.blocks_pyramiding and is_held)
+            )
+            if (
+                is_buy
+                and not is_held
+                and not overlay.blocks_new_positions
+                and transition_confirmed
+            ):
+                scaled_shares = int(signal.target_shares * 0.75 // 100 * 100)
+                if scaled_shares > 0:
+                    retained.append(
+                        (replace(signal, target_shares=scaled_shares), strategy)
+                    )
+                    continue
+                blocked = True
+            if not blocked:
+                retained.append((signal, strategy))
+                continue
+            event = (
+                "blocked_confirmed_market_risk"
+                if overlay.blocks_new_positions
+                else "blocked_market_risk_pyramid"
+            )
+            sleeve = getattr(state, "sleeve", None)
+            if sleeve is not None and hasattr(sleeve, "_record_order_event"):
+                sleeve._record_order_event(
+                    date=date_str,
+                    signal=signal,
+                    event=event,
+                    market_risk_level=int(overlay._risk_level),
+                )
+            overlay.events.append(
+                {
+                    "date": date_str,
+                    "event": event,
+                    "symbol": str(signal.symbol),
+                    "level": int(overlay._risk_level),
+                }
+            )
+        state.pending = retained
+
+
+__all__ = [
+    "apply_cooldown_buy_gate",
+    "apply_risk_actions",
+    "apply_risk_buy_gate",
+    "consolidate_risk_sells",
+    "make_sell_signal",
+]

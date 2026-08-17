@@ -13,7 +13,7 @@ from quantfusion.data.contracts import OPTIONAL_COLUMNS, REQUIRED_OHLC_COLUMNS
 from quantfusion.domain.rules import A_SHARE_LOT_SIZE, SYMBOL_RE, parse_dates
 
 try:
-    import akshare as ak
+    import akshare as ak  # pyright: ignore[reportMissingImports]
 except ImportError:
     ak = None
 

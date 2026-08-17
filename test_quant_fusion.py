@@ -784,6 +784,24 @@ class IntegrationTests(unittest.TestCase):
                 )
                 self.assertGreater(result["calmar"], 0.0)
 
+    def test_economic_sequences_match_frozen_fingerprints(self) -> None:
+        """Freeze trade, signal, risk-action, and regime-route behavior."""
+        from quantfusion.research.fingerprints import (
+            economic_sequence_fingerprints,
+        )
+
+        baselines = json.loads(
+            (ROOT / "backtest_golden_metrics.json").read_text(encoding="utf-8")
+        )
+        for name, codes in UNIVERSES.items():
+            with self.subTest(universe=name):
+                expected = baselines[str(len(codes))]
+                actual = economic_sequence_fingerprints(self.results[name])
+                self.assertEqual(
+                    actual,
+                    {key: expected[key] for key in actual},
+                )
+
     def test_combined_same_day_fills_respect_portfolio_adv_budget(self) -> None:
         result = self.results["22_symbols"]
         frames = {

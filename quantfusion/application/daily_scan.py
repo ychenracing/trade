@@ -532,8 +532,8 @@ def _run_main() -> int:
                 "signal": "不可交易",
                 "held_shares": 0,
                 "strategies": "无数据/未上市",
-                "industry": qf.BacktestEngine.get_symbol_group(code, "N/A"),
-                "profile": qf.BacktestEngine.get_symbol_profile(code, "N/A"),
+                "industry": qf.get_symbol_group(code, "N/A"),
+                "profile": qf.get_symbol_profile(code, "N/A"),
             })
             continue
 
@@ -559,8 +559,8 @@ def _run_main() -> int:
             "signal": signal_label,
             "held_shares": held_shares,
             "strategies": strategies,
-            "industry": qf.BacktestEngine.get_symbol_group(code, "default"),
-            "profile": qf.BacktestEngine.get_symbol_profile(code, "default"),
+            "industry": qf.get_symbol_group(code, "default"),
+            "profile": qf.get_symbol_profile(code, "default"),
         })
 
     # ── Print summary table ──────────────────────────────────────────
@@ -931,26 +931,28 @@ def _run_main() -> int:
             pass  # Best-effort update — artifact already has the signals
 
     # ── Update latest_success.json pointer ───────────────────────────
-    # Only updated on successful artifact write — provides a stable
-    # pointer for downstream consumers to find the last good signals.
-    try:
-        pointer = {"file": output_file.name, "run_id": run_id,
-                    "scan_date": end_date}
-        pfd, ptmp = tempfile.mkstemp(
-            dir=str(output_dir), prefix=".latest_", suffix=".tmp")
+    # Publish only after the artifact and continuity-state transaction has
+    # succeeded. Identity mismatch intentionally preserves the prior state
+    # and remains a successful, sell-capable scan, so it may publish.
+    if not risk_state_save_error:
         try:
-            with os.fdopen(pfd, "w", encoding="utf-8") as f:
-                json.dump(pointer, f, ensure_ascii=False)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(ptmp, str(output_dir / "latest_success.json"))
-        except OSError:
+            pointer = {"file": output_file.name, "run_id": run_id,
+                       "scan_date": end_date}
+            pfd, ptmp = tempfile.mkstemp(
+                dir=str(output_dir), prefix=".latest_", suffix=".tmp")
             try:
-                os.unlink(ptmp)
+                with os.fdopen(pfd, "w", encoding="utf-8") as f:
+                    json.dump(pointer, f, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(ptmp, str(output_dir / "latest_success.json"))
             except OSError:
-                pass
-    except OSError:
-        pass  # Best-effort pointer file
+                try:
+                    os.unlink(ptmp)
+                except OSError:
+                    pass
+        except OSError:
+            pass  # Best-effort pointer file
 
     # Print final save status
     if risk_state_saved:

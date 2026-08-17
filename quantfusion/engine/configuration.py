@@ -6,7 +6,6 @@ from __future__ import annotations
 # responsibility is split by behavior, not by duplicating implementations.
 # ruff: noqa: F401
 
-import math
 from dataclasses import replace
 from typing import Any, Callable, ClassVar
 
@@ -28,15 +27,7 @@ from quantfusion.domain.models import (
     TradeRecord,
     account_order_count,
 )
-from quantfusion.domain.rules import (
-    SYMBOL_RE,
-    floor_to_lot,
-    is_finite_number,
-    require_bool,
-    require_finite,
-    require_int,
-    require_positive,
-)
+from quantfusion.domain.rules import floor_to_lot, is_finite_number
 from quantfusion.indicators.technical import Indicators
 from quantfusion.risk.managers import RiskManager
 from quantfusion.strategy.trend import (
@@ -46,14 +37,9 @@ from quantfusion.strategy.trend import (
     TurtleBreakoutStrategy,
 )
 
-_SYMBOL_RE = SYMBOL_RE
 _account_order_count = account_order_count
 _floor_to_lot = floor_to_lot
 _is_finite_number = is_finite_number
-_require_bool = require_bool
-_require_finite = require_finite
-_require_int = require_int
-_require_positive = require_positive
 
 
 class EngineConfigurationMixin:
@@ -64,9 +50,8 @@ class EngineConfigurationMixin:
         """Return the public canonical engine defaults."""
         return default_engine_config()
 
+    # Compatibility alias; new code imports the immutable public config fact.
     _PER_SYMBOL_OVERRIDE_KEYS: ClassVar[set[str]] = set(PER_SYMBOL_OVERRIDE_KEYS)
-    _validate_config = staticmethod(validate_engine_config)
-
 
     @staticmethod
     def optimized_aggressive_config() -> dict:
@@ -697,3 +682,8 @@ class EngineConfigurationMixin:
         if hint:
             return hint
         return "default"
+
+    @staticmethod
+    def _validate_config(cfg: dict) -> dict:
+        """Delegate legacy validation to the public config fact source."""
+        return validate_engine_config(cfg)

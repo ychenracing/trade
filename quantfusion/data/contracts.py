@@ -206,3 +206,4 @@ def refresh_regime_indices(
 
     _atomic_json(status, root / "live_refresh_manifest.json")
     return status
+

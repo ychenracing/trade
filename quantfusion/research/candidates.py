@@ -199,7 +199,7 @@ class Candidate:
             raise ValueError("max_total_weight must be in (0, 1.00]")
         if symbol_weight > total_weight:
             raise ValueError("max_symbol_weight must not exceed max_total_weight")
-        scalable = set(PER_SYMBOL_OVERRIDE_KEYS) - {
+        scalable = PER_SYMBOL_OVERRIDE_KEYS - {
             "atr_method",
             "reversal_turtle_enabled",
             "reversal_dual_ma_enabled",

@@ -245,20 +245,19 @@ class EnsembleOrchestrationMixin:
                 float(portfolio_risk.lifetime_peak_assets),
                 portfolio_risk_events,
             )
-            # 穿越牛熊 overlay check (appends T+1 sell signals to pending).
+            # 穿越牛熊 policy emits immutable actions; the engine-owned
+            # adapter appends the resulting T+1 sells and resolves priorities.
             cm_overlay_peak = max(cm_overlay_peak, assets)
             if cm_overlay is not None and cm_overlay_peak > 0:
-                risk_actions = cm_overlay.evaluate_actions(
+                actions = cm_overlay.evaluate(
                     states, date, idx, assets, cm_overlay_peak,
                     self._overlay_allocation_score(states, date),
                 )
-                pending_winners, pending_suppressed = apply_risk_actions(
-                    risk_actions, states
-                )
-                cm_overlay.record_suppressed_actions(
-                    pending_winners,
-                    pending_suppressed,
-                    date.strftime("%Y-%m-%d"),
+                apply_risk_actions(
+                    actions,
+                    states,
+                    date_str=date.strftime("%Y-%m-%d"),
+                    events=cm_overlay.events,
                 )
             held = self._held_portfolio_symbols(states)
             symbol_count_curve.append(

@@ -15,6 +15,10 @@ from quantfusion.application.backtest_cli import (
 from quantfusion.application.reporting import PerformanceReport
 from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
 from quantfusion.data.providers import DataFetcher
+from quantfusion.data.contracts import (
+    OPTIONAL_COLUMNS as OPTIONAL_COLUMNS,
+    REQUIRED_OHLC_COLUMNS as REQUIRED_OHLC_COLUMNS,
+)
 from quantfusion.domain.models import (
     AccountState,
     BarContext,

@@ -16,8 +16,8 @@ from quantfusion.account.service import (
     trend_candidate_score,
 )
 from quantfusion.account.snapshot import EXPECTED_DATA_ERRORS, load_account_snapshot
-from quantfusion.config.engine import default_engine_config
 from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
+from quantfusion.config.engine import default_engine_config
 from quantfusion.data import contracts as data_contracts
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import BarContext

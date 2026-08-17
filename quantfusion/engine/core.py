@@ -12,7 +12,7 @@ from quantfusion.domain.models import Position, Signal, TradeRecord
 from quantfusion.domain.rules import require_finite
 from quantfusion.engine.configuration import EngineConfigurationMixin
 from quantfusion.engine.data_flow import CoreDataFlowMixin
-from quantfusion.execution.flow import CoreExecutionMixin
+from quantfusion.engine.execution_flow import CoreExecutionMixin
 from quantfusion.engine.replay_loop import CoreReplayLoopMixin
 from quantfusion.engine.results import CoreResultsMixin
 from quantfusion.engine.sector_risk import CoreSectorRiskMixin

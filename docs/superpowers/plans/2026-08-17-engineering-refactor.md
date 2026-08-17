@@ -197,3 +197,4 @@
 - [ ] 运行 weak/regime、daily artifact、经济 fingerprint 与最终 983 场景 stress gate，读取工件并核对 scenario count/schema/gates。
 - [ ] 对最终 diff 做一次独立代码审查；修复 Critical/Important 后只重跑受影响检查。
 - [ ] 创建一个有意图的最终提交，通过 GitHub 连接器把 `main` 从 `9bb136d` fast-forward 到新提交；禁止 force update。
+

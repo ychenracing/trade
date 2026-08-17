@@ -112,6 +112,7 @@ jobs:
 
           import quant_fusion as qf
           from backtest_universes import DATA_DIR, NAMES, UNIVERSES
+          from quantfusion.research.fingerprints import economic_sequence_fingerprints
 
           # 整数指标（交易数/成交数）必须精确一致；浮点指标（收益/回撤）
           # 仅容忍跨平台 1-ulp 级别的浮点求和顺序差异（rel_tol=1e-9 远小于
@@ -134,11 +135,18 @@ jobs:
                   "total_trades": int(result["total_trades"]),
                   "sleeve_fill_count": int(result["sleeve_fill_count"]),
               }
+              actual.update(economic_sequence_fingerprints(result))
               expected_item = baselines[str(len(codes))]
               for key, value in actual.items():
                   baseline_value = expected_item[key]
                   if isinstance(value, int):
                       if value != int(baseline_value):
+                          raise SystemExit(
+                              f"{name} regression on {key}: "
+                              f"expected {baseline_value}, got {value}"
+                          )
+                  elif isinstance(value, str):
+                      if value != str(baseline_value):
                           raise SystemExit(
                               f"{name} regression on {key}: "
                               f"expected {baseline_value}, got {value}"

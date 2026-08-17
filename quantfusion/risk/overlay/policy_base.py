@@ -6,7 +6,6 @@ from __future__ import annotations
 
 # ruff: noqa: F401
 
-from dataclasses import replace
 from typing import Any
 
 import pandas as pd
@@ -53,10 +52,6 @@ from quantfusion.config.overlay import (
     SHOCK_MIN_HELD,
     SHOCK_TRIM_DRAWDOWN,
     SHOCK_TRIM_RATIO,
-)
-from quantfusion.risk.overlay.adapter import (
-    apply_risk_actions,
-    resolve_risk_actions,
 )
 from quantfusion.risk.overlay.models import RiskAction
 
@@ -124,21 +119,6 @@ class OverlayPolicyMixin:
         self._last_metrics: dict[str, Any] = {}
         self._last_metrics_date: pd.Timestamp | None = None
         self.events: list[dict[str, Any]] = []
-        self._action_buffer: list[RiskAction] = []
-        self._action_state_indices: dict[int, int] = {}
-        self.last_actions: tuple[RiskAction, ...] = ()
-
-    @property
-    def pending_actions(self) -> tuple[RiskAction, ...]:
-        """Expose immutable actions collected before engine adaptation."""
-        return tuple(self._action_buffer)
-
-    def _action_state_index(self, state: Any) -> int:
-        """Return the stable input-state index targeted by one risk action."""
-        identity = id(state)
-        if identity not in self._action_state_indices:
-            self._action_state_indices[identity] = len(self._action_state_indices)
-        return self._action_state_indices[identity]
 
     @property
     def blocks_new_positions(self) -> bool:
@@ -190,73 +170,8 @@ class OverlayPolicyMixin:
         """Whether warning-or-worse market risk must reject additions to holdings."""
         return self.enable_early_sector_risk and self._risk_level >= 1
 
-    def block_risk_buys(
-        self, states: list, date: pd.Timestamp, held_symbols: set[str]
-    ) -> None:
-        """Apply the Level-1 pyramid freeze and Level-2 new-entry freeze.
 
-        The gate runs immediately before portfolio buy authorization. Sells are
-        untouched, and every rejected order is retained in the audit stream.
-        """
-        if self._outer_defensive_mode:
-            return
-        if not self.blocks_pyramiding:
-            return
-        date_str = date.strftime("%Y-%m-%d")
-        transition_confirmed = any(
-            getattr(state.sleeve, "_regime_state", "TREND") == "TRANSITION"
-            and int(getattr(state.sleeve, "_regime_transition_days", 0)) >= 5
-            for state in states
-        )
-        for state in states:
-            retained: list[tuple[Any, Any]] = []
-            for signal, strategy in state.pending:
-                is_buy = signal.direction == "buy"
-                is_held = str(signal.symbol) in held_symbols
-                blocked = is_buy and (
-                    (self.blocks_new_positions and not is_held)
-                    or (self.blocks_pyramiding and is_held)
-                )
-                if (
-                    is_buy
-                    and not is_held
-                    and not self.blocks_new_positions
-                    and transition_confirmed
-                ):
-                    scaled_shares = int(signal.target_shares * 0.75 // 100 * 100)
-                    if scaled_shares > 0:
-                        retained.append(
-                            (replace(signal, target_shares=scaled_shares), strategy)
-                        )
-                        continue
-                    blocked = True
-                if not blocked:
-                    retained.append((signal, strategy))
-                    continue
-                event = (
-                    "blocked_confirmed_market_risk"
-                    if self.blocks_new_positions
-                    else "blocked_market_risk_pyramid"
-                )
-                sleeve = getattr(state, "sleeve", None)
-                if sleeve is not None and hasattr(sleeve, "_record_order_event"):
-                    sleeve._record_order_event(
-                        date=date_str,
-                        signal=signal,
-                        event=event,
-                        market_risk_level=int(self._risk_level),
-                    )
-                self.events.append(
-                    {
-                        "date": date_str,
-                        "event": event,
-                        "symbol": str(signal.symbol),
-                        "level": int(self._risk_level),
-                    }
-                )
-            state.pending = retained
-
-    def evaluate_actions(
+    def evaluate(
         self,
         states: list,
         date: pd.Timestamp,
@@ -265,16 +180,12 @@ class OverlayPolicyMixin:
         peak: float,
         scoring_fn,
     ) -> tuple[RiskAction, ...]:
-        """Evaluate one day and return actions without mutating pending queues.
+        """Evaluate one day and return ordered immutable defensive actions.
 
         ``scoring_fn`` maps a symbol to an allocation score (lower = weaker),
         used to rank which names get trimmed first on a structural shock.
         """
-        self._action_buffer = []
-        self._action_state_indices = {
-            id(state): index for index, state in enumerate(states)
-        }
-        self.last_actions = ()
+        actions: list[RiskAction] = []
         date_str = date.strftime("%Y-%m-%d")
         prices = self._close_prices(states, date)
         held = self._held_positions(states)
@@ -335,11 +246,13 @@ class OverlayPolicyMixin:
             for state, strat_name, pos in (
                 (st, sn, p) for st, sy, sn, p in held if sy == symbol
             ):
-                self._queue_sell(
-                    state, symbol, strat_name, pos.shares, price,
+                action = self._sell_action(
+                    states, state, symbol, strat_name, pos.shares, price,
                     date_str, trigger_type,
                     f"drop_from_peak={peak_drop:.1%}",
                 )
+                if action is not None:
+                    actions.append(action)
             self._catastrophe_cooldown[symbol] = date_pos + CATASTROPHE_COOLDOWN_DAYS
             self.events.append({
                 "date": date_str, "event": "layered_stop",
@@ -351,7 +264,11 @@ class OverlayPolicyMixin:
         #    holdings (P1-1). Core (highest-scoring) names are preserved, and
         #    the trim only arms once the portfolio is genuinely off its peak.
         if self.enable_early_sector_risk and self._risk_level >= 2:
-            self._apply_graded_trim(states, prices, date_str, scoring_fn, drawdown)
+            actions.extend(
+                self._apply_graded_trim(
+                    states, prices, date_str, scoring_fn, drawdown
+                )
+            )
 
         # Sustained internal TRANSITION plus an external Level-1 warning is the
         # only path that trims during transition. This avoids globally reducing
@@ -369,8 +286,10 @@ class OverlayPolicyMixin:
             and drawdown >= 0.05
             and self._portfolio_fast_return() < 0
         ):
-            self._apply_transition_trim(
-                states, prices, date_str, scoring_fn, ratio=0.10
+            actions.extend(
+                self._apply_transition_trim(
+                    states, prices, date_str, scoring_fn, ratio=0.10
+                )
             )
             self._transition_trim_active = True
         elif self._risk_level == 0 or not transition_confirmed:
@@ -382,130 +301,21 @@ class OverlayPolicyMixin:
         #     to the graded trim above (different trigger: concentration, not
         #     sector shock), gated separately so it never double-trims.
         if self.enable_concentration_guard:
-            self._apply_concentration_guard(
-                states, prices, date_str, scoring_fn, drawdown, assets
+            actions.extend(
+                self._apply_concentration_guard(
+                    states, prices, date_str, scoring_fn, drawdown, assets
+                )
             )
 
         # 3) Historical structural-shock fast de-risk (opt-in only).
         if self.enable_shock_trim and peak > 0 and assets < peak * (1.0 - self.shock_trim_drawdown):
             if self._is_shock(states, date, prices):
-                self._trim_laggards(states, prices, date_str, scoring_fn)
+                actions.extend(
+                    self._trim_laggards(states, prices, date_str, scoring_fn)
+                )
 
-        # 4) Resolve immutable policy actions before the engine adapter sees
-        #    them. Priority is consumed directly from RiskAction rather than
-        #    reconstructed from a serialized Signal reason.
-        winners, suppressed = resolve_risk_actions(self._action_buffer)
-        self.record_suppressed_actions(winners, suppressed, date_str)
-        self.last_actions = winners
-        return winners
+        return tuple(actions)
 
-    def record_suppressed_actions(
-        self,
-        winners: tuple[RiskAction, ...],
-        suppressed: tuple[RiskAction, ...],
-        date_str: str,
-    ) -> None:
-        """Append deterministic audit events for adapter-level suppression."""
-        winner_by_book = {
-            (action.symbol, action.strategy_name): action for action in winners
-        }
-        for action in suppressed:
-            winner = winner_by_book[(action.symbol, action.strategy_name)]
-            self.events.append(
-                {
-                    "date": date_str,
-                    "event": "risk_action_suppressed",
-                    "symbol": action.symbol,
-                    "strategy": action.strategy_name,
-                    "reason": (
-                        f"{action.reason}:{action.extra}"
-                        if action.extra
-                        else action.reason
-                    ),
-                    "target_shares": action.shares,
-                    "winner_reason": (
-                        f"{winner.reason}:{winner.extra}"
-                        if winner.extra
-                        else winner.reason
-                    ),
-                }
-            )
-
-    def on_day(
-        self,
-        states: list,
-        date: pd.Timestamp,
-        date_pos: int,
-        assets: float,
-        peak: float,
-        scoring_fn,
-    ) -> None:
-        """Compatibility entry point that evaluates, then adapts, risk actions.
-
-        The ensemble engine calls :meth:`evaluate_actions` and the adapter
-        explicitly.  This wrapper keeps the historical public API available to
-        external callers without moving pending-queue mutation back into policy.
-        """
-        actions = self.evaluate_actions(
-            states,
-            date,
-            date_pos,
-            assets,
-            peak,
-            scoring_fn,
-        )
-        winners, suppressed = apply_risk_actions(actions, states)
-        self.record_suppressed_actions(
-            winners,
-            suppressed,
-            date.strftime("%Y-%m-%d"),
-        )
-
-    def block_cooldown_buys(
-        self, states: list, date: pd.Timestamp, date_pos: int
-    ) -> None:
-        """Block every pending buy for a symbol still in catastrophe cooldown.
-
-        Report P0-4: the cooldown table must not just suppress repeat exits — it
-        must form a hard buy admission gate so a symbol that just exited via a
-        layered/catastrophe stop cannot be re-entered by ANY trend sleeve until
-        the trading-day cooldown expires. This is called at the open of every
-        trading day, before buys are authorized and filled, so all three trend
-        sleeves are blocked together. The blocking reason is audited per sleeve.
-        """
-        if self._outer_defensive_mode:
-            return
-        date_str = date.strftime("%Y-%m-%d")
-        for state in states:
-            blocked: list[tuple[Any, Any]] = []
-            for signal, strategy in state.pending:
-                if signal.direction == "buy" and date_pos < self._catastrophe_cooldown.get(
-                    str(signal.symbol), -1
-                ):
-                    sleeve = getattr(state, "sleeve", None)
-                    if sleeve is not None and hasattr(sleeve, "_record_order_event"):
-                        record = sleeve._record_order_event
-                    else:
-                        record = None
-                    if record is not None:
-                        try:
-                            record(
-                                date=date_str,
-                                signal=signal,
-                                event="blocked_catastrophe_cooldown",
-                                cooldown_days=CATASTROPHE_COOLDOWN_DAYS,
-                            )
-                        except TypeError:
-                            pass
-                    self.events.append({
-                        "date": date_str,
-                        "event": "cooldown_blocked_buy",
-                        "symbol": str(signal.symbol),
-                        "reason": "catastrophe_cooldown",
-                    })
-                    continue
-                blocked.append((signal, strategy))
-            state.pending = blocked
 
     def _update_risk_level(
         self, states: list, date: pd.Timestamp, date_pos: int, held: list,

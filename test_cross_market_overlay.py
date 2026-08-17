@@ -11,11 +11,7 @@ import unittest
 import pandas as pd
 
 from cross_market_overlay import CATASTROPHE_COOLDOWN_DAYS, CrossMarketOverlay
-from quantfusion.risk.overlay.adapter import (
-    apply_risk_actions,
-    resolve_risk_actions,
-)
-from quantfusion.risk.overlay.models import RiskAction
+from quantfusion.risk.overlay.adapter import apply_risk_actions
 
 
 class _Pos:
@@ -83,27 +79,6 @@ class CatastropheStopTests(unittest.TestCase):
         # 每个标的只记录一条事件，避免重复记账。
         self.assertEqual(len(overlay.events), 1)
 
-    def test_evaluation_does_not_mutate_pending_before_adaptation(self) -> None:
-        """风险政策先返回不可变动作，执行适配器再写入 T+1 队列。"""
-        date = pd.Timestamp("2026-01-06")
-        state = _State(
-            _Sleeve({"AAA": {"fast": _Pos(100, 100.0, 90.0)}}),
-            {"AAA": _frame(70.0)},
-        )
-        overlay = CrossMarketOverlay()
-        actions = overlay.evaluate_actions(
-            [state],
-            date,
-            date_pos=1,
-            assets=2_000_000,
-            peak=2_000_000,
-            scoring_fn=None,
-        )
-        self.assertEqual(state.pending, [])
-        self.assertEqual([action.reason for action in actions], ["catastrophe_stop"])
-        apply_risk_actions(actions, [state])
-        self.assertEqual(len(state.pending), 1)
-
     def test_normal_pullback_does_not_trigger(self) -> None:
         """健康回调（-20%）不触发，保持 bull-silent。"""
         date = pd.Timestamp("2026-01-06")
@@ -155,9 +130,12 @@ class CatastropheStopTests(unittest.TestCase):
         overlay._assets_history = [155_000, 153_000, 151_000, 150_000]
         prices = {"300308": 100.0, "300502": 50.0, "999999": 80.0}
         # 未映射 8 万元 / 总资产 23 万元 = 34.8% >= 5% 阈值 -> 失败关闭。
-        overlay._apply_concentration_guard(
+        actions = overlay._apply_concentration_guard(
             states, prices, "2026-01-06", scoring_fn=None,
             drawdown=0.12, assets=230_000,
+        )
+        apply_risk_actions(
+            actions, states, date_str="2026-01-06", events=overlay.events
         )
         self.assertEqual(states[0].pending, [])
         self.assertTrue(
@@ -183,14 +161,18 @@ class CatastropheStopTests(unittest.TestCase):
         overlay._assets_history = [175_000, 173_000, 171_000, 170_000]
         prices = {"300308": 100.0, "300502": 50.0, "999999": 80.0}
         # 未映射 8000 / 总资产 17 万 = 4.7% < 5% 阈值被忽略；optical 簇 15 万/17 万 = 88% > 80%。
-        overlay._apply_concentration_guard(
+        actions = overlay._apply_concentration_guard(
             states, prices, "2026-01-06", scoring_fn=None,
             drawdown=0.12, assets=170_000,
         )
+        self.assertEqual(states[0].pending, [])
+        apply_risk_actions(
+            actions, states, date_str="2026-01-06", events=overlay.events
+        )
         # optical 市值 15 万 / 17 万 = 88% > 80% 上限，应裁剪簇内最弱股。
-        sells = overlay.pending_actions
+        sells = [sig for st in states for sig, _ in st.pending]
         self.assertTrue(any(
-            action.reason == "concentration_trim" for action in sells
+            sig.reason.split(":")[0] == "concentration_trim" for sig in sells
         ))
 
     def test_cooldown_suppresses_future_reentry_only(self) -> None:
@@ -235,14 +217,18 @@ class ConcentrationGuardTests(unittest.TestCase):
         # 组合正处回撤（12%）且近期净值连续下跌（bull-silent 前提）。
         overlay._assets_history = [155_000, 153_000, 151_000, 150_000]
         prices = {"300308": 100.0, "300502": 50.0}
-        overlay._apply_concentration_guard(
+        actions = overlay._apply_concentration_guard(
             states, prices, "2026-01-06", scoring_fn=None,
             drawdown=0.12, assets=150_000,
         )
-        sells = overlay.pending_actions
+        self.assertEqual(states[0].pending, [])
+        apply_risk_actions(
+            actions, states, date_str="2026-01-06", events=overlay.events
+        )
+        sells = [sig for st in states for sig, _ in st.pending]
         # 无评分函数时按代码字典序取簇内最弱股（300308），裁剪其超额敞口。
-        self.assertTrue(any(action.symbol == "300308" for action in sells))
-        self.assertTrue(any(action.reason == "concentration_trim" for action in sells))
+        self.assertTrue(any(sig.symbol == "300308" for sig in sells))
+        self.assertTrue(any(sig.reason.split(":")[0] == "concentration_trim" for sig in sells))
         self.assertTrue(overlay.events)
 
     def test_bull_silent_no_trim_when_no_drawdown(self) -> None:
@@ -261,9 +247,12 @@ class ConcentrationGuardTests(unittest.TestCase):
         overlay = CrossMarketOverlay()
         overlay._assets_history = [150_000, 150_000, 150_000, 150_000]
         prices = {"300308": 100.0, "300502": 50.0}
-        overlay._apply_concentration_guard(
+        actions = overlay._apply_concentration_guard(
             states, prices, "2026-01-06", scoring_fn=None,
             drawdown=0.0, assets=150_000,
+        )
+        apply_risk_actions(
+            actions, states, date_str="2026-01-06", events=overlay.events
         )
         self.assertEqual(states[0].pending, [])
         self.assertEqual(overlay.events, [])
@@ -522,74 +511,63 @@ class _RiskSignal:
 class UnifiedRiskPriorityTests(unittest.TestCase):
     """报告 P1-1：多个风险机制同一天对同一标的下单时，只保留最高优先级动作。"""
 
-    @staticmethod
-    def _action(
-        symbol: str,
-        strategy_name: str,
-        shares: int,
-        reason: str,
-        priority: int,
-    ) -> RiskAction:
-        return RiskAction(
-            symbol=symbol,
-            strategy_name=strategy_name,
-            shares=shares,
-            price=10.0,
-            signal_date="2026-01-06",
-            reason=reason,
-            priority=priority,
-        )
+    def _state(self, sells: list) -> _State:
+        state = _State(_Sleeve({}), {})
+        state.pending = [(sig, None) for sig in sells]
+        return state
 
     def test_full_exit_wins_over_concentration_trim(self) -> None:
         """同一标的同一策略：灾变全退（高优先级）应覆盖集中度减仓。"""
-        winners, suppressed = resolve_risk_actions(
-            (
-                self._action("AAA", "fast", 100, "concentration_trim", 40),
-                self._action("AAA", "fast", 100, "cost_stop", 90),
-            )
-        )
-        self.assertEqual([action.reason for action in winners], ["cost_stop"])
-        self.assertEqual(
-            [action.reason for action in suppressed], ["concentration_trim"]
+        overlay = CrossMarketOverlay()
+        state = self._state([
+            _RiskSignal("AAA", "fast", "sell", 100, "concentration_trim:cluster=optical"),
+            _RiskSignal("AAA", "fast", "sell", 100, "cost_stop:drop_from_peak=20.0%"),
+        ])
+        overlay._consolidate_risk_sells([state], "2026-01-06")
+        self.assertEqual(len(state.pending), 1)
+        win = state.pending[0][0]
+        self.assertEqual(win.reason.split(":")[0], "cost_stop")
+        self.assertTrue(
+            any(e["event"] == "risk_action_suppressed" for e in overlay.events)
         )
 
     def test_sibling_sleeve_exits_all_survive(self) -> None:
         """同一标的三个袖套的同日全退（兄弟退出）互不冲突，全部保留。"""
-        actions = tuple(
-            self._action("AAA", strategy, 100, "catastrophe_stop", 100)
-            for strategy in ("fast", "base", "slow")
-        )
-        winners, suppressed = resolve_risk_actions(actions)
-        self.assertEqual(winners, actions)
-        self.assertEqual(suppressed, ())
+        overlay = CrossMarketOverlay()
+        state = self._state([
+            _RiskSignal("AAA", "fast", "sell", 100, "catastrophe_stop:drop_from_peak=30.0%"),
+            _RiskSignal("AAA", "base", "sell", 100, "catastrophe_stop:drop_from_peak=30.0%"),
+            _RiskSignal("AAA", "slow", "sell", 100, "catastrophe_stop:drop_from_peak=30.0%"),
+        ])
+        overlay._consolidate_risk_sells([state], "2026-01-06")
+        self.assertEqual(len(state.pending), 3)
+        self.assertEqual(overlay.events, [])
 
     def test_higher_priority_and_larger_target_wins_on_tie(self) -> None:
         """同优先级时，目标股数更大（更保守）的动作胜出。"""
-        winners, _ = resolve_risk_actions(
-            (
-                self._action("BBB", "base", 30, "sector_risk_trim", 60),
-                self._action("BBB", "base", 80, "sector_risk_trim", 60),
-            )
-        )
-        self.assertEqual(winners[0].shares, 80)
+        overlay = CrossMarketOverlay()
+        state = self._state([
+            _RiskSignal("BBB", "base", "sell", 30, "sector_risk_trim:level=2"),
+            _RiskSignal("BBB", "base", "sell", 80, "sector_risk_trim:level=3"),
+        ])
+        overlay._consolidate_risk_sells([state], "2026-01-06")
+        self.assertEqual(len(state.pending), 1)
+        self.assertEqual(state.pending[0][0].target_shares, 80)
 
     def test_strategy_level_sells_untouched(self) -> None:
         """策略普通卖出（strategy 非 None）不受叠加层优先级合并影响。"""
+        overlay = CrossMarketOverlay()
+
         class _DummyStrat:
             pass
 
         state = _State(_Sleeve({}), {})
-        ordinary = (
-            _RiskSignal("CCC", "fast", "sell", 50, "exit_signal"),
-            _DummyStrat(),
-        )
-        state.pending = [ordinary]
-        apply_risk_actions(
-            (self._action("AAA", "fast", 100, "catastrophe_stop", 100),),
-            state,
-        )
-        self.assertIs(state.pending[0], ordinary)
-        self.assertEqual(len(state.pending), 2)
+        state.pending = [
+            (_RiskSignal("CCC", "fast", "sell", 50, "exit_signal"), _DummyStrat()),
+        ]
+        overlay._consolidate_risk_sells([state], "2026-01-06")
+        self.assertEqual(len(state.pending), 1)
+        self.assertEqual(overlay.events, [])
 
 
 if __name__ == "__main__":

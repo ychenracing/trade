@@ -19,7 +19,6 @@ LEGACY_MODULES = {
     "market_data_contracts",
     "daily_signal_scan",
     "quant_fusion_optimizer",
-    "stress_test_prefixes",
 }
 REQUIRED_PACKAGES = {
     "domain",
@@ -69,6 +68,9 @@ ROOT_SIZE_LIMITS = {
     "regime_adaptive.py": 250,
     "cross_market_overlay.py": 150,
     "account_signal_engine.py": 150,
+    "quant_fusion_optimizer.py": 150,
+    "risk_governance.py": 150,
+    "market_data_contracts.py": 150,
     "stress_test_prefixes.py": 150,
 }
 
@@ -87,6 +89,18 @@ def _imports(path: Path) -> list[tuple[str, tuple[str, ...]]]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             found.append((node.module, tuple(alias.name for alias in node.names)))
     return found
+
+
+def _attribute_parts(node: ast.Attribute) -> tuple[str, ...]:
+    """Return the dotted-name parts for one attribute expression."""
+    parts = [node.attr]
+    value: ast.expr = node.value
+    while isinstance(value, ast.Attribute):
+        parts.append(value.attr)
+        value = value.value
+    if isinstance(value, ast.Name):
+        parts.append(value.id)
+    return tuple(reversed(parts))
 
 
 class CanonicalLayoutTests(unittest.TestCase):
@@ -158,7 +172,8 @@ class DependencyDirectionTests(unittest.TestCase):
                         )
         self.assertEqual(violations, [])
 
-    def test_cross_package_objects_do_not_access_private_attributes(self) -> None:
+    def test_cross_package_objects_do_not_use_private_attributes(self) -> None:
+        """Reject ``ImportedType._private`` dependencies across packages."""
         violations: list[str] = []
         for path in PACKAGE.rglob("*.py") if PACKAGE.exists() else ():
             relative = path.relative_to(PACKAGE)
@@ -166,28 +181,45 @@ class DependencyDirectionTests(unittest.TestCase):
                 continue
             owner = relative.parts[0]
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            external_bindings: set[str] = set()
+            bindings: dict[str, str] = {}
             for node in tree.body:
-                if isinstance(node, ast.Import):
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    module_parts = node.module.split(".")
+                    if len(module_parts) >= 2 and module_parts[0] == "quantfusion":
+                        for alias in node.names:
+                            bindings[alias.asname or alias.name] = module_parts[1]
+                elif isinstance(node, ast.Import):
                     for alias in node.names:
-                        parts = alias.name.split(".")
-                        if len(parts) >= 2 and parts[0] == "quantfusion" and parts[1] != owner:
-                            external_bindings.add(alias.asname or parts[0])
-                elif isinstance(node, ast.ImportFrom) and node.module:
-                    parts = node.module.split(".")
-                    if len(parts) >= 2 and parts[0] == "quantfusion" and parts[1] != owner:
-                        external_bindings.update(alias.asname or alias.name for alias in node.names)
+                        module_parts = alias.name.split(".")
+                        if len(module_parts) >= 2 and module_parts[0] == "quantfusion":
+                            bindings[alias.asname or module_parts[0]] = module_parts[1]
             for node in ast.walk(tree):
-                if (
-                    isinstance(node, ast.Attribute)
-                    and node.attr.startswith("_")
-                    and isinstance(node.value, ast.Name)
-                    and node.value.id in external_bindings
-                ):
+                if not isinstance(node, ast.Attribute) or not node.attr.startswith("_"):
+                    continue
+                parts = _attribute_parts(node)
+                if not parts:
+                    continue
+                dependency = bindings.get(parts[0])
+                if parts[0] == "quantfusion" and len(parts) >= 2:
+                    dependency = parts[1]
+                if dependency and dependency != owner:
                     violations.append(
-                        f"{path.relative_to(ROOT)}:{node.lineno} -> "
-                        f"{node.value.id}.{node.attr}"
+                        f"{path.relative_to(ROOT)} -> {'.'.join(parts)}"
                     )
+        self.assertEqual(sorted(set(violations)), [])
+
+    def test_overlay_policy_does_not_mutate_pending_queues(self) -> None:
+        """Only the overlay adapter may know the engine pending container."""
+        violations: list[str] = []
+        policy_files = (
+            PACKAGE / "risk" / "overlay" / "actions.py",
+            PACKAGE / "risk" / "overlay" / "policy_base.py",
+        )
+        for path in policy_files:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Attribute) and node.attr == "pending":
+                    violations.append(str(path.relative_to(ROOT)))
         self.assertEqual(violations, [])
 
     def test_canonical_import_graph_is_acyclic(self) -> None:
@@ -240,6 +272,27 @@ class CompatibilityTests(unittest.TestCase):
         }
         self.assertEqual(sorted(required - set(dir(legacy))), [])
 
+    def test_canonical_package_public_api_is_available(self) -> None:
+        """The migration imports documented in the report must resolve."""
+        from quantfusion.config import (
+            PortfolioPolicy,
+            default_engine_config,
+            validate_engine_config,
+        )
+        from quantfusion.data import DataFetcher
+        from quantfusion.domain import Position, Signal, TradeRecord
+        from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
+
+        self.assertTrue(callable(BacktestEngine))
+        self.assertTrue(callable(SleeveBacktestEngine))
+        self.assertTrue(callable(PortfolioPolicy))
+        self.assertTrue(callable(DataFetcher))
+        self.assertTrue(callable(Position))
+        self.assertTrue(callable(Signal))
+        self.assertTrue(callable(TradeRecord))
+        defaults = default_engine_config()
+        self.assertEqual(validate_engine_config(defaults), defaults)
+
     def test_default_config_has_one_public_source(self) -> None:
         legacy = importlib.import_module("quant_fusion")
         config = importlib.import_module("quantfusion.config.engine")
@@ -248,10 +301,27 @@ class CompatibilityTests(unittest.TestCase):
             config.default_engine_config(),
         )
 
-    def test_stress_cli_delegates_to_canonical_application(self) -> None:
-        legacy = importlib.import_module("stress_test_prefixes")
-        canonical = importlib.import_module("quantfusion.application.stress")
-        self.assertIs(legacy, canonical)
+    def test_legacy_data_contract_constants_remain_available(self) -> None:
+        legacy = importlib.import_module("quant_fusion")
+        contracts = importlib.import_module("quantfusion.data.contracts")
+        self.assertIs(legacy.REQUIRED_OHLC_COLUMNS, contracts.REQUIRED_OHLC_COLUMNS)
+        self.assertIs(legacy.OPTIONAL_COLUMNS, contracts.OPTIONAL_COLUMNS)
+
+    def test_optimizer_public_constants_remain_available(self) -> None:
+        legacy = importlib.import_module("quant_fusion_optimizer")
+        candidates = importlib.import_module("quantfusion.research.candidates")
+        names = {
+            "MAX_SYMBOL_WEIGHT",
+            "MAX_TOTAL_WEIGHT",
+            "MAX_POSITIONS",
+            "DEFAULT_DRAWDOWN_LIMIT",
+            "INTEGER_SYMBOL_PARAMETERS",
+            "POLICY_RISK_KEYS",
+            "POLICY_RISK_PROFILES",
+            "SLEEVE_WEIGHT_PROFILES",
+        }
+        for name in names:
+            self.assertIs(getattr(legacy, name), getattr(candidates, name))
 
 
 if __name__ == "__main__":
