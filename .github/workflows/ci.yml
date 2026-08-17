@@ -119,6 +119,7 @@ jobs:
           import quant_fusion as qf
           from backtest_universes import DATA_DIR, NAMES, UNIVERSES
           from quantfusion.research.fingerprints import economic_sequence_fingerprints
+          from test_quant_fusion import regime_route_fingerprint
 
           # 整数指标（交易数/成交数）必须精确一致；浮点指标（收益/回撤）
           # 仅容忍跨平台 1-ulp 级别的浮点求和顺序差异（rel_tol=1e-9 远小于
@@ -142,6 +143,8 @@ jobs:
                   "sleeve_fill_count": int(result["sleeve_fill_count"]),
               }
               actual.update(economic_sequence_fingerprints(result))
+              actual.pop("regime_state_series_sha256")
+              actual["regime_route_sha256"] = regime_route_fingerprint(result)
               expected_item = baselines[str(len(codes))]
               for key, value in actual.items():
                   baseline_value = expected_item[key]
