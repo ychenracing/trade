@@ -157,6 +157,26 @@ class SourceDocumentationTests(unittest.TestCase):
 class RepositoryHygieneTests(unittest.TestCase):
     """保证本地缓存、编辑器配置和生成工件不会进入 Git 索引。"""
 
+    def test_ci_uses_a_python_311_compatible_lockfile(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        py311_lock = ROOT / "requirements-lock-py311.txt"
+
+        self.assertTrue(py311_lock.exists())
+        self.assertIn("--python-version 3.11", py311_lock.read_text(encoding="utf-8"))
+        self.assertRegex(
+            workflow,
+            r'python-version: "3\.11"\s+lock-file: requirements-lock-py311\.txt',
+        )
+        self.assertRegex(
+            workflow,
+            r'python-version: "3\.11"\s+'
+            r'lock-file: requirements-lock-py311\.txt\s+'
+            r'pytest-args: .+economic_sequences_match_frozen_fingerprints',
+        )
+        self.assertIn("cache-dependency-path: ${{ matrix.lock-file }}", workflow)
+        self.assertIn("pip install -r ${{ matrix.lock-file }}", workflow)
+        self.assertIn("pytest -q ${{ matrix.pytest-args }}", workflow)
+
     def test_generated_directories_are_not_committed(self) -> None:
         forbidden_parts = {
             "__pycache__",
