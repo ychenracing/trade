@@ -21,11 +21,17 @@ from unittest import mock
 import pandas as pd
 
 import quant_fusion as quant
-from backtest_universes import NAMES, UNIVERSES
+from scripts.backtest_universes import NAMES, UNIVERSES
+from quantfusion.config.paths import (
+    BACKTEST_GOLDEN_METRICS,
+    MARKET_DATA_DIR,
+    PROJECT_ROOT,
+    VALIDATION_ARTIFACT_DIR,
+)
 
 
-ROOT = Path(__file__).resolve().parent
-DATA_DIR = ROOT / "market_data"
+ROOT = PROJECT_ROOT
+DATA_DIR = MARKET_DATA_DIR
 
 
 def run_quiet(codes: tuple[str, ...], state: str = "warm") -> dict:
@@ -807,7 +813,7 @@ class IntegrationTests(unittest.TestCase):
         )
 
         baselines = json.loads(
-            (ROOT / "backtest_golden_metrics.json").read_text(encoding="utf-8")
+            BACKTEST_GOLDEN_METRICS.read_text(encoding="utf-8")
         )
         for name, codes in UNIVERSES.items():
             with self.subTest(universe=name):
@@ -885,7 +891,7 @@ class PrefixStressArtifactTests(unittest.TestCase):
     """Verify the exhaustive one-through-22 prefix audit is current."""
 
     def test_all_prefix_counts_meet_bounded_regression_contract(self) -> None:
-        path = ROOT / "prefix_stress.json"
+        path = VALIDATION_ARTIFACT_DIR / "prefix_stress.json"
         artifact = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(artifact["portfolio_policy"], quant.PortfolioPolicy().as_dict())
         results = artifact["results"]
@@ -904,7 +910,7 @@ class CambriconArtifactTests(unittest.TestCase):
     """Verify the mapped nine-symbol artifact and its route metadata."""
 
     def test_cambricon_artifact_matches_the_reviewed_regression(self) -> None:
-        path = ROOT / "cambricon_universe_backtest.json"
+        path = VALIDATION_ARTIFACT_DIR / "cambricon_universe_backtest.json"
         artifact = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(
             artifact["cambricon_mapping"],
@@ -1160,7 +1166,7 @@ class NewFeatureTests(unittest.TestCase):
                 {"300308": "中际旭创"},
                 "2025-04-01",
                 "2026-07-20",
-                data_dir="market_data",
+                data_dir=str(MARKET_DATA_DIR),
                 indicator_state="warm",
                 account_state=account_state,
             )

@@ -96,6 +96,12 @@ RiskEvidence -> RiskPolicy -> RiskAction -> EngineAdapter -> pending signal
 
 行情缓存目录通过 `cache_dir` 从应用请求逐层传入数据提供方。`DataFetcher` 不保留进程级可变缓存目录，因此并行任务和连续运行不会相互污染数据路径。
 
+## 仓库资产边界
+
+规范代码与仓库资产分开管理：`quantfusion/` 只放可导入实现，`scripts/` 放可复现研究命令，`tests/` 按单元、契约、集成和经济回归分层。冻结股票行情位于 `data/market/`，路由证据位于 `data/regime/`，测试读取的黄金指标位于 `tests/fixtures/`，已审查批量结果位于 `artifacts/validation/`，账户输入样例位于 `examples/`。
+
+以上路径由 `quantfusion.config.paths` 统一提供。旧相对数据名只在调用目录没有同名真实路径时回落到新位置，避免覆盖用户自有目录。运行缓存、日扫输出、优化器输出和压力检查点属于临时状态，受 `.gitignore` 隔离，不得混入冻结数据或已审查工件。根目录只保留项目配置与旧公开兼容入口。
+
 ## 公共配置事实源
 
 - 引擎默认值与校验分别来自 `quantfusion.config.engine.default_engine_config()` 和 `validate_engine_config()`；

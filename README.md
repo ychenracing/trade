@@ -80,14 +80,14 @@ python -m pip install -r requirements.txt
 
 # 单轮回测（趋势引擎）
 python quant_fusion.py --start 2025-04-01 --end 2026-07-20 \
-  --capital 2000000 --data-dir market_data --indicator-state warm --no-plot
+  --capital 2000000 --data-dir data/market --indicator-state warm --no-plot
 
 # 收盘后日扫（生成候选信号）
 python daily_signal_scan.py --end-date 2026-08-04 \
   --cache-dir data_cache --output-dir daily_signals
 
 # 真实账户建议（先填入持仓）
-cp account_example.json account.json
+cp examples/account.json account.json
 python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
   --cache-dir data_cache --output-dir daily_signals
 ```
@@ -108,7 +108,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 ### 参数探索
 
-1. 按 `risk` → `turnover` → `return` 三阶段运行 `quant_fusion_optimizer.py --stage <阶段> --data-dir market_data --regime-data-dir historical_data`，避免一个参数族掩盖另一个参数族的退化。优化器和部署都使用 `ProductionReplayEngine`。
+1. 按 `risk` → `turnover` → `return` 三阶段运行 `quant_fusion_optimizer.py --stage <阶段> --data-dir data/market --regime-data-dir data/regime`，避免一个参数族掩盖另一个参数族的退化。优化器和部署都使用 `ProductionReplayEngine`。
 2. 选择同时使用收益、回撤和交易次数三目标 Pareto 前沿，再在近似收益档内优先更低回撤和更少交易。
 3. 候选必须通过普通及压力 holdout 推广门：财富不得落后基线超过 1%，回撤不得恶化超过 0.5 个百分点，交易不得增加超过 3%，除非财富至少提高 5%。
 4. 任何参数变更都必须重新通过五组趋势基线精确回归，且必须能解释收益、回撤和交易次数变化的原因。
@@ -172,7 +172,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 | 13 | 1031.4735% | -17.0463% | 118 | 233 |
 | 22 | 1080.8378% | -15.9248% | 100 | 228 |
 
-上表为全部自动功能默认开启后的精确趋势基线。账户订单是实盘换手口径，袖套成交用于内部归因；旧文档把二者都称为“交易次数”，现已拆开。1/3 股收益逐位不变，5 股只牺牲约 0.55% 最终财富并改善回撤与换手，13/22 股同时提高收益、降低回撤或减少内部成交。弱市生产回放与正式压力分布见 `BACKTEST_RESULTS.md`。
+上表为全部自动功能默认开启后的精确趋势基线。账户订单是实盘换手口径，袖套成交用于内部归因。弱市生产回放、精确序列指纹与正式压力分布见 `docs/VALIDATION.md`。
 
 ## 仓库结构
 
@@ -199,92 +199,97 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 
 ### 工具脚本
 
+实现统一放在 `scripts/`，推荐使用 `python -m scripts.<模块名>`；原根目录命令和导入名由薄兼容层继续支持。
+
 | 文件 | 用途 |
 |------|------|
-| `benchmark_validation.py` | 基准验证工具，对比不同配置下的收益与回撤 |
-| `run_regime_validation.py` | 弱市全量验证，生成多股票池、多随机种子的统计分布 |
-| `validate_basket.py` | 篮子有效性验证，检查数据完整性与映射一致性 |
-| `download_eastmoney_qfq.py` | 东方财富前复权数据下载器 |
-| `backtest_universes.py` | 多股票池批量回测，生成 `universe_backtest.json` |
-| `backtest_cambricon_universe.py` | 寒武纪九股池专项回测，生成 `cambricon_universe_backtest.json` |
+| `scripts/benchmark_validation.py` | 基准验证工具，对比不同配置下的收益与回撤 |
+| `scripts/run_regime_validation.py` | 弱市全量验证，生成多股票池、多随机种子的统计分布 |
+| `scripts/validate_basket.py` | 篮子有效性验证，检查数据完整性与映射一致性 |
+| `scripts/download_eastmoney_qfq.py` | 东方财富前复权数据下载器 |
+| `scripts/backtest_universes.py` | 多股票池批量回测，生成验证工件 |
+| `scripts/backtest_cambricon_universe.py` | 寒武纪九股池专项回测，生成验证工件 |
 | `stress_test_prefixes.py` | 可续跑的 983 场景生产回放压力测试，记录账户订单、袖套成交和原因归因 |
 
 ### 测试文件
 
 | 文件 | 覆盖范围 |
 |------|---------|
-| `test_quant_fusion.py` | 核心引擎单元测试 + 基线回归（黄金指标、前缀压力、寒武纪映射） |
-| `test_cross_market_overlay.py` | 穿越牛熊叠加层机制测试（分层止损、风险优先级、冷却期、集中度） |
-| `test_risk_governance.py` | 风险治理观测层测试（预热健康分级、事件校准指标、风险意见语义、覆盖置信度、袖套共识、overlay 审计接口） |
-| `test_regime_adaptive.py` | 外层路由与弱市策略单元测试 |
-| `test_regime_safety_contracts.py` | 弱市安全契约回归（失败关闭、指数未知、股票池完整性） |
+| `tests/regression/test_quant_fusion.py` | 核心引擎与五股票池精确经济回归 |
+| `tests/regression/test_cross_market_overlay.py` | 穿越牛熊叠加层机制回归 |
+| `tests/unit/test_risk_governance.py` | 风险治理观测层单元测试 |
+| `tests/regression/test_regime_adaptive.py` | 外层路由与弱市策略回归 |
+| `tests/contract/test_regime_safety_contracts.py` | 弱市失败关闭与股票池完整性契约 |
 | `tests/integration/test_daily_*.py` | 按快照、状态、信号、结构、事务和命令行职责拆分的日扫集成契约 |
 | `tests/contract/test_architecture.py` | 单向依赖、无环导入、禁止旧模块反向依赖和兼容层规模守卫 |
 | `tests/unit/` | 领域叶子、缓存上下文、引擎、状态机、风险动作、账户与研究模块测试 |
-| `test_fail_closed_boundaries.py` | 失败关闭边界测试（不可解析数据、缺失指数、格式异常） |
-| `test_quant_fusion_optimizer.py` | 优化器单元测试（走步、候选淘汰、holdout 对照） |
-| `test_repository_hygiene.py` | 仓库卫生测试（文档一致性、中文文档、生成工件隔离） |
-| `test_review_fixes.py` | 代码审查修复回归测试（账户引擎、数据契约、叠加层修复等） |
-| `test_stress_test_prefixes.py` | 压力场景生成、确定性和尾部统计测试 |
+| `tests/contract/test_fail_closed_boundaries.py` | 不可解析数据、缺失指数与格式异常契约 |
+| `tests/regression/test_quant_fusion_optimizer.py` | 优化器走步、候选淘汰和留出集回归 |
+| `tests/contract/test_repository_hygiene.py` | 仓库布局、文档一致性与生成工件隔离契约 |
+| `tests/regression/test_system_boundaries.py` | 账户、行情、基准与叠加层公共边界回归 |
+| `tests/unit/test_stress_scenarios.py` | 压力场景生成、确定性和尾部统计单元测试 |
 
 ### 数据目录
 
 | 目录 | 内容 |
 |------|------|
-| `market_data/` | 趋势回测用前复权日线数据 + `manifest.json` + `SHA256SUMS` |
-| `historical_data/` | 外层路由与弱市验证用历史数据 + `MANIFEST.json` + `SHA256SUMS` + `README.md` |
+| `data/market/` | 趋势回测用前复权日线数据、清单与字节哈希 |
+| `data/regime/` | 外层路由与弱市验证用历史数据、清单与字节哈希 |
+| `tests/fixtures/` | 持续集成读取的精确黄金基线 |
+| `artifacts/validation/` | 已审查的批量回测与压力验证工件 |
+| `examples/` | 不含真实账户信息的输入样例 |
+
+旧参数值 `--data-dir market_data` 和 `--regime-data-dir historical_data` 在调用方没有同名真实目录时会自动解析到新位置，现有自动化无需立即迁移。
 
 ### 配置与文档
 
 | 文件 | 说明 |
 |------|------|
 | `README.md` | 本文件，项目总览与使用指南 |
-| `BACKTEST_RESULTS.md` | 当前有效回测与验证结论，基线数字的权威来源 |
-| `TRANSFORMATION_REPORT.md` | 本轮 P0/P1 改造的完整设计、验证与决策记录 |
+| `docs/VALIDATION.md` | 当前有效回测、序列指纹与压力验证结论 |
 | `docs/ARCHITECTURE.md` | 模块边界、依赖规则、状态所有权、事务顺序和扩展指南 |
-| `historical_data/README.md` | 历史路由数据契约与使用说明 |
+| `data/README.md` | 两组冻结数据的来源、用途与完整性校验 |
 | `LICENSE` | MIT 开源协议 |
 | `requirements.txt` | 运行时依赖 |
 | `requirements-dev.txt` | 开发与测试依赖 |
 | `requirements-lock.txt` | 锁定版本依赖（CI 使用，含哈希） |
 | `.gitignore` | 忽略规则 |
-| `account_example.json` | 账户快照示例，复制为 `account.json` 后填入真实持仓使用 |
+| `examples/account.json` | 账户快照示例，复制为 `account.json` 后填入真实持仓使用 |
 | `.github/workflows/ci.yml` | 持续集成配置（测试、类型检查、安全审计、精确回归） |
 
 ### 生成工件（默认不持久化）
 
 以下工件由工具脚本生成，按需重新运行即可，不常驻仓库：
 
-- `regime_validation_results.json`：`run_regime_validation.py` 的弱市全量验证结果
-- `optimizer_validation/`：`quant_fusion_optimizer.py` 的走步优化报告与推荐配置
+- `artifacts/validation/regime_validation_results.json`：弱市全量验证结果
+- `optimizer_output/`：`quant_fusion_optimizer.py` 的走步优化报告与推荐配置
 - `daily_signals/`：每日扫描输出
 - `data_cache/`：行情数据缓存
 - `benchmark_validation.json`：基准验证输出
 
-仓库持久化的 `prefix_stress.json` 与 `universe_stress.json` 是本次可复现压力工件；后者记录三个固定种子、每种规模每种子 50 次随机抽样、50 次顺序置换和全部硬门禁结果。
+仓库持久化的 `artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 是可复现压力工件；后者记录三个固定种子、每种规模每种子 50 次随机抽样、50 次顺序置换和全部硬门禁结果。
 
-如需持久化某次验证结果，将对应文件加入 Git 并更新 `BACKTEST_RESULTS.md`。
+如需持久化某次验证结果，将对应文件放入 `artifacts/validation/` 并更新 `docs/VALIDATION.md`。
 
 ## 与其他文档的关系
 
-- `BACKTEST_RESULTS.md` 是当前有效基线的权威记录，所有数字以它为准。
-- `TRANSFORMATION_REPORT.md` 是本轮 P0/P1 改造的完整档案，包括设计决策、验证过程和前后对比。
+- `docs/VALIDATION.md` 是当前有效基线、序列指纹和压力结果的权威记录。
 - `docs/ARCHITECTURE.md` 是规范模块边界和状态所有权的维护契约。
-- `historical_data/README.md` 说明路由数据文件格式与校验方式。
-- 三者分工：README 负责"怎么用"，BACKTEST_RESULTS 负责"数字准不准"，TRANSFORMATION_REPORT 负责"为什么这样改"。
+- `data/README.md` 说明冻结行情的来源、用途和校验方式。
+- 三者分工：README 负责使用，架构文档负责边界，验证文档负责证明结果未漂移。
 
 ## 故障排查
 
 | 现象 | 可能原因 | 处理方式 |
 |------|---------|---------|
 | `strict_unmapped` 报错 | 新股票未在行业映射中注册 | 在 `quantfusion.config.universe` 和规范引擎配置中添加映射，或临时使用 `strict_unmapped=False`（仅研究用） |
-| 路由结果为 `cash` | 指数数据缺失 / 陈旧 / 不可解析 | 检查 `historical_data/` 中的 `000300.csv` 与 `000682.csv` 是否最新 |
+| 路由结果为 `cash` | 指数数据缺失 / 陈旧 / 不可解析 | 检查 `data/regime/` 中的 `000300.csv` 与 `000682.csv` 是否最新 |
 | 候选列表为空 | 所有股票动量为负 / 数据不足 | 正常现象，弱市中持有现金是预期行为 |
-| 回测收益与基线不符 | 数据版本 / 参数配置不一致 | 使用 `market_data/` 冻结数据、`--indicator-state warm`、默认参数，核对 `SHA256SUMS` |
+| 回测收益与基线不符 | 数据版本 / 参数配置不一致 | 使用 `data/market/` 冻结数据、`--indicator-state warm`、默认参数，核对 `SHA256SUMS` |
 | 账户建议为零买入 | 现金不足 / 超仓位上限 / 集中度限制 | 检查 `risk_flags` 和 `actions[].reasons`，确认账户快照是否完整 |
 | 日扫提示 `NOT_READY` 并抑制买入 | 预热健康契约失败关闭（指标历史不足或 regime 证据缺失） | 检查 `warmup_health.reasons`（如 `indicator_warmup_incomplete`、`regime_index_missing_or_stale`、`new_symbols_without_full_history`），补齐预热数据或延长回看窗口后重跑 |
 | 日扫提示 `DEGRADED` | 数据陈旧 / 新上市股票 / 参考篮不完整 | 风险判断保留，按 `warmup_health.reasons` 人工确认新增风险动作；刷新数据可消除 `regime_index_stale` 与 `stale_symbols` |
-| 测试失败 | 基线变更未同步 | 检查 `backtest_golden_metrics.json` 是否与代码一致；任何策略变更都必须更新基线并说明原因 |
+| 测试失败 | 基线变更未同步 | 检查 `tests/fixtures/backtest_golden_metrics.json` 是否与代码一致；任何策略变更都必须更新基线并说明原因 |
 
 ## 优势
 
@@ -332,14 +337,10 @@ python -m pytest -q
 pyright quantfusion
 
 # 安全审计
-bandit -r quantfusion quant_fusion.py quant_fusion_optimizer.py daily_signal_scan.py \
-  regime_adaptive.py cross_market_overlay.py risk_governance.py \
-  account_signal_engine.py market_data_contracts.py benchmark_validation.py \
-  run_regime_validation.py validate_basket.py download_eastmoney_qfq.py \
-  backtest_universes.py backtest_cambricon_universe.py stress_test_prefixes.py -ll
+bandit -r quantfusion scripts *.py -ll
 
 # 依赖漏洞检查
 pip-audit --strict -r requirements-lock.txt
 ```
 
-CI 在每次推送时自动执行上述全部检查，并额外运行五组趋势基线回归（1/3/5/13/22 只股票池）：账户订单与袖套成交等整数指标要求精确一致，总收益与最大回撤等浮点指标仅容忍跨平台 1-ulp 级别的浮点求和顺序差异（`rel_tol=1e-9`，远小于任何真实行为漂移的量级）。任何策略、费用、数据或映射变更都必须更新基线并在 `BACKTEST_RESULTS.md` 中说明变化原因。
+CI 在每次推送时自动执行上述全部检查，并额外运行五组趋势基线回归（1/3/5/13/22 只股票池）：账户订单与袖套成交等整数指标要求精确一致，总收益与最大回撤等浮点指标仅容忍跨平台 1-ulp 级别的浮点求和顺序差异（`rel_tol=1e-9`，远小于任何真实行为漂移的量级）。任何策略、费用、数据或映射变更都必须更新基线并在 `docs/VALIDATION.md` 中说明变化原因。

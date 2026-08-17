@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -104,8 +105,29 @@ class StressScenarioTests(unittest.TestCase):
         ):
             stress._run_signature([], Path(tmpdir), Path(tmpdir))
 
-        canonical_source = stress.ROOT / "quantfusion" / "application" / "stress.py"
+        canonical_source = (
+            stress.PROJECT_ROOT / "quantfusion" / "application" / "stress.py"
+        )
         self.assertIn(canonical_source, fingerprints[0])
+
+    def test_persisted_formal_artifacts_match_current_run_signature(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=50,
+            permutation_samples=50,
+            seeds=stress.DEFAULT_SEEDS,
+        )
+        signature = stress._run_signature(
+            scenarios,
+            stress.DATA_DIR,
+            stress.REGIME_DATA_DIR,
+        )
+        for name in ("prefix_stress.json", "universe_stress.json"):
+            payload = json.loads(
+                (
+                    stress.VALIDATION_ARTIFACT_DIR / name
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(payload["run_signature"], signature)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import account_signal_engine as account
 import regime_adaptive as ra
+from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
 from quantfusion.engine import replay as replay_module
 
 
@@ -116,8 +117,8 @@ class UniverseIntegrityTests(unittest.TestCase):
                     {"300308": "中际旭创", "300502": "新易盛"},
                     "2025-04-01",
                     "2025-04-30",
-                    data_dir="market_data",
-                    regime_data_dir="historical_data",
+                    data_dir=str(MARKET_DATA_DIR),
+                    regime_data_dir=str(REGIME_DATA_DIR),
                 )
 
     def test_unavailable_does_not_mean_unselected(self) -> None:
@@ -138,8 +139,8 @@ class UniverseIntegrityTests(unittest.TestCase):
                 {"300308": "中际旭创"},
                 "2025-04-01",
                 "2025-04-30",
-                data_dir="market_data",
-                regime_data_dir="historical_data",
+                data_dir=str(MARKET_DATA_DIR),
+                regime_data_dir=str(REGIME_DATA_DIR),
                 allow_unavailable_symbols=1,  # type: ignore[arg-type]
             )
 

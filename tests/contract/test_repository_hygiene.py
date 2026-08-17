@@ -3,29 +3,62 @@
 from __future__ import annotations
 
 import ast
+import contextlib
+import json
 import re
 import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 from quantfusion.config.engine import default_engine_config
 from quantfusion.config.portfolio import PortfolioPolicy
+from quantfusion.config.paths import PROJECT_ROOT
+from quantfusion.config import paths as repository_paths
+from scripts.run_regime_validation import _golden_bull
+from scripts.backtest_universes import UNIVERSES
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = PROJECT_ROOT
 THIS_FILE = Path(__file__).resolve().relative_to(ROOT)
 EXPECTED_MARKDOWN = {
     Path("README.md"),
-    Path("BACKTEST_RESULTS.md"),
-    Path("TRANSFORMATION_REPORT.md"),
     Path("docs/ARCHITECTURE.md"),
-    Path("docs/superpowers/plans/2026-08-17-engineering-refactor.md"),
-    Path("historical_data/README.md"),
+    Path("docs/VALIDATION.md"),
+    Path("data/README.md"),
+}
+EXPECTED_ROOT_FILES = {
+    ".gitignore",
+    "LICENSE",
+    "README.md",
+    "account_signal_engine.py",
+    "backtest_cambricon_universe.py",
+    "backtest_universes.py",
+    "benchmark_validation.py",
+    "cross_market_overlay.py",
+    "daily_signal_scan.py",
+    "download_eastmoney_qfq.py",
+    "market_data_contracts.py",
+    "pyrightconfig.json",
+    "quant_fusion.py",
+    "quant_fusion_optimizer.py",
+    "regime_adaptive.py",
+    "requirements-dev.txt",
+    "requirements-lock-py311.txt",
+    "requirements-lock.txt",
+    "requirements.txt",
+    "risk_governance.py",
+    "run_regime_validation.py",
+    "stress_test_prefixes.py",
+    "validate_basket.py",
 }
 OBSOLETE_DOCUMENTS = {
+    "BACKTEST_RESULTS.md",
     "STRATEGY_REVIEW.md",
     "PRODUCTION_REVIEW_FIXES.md",
     "REGIME_ADAPTIVE_REFACTOR_REPORT.md",
+    "TRANSFORMATION_REPORT.md",
 }
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
 
@@ -141,7 +174,7 @@ class SourceDocumentationTests(unittest.TestCase):
         for filename in (
             "account_signal_engine.py",
             "market_data_contracts.py",
-            "benchmark_validation.py",
+            "scripts/benchmark_validation.py",
         ):
             tree = ast.parse((ROOT / filename).read_text(encoding="utf-8"))
             for node in ast.walk(tree):
@@ -156,6 +189,91 @@ class SourceDocumentationTests(unittest.TestCase):
 
 class RepositoryHygieneTests(unittest.TestCase):
     """保证本地缓存、编辑器配置和生成工件不会进入 Git 索引。"""
+
+    def test_root_contains_only_public_entrypoints_and_project_configuration(self) -> None:
+        tracked_root_files = {
+            path.name for path in _tracked_paths() if len(path.parts) == 1
+        }
+        self.assertEqual(tracked_root_files, EXPECTED_ROOT_FILES)
+
+    def test_repository_assets_are_grouped_by_responsibility(self) -> None:
+        expected = (
+            "artifacts/validation/universe_stress.json",
+            "data/market/300308.csv",
+            "data/regime/000300.csv",
+            "examples/account.json",
+            "scripts/backtest_universes.py",
+            "tests/fixtures/backtest_golden_metrics.json",
+            "tests/regression/test_quant_fusion.py",
+        )
+        for relative in expected:
+            self.assertTrue((ROOT / relative).is_file(), msg=relative)
+
+    def test_validation_script_reads_the_single_golden_metrics_source(self) -> None:
+        for name, codes in UNIVERSES.items():
+            total_return, max_drawdown, total_trades = _golden_bull(name)
+            self.assertIsInstance(total_return, float)
+            self.assertLess(max_drawdown, 0.0)
+            self.assertGreater(total_trades, 0)
+            self.assertIn(str(len(codes)), {"1", "3", "5", "13", "22"})
+
+    def test_persisted_validation_metadata_uses_portable_data_paths(self) -> None:
+        for name in (
+            "cambricon_universe_backtest.json",
+            "prefix_stress.json",
+            "universe_backtest.json",
+            "universe_stress.json",
+        ):
+            payload = json.loads(
+                (ROOT / "artifacts" / "validation" / name).read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(payload["data_directory"], "data/market")
+            if "regime_data_directory" in payload:
+                self.assertEqual(payload["regime_data_directory"], "data/regime")
+
+    def test_tool_scripts_support_direct_help_from_any_working_directory(self) -> None:
+        scripts = (
+            "backtest_cambricon_universe.py",
+            "backtest_universes.py",
+            "benchmark_validation.py",
+            "download_eastmoney_qfq.py",
+            "run_regime_validation.py",
+            "validate_basket.py",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            for name in scripts:
+                for path in (ROOT / name, ROOT / "scripts" / name):
+                    completed = subprocess.run(
+                        [sys.executable, str(path), "--help"],
+                        cwd=directory,
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
+                    )
+                    self.assertEqual(
+                        completed.returncode,
+                        0,
+                        msg=f"{path}: {completed.stderr}",
+                    )
+
+    def test_legacy_data_directory_names_resolve_without_shadowing_real_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            self.assertEqual(
+                repository_paths.resolve_repository_data_dir("market_data"),
+                repository_paths.MARKET_DATA_DIR,
+            )
+            self.assertEqual(
+                repository_paths.resolve_repository_data_dir("historical_data"),
+                repository_paths.REGIME_DATA_DIR,
+            )
+            Path("market_data").mkdir()
+            self.assertEqual(
+                repository_paths.resolve_repository_data_dir("market_data"),
+                Path("market_data"),
+            )
 
     def test_ci_uses_a_python_311_compatible_lockfile(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

@@ -9,6 +9,7 @@ from typing import ClassVar
 
 import pandas as pd
 
+from quantfusion.config.paths import resolve_repository_data_dir
 from quantfusion.data.contracts import OPTIONAL_COLUMNS, REQUIRED_OHLC_COLUMNS
 from quantfusion.domain.rules import A_SHARE_LOT_SIZE, SYMBOL_RE, parse_dates
 
@@ -250,7 +251,7 @@ class DataFetcher:
         if pd.Timestamp(start_date) > pd.Timestamp(end_date):
             raise ValueError("start_date must not be later than end_date")
         if data_dir:
-            path = Path(data_dir).expanduser() / f"{symbol}.csv"
+            path = resolve_repository_data_dir(data_dir) / f"{symbol}.csv"
             if not path.is_file():
                 raise FileNotFoundError(f"Missing local market-data file: {path}")
             return DataFetcher._normalize_columns(pd.read_csv(path))

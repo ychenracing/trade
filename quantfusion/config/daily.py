@@ -1,6 +1,6 @@
 """Daily scan universe and request defaults."""
 
-from pathlib import Path
+from quantfusion.config.paths import REGIME_DATA_DIR
 
 SYMBOLS: dict[str, str] = {
     "300308": "中际旭创",
@@ -34,6 +34,4 @@ START_DATE = "2026-07-01"
 INITIAL_CAPITAL = 2_000_000.0
 DEFAULT_CACHE_DIR = "data_cache"
 DEFAULT_OUTPUT_DIR = "daily_signals"
-DEFAULT_REGIME_DATA_DIR = str(
-    Path(__file__).resolve().parents[2] / "historical_data"
-)
+DEFAULT_REGIME_DATA_DIR = str(REGIME_DATA_DIR)

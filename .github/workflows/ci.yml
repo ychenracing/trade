@@ -71,25 +71,7 @@ jobs:
       - name: Install locked dependencies
         run: python -m pip install -r requirements-lock.txt
       - name: Run Bandit
-        run: >-
-          bandit -r
-          quantfusion
-          quant_fusion.py
-          quant_fusion_optimizer.py
-          daily_signal_scan.py
-          regime_adaptive.py
-          cross_market_overlay.py
-          risk_governance.py
-          account_signal_engine.py
-          market_data_contracts.py
-          benchmark_validation.py
-          run_regime_validation.py
-          validate_basket.py
-          download_eastmoney_qfq.py
-          backtest_universes.py
-          backtest_cambricon_universe.py
-          stress_test_prefixes.py
-          -ll
+        run: bandit -r quantfusion scripts *.py -ll
       - name: Audit locked dependencies
         run: pip-audit --strict -r requirements-lock.txt
 
@@ -117,15 +99,15 @@ jobs:
           from pathlib import Path
 
           import quant_fusion as qf
-          from backtest_universes import DATA_DIR, NAMES, UNIVERSES
+          from scripts.backtest_universes import DATA_DIR, NAMES, UNIVERSES
           from quantfusion.research.fingerprints import economic_sequence_fingerprints
-          from test_quant_fusion import regime_route_fingerprint
+          from tests.regression.test_quant_fusion import regime_route_fingerprint
 
           # 整数指标（交易数/成交数）必须精确一致；浮点指标（收益/回撤）
           # 仅容忍跨平台 1-ulp 级别的浮点求和顺序差异（rel_tol=1e-9 远小于
           # 任何真实行为漂移的量级，行为变化仍然会立刻被捕获）。
           baselines = json.loads(
-              Path("backtest_golden_metrics.json").read_text(encoding="utf-8")
+              Path("tests/fixtures/backtest_golden_metrics.json").read_text(encoding="utf-8")
           )
           for name, codes in UNIVERSES.items():
               with contextlib.redirect_stdout(io.StringIO()):

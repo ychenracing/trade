@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 from quantfusion.application.backtest_cli import parse_symbols
+from quantfusion.config.paths import resolve_repository_data_dir
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.regime import REGIME_INDEX_FILES
 from quantfusion.research.artifacts import (
@@ -100,7 +101,7 @@ def main() -> int:
         symbols,
         PortfolioPolicy().regime_symbols,
     )
-    regime_data_dir = Path(args.regime_data_dir)
+    regime_data_dir = resolve_repository_data_dir(args.regime_data_dir)
     regime_fingerprint = hashlib.sha256()
     for code in sorted(REGIME_INDEX_FILES.values()):
         path = regime_data_dir / f"{code}.csv"
@@ -169,7 +170,7 @@ def main() -> int:
     )
     report["run_metadata"] = {
         "symbols": symbols,
-        "data_directory": str(Path(args.data_dir)),
+        "data_directory": str(resolve_repository_data_dir(args.data_dir)),
         "regime_data_directory": str(regime_data_dir),
         "data_coverage": catalog.coverage(),
         "candidate_count": len(candidates),

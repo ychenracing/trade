@@ -19,6 +19,12 @@ LEGACY_MODULES = {
     "market_data_contracts",
     "daily_signal_scan",
     "quant_fusion_optimizer",
+    "backtest_cambricon_universe",
+    "backtest_universes",
+    "benchmark_validation",
+    "download_eastmoney_qfq",
+    "run_regime_validation",
+    "validate_basket",
 }
 REQUIRED_PACKAGES = {
     "domain",
@@ -72,6 +78,12 @@ ROOT_SIZE_LIMITS = {
     "risk_governance.py": 150,
     "market_data_contracts.py": 150,
     "stress_test_prefixes.py": 150,
+    "backtest_cambricon_universe.py": 50,
+    "backtest_universes.py": 50,
+    "benchmark_validation.py": 50,
+    "download_eastmoney_qfq.py": 50,
+    "run_regime_validation.py": 50,
+    "validate_basket.py": 50,
 }
 
 
@@ -322,6 +334,19 @@ class CompatibilityTests(unittest.TestCase):
         }
         for name in names:
             self.assertIs(getattr(legacy, name), getattr(candidates, name))
+
+    def test_tool_cli_public_constants_remain_available(self) -> None:
+        validation = importlib.import_module("run_regime_validation")
+        canonical = importlib.import_module("scripts.run_regime_validation")
+        self.assertEqual(validation.ROOT, ROOT)
+        self.assertEqual(validation.GOLDEN_BULL, canonical.GOLDEN_BULL)
+        self.assertEqual(set(validation.GOLDEN_BULL), set(canonical.UNIVERSES))
+        for name in canonical.UNIVERSES:
+            self.assertEqual(validation.GOLDEN_BULL[name], canonical._golden_bull(name))
+
+        for module_name in ("backtest_universes", "backtest_cambricon_universe"):
+            module = importlib.import_module(module_name)
+            self.assertEqual(module.ROOT, ROOT)
 
 
 if __name__ == "__main__":

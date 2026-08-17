@@ -85,7 +85,7 @@ class MarketRegimeMixin:
         # account_state is passed. The injection logic below is dead code
         # retained for reference until the separate account signal engine
         # is built. Do NOT re-enable without reading the architecture
-        # defects documented in BACKTEST_RESULTS.md.
+        # defects documented in docs/VALIDATION.md.
         self._account_state_to_inject: AccountState | None = None
         self._account_state_injected: bool = False
         self._regime_effective_state: str = "TREND"

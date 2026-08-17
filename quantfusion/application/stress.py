@@ -19,12 +19,17 @@ from typing import Any
 
 from quantfusion.application import engine_api as qf
 from quantfusion.application import regime_api as ra
+from quantfusion.config.paths import (
+    MARKET_DATA_DIR,
+    PROJECT_ROOT,
+    REGIME_DATA_DIR,
+    VALIDATION_ARTIFACT_DIR,
+    resolve_repository_data_dir,
+)
 from quantfusion.config.universe import SYMBOL_NAMES as NAMES
 
 
-ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = ROOT / "market_data"
-REGIME_DATA_DIR = ROOT / "historical_data"
+DATA_DIR = MARKET_DATA_DIR
 START_DATE = "2025-04-01"
 END_DATE = "2026-07-20"
 INITIAL_CAPITAL = 2_000_000.0
@@ -40,6 +45,15 @@ ATTRIBUTION_CATEGORIES = (
     "route_migration",
     "sticky_replacement",
 )
+
+
+def _artifact_path(path: Path) -> str:
+    """Prefer a portable repository-relative path in persisted artifacts."""
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(PROJECT_ROOT.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
 
 
 def _reason_category(trade: qf.TradeRecord) -> str:
@@ -288,10 +302,10 @@ def _tree_fingerprint(paths: list[Path]) -> str:
     digest = hashlib.sha256()
     for path in sorted(paths, key=lambda item: str(item)):
         try:
-            label = path.relative_to(ROOT)
+            label = path.relative_to(PROJECT_ROOT).as_posix()
         except ValueError:
-            label = path.resolve()
-        digest.update(str(label).encode("utf-8"))
+            label = path.resolve().as_posix()
+        digest.update(label.encode("utf-8"))
         digest.update(hashlib.sha256(path.read_bytes()).digest())
     return digest.hexdigest()
 
@@ -299,8 +313,8 @@ def _tree_fingerprint(paths: list[Path]) -> str:
 def _run_signature(
     scenarios: list[dict[str, Any]], data_dir: Path, regime_data_dir: Path
 ) -> str:
-    source_files = list(ROOT.glob("*.py")) + list(
-        (ROOT / "quantfusion").rglob("*.py")
+    source_files = list(PROJECT_ROOT.glob("*.py")) + list(
+        (PROJECT_ROOT / "quantfusion").rglob("*.py")
     )
     data_files = list(data_dir.glob("*.csv")) + list(regime_data_dir.glob("*.csv"))
     payload = {
@@ -629,7 +643,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--data-dir", default=str(DATA_DIR))
     parser.add_argument("--regime-data-dir", default=str(REGIME_DATA_DIR))
-    parser.add_argument("--checkpoint", default=str(ROOT / "stress_checkpoint.json"))
+    parser.add_argument(
+        "--checkpoint",
+        default=str(PROJECT_ROOT / "artifacts" / "checkpoints" / "stress.json"),
+    )
     parser.add_argument("--checkpoint-every", type=int, default=10)
     return parser
 
@@ -646,8 +663,8 @@ def main() -> int:
         or not seeds
     ):
         raise ValueError("workers, sample counts, checkpoint interval and seeds must be positive")
-    data_dir = Path(args.data_dir).resolve()
-    regime_data_dir = Path(args.regime_data_dir).resolve()
+    data_dir = resolve_repository_data_dir(args.data_dir).resolve()
+    regime_data_dir = resolve_repository_data_dir(args.regime_data_dir).resolve()
     missing_stock = [
         code
         for code in ORDERED_CODES
@@ -719,8 +736,8 @@ def main() -> int:
         "engine": "ProductionReplayEngine",
         "deployment_policy": "production_daily_replay",
         "portfolio_policy": qf.PortfolioPolicy().as_dict(),
-        "data_directory": str(data_dir),
-        "regime_data_directory": str(regime_data_dir),
+        "data_directory": _artifact_path(data_dir),
+        "regime_data_directory": _artifact_path(regime_data_dir),
         "start_date": START_DATE,
         "end_date": END_DATE,
         "indicator_state": "warm",
@@ -745,7 +762,7 @@ def main() -> int:
     }
     gates = _hard_gates(results)
     # 2026-08-16 报告 P0-4: 在覆盖正式工件之前加载既有基线，评估强制晋级门。
-    incumbent_path = ROOT / "universe_stress.json"
+    incumbent_path = VALIDATION_ARTIFACT_DIR / "universe_stress.json"
     incumbent: dict[str, Any] | None = None
     if incumbent_path.is_file():
         try:
@@ -763,8 +780,8 @@ def main() -> int:
         "summary": {"all": _summary(results), "by_type": by_type},
         "results": results,
     }
-    _atomic_json(ROOT / "prefix_stress.json", prefix_artifact)
-    _atomic_json(ROOT / "universe_stress.json", universe_artifact)
+    _atomic_json(VALIDATION_ARTIFACT_DIR / "prefix_stress.json", prefix_artifact)
+    _atomic_json(VALIDATION_ARTIFACT_DIR / "universe_stress.json", universe_artifact)
     print(
         json.dumps(
             {

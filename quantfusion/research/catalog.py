@@ -8,6 +8,7 @@ from typing import Any, Iterable
 
 import pandas as pd
 
+from quantfusion.config.paths import resolve_repository_data_dir
 from quantfusion.research.candidates import (
     DateWindow,
     WalkForwardFold,
@@ -29,7 +30,7 @@ class LocalDataCatalog:
         *,
         min_window_rows: int = 5,
     ) -> None:
-        self.data_dir = Path(data_dir)
+        self.data_dir = resolve_repository_data_dir(data_dir)
         if not self.data_dir.is_dir():
             raise ValueError(f"Data directory does not exist: {self.data_dir}")
         if min_window_rows < 1:

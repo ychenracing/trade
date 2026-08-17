@@ -11,10 +11,11 @@ from unittest.mock import patch
 import pandas as pd
 
 import account_signal_engine as account
-import benchmark_validation as benchmarks
 import market_data_contracts as contracts
 import quant_fusion as qf
 import regime_adaptive as ra
+from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
+from scripts import benchmark_validation as benchmarks
 
 
 class ProviderVolumeContractTests(unittest.TestCase):
@@ -424,8 +425,8 @@ class BenchmarkValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "non-empty"):
             benchmarks.run_benchmarks(
                 {},
-                data_dir="market_data",
-                regime_data_dir="historical_data",
+                data_dir=str(MARKET_DATA_DIR),
+                regime_data_dir=str(REGIME_DATA_DIR),
                 start="2025-01-01",
                 end="2025-12-31",
             )
@@ -434,8 +435,8 @@ class BenchmarkValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "six-digit"):
             benchmarks.run_benchmarks(
                 {"bad": "bad"},
-                data_dir="market_data",
-                regime_data_dir="historical_data",
+                data_dir=str(MARKET_DATA_DIR),
+                regime_data_dir=str(REGIME_DATA_DIR),
                 start="2025-01-01",
                 end="2025-12-31",
             )

@@ -13,11 +13,11 @@ import pandas as pd
 import daily_signal_scan as daily
 import regime_adaptive as ra
 import quantfusion.regime.evidence as regime_evidence
+from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT, REGIME_DATA_DIR
 
 
-ROOT = Path(__file__).resolve().parent
-DATA_DIR = ROOT / "historical_data"
-MARKET_DATA_DIR = ROOT / "market_data"
+ROOT = PROJECT_ROOT
+DATA_DIR = REGIME_DATA_DIR
 AI_SYMBOLS = (
     "002409",
     "300054",

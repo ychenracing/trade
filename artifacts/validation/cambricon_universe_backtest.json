@@ -1,6 +1,6 @@
 {
   "engine": "Quant Fusion",
-  "data_directory": "market_data",
+  "data_directory": "data/market",
   "data_adjustment": "qfq",
   "data_provider": "Eastmoney push2his",
   "initial_capital": 2000000.0,

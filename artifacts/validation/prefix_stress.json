@@ -87,8 +87,8 @@
     "regime_choppy_exit_ratio": 0.3,
     "regime_transition_exit_ratio": 0.0
   },
-  "data_directory": "/workspace/scratch/1cf1663a384d/trade/market_data",
-  "regime_data_directory": "/workspace/scratch/1cf1663a384d/trade/historical_data",
+  "data_directory": "data/market",
+  "regime_data_directory": "data/regime",
   "start_date": "2025-04-01",
   "end_date": "2026-07-20",
   "indicator_state": "warm",
@@ -97,7 +97,7 @@
     20260817,
     20260827
   ],
-  "run_signature": "5519020ae848c648809ccacc27c6a407763bd90357d954c8fa221f33f06ac061",
+  "run_signature": "f4fe4580e6c792461bdeffeaea96c12f1c4ab49e63dce468e30b5fbbd19202df",
   "ordering": [
     "300308",
     "300502",

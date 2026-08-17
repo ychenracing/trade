@@ -11,6 +11,8 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
+from quantfusion.config.paths import resolve_repository_data_dir
+
 try:
     import akshare as ak  # pyright: ignore[reportMissingImports]
 except ImportError:
@@ -139,7 +141,7 @@ def refresh_regime_indices(
     strict: bool = False,
 ) -> dict[str, Any]:
     """刷新两只固定指数；外部失败时保留最近一次完整文件。"""
-    root = Path(data_dir)
+    root = resolve_repository_data_dir(data_dir)
     status: dict[str, Any] = {"end_date": end_date, "indices": {}}
 
     end_timestamp = pd.Timestamp(end_date)
@@ -206,4 +208,3 @@ def refresh_regime_indices(
 
     _atomic_json(status, root / "live_refresh_manifest.json")
     return status
-

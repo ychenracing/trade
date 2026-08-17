@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import inspect
+import tempfile
 import unittest
 from unittest import mock
 
@@ -32,6 +34,16 @@ class DataContextContracts(unittest.TestCase):
         loader.assert_called_once_with(
             "300308", "2026-01-01", "2026-01-02", "cache"
         )
+
+    def test_removed_market_data_name_falls_back_to_bundled_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            frame = DataFetcher.load_stock_data(
+                "300308",
+                "2025-04-01",
+                "2025-04-10",
+                data_dir="market_data",
+            )
+        self.assertFalse(frame.empty)
 
 
 if __name__ == "__main__":
