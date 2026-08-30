@@ -172,19 +172,48 @@ class PolicyTests(unittest.TestCase):
         complete = engine._runtime_sleeve_cfg(8)
         self.assertEqual(complete.get("max_total_weight", 1.0), 1.0)
 
-    def test_account_orders_merge_internal_same_side_fills(self) -> None:
+    def test_date_symbol_side_count_has_explicit_bucket_semantics(self) -> None:
         trades = [
             quant.TradeRecord("300308", strategy, direction, 100, 10.0, date)
             for strategy, direction, date in (
                 ("fast:turtle", "buy", "2026-01-05"),
                 ("slow:dual_ma", "buy", "2026-01-05"),
                 ("fast:turtle", "sell", "2026-01-06"),
+                ("slow:dual_ma", "sell", "2026-01-06"),
+                ("fast:turtle", "sell", "2026-01-07"),
+                ("fast:turtle", "sell", "2026-01-07"),
+                ("fast:turtle", "buy", "2026-01-07"),
             )
         ]
-        self.assertEqual(quant._account_order_count(trades), 2)
+        self.assertEqual(quant.date_symbol_side_count(trades), 4)
         self.assertEqual(
-            quant._account_order_count(trades, direction="sell"), 1
+            quant.date_symbol_side_count(trades, direction="sell"), 2
         )
+
+    def test_trade_metrics_count_records_and_expose_side_buckets(self) -> None:
+        trades = [
+            quant.TradeRecord("300308", strategy, direction, 100, 10.0, date)
+            for strategy, direction, date in (
+                ("fast:turtle", "buy", "2026-01-05"),
+                ("slow:dual_ma", "buy", "2026-01-05"),
+                ("fast:turtle", "sell", "2026-01-05"),
+                ("slow:dual_ma", "sell", "2026-01-05"),
+            )
+        ]
+        core = quant._CoreBacktestEngine(initial_capital=100.0)
+        core.trades = trades
+        core.equity_curve = [
+            {"date": "2026-01-05", "assets": 100.0, "cash": 100.0}
+        ]
+
+        result = core._build_result(100.0, [pd.Timestamp("2026-01-05")])
+
+        self.assertEqual(result["total_trades"], 4)
+        self.assertEqual(result["sell_trades"], 2)
+        self.assertEqual(result["sleeve_fill_count"], 4)
+        self.assertEqual(result["sleeve_sell_fill_count"], 2)
+        self.assertEqual(result["date_symbol_side_count"], 2)
+        self.assertEqual(result["date_symbol_sell_side_count"], 1)
 
 
 class SymbolRoutingTests(unittest.TestCase):
@@ -1172,25 +1201,18 @@ class NewFeatureTests(unittest.TestCase):
             )
 
 
-class CrossSleeveNettingTests(unittest.TestCase):
-    """Verify the account-level share-count netting (report P0-6).
-
-    The three virtual sleeves are signal sources, not independent books: a
-    symbol being sold by any sleeve must not also be bought by another on the
-    same day. Buys are absorbed CUMULATIVELY against the residual same-day sell
-    pool, so multiple buys are netted correctly instead of each being compared
-    to the full sell total (which would over-net legitimate net ADD exposure).
-    """
+class CrossSleeveExecutionIndependenceTests(unittest.TestCase):
+    """Opposite sleeve fills keep their original direction and quantities."""
 
     @staticmethod
-    def _sleeve() -> quant.SleeveBacktestEngine:
+    def _sleeve(name: str = "test") -> quant.SleeveBacktestEngine:
         policy = quant.PortfolioPolicy(allocation_mode="single")
         return quant.SleeveBacktestEngine(
             1_000_000,
             cfg=None,
             policy=policy,
             allocation_lookbacks=policy.single_lookbacks,
-            sleeve_name="test",
+            sleeve_name=name,
         )
 
     @staticmethod
@@ -1210,117 +1232,206 @@ class CrossSleeveNettingTests(unittest.TestCase):
             for sleeve, orders in zip(sleeves, pending)
         ]
 
-    def test_buy_fully_absorbed_by_sell_is_cancelled(self) -> None:
-        sleeve = self._sleeve()
-        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
+    def test_open_execution_preserves_every_pending_signal(self) -> None:
+        cases = {
+            "net_buy": [
+                ("300308", "sell", 100),
+                ("300308", "buy", 150),
+            ],
+            "balanced": [
+                ("300308", "sell", 100),
+                ("300308", "buy", 100),
+            ],
+            "net_sell": [
+                ("300308", "sell", 150),
+                ("300308", "buy", 100),
+            ],
+            "multiple_sleeves": [
+                ("300308", "sell", 80),
+                ("300308", "sell", 70),
+                ("300308", "buy", 100),
+                ("300308", "buy", 80),
+            ],
+            "different_symbols": [
+                ("300308", "sell", 100),
+                ("300308", "buy", 150),
+                ("300502", "sell", 200),
+                ("688256", "buy", 300),
+            ],
+            "buy_only": [("300308", "buy", 100)],
+            "sell_only": [("300308", "sell", 100)],
+        }
+
+        for case, orders in cases.items():
+            with self.subTest(case=case):
+                sleeves = [self._sleeve(f"test-{index}") for index in range(len(orders))]
+                strategies = [
+                    quant.TurtleBreakoutStrategy(sleeve._default_config())
+                    for sleeve in sleeves
+                ]
+                pending = [
+                    [
+                        (
+                            quant.Signal(
+                                symbol,
+                                strategy.name,
+                                direction,
+                                target_shares=shares,
+                                price=10.0,
+                            ),
+                            strategy,
+                        )
+                    ]
+                    for (symbol, direction, shares), strategy in zip(
+                        orders, strategies, strict=True
+                    )
+                ]
+                states = self._states(*sleeves, pending=pending)
+                executions: list[tuple[str, str, int]] = []
+
+                def execute_pending(
+                    queued: list[tuple[quant.Signal, object]],
+                    _data_map: dict,
+                    _date: pd.Timestamp,
+                    _date_to_pos: dict,
+                    allowed: frozenset[str],
+                ) -> list[tuple[quant.Signal, object]]:
+                    executions.extend(
+                        (signal.symbol, signal.direction, signal.target_shares)
+                        for signal, _ in queued
+                        if signal.direction in allowed
+                    )
+                    return [
+                        item for item in queued if item[0].direction not in allowed
+                    ]
+
+                for sleeve in sleeves:
+                    sleeve._start_trading_day = mock.Mock()
+                    sleeve._execute_pending_signals = mock.Mock(
+                        side_effect=execute_pending
+                    )
+
+                coordinator = quant.BacktestEngine()
+                with (
+                    mock.patch.object(coordinator, "_rebalance_free_sleeve_cash"),
+                    mock.patch.object(coordinator, "_authorize_portfolio_buys"),
+                ):
+                    coordinator._execute_ensemble_open(
+                        states, pd.Timestamp("2026-01-06")
+                    )
+
+                expected = [item for item in orders if item[1] == "sell"] + [
+                    item for item in orders if item[1] == "buy"
+                ]
+                self.assertEqual(executions, expected)
+                self.assertEqual(
+                    sum(shares for _, side, shares in executions if side == "buy")
+                    - sum(shares for _, side, shares in executions if side == "sell"),
+                    sum(shares for _, side, shares in orders if side == "buy")
+                    - sum(shares for _, side, shares in orders if side == "sell"),
+                )
+                self.assertFalse(
+                    any(
+                        event.get("event") == "netted_cross_sleeve_buy"
+                        for sleeve in sleeves
+                        for event in sleeve.order_events
+                    )
+                )
+
+    def test_opposite_sleeves_create_real_two_sided_fills_and_costs(self) -> None:
+        execution_cfg = {
+            "slippage": 0.01,
+            "commission_rate": 0.001,
+            "min_commission": 5.0,
+            "stamp_duty": 0.001,
+            "dynamic_sleeve_weights": False,
+            "max_positions": 6,
+        }
+        policy = quant.PortfolioPolicy(allocation_mode="single")
+        sell_sleeve = quant.SleeveBacktestEngine(
+            10_000.0,
+            cfg=execution_cfg,
+            policy=policy,
+            allocation_lookbacks=policy.single_lookbacks,
+            sleeve_name="sell",
+        )
+        buy_sleeve = quant.SleeveBacktestEngine(
+            10_000.0,
+            cfg=execution_cfg,
+            policy=policy,
+            allocation_lookbacks=policy.single_lookbacks,
+            sleeve_name="buy",
+        )
+        sell_strategy = quant.TurtleBreakoutStrategy(sell_sleeve._default_config())
+        buy_strategy = quant.DualMAStrategy(buy_sleeve._default_config())
+        sell_position = quant.Position(
+            "300308", sell_strategy.name, 100, 10.0, "2026-01-05"
+        )
+        sell_strategy.position = sell_position
+        sell_sleeve.positions = {"300308": {sell_strategy.name: sell_position}}
+        sell_sleeve._tradable_symbol_codes = {"300308"}
+        buy_sleeve._tradable_symbol_codes = {"300308"}
         sell = quant.Signal(
-            "300308", strategy.name, "sell", target_shares=100, price=10.0
+            "300308", sell_strategy.name, "sell", target_shares=100, price=10.0
         )
         buy = quant.Signal(
-            "300308", "dual_ma", "buy", target_shares=80, price=10.0
+            "300308", buy_strategy.name, "buy", target_shares=200, price=10.0
         )
-        states = self._states(
-            sleeve, sleeve,
-            pending=[
-                [(sell, strategy)],
-                [(buy, strategy)],
-            ],
+        dates = pd.bdate_range("2026-01-05", periods=2)
+        frame = pd.DataFrame(
+            {
+                "open": 10.0,
+                "close": 10.0,
+                "high": 10.0,
+                "low": 10.0,
+                "volume": 1_000_000.0,
+            },
+            index=dates,
         )
-        quant.BacktestEngine._net_cross_sleeve_orders(
-            states, pd.Timestamp("2026-01-06")
-        )
-        # Sell sleeve keeps its sell; the absorbed buy is fully cancelled.
-        self.assertEqual(len(states[0].pending), 1)
-        self.assertEqual(states[0].pending[0][0].direction, "sell")
-        self.assertEqual(len(states[1].pending), 0)
-        events = sleeve.order_events
-        self.assertEqual(events[-1]["event"], "netted_cross_sleeve_buy")
-        self.assertEqual(events[-1]["sell_shares"], 80)
 
-    def test_multiple_buys_net_cumulatively_against_residual_sell(self) -> None:
-        # Sell 100; buy 80 + buy 80. Naive per-buy comparison would cancel BOTH
-        # buys (each <= 100) and over-sell. The fix nets them cumulatively
-        # against the residual pool: first buy absorbs 80 (rem=20), second buy
-        # is partially absorbed and keeps the NET-ADD tail (80 - rem 20 = 60),
-        # so the cumulative net-add intent survives.
-        sleeve = self._sleeve()
-        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
-        order_events_before = len(sleeve.order_events)
-        sell = quant.Signal(
-            "300308", strategy.name, "sell", target_shares=100, price=10.0
-        )
-        buy1 = quant.Signal(
-            "300308", "dual_ma", "buy", target_shares=80, price=10.0
-        )
-        buy2 = quant.Signal(
-            "300308", "atr_channel", "buy", target_shares=80, price=10.0
-        )
-        states = self._states(
-            sleeve, sleeve, sleeve,
-            pending=[
-                [(sell, strategy)],
-                [(buy1, strategy)],
-                [(buy2, strategy)],
-            ],
-        )
-        quant.BacktestEngine._net_cross_sleeve_orders(
-            states, pd.Timestamp("2026-01-06")
-        )
-        # Sell retained; buy1 fully cancelled; buy2 keeps the net-add tail 60.
-        self.assertEqual(len(states[0].pending), 1)
-        self.assertEqual(len(states[1].pending), 0)
-        self.assertEqual(len(states[2].pending), 1)
-        self.assertEqual(states[2].pending[0][0].target_shares, 60)
-        events = sleeve.order_events[order_events_before:]
-        self.assertEqual(events[0]["event"], "netted_cross_sleeve_buy")
-        self.assertEqual(events[0]["sell_shares"], 80)
-        self.assertEqual(events[1]["event"], "netted_cross_sleeve_buy")
-        self.assertEqual(events[1]["sell_shares"], 20)
+        def state(
+            sleeve: quant.SleeveBacktestEngine,
+            signal: quant.Signal,
+            strategy: object,
+        ) -> quant._PreparedSleeveRun:
+            return quant._PreparedSleeveRun(
+                sleeve=sleeve,
+                data_map={"300308": frame},
+                indicator_map={},
+                all_dates=list(dates),
+                date_to_pos={date: index for index, date in enumerate(dates)},
+                pending=[(signal, strategy)],
+            )
+
+        states = [
+            state(sell_sleeve, sell, sell_strategy),
+            state(buy_sleeve, buy, buy_strategy),
+        ]
+        coordinator = quant.BacktestEngine(20_000.0, cfg=execution_cfg)
+        coordinator._runtime_tradable_count = 1
+        coordinator._execute_ensemble_open(states, dates[-1])
+
         self.assertEqual(
-            events[1]["because"], "same_symbol_sell_pending_absorbs_buy_partial"
+            [(trade.direction, trade.shares) for trade in sell_sleeve.trades],
+            [("sell", 100)],
         )
-
-    def test_buy_exceeding_sell_pool_is_genuine_net_add(self) -> None:
-        # Sell 100, buy 250 -> the 100 overlap is churn, the net-ADD tail
-        # (250 - 100 = 150) survives as the retained buy.
-        sleeve = self._sleeve()
-        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
-        sell = quant.Signal(
-            "300308", strategy.name, "sell", target_shares=100, price=10.0
+        self.assertEqual(
+            [(trade.direction, trade.shares) for trade in buy_sleeve.trades],
+            [("buy", 200)],
         )
-        buy = quant.Signal(
-            "300308", "dual_ma", "buy", target_shares=250, price=10.0
+        sell_trade = sell_sleeve.trades[0]
+        buy_trade = buy_sleeve.trades[0]
+        after_shares = sum(
+            position.shares
+            for prepared in states
+            for positions in prepared.sleeve.positions.values()
+            for position in positions.values()
         )
-        states = self._states(
-            sleeve, sleeve,
-            pending=[
-                [(sell, strategy)],
-                [(buy, strategy)],
-            ],
-        )
-        quant.BacktestEngine._net_cross_sleeve_orders(
-            states, pd.Timestamp("2026-01-06")
-        )
-        self.assertEqual(len(states[0].pending), 1)
-        # Buy kept the net ADD portion (250 - 100 = 150).
-        self.assertEqual(len(states[1].pending), 1)
-        self.assertEqual(states[1].pending[0][0].target_shares, 150)
-
-    def test_no_sell_pool_leaves_buy_untouched(self) -> None:
-        sleeve = self._sleeve()
-        strategy = quant.TurtleBreakoutStrategy(sleeve._default_config())
-        buy = quant.Signal(
-            "300308", "dual_ma", "buy", target_shares=80, price=10.0
-        )
-        states = self._states(
-            sleeve,
-            pending=[[(buy, strategy)]],
-        )
-        quant.BacktestEngine._net_cross_sleeve_orders(
-            states, pd.Timestamp("2026-01-06")
-        )
-        self.assertEqual(len(states[0].pending), 1)
-        self.assertEqual(states[0].pending[0][0].target_shares, 80)
+        self.assertEqual(after_shares - 100, buy_trade.shares - sell_trade.shares)
+        self.assertGreater(buy_trade.commission, 0.0)
+        self.assertGreater(sell_trade.commission, 0.0)
+        self.assertGreater(sell_trade.stamp_duty_cost, 0.0)
+        self.assertEqual(buy_trade.stamp_duty_cost, 0.0)
 
 
 if __name__ == "__main__":
