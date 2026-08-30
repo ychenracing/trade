@@ -185,7 +185,12 @@ class PolicyTests(unittest.TestCase):
                 ("fast:turtle", "buy", "2026-01-07"),
             )
         ]
-        self.assertEqual(quant.date_symbol_side_count(trades), 4)
+        trades.append(
+            quant.TradeRecord(
+                "300502", "fast:turtle", "buy", 100, 10.0, "2026-01-07"
+            )
+        )
+        self.assertEqual(quant.date_symbol_side_count(trades), 5)
         self.assertEqual(
             quant.date_symbol_side_count(trades, direction="sell"), 2
         )
@@ -847,14 +852,26 @@ class IntegrationTests(unittest.TestCase):
         for name, codes in UNIVERSES.items():
             with self.subTest(universe=name):
                 expected = baselines[str(len(codes))]
-                actual = economic_sequence_fingerprints(self.results[name])
+                result = self.results[name]
+                actual = {
+                    key: int(result[key])
+                    for key in (
+                        "total_trades",
+                        "sell_trades",
+                        "sleeve_fill_count",
+                        "sleeve_sell_fill_count",
+                        "date_symbol_side_count",
+                        "date_symbol_sell_side_count",
+                    )
+                }
+                actual.update(economic_sequence_fingerprints(result))
                 # Continuous regime evidence contains harmless BLAS/NumPy
                 # rounding differences across runners. Freeze the categorical
                 # route exactly; keep the raw evidence hash in the artifact as
                 # a same-environment diagnostic reference.
                 actual.pop("regime_state_series_sha256")
                 actual["regime_route_sha256"] = regime_route_fingerprint(
-                    self.results[name]
+                    result
                 )
                 self.assertEqual(
                     actual,
@@ -917,11 +934,19 @@ class IntegrationTests(unittest.TestCase):
 
 
 class PrefixStressArtifactTests(unittest.TestCase):
-    """Verify the exhaustive one-through-22 prefix audit is current."""
+    """Verify the reviewed historical one-through-22 prefix audit."""
 
     def test_all_prefix_counts_meet_bounded_regression_contract(self) -> None:
         path = VALIDATION_ARTIFACT_DIR / "prefix_stress.json"
         artifact = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            artifact["artifact_status"],
+            "historical_pre_minimal_account_correctness",
+        )
+        self.assertEqual(
+            artifact["trade_count_semantics"],
+            "legacy_date_symbol_side_bucket",
+        )
         self.assertEqual(artifact["portfolio_policy"], quant.PortfolioPolicy().as_dict())
         results = artifact["results"]
         self.assertEqual([item["symbol_count"] for item in results], list(range(1, 23)))

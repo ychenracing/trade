@@ -122,7 +122,13 @@ jobs:
                   "total_return": float(result["total_return"]),
                   "max_drawdown": float(result["max_drawdown"]),
                   "total_trades": int(result["total_trades"]),
+                  "sell_trades": int(result["sell_trades"]),
                   "sleeve_fill_count": int(result["sleeve_fill_count"]),
+                  "sleeve_sell_fill_count": int(result["sleeve_sell_fill_count"]),
+                  "date_symbol_side_count": int(result["date_symbol_side_count"]),
+                  "date_symbol_sell_side_count": int(
+                      result["date_symbol_sell_side_count"]
+                  ),
               }
               actual.update(economic_sequence_fingerprints(result))
               actual.pop("regime_state_series_sha256")

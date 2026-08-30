@@ -35,6 +35,7 @@ END_DATE = "2026-07-20"
 INITIAL_CAPITAL = 2_000_000.0
 ORDERED_CODES = tuple(NAMES)
 DEFAULT_SEEDS = (20260807, 20260817, 20260827)
+TRADE_COUNT_SEMANTICS = "trade_records"
 ATTRIBUTION_CATEGORIES = (
     "initial_entry",
     "add",
@@ -412,10 +413,10 @@ def _hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
         "worst_add_one_wealth_at_least_minus_18pct": (
             min(add_one_changes) >= -0.18 - 1e-12
         ),
-        "random_p90_account_orders_at_most_160": (
+        "random_p90_trade_records_at_most_160": (
             random_summary["trades_p90"] <= 160
         ),
-        "all_account_orders_at_most_200": all_summary["trades_worst"] <= 200,
+        "all_trade_records_at_most_200": all_summary["trades_worst"] <= 200,
     }
     return {
         "passed": all(checks.values()),
@@ -427,8 +428,8 @@ def _hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
             "prefix_9_to_10_wealth_change": nine_to_ten,
             "worst_adjacent_wealth_change": min(adjacent_changes),
             "worst_add_one_wealth_change": min(add_one_changes),
-            "random_p90_account_orders": random_summary["trades_p90"],
-            "all_worst_account_orders": all_summary["trades_worst"],
+            "random_p90_trade_records": random_summary["trades_p90"],
+            "all_worst_trade_records": all_summary["trades_worst"],
         },
     }
 
@@ -437,7 +438,7 @@ def _hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
 # 任何 cross-market / risk 改动晋级前，除绝对硬门外，还必须相对既有正式
 # universe stress 基线满足以下"不大幅恶化"契约（2026-08-16 报告 P0-4 建议门槛
 # 方向：固定牛市财富 ≥99%、random DD P90 不恶化、worst DD 不显著恶化、false
-# risk action 数不增加、account orders 不明显增加）。注意：此处 P0-4 指
+# risk action 数不增加、trade records 不明显增加）。注意：此处 P0-4 指
 # 2026-08-16 报告，与 2026-08-07 旧报告中的 P0-4（灾变冷却阻断再入场）不同。
 PROMOTION_PREFIX_WEALTH_RATIO = 0.99
 PROMOTION_DD_P90_TOLERANCE = 0.005
@@ -503,6 +504,9 @@ def _promotion_gates(
         str(item.get("scenario_id")): item for item in incumbent["results"]
     }
     current_by_id = {str(item["scenario_id"]): item for item in results}
+    comparable_trade_counts = (
+        incumbent.get("trade_count_semantics") == TRADE_COUNT_SEMANTICS
+    )
 
     def _family(family: str, source: dict[str, dict[str, Any]]) -> list[dict]:
         return [
@@ -571,11 +575,12 @@ def _promotion_gates(
             >= inc_random["return_worst"] - PROMOTION_WORST_RETURN_TOLERANCE
         )
         observed["random_worst_return"] = cur_random["return_worst"]
-        checks["random_trades_p90_not_increased"] = (
-            cur_random["trades_p90"]
-            <= inc_random["trades_p90"] + PROMOTION_TRADES_P90_TOLERANCE
-        )
-        observed["random_trades_p90"] = cur_random["trades_p90"]
+        if comparable_trade_counts:
+            checks["random_trades_p90_not_increased"] = (
+                cur_random["trades_p90"]
+                <= inc_random["trades_p90"] + PROMOTION_TRADES_P90_TOLERANCE
+            )
+            observed["random_trades_p90"] = cur_random["trades_p90"]
         checks["random_risk_actions_not_increased"] = (
             cur_random["risk_action_orders_median"]
             <= inc_random["risk_action_orders_median"]
@@ -589,11 +594,20 @@ def _promotion_gates(
         >= inc_all["drawdown_worst"] - PROMOTION_WORST_DD_TOLERANCE
     )
     observed["all_worst_dd"] = cur_all["drawdown_worst"]
-    checks["all_worst_trades_not_increased"] = (
-        cur_all["trades_worst"]
-        <= inc_all["trades_worst"] + PROMOTION_TRADES_WORST_TOLERANCE
-    )
-    observed["all_worst_trades"] = cur_all["trades_worst"]
+    if comparable_trade_counts:
+        checks["all_worst_trades_not_increased"] = (
+            cur_all["trades_worst"]
+            <= inc_all["trades_worst"] + PROMOTION_TRADES_WORST_TOLERANCE
+        )
+        observed["all_worst_trades"] = cur_all["trades_worst"]
+        observed["trade_count_comparison"] = "comparable"
+    else:
+        observed["trade_count_comparison"] = (
+            "skipped_incompatible_incumbent_semantics"
+        )
+        observed["incumbent_trade_count_semantics"] = incumbent.get(
+            "trade_count_semantics", "unspecified"
+        )
     if cur_loo and inc_loo:
         checks["leave_one_out_worst_return_not_worse"] = (
             cur_loo["return_worst"]
@@ -735,6 +749,8 @@ def main() -> int:
     common = {
         "engine": "ProductionReplayEngine",
         "deployment_policy": "production_daily_replay",
+        "artifact_status": "current",
+        "trade_count_semantics": TRADE_COUNT_SEMANTICS,
         "portfolio_policy": qf.PortfolioPolicy().as_dict(),
         "data_directory": _artifact_path(data_dir),
         "regime_data_directory": _artifact_path(regime_data_dir),

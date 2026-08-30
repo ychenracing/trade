@@ -63,7 +63,13 @@ def _run(task: tuple[str, tuple[str, ...], str, str]) -> dict[str, Any]:
         "sharpe": float(result["sharpe"]),
         "calmar": float(result["calmar"]),
         "total_trades": int(result["total_trades"]),
+        "sell_trades": int(result["sell_trades"]),
         "sleeve_fill_count": int(result["sleeve_fill_count"]),
+        "sleeve_sell_fill_count": int(result["sleeve_sell_fill_count"]),
+        "date_symbol_side_count": int(result["date_symbol_side_count"]),
+        "date_symbol_sell_side_count": int(
+            result["date_symbol_sell_side_count"]
+        ),
         "sector_guard_active": bool(result["sector_guard_active"]),
         "persistent_risk_lock": bool(result["persistent_risk_lock"]),
         "terminal_risk_lock": bool(result["terminal_risk_lock"]),

@@ -110,7 +110,9 @@ class StressScenarioTests(unittest.TestCase):
         )
         self.assertIn(canonical_source, fingerprints[0])
 
-    def test_persisted_formal_artifacts_match_current_run_signature(self) -> None:
+    def test_persisted_formal_artifacts_are_explicit_historical_baselines(
+        self,
+    ) -> None:
         scenarios = stress._multi_seed_scenarios(
             random_samples=50,
             permutation_samples=50,
@@ -127,7 +129,45 @@ class StressScenarioTests(unittest.TestCase):
                     stress.VALIDATION_ARTIFACT_DIR / name
                 ).read_text(encoding="utf-8")
             )
-            self.assertEqual(payload["run_signature"], signature)
+            self.assertEqual(
+                payload["artifact_status"],
+                "historical_pre_minimal_account_correctness",
+            )
+            self.assertEqual(
+                payload["trade_count_semantics"],
+                "legacy_date_symbol_side_bucket",
+            )
+            self.assertEqual(
+                payload["source_revision"],
+                "2066fbf0f99be94142c5d0cb0b6c99d276c2472d",
+            )
+            self.assertEqual(
+                payload["run_signature"],
+                "f4fe4580e6c792461bdeffeaea96c12f1c4ab49e63dce468e30b5fbbd19202df",
+            )
+            self.assertNotEqual(payload["run_signature"], signature)
+
+    def test_promotion_gates_skip_incomparable_legacy_trade_counts(self) -> None:
+        current = {
+            "scenario_id": "prefix-01",
+            "scenario_type": "prefix",
+            "total_return": 1.0,
+            "max_drawdown": -0.1,
+            "total_trades": 24,
+            "sleeve_fill_count": 24,
+        }
+        incumbent = {
+            "trade_count_semantics": "legacy_date_symbol_side_bucket",
+            "results": [{**current, "total_trades": 5}],
+        }
+
+        result = stress._promotion_gates([current], incumbent)
+
+        self.assertNotIn("all_worst_trades_not_increased", result["checks"])
+        self.assertEqual(
+            result["observed"]["trade_count_comparison"],
+            "skipped_incompatible_incumbent_semantics",
+        )
 
 
 if __name__ == "__main__":

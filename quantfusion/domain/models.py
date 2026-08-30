@@ -56,15 +56,14 @@ class TradeRecord:
     exit_from_peak_pct: float = 0.0
 
 
-def _account_order_count(
+def date_symbol_side_count(
     trades: list[TradeRecord], *, direction: str | None = None
 ) -> int:
-    """Count broker-level orders after merging virtual sleeve executions.
+    """Count unique date/symbol/side buckets in executed trade records.
 
-    A production account sends one order for a date/symbol/direction even when
-    several internal strategies or sleeves contribute fills to it.  The raw
-    records remain available for attribution through ``sleeve_fill_count`` and
-    ``trades``.
+    This diagnostic does not represent broker orders or broker-side netting.
+    Multiple sleeve fills may share a bucket while remaining separate executed
+    ``TradeRecord`` objects with separate modeled costs.
     """
     return len(
         {
@@ -163,4 +162,12 @@ class MarketRegimeObservation:
     raw_score: int
     candidate_state: str
 
-account_order_count = _account_order_count
+def account_order_count(
+    trades: list[TradeRecord], *, direction: str | None = None
+) -> int:
+    """Deprecated compatibility alias for :func:`date_symbol_side_count`.
+
+    The returned value is a date/symbol/side bucket count, not a broker-level
+    order count. New code must use the canonical name.
+    """
+    return date_symbol_side_count(trades, direction=direction)

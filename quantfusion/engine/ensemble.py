@@ -13,7 +13,7 @@ from quantfusion.domain.models import (
     AccountState,
     Signal,
     TradeRecord,
-    account_order_count,
+    date_symbol_side_count,
 )
 from quantfusion.domain.rules import floor_to_lot, is_finite_number
 from quantfusion.engine.causal import CausalBacktestEngine
@@ -27,7 +27,7 @@ from quantfusion.strategy.trend import BaseStrategy
 _CausalBacktestEngine = CausalBacktestEngine
 _ConfirmedDrawdownRiskManager = ConfirmedDrawdownRiskManager
 _PortfolioPolicyBase = PortfolioPolicyBase
-_account_order_count = account_order_count
+_date_symbol_side_count = date_symbol_side_count
 _floor_to_lot = floor_to_lot
 _is_finite_number = is_finite_number
 _require_positive_ratio = require_positive_ratio
@@ -459,10 +459,14 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             "calmar": calmar,
             "win_rate": len(wins) / decisive if decisive else 0.0,
             "profit_factor": total_win / total_loss if total_loss > 0 else float("inf"),
-            "total_trades": _account_order_count(trades),
+            "total_trades": len(trades),
             "sleeve_fill_count": len(trades),
-            "sell_trades": _account_order_count(trades, direction="sell"),
+            "sell_trades": len(sell_trades),
             "sleeve_sell_fill_count": len(sell_trades),
+            "date_symbol_side_count": _date_symbol_side_count(trades),
+            "date_symbol_sell_side_count": _date_symbol_side_count(
+                trades, direction="sell"
+            ),
             "avg_exit_from_peak": float(np.mean(givebacks)) if givebacks else 0.0,
             "worst_exit_from_peak": float(min(givebacks)) if givebacks else 0.0,
             "open_positions": sum(result["open_positions"] for result in results),

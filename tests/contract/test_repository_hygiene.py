@@ -23,6 +23,15 @@ from scripts.backtest_universes import UNIVERSES
 ROOT = PROJECT_ROOT
 THIS_FILE = Path(__file__).resolve().relative_to(ROOT)
 EXPECTED_MARKDOWN = {
+    Path(".github/CHATGPT_PROJECT_BRIEF.md"),
+    Path(".github/pull_request_template.md"),
+    Path("AGENTS.md"),
+    Path("README.md"),
+    Path("docs/ARCHITECTURE.md"),
+    Path("docs/VALIDATION.md"),
+    Path("data/README.md"),
+}
+CHINESE_MARKDOWN = {
     Path("README.md"),
     Path("docs/ARCHITECTURE.md"),
     Path("docs/VALIDATION.md"),
@@ -30,6 +39,7 @@ EXPECTED_MARKDOWN = {
 }
 EXPECTED_ROOT_FILES = {
     ".gitignore",
+    "AGENTS.md",
     "LICENSE",
     "README.md",
     "account_signal_engine.py",
@@ -107,7 +117,7 @@ class MarkdownConsistencyTests(unittest.TestCase):
         self.assertEqual(found, EXPECTED_MARKDOWN)
 
     def test_markdown_prose_is_chinese(self) -> None:
-        for relative in EXPECTED_MARKDOWN:
+        for relative in CHINESE_MARKDOWN:
             content = (ROOT / relative).read_text(encoding="utf-8")
             self.assertRegex(content, CJK_RE)
             for line in _markdown_prose_lines(content):

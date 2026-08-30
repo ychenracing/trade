@@ -29,6 +29,7 @@ from quantfusion.domain.models import (
     Signal,
     TradeRecord,
     account_order_count,
+    date_symbol_side_count,
 )
 from quantfusion.domain.rules import (
     A_SHARE_LOT_SIZE as A_SHARE_LOT_SIZE,
@@ -72,6 +73,7 @@ from quantfusion.strategy.trend import (
 
 _SYMBOL_RE = SYMBOL_RE
 _ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
+# Deprecated compatibility surface; this counts date/symbol/side buckets only.
 _account_order_count = account_order_count
 _floor_to_lot = floor_to_lot
 _is_finite_number = is_finite_number
@@ -114,6 +116,7 @@ __all__ = [
     "TradeRecord",
     "TurtleBreakoutStrategy",
     "build_argument_parser",
+    "date_symbol_side_count",
     "main",
     "parse_symbols",
 ]

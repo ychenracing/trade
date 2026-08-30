@@ -616,7 +616,11 @@ def _run_main() -> int:
     print(f"  总收益率:       {result['total_return']:>14.2%}")
     print(f"  最大回撤:       {result['max_drawdown']:>14.2%}")
     print(f"  Sharpe:         {result['sharpe']:>14.2f}")
-    print(f"  总交易次数:     {result['total_trades']:>14}")
+    print(f"  成交记录数:     {result['total_trades']:>14}")
+    print(
+        "  日期/股票/方向桶:"
+        f"{result.get('date_symbol_side_count', 0):>12}"
+    )
     print(f"  自动策略路由:   {result.get('deployment_policy', 'unknown'):>14}")
     allocation_mode = result.get("allocation_mode", "ensemble")
     print(f"  分配模式:       {allocation_mode:>14}")
@@ -776,6 +780,13 @@ def _run_main() -> int:
             "max_drawdown": float(result["max_drawdown"]),
             "sharpe": float(result["sharpe"]),
             "total_trades": int(result["total_trades"]),
+            "sell_trades": int(result.get("sell_trades", 0)),
+            "date_symbol_side_count": int(
+                result.get("date_symbol_side_count", 0)
+            ),
+            "date_symbol_sell_side_count": int(
+                result.get("date_symbol_sell_side_count", 0)
+            ),
             "sector_guard_active": bool(guard),
             "safe_mode_active": bool(result.get("safe_mode_active", False)),
             "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),

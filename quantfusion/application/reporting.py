@@ -36,8 +36,12 @@ class PerformanceReport:
         )
         print(f"  Profit factor:     {pf_str:>15}")
         print(f"  Open positions:   {result.get('open_positions', 0):>15d}")
-        print(f"  Total trades: {result['total_trades']:>15d}")
-        print(f"  Sell trades:   {result['sell_trades']:>15d}")
+        print(f"  Trade records: {result['total_trades']:>15d}")
+        print(f"  Sell records:  {result['sell_trades']:>15d}")
+        print(
+            "  Date/symbol/side buckets:"
+            f"{result.get('date_symbol_side_count', 0):>10d}"
+        )
         print(f"  Average exit giveback:{result.get('avg_exit_from_peak', 0.0):>15.2%}")
         print(f"  Worst exit giveback:{result.get('worst_exit_from_peak', 0.0):>15.2%}")
         print(f"{'═' * 60}\n")
@@ -92,6 +96,10 @@ class PerformanceReport:
             "profit_factor",
             "total_trades",
             "sell_trades",
+            "sleeve_fill_count",
+            "sleeve_sell_fill_count",
+            "date_symbol_side_count",
+            "date_symbol_sell_side_count",
             "open_positions",
             "reversal_exit_trades",
             "avg_exit_from_peak",
