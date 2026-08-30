@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Sequence, cast
+from typing import Callable, Sequence, cast
 
 import numpy as np
 import pandas as pd
@@ -19,6 +19,7 @@ from quantfusion.config.regime import (
 )
 from quantfusion.data.providers import DataFetcher
 from quantfusion.regime.models import IndexTrend, LeaderSelection, RegimeEvidence
+
 
 def _timestamp(value: str | pd.Timestamp) -> pd.Timestamp:
     """Parse one finite timestamp and narrow pandas' optional NaT type."""
@@ -99,6 +100,7 @@ def select_positive_momentum_leaders(
     data_dir: str | Path,
     as_of: str,
     maximum: int = MAX_LEADERS,
+    frame_loader: Callable[[str, str], pd.DataFrame] | None = None,
 ) -> LeaderSelection:
     """Select positive long-horizon leaders with deterministic tie-breaking.
 
@@ -118,12 +120,18 @@ def select_positive_momentum_leaders(
     observations: list[tuple[float, str, bool]] = []
     observed_codes: set[str] = set()
 
+    def load_frame(code: str) -> pd.DataFrame:
+        if frame_loader is None:
+            return _local_frame(data_dir, code, str(boundary.date()))
+        frame = frame_loader(code, str(boundary.date()))
+        return frame.loc[frame.index <= boundary].copy()
+
     # Load reference basket for relative strength calculation
     reference_symbols = ("300308", "300502", "300394", "688008", "603986")
     ref_returns: list[float] = []
     for ref_code in reference_symbols:
         try:
-            ref_frame = _local_frame(data_dir, ref_code, str(boundary.date()))
+            ref_frame = load_frame(ref_code)
             ref_closes = pd.Series(
                 pd.to_numeric(ref_frame["close"], errors="coerce"),
                 index=ref_frame.index,
@@ -137,7 +145,7 @@ def select_positive_momentum_leaders(
 
     for code in normalized:
         try:
-            frame = _local_frame(data_dir, code, str(boundary.date()))
+            frame = load_frame(code)
             closes = pd.Series(
                 pd.to_numeric(frame["close"], errors="coerce"), index=frame.index
             ).dropna()

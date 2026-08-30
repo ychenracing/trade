@@ -5,7 +5,6 @@
 from quantfusion.account.models import (
     AccountPosition,
     AccountSnapshot,
-    AccountTarget,
     PointInTimeSignal,
 )
 from quantfusion.account.service import (
@@ -13,7 +12,10 @@ from quantfusion.account.service import (
     target_weight_for,
     trend_candidate_score,
 )
-from quantfusion.account.snapshot import load_account_snapshot
+from quantfusion.account.snapshot import (
+    load_account_snapshot,
+    load_account_snapshot_with_sha256,
+)
 from quantfusion.application.account_scan import AccountSignalEngine, run_account_scan
 from quantfusion.data import contracts as market_data_contracts
 from quantfusion.io.artifacts import atomic_json

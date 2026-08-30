@@ -9,7 +9,6 @@ from ._daily_scan_support import (
     FakeSignal,
     FakeTrade,
     Path,
-    VALID_ACCOUNT,
     VALID_RISK_STATE,
     dss,
     json,
@@ -105,23 +104,6 @@ class PositionExtractionTests(unittest.TestCase):
 
 class AccountRiskWorkflowTests(unittest.TestCase):
     """Verify the account + risk state workflow end-to-end."""
-
-    def test_account_with_active_risk_state_shows_warnings(self) -> None:
-        """An account with terminal_risk_lock=True should be loadable."""
-        account = dict(VALID_ACCOUNT)
-        account["risk_state"]["terminal_risk_lock"] = True
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(account, f)
-            path = f.name
-        try:
-            result = dss._load_account(path)
-            self.assertIsNotNone(result)
-            assert result is not None
-            self.assertTrue(result["risk_state"]["terminal_risk_lock"])
-        finally:
-            Path(path).unlink()
 
     def test_risk_state_persists_terminal_lock(self) -> None:
         """Terminal risk lock should survive save/load round-trip."""

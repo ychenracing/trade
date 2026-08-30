@@ -9,7 +9,6 @@ from ._daily_scan_support import (
     FakeSignal,
     FakeTrade,
     Path,
-    VALID_ACCOUNT,
     VALID_RISK_STATE,
     dss,
     json,
@@ -56,6 +55,33 @@ class CLIArgumentTests(unittest.TestCase):
     def test_default_capital_is_positive(self) -> None:
         self.assertGreater(dss.INITIAL_CAPITAL, 0)
 
+    def test_account_id_is_forwarded_to_account_scan(self) -> None:
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "daily_signal_scan.py",
+                    "--account",
+                    "account.json",
+                    "--account-id",
+                    "broker-primary",
+                    "--end-date",
+                    "2026-08-04",
+                ],
+            ),
+            patch.object(
+                dss.account_scan,
+                "run_account_scan",
+                return_value=0,
+            ) as run_account,
+        ):
+            self.assertEqual(dss._run_main(), 0)
+
+        self.assertEqual(
+            run_account.call_args.kwargs["expected_account_id"],
+            "broker-primary",
+        )
+
 
 class CLIIntegrationTests(unittest.TestCase):
     """Verify CLI behavior through real subprocess calls.
@@ -87,6 +113,39 @@ class CLIIntegrationTests(unittest.TestCase):
         result = self._run_cli("--account", "dummy.json")
         self.assertEqual(result.returncode, 1)
         self.assertIn("Account signal scan failed", result.stdout)
+
+    def test_account_identity_failure_publishes_no_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            account_path = Path(tmpdir) / "account.json"
+            account_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 3,
+                        "account_id": "other",
+                        "snapshot_date": "2026-08-04",
+                        "cash": 100_000,
+                        "peak_equity": 100_000,
+                        "positions": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = self._run_cli(
+                "--account",
+                str(account_path),
+                "--account-id",
+                "main",
+                "--end-date",
+                "2026-08-04",
+                "--output-dir",
+                tmpdir,
+            )
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("expected account_id='main'", result.stdout)
+            self.assertFalse(
+                (Path(tmpdir) / "account_signals_2026-08-04.json").exists()
+            )
 
     def test_account_with_reset_preserves_state(self) -> None:
         """--account + --reset-risk-state must NOT delete risk_state.json.

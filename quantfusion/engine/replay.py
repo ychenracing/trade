@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from dataclasses import asdict, replace
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 import pandas as pd
 
+from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.regime import (
     WEAK_CONFIRMED_DRAWDOWN,
     WEAK_DRAWDOWN_ALERT,
@@ -18,7 +19,6 @@ from quantfusion.config.weak import weak_regime_config, weak_regime_policy
 from quantfusion.domain.models import AccountState, BarContext
 from quantfusion.domain.rules import require_finite
 from quantfusion.engine.universe import BacktestEngine, SleeveBacktestEngine
-from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.regime.evidence import (
     detect_regime,
     local_frame,
@@ -498,6 +498,7 @@ class RegimeAdaptiveBacktestEngine:
         as_of: str,
         data_dir: str | Path,
         leader_data_dir: str | Path | None = None,
+        leader_frame_loader: Callable[[str, str], pd.DataFrame] | None = None,
     ) -> DeploymentDecision:
         """Make a point-in-time route decision from data through ``as_of``.
 
@@ -532,6 +533,7 @@ class RegimeAdaptiveBacktestEngine:
             tuple(symbols_dict),
             data_dir=leader_data_dir or data_dir,
             as_of=when,
+            frame_loader=leader_frame_loader,
         )
         name = (
             "positive_momentum_hold" if leaders.selected_symbols else "cash_preservation"

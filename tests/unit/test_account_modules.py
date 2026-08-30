@@ -16,6 +16,10 @@ class AccountModuleContracts(unittest.TestCase):
         self.assertIs(legacy.AccountPosition, models.AccountPosition)
         self.assertIs(legacy.AccountSnapshot, models.AccountSnapshot)
         self.assertIs(legacy.load_account_snapshot, snapshot.load_account_snapshot)
+        self.assertIs(
+            legacy.load_account_snapshot_with_sha256,
+            snapshot.load_account_snapshot_with_sha256,
+        )
 
     def test_account_engine_is_an_application_service(self) -> None:
         legacy = importlib.import_module("account_signal_engine")

@@ -90,7 +90,7 @@ python daily_signal_scan.py --end-date 2026-08-04 \
 # 真实账户建议（先填入持仓）
 cp examples/account.json account.json
 python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
-  --cache-dir data_cache --output-dir daily_signals
+  --account-id main --cache-dir data_cache --output-dir daily_signals
 ```
 
 安装开发依赖与完整质量门禁见「开发与质量门禁」章节。
@@ -104,8 +104,8 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 1. **数据刷新**：运行 `python daily_signal_scan.py --end-date <TODAY>` 拉取最新日线并生成候选信号。
 2. **路由判断**：查看输出中的 `route` 字段（`trend` / `weak` / `cash`），确认今日走哪条路径。
 3. **候选审视**：检查 `candidates` 列表，关注排名、触发原因（`reasons`）和建议权重。
-4. **持仓建议**：若传入了 `--account`，查看 `actions` 中的买入/卖出/持有建议，结合实际账户人工决策。
-5. **次日执行**：信号在次日开盘执行，涨跌停板、成交量容量和滑点可能使实际成交价偏离模拟。
+4. **持仓建议**：若传入了 `--account`，查看 `actions` 中的持仓处置与非执行性买入筛选，结合实际账户人工决策。
+5. **次日复核**：账户买入数量仅按收盘价估算；下一可交易日的开盘价、现金、涨跌停和人工状态仍须重新确认。
 
 ### 参数探索
 
@@ -133,14 +133,16 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 - `warmup_health`：预热健康契约（P0-1）——`READY` / `DEGRADED` / `NOT_READY` 三级状态、指标与参考篮就绪比例、新上市与陈旧股票清单及原因代码。`NOT_READY` 时输出不可作为正式交易信号，全部新增买入已失败关闭（`buys_suppressed=true`）；`DEGRADED` 时风险判断保留，仅显著提示。
 - `risk_opinion`：独立风险意见（P0-3）——风险等级与置信度、市场状态、健康牛市沉默标记、禁新开仓/冻结加仓语义、建议总敞口上限、最弱子行业簇、袖套共识与连续退化计数及原因代码。该意见与交易动作分离，只描述环境。
 
-当传入 `--account account.json` 时，额外输出：
+当传入 `--account account.json` 时，输入必须是单一严格 v3 schema：根字段仅为 `schema_version`、`account_id`、`snapshot_date`、`cash`、`peak_equity` 和 `positions`；每个持仓必须提供 `shares`、`sellable_shares`、`avg_cost` 与 `entry_date`，可选 `highest_close`。未知字段、旧 schema、账户 ID 或快照日期不匹配都会在行情请求前失败。
 
-- `actions`：按标的分组的动作建议——`buy`（建议买入股数与金额）、`sell`（建议卖出股数与原因）、`hold`（继续持有）。
-- 账户持仓动作保留 `shares` 作为总持股数，并用 `sellable_shares`、`recommended_shares`、`blocked_shares` 和 `execution_status` 显式表达 T+1 可执行性；可卖数量未知时不得把总持股当作建议卖出量。
+- `actions`：按标的给出 `HOLD`、`SELL`、`REDUCE_REVIEW`、`DATA_ERROR`、`BLOCKED` 或 `BUY_CANDIDATE`。`BUY_CANDIDATE` 是当前时点筛选，不是生产袖套净订单。
+- 持仓动作保留 `shares` 作为总持股数，并用 `sellable_shares`、`recommended_shares`、`blocked_shares` 和 `execution_status` 显式表达 T+1 可执行性。
+- 买入候选固定 `shares=0`，理论整手数量写入 `indicative_target_shares`，并标记 `execution_status="INDICATIVE_REVIEW_ONLY"`；`strategies` 只列出实际触发的 `turtle_breakout`、`dual_ma`、`atr_channel`。
 - `estimated_equity` / `estimated_market_value`：按最新收盘价估算的账户净权益与持仓市值（仅当所有持仓都有数据时给出）。
-- `risk_flags`：组合级风险信号——回撤预警、周期确认、紧急回撤、集中度警告等。
+- `evidence_date`、`data_complete`、`unavailable_symbols`、`buys_suppressed` 和 `buy_suppression_reasons`：披露本次实际行情证据与失败关闭原因。任一预期候选缺失、被提供层标记为 stale 或实际截止日不一致时，全部新增买入被抑制，但可用持仓的卖出风险提示仍保留。
+- `account_snapshot_sha256`：账户 CLI 输入文件的精确字节哈希；工件不记录文件内容或绝对路径。
 
-> 所有建议仅供人工决策参考，不构成投资建议。实际下单需考虑盘中流动性、涨跌停板、交易规则和个人风险承受能力。
+> 账户模式是基于严格同日账户快照与一致时点行情的人工决策支持。卖出数量受 T+1 可卖数量约束；买入数量仅为收盘价估算，不代表下一交易日可直接提交的订单。
 
 ## 风险分层说明
 
@@ -288,7 +290,7 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 | 路由结果为 `cash` | 指数数据缺失 / 陈旧 / 不可解析 | 检查 `data/regime/` 中的 `000300.csv` 与 `000682.csv` 是否最新 |
 | 候选列表为空 | 所有股票动量为负 / 数据不足 | 正常现象，弱市中持有现金是预期行为 |
 | 回测收益与基线不符 | 数据版本 / 参数配置不一致 | 使用 `data/market/` 冻结数据、`--indicator-state warm`、默认参数，核对 `SHA256SUMS` |
-| 账户建议为零买入 | 现金不足 / 超仓位上限 / 集中度限制 | 检查 `risk_flags` 和 `actions[].reasons`，确认账户快照是否完整 |
+| 账户建议为零买入 | 现金不足、候选证据不完整或实际截止日不一致 | 检查 `buys_suppressed`、`buy_suppression_reasons`、`unavailable_symbols` 和 `actions[].reason` |
 | 日扫提示 `NOT_READY` 并抑制买入 | 预热健康契约失败关闭（指标历史不足或 regime 证据缺失） | 检查 `warmup_health.reasons`（如 `indicator_warmup_incomplete`、`regime_index_missing_or_stale`、`new_symbols_without_full_history`），补齐预热数据或延长回看窗口后重跑 |
 | 日扫提示 `DEGRADED` | 数据陈旧 / 新上市股票 / 参考篮不完整 | 风险判断保留，按 `warmup_health.reasons` 人工确认新增风险动作；刷新数据可消除 `regime_index_stale` 与 `stale_symbols` |
 | 测试失败 | 基线变更未同步 | 检查 `tests/fixtures/backtest_golden_metrics.json` 是否与代码一致；任何策略变更都必须更新基线并说明原因 |

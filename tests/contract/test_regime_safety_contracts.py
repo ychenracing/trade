@@ -45,6 +45,9 @@ class UnknownEvidenceTests(unittest.TestCase):
 
     def test_account_mode_emits_no_buy_candidate(self) -> None:
         snapshot = account.AccountSnapshot(
+            schema_version=3,
+            account_id="main",
+            snapshot_date="2026-01-30",
             cash=1_000_000.0,
             peak_equity=1_000_000.0,
             positions=(),
