@@ -115,7 +115,7 @@ def main() -> int:
     output = VALIDATION_ARTIFACT_DIR / "universe_backtest.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
-        json.dumps(artifact, ensure_ascii=False, indent=2) + "\n",
+        json.dumps(artifact, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
     )
     for item in results:

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import pandas as pd
@@ -298,6 +301,29 @@ class AccountSignalSellabilityTests(unittest.TestCase):
                 }
             ],
         )
+
+    def test_account_actions_serialize_as_strict_deterministic_json(self) -> None:
+        result = self._run_priced(
+            sellable_shares=40,
+            decision=self._decision("cash_preservation"),
+            close=100.0,
+        )
+        with TemporaryDirectory() as directory:
+            first = Path(directory) / "first.json"
+            second = Path(directory) / "second.json"
+            account_scan.atomic_json(result, first)
+            account_scan.atomic_json(result, second)
+
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            payload = json.loads(first.read_text(encoding="utf-8"))
+            action = self._held_action(payload)
+            self.assertEqual(action["recommended_shares"], 40)
+            self.assertEqual(action["execution_status"], "PARTIALLY_T1_BLOCKED")
+            with self.assertRaises(ValueError):
+                account_scan.atomic_json(
+                    {"invalid": float("nan")},
+                    Path(directory) / "invalid.json",
+                )
 
     def test_console_prefers_recommended_quantity_and_status(self) -> None:
         result = {

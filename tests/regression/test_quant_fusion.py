@@ -1453,10 +1453,16 @@ class CrossSleeveExecutionIndependenceTests(unittest.TestCase):
             for position in positions.values()
         )
         self.assertEqual(after_shares - 100, buy_trade.shares - sell_trade.shares)
-        self.assertGreater(buy_trade.commission, 0.0)
-        self.assertGreater(sell_trade.commission, 0.0)
-        self.assertGreater(sell_trade.stamp_duty_cost, 0.0)
+        self.assertAlmostEqual(buy_trade.price, 10.1)
+        self.assertAlmostEqual(buy_trade.gross_value, 2_020.0)
+        self.assertAlmostEqual(buy_trade.commission, 5.0)
+        self.assertAlmostEqual(buy_trade.net_cash_flow, -2_025.0)
         self.assertEqual(buy_trade.stamp_duty_cost, 0.0)
+        self.assertAlmostEqual(sell_trade.price, 9.9)
+        self.assertAlmostEqual(sell_trade.gross_value, 990.0)
+        self.assertAlmostEqual(sell_trade.commission, 5.0)
+        self.assertAlmostEqual(sell_trade.stamp_duty_cost, 0.99)
+        self.assertAlmostEqual(sell_trade.net_cash_flow, 984.01)
 
 
 if __name__ == "__main__":

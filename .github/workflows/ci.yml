@@ -104,7 +104,7 @@ jobs:
           from tests.regression.test_quant_fusion import regime_route_fingerprint
 
           # 整数指标（交易数/成交数）必须精确一致；浮点指标（收益/回撤）
-          # 仅容忍跨平台 1-ulp 级别的浮点求和顺序差异（rel_tol=1e-9 远小于
+          # 仅容忍严格的跨平台浮点求和顺序差异（rel_tol=1e-9 远小于
           # 任何真实行为漂移的量级，行为变化仍然会立刻被捕获）。
           baselines = json.loads(
               Path("tests/fixtures/backtest_golden_metrics.json").read_text(encoding="utf-8")

@@ -36,6 +36,7 @@ INITIAL_CAPITAL = 2_000_000.0
 ORDERED_CODES = tuple(NAMES)
 DEFAULT_SEEDS = (20260807, 20260817, 20260827)
 TRADE_COUNT_SEMANTICS = "trade_records"
+LEGACY_TRADE_COUNT_SEMANTICS = "legacy_date_symbol_side_bucket"
 ATTRIBUTION_CATEGORIES = (
     "initial_entry",
     "add",
@@ -116,6 +117,7 @@ def _metrics(
         "calmar": float(result["calmar"]),
         "total_trades": int(result["total_trades"]),
         "sleeve_fill_count": int(result["sleeve_fill_count"]),
+        "date_symbol_side_count": int(result["date_symbol_side_count"]),
         "reason_attribution": attribution,
         "max_concurrent_symbols": int(result["max_concurrent_symbols"]),
         "terminal_risk_lock": bool(result["terminal_risk_lock"]),
@@ -151,6 +153,10 @@ def _summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     returns = [float(item["total_return"]) for item in results]
     drawdowns = [float(item["max_drawdown"]) for item in results]
     trades = [float(item["total_trades"]) for item in results]
+    side_buckets = [
+        float(item.get("date_symbol_side_count", item["total_trades"]))
+        for item in results
+    ]
     fills = [float(item.get("sleeve_fill_count", 0)) for item in results]
     severities = [abs(value) for value in drawdowns]
     risk_actions = [
@@ -175,6 +181,11 @@ def _summary(results: list[dict[str, Any]]) -> dict[str, Any]:
         "trades_median": _quantile(trades, 0.50),
         "trades_p90": _quantile(trades, 0.90),
         "trades_worst": max(trades) if trades else 0.0,
+        "date_symbol_side_buckets_median": _quantile(side_buckets, 0.50),
+        "date_symbol_side_buckets_p90": _quantile(side_buckets, 0.90),
+        "date_symbol_side_buckets_worst": (
+            max(side_buckets) if side_buckets else 0.0
+        ),
         "sleeve_fills_p90": _quantile(fills, 0.90),
         "sleeve_fills_worst": max(fills) if fills else 0.0,
         "risk_action_orders_median": _quantile(risk_actions, 0.50),
@@ -413,10 +424,12 @@ def _hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
         "worst_add_one_wealth_at_least_minus_18pct": (
             min(add_one_changes) >= -0.18 - 1e-12
         ),
-        "random_p90_trade_records_at_most_160": (
-            random_summary["trades_p90"] <= 160
+        "random_p90_date_symbol_side_buckets_at_most_160": (
+            random_summary["date_symbol_side_buckets_p90"] <= 160
         ),
-        "all_trade_records_at_most_200": all_summary["trades_worst"] <= 200,
+        "all_date_symbol_side_buckets_at_most_200": (
+            all_summary["date_symbol_side_buckets_worst"] <= 200
+        ),
     }
     return {
         "passed": all(checks.values()),
@@ -428,8 +441,12 @@ def _hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
             "prefix_9_to_10_wealth_change": nine_to_ten,
             "worst_adjacent_wealth_change": min(adjacent_changes),
             "worst_add_one_wealth_change": min(add_one_changes),
-            "random_p90_trade_records": random_summary["trades_p90"],
-            "all_worst_trade_records": all_summary["trades_worst"],
+            "random_p90_date_symbol_side_buckets": random_summary[
+                "date_symbol_side_buckets_p90"
+            ],
+            "all_worst_date_symbol_side_buckets": all_summary[
+                "date_symbol_side_buckets_worst"
+            ],
         },
     }
 
@@ -438,7 +455,7 @@ def _hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
 # 任何 cross-market / risk 改动晋级前，除绝对硬门外，还必须相对既有正式
 # universe stress 基线满足以下"不大幅恶化"契约（2026-08-16 报告 P0-4 建议门槛
 # 方向：固定牛市财富 ≥99%、random DD P90 不恶化、worst DD 不显著恶化、false
-# risk action 数不增加、trade records 不明显增加）。注意：此处 P0-4 指
+# risk action 数不增加、date/symbol/side 桶不明显增加）。注意：此处 P0-4 指
 # 2026-08-16 报告，与 2026-08-07 旧报告中的 P0-4（灾变冷却阻断再入场）不同。
 PROMOTION_PREFIX_WEALTH_RATIO = 0.99
 PROMOTION_DD_P90_TOLERANCE = 0.005
@@ -446,8 +463,8 @@ PROMOTION_DD_P95_TOLERANCE = 0.005
 PROMOTION_WORST_DD_TOLERANCE = 0.010
 PROMOTION_WORST_RETURN_TOLERANCE = 0.020
 PROMOTION_ADD_ONE_TOLERANCE = 0.030
-PROMOTION_TRADES_P90_TOLERANCE = 5.0
-PROMOTION_TRADES_WORST_TOLERANCE = 10.0
+PROMOTION_SIDE_BUCKET_P90_TOLERANCE = 5.0
+PROMOTION_SIDE_BUCKET_WORST_TOLERANCE = 10.0
 PROMOTION_RISK_ACTION_TOLERANCE = 2.0
 
 
@@ -504,8 +521,10 @@ def _promotion_gates(
         str(item.get("scenario_id")): item for item in incumbent["results"]
     }
     current_by_id = {str(item["scenario_id"]): item for item in results}
-    comparable_trade_counts = (
-        incumbent.get("trade_count_semantics") == TRADE_COUNT_SEMANTICS
+    comparable_side_buckets = (
+        incumbent.get("trade_count_semantics")
+        in {TRADE_COUNT_SEMANTICS, LEGACY_TRADE_COUNT_SEMANTICS}
+        and all("date_symbol_side_count" in item for item in results)
     )
 
     def _family(family: str, source: dict[str, dict[str, Any]]) -> list[dict]:
@@ -575,12 +594,15 @@ def _promotion_gates(
             >= inc_random["return_worst"] - PROMOTION_WORST_RETURN_TOLERANCE
         )
         observed["random_worst_return"] = cur_random["return_worst"]
-        if comparable_trade_counts:
-            checks["random_trades_p90_not_increased"] = (
-                cur_random["trades_p90"]
-                <= inc_random["trades_p90"] + PROMOTION_TRADES_P90_TOLERANCE
+        if comparable_side_buckets:
+            checks["random_date_symbol_side_buckets_p90_not_increased"] = (
+                cur_random["date_symbol_side_buckets_p90"]
+                <= inc_random["date_symbol_side_buckets_p90"]
+                + PROMOTION_SIDE_BUCKET_P90_TOLERANCE
             )
-            observed["random_trades_p90"] = cur_random["trades_p90"]
+            observed["random_date_symbol_side_buckets_p90"] = cur_random[
+                "date_symbol_side_buckets_p90"
+            ]
         checks["random_risk_actions_not_increased"] = (
             cur_random["risk_action_orders_median"]
             <= inc_random["risk_action_orders_median"]
@@ -594,15 +616,18 @@ def _promotion_gates(
         >= inc_all["drawdown_worst"] - PROMOTION_WORST_DD_TOLERANCE
     )
     observed["all_worst_dd"] = cur_all["drawdown_worst"]
-    if comparable_trade_counts:
-        checks["all_worst_trades_not_increased"] = (
-            cur_all["trades_worst"]
-            <= inc_all["trades_worst"] + PROMOTION_TRADES_WORST_TOLERANCE
+    if comparable_side_buckets:
+        checks["all_worst_date_symbol_side_buckets_not_increased"] = (
+            cur_all["date_symbol_side_buckets_worst"]
+            <= inc_all["date_symbol_side_buckets_worst"]
+            + PROMOTION_SIDE_BUCKET_WORST_TOLERANCE
         )
-        observed["all_worst_trades"] = cur_all["trades_worst"]
-        observed["trade_count_comparison"] = "comparable"
+        observed["all_worst_date_symbol_side_buckets"] = cur_all[
+            "date_symbol_side_buckets_worst"
+        ]
+        observed["date_symbol_side_bucket_comparison"] = "comparable"
     else:
-        observed["trade_count_comparison"] = (
+        observed["date_symbol_side_bucket_comparison"] = (
             "skipped_incompatible_incumbent_semantics"
         )
         observed["incumbent_trade_count_semantics"] = incumbent.get(
@@ -633,8 +658,12 @@ def _promotion_gates(
                 "worst_dd": PROMOTION_WORST_DD_TOLERANCE,
                 "worst_return": PROMOTION_WORST_RETURN_TOLERANCE,
                 "add_one_wealth": PROMOTION_ADD_ONE_TOLERANCE,
-                "trades_p90": PROMOTION_TRADES_P90_TOLERANCE,
-                "trades_worst": PROMOTION_TRADES_WORST_TOLERANCE,
+                "date_symbol_side_buckets_p90": (
+                    PROMOTION_SIDE_BUCKET_P90_TOLERANCE
+                ),
+                "date_symbol_side_buckets_worst": (
+                    PROMOTION_SIDE_BUCKET_WORST_TOLERANCE
+                ),
                 "risk_action_median": PROMOTION_RISK_ACTION_TOLERANCE,
             },
             "passed": all(checks.values()),
