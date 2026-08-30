@@ -104,7 +104,7 @@ jobs:
           from tests.regression.test_quant_fusion import regime_route_fingerprint
 
           # 整数指标（交易数/成交数）必须精确一致；浮点指标（收益/回撤）
-          # 仅容忍跨平台 1-ulp 级别的浮点求和顺序差异（rel_tol=1e-9 远小于
+          # 仅容忍严格的跨平台浮点求和顺序差异（rel_tol=1e-9 远小于
           # 任何真实行为漂移的量级，行为变化仍然会立刻被捕获）。
           baselines = json.loads(
               Path("tests/fixtures/backtest_golden_metrics.json").read_text(encoding="utf-8")
@@ -122,7 +122,13 @@ jobs:
                   "total_return": float(result["total_return"]),
                   "max_drawdown": float(result["max_drawdown"]),
                   "total_trades": int(result["total_trades"]),
+                  "sell_trades": int(result["sell_trades"]),
                   "sleeve_fill_count": int(result["sleeve_fill_count"]),
+                  "sleeve_sell_fill_count": int(result["sleeve_sell_fill_count"]),
+                  "date_symbol_side_count": int(result["date_symbol_side_count"]),
+                  "date_symbol_sell_side_count": int(
+                      result["date_symbol_sell_side_count"]
+                  ),
               }
               actual.update(economic_sequence_fingerprints(result))
               actual.pop("regime_state_series_sha256")

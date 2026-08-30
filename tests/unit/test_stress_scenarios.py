@@ -34,13 +34,19 @@ class StressScenarioTests(unittest.TestCase):
         summary = stress._summary(
             [
                 {"total_return": 1.0, "max_drawdown": -0.10, "total_trades": 10},
-                {"total_return": 3.0, "max_drawdown": -0.20, "total_trades": 30},
+                {
+                    "total_return": 3.0,
+                    "max_drawdown": -0.20,
+                    "total_trades": 30,
+                    "date_symbol_side_count": 12,
+                },
             ]
         )
         self.assertEqual(summary["scenario_count"], 2)
         self.assertEqual(summary["return_median"], 2.0)
         self.assertEqual(summary["drawdown_worst"], -0.20)
         self.assertEqual(summary["trades_worst"], 30.0)
+        self.assertEqual(summary["date_symbol_side_buckets_worst"], 12.0)
 
     def test_impossible_sample_count_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unique subset capacity"):
@@ -110,7 +116,9 @@ class StressScenarioTests(unittest.TestCase):
         )
         self.assertIn(canonical_source, fingerprints[0])
 
-    def test_persisted_formal_artifacts_match_current_run_signature(self) -> None:
+    def test_persisted_formal_artifacts_are_explicit_historical_baselines(
+        self,
+    ) -> None:
         scenarios = stress._multi_seed_scenarios(
             random_samples=50,
             permutation_samples=50,
@@ -127,7 +135,91 @@ class StressScenarioTests(unittest.TestCase):
                     stress.VALIDATION_ARTIFACT_DIR / name
                 ).read_text(encoding="utf-8")
             )
-            self.assertEqual(payload["run_signature"], signature)
+            self.assertEqual(
+                payload["artifact_status"],
+                "historical_pre_minimal_account_correctness",
+            )
+            self.assertEqual(
+                payload["trade_count_semantics"],
+                "legacy_date_symbol_side_bucket",
+            )
+            self.assertEqual(
+                payload["source_revision"],
+                "2066fbf0f99be94142c5d0cb0b6c99d276c2472d",
+            )
+            self.assertEqual(
+                payload["run_signature"],
+                "f4fe4580e6c792461bdeffeaea96c12f1c4ab49e63dce468e30b5fbbd19202df",
+            )
+            self.assertNotEqual(payload["run_signature"], signature)
+
+    def test_promotion_gates_compare_current_buckets_to_legacy_buckets(self) -> None:
+        current = {
+            "scenario_id": "prefix-01",
+            "scenario_type": "prefix",
+            "total_return": 1.0,
+            "max_drawdown": -0.1,
+            "total_trades": 24,
+            "sleeve_fill_count": 24,
+            "date_symbol_side_count": 5,
+        }
+        incumbent = {
+            "trade_count_semantics": "legacy_date_symbol_side_bucket",
+            "results": [{**current, "total_trades": 5}],
+        }
+
+        result = stress._promotion_gates([current], incumbent)
+
+        self.assertTrue(
+            result["checks"][
+                "all_worst_date_symbol_side_buckets_not_increased"
+            ]
+        )
+        self.assertEqual(
+            result["observed"]["date_symbol_side_bucket_comparison"],
+            "comparable",
+        )
+
+    def test_hard_gates_keep_legacy_ceilings_on_side_buckets(self) -> None:
+        def scenario(
+            scenario_id: str,
+            scenario_type: str,
+            *,
+            symbol_count: int = 10,
+        ) -> dict[str, object]:
+            return {
+                "scenario_id": scenario_id,
+                "scenario_type": scenario_type,
+                "symbol_count": symbol_count,
+                "total_return": 1.0,
+                "max_drawdown": -0.1,
+                "total_trades": 300,
+                "sleeve_fill_count": 300,
+                "date_symbol_side_count": 10,
+            }
+
+        prefix_09 = scenario("prefix-09", "prefix", symbol_count=9)
+        prefix_10 = scenario("prefix-10", "prefix")
+        add_one = {
+            **scenario("add-one", "add_one"),
+            "base_size": 9,
+        }
+        random_subset = scenario("random", "random_subset")
+
+        result = stress._hard_gates(
+            [prefix_09, prefix_10, add_one, random_subset]
+        )
+
+        self.assertTrue(result["passed"])
+        self.assertTrue(
+            result["checks"][
+                "all_date_symbol_side_buckets_at_most_200"
+            ]
+        )
+        self.assertEqual(
+            result["observed"]["all_worst_date_symbol_side_buckets"],
+            10.0,
+        )
 
 
 if __name__ == "__main__":

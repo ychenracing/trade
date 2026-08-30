@@ -1,6 +1,9 @@
 {
   "engine": "ProductionReplayEngine",
   "deployment_policy": "production_daily_replay",
+  "artifact_status": "historical_pre_minimal_account_correctness",
+  "trade_count_semantics": "legacy_date_symbol_side_bucket",
+  "source_revision": "2066fbf0f99be94142c5d0cb0b6c99d276c2472d",
   "portfolio_policy": {
     "allocation_mode": "ensemble",
     "single_lookbacks": [

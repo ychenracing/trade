@@ -198,8 +198,9 @@ class AdaptiveEngineTests(unittest.TestCase):
         self.assertEqual(result["deployment_policy"], "production_daily_replay")
         self.assertAlmostEqual(result["total_return"], 5.308949754885, places=12)
         self.assertAlmostEqual(result["max_drawdown"], -0.1834136674871038, places=12)
-        self.assertEqual(result["total_trades"], 5)
+        self.assertEqual(result["total_trades"], 24)
         self.assertEqual(result["sleeve_fill_count"], 24)
+        self.assertEqual(result["date_symbol_side_count"], 5)
 
 
 class DynamicRouteStateMachineTests(unittest.TestCase):

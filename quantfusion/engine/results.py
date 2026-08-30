@@ -24,7 +24,7 @@ from quantfusion.domain.models import (
     SectorObservation,
     Signal,
     TradeRecord,
-    account_order_count,
+    date_symbol_side_count,
 )
 from quantfusion.domain.rules import (
     SYMBOL_RE,
@@ -46,7 +46,7 @@ from quantfusion.strategy.trend import (
 )
 
 _SYMBOL_RE = SYMBOL_RE
-_account_order_count = account_order_count
+_date_symbol_side_count = date_symbol_side_count
 _floor_to_lot = floor_to_lot
 _is_finite_number = is_finite_number
 _require_bool = require_bool
@@ -119,10 +119,14 @@ class CoreResultsMixin:
             "calmar": calmar,
             "win_rate": win_rate,
             "profit_factor": profit_factor,
-            "total_trades": _account_order_count(self.trades),
+            "total_trades": len(self.trades),
             "sleeve_fill_count": len(self.trades),
-            "sell_trades": _account_order_count(self.trades, direction="sell"),
+            "sell_trades": len(sell_trades),
             "sleeve_sell_fill_count": len(sell_trades),
+            "date_symbol_side_count": _date_symbol_side_count(self.trades),
+            "date_symbol_sell_side_count": _date_symbol_side_count(
+                self.trades, direction="sell"
+            ),
             "avg_exit_from_peak": float(np.mean(exit_givebacks))
             if exit_givebacks
             else 0.0,

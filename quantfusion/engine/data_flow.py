@@ -24,7 +24,6 @@ from quantfusion.domain.models import (
     SectorObservation,
     Signal,
     TradeRecord,
-    account_order_count,
 )
 from quantfusion.domain.rules import (
     SYMBOL_RE,
@@ -46,7 +45,6 @@ from quantfusion.strategy.trend import (
 )
 
 _SYMBOL_RE = SYMBOL_RE
-_account_order_count = account_order_count
 _floor_to_lot = floor_to_lot
 _is_finite_number = is_finite_number
 _require_bool = require_bool

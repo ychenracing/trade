@@ -1,4 +1,4 @@
-"""Sleeve preparation, buy authorization, netting, and finalization."""
+"""Sleeve preparation, buy authorization, execution, and finalization."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ _require_int = require_int
 
 
 class EnsembleAllocationMixin:
-    """Sleeve preparation, buy authorization, netting, and finalization."""
+    """Sleeve preparation, buy authorization, execution, and finalization."""
 
     def _assess_run_warmup_health(
         self,
@@ -589,14 +589,11 @@ class EnsembleAllocationMixin:
         runs after sells are executed and before buys are authorized, so re-entry
         across all three trend sleeves is suppressed for the full cooldown.
         """
-        # P0-6: residual account-level netting. The three virtual sleeves are
-        # signal sources, not independent books for every symbol: if one sleeve
-        # is selling symbol X today while another wants to buy it, the buy is
-        # netted toward the exit so the account does not both sell and re-buy
-        # the same name on the same day (a pure churn / fee drag). Risk sells
-        # always win over a conflicting buy (report P0-6 step 2 "风险卖出可否决
-        # 买入"). The deferred buy is not lost — the strategy re-signals later.
-        self._net_cross_sleeve_orders(states, date)
+        # Sleeves own independent internal positions, so their pending signals
+        # must remain independent too. Broker-level netting would require an
+        # internal-transfer or fill-allocation ledger that this model does not
+        # have. Opposite same-day fills therefore execute on both sides and pay
+        # their respective modeled costs; sells still execute before buys.
         for state in states:
             state.sleeve._start_trading_day()
             state.pending = state.sleeve._execute_pending_signals(
@@ -630,99 +627,6 @@ class EnsembleAllocationMixin:
             )
         if len(self._held_portfolio_symbols(states)) > int(self.cfg["max_positions"]):
             raise RuntimeError("portfolio symbol limit exceeded after buy execution")
-
-    @staticmethod
-    def _net_cross_sleeve_orders(
-        states: list[_PreparedSleeveRun], date: pd.Timestamp
-    ) -> None:
-        """Net same-symbol same-day cross-sleeve buys against sells by share.
-
-        Report P0-6: the real account holds at most one position per symbol, so
-        a symbol that is being sold by any sleeve must not also be bought by
-        another sleeve on the same day. But naively CANCelling every buy proved
-        destructive to returns (a sell from one sleeve is rarely a full exit the
-        account wants; a trend sleeve is often concurrently re-entering the same
-        name), which is why the earlier blanket-cancel version over-suppressed
-        re-entry and destroyed ~27% of returns on the 3/5/13 pools. We therefore
-        net by SHARE COUNT toward the larger side:
-
-        - buys are absorbed by the same-day sell pool CUMULATIVELY across all
-          sleeves (each buy nets against the shares still left to sell), so a
-          buy whose target is fully absorbed by the residual sell shares is
-          redundant round-trip churn and is cancelled (recorded as
-          ``netted_cross_sleeve_buy``);
-        - a buy that EXCEEDS the residual sell shares represents genuine net ADD
-          exposure the account still wants and is retained — kept as the tail
-          that exceeds the sell pool (``buy_shares - rem``) when it partially
-          overlaps — so the aggregate cross-sleeve intent survives and the
-          position is never over-sold.
-
-        This removes same-symbol round-trip churn and the fee/slippage drag
-        without suppressing legitimate re-entry, keeping returns intact.
-        """
-        date_str = date.strftime("%Y-%m-%d")
-        sell_shares: dict[str, int] = {}
-        selling: set[str] = set()
-        for state in states:
-            for signal, _ in state.pending:
-                if signal.direction == "sell":
-                    symbol = str(signal.symbol)
-                    selling.add(symbol)
-                    sell_shares[symbol] = sell_shares.get(symbol, 0) + int(
-                        signal.target_shares
-                    )
-        if not selling:
-            return
-        # Cumulative remaining sell pool per symbol. This pool is decremented
-        # as buys are absorbed ACROSS all sleeves, so multiple buys for the same
-        # symbol are netted against the same sell pool instead of each buy being
-        # compared to the full sell total (which would over-net and cancel
-        # legitimate net ADD exposure).
-        remaining_sell: dict[str, int] = dict(sell_shares)
-        for state in states:
-            retained: list[tuple[Signal, BaseStrategy]] = []
-            for signal, strategy in state.pending:
-                if signal.direction == "buy" and str(signal.symbol) in selling:
-                    symbol = str(signal.symbol)
-                    buy_shares = int(signal.target_shares)
-                    rem = remaining_sell[symbol]
-                    if rem <= 0:
-                        # Sell pool already fully absorbed by earlier buys -> the
-                        # whole buy is genuine net ADD exposure; retain it as-is.
-                        retained.append((signal, strategy))
-                        continue
-                    if buy_shares <= rem:
-                        # Fully absorbed by the remaining sell pool -> redundant
-                        # same-day round-trip churn; cancel it and decrement.
-                        state.sleeve._record_order_event(
-                            date=date_str,
-                            signal=signal,
-                            event="netted_cross_sleeve_buy",
-                            because="same_symbol_sell_pending_absorbs_buy",
-                            sell_shares=buy_shares,
-                        )
-                        remaining_sell[symbol] = rem - buy_shares
-                        continue
-                    # Partially absorbed: the overlap with the sell pool is
-                    # redundant churn; only the genuine NET-ADD tail survives.
-                    # The retained buy is the portion that exceeds the residual
-                    # sell (buy_shares - rem), so the cumulative cross-sleeve
-                    # net-add intent is preserved instead of being trimmed down
-                    # to the sell size (which would over-suppress re-entry).
-                    state.sleeve._record_order_event(
-                        date=date_str,
-                        signal=signal,
-                        event="netted_cross_sleeve_buy",
-                        because="same_symbol_sell_pending_absorbs_buy_partial",
-                        sell_shares=rem,
-                    )
-                    retained.append(
-                        (replace(signal, target_shares=buy_shares - rem), strategy)
-                    )
-                    remaining_sell[symbol] = 0
-                    continue
-                retained.append((signal, strategy))
-            state.pending = retained
 
     @staticmethod
     def _apply_global_risk_lock(

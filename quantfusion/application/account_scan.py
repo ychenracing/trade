@@ -334,6 +334,40 @@ class AccountSignalEngine:
                 else:
                     reasons.append("no account-specific exit condition")
 
+                execution_fields: dict[str, Any] = {
+                    "sellable_shares": position.sellable_shares,
+                }
+                if action == "HOLD":
+                    execution_fields.update(
+                        recommended_shares=0,
+                        blocked_shares=0,
+                        execution_status="NO_ACTION",
+                    )
+                elif position.sellable_shares is None:
+                    execution_fields.update(
+                        recommended_shares=None,
+                        blocked_shares=None,
+                        execution_status="SELLABLE_UNKNOWN",
+                    )
+                    reasons.append(
+                        "T+1 可卖数量未知，必须人工核验，"
+                        "不得把当前总持仓当作可执行卖出数量。"
+                    )
+                else:
+                    executable = min(position.shares, position.sellable_shares)
+                    blocked = position.shares - executable
+                    if executable == position.shares:
+                        execution_status = "EXECUTABLE"
+                    elif executable > 0:
+                        execution_status = "PARTIALLY_T1_BLOCKED"
+                    else:
+                        execution_status = "T1_BLOCKED"
+                    execution_fields.update(
+                        recommended_shares=executable,
+                        blocked_shares=blocked,
+                        execution_status=execution_status,
+                    )
+
                 actions.append(
                     {
                         "symbol": code,
@@ -345,6 +379,7 @@ class AccountSignalEngine:
                         "protective_stop": active_stop,
                         "peak_close": peak,
                         "reason": "; ".join(reasons),
+                        **execution_fields,
                     }
                 )
             except EXPECTED_DATA_ERRORS as exc:
@@ -355,6 +390,10 @@ class AccountSignalEngine:
                         "name": name,
                         "action": "DATA_ERROR",
                         "shares": position.shares,
+                        "sellable_shares": position.sellable_shares,
+                        "recommended_shares": None,
+                        "blocked_shares": None,
+                        "execution_status": "DATA_UNAVAILABLE",
                         "reason": str(exc),
                     }
                 )
@@ -524,9 +563,14 @@ def run_account_scan(
         print(f"  Estimated equity: {result['estimated_equity']:,.0f}")
     print(f"  Route: {result['deployment_decision']['name']}")
     for action in result["actions"]:
-        print(
-            f"  {action['symbol']} {action['name']}: {action['action']} | "
-            f"{action['reason']}"
-        )
+        summary = f"  {action['symbol']} {action['name']}: {action['action']}"
+        if "execution_status" in action:
+            recommended = action.get("recommended_shares")
+            displayed = "UNKNOWN" if recommended is None else str(recommended)
+            summary += (
+                f" | recommended_shares={displayed}"
+                f" | execution_status={action['execution_status']}"
+            )
+        print(f"{summary} | {action['reason']}")
     print(f"  Artifact: {output}")
     return 0

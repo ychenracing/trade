@@ -1,6 +1,9 @@
 {
   "engine": "ProductionReplayEngine",
   "deployment_policy": "production_daily_replay",
+  "artifact_status": "historical_pre_minimal_account_correctness",
+  "trade_count_semantics": "legacy_date_symbol_side_bucket",
+  "source_revision": "2066fbf0f99be94142c5d0cb0b6c99d276c2472d",
   "portfolio_policy": {
     "allocation_mode": "ensemble",
     "single_lookbacks": [
@@ -110,8 +113,8 @@
       "prefix_9_to_10_wealth_above_minus_10pct": true,
       "worst_adjacent_wealth_at_least_minus_30pct": true,
       "worst_add_one_wealth_at_least_minus_18pct": true,
-      "random_p90_account_orders_at_most_160": true,
-      "all_account_orders_at_most_200": true
+      "random_p90_legacy_date_symbol_side_buckets_at_most_160": true,
+      "all_legacy_date_symbol_side_buckets_at_most_200": true
     },
     "observed": {
       "random_p90_drawdown": 0.18848588756503767,
@@ -120,8 +123,8 @@
       "prefix_9_to_10_wealth_change": -0.026452048961127406,
       "worst_adjacent_wealth_change": -0.16852760739860229,
       "worst_add_one_wealth_change": -0.1680246566290624,
-      "random_p90_account_orders": 48.0,
-      "all_worst_account_orders": 143.0
+      "random_p90_legacy_date_symbol_side_buckets": 48.0,
+      "all_worst_legacy_date_symbol_side_buckets": 143.0
     }
   },
   "promotion_gates": {
