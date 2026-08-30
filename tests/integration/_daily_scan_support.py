@@ -32,21 +32,6 @@ class FakeSignal:
 FakeTrade = namedtuple("FakeTrade", ["direction", "symbol", "shares"])
 
 
-VALID_ACCOUNT = {
-    "cash": 500000.0,
-    "peak_equity": 2500000.0,
-    "positions": {
-        "300308": {"shares": 900, "avg_cost": 980.50, "entry_date": "2026-03-18"},
-        "688256": {"shares": 200, "avg_cost": 1250.00, "entry_date": "2026-04-15"},
-    },
-    "risk_state": {
-        "terminal_risk_lock": False,
-        "sector_guard_active": False,
-        "cycle_lock_count": 0,
-    },
-}
-
-
 VALID_RISK_STATE = {
     "schema_version": 1,
     "scan_date": "2026-07-30",

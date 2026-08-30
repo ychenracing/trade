@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import math
 from collections import defaultdict
 from datetime import date
-from pathlib import Path
 from typing import Any
 
 def _today_str() -> str:
@@ -108,51 +106,7 @@ def _extract_positions(trades: list[Any]) -> dict[str, int]:
     return {sym: max(0, sh) for sym, sh in held.items()}
 
 
-def _load_account(path: str) -> dict[str, Any] | None:
-    """Load a real-account JSON snapshot for live-signal mode.
-
-    .. deprecated::
-        The ``--account`` CLI flag is disabled. This function is retained for
-        unit tests and future use by the separate account signal engine. It
-        is not called in the production ``main()`` path.
-
-    Expected format::
-
-        {
-          "cash": 500000.0,
-          "peak_equity": 2500000.0,
-          "positions": {
-            "300308": {"shares": 900, "avg_cost": 980.50, "entry_date": "2026-03-18"}
-          },
-          "risk_state": {
-            "terminal_risk_lock": false,
-            "sector_guard_active": false,
-            "cycle_lock_count": 0
-          }
-        }
-    """
-    p = Path(path)
-    if not p.exists():
-        print(f"  错误: 账户文件不存在: {path}")
-        return None
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        print(f"  错误: 账户文件解析失败: {exc}")
-        return None
-    if "cash" not in data:
-        print("  错误: 账户文件缺少 'cash' 字段")
-        return None
-    data.setdefault("positions", {})
-    data.setdefault("risk_state", {})
-    if "peak_equity" not in data:
-        # Use cash as a fallback when peak_equity is not provided
-        data["peak_equity"] = float(data.get("cash", 0))
-    return data
-
-
 today_str = _today_str
 validate_result_fields = _validate_result_fields
 classify_signal = _classify_signal
 extract_positions = _extract_positions
-load_account = _load_account

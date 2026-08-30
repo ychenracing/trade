@@ -9,6 +9,7 @@ import pandas as pd
 from quantfusion.account.models import AccountSnapshot, PointInTimeSignal
 from quantfusion.domain.rules import floor_to_lot
 
+
 def _trend_candidate_score(
     frame: pd.DataFrame,
     indicators: dict[str, pd.Series],
@@ -19,7 +20,7 @@ def _trend_candidate_score(
 ) -> float:
     """计算买入排序分：多确认优先，辅以风险调整动量与趋势持续性。
 
-    权重与报告一致：35% 多袖套确认、25% 风险调整动量、10% 突破质量、
+    权重与报告一致：35% 多策略确认、25% 风险调整动量、10% 突破质量、
     10% 趋势持续性、5% 流动性（其余给行业相对强度留白，由调用方补充）。
     分数用于决定有限现金与持仓槽位分配顺序，不直接放大仓位。
     """
@@ -91,10 +92,10 @@ def _compute_target_shares(
     *,
     total_equity: float | None = None,
 ) -> tuple[int, float]:
-    """在总仓位上限内把现金分配到排序后的候选，返回（目标股数, 目标权重）。
+    """为排序后的候选估算收盘价数量与权重，供人工复核。
 
-    总仓位不超过 100%，单票不超过 60%；股数按 A 股整手向下取整。现金不足以
-    覆盖一手时不产生买入。这是账户级净目标，不放大三袖套仓位。
+    估算仍尊重总仓位、单票 60% 上限和 A 股整手；现金不足一手时为零。结果
+    不是账户净订单，也不复现 fast/base/slow 的完整历史状态。
     """
     if not math.isfinite(close) or close <= 0:
         return 0, 0.0

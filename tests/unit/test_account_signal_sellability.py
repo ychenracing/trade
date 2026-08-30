@@ -27,10 +27,6 @@ class AccountSignalSellabilityTests(unittest.TestCase):
     HELD = "300308"
     OTHER = "300502"
     AS_OF = "2026-02-01"
-    UNKNOWN_REASON = (
-        "T+1 可卖数量未知，必须人工核验，不得把当前总持仓当作可执行卖出数量。"
-    )
-
     @staticmethod
     def _frame(*, close: float) -> pd.DataFrame:
         dates = pd.bdate_range("2025-09-01", periods=100)
@@ -59,12 +55,14 @@ class AccountSignalSellabilityTests(unittest.TestCase):
         name: str,
         *,
         selected: tuple[str, ...] = (),
+        requested: tuple[str, ...] | None = None,
     ) -> DeploymentDecision:
+        requested_symbols = requested or (cls.HELD, cls.OTHER)
         leaders = (
             LeaderSelection(
                 as_of=cls.AS_OF,
-                requested_symbols=(cls.HELD, cls.OTHER),
-                observed_symbols=len(selected),
+                requested_symbols=requested_symbols,
+                observed_symbols=len(requested_symbols),
                 selected_symbols=selected,
                 selected_returns=tuple(0.1 for _ in selected),
             )
@@ -86,11 +84,14 @@ class AccountSignalSellabilityTests(unittest.TestCase):
     @classmethod
     def _snapshot(
         cls,
-        sellable_shares: int | None,
+        sellable_shares: int,
         *,
         cash: float = 0.0,
     ) -> AccountSnapshot:
         return AccountSnapshot(
+            schema_version=3,
+            account_id="main",
+            snapshot_date=cls.AS_OF,
             cash=cash,
             peak_equity=1_000.0,
             positions=(
@@ -99,7 +100,7 @@ class AccountSignalSellabilityTests(unittest.TestCase):
                     shares=100,
                     sellable_shares=sellable_shares,
                     avg_cost=100.0,
-                    entry_date="",
+                    entry_date="2025-09-01",
                 ),
             ),
         )
@@ -107,7 +108,7 @@ class AccountSignalSellabilityTests(unittest.TestCase):
     def _run_priced(
         self,
         *,
-        sellable_shares: int | None,
+        sellable_shares: int,
         decision: DeploymentDecision,
         close: float,
     ) -> dict:
@@ -184,40 +185,17 @@ class AccountSignalSellabilityTests(unittest.TestCase):
                     self.assertEqual(action["execution_status"], status)
                     self.assertLessEqual(action["recommended_shares"], sellable)
 
-    def test_sell_and_reduce_require_manual_check_when_sellable_is_unknown(self) -> None:
-        scenarios = (
-            ("SELL", self._decision("frozen_trend_engine"), 80.0),
-            ("REDUCE_REVIEW", self._decision("cash_preservation"), 100.0),
-        )
-
-        for expected_action, decision, close in scenarios:
-            with self.subTest(action=expected_action):
-                action = self._held_action(
-                    self._run_priced(
-                        sellable_shares=None,
-                        decision=decision,
-                        close=close,
-                    )
-                )
-                self.assertEqual(action["action"], expected_action)
-                self.assertEqual(action["shares"], 100)
-                self.assertIsNone(action["sellable_shares"])
-                self.assertIsNone(action["recommended_shares"])
-                self.assertIsNone(action["blocked_shares"])
-                self.assertEqual(action["execution_status"], "SELLABLE_UNKNOWN")
-                self.assertTrue(action["reason"].endswith(self.UNKNOWN_REASON))
-
     def test_hold_has_no_recommended_or_blocked_quantity(self) -> None:
         action = self._held_action(
             self._run_priced(
-                sellable_shares=None,
+                sellable_shares=40,
                 decision=self._decision("frozen_trend_engine"),
                 close=100.0,
             )
         )
         self.assertEqual(action["action"], "HOLD")
         self.assertEqual(action["shares"], 100)
-        self.assertIsNone(action["sellable_shares"])
+        self.assertEqual(action["sellable_shares"], 40)
         self.assertEqual(action["recommended_shares"], 0)
         self.assertEqual(action["blocked_shares"], 0)
         self.assertEqual(action["execution_status"], "NO_ACTION")
@@ -258,16 +236,20 @@ class AccountSignalSellabilityTests(unittest.TestCase):
         self.assertIsNone(action["blocked_shares"])
         self.assertEqual(action["execution_status"], "DATA_UNAVAILABLE")
 
-    def test_weak_buy_candidate_payload_is_unchanged(self) -> None:
+    def test_weak_buy_candidate_is_indicative_review_only(self) -> None:
         engine = account_scan.AccountSignalEngine(
             cache_dir="unused",
             regime_data_dir="unused",
         )
         snapshot = AccountSnapshot(
+            schema_version=3,
+            account_id="main",
+            snapshot_date=self.AS_OF,
             cash=100_000.0,
             peak_equity=100_000.0,
             positions=(),
         )
+        frame = self._frame(close=100.0)
         with (
             patch.object(
                 account_scan.data_contracts,
@@ -280,7 +262,19 @@ class AccountSignalSellabilityTests(unittest.TestCase):
                 return_value=self._decision(
                     "positive_momentum_hold",
                     selected=(self.OTHER,),
+                    requested=(self.OTHER,),
                 ),
+            ),
+            patch.object(engine, "_frame", return_value=frame),
+            patch.object(
+                account_scan.BacktestEngine,
+                "config_for_symbol",
+                return_value={},
+            ),
+            patch.object(
+                account_scan.Indicators,
+                "compute_all",
+                return_value=self._indicators(frame),
             ),
         ):
             result = engine.run(
@@ -289,18 +283,13 @@ class AccountSignalSellabilityTests(unittest.TestCase):
                 as_of=self.AS_OF,
             )
 
-        self.assertEqual(
-            result["actions"],
-            [
-                {
-                    "symbol": self.OTHER,
-                    "name": "候选",
-                    "action": "BUY_CANDIDATE",
-                    "shares": 0,
-                    "reason": "current weak-regime leader",
-                }
-            ],
-        )
+        self.assertEqual(len(result["actions"]), 1)
+        action = result["actions"][0]
+        self.assertEqual(action["action"], "BUY_CANDIDATE")
+        self.assertEqual(action["shares"], 0)
+        self.assertGreaterEqual(action["indicative_target_shares"], 0)
+        self.assertEqual(action["execution_status"], "INDICATIVE_REVIEW_ONLY")
+        self.assertEqual(action["strategies"], [])
 
     def test_account_actions_serialize_as_strict_deterministic_json(self) -> None:
         result = self._run_priced(
@@ -353,7 +342,11 @@ class AccountSignalSellabilityTests(unittest.TestCase):
         }
         output = io.StringIO()
         with (
-            patch.object(account_scan, "load_account_snapshot"),
+            patch.object(
+                account_scan,
+                "load_account_snapshot_with_sha256",
+                return_value=(self._snapshot(40), "0" * 64),
+            ),
             patch.object(account_scan.AccountSignalEngine, "run", return_value=result),
             patch.object(account_scan, "atomic_json"),
             contextlib.redirect_stdout(output),

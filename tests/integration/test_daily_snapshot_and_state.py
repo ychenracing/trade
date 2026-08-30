@@ -9,7 +9,6 @@ from ._daily_scan_support import (
     FakeSignal,
     FakeTrade,
     Path,
-    VALID_ACCOUNT,
     VALID_RISK_STATE,
     dss,
     json,
@@ -79,73 +78,6 @@ class FrozenSnapshotTests(unittest.TestCase):
                 mutate(target)
                 with self.assertRaises(ValueError):
                     dss._verify_frozen_snapshot(target)
-
-
-class AccountLoadingTests(unittest.TestCase):
-    """Verify _load_account handles valid, missing, and malformed inputs."""
-
-    def test_valid_account_loads_correctly(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(VALID_ACCOUNT, f)
-            path = f.name
-        try:
-            result = dss._load_account(path)
-            self.assertIsNotNone(result)
-            assert result is not None  # for type checker
-            self.assertEqual(result["cash"], 500000.0)
-            self.assertEqual(result["peak_equity"], 2500000.0)
-            self.assertEqual(len(result["positions"]), 2)
-            self.assertEqual(result["positions"]["300308"]["shares"], 900)
-        finally:
-            Path(path).unlink()
-
-    def test_missing_file_returns_none(self) -> None:
-        result = dss._load_account("/nonexistent/path/account.json")
-        self.assertIsNone(result)
-
-    def test_invalid_json_returns_none(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            f.write("{invalid json content}")
-            path = f.name
-        try:
-            result = dss._load_account(path)
-            self.assertIsNone(result)
-        finally:
-            Path(path).unlink()
-
-    def test_missing_cash_field_returns_none(self) -> None:
-        account = {"positions": {}, "peak_equity": 1000000.0}
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(account, f)
-            path = f.name
-        try:
-            result = dss._load_account(path)
-            self.assertIsNone(result)
-        finally:
-            Path(path).unlink()
-
-    def test_missing_optional_fields_get_defaults(self) -> None:
-        account = {"cash": 100000.0}
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(account, f)
-            path = f.name
-        try:
-            result = dss._load_account(path)
-            self.assertIsNotNone(result)
-            assert result is not None
-            self.assertEqual(result["positions"], {})
-            self.assertEqual(result["risk_state"], {})
-            self.assertEqual(result["peak_equity"], 100000.0)  # falls back to cash
-        finally:
-            Path(path).unlink()
 
 
 class RiskStateTests(unittest.TestCase):

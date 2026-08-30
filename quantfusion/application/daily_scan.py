@@ -22,7 +22,6 @@ from quantfusion.application.daily_signals import (
 from quantfusion.application.daily_support import (
     classify_signal,
     extract_positions,
-    load_account,
     today_str,
     validate_result_fields,
 )
@@ -51,7 +50,6 @@ from quantfusion.io.state_store import (
 _apply_buy_suppression = apply_buy_suppression
 _classify_signal = classify_signal
 _extract_positions = extract_positions
-_load_account = load_account
 _today_str = today_str
 _validate_result_fields = validate_result_fields
 _serialize_pending_signals = serialize_pending_signals
@@ -84,13 +82,18 @@ def _run_main() -> int:
     parser.add_argument(
         "--allow-stale",
         action="store_true",
-        help="Proceed even if cached data is stale (network fetch failed). "
-        "By default, stale data causes immediate exit to prevent misleading signals.",
+        help="Simulation-only override for stale cached data. Account decision "
+        "support always rejects provider-marked stale data.",
     )
     parser.add_argument(
         "--account",
         default="",
         help="Real-account JSON snapshot for separate point-in-time decision support.",
+    )
+    parser.add_argument(
+        "--account-id",
+        default="main",
+        help="Expected account identity for --account snapshots (default: main).",
     )
     parser.add_argument(
         "--start-date",
@@ -137,6 +140,7 @@ def _run_main() -> int:
             cache_dir=args.cache_dir,
             regime_data_dir=args.regime_data_dir,
             output_dir=args.output_dir,
+            expected_account_id=args.account_id,
         )
 
     # --reset-risk-state: delete the old risk state file before running.

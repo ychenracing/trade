@@ -38,14 +38,20 @@ class AccountFailClosedTests(unittest.TestCase):
     """验证账户不完整时不会产生新增风险敞口。"""
 
     @staticmethod
-    def _snapshot(*, entry_date: str = "") -> account.AccountSnapshot:
+    def _snapshot(
+        *, entry_date: str = "2025-09-01"
+    ) -> account.AccountSnapshot:
         return account.AccountSnapshot(
+            schema_version=3,
+            account_id="main",
+            snapshot_date="2026-02-01",
             cash=100_000.0,
             peak_equity=1_000_000.0,
             positions=(
                 account.AccountPosition(
                     symbol="300308",
                     shares=100,
+                    sellable_shares=100,
                     avg_cost=100.0,
                     entry_date=entry_date,
                 ),

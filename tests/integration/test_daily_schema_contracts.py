@@ -9,7 +9,6 @@ from ._daily_scan_support import (
     FakeSignal,
     FakeTrade,
     Path,
-    VALID_ACCOUNT,
     VALID_RISK_STATE,
     dss,
     json,

@@ -145,9 +145,18 @@ class AccountEngineTests(unittest.TestCase):
             path = self._write_snapshot(
                 directory,
                 {
+                    "schema_version": 3,
+                    "account_id": "main",
+                    "snapshot_date": "2026-02-01",
                     "cash": 1,
+                    "peak_equity": 100,
                     "positions": {
-                        "300308": {"shares": 0, "avg_cost": 10}
+                        "300308": {
+                            "shares": 0,
+                            "sellable_shares": 0,
+                            "avg_cost": 10,
+                            "entry_date": "2026-01-01",
+                        }
                     },
                 },
             )
@@ -156,10 +165,31 @@ class AccountEngineTests(unittest.TestCase):
 
     def test_account_parser_rejects_coercive_numeric_values(self) -> None:
         invalid_positions = (
-            {"shares": True, "avg_cost": 10},
-            {"shares": 100.0, "avg_cost": 10},
-            {"shares": 100, "avg_cost": "10"},
-            {"shares": 100, "avg_cost": 10, "highest_close": float("inf")},
+            {
+                "shares": True,
+                "sellable_shares": 0,
+                "avg_cost": 10,
+                "entry_date": "2026-01-01",
+            },
+            {
+                "shares": 100.0,
+                "sellable_shares": 0,
+                "avg_cost": 10,
+                "entry_date": "2026-01-01",
+            },
+            {
+                "shares": 100,
+                "sellable_shares": 0,
+                "avg_cost": "10",
+                "entry_date": "2026-01-01",
+            },
+            {
+                "shares": 100,
+                "sellable_shares": 0,
+                "avg_cost": 10,
+                "entry_date": "2026-01-01",
+                "highest_close": float("inf"),
+            },
         )
         with tempfile.TemporaryDirectory() as directory:
             for position in invalid_positions:
@@ -167,7 +197,11 @@ class AccountEngineTests(unittest.TestCase):
                     path = self._write_snapshot(
                         directory,
                         {
+                            "schema_version": 3,
+                            "account_id": "main",
+                            "snapshot_date": "2026-02-01",
                             "cash": 0,
+                            "peak_equity": 100,
                             "positions": {"300308": position},
                         },
                     )
@@ -185,10 +219,15 @@ class AccountEngineTests(unittest.TestCase):
                     path = self._write_snapshot(
                         directory,
                         {
+                            "schema_version": 3,
+                            "account_id": "main",
+                            "snapshot_date": "2026-02-01",
                             "cash": 0,
+                            "peak_equity": 100,
                             "positions": {
                                 code: {
                                     "shares": 100,
+                                    "sellable_shares": 100,
                                     "avg_cost": 10,
                                     "entry_date": entry_date,
                                 }
@@ -204,10 +243,18 @@ class AccountEngineTests(unittest.TestCase):
             path = self._write_snapshot(
                 directory,
                 {
+                    "schema_version": 3,
+                    "account_id": "main",
+                    "snapshot_date": "2026-02-01",
                     "cash": 0,
                     "peak_equity": 2_000_000,
                     "positions": {
-                        "300308": {"shares": 900, "avg_cost": 100}
+                        "300308": {
+                            "shares": 900,
+                            "sellable_shares": 900,
+                            "avg_cost": 100,
+                            "entry_date": "2026-01-01",
+                        }
                     },
                 },
             )
@@ -240,14 +287,18 @@ class AccountEngineTests(unittest.TestCase):
 
     def test_unpriced_holding_makes_total_equity_unavailable(self) -> None:
         snapshot = account.AccountSnapshot(
+            schema_version=3,
+            account_id="main",
+            snapshot_date="2026-02-01",
             cash=100.0,
             peak_equity=1_000.0,
             positions=(
                 account.AccountPosition(
                     symbol="300308",
                     shares=100,
+                    sellable_shares=100,
                     avg_cost=10.0,
-                    entry_date="",
+                    entry_date="2025-09-01",
                 ),
             ),
         )
@@ -303,6 +354,9 @@ class AccountEngineTests(unittest.TestCase):
     def test_target_shares_use_only_selected_candidate_subset(self) -> None:
         """现金分配只按被选中的候选子集计算，不被未选中候选稀释。"""
         snapshot = account.AccountSnapshot(
+            schema_version=3,
+            account_id="main",
+            snapshot_date="2026-02-01",
             cash=1_000_000.0,
             peak_equity=1_000_000.0,
             positions=(),
