@@ -798,6 +798,7 @@ def _validate_publish_candidate(
     *,
     scenarios: list[dict[str, Any]],
     provenance: dict[str, Any],
+    incumbent: dict[str, Any] | None,
 ) -> None:
     """Fail closed before retaining or publishing a completed stress run."""
     for field in PROVENANCE_FIELDS:
@@ -817,9 +818,51 @@ def _validate_publish_candidate(
         raise ValueError("Stress candidate did not complete the exact scenario plan")
     if universe_artifact.get("trade_count_semantics") != TRADE_COUNT_SEMANTICS:
         raise ValueError("Stress candidate has invalid trade_count_semantics")
-    seeds = universe_artifact.get("seeds")
-    if not isinstance(seeds, list) or not seeds:
-        raise ValueError("Stress candidate has invalid seeds")
+    expected_seeds = list(
+        dict.fromkeys(
+            int(item["seed"])
+            for item in scenarios
+            if "seed" in item
+        )
+    )
+    if universe_artifact.get("seeds") != expected_seeds:
+        raise ValueError("Stress candidate seeds changed")
+    prefix_scenarios = [
+        item for item in scenarios if item["scenario_type"] == "prefix"
+    ]
+    prefix_results = prefix_artifact.get("results")
+    if not isinstance(prefix_results, list):
+        raise ValueError("Stress candidate prefix results must be a list")
+    completed_prefixes = _validated_checkpoint_results(
+        {"results": prefix_results}, prefix_scenarios
+    )
+    expected_prefix_ids = {
+        str(item["scenario_id"]) for item in prefix_scenarios
+    }
+    if (
+        set(completed_prefixes) != expected_prefix_ids
+        or len(prefix_results) != len(prefix_scenarios)
+    ):
+        raise ValueError("Stress candidate did not complete the prefix scenario plan")
+    expected_hard_gates = _hard_gates(results)
+    if universe_artifact.get("hard_gates") != expected_hard_gates:
+        raise ValueError("Stress candidate hard gates changed")
+    expected_promotion_gates = _promotion_gates(results, incumbent)
+    if universe_artifact.get("promotion_gates") != expected_promotion_gates:
+        raise ValueError("Stress candidate promotion gates changed")
+
+
+def _load_incumbent(path: Path) -> dict[str, Any] | None:
+    """Load an optional incumbent, rejecting a present but corrupt artifact."""
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cannot read incumbent stress artifact: {path}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"Cannot read incumbent stress artifact: {path}")
+    return payload
 
 
 def _promotion_accepted(promotion: dict[str, Any]) -> bool:
@@ -861,6 +904,7 @@ def _publish_formal_artifacts(
     *,
     scenarios: list[dict[str, Any]],
     provenance: dict[str, Any],
+    incumbent: dict[str, Any] | None,
 ) -> bool:
     """Retain complete failures; publish canonical files only after acceptance."""
     _validate_publish_candidate(
@@ -868,6 +912,7 @@ def _publish_formal_artifacts(
         universe_artifact,
         scenarios=scenarios,
         provenance=provenance,
+        incumbent=incumbent,
     )
     accepted = universe_artifact["hard_gates"]["passed"] and _promotion_accepted(
         universe_artifact["promotion_gates"]
@@ -1052,12 +1097,7 @@ def main() -> int:
     gates = _hard_gates(results)
     # 2026-08-16 报告 P0-4: 在覆盖正式工件之前加载既有基线，评估强制晋级门。
     incumbent_path = VALIDATION_ARTIFACT_DIR / "universe_stress.json"
-    incumbent: dict[str, Any] | None = None
-    if incumbent_path.is_file():
-        try:
-            incumbent = json.loads(incumbent_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            print(f"⚠ 无法读取既有基线 universe_stress.json: {exc}")
+    incumbent = _load_incumbent(incumbent_path)
     promotion = _promotion_gates(results, incumbent)
     universe_artifact = {
         **common,
@@ -1074,6 +1114,7 @@ def main() -> int:
         universe_artifact,
         scenarios=scenarios,
         provenance=provenance,
+        incumbent=incumbent,
     )
     print(
         json.dumps(

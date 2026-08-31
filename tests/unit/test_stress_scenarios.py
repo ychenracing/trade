@@ -33,6 +33,7 @@ class StressScenarioTests(unittest.TestCase):
     def _complete_result(scenario: dict[str, object]) -> dict[str, object]:
         return {
             **scenario,
+            "symbol_count": len(scenario["symbols"]),
             "total_return": 1.0,
             "max_drawdown": -0.1,
             "sharpe": 1.0,
@@ -46,6 +47,13 @@ class StressScenarioTests(unittest.TestCase):
             "max_concurrent_symbols": 0,
             "terminal_risk_lock": False,
             "deployment_policy": "production_daily_replay",
+        }
+
+    @staticmethod
+    def _historical_incumbent() -> dict[str, object]:
+        return {
+            "artifact_status": "historical_pre_minimal_account_correctness",
+            "results": [],
         }
 
     def test_scenarios_cover_every_requested_family_deterministically(self) -> None:
@@ -253,23 +261,26 @@ class StressScenarioTests(unittest.TestCase):
             seeds=(7,),
         )
         results = [self._complete_result(item) for item in scenarios]
+        by_id = {item["scenario_id"]: item for item in results}
+        by_id["add-one-05-688205"]["total_return"] = 0.0
         provenance = self._provenance("a" * 40, len(scenarios))
-        prefix_artifact = {**provenance, "artifact_status": "current"}
+        prefix_artifact = {
+            **provenance,
+            "artifact_status": "current",
+            "results": [
+                item for item in results if item["scenario_type"] == "prefix"
+            ],
+        }
         universe_artifact = {
             **provenance,
             "artifact_status": "current",
             "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
             "seeds": [7],
             "scenario_count": len(results),
-            "hard_gates": {
-                "passed": False,
-                "checks": {"absolute_floor": False},
-            },
-            "promotion_gates": {
-                "status": "incomparable_economic_contract",
-                "passed": None,
-                "permutation_invariance": {"invariant": True},
-            },
+            "hard_gates": stress._hard_gates(results),
+            "promotion_gates": stress._promotion_gates(
+                results, self._historical_incumbent()
+            ),
             "results": results,
         }
 
@@ -279,6 +290,7 @@ class StressScenarioTests(unittest.TestCase):
                 universe_artifact,
                 scenarios=scenarios,
                 provenance=provenance,
+                incumbent=self._historical_incumbent(),
             )
 
         self.assertFalse(published)
@@ -297,7 +309,12 @@ class StressScenarioTests(unittest.TestCase):
         self.assertEqual(candidate["results"], results)
         self.assertEqual(
             candidate["rejection_reasons"],
-            [{"gate_family": "hard_gates", "gate": "absolute_floor"}],
+            [
+                {
+                    "gate_family": "hard_gates",
+                    "gate": "worst_add_one_wealth_at_least_minus_18pct",
+                }
+            ],
         )
 
     def test_accepted_complete_candidate_updates_canonical_artifacts(self) -> None:
@@ -308,19 +325,23 @@ class StressScenarioTests(unittest.TestCase):
         )
         results = [self._complete_result(item) for item in scenarios]
         provenance = self._provenance("b" * 40, len(scenarios))
-        prefix_artifact = {**provenance, "artifact_status": "current"}
+        prefix_artifact = {
+            **provenance,
+            "artifact_status": "current",
+            "results": [
+                item for item in results if item["scenario_type"] == "prefix"
+            ],
+        }
         universe_artifact = {
             **provenance,
             "artifact_status": "current",
             "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
             "seeds": [7],
             "scenario_count": len(results),
-            "hard_gates": {"passed": True, "checks": {"absolute_floor": True}},
-            "promotion_gates": {
-                "status": "incomparable_economic_contract",
-                "passed": None,
-                "permutation_invariance": {"invariant": True},
-            },
+            "hard_gates": stress._hard_gates(results),
+            "promotion_gates": stress._promotion_gates(
+                results, self._historical_incumbent()
+            ),
             "results": results,
         }
 
@@ -330,6 +351,7 @@ class StressScenarioTests(unittest.TestCase):
                 universe_artifact,
                 scenarios=scenarios,
                 provenance=provenance,
+                incumbent=self._historical_incumbent(),
             )
 
         self.assertTrue(published)
@@ -366,6 +388,7 @@ class StressScenarioTests(unittest.TestCase):
                     universe_artifact,
                     scenarios=scenarios,
                     provenance=provenance,
+                    incumbent=self._historical_incumbent(),
                 )
 
         write_artifact.assert_not_called()
@@ -397,9 +420,133 @@ class StressScenarioTests(unittest.TestCase):
                     universe_artifact,
                     scenarios=scenarios,
                     provenance=expected,
+                    incumbent=self._historical_incumbent(),
                 )
 
         write_artifact.assert_not_called()
+
+    def test_tampered_gate_summary_cannot_publish(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        results = [self._complete_result(item) for item in scenarios]
+        by_id = {item["scenario_id"]: item for item in results}
+        by_id["add-one-05-688205"]["total_return"] = 0.0
+        self.assertFalse(stress._hard_gates(results)["passed"])
+        provenance = self._provenance("f" * 40, len(scenarios))
+        prefix_artifact = {
+            **provenance,
+            "results": [
+                item for item in results if item["scenario_type"] == "prefix"
+            ],
+        }
+        universe_artifact = {
+            **provenance,
+            "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
+            "seeds": [7],
+            "hard_gates": {"passed": True, "checks": {}},
+            "promotion_gates": stress._promotion_gates(
+                results, self._historical_incumbent()
+            ),
+            "results": results,
+        }
+
+        with patch.object(stress, "_atomic_json") as write_artifact, self.assertRaisesRegex(
+            ValueError, "hard gates changed"
+        ):
+            stress._publish_formal_artifacts(
+                prefix_artifact,
+                universe_artifact,
+                scenarios=scenarios,
+                provenance=provenance,
+                incumbent=self._historical_incumbent(),
+            )
+
+        write_artifact.assert_not_called()
+
+    def test_wrong_seed_list_cannot_publish(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        results = [self._complete_result(item) for item in scenarios]
+        provenance = self._provenance("1" * 40, len(scenarios))
+        prefix_artifact = {
+            **provenance,
+            "results": [
+                item for item in results if item["scenario_type"] == "prefix"
+            ],
+        }
+        universe_artifact = {
+            **provenance,
+            "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
+            "seeds": [999],
+            "hard_gates": stress._hard_gates(results),
+            "promotion_gates": stress._promotion_gates(
+                results, self._historical_incumbent()
+            ),
+            "results": results,
+        }
+
+        with patch.object(stress, "_atomic_json") as write_artifact, self.assertRaisesRegex(
+            ValueError, "seeds changed"
+        ):
+            stress._publish_formal_artifacts(
+                prefix_artifact,
+                universe_artifact,
+                scenarios=scenarios,
+                provenance=provenance,
+                incumbent=self._historical_incumbent(),
+            )
+
+        write_artifact.assert_not_called()
+
+    def test_missing_prefix_result_cannot_publish(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        results = [self._complete_result(item) for item in scenarios]
+        provenance = self._provenance("2" * 40, len(scenarios))
+        prefix_results = [
+            item for item in results if item["scenario_type"] == "prefix"
+        ][1:]
+        prefix_artifact = {**provenance, "results": prefix_results}
+        universe_artifact = {
+            **provenance,
+            "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
+            "seeds": [7],
+            "hard_gates": stress._hard_gates(results),
+            "promotion_gates": stress._promotion_gates(
+                results, self._historical_incumbent()
+            ),
+            "results": results,
+        }
+
+        with patch.object(stress, "_atomic_json") as write_artifact, self.assertRaisesRegex(
+            ValueError, "prefix scenario plan"
+        ):
+            stress._publish_formal_artifacts(
+                prefix_artifact,
+                universe_artifact,
+                scenarios=scenarios,
+                provenance=provenance,
+                incumbent=self._historical_incumbent(),
+            )
+
+        write_artifact.assert_not_called()
+
+    def test_corrupt_incumbent_fails_closed(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "universe_stress.json"
+            path.write_text("{not-json", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Cannot read incumbent"):
+                stress._load_incumbent(path)
 
     def test_persisted_formal_artifacts_are_explicit_historical_baselines(
         self,
@@ -462,8 +609,15 @@ class StressScenarioTests(unittest.TestCase):
         )
         self.assertEqual(
             hashlib.sha256(path.read_bytes()).hexdigest(),
-            "a47cf9dedf3e161dc7459369b0f05543fe8bd0732b2352e177dccd9899d687e3",
+            "d3bd007e1c60b5c4296fe2629a01a370a648acfd09b376b0c1edf4339052c442",
         )
+        self.assertEqual(
+            payload["promotion_gates"]["status"],
+            "incomparable_economic_contract",
+        )
+        self.assertFalse(payload["promotion_gates"]["applicable"])
+        self.assertIsNone(payload["promotion_gates"]["passed"])
+        self.assertIn("historical_promotion_audit", payload)
 
     def test_historical_pre_pr13_promotion_baseline_is_incomparable(self) -> None:
         current = {
