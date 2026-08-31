@@ -37,6 +37,8 @@ ORDERED_CODES = tuple(NAMES)
 DEFAULT_SEEDS = (20260807, 20260817, 20260827)
 TRADE_COUNT_SEMANTICS = "trade_records"
 LEGACY_TRADE_COUNT_SEMANTICS = "legacy_date_symbol_side_bucket"
+ENGINE = "ProductionReplayEngine"
+DEPLOYMENT_POLICY = "production_daily_replay"
 ATTRIBUTION_CATEGORIES = (
     "initial_entry",
     "add",
@@ -322,22 +324,79 @@ def _tree_fingerprint(paths: list[Path]) -> str:
     return digest.hexdigest()
 
 
-def _run_signature(
-    scenarios: list[dict[str, Any]], data_dir: Path, regime_data_dir: Path
-) -> str:
-    source_files = list(PROJECT_ROOT.glob("*.py")) + list(
+def _source_files() -> list[Path]:
+    return list(PROJECT_ROOT.glob("*.py")) + list(
         (PROJECT_ROOT / "quantfusion").rglob("*.py")
     )
-    data_files = list(data_dir.glob("*.csv")) + list(regime_data_dir.glob("*.csv"))
+
+
+def _data_files(data_dir: Path, regime_data_dir: Path) -> list[Path]:
+    return list(data_dir.glob("*.csv")) + list(regime_data_dir.glob("*.csv"))
+
+
+def _scenario_signature(scenarios: list[dict[str, Any]]) -> str:
     payload = {
-        "source_fingerprint": _tree_fingerprint(source_files),
-        "data_fingerprint": _tree_fingerprint(data_files),
-        "scenarios": scenarios,
+        "engine": ENGINE,
+        "deployment_policy": DEPLOYMENT_POLICY,
+        "trade_count_semantics": TRADE_COUNT_SEMANTICS,
         "start_date": START_DATE,
         "end_date": END_DATE,
+        "initial_capital": INITIAL_CAPITAL,
+        "ordered_codes": list(ORDERED_CODES),
+        "scenarios": scenarios,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _build_provenance(
+    scenarios: list[dict[str, Any]],
+    data_dir: Path,
+    regime_data_dir: Path,
+    *,
+    source_revision: str,
+) -> dict[str, Any]:
+    if len(source_revision) != 40 or any(
+        character not in "0123456789abcdef" for character in source_revision
+    ):
+        raise ValueError("source_revision must be a lowercase 40-character Git SHA")
+    source_fingerprint = _tree_fingerprint(_source_files())
+    data_fingerprint = _tree_fingerprint(_data_files(data_dir, regime_data_dir))
+    scenario_signature = _scenario_signature(scenarios)
+    payload = {
+        "source_revision": source_revision,
+        "source_fingerprint": source_fingerprint,
+        "data_fingerprint": data_fingerprint,
+        "scenario_signature": scenario_signature,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return {
+        **payload,
+        "run_signature": hashlib.sha256(encoded).hexdigest(),
+        "scenario_count": len(scenarios),
+        "start_date": START_DATE,
+        "end_date": END_DATE,
+        "initial_capital": INITIAL_CAPITAL,
+        "engine": ENGINE,
+        "deployment_policy": DEPLOYMENT_POLICY,
+    }
+
+
+def _run_signature(
+    scenarios: list[dict[str, Any]],
+    data_dir: Path,
+    regime_data_dir: Path,
+    *,
+    source_revision: str,
+) -> str:
+    return str(
+        _build_provenance(
+            scenarios,
+            data_dir,
+            regime_data_dir,
+            source_revision=source_revision,
+        )["run_signature"]
+    )
 
 
 def _validated_checkpoint_results(
@@ -368,11 +427,34 @@ def _validated_checkpoint_results(
                 raise ValueError(f"Stress checkpoint {scenario_id} has invalid {key}")
             if not math.isfinite(float(value)):
                 raise ValueError(f"Stress checkpoint {scenario_id} has non-finite {key}")
-        for key in ("total_trades", "sleeve_fill_count"):
+        for key in (
+            "total_trades",
+            "sleeve_fill_count",
+            "date_symbol_side_count",
+            "max_concurrent_symbols",
+        ):
             value = item.get(key)
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ValueError(f"Stress checkpoint {scenario_id} has invalid {key}")
-        if item.get("deployment_policy") != "production_daily_replay":
+        attribution = item.get("reason_attribution")
+        if not isinstance(attribution, dict) or set(attribution) != set(
+            ATTRIBUTION_CATEGORIES
+        ):
+            raise ValueError(
+                f"Stress checkpoint {scenario_id} has invalid reason_attribution"
+            )
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value < 0
+            for value in attribution.values()
+        ) or sum(attribution.values()) != item["total_trades"]:
+            raise ValueError(
+                f"Stress checkpoint {scenario_id} has invalid reason_attribution"
+            )
+        if not isinstance(item.get("terminal_risk_lock"), bool):
+            raise ValueError(
+                f"Stress checkpoint {scenario_id} has invalid terminal_risk_lock"
+            )
+        if item.get("deployment_policy") != DEPLOYMENT_POLICY:
             raise ValueError(
                 f"Stress checkpoint {scenario_id} was not a production replay"
             )
@@ -476,18 +558,26 @@ def _permutation_invariance(results: list[dict[str, Any]]) -> dict[str, Any]:
             continue
         groups.setdefault(int(item.get("seed", 0)), []).append(item)
     deviations: list[float] = []
+    numeric_fields = (
+        "total_return",
+        "max_drawdown",
+        "sharpe",
+        "calmar",
+        "total_trades",
+        "sleeve_fill_count",
+        "date_symbol_side_count",
+        "max_concurrent_symbols",
+    )
     for members in groups.values():
         for left, right in zip(members, members[1:], strict=False):
             deviations.extend(
-                (
-                    abs(float(left["total_return"]) - float(right["total_return"])),
-                    abs(
-                        float(left["max_drawdown"])
-                        - float(right["max_drawdown"])
-                    ),
-                    abs(float(left["total_trades"]) - float(right["total_trades"])),
-                )
+                abs(float(left[field]) - float(right[field]))
+                for field in numeric_fields
             )
+            if left["reason_attribution"] != right["reason_attribution"]:
+                deviations.append(1.0)
+            if left["terminal_risk_lock"] != right["terminal_risk_lock"]:
+                deviations.append(1.0)
     worst = max(deviations) if deviations else 0.0
     return {
         "checked_groups": len(groups),
@@ -674,6 +764,19 @@ def _promotion_gates(
     return payload
 
 
+def _publish_formal_artifacts(
+    prefix_artifact: dict[str, Any], universe_artifact: dict[str, Any]
+) -> bool:
+    """Publish only a candidate that passed every existing formal gate."""
+    if not universe_artifact["hard_gates"]["passed"] or not universe_artifact[
+        "promotion_gates"
+    ]["passed"]:
+        return False
+    _atomic_json(VALIDATION_ARTIFACT_DIR / "prefix_stress.json", prefix_artifact)
+    _atomic_json(VALIDATION_ARTIFACT_DIR / "universe_stress.json", universe_artifact)
+    return True
+
+
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workers", type=int, default=min(4, os.cpu_count() or 1))
@@ -691,6 +794,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=str(PROJECT_ROOT / "artifacts" / "checkpoints" / "stress.json"),
     )
     parser.add_argument("--checkpoint-every", type=int, default=10)
+    parser.add_argument(
+        "--source-revision",
+        required=True,
+        help="Verified 40-character Git SHA containing the final Python source",
+    )
     return parser
 
 
@@ -728,13 +836,24 @@ def main() -> int:
         permutation_samples=args.permutation_samples,
         seeds=seeds,
     )
-    signature = _run_signature(scenarios, data_dir, regime_data_dir)
+    scenario_ids = [str(item["scenario_id"]) for item in scenarios]
+    if len(set(scenario_ids)) != len(scenario_ids):
+        raise ValueError("Stress scenario plan contains duplicate scenario_id values")
+    provenance = _build_provenance(
+        scenarios,
+        data_dir,
+        regime_data_dir,
+        source_revision=args.source_revision,
+    )
+    signature = str(provenance["run_signature"])
     checkpoint = Path(args.checkpoint)
     completed: dict[str, dict[str, Any]] = {}
     if checkpoint.is_file():
         payload = json.loads(checkpoint.read_text(encoding="utf-8"))
         if payload.get("signature") != signature:
             raise ValueError("Stress checkpoint code, data, or scenario signature changed")
+        if payload.get("provenance") != provenance:
+            raise ValueError("Stress checkpoint provenance changed")
         completed = _validated_checkpoint_results(payload, scenarios)
     pending = [
         scenario
@@ -753,6 +872,7 @@ def main() -> int:
                 checkpoint,
                 {
                     "signature": signature,
+                    "provenance": provenance,
                     "completed": len(completed),
                     "scenario_count": len(scenarios),
                     "results": sorted(
@@ -762,6 +882,8 @@ def main() -> int:
             )
             print(f"checkpoint {len(completed)}/{len(scenarios)}", flush=True)
     results = sorted(completed.values(), key=lambda item: item["scenario_id"])
+    if set(completed) != set(scenario_ids):
+        raise ValueError("Stress run did not complete the exact scenario plan")
     prefixes = sorted(
         (item for item in results if item["scenario_type"] == "prefix"),
         key=lambda item: item["symbol_count"],
@@ -776,18 +898,14 @@ def main() -> int:
         for left, right in zip(prefixes, prefixes[1:], strict=False)
     ]
     common = {
-        "engine": "ProductionReplayEngine",
-        "deployment_policy": "production_daily_replay",
+        **provenance,
         "artifact_status": "current",
         "trade_count_semantics": TRADE_COUNT_SEMANTICS,
         "portfolio_policy": qf.PortfolioPolicy().as_dict(),
         "data_directory": _artifact_path(data_dir),
         "regime_data_directory": _artifact_path(regime_data_dir),
-        "start_date": START_DATE,
-        "end_date": END_DATE,
         "indicator_state": "warm",
         "seeds": list(seeds),
-        "run_signature": signature,
     }
     prefix_artifact = {
         **common,
@@ -825,8 +943,7 @@ def main() -> int:
         "summary": {"all": _summary(results), "by_type": by_type},
         "results": results,
     }
-    _atomic_json(VALIDATION_ARTIFACT_DIR / "prefix_stress.json", prefix_artifact)
-    _atomic_json(VALIDATION_ARTIFACT_DIR / "universe_stress.json", universe_artifact)
+    published = _publish_formal_artifacts(prefix_artifact, universe_artifact)
     print(
         json.dumps(
             {
@@ -838,7 +955,7 @@ def main() -> int:
             indent=2,
         )
     )
-    return 0 if gates["passed"] and promotion["passed"] else 2
+    return 0 if published else 2
 
 
 if __name__ == "__main__":

@@ -76,6 +76,19 @@ class StressScenarioTests(unittest.TestCase):
                 seeds=(7, 7),
             )
 
+    def test_formal_plan_has_983_unique_scenario_ids(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=50,
+            permutation_samples=50,
+            seeds=stress.DEFAULT_SEEDS,
+        )
+
+        self.assertEqual(len(scenarios), 983)
+        self.assertEqual(
+            len({str(item["scenario_id"]) for item in scenarios}),
+            983,
+        )
+
     def test_checkpoint_rejects_mismatched_scenario_definition(self) -> None:
         scenarios = stress._multi_seed_scenarios(
             random_samples=1,
@@ -109,12 +122,105 @@ class StressScenarioTests(unittest.TestCase):
         with TemporaryDirectory() as tmpdir, patch.object(
             stress, "_tree_fingerprint", side_effect=capture
         ):
-            stress._run_signature([], Path(tmpdir), Path(tmpdir))
+            stress._run_signature(
+                [],
+                Path(tmpdir),
+                Path(tmpdir),
+                source_revision="a" * 40,
+            )
 
         canonical_source = (
             stress.PROJECT_ROOT / "quantfusion" / "application" / "stress.py"
         )
         self.assertIn(canonical_source, fingerprints[0])
+
+    def test_provenance_exposes_independent_source_data_and_scenario_hashes(
+        self,
+    ) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        with TemporaryDirectory() as tmpdir, patch.object(
+            stress,
+            "_tree_fingerprint",
+            side_effect=("source-fingerprint", "data-fingerprint"),
+        ):
+            provenance = stress._build_provenance(
+                scenarios,
+                Path(tmpdir),
+                Path(tmpdir),
+                source_revision="a" * 40,
+            )
+
+        self.assertEqual(provenance["source_revision"], "a" * 40)
+        self.assertEqual(provenance["source_fingerprint"], "source-fingerprint")
+        self.assertEqual(provenance["data_fingerprint"], "data-fingerprint")
+        self.assertEqual(provenance["scenario_count"], len(scenarios))
+        self.assertEqual(provenance["initial_capital"], stress.INITIAL_CAPITAL)
+        self.assertRegex(provenance["scenario_signature"], r"^[0-9a-f]{64}$")
+        self.assertRegex(provenance["run_signature"], r"^[0-9a-f]{64}$")
+
+    def test_checkpoint_requires_trade_and_bucket_counts_separately(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        result = {
+            **scenarios[0],
+            "total_return": 1.0,
+            "max_drawdown": -0.1,
+            "sharpe": 1.0,
+            "calmar": 1.0,
+            "total_trades": 2,
+            "sleeve_fill_count": 2,
+            "reason_attribution": {category: 0 for category in stress.ATTRIBUTION_CATEGORIES},
+            "max_concurrent_symbols": 1,
+            "terminal_risk_lock": False,
+            "deployment_policy": "production_daily_replay",
+        }
+
+        with self.assertRaisesRegex(ValueError, "date_symbol_side_count"):
+            stress._validated_checkpoint_results({"results": [result]}, scenarios)
+
+    def test_permutation_invariance_includes_bucket_semantics(self) -> None:
+        common = {
+            "scenario_type": "permutation",
+            "seed": 7,
+            "total_return": 1.0,
+            "max_drawdown": -0.1,
+            "sharpe": 1.0,
+            "calmar": 1.0,
+            "total_trades": 2,
+            "sleeve_fill_count": 2,
+            "max_concurrent_symbols": 1,
+            "terminal_risk_lock": False,
+            "reason_attribution": {category: 0 for category in stress.ATTRIBUTION_CATEGORIES},
+        }
+        result = stress._permutation_invariance(
+            [
+                {**common, "scenario_id": "permutation-7-001", "date_symbol_side_count": 1},
+                {**common, "scenario_id": "permutation-7-002", "date_symbol_side_count": 2},
+            ]
+        )
+
+        self.assertFalse(result["invariant"])
+
+    def test_failed_gates_do_not_publish_formal_artifacts(self) -> None:
+        with patch.object(stress, "_atomic_json") as write_artifact:
+            published = stress._publish_formal_artifacts(
+                {"artifact_status": "current"},
+                {
+                    "artifact_status": "current",
+                    "hard_gates": {"passed": False},
+                    "promotion_gates": {"passed": True},
+                },
+            )
+
+        self.assertFalse(published)
+        write_artifact.assert_not_called()
 
     def test_persisted_formal_artifacts_are_explicit_historical_baselines(
         self,
@@ -128,6 +234,7 @@ class StressScenarioTests(unittest.TestCase):
             scenarios,
             stress.DATA_DIR,
             stress.REGIME_DATA_DIR,
+            source_revision="a" * 40,
         )
         for name in ("prefix_stress.json", "universe_stress.json"):
             payload = json.loads(

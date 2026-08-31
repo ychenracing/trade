@@ -38,6 +38,7 @@ _POSITION_REQUIRED_FIELDS = frozenset(
     {"shares", "sellable_shares", "avg_cost", "entry_date"}
 )
 _POSITION_FIELDS = _POSITION_REQUIRED_FIELDS | {"highest_close"}
+_MISSING = object()
 
 
 def _required(payload: dict[str, object], field: str, *, where: str) -> object:
@@ -84,7 +85,7 @@ def _require_non_negative_int(name: str, value: object) -> int:
 
 def _optional_positive_real(name: str, value: object) -> float | None:
     """校验可选的正有限实数。"""
-    if value is None:
+    if value is _MISSING:
         return None
     normalized = _require_real(name, value, minimum=0.0)
     if normalized <= 0:
@@ -190,7 +191,7 @@ def load_account_snapshot_with_sha256(
             raise ValueError(f"position {code} avg_cost must be > 0")
         highest_close = _optional_positive_real(
             f"position {code} highest_close",
-            raw.get("highest_close"),
+            raw.get("highest_close", _MISSING),
         )
         sellable = _require_non_negative_int(
             f"position {code} sellable_shares", raw["sellable_shares"]
