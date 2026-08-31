@@ -58,7 +58,7 @@
 - 文件 SHA-256：`a47cf9dedf3e161dc7459369b0f05543fe8bd0732b2352e177dccd9899d687e3`
 - 状态：`current_candidate`、`rejected`、`canonical=false`
 - 完整性：983/983，983 个唯一场景 ID，无缺失、重复或非有限指标；所有场景均为 `production_daily_replay`
-- provenance：source revision `117a0ea17a333be17fbd345a14eb67fb328d046c`，source fingerprint `98b6bcd7d39ab9de3352af24dca05721b95d01b45fa3facbae7890a35dfc6ea1`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `dcebfe65f431b432cdb82e999505e0d87ef5a61b21f1b2544f5e357822ee541f`
+- 来源证明（provenance）：source revision `117a0ea17a333be17fbd345a14eb67fb328d046c`，source fingerprint `98b6bcd7d39ab9de3352af24dca05721b95d01b45fa3facbae7890a35dfc6ea1`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `dcebfe65f431b432cdb82e999505e0d87ef5a61b21f1b2544f5e357822ee541f`
 - 绝对门禁：`worst_add_one_wealth_at_least_minus_18pct` 失败；`add-one-05-688205` 相对 `prefix-05` 的财富变化为 `-0.23490347753273277`，要求仍为 `>= -0.18`
 - 排列不变性：通过
 
