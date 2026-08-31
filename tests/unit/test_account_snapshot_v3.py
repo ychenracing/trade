@@ -199,6 +199,18 @@ def test_position_container_must_be_an_object(tmp_path: Path) -> None:
         snapshot_module.load_account_snapshot(_write_payload(tmp_path, payload))
 
 
+def test_explicit_null_highest_close_is_rejected(tmp_path: Path) -> None:
+    payload = _valid_payload()
+    positions = payload["positions"]
+    assert isinstance(positions, dict)
+    position = positions["300308"]
+    assert isinstance(position, dict)
+    position["highest_close"] = None
+
+    with pytest.raises(ValueError, match="highest_close must be a real number"):
+        snapshot_module.load_account_snapshot(_write_payload(tmp_path, payload))
+
+
 def test_nonstandard_json_constants_are_rejected(tmp_path: Path) -> None:
     path = tmp_path / "account.json"
     path.write_text(

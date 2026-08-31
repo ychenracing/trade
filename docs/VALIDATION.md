@@ -50,7 +50,21 @@
 
 风险职责遵循单一执行者原则：已有趋势账本遇到指数转弱时，外层路由只记录状态，跨市场叠加层负责买入门控和风险动作；只有从空仓进入弱市时才建立弱市龙头账本。恢复确认使用 30 个连续交易日，但期间继续持有正动量龙头，不是空仓等待。动态弱势策略登记在独立外部清算注册表中，因此能被组合、板块和路由风险清算，又不会被核心信号循环重复调用。
 
-## 组合压力验证（历史工件）
+## 组合压力验证（当前候选与历史 canonical）
+
+当前完整 983 场景运行已保存为非 canonical 候选：
+
+- 路径：`artifacts/validation/candidates/stress-117a0ea17a333be17fbd345a14eb67fb328d046c-rejected.json`
+- 文件 SHA-256：`d3bd007e1c60b5c4296fe2629a01a370a648acfd09b376b0c1edf4339052c442`
+- 状态：`current_candidate`、`rejected`、`canonical=false`
+- 完整性：983/983，983 个唯一场景 ID，无缺失、重复或非有限指标；所有场景均为 `production_daily_replay`
+- 来源证明（provenance）：source revision `117a0ea17a333be17fbd345a14eb67fb328d046c`，source fingerprint `98b6bcd7d39ab9de3352af24dca05721b95d01b45fa3facbae7890a35dfc6ea1`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `dcebfe65f431b432cdb82e999505e0d87ef5a61b21f1b2544f5e357822ee541f`
+- 绝对门禁：`worst_add_one_wealth_at_least_minus_18pct` 失败；`add-one-05-688205` 相对 `prefix-05` 的财富变化为 `-0.23490347753273277`，要求仍为 `>= -0.18`
+- 排列不变性：通过
+
+该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。失败运行仍返回非零状态，但完整结果会先写入独立 candidate 路径，防止证据丢失。
+
+旧 incumbent 标记为 `historical_pre_minimal_account_correctness`，早于 PR #13 已接受的经济语义。三股前缀比较精确等于 `(1 + 10.593889691663627) / (1 + 11.224308338588003) = 0.9484290947624122`，因此该 promotion 比较属于 `incomparable_economic_contract`，既不标记通过，也不再作为当前候选失败原因。逐一加入 promotion 比较同样不可比；当前独立阻塞只有上述 -18% 绝对 hard gate。
 
 `artifacts/validation/universe_stress.json` 保存本次正确性修复前的 983 个端到端场景：83 个固定前缀/留一/逐一加入场景、三个固定种子下 750 个随机子集，以及 150 个完整 22 股顺序置换。该工件中的 `total_trades` 是旧日期/股票/方向桶语义，只能作为历史压力参考，不能解释为券商订单，也不是本次候选的当前成交记录基线。本任务不修改压力阈值或优化器；当前候选以五池精确回放和序列指纹作为经济回归门禁。
 
@@ -90,7 +104,7 @@
 | `risk_governance_series` | 逐日治理采样序列（等级、置信度、共识、退化计数等） |
 | `risk_event_calibration` | 风险事件表（1/3/5/10/20 日结果窗口）与校准指标（Precision/Recall/领先天数/误报成本/漏报深度/牛市沉默率/L1 升级精度/L1 机会成本） |
 
-生产契约：日扫中 `warmup_health.warmup_status == "NOT_READY"` 时全部新增买入失败关闭（`buys_suppressed=true`），输出不得作为正式交易信号；`DEGRADED` 时风险判断保留并显著提示。压力体系同时执行晋级门：相对既有正式压力基线，固定前缀财富 ≥99%、随机回撤 P90/P95 不恶化超过 0.5 个百分点、最差回撤/收益不恶化超过 1/2 个百分点、日期/股票/方向桶与风险减仓不显著增加，且全排列场景指标完全一致。
+生产契约：日扫中 `warmup_health.warmup_status == "NOT_READY"` 时全部新增买入失败关闭（`buys_suppressed=true`），输出不得作为正式交易信号；`DEGRADED` 时风险判断保留并显著提示。压力体系同时执行晋级门：相对可比经济合同的正式压力基线，固定前缀财富 ≥99%、随机回撤 P90/P95 不恶化超过 0.5 个百分点、最差回撤/收益不恶化超过 1/2 个百分点、日期/股票/方向桶与风险减仓不显著增加，且全排列场景指标完全一致。
 
 ## 数据与执行限制
 
@@ -108,6 +122,7 @@
 - `artifacts/validation/universe_backtest.json`：冷启动与预热组合结果；
 - `artifacts/validation/prefix_stress.json`：完整 1 至 22 股前缀结果；
 - `artifacts/validation/universe_stress.json`：留一、逐一加入、随机子集和置换结果；
+- `artifacts/validation/candidates/`：完整但未通过适用门禁的非 canonical 压力候选；
 - `artifacts/validation/cambricon_universe_backtest.json`：寒武纪映射历史回归；
 - `data/market/SHA256SUMS` 与 `data/regime/SHA256SUMS`：冻结数据哈希。
 
