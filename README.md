@@ -119,7 +119,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 1. 新增标的必须在 `quantfusion.config.universe` 与引擎配置的行业映射中找到对应画像，否则 `strict_unmapped=True` 会直接失败。
 2. 新行业需重新建立参数画像和基线，不能直接套用现有科技参数。
 3. 使用 `stress_test_prefixes.py` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。
-4. 任何 cross-market / 风险层改动晋级前，还必须通过相对既有正式压力基线的晋级门（P0-4）：固定前缀牛市财富不低于基线 99%，随机子集回撤 P90/P95 最多恶化 0.5 个百分点，全场景最差回撤最多恶化 1 个百分点、最差收益最多恶化 2 个百分点，最差逐一加入财富最多下降 3 个百分点，成交记录 P90/最差最多增加 5/10 笔，风险减仓中位数最多增加 2 笔，且同一 seed 的全排列场景指标必须完全一致。
+4. 任何 cross-market / 风险层改动晋级前，还必须通过相对可比经济合同的正式压力基线晋级门（P0-4）：固定前缀牛市财富不低于基线 99%，随机子集回撤 P90/P95 最多恶化 0.5 个百分点，全场景最差回撤最多恶化 1 个百分点、最差收益最多恶化 2 个百分点，最差逐一加入财富最多下降 3 个百分点，成交记录 P90/最差最多增加 5/10 笔，风险减仓中位数最多增加 2 笔，且同一 seed 的全排列场景指标必须完全一致。经济合同不同时比较状态为 `incomparable_economic_contract`，不得标记通过或作为回归失败。
 
 ## 日扫信号与账户建议
 
@@ -271,7 +271,7 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 - `data_cache/`：行情数据缓存
 - `benchmark_validation.json`：基准验证输出
 
-仓库持久化的 `artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 是可复现压力工件；后者记录三个固定种子、每种规模每种子 50 次随机抽样、50 次顺序置换和全部硬门禁结果。
+`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只保存 accepted canonical 或明确标记的历史工件。完整但未通过门禁的运行保存在 `artifacts/validation/candidates/`，并标记为 `current_candidate`、`rejected`、`canonical=false`；它不会覆盖 canonical 路径，runner 仍以非零状态退出。当前保存的 983 场景候选因 `add-one-05-688205` 的财富变化 -23.4903% 低于未变的 -18% hard floor 而被拒绝。
 
 如需持久化某次验证结果，将对应文件放入 `artifacts/validation/` 并更新 `docs/VALIDATION.md`。
 

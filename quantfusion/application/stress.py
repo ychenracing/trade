@@ -49,6 +49,19 @@ ATTRIBUTION_CATEGORIES = (
     "route_migration",
     "sticky_replacement",
 )
+PROVENANCE_FIELDS = (
+    "source_revision",
+    "source_fingerprint",
+    "data_fingerprint",
+    "scenario_signature",
+    "run_signature",
+    "scenario_count",
+    "start_date",
+    "end_date",
+    "initial_capital",
+    "engine",
+    "deployment_policy",
+)
 
 
 def _artifact_path(path: Path) -> str:
@@ -607,6 +620,21 @@ def _promotion_gates(
             }
         )
         return payload
+    if incumbent.get("artifact_status") == (
+        "historical_pre_minimal_account_correctness"
+    ):
+        payload.update(
+            {
+                "status": "incomparable_economic_contract",
+                "applicable": False,
+                "passed": None,
+                "note": (
+                    "The incumbent predates the accepted PR #13 economic contract; "
+                    "relative promotion comparisons are not applicable."
+                ),
+            }
+        )
+        return payload
     by_id = {
         str(item.get("scenario_id")): item for item in incumbent["results"]
     }
@@ -764,14 +792,112 @@ def _promotion_gates(
     return payload
 
 
-def _publish_formal_artifacts(
-    prefix_artifact: dict[str, Any], universe_artifact: dict[str, Any]
-) -> bool:
-    """Publish only a candidate that passed every existing formal gate."""
-    if not universe_artifact["hard_gates"]["passed"] or not universe_artifact[
-        "promotion_gates"
-    ]["passed"]:
+def _validate_publish_candidate(
+    prefix_artifact: dict[str, Any],
+    universe_artifact: dict[str, Any],
+    *,
+    scenarios: list[dict[str, Any]],
+    provenance: dict[str, Any],
+) -> None:
+    """Fail closed before retaining or publishing a completed stress run."""
+    for field in PROVENANCE_FIELDS:
+        if field not in provenance or any(
+            artifact.get(field) != provenance[field]
+            for artifact in (prefix_artifact, universe_artifact)
+        ):
+            raise ValueError(f"Stress candidate provenance changed: {field}")
+    results = universe_artifact.get("results")
+    if not isinstance(results, list):
+        raise ValueError("Stress candidate results must be a list")
+    completed = _validated_checkpoint_results({"results": results}, scenarios)
+    expected_ids = {str(item["scenario_id"]) for item in scenarios}
+    if set(completed) != expected_ids or len(results) != len(scenarios):
+        raise ValueError("Stress candidate did not complete the exact scenario plan")
+    if universe_artifact.get("scenario_count") != len(scenarios):
+        raise ValueError("Stress candidate did not complete the exact scenario plan")
+    if universe_artifact.get("trade_count_semantics") != TRADE_COUNT_SEMANTICS:
+        raise ValueError("Stress candidate has invalid trade_count_semantics")
+    seeds = universe_artifact.get("seeds")
+    if not isinstance(seeds, list) or not seeds:
+        raise ValueError("Stress candidate has invalid seeds")
+
+
+def _promotion_accepted(promotion: dict[str, Any]) -> bool:
+    permutation = promotion.get("permutation_invariance", {})
+    if not isinstance(permutation, dict) or not permutation.get("invariant"):
         return False
+    if promotion.get("status") == "incomparable_economic_contract":
+        return True
+    return promotion.get("passed") is True
+
+
+def _rejection_reasons(universe_artifact: dict[str, Any]) -> list[dict[str, str]]:
+    reasons = [
+        {"gate_family": "hard_gates", "gate": str(name)}
+        for name, passed in universe_artifact["hard_gates"]["checks"].items()
+        if not passed
+    ]
+    promotion = universe_artifact["promotion_gates"]
+    permutation = promotion.get("permutation_invariance", {})
+    if not permutation.get("invariant"):
+        reasons.append(
+            {"gate_family": "promotion_gates", "gate": "permutation_invariant"}
+        )
+    if (
+        promotion.get("status") != "incomparable_economic_contract"
+        and promotion.get("passed") is not True
+    ):
+        reasons.extend(
+            {"gate_family": "promotion_gates", "gate": str(name)}
+            for name, passed in promotion.get("checks", {}).items()
+            if not passed and name != "permutation_invariant"
+        )
+    return reasons
+
+
+def _publish_formal_artifacts(
+    prefix_artifact: dict[str, Any],
+    universe_artifact: dict[str, Any],
+    *,
+    scenarios: list[dict[str, Any]],
+    provenance: dict[str, Any],
+) -> bool:
+    """Retain complete failures; publish canonical files only after acceptance."""
+    _validate_publish_candidate(
+        prefix_artifact,
+        universe_artifact,
+        scenarios=scenarios,
+        provenance=provenance,
+    )
+    accepted = universe_artifact["hard_gates"]["passed"] and _promotion_accepted(
+        universe_artifact["promotion_gates"]
+    )
+    if not accepted:
+        candidate = {
+            **universe_artifact,
+            "artifact_status": "current_candidate",
+            "acceptance_status": "rejected",
+            "canonical": False,
+            "rejection_reasons": _rejection_reasons(universe_artifact),
+        }
+        source_revision = str(provenance["source_revision"])
+        _atomic_json(
+            VALIDATION_ARTIFACT_DIR
+            / "candidates"
+            / f"stress-{source_revision}-rejected.json",
+            candidate,
+        )
+        return False
+    prefix_artifact = {
+        **prefix_artifact,
+        "acceptance_status": "accepted",
+        "canonical": True,
+    }
+    universe_artifact = {
+        **universe_artifact,
+        "acceptance_status": "accepted",
+        "canonical": True,
+    }
     _atomic_json(VALIDATION_ARTIFACT_DIR / "prefix_stress.json", prefix_artifact)
     _atomic_json(VALIDATION_ARTIFACT_DIR / "universe_stress.json", universe_artifact)
     return True
@@ -943,7 +1069,12 @@ def main() -> int:
         "summary": {"all": _summary(results), "by_type": by_type},
         "results": results,
     }
-    published = _publish_formal_artifacts(prefix_artifact, universe_artifact)
+    published = _publish_formal_artifacts(
+        prefix_artifact,
+        universe_artifact,
+        scenarios=scenarios,
+        provenance=provenance,
+    )
     print(
         json.dumps(
             {
