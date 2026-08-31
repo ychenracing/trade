@@ -35,3 +35,6 @@ benchmark_validation.json
 live_refresh_manifest.json
 daily_signals_*/
 daily_signals_*_point/
+
+# Local real-account snapshot
+/account.json
