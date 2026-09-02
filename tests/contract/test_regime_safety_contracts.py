@@ -6,25 +6,29 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import account_signal_engine as account
-import regime_adaptive as ra
+from quantfusion.account.models import AccountSnapshot
+from quantfusion.application.account_scan import AccountSignalEngine
+from quantfusion.config.weak import weak_regime_config, weak_regime_policy
 from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
+from quantfusion.data import contracts
 from quantfusion.engine import replay as replay_module
+from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
+from quantfusion.regime.models import LeaderSelection, RegimeEvidence
 
 
 class UnknownEvidenceTests(unittest.TestCase):
     """Incomplete fixed-index evidence must never create new exposure."""
 
     @staticmethod
-    def _unknown() -> ra.RegimeEvidence:
-        return ra.RegimeEvidence(
+    def _unknown() -> RegimeEvidence:
+        return RegimeEvidence(
             as_of="2026-01-30",
             regime="unknown",
             observations=(),
         )
 
     def test_decision_holds_cash_without_leader_selection(self) -> None:
-        engine = ra.RegimeAdaptiveBacktestEngine()
+        engine = RegimeAdaptiveBacktestEngine()
         with (
             patch.object(replay_module, "detect_regime", return_value=self._unknown()),
             patch.object(
@@ -44,7 +48,7 @@ class UnknownEvidenceTests(unittest.TestCase):
         self.assertIsNone(decision.leaders)
 
     def test_account_mode_emits_no_buy_candidate(self) -> None:
-        snapshot = account.AccountSnapshot(
+        snapshot = AccountSnapshot(
             schema_version=3,
             account_id="main",
             snapshot_date="2026-01-30",
@@ -52,13 +56,13 @@ class UnknownEvidenceTests(unittest.TestCase):
             peak_equity=1_000_000.0,
             positions=(),
         )
-        engine = account.AccountSignalEngine(
+        engine = AccountSignalEngine(
             cache_dir="cache",
             regime_data_dir="regime",
         )
         with (
             patch.object(
-                account.market_data_contracts,
+                contracts,
                 "refresh_regime_indices",
                 return_value={},
             ),
@@ -89,20 +93,20 @@ class WeakRiskTests(unittest.TestCase):
     """The weak route must retain a real portfolio-level loss boundary."""
 
     def test_weak_policy_has_effective_drawdown_limits(self) -> None:
-        policy = ra._weak_regime_policy()
+        policy = weak_regime_policy()
         self.assertLessEqual(policy.drawdown_alert, 0.15)
         self.assertLessEqual(policy.confirmed_drawdown, 0.20)
         self.assertLessEqual(policy.emergency_drawdown, 0.23)
         self.assertLessEqual(policy.terminal_drawdown, 0.26)
-        self.assertLessEqual(ra._weak_regime_config(3)["daily_loss_limit"], 0.12)
+        self.assertLessEqual(weak_regime_config(3)["daily_loss_limit"], 0.12)
 
 
 class UniverseIntegrityTests(unittest.TestCase):
     """Missing data must be explicit instead of silently changing the universe."""
 
     def test_trend_route_rejects_silent_universe_shrink(self) -> None:
-        engine = ra.RegimeAdaptiveBacktestEngine()
-        trending = ra.RegimeEvidence(
+        engine = RegimeAdaptiveBacktestEngine()
+        trending = RegimeEvidence(
             as_of="2025-03-31",
             regime="trending",
             observations=(),
@@ -125,7 +129,7 @@ class UniverseIntegrityTests(unittest.TestCase):
                 )
 
     def test_unavailable_does_not_mean_unselected(self) -> None:
-        selection = ra.LeaderSelection(
+        selection = LeaderSelection(
             as_of="2024-01-01",
             requested_symbols=("300308", "300502"),
             observed_symbols=2,
@@ -138,7 +142,7 @@ class UniverseIntegrityTests(unittest.TestCase):
 
     def test_unavailable_override_requires_real_boolean(self) -> None:
         with self.assertRaisesRegex(ValueError, "must be bool"):
-            ra.RegimeAdaptiveBacktestEngine().run(
+            RegimeAdaptiveBacktestEngine().run(
                 {"300308": "中际旭创"},
                 "2025-04-01",
                 "2025-04-30",

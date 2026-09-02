@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
-import daily_signal_scan as dss
+from quantfusion.application import daily_scan as dss
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +34,7 @@ FakeTrade = namedtuple("FakeTrade", ["direction", "symbol", "shares"])
 
 VALID_RISK_STATE = {
     "schema_version": 1,
+    "run_id": "test-run-20260730",
     "scan_date": "2026-07-30",
     "terminal_risk_lock": False,
     "sector_guard_active": False,

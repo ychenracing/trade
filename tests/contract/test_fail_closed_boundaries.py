@@ -7,24 +7,27 @@ from unittest.mock import patch
 
 import pandas as pd
 
-import account_signal_engine as account
-import market_data_contracts as contracts
-import quant_fusion as qf
-import regime_adaptive as ra
+from quantfusion.account.models import AccountPosition, AccountSnapshot
+from quantfusion.application import account_scan
+from quantfusion.application.account_scan import AccountSignalEngine
+from quantfusion.data import contracts
+from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
+from quantfusion.indicators.technical import Indicators
+from quantfusion.regime.models import DeploymentDecision, LeaderSelection, RegimeEvidence
 
 
-def _decision(*, leaders: tuple[str, ...]) -> ra.DeploymentDecision:
+def _decision(*, leaders: tuple[str, ...]) -> DeploymentDecision:
     """构造不依赖外部行情的弱市路由证据。"""
-    return ra.DeploymentDecision(
+    return DeploymentDecision(
         name="positive_momentum_hold",
         boundary="2026-01-31",
         reason="test",
-        regime=ra.RegimeEvidence(
+        regime=RegimeEvidence(
             as_of="2026-01-31",
             regime="weak",
             observations=(),
         ),
-        leaders=ra.LeaderSelection(
+        leaders=LeaderSelection(
             as_of="2026-01-31",
             requested_symbols=("300308", "300502"),
             observed_symbols=len(leaders),
@@ -40,15 +43,15 @@ class AccountFailClosedTests(unittest.TestCase):
     @staticmethod
     def _snapshot(
         *, entry_date: str = "2025-09-01"
-    ) -> account.AccountSnapshot:
-        return account.AccountSnapshot(
+    ) -> AccountSnapshot:
+        return AccountSnapshot(
             schema_version=3,
             account_id="main",
             snapshot_date="2026-02-01",
             cash=100_000.0,
             peak_equity=1_000_000.0,
             positions=(
-                account.AccountPosition(
+                AccountPosition(
                     symbol="300308",
                     shares=100,
                     sellable_shares=100,
@@ -59,7 +62,7 @@ class AccountFailClosedTests(unittest.TestCase):
         )
 
     def test_unprocessed_holding_suppresses_new_buy_candidates(self) -> None:
-        engine = account.AccountSignalEngine(
+        engine = AccountSignalEngine(
             cache_dir="cache",
             regime_data_dir="regime",
         )
@@ -70,7 +73,7 @@ class AccountFailClosedTests(unittest.TestCase):
                 return_value={},
             ),
             patch.object(
-                ra.RegimeAdaptiveBacktestEngine,
+                RegimeAdaptiveBacktestEngine,
                 "decide_current",
                 return_value=_decision(leaders=("300502",)),
             ),
@@ -109,7 +112,7 @@ class AccountFailClosedTests(unittest.TestCase):
             "ma_short": pd.Series(100.0, index=dates),
             "ma_long": pd.Series(99.0, index=dates),
         }
-        engine = account.AccountSignalEngine(
+        engine = AccountSignalEngine(
             cache_dir="cache",
             regime_data_dir="regime",
         )
@@ -120,13 +123,13 @@ class AccountFailClosedTests(unittest.TestCase):
                 return_value={},
             ),
             patch.object(
-                ra.RegimeAdaptiveBacktestEngine,
+                RegimeAdaptiveBacktestEngine,
                 "decide_current",
                 return_value=_decision(leaders=("300502",)),
             ),
             patch.object(engine, "_frame", return_value=frame),
             patch.object(
-                qf.BacktestEngine,
+                account_scan,
                 "config_for_symbol",
                 return_value={
                     "hard_stop": 0.15,
@@ -134,7 +137,7 @@ class AccountFailClosedTests(unittest.TestCase):
                     "trail_atr_mult": 4.0,
                 },
             ),
-            patch.object(qf.Indicators, "compute_all", return_value=indicators),
+            patch.object(Indicators, "compute_all", return_value=indicators),
         ):
             result = engine.run(
                 self._snapshot(entry_date="2026-03-01"),

@@ -8,6 +8,16 @@ from typing import Any
 
 import pandas as pd
 
+from quantfusion.config.engine import (
+    PER_SYMBOL_OVERRIDE_KEYS,
+    default_engine_config,
+    validate_engine_config,
+)
+from quantfusion.config.profiles import (
+    optimized_aggressive_config,
+    semiconductor_config,
+    semiconductor_heavy_config,
+)
 from quantfusion.domain.models import Signal
 from quantfusion.domain.rules import (
     A_SHARE_LOT_SIZE,
@@ -64,19 +74,19 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         """Apply a profile and remember its strategy-level routed overrides."""
         super()._apply_global_profile(profile)
         factories = {
-            "semiconductor": self.semiconductor_config,
-            "semiconductor_heavy": self.semiconductor_heavy_config,
-            "aggressive": self.optimized_aggressive_config,
+            "semiconductor": semiconductor_config,
+            "semiconductor_heavy": semiconductor_heavy_config,
+            "aggressive": optimized_aggressive_config,
         }
         factory = factories.get(profile) if profile is not None else None
         if factory is None:
             self._profile_strategy_overrides = {}
             return
-        defaults = self._default_config()
+        defaults = default_engine_config()
         profile_cfg = factory()
         self._profile_strategy_overrides = {
             key: profile_cfg[key]
-            for key in self._PER_SYMBOL_OVERRIDE_KEYS
+            for key in PER_SYMBOL_OVERRIDE_KEYS
             if key in profile_cfg and profile_cfg[key] != defaults.get(key)
         }
 
@@ -97,7 +107,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         explicit_global = {
             key: value
             for key, value in self._user_cfg.items()
-            if key in self._PER_SYMBOL_OVERRIDE_KEYS
+            if key in PER_SYMBOL_OVERRIDE_KEYS
         }
         route_overrides = {
             **self._profile_strategy_overrides,
@@ -106,7 +116,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         per_symbol = per_symbol_config or {}
         final: dict[str, dict] = {}
         for code, route_cfg in resolved.items():
-            final[code] = self._validate_config(
+            final[code] = validate_engine_config(
                 {
                     **route_cfg,
                     **route_overrides,

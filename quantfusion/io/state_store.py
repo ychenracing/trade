@@ -15,6 +15,7 @@ _RISK_STATE_SCHEMA_VERSION = 1
 _KNOWN_SCHEMA_VERSIONS: set[int] = {1}
 _RISK_STATE_REQUIRED_FIELDS: dict[str, type | tuple[type, ...]] = {
     "schema_version": int,
+    "run_id": str,
     "scan_date": str,
     "terminal_risk_lock": bool,
     "sector_guard_active": bool,
@@ -60,7 +61,7 @@ def _validate_risk_state(data: Any) -> str | None:
     Checks performed (in order):
     1. Data is a dict.
     2. ``schema_version`` exists, is an int (not bool), and is a known version.
-    3. All required fields exist with correct types.
+    3. All required fields exist with correct types; ``run_id`` is non-empty.
     4. ``bool`` is never accepted where ``int`` or ``float`` is expected.
     5. Numeric fields (``max_drawdown``, ``total_return``, ``final_assets``)
        are finite (no NaN/Inf).
@@ -70,9 +71,8 @@ def _validate_risk_state(data: Any) -> str | None:
     9. ``symbols_hash`` (if present) is a 16-char hex string.
     10. ``total_symbols`` (if present) is a non-negative int.
 
-    Unknown ``schema_version`` values are rejected to enforce forward
-    compatibility — a future version with changed field semantics must not
-    be silently loaded by this code.
+    Only known ``schema_version`` values and their exact field contracts are
+    accepted; unknown versions are rejected rather than interpreted.
     """
     if not isinstance(data, dict):
         return "risk_state.json 内容不是有效 JSON 对象"
@@ -131,6 +131,8 @@ def _validate_risk_state(data: Any) -> str | None:
             )
 
     # Range validation for specific fields
+    if not data["run_id"].strip():
+        return "risk_state.json 字段 'run_id' 必须是非空字符串"
     if data.get("cycle_lock_count", 0) < 0:
         return "risk_state.json 字段 'cycle_lock_count' 不能为负数"
     if data.get("final_assets", 0) < 0:
@@ -236,26 +238,29 @@ def _load_prev_risk_state(
 
 def _save_risk_state(
     output_dir: str, end_date: str, result: dict[str, Any],
+    *,
+    run_id: str,
     tradable: dict[str, str] | None = None,
     config_hash: str = "",
-    run_id: str = "",
 ) -> None:
     """Persist risk state for restoration by the next daily scan run.
 
     The ``symbols_hash`` includes symbol set, count, and (when provided)
     config fingerprint so that the same symbol set with different
-    configuration is treated as a different identity. A ``schema_version``
-    is included for forward compatibility.
+    configuration is treated as a different identity. ``schema_version``
+    selects the exact accepted field contract.
 
     The ``run_id`` is passed from the caller (the main scan function)
     so that the artifact, risk state, and latest_success pointer all
-    share the same run_id for traceability. If not provided, a new one
-    is generated (for backward compatibility with tests).
+    share the same run_id for traceability.
 
     Raises ``ValueError`` if any numeric field is NaN/Inf or if
     ``cycle_lock_count`` is negative. This prevents creating an invalid
     state file that would be rejected on the next load.
     """
+    if not isinstance(run_id, str) or not run_id.strip():
+        raise ValueError("run_id 必须是非空字符串")
+
     # Extract numeric values and validate they are finite before saving.
     # NaN/Inf would cause json.dumps(allow_nan=False) to raise ValueError
     # at serialization time (below), preventing the file from being written.
@@ -278,6 +283,7 @@ def _save_risk_state(
 
     state: dict[str, Any] = {
         "schema_version": _RISK_STATE_SCHEMA_VERSION,
+        "run_id": run_id,
         "scan_date": end_date,
         "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
         "sector_guard_active": bool(result.get("sector_guard_active", False)),
@@ -291,9 +297,6 @@ def _save_risk_state(
         # cross-contamination between different configurations.
         state["symbols_hash"] = _compute_identity_hash(tradable, config_hash)
         state["total_symbols"] = len(tradable)
-        # Use the caller-provided run_id so artifact, risk state, and
-        # latest_success pointer all share the same run_id.
-        state["run_id"] = run_id or _generate_run_id(end_date)
     state_file = Path(output_dir) / "risk_state.json"
     state_file.parent.mkdir(parents=True, exist_ok=True)
     # Atomic write: write to a temp file in the same directory, then

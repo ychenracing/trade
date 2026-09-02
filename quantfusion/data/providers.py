@@ -9,7 +9,6 @@ from typing import ClassVar
 
 import pandas as pd
 
-from quantfusion.config.paths import resolve_repository_data_dir
 from quantfusion.data.contracts import OPTIONAL_COLUMNS, REQUIRED_OHLC_COLUMNS
 from quantfusion.domain.rules import A_SHARE_LOT_SIZE, SYMBOL_RE, parse_dates
 
@@ -26,7 +25,7 @@ class DataFetcher:
 
     _COLUMN_ALIASES: ClassVar[dict[str, str]] = {
         # AKShare providers return localized headers. Unicode escapes keep the
-        # source English-only while preserving compatibility with those frames.
+        # source English-only while mapping the localized provider frames.
         "\u65e5\u671f": "date",
         "date": "date",
         "datetime": "date",
@@ -251,7 +250,7 @@ class DataFetcher:
         if pd.Timestamp(start_date) > pd.Timestamp(end_date):
             raise ValueError("start_date must not be later than end_date")
         if data_dir:
-            path = resolve_repository_data_dir(data_dir) / f"{symbol}.csv"
+            path = Path(data_dir).expanduser() / f"{symbol}.csv"
             if not path.is_file():
                 raise FileNotFoundError(f"Missing local market-data file: {path}")
             return DataFetcher._normalize_columns(pd.read_csv(path))
@@ -312,7 +311,7 @@ class DataFetcher:
             return combined[(combined.index >= start_ts) & (combined.index <= end_ts)].copy()
         if cache_path.is_file():
             _log(
-                f"  [Cache] {symbol}: legacy cache lacks a verified share-volume "
+                f"  [Cache] {symbol}: cache lacks a verified share-volume "
                 "contract; rebuilding from providers"
             )
         # No valid cache file: full fetch + save

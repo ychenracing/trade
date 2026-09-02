@@ -4,13 +4,13 @@
 
 本仓库采用单进程模块化单体。工程边界用于隔离变化原因，不改变策略参数、信号顺序、撮合顺序、组合核算、风险动作或生产回放语义。
 
-规范实现全部位于 `quantfusion/`。根目录中的历史模块名和命令行文件只负责兼容导出或启动应用，不能成为规范包的依赖源。
+全部 Python 实现与公共导入位于 `quantfusion/`。根目录不保留历史模块名或重复命令行文件；工具统一通过 `python -m scripts.<模块名>` 启动。
 
 ## 单向依赖
 
 ```mermaid
 flowchart TD
-    CLI[兼容入口与命令行] --> APP[应用服务]
+    CLI[规范模块与工具命令] --> APP[应用服务]
     APP --> ENGINE[引擎与生产回放]
     APP --> ACCOUNT[账户建议]
     APP --> RESEARCH[研究与压力验证]
@@ -21,11 +21,11 @@ flowchart TD
 
 依赖方向由 `tests/contract/test_architecture.py` 自动守卫：
 
-- 规范包禁止导入根目录兼容模块；
+- 历史根模块必须不存在，规范包禁止导入其旧名称；
 - 领域层禁止反向依赖引擎或应用层；
 - 跨子包禁止导入私有名称；
 - 规范模块导入图必须无环；
-- 根目录兼容入口必须保持薄层规模。
+- 根目录只保留文档与项目配置。
 
 ## 模块所有权
 
@@ -37,7 +37,7 @@ flowchart TD
 | `indicators/` | 无副作用技术指标 | 数据抓取和交易状态 |
 | `strategy/` | 趋势与弱市信号 | 总账户资金和文件系统 |
 | `execution/` | 执行优先级等稳定撮合规则 | 研究参数选择 |
-| `portfolio/` | 组合兼容导出与组合状态边界 | 命令行和网络 |
+| `portfolio/` | 组合状态、资金核算与分配边界 | 命令行和网络 |
 | `risk/` | 组合风控、治理证据和跨市场叠加层 | 应用流程和研究晋级 |
 | `regime/` | 指数证据与纯状态转换 | 持续账户和工件发布 |
 | `engine/` | 单袖套、组合引擎和生产逐日回放 | 命令行解析和研究搜索 |
@@ -50,7 +50,7 @@ flowchart TD
 
 回测、日扫、优化器、股票池验证和压力验证最终都调用规范引擎或 `ProductionReplayEngine`。研究层只产生候选配置和评价请求，不能复制信号、费用、涨跌停、成交量容量、T+1 或资金核算。
 
-旧接口仍可使用，例如 `quant_fusion.BacktestEngine` 和 `regime_adaptive.ProductionReplayEngine`，但它们均导向同一规范实现。
+公共代码直接从 `quantfusion.config`、`quantfusion.data`、`quantfusion.domain`、`quantfusion.engine`、`quantfusion.risk` 与 `quantfusion.application` 的当前模块导入。
 
 ## 状态所有权
 
@@ -102,7 +102,7 @@ RiskEvidence -> RiskPolicy -> RiskAction -> EngineAdapter -> pending signal
 
 规范代码与仓库资产分开管理：`quantfusion/` 只放可导入实现，`scripts/` 放可复现研究命令，`tests/` 按单元、契约、集成和经济回归分层。冻结股票行情位于 `data/market/`，路由证据位于 `data/regime/`，测试读取的黄金指标位于 `tests/fixtures/`，已审查批量结果位于 `artifacts/validation/`，账户输入样例位于 `examples/`。
 
-以上路径由 `quantfusion.config.paths` 统一提供。旧相对数据名只在调用目录没有同名真实路径时回落到新位置，避免覆盖用户自有目录。运行缓存、日扫输出、优化器输出和压力检查点属于临时状态，受 `.gitignore` 隔离，不得混入冻结数据或已审查工件。根目录只保留项目配置与旧公开兼容入口。
+canonical 仓库路径由 `quantfusion.config.paths` 提供。用户显式传入的数据路径始终按普通 `Path` 处理，不按目录名称映射到 canonical 路径；应用可以执行 `expanduser()` / `resolve()` 等常规规范化。运行缓存、日扫输出、优化器输出和压力检查点属于临时状态，受 `.gitignore` 隔离，不得混入冻结数据或已审查工件。根目录只保留文档与项目配置。
 
 ## 公共配置事实源
 
@@ -110,13 +110,16 @@ RiskEvidence -> RiskPolicy -> RiskAction -> EngineAdapter -> pending signal
 - 组合政策来自 `quantfusion.config.portfolio.PortfolioPolicy`；
 - 风险叠加参数来自 `quantfusion.config.overlay`；
 - 路由与弱市参数来自 `quantfusion.config.regime` 和 `quantfusion.config.weak`；
+- 行业分类、符号路由和参数画像构造来自 `quantfusion.config.profiles`；
 - 固定股票名称和验证股票池来自 `quantfusion.config.universe`。
 
-兼容类方法只委托给以上公共来源，禁止复制默认值。
+引擎与应用只读取以上公共来源，禁止复制默认值。
 
 ## 规模与类型约束
 
-普通业务模块超过约一千行或单函数超过约一百二十行时必须审查。`config/engine.py` 是默认值、可按标的单股覆盖字段与配置校验的唯一事实源；`engine/configuration.py` 只保留行业路由和参数画像组合。`application/daily_scan.py` 保留不可交换的事务顺序编排，其快照、信号、工件和状态实现已拆出。
+普通业务模块超过约一千行或单函数超过约一百二十行时必须审查。`config/engine.py` 是默认值、可按标的单股覆盖字段与配置校验的唯一事实源；`config/profiles.py` 组合这些默认值并唯一拥有行业分类、符号路由和画像构造，engine 不提供同名 wrapper。`application/daily_scan.py` 保留不可交换的事务顺序编排，其快照、信号、工件和状态实现已拆出。
+
+压力执行按四个直接职责分开：`application/stress_scenarios.py` 构造及选择计划，`stress_metrics.py` 计算汇总和门禁，`stress_artifacts.py` 校验检查点与控制发布，`stress.py` 只负责参数、编排和退出码。任何 ID、family 或 shard selector 都产生 diagnostic 计划；诊断检查点和输出与正式验证 namespace 隔离，只有未经筛选且与 canonical 默认场景计划精确一致的运行可以调用正式发布边界。
 
 `pyright quantfusion` 覆盖整个规范包。由于 pandas 本身未提供随包类型声明，配置不读取第三方库实现来推断类型；协作式 mixin 文件仅关闭无法从单文件推断的组合属性诊断，其余参数、返回值、可选值和导入检查继续生效。
 
@@ -136,7 +139,7 @@ RiskEvidence -> RiskPolicy -> RiskAction -> EngineAdapter -> pending signal
 
 ### 新增应用入口
 
-在 `application/` 组合现有公开服务，根目录只增加薄命令行入口。参数解析对象不得传入领域层。
+在 `application/` 组合现有公开服务；独立工具放入 `scripts/`，并只支持 `python -m scripts.<模块名>`。根目录不增加 Python 命令入口，参数解析对象不得传入领域层。
 
 ## 验证层级
 

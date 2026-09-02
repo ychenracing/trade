@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Validate that the fixed regime basket still represents the AI sector.
 
 Checks:
@@ -15,18 +14,12 @@ from __future__ import annotations
 import argparse
 import json
 import math
-
-if __package__:
-    from scripts._bootstrap import ensure_project_root
-else:
-    from _bootstrap import ensure_project_root
-
-ensure_project_root()
+from pathlib import Path
 
 import pandas as pd
 
 from quantfusion.application import engine_api as qf
-from quantfusion.config.paths import MARKET_DATA_DIR, resolve_repository_data_dir
+from quantfusion.config.paths import MARKET_DATA_DIR
 
 REGIME_BASKET = ("300308", "300502", "300394", "688008", "603986")
 BROAD_INDEX = "000300"  # 沪深300
@@ -36,7 +29,7 @@ def _load_returns(code: str, start: str, end: str, data_dir: str | None = None) 
     """Load daily returns for *code*."""
     try:
         if data_dir:
-            path = resolve_repository_data_dir(data_dir) / f"{code}.csv"
+            path = Path(data_dir).expanduser() / f"{code}.csv"
             df = pd.read_csv(path, index_col=0, parse_dates=True)
         else:
             df = qf.DataFetcher.load_stock_data(code, start, end)

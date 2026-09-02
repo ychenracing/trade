@@ -4,7 +4,7 @@
 
 Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线量化研究与人工决策支持项目。它用于收盘后回测、组合验证、日常信号扫描和真实账户持仓审视，不连接券商、不自动下单，也不承诺未来收益。
 
-规范实现位于 `quantfusion/` 模块化单体，根目录的 `quant_fusion.py`、`regime_adaptive.py` 等文件仅保留兼容接口与命令行入口。项目提供冻结行情、哈希校验、严格 JSON 工件、参数搜索、账户时点建议和持续集成门禁。
+全部 Python 实现与公共导入位于 `quantfusion/` 模块化单体；工具脚本统一通过 `python -m scripts.<模块名>` 运行。项目提供冻结行情、哈希校验、严格 JSON 工件、参数搜索、账户时点建议和持续集成门禁。
 
 ## 最重要的使用边界
 
@@ -32,13 +32,13 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 
 弱市策略使用 22% 灾难止损、5 ATR 初始止损、80 个交易日时间止损和盈利后 3 ATR 吊灯止损，同时启用 15% 回撤预警、20% 周期确认、23% 紧急回撤、26% 终身峰值回撤线和 12% 单日损失保护。风险订单在下一可交易开盘执行，跳空或连续跌停仍可能使实际损失超过阈值。
 
-穿越牛熊叠加层（`cross_market_overlay.py`）默认开启，是叠放在 ensemble 之上的 bull-silent 防御层。它从独立的 23 股、子行业等权风险篮子连续采样，支持预警后再冲击、连续恶化和严重多证据直达升级；一级冻结加仓，二级冻结新开仓并只削减最弱非核心持仓，三级进一步降风险。持仓同时采用分层保护止损：灾变止损（自持仓峰值回撤超过 28%）始终待命；成本止损（低于成本 18%）、ATR 吊灯（6 ATR）和盈利分层保护只在相应风险证据与账户回撤门槛同时满足时触发。趋势健康度只在确认风险中将盈利回吐线有界调整 3 个百分点。触发后标的进入 10 个交易日冷却期。专用弱市/现金路由持有执行权时，叠加层继续更新风险状态但不重复卖出或阻断。
+穿越牛熊叠加层（`quantfusion.risk.overlay`）默认开启，是叠放在 ensemble 之上的 bull-silent 防御层。它从独立的 23 股、子行业等权风险篮子连续采样，支持预警后再冲击、连续恶化和严重多证据直达升级；一级冻结加仓，二级冻结新开仓并只削减最弱非核心持仓，三级进一步降风险。持仓同时采用分层保护止损：灾变止损（自持仓峰值回撤超过 28%）始终待命；成本止损（低于成本 18%）、ATR 吊灯（6 ATR）和盈利分层保护只在相应风险证据与账户回撤门槛同时满足时触发。趋势健康度只在确认风险中将盈利回吐线有界调整 3 个百分点。触发后标的进入 10 个交易日冷却期。专用弱市/现金路由持有执行权时，叠加层继续更新风险状态但不重复卖出或阻断。
 
 子行业参数收缩（`subindustry_shrinkage`，默认 0.5 开启）：细分子行业参数画像（光模块、光器件、存储接口、芯片设计、设备、测试、材料、封装等）在解析时被拉向其粗粒度父画像，只对"允许细分"的参数（最大单票权重、ATR 倍数、风险预算）做小幅收缩，入场/出场周期、盈利保护、加仓与路由参数沿层级共享不收缩，从而降低薄样本过拟合，同时保留已验证的粗粒度趋势结构。
 
 ## 风险治理观测层
 
-`risk_governance.py`（默认随引擎自动开启）在既有决策路径之上输出一套与交易动作分离的风险治理证据。全部为纯函数/纯数据结构，不读取、不修改任何交易决策状态，因此对既有回测路径零行为漂移（五池黄金指标逐位不变）：
+`quantfusion.risk.governance`（默认随引擎自动开启）在既有决策路径之上输出一套与交易动作分离的风险治理证据。全部为纯函数/纯数据结构，不读取、不修改任何交易决策状态，因此对既有回测路径零行为漂移（五池黄金指标逐位不变）：
 
 - **预热健康契约（P0-1）**：每次运行输出 `READY` / `DEGRADED` / `NOT_READY` 三级预热健康报告。逐股统计回测开始日前的可用交易日数，新上市股票不静默获得与成熟股票相同的置信度；独立风险篮（23 股）就绪度按篮内实际可观察帧统计；regime 证据完全缺失时判 `NOT_READY`（风险层失明，失败关闭），存在但陈旧时降级 `DEGRADED` 并输出 `regime_index_stale` 原因。日扫中 `NOT_READY` 自动抑制全部新增买入（fail-closed），`DEGRADED` 仅显著提示。
 - **风险事件校准（P0-2）**：事后独立检测"已实现冲击"（未来 20 日组合回撤超过 8%），对每次 L1/L2/L3 警报计算 1/3/5/10/20 日组合最低收益、风险篮最低收益、最大回撤与恢复状态，并汇总 Shock Precision / Recall、领先天数、误报机会成本、漏报冲击深度、牛市沉默率与 L1→L2 升级精度。
@@ -51,7 +51,7 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 
 ## 默认策略参数
 
-完整默认策略字段如下，具体默认值和校验分别以 `quantfusion.config.engine.default_engine_config()` 与 `validate_engine_config()` 为唯一事实来源；旧 `_CoreBacktestEngine._default_config()` 仅委托到该公共接口：
+完整默认策略字段如下，具体默认值和校验分别以 `quantfusion.config.engine.default_engine_config()` 与 `validate_engine_config()` 为唯一事实来源：
 
 策略参数：`entry_period`、`exit_period`、`adx_threshold`、`adx_period`、`atr_period`、`rsi_period`、`ma_short`、`ma_long`、`atr_multiplier`、`trail_atr_mult`、`channel_mult`、`channel_lower_mult`、`risk_pct`、`hard_stop`、`strategy_weight`、`max_symbol_weight`、`max_total_weight`、`max_units`、`max_drawdown`、`daily_loss_limit`、`sector_guard_enabled`、`sector_guard_min_symbols`、`sector_shock_return`、`sector_shock_breadth`、`sector_shock_ma`、`sector_shock_window`、`sector_shock_confirmations`、`sector_recovery_ma`、`sector_recovery_breadth`、`sector_recovery_confirmations`、`symbol_level_sell_veto`、`momentum_lookback`、`max_positions`、`group_min_slots`、`fusion_single_scale`、`fusion_double_scale`、`fusion_triple_scale`、`profit_lock_activation`、`profit_lock_giveback`、`reversal_break_giveback`、`reversal_exit_period`、`reversal_loss_cut`、`reversal_turtle_enabled`、`reversal_dual_ma_enabled`、`reversal_atr_channel_enabled`、`combined_group_weight_limits`、`liquidate_on_circuit_breaker`、`strict_unmapped`、`commission_rate`、`stamp_duty`、`slippage`、`min_commission`、`max_pending_buy_days`、`pyramid_add_atr`、`pyramid_risk_decay`、`atr_method`、`limit_price_epsilon`、`per_symbol_limit_pct`、`st_symbols`、`risk_free_rate`、`market_regime_enabled`、`regime_ewi_lookback`、`regime_breadth_ma_long`、`regime_adx_trend`、`regime_adx_choppy`、`regime_hurst_window`、`regime_hurst_trend`、`regime_hurst_choppy`、`regime_vol_lookback`、`regime_vol_extreme_pct`、`regime_ewi_slope_trend`、`regime_ewi_slope_choppy`、`regime_score_trend`、`regime_score_choppy`、`regime_choppy_confirmations`、`regime_trend_confirmations`、`regime_recovery_confirmations`、`regime_min_state_hold`、`regime_transition_scale`、`regime_transition_pyramid_scale`、`regime_transition_trim_confirmations`、`regime_trend_to_transition_confirmations`、`regime_choppy_exit_ratio`、`regime_transition_exit_ratio`、`enable_cm_overlay`、`cm_overlay_shock_trim`、`cm_independent_risk_basket`、`cm_trend_health_protection`、`cm_risk_continuous_confirm_days`、`cm_risk_level2_drawdown`、`cm_risk_level3_drawdown`、`cm_risk_severe_direct_return`、`dynamic_sleeve_weights`、`transition_fast_weight`、`transition_base_weight`、`transition_slow_weight`、`choppy_fast_weight`、`choppy_base_weight`、`choppy_slow_weight`、`adaptive_max_positions`、`transition_max_positions`、`choppy_max_positions`、`sticky_candidates`、`adaptive_sticky_candidates`、`sticky_min_score_gap`、`sticky_confirm_days`、`sticky_cycle_days`、`sticky_rotated_cooldown_days`、`concentrated_account_rearm_days`、`incomplete_reference_max_total_weight`、`established_expansion_min_score`、`subindustry_shrinkage`。
 
@@ -80,16 +80,16 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 python -m pip install -r requirements.txt
 
 # 单轮回测（趋势引擎）
-python quant_fusion.py --start 2025-04-01 --end 2026-07-20 \
+python -m quantfusion.application.backtest_cli --start 2025-04-01 --end 2026-07-20 \
   --capital 2000000 --data-dir data/market --indicator-state warm --no-plot
 
 # 收盘后日扫（生成候选信号）
-python daily_signal_scan.py --end-date 2026-08-04 \
+python -m quantfusion.application.daily_scan --end-date 2026-08-04 \
   --cache-dir data_cache --output-dir daily_signals
 
 # 真实账户建议（先填入持仓）
 cp examples/account.json account.json
-python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
+python -m quantfusion.application.daily_scan --account account.json --end-date 2026-08-04 \
   --account-id main --cache-dir data_cache --output-dir daily_signals
 ```
 
@@ -101,7 +101,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 每个交易日收盘后按以下顺序执行：
 
-1. **数据刷新**：运行 `python daily_signal_scan.py --end-date <TODAY>` 拉取最新日线并生成候选信号。
+1. **数据刷新**：运行 `python -m quantfusion.application.daily_scan --end-date <TODAY>` 拉取最新日线并生成候选信号。
 2. **路由判断**：查看输出中的 `route` 字段（`trend` / `weak` / `cash`），确认今日走哪条路径。
 3. **候选审视**：检查 `candidates` 列表，关注排名、触发原因（`reasons`）和建议权重。
 4. **持仓建议**：若传入了 `--account`，查看 `actions` 中的持仓处置与非执行性买入筛选，结合实际账户人工决策。
@@ -109,7 +109,7 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 ### 参数探索
 
-1. 按 `risk` → `turnover` → `return` 三阶段运行 `quant_fusion_optimizer.py --stage <阶段> --data-dir data/market --regime-data-dir data/regime`，避免一个参数族掩盖另一个参数族的退化。优化器和部署都使用 `ProductionReplayEngine`。
+1. 按 `risk` → `turnover` → `return` 三阶段运行 `python -m quantfusion.application.optimizer --symbol 300308 --stage <阶段> --data-dir data/market --regime-data-dir data/regime`，避免一个参数族掩盖另一个参数族的退化。优化器和部署都使用 `ProductionReplayEngine`。
 2. 选择同时使用收益、回撤和交易次数三目标 Pareto 前沿，再在近似收益档内优先更低回撤和更少交易。
 3. 候选必须通过普通及压力 holdout 推广门：财富不得落后基线超过 1%，回撤不得恶化超过 0.5 个百分点，交易不得增加超过 3%，除非财富至少提高 5%。
 4. 任何参数变更都必须重新通过五组趋势基线精确回归，且必须能解释收益、回撤和交易次数变化的原因。
@@ -118,8 +118,24 @@ python daily_signal_scan.py --account account.json --end-date 2026-08-04 \
 
 1. 新增标的必须在 `quantfusion.config.universe` 与引擎配置的行业映射中找到对应画像，否则 `strict_unmapped=True` 会直接失败。
 2. 新行业需重新建立参数画像和基线，不能直接套用现有科技参数。
-3. 使用 `stress_test_prefixes.py` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。
-4. 任何 cross-market / 风险层改动晋级前，还必须通过相对可比经济合同的正式压力基线晋级门（P0-4）：固定前缀牛市财富不低于基线 99%，随机子集回撤 P90/P95 最多恶化 0.5 个百分点，全场景最差回撤最多恶化 1 个百分点、最差收益最多恶化 2 个百分点，最差逐一加入财富最多下降 3 个百分点，成交记录 P90/最差最多增加 5/10 笔，风险减仓中位数最多增加 2 笔，且同一 seed 的全排列场景指标必须完全一致。经济合同不同时比较状态为 `incomparable_economic_contract`，不得标记通过或作为回归失败。
+3. 使用 `python -m quantfusion.application.stress` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。定位问题时可用 `--scenario-id add-one-05-688205`、`--scenario-type add_one`，或成对提供 `--shard-index` 与 `--shard-count`；分片按正式场景顺序中的零基索引取模，映射确定且保留原顺序。
+4. 任何 cross-market / 风险层改动晋级前，还必须通过使用 `trade_records` 语义的 accepted canonical 正式压力基线晋级门（P0-4）：固定前缀牛市财富不低于基线 99%，随机子集回撤 P90/P95 最多恶化 0.5 个百分点，全场景最差回撤最多恶化 1 个百分点、最差收益最多恶化 2 个百分点，最差逐一加入财富最多下降 3 个百分点，日期/股票/方向桶 P90/最差最多增加 5/10 个，风险减仓中位数最多增加 2 笔，且同一 seed 的全排列场景指标必须完全一致。没有已接受的当前语义基线时晋级失败关闭。
+
+任何 ID、family 或 shard 选择都会进入诊断模式。诊断运行只写独立 diagnostic checkpoint，并可通过 `--diagnostic-output <路径>` 另存非 canonical JSON；它不能写入正式压力工件、更新基线或宣称 hard-gate / promotion acceptance。只有默认参数生成且未经筛选的精确正式场景计划可以进入发布路径。
+
+将占位符替换为已核验、包含当前 Python 源码的 40 位 Git SHA：
+
+```bash
+# 完整正式计划
+python -m quantfusion.application.stress \
+  --source-revision <verified-40-char-SHA>
+
+# 单场景诊断
+python -m quantfusion.application.stress \
+  --source-revision <verified-40-char-SHA> \
+  --scenario-id add-one-05-688205 \
+  --diagnostic-output artifacts/diagnostics/add-one-05-688205.json
+```
 
 ## 日扫信号与账户建议
 
@@ -199,11 +215,10 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 | `quantfusion/engine` | 单袖套、三袖套 ensemble、持续账户与唯一 `ProductionReplayEngine` 实现 |
 | `quantfusion/account`、`application`、`io` | 账户建议、日扫与研究流程、冻结快照、严格工件和原子状态发布 |
 | `quantfusion/research` | 候选参数、走步评价、Pareto 晋级门与可续跑研究证据 |
-| 根目录兼容文件 | 保持旧导入和命令行不变，全部委托给 `quantfusion/` 规范实现 |
 
 ### 工具脚本
 
-实现统一放在 `scripts/`，推荐使用 `python -m scripts.<模块名>`；原根目录命令和导入名由薄兼容层继续支持。
+工具实现统一放在 `scripts/`，唯一支持的启动形式是 `python -m scripts.<模块名>`。
 
 | 文件 | 用途 |
 |------|------|
@@ -213,7 +228,10 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 | `scripts/download_eastmoney_qfq.py` | 东方财富前复权数据下载器 |
 | `scripts/backtest_universes.py` | 多股票池批量回测，生成验证工件 |
 | `scripts/backtest_cambricon_universe.py` | 寒武纪九股池专项回测，生成验证工件 |
-| `stress_test_prefixes.py` | 可续跑的 983 场景生产回放压力测试，记录成交记录、袖套成交和原因归因 |
+| `quantfusion/application/stress.py` | 压力命令参数、运行编排和退出码 |
+| `quantfusion/application/stress_scenarios.py` | 正式场景构造、场景签名以及 ID/family/shard 确定性选择 |
+| `quantfusion/application/stress_metrics.py` | 汇总、指标、hard gates、promotion gates 与排列不变性 |
+| `quantfusion/application/stress_artifacts.py` | provenance、检查点校验和 formal/diagnostic 工件发布边界 |
 
 ### 测试文件
 
@@ -225,7 +243,7 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 | `tests/regression/test_regime_adaptive.py` | 外层路由与弱市策略回归 |
 | `tests/contract/test_regime_safety_contracts.py` | 弱市失败关闭与股票池完整性契约 |
 | `tests/integration/test_daily_*.py` | 按快照、状态、信号、结构、事务和命令行职责拆分的日扫集成契约 |
-| `tests/contract/test_architecture.py` | 单向依赖、无环导入、禁止旧模块反向依赖和兼容层规模守卫 |
+| `tests/contract/test_architecture.py` | 单向依赖、无环导入、禁止旧根模块与禁止规范包反向依赖 |
 | `tests/unit/` | 领域叶子、缓存上下文、引擎、状态机、风险动作、账户与研究模块测试 |
 | `tests/contract/test_fail_closed_boundaries.py` | 不可解析数据、缺失指数与格式异常契约 |
 | `tests/regression/test_quant_fusion_optimizer.py` | 优化器走步、候选淘汰和留出集回归 |
@@ -243,7 +261,7 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 | `artifacts/validation/` | 已审查的批量回测与压力验证工件 |
 | `examples/` | 不含真实账户信息的输入样例 |
 
-旧参数值 `--data-dir market_data` 和 `--regime-data-dir historical_data` 在调用方没有同名真实目录时会自动解析到新位置，现有自动化无需立即迁移。
+仓库内置命令的默认值使用 `data/market` 和 `data/regime`。显式传入的 `--data-dir` 与 `--regime-data-dir` 始终是普通 `Path`，绝不会按目录名称映射到 canonical 目录；具体命令可以执行常规的 `expanduser()` / `resolve()` 路径规范化。
 
 ### 配置与文档
 
@@ -266,12 +284,12 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 以下工件由工具脚本生成，按需重新运行即可，不常驻仓库：
 
 - `artifacts/validation/regime_validation_results.json`：弱市全量验证结果
-- `optimizer_output/`：`quant_fusion_optimizer.py` 的走步优化报告与推荐配置
+- `optimizer_output/`：`quantfusion.application.optimizer` 的走步优化报告与推荐配置
 - `daily_signals/`：每日扫描输出
 - `data_cache/`：行情数据缓存
 - `benchmark_validation.json`：基准验证输出
 
-`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只保存 accepted canonical 或明确标记的历史工件。完整但未通过门禁的运行保存在 `artifacts/validation/candidates/`，并标记为 `current_candidate`、`rejected`、`canonical=false`；它不会覆盖 canonical 路径，runner 仍以非零状态退出。当前保存的 983 场景候选因 `add-one-05-688205` 的财富变化 -23.4903% 低于未变的 -18% hard floor 而被拒绝。
+`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只由通过全部门禁的 accepted canonical 当前语义运行创建；当前没有此类基线，因此这两个路径不存在。完整但未通过门禁的运行保存在 `artifacts/validation/candidates/`，并标记为 `current_candidate`、`rejected`、`canonical=false`；它不会覆盖 canonical 路径，runner 仍以非零状态退出。当前保存的 983 场景候选因没有已接受的 `trade_records` 基线而失败关闭，同时 `add-one-05-688205` 的财富变化 -23.4903% 低于未变的 -18% hard floor。诊断输出不属于该目录，也不能进入正式发布逻辑。
 
 如需持久化某次验证结果，将对应文件放入 `artifacts/validation/` 并更新 `docs/VALIDATION.md`。
 
@@ -341,7 +359,7 @@ python -m pytest -q
 pyright quantfusion
 
 # 安全审计
-bandit -r quantfusion scripts *.py -ll
+bandit -r quantfusion scripts -ll
 
 # 依赖漏洞检查
 pip-audit --strict -r requirements-lock.txt

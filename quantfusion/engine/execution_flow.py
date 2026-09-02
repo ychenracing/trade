@@ -18,7 +18,6 @@ import pandas as pd
 from quantfusion.config.engine import default_engine_config
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import (
-    AccountState,
     BarContext,
     Position,
     SectorObservation,
@@ -117,65 +116,6 @@ class CoreExecutionMixin:
                 mark = price if price > 0 else pos.entry_price
                 total += pos.market_value_at(mark)
         return float(total)
-
-    @staticmethod
-    def _apply_account_state(
-        account_state: AccountState | None, engine: Any,
-        set_cash: bool = True,
-    ) -> dict[str, dict[str, Position]]:
-        """Convert AccountState positions to engine Position objects and set them.
-
-        Uses ``"external_account"`` as the strategy name for all injected
-        positions so that portfolio-level risk controls (drawdown, daily loss,
-        sector guard) can liquidate them.  Sets the engine's cash to the
-        account's cash balance and populates both ``positions`` and
-        ``_initial_positions`` so the engine can replay from the correct state
-        without modifying the simulation-only path.
-
-        Also seeds the engine's risk manager with the account's peak equity
-        so drawdown calculations start from the real high-water mark.
-
-        When ``set_cash`` is False (ensemble mode), cash is not overridden so
-        each sleeve retains its proportional ``sleeve_capital`` and only the
-        first sleeve receives the positions — preventing triple-counting.
-        """
-        if account_state is None:
-            return {}
-        if set_cash:
-            engine.cash = float(account_state.cash) if account_state.cash is not None else engine.cash
-            engine._initial_cash = engine.cash
-        converted: dict[str, dict[str, Position]] = {}
-        for code, pos_info in (account_state.positions or {}).items():
-            if not isinstance(pos_info, dict):
-                continue
-            shares = int(pos_info.get("shares", 0))
-            if shares <= 0:
-                continue
-            entry_price = float(pos_info.get("avg_cost", 0.0) or pos_info.get("price", 0.0))
-            if entry_price <= 0:
-                continue
-            entry_date = str(pos_info.get("entry_date", ""))
-            converted[code] = {
-                "external_account": Position(
-                    symbol=code,
-                    strategy_name="external_account",
-                    shares=shares,
-                    entry_price=entry_price,
-                    entry_date=entry_date,
-                )
-            }
-        engine.positions = dict(converted)
-        engine._initial_positions = dict(converted)
-        # P0 fix: seed the sleeve-level risk manager with the account's
-        # lifetime peak so drawdown calculations start from the real
-        # high-water mark rather than building up from zero.
-        peak = getattr(account_state, "peak_equity", None)
-        if peak is not None and peak > 0 and hasattr(engine, "risk") and engine.risk is not None:
-            if hasattr(engine.risk, "peak_assets"):
-                engine.risk.peak_assets = float(peak)
-            if hasattr(engine.risk, "lifetime_peak_assets"):
-                engine.risk.lifetime_peak_assets = float(peak)
-        return converted
 
     def _fit_buy_to_cash(
         self,
@@ -403,12 +343,7 @@ class CoreExecutionMixin:
     def _execute_sell(
         self, signal: Signal, strategy: BaseStrategy | None, date_str: str
     ) -> int:
-        """Execute a sell and return the filled share count.
-
-        When ``strategy`` is ``None`` (external-account positions), the
-        signal's ``strategy_name`` field is used to look up the position
-        instead of ``strategy.name``.
-        """
+        """Execute a strategy or risk-adapter sell and return its filled shares."""
         if signal.target_shares <= 0 or signal.price <= 0:
             return 0
         strat_name = strategy.name if strategy is not None else signal.strategy_name
@@ -427,9 +362,8 @@ class CoreExecutionMixin:
         exec_price = float(signal.price) * (1 - slippage)
         if signal.target_shares >= pos.shares:
             # Full liquidation: sell every share, including any odd lot, so an
-            # odd-lot position (e.g. injected via ``_apply_account_state``) can
-            # be fully cleared. A-share sells allow odd lots; the 100-share lot
-            # constraint applies only to buys.
+            # odd-lot remainder can be fully cleared. A-share sells allow odd
+            # lots; the 100-share lot constraint applies only to buys.
             sell_shares = pos.shares
         else:
             # Partial reduction: floor to a board lot. This is the behavior the
@@ -487,15 +421,7 @@ class CoreExecutionMixin:
     def _generate_liquidation_signals(
         self, date_str: str, reason: str = "circuit breaker liquidation"
     ) -> list[tuple[Signal, BaseStrategy]]:
-        """Queue full-position sells for execution at a later tradable open.
-
-        Covers both strategy-managed positions and externally injected
-        (``external_account``) holdings so that portfolio-level risk controls
-        (drawdown, daily loss, sector guard) can liquidate the entire book.
-        External positions use ``None`` as the strategy placeholder; the
-        execution path handles that case by looking up the position directly
-        from ``self.positions`` using the signal's ``strategy_name``.
-        """
+        """Queue full-position sells for execution at a later tradable open."""
         # These are ordinary pending sell signals. The placeholder price is always
         # replaced by a later tradable opening price before execution.
         signals = []
@@ -509,7 +435,7 @@ class CoreExecutionMixin:
             }
             for strat_name, pos in positions.items():
                 strategy = strategies.get(strat_name)
-                if strategy is None and strat_name != "external_account":
+                if strategy is None:
                     continue
                 sig = Signal(
                     symbol=code,
@@ -530,8 +456,6 @@ class CoreExecutionMixin:
 
         Unlike full liquidation, only *exit_ratio* of each position is sold,
         reducing exposure without abandoning all trend-following entries.
-        Externally injected (``external_account``) positions are also trimmed
-        so portfolio-level exposure reduction covers the entire book.
         """
         signals = []
         for code, positions in self.positions.items():
@@ -544,7 +468,7 @@ class CoreExecutionMixin:
             }
             for strat_name, pos in positions.items():
                 strategy = strategies.get(strat_name)
-                if strategy is None and strat_name != "external_account":
+                if strategy is None:
                     continue
                 # A-share sells may be any share count (odd lots allowed); the
                 # 100-share lot constraint applies only to buys. The execution

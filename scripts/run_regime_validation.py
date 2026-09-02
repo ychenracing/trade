@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Reproduce causal weak-market and frozen bull-market validation.
 
 The final blind-pool seed is part of the public protocol.  It was opened only
@@ -20,13 +19,6 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
-if __package__:
-    from scripts._bootstrap import ensure_project_root
-else:
-    from _bootstrap import ensure_project_root
-
-ensure_project_root()
-
 from quantfusion.application import engine_api as qf
 from scripts.backtest_universes import NAMES, UNIVERSES
 from quantfusion.config.paths import (
@@ -39,7 +31,6 @@ from quantfusion.config.paths import (
 from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
 
 
-HISTORICAL_DATA = REGIME_DATA_DIR
 MARKET_DATA = MARKET_DATA_DIR
 ROOT = PROJECT_ROOT
 OUTPUT = VALIDATION_ARTIFACT_DIR / "regime_validation_results.json"
@@ -62,11 +53,6 @@ def _golden_bull(name: str) -> tuple[float, float, int]:
         float(item["max_drawdown"]),
         int(item["total_trades"]),
     )
-
-
-# Compatibility view for callers of the former root module.  Runtime validation
-# and this mapping deliberately share the same checked-in golden source.
-GOLDEN_BULL = {name: _golden_bull(name) for name in UNIVERSES}
 
 
 def deterministic_pools() -> list[tuple[str, tuple[str, ...]]]:
@@ -134,7 +120,7 @@ def _run_pool(task: tuple[str, tuple[str, ...], str, str, str]) -> dict[str, Any
                 symbols,
                 start_date,
                 end_date,
-                data_dir=str(HISTORICAL_DATA),
+                data_dir=str(REGIME_DATA_DIR),
                 indicator_state="warm",
             )
         else:
@@ -142,7 +128,7 @@ def _run_pool(task: tuple[str, tuple[str, ...], str, str, str]) -> dict[str, Any
                 symbols,
                 start_date,
                 end_date,
-                data_dir=str(HISTORICAL_DATA),
+                data_dir=str(REGIME_DATA_DIR),
                 indicator_state="warm",
             )
     return {
@@ -195,7 +181,7 @@ def _run_bull(task: tuple[str, tuple[str, ...]]) -> dict[str, Any]:
             "2025-04-01",
             "2026-07-20",
             data_dir=str(MARKET_DATA),
-            regime_data_dir=str(HISTORICAL_DATA),
+            regime_data_dir=str(REGIME_DATA_DIR),
             indicator_state="warm",
         )
     expected = _golden_bull(name)
@@ -227,7 +213,7 @@ def _run_bull(task: tuple[str, tuple[str, ...]]) -> dict[str, Any]:
 
 def data_integrity() -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
-    for path in sorted(HISTORICAL_DATA.glob("*.csv")):
+    for path in sorted(REGIME_DATA_DIR.glob("*.csv")):
         frame = pd_read_csv_dates(path)
         rows.append(
             {

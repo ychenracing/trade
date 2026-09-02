@@ -13,17 +13,6 @@ import pandas as pd
 class OverlayModuleContracts(unittest.TestCase):
     """Overlay decisions are canonical immutable actions before adaptation."""
 
-    def test_legacy_overlay_is_canonical_policy(self) -> None:
-        legacy = importlib.import_module("cross_market_overlay")
-        policy = importlib.import_module("quantfusion.risk.overlay.policy")
-        self.assertIs(legacy.CrossMarketOverlay, policy.CrossMarketOverlay)
-
-    def test_risk_governance_is_canonical(self) -> None:
-        legacy = importlib.import_module("risk_governance")
-        canonical = importlib.import_module("quantfusion.risk.governance")
-        self.assertIs(legacy.build_risk_opinion, canonical.build_risk_opinion)
-        self.assertIs(legacy.assess_warmup_health, canonical.assess_warmup_health)
-
     def test_risk_action_is_immutable(self) -> None:
         models = importlib.import_module("quantfusion.risk.overlay.models")
         action = models.RiskAction(
@@ -95,6 +84,20 @@ class OverlayModuleContracts(unittest.TestCase):
             actions, [state], date_str="2026-01-06", events=overlay.events
         )
         self.assertEqual(state.pending[0][0].reason.split(":")[0], "catastrophe_stop")
+
+    def test_policy_exposes_decisions_without_queue_adapter_methods(self) -> None:
+        policy = importlib.import_module("quantfusion.risk.overlay.policy")
+        overlay = policy.CrossMarketOverlay()
+
+        self.assertTrue(callable(overlay.evaluate))
+        for name in (
+            "on_day",
+            "_consolidate_risk_sells",
+            "block_cooldown_buys",
+            "block_risk_buys",
+        ):
+            with self.subTest(name=name):
+                self.assertFalse(hasattr(overlay, name))
 
     def test_adapter_uses_action_priority_and_existing_pending(self) -> None:
         """Adaptation consolidates new and carried risk sells by action priority."""

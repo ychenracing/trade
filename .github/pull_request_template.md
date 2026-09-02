@@ -80,12 +80,12 @@
 
 - None known
 
-# Behavior and Compatibility Impact
+# Behavior and Data Contract Impact
 
 - [ ] Production behavior impact has been assessed and documented
 - [ ] Configuration semantic impact has been assessed and documented
 - [ ] Dependency impact has been assessed and documented
-- [ ] Data, schema, migration, or backward-compatibility impact has been assessed and documented
+- [ ] Data and schema contract impact has been assessed and documented
 
 # Next Action
 

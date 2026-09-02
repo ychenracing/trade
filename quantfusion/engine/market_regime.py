@@ -17,7 +17,7 @@ import pandas as pd
 
 from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
 from quantfusion.data.providers import DataFetcher
-from quantfusion.domain.models import AccountState, MarketRegimeObservation, Signal
+from quantfusion.domain.models import MarketRegimeObservation, Signal
 from quantfusion.domain.rules import floor_to_lot, require_int
 from quantfusion.engine.core import CoreBacktestEngine
 from quantfusion.engine.ensemble import (
@@ -80,54 +80,7 @@ class MarketRegimeMixin:
         self._regime_transition_days: int = 0
         self._regime_transition_trimmed: bool = False
         self._external_risk_level: int = 0
-        # ── DEPRECATED: Account snapshot injection ─────────────────────
-        # The public run() API now raises NotImplementedError when
-        # account_state is passed. The injection logic below is dead code
-        # retained for reference until the separate account signal engine
-        # is built. Do NOT re-enable without reading the architecture
-        # defects documented in docs/VALIDATION.md.
-        self._account_state_to_inject: AccountState | None = None
-        self._account_state_injected: bool = False
         self._regime_effective_state: str = "TREND"
-
-    def _process_trading_day(
-        self,
-        symbols_dict: dict[str, str],
-        data_map: dict[str, pd.DataFrame],
-        indicator_map: dict[str, dict[str, pd.Series]],
-        all_dates: list[pd.Timestamp],
-        date_to_pos: dict[pd.Timestamp, int],
-        date: pd.Timestamp,
-        pending: list[tuple[Signal, BaseStrategy]],
-    ) -> list[tuple[Signal, BaseStrategy]]:
-        """Inject the account snapshot on the as-of date before delegating.
-
-        When ``_account_state_to_inject`` is set and the current date is the
-        second-to-last trading day (the day before the simulation end / as-of
-        date), the real account state replaces the simulated book before the
-        day's opening execution.  Every date before the injection point runs
-        as an unmodified simulation so historical signal generation is not
-        affected by the snapshot.
-        """
-        if (
-            self._account_state_to_inject is not None
-            and not self._account_state_injected
-        ):
-            as_of_idx = max(0, len(all_dates) - 2)
-            if date_to_pos.get(date, -1) >= as_of_idx:
-                _CoreBacktestEngine._apply_account_state(
-                    self._account_state_to_inject, self
-                )
-                self._account_state_injected = True
-        return super()._process_trading_day(  # pyright: ignore[reportAttributeAccessIssue]
-            symbols_dict,
-            data_map,
-            indicator_map,
-            all_dates,
-            date_to_pos,
-            date,
-            pending,
-        )
 
     def _prepare_run(
         self,

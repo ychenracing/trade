@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Reproduce the mapped nine-symbol Cambricon regression."""
 
 from __future__ import annotations
@@ -10,19 +9,13 @@ import json
 from concurrent.futures import ProcessPoolExecutor
 from typing import Any
 
-if __package__:
-    from scripts._bootstrap import ensure_project_root
-else:
-    from _bootstrap import ensure_project_root
-
-ensure_project_root()
-
 from quantfusion.application import engine_api as qf
 from quantfusion.config.paths import (
     MARKET_DATA_DIR,
     PROJECT_ROOT,
     VALIDATION_ARTIFACT_DIR,
 )
+from quantfusion.config.profiles import get_symbol_classification
 
 
 DATA_DIR = MARKET_DATA_DIR
@@ -99,9 +92,9 @@ def main() -> int:
         "initial_capital": INITIAL_CAPITAL,
         "symbols": SYMBOLS,
         "cambricon_mapping": {
-            "classification": qf.BacktestEngine.get_symbol_classification("688256", "unknown"),
-            "risk_group": qf.BacktestEngine.get_symbol_group("688256", "unknown"),
-            "parameter_profile": qf.BacktestEngine.get_symbol_profile("688256", "unknown"),
+            "classification": get_symbol_classification("688256", "unknown"),
+            "risk_group": qf.get_symbol_group("688256", "unknown"),
+            "parameter_profile": qf.get_symbol_profile("688256", "unknown"),
         },
         "results": results,
     }

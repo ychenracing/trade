@@ -10,13 +10,8 @@ from unittest.mock import patch
 class OptimizerModuleContracts(unittest.TestCase):
     """Research primitives have one canonical implementation."""
 
-    def test_legacy_optimizer_resolves_to_canonical_application(self) -> None:
-        legacy = importlib.import_module("quant_fusion_optimizer")
-        canonical = importlib.import_module("quantfusion.application.optimizer")
-        self.assertIs(legacy, canonical)
-
     def test_candidates_evaluation_and_search_are_canonical(self) -> None:
-        optimizer = importlib.import_module("quant_fusion_optimizer")
+        optimizer = importlib.import_module("quantfusion.application.optimizer")
         candidates = importlib.import_module("quantfusion.research.candidates")
         evaluation = importlib.import_module("quantfusion.research.evaluation")
         search = importlib.import_module("quantfusion.research.search")

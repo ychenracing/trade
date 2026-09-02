@@ -16,9 +16,13 @@ import numpy as np
 import pandas as pd
 
 from quantfusion.config.engine import default_engine_config
+from quantfusion.config.profiles import (
+    SYMBOL_PROFILES,
+    classify_symbol,
+    uses_unmapped_auto_route,
+)
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import (
-    AccountState,
     BarContext,
     Position,
     SectorObservation,
@@ -36,7 +40,6 @@ from quantfusion.domain.rules import (
     require_positive,
 )
 from quantfusion.indicators.technical import Indicators
-from quantfusion.engine.configuration import EngineConfigurationMixin
 from quantfusion.risk.managers import RiskManager
 from quantfusion.strategy.trend import (
     ATRChannelStrategy,
@@ -141,9 +144,9 @@ class CoreResultsMixin:
             "drawdown_series": drawdown,
             "pending_signals": [signal for signal, _ in self.pending_signals],
             "parameter_routes": {
-                code: EngineConfigurationMixin._SYMBOL_PROFILE.get(
+                code: SYMBOL_PROFILES.get(
                     code,
-                    EngineConfigurationMixin.classify_symbol(
+                    classify_symbol(
                         code, name=self.symbol_names.get(code, "")
                     ),
                 )
@@ -152,7 +155,7 @@ class CoreResultsMixin:
             "unmapped_symbols": sorted(
                 code
                 for code, name in self.symbol_names.items()
-                if EngineConfigurationMixin._uses_unmapped_auto_route(code, name)
+                if uses_unmapped_auto_route(code, name)
             ),
             "fusion_events": list(self.fusion_events),
             "risk_events": list(self.risk_events),

@@ -126,3 +126,7 @@ def main() -> dict | None:
             f"equity_curve_{args.indicator_state}.png",
         )
     return result
+
+
+if __name__ == "__main__":
+    main()

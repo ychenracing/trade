@@ -107,7 +107,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
                  patch.object(dss, "_save_risk_state",
                               side_effect=OSError("disk full")):
                 with patch("sys.argv", [
-                    "daily_signal_scan.py",
+                    "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
                 ]):
@@ -148,7 +148,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
                  patch.object(dss, "_save_risk_state",
                               side_effect=ValueError("拒绝保存非有限值")):
                 with patch("sys.argv", [
-                    "daily_signal_scan.py",
+                    "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
                 ]):
@@ -197,7 +197,7 @@ class LastGoodArtifactProtectionTests(unittest.TestCase):
              patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                           return_value=mock_result):
             with patch("sys.argv", [
-                "daily_signal_scan.py",
+                "quantfusion.application.daily_scan",
                 "--output-dir", tmpdir,
                 "--end-date", "2026-07-30",
             ]):
@@ -344,7 +344,7 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
              patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                           return_value=mock_result):
             with patch("sys.argv", [
-                "daily_signal_scan.py",
+                "quantfusion.application.daily_scan",
                 "--output-dir", tmpdir,
                 "--end-date", "2026-07-30",
             ]):
@@ -438,7 +438,7 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
                               return_value=mock_result), \
                  patch("os.replace", side_effect=fail_replace):
                 with patch("sys.argv", [
-                    "daily_signal_scan.py",
+                    "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
                 ]):
@@ -485,7 +485,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
              patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                           return_value=mock_result):
             with patch("sys.argv", [
-                "daily_signal_scan.py",
+                "quantfusion.application.daily_scan",
                 "--output-dir", tmpdir,
                 "--end-date", end_date,
             ]):
@@ -518,7 +518,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
                               return_value=mock_result), \
                  patch("os.replace", side_effect=fail_artifact_replace):
                 with patch("sys.argv", [
-                    "daily_signal_scan.py",
+                    "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
                 ]):
@@ -549,7 +549,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
                  patch.object(dss, "_save_risk_state",
                               side_effect=OSError("simulated disk full")):
                 with patch("sys.argv", [
-                    "daily_signal_scan.py",
+                    "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
                 ]):
@@ -609,7 +609,7 @@ class RunIdConsistencyTests(unittest.TestCase):
                  patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                               return_value=mock_result):
                 with patch("sys.argv", [
-                    "daily_signal_scan.py",
+                    "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
                 ]):

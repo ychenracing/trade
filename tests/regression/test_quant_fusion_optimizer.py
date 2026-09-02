@@ -10,7 +10,7 @@ from unittest import mock
 
 import pandas as pd
 
-import quant_fusion_optimizer as optimizer
+from quantfusion.application import optimizer
 
 
 def metrics(

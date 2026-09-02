@@ -130,7 +130,7 @@ def _run_main() -> int:
     start_date = args.start_date or START_DATE
 
     # Real holdings use a separate point-in-time engine. They are never
-    # injected into the historical simulator, so account advice cannot create
+    # passed to the replay engine, so account advice cannot create
     # a hybrid or look-ahead-contaminated equity curve.
     if args.account:
         return account_scan.run_account_scan(
@@ -193,8 +193,8 @@ def _run_main() -> int:
     print("  ℹ 模拟模式: 信号基于从零开始的回测，不代表真实账户持仓。")
     print("-" * 72)
 
-    # Configure incremental cache for efficient daily updates. Legacy
-    # caches without an explicit share-volume contract are rebuilt.
+    # Configure incremental cache for efficient daily updates. Caches without
+    # an explicit share-volume contract are rebuilt.
     index_refresh = market_data_contracts.refresh_regime_indices(
         args.regime_data_dir, end_date=end_date, strict=False
     )
@@ -325,7 +325,7 @@ def _run_main() -> int:
             return 1
 
     # Freeze the exact stock and index bytes before either the current-route
-    # decision or the historical replay. Same-day reruns reuse this directory
+    # decision or the requested replay. Same-day reruns reuse this directory
     # only after checking the hashed manifest, every CSV hash, and the absence
     # of extra evidence files.
     run_id = _generate_run_id(end_date)
@@ -391,15 +391,9 @@ def _run_main() -> int:
     print("  正在运行回测，请稍候...")
     print("-" * 72)
 
-    # NOTE: risk_state is NOT passed to the engine. The daily scan replays
-    # the full history from start_date to end_date every time. Injecting the
-    # previous run's end-state (e.g. terminal_risk_lock=True from July 30)
-    # into a fresh replay starting from July 1 would create a time-direction
-    # error: the future末端 state would change the past historical path.
-    # Instead, the engine independently rebuilds all risk states from the
-    # actual historical data. The saved risk_state.json is loaded for
-    # display and continuity checking only — it does NOT influence the
-    # current backtest.
+    # risk_state is not passed to the engine. Each requested replay rebuilds
+    # risk state from its own dated inputs. The saved risk_state.json is used
+    # only for display and continuity checks, never as replay input.
     engine = ra.RegimeAdaptiveBacktestEngine(capital)
     result = engine.run(
         tradable,
@@ -490,18 +484,18 @@ def _run_main() -> int:
 
     # ── Extract latest pending signals ───────────────────────────────
     pending = result.get("pending_signals", [])
-    historical_decision = result.get("deployment_decision", {})
+    replay_decision = result.get("deployment_decision", {})
     current_selected = (
         set(current_decision.leaders.selected_symbols)
         if current_decision.leaders is not None
         else set()
     )
-    historical_selected = set(result.get("selected_symbols", []))
+    replay_selected = set(result.get("selected_symbols", []))
     live_route_mismatch = (
-        historical_decision.get("name") != current_decision.name
+        replay_decision.get("name") != current_decision.name
         or (
             current_decision.name == "positive_momentum_hold"
-            and historical_selected != current_selected
+            and replay_selected != current_selected
         )
     )
     if live_route_mismatch:
@@ -906,9 +900,12 @@ def _run_main() -> int:
     if not risk_identity_mismatch:
         try:
             _save_risk_state(
-                args.output_dir, end_date, result, tradable,
-                config_hash=config_fingerprint,
+                args.output_dir,
+                end_date,
+                result,
                 run_id=run_id,
+                tradable=tradable,
+                config_hash=config_fingerprint,
             )
             risk_state_saved = True
         except (OSError, ValueError, TypeError) as exc:
@@ -993,3 +990,7 @@ def _run_main() -> int:
 def main() -> int:
     """Run one scan with request-scoped market-data cache configuration."""
     return _run_main()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

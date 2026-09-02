@@ -15,10 +15,21 @@ from typing import Any, Callable, ClassVar
 import numpy as np
 import pandas as pd
 
-from quantfusion.config.engine import default_engine_config
+from quantfusion.config.engine import (
+    PER_SYMBOL_OVERRIDE_KEYS,
+    default_engine_config,
+    validate_engine_config,
+)
+from quantfusion.config.profiles import (
+    SYMBOL_GROUPS,
+    classify_symbol,
+    config_for_symbol,
+    optimized_aggressive_config,
+    semiconductor_config,
+    semiconductor_heavy_config,
+)
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import (
-    AccountState,
     BarContext,
     Position,
     SectorObservation,
@@ -35,7 +46,6 @@ from quantfusion.domain.rules import (
     require_positive,
 )
 from quantfusion.indicators.technical import Indicators
-from quantfusion.engine.configuration import EngineConfigurationMixin
 from quantfusion.risk.managers import RiskManager
 from quantfusion.strategy.trend import (
     ATRChannelStrategy,
@@ -243,23 +253,9 @@ class CoreSignalMixin:
             )
 
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
-        """Reset every mutable ledger and state machine for a fresh run.
-
-        If account-state injection populated ``_initial_positions`` and
-        ``_initial_cash`` before this method is called (single-sleeve mode),
-        those values are restored after the reset so the engine replays from
-        the real portfolio state instead of a zero-position, full-capital start.
-        """
-        self.cash = (
-            self._initial_cash
-            if getattr(self, "_initial_cash", None) is not None
-            else self.initial_capital
-        )
-        self.positions = (
-            dict(self._initial_positions)
-            if getattr(self, "_initial_positions", None)
-            else {}
-        )
+        """Reset every mutable ledger and state machine for a fresh run."""
+        self.cash = self.initial_capital
+        self.positions = {}
         self.trades = []
         self.equity_curve = []
         self.strategy_instances = {}
@@ -275,19 +271,21 @@ class CoreSignalMixin:
         self._safe_mode_active = False
         self._sector_shock_positions = []
         self._sector_recovery_streak = 0
-        self.cfg = self._validate_config({**self._default_config(), **self._user_cfg})
+        self.cfg = validate_engine_config(
+            {**default_engine_config(), **self._user_cfg}
+        )
 
     def _apply_global_profile(self, profile: str | None) -> None:
         """Layer an optional profile beneath explicit user overrides."""
         factories = {
-            "semiconductor": self.semiconductor_config,
-            "semiconductor_heavy": self.semiconductor_heavy_config,
-            "aggressive": self.optimized_aggressive_config,
+            "semiconductor": semiconductor_config,
+            "semiconductor_heavy": semiconductor_heavy_config,
+            "aggressive": optimized_aggressive_config,
         }
         factory = factories.get(profile) if profile is not None else None
         if factory is not None:
-            self.cfg = self._validate_config(
-                {**self._default_config(), **factory(), **self._user_cfg}
+            self.cfg = validate_engine_config(
+                {**default_engine_config(), **factory(), **self._user_cfg}
             )
 
     def _resolve_symbol_configs(
@@ -308,7 +306,7 @@ class CoreSignalMixin:
         for code, values in overrides.items():
             if not isinstance(values, dict):
                 raise ValueError(f"per_symbol_config[{code}] must be a dict")
-            ignored_keys = sorted(set(values) - self._PER_SYMBOL_OVERRIDE_KEYS)
+            ignored_keys = sorted(set(values) - PER_SYMBOL_OVERRIDE_KEYS)
             if ignored_keys:
                 raise ValueError(
                     f"per_symbol_config[{code}] contains global-only or unknown keys: {ignored_keys}; set global values through _CoreBacktestEngine(cfg=...)"
@@ -316,10 +314,10 @@ class CoreSignalMixin:
         self.risk = RiskManager(self.cfg)
         self.risk.configure_groups(
             {
-                code: EngineConfigurationMixin._SYMBOL_GROUP.get(
+                code: SYMBOL_GROUPS.get(
                     code,
                     "domestic_semiconductor"
-                    if EngineConfigurationMixin.classify_symbol(
+                    if classify_symbol(
                         code, name=symbols_dict.get(code, "")
                     )
                     == "semiconductor"
@@ -331,7 +329,7 @@ class CoreSignalMixin:
 
         def _base_for(code: str) -> dict:
             if config_route == "auto":
-                return EngineConfigurationMixin.config_for_symbol(
+                return config_for_symbol(
                     code,
                     name=symbols_dict.get(code, ""),
                     shrinkage=self.cfg.get("subindustry_shrinkage"),
@@ -339,6 +337,8 @@ class CoreSignalMixin:
             return self.cfg
 
         return {
-            code: self._validate_config({**_base_for(code), **overrides.get(code, {})})
+            code: validate_engine_config(
+                {**_base_for(code), **overrides.get(code, {})}
+            )
             for code in symbols_dict
         }

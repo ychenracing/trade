@@ -10,10 +10,14 @@ from unittest.mock import patch
 
 import pandas as pd
 
-import daily_signal_scan as daily
-import regime_adaptive as ra
+from quantfusion.application import daily_scan as daily
 import quantfusion.regime.evidence as regime_evidence
+from quantfusion.config.engine import default_engine_config
 from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT, REGIME_DATA_DIR
+from quantfusion.config.regime import REGIME_INDEX_FILES
+from quantfusion.domain.models import Position
+from quantfusion.engine import replay as ra
+from quantfusion.engine.core import CoreBacktestEngine
 
 
 ROOT = PROJECT_ROOT
@@ -63,7 +67,7 @@ class RegimeEvidenceTests(unittest.TestCase):
             }
         )
         with tempfile.TemporaryDirectory() as directory:
-            for code in ra.REGIME_INDEX_FILES.values():
+            for code in REGIME_INDEX_FILES.values():
                 frame.to_csv(Path(directory) / f"{code}.csv", index=False)
             evidence = ra.detect_regime(directory, as_of="2023-12-29")
         self.assertEqual(evidence.regime, "unknown")
@@ -214,9 +218,9 @@ class DynamicRouteStateMachineTests(unittest.TestCase):
         )
 
     def test_outer_strategy_is_liquidatable_without_double_registration(self) -> None:
-        engine = ra.qf._CoreBacktestEngine(1_000_000)
-        strategy = ra.PositiveMomentumHoldStrategy(engine._default_config())
-        position = ra.qf.Position(
+        engine = CoreBacktestEngine(1_000_000)
+        strategy = ra.PositiveMomentumHoldStrategy(default_engine_config())
+        position = Position(
             symbol="300308",
             strategy_name=strategy.name,
             shares=100,

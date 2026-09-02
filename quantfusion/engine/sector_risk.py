@@ -18,7 +18,6 @@ import pandas as pd
 from quantfusion.config.engine import default_engine_config
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import (
-    AccountState,
     BarContext,
     Position,
     SectorObservation,

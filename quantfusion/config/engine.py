@@ -1,8 +1,10 @@
-"""Public engine defaults; compatibility classes delegate here."""
+"""Canonical engine defaults and validation."""
 
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
+from typing import Any
 
 from quantfusion.domain.rules import (
     SYMBOL_RE as _SYMBOL_RE,
@@ -46,9 +48,9 @@ PER_SYMBOL_OVERRIDE_KEYS: frozenset[str] = frozenset(
     }
 )
 
-def default_engine_config() -> dict:
+def default_engine_config() -> dict[str, Any]:
     """Return the complete auditable strategy and execution defaults."""
-    # Values are explicit to keep every historical run auditable. Industry
+    # Values are explicit to keep every run auditable. Industry
     # profiles below copy this dictionary and override only declared fields.
     return {
         "entry_period": 8,
@@ -206,7 +208,7 @@ def default_engine_config() -> dict:
     }
 
 
-def validate_engine_config(cfg: dict) -> dict:
+def validate_engine_config(cfg: Mapping[str, Any]) -> dict[str, Any]:
     """Validate one complete engine configuration and normalize containers."""
     out = dict(cfg)
     allowed_keys = set(default_engine_config().keys())

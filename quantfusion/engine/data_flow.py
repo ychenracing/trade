@@ -16,9 +16,14 @@ import numpy as np
 import pandas as pd
 
 from quantfusion.config.engine import default_engine_config
+from quantfusion.config.profiles import (
+    SYMBOL_GROUPS,
+    SYMBOL_PROFILES,
+    classify_symbol,
+    uses_unmapped_auto_route,
+)
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import (
-    AccountState,
     BarContext,
     Position,
     SectorObservation,
@@ -35,7 +40,6 @@ from quantfusion.domain.rules import (
     require_positive,
 )
 from quantfusion.indicators.technical import Indicators
-from quantfusion.engine.configuration import EngineConfigurationMixin
 from quantfusion.risk.managers import RiskManager
 from quantfusion.strategy.trend import (
     ATRChannelStrategy,
@@ -89,13 +93,13 @@ class CoreDataFlowMixin:
             data_map[code] = df
             ind_map[code] = Indicators.compute_all(df, symbol_configs[code])
             route = (
-                EngineConfigurationMixin._SYMBOL_PROFILE.get(
-                    code, EngineConfigurationMixin.classify_symbol(code, name=name)
+                SYMBOL_PROFILES.get(
+                    code, classify_symbol(code, name=name)
                 )
                 if config_route == "auto"
                 else str(profile or "default")
             )
-            if config_route == "auto" and self._uses_unmapped_auto_route(code, name):
+            if config_route == "auto" and uses_unmapped_auto_route(code, name):
                 msg = (
                     f"  [Route warning] {name}({code}) has no explicit metadata; "
                     "using the default trend profile"
@@ -143,10 +147,10 @@ class CoreDataFlowMixin:
                     code
                     for code, _ in ranked
                     if (
-                        EngineConfigurationMixin._SYMBOL_GROUP.get(code)
+                        SYMBOL_GROUPS.get(code)
                         or (
                             "domestic_semiconductor"
-                            if EngineConfigurationMixin.classify_symbol(
+                            if classify_symbol(
                                 code, name=symbols_dict.get(code, "")
                             )
                             == "semiconductor"

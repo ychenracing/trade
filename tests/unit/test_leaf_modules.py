@@ -5,11 +5,8 @@ from __future__ import annotations
 import importlib
 import unittest
 
-import quant_fusion as legacy
-
-
 class DomainRuleTests(unittest.TestCase):
-    """Shared A-share rules keep their legacy behavior and public names."""
+    """Shared A-share rules keep their current behavior and public names."""
 
     def test_lot_rounding_and_limit_rules_are_canonical(self) -> None:
         rules = importlib.import_module("quantfusion.domain.rules")
@@ -17,7 +14,6 @@ class DomainRuleTests(unittest.TestCase):
         self.assertEqual(rules.floor_to_lot(-1), 0)
         self.assertEqual(rules.limit_pct_for_code("300308"), 0.20)
         self.assertEqual(rules.limit_pct_for_code("600206"), 0.10)
-        self.assertIs(legacy._floor_to_lot, rules.floor_to_lot)
 
     def test_numeric_validation_keeps_exception_contract(self) -> None:
         rules = importlib.import_module("quantfusion.domain.rules")
@@ -26,33 +22,47 @@ class DomainRuleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be bool"):
             rules.require_bool("enabled", 1)
 
+    def test_domain_rules_have_no_private_duplicate_names(self) -> None:
+        rules = importlib.import_module("quantfusion.domain.rules")
+        for name in (
+            "_is_finite_number",
+            "_require_finite",
+            "_require_positive",
+            "_require_bool",
+            "_require_int",
+            "_floor_to_lot",
+            "_limit_pct_for_code",
+            "_parse_dates",
+            "_SYMBOL_RE",
+        ):
+            with self.subTest(name=name):
+                self.assertFalse(hasattr(rules, name))
+
 
 class LeafIdentityTests(unittest.TestCase):
-    """Legacy imports resolve to the one canonical implementation source."""
+    """Canonical public imports resolve to the implementation source."""
 
     def test_data_indicator_and_domain_types_are_reexported(self) -> None:
+        public_data = importlib.import_module("quantfusion.data")
         providers = importlib.import_module("quantfusion.data.providers")
-        technical = importlib.import_module("quantfusion.indicators.technical")
+        public_domain = importlib.import_module("quantfusion.domain")
         models = importlib.import_module("quantfusion.domain.models")
-        self.assertIs(legacy.DataFetcher, providers.DataFetcher)
-        self.assertIs(legacy.Indicators, technical.Indicators)
-        self.assertIs(legacy.Position, models.Position)
-        self.assertIs(legacy.Signal, models.Signal)
-
-    def test_market_data_contract_legacy_module_is_canonical(self) -> None:
-        canonical = importlib.import_module("quantfusion.data.contracts")
-        old = importlib.import_module("market_data_contracts")
-        self.assertIs(old.refresh_regime_indices, canonical.refresh_regime_indices)
+        self.assertIs(public_data.DataFetcher, providers.DataFetcher)
+        self.assertIs(public_domain.Position, models.Position)
+        self.assertIs(public_domain.Signal, models.Signal)
 
     def test_default_engine_config_is_a_single_source(self) -> None:
         config = importlib.import_module("quantfusion.config.engine")
-        self.assertEqual(
-            config.default_engine_config(),
-            legacy._CoreBacktestEngine._default_config(),
-        )
+        core = importlib.import_module("quantfusion.engine.core")
+        self.assertFalse(hasattr(core.CoreBacktestEngine, "_default_config"))
+        self.assertEqual(core.CoreBacktestEngine().cfg, config.default_engine_config())
         first = config.default_engine_config()
         first["entry_period"] = 999
         self.assertEqual(config.default_engine_config()["entry_period"], 8)
+
+    def test_misleading_account_order_count_alias_is_absent(self) -> None:
+        models = importlib.import_module("quantfusion.domain.models")
+        self.assertFalse(hasattr(models, "account_order_count"))
 
 
 if __name__ == "__main__":

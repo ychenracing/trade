@@ -187,7 +187,7 @@ def _run_with_market(
         ),
         patch.object(engine, "_frame", side_effect=_load),
         patch.object(
-            account_scan.BacktestEngine,
+            account_scan,
             "config_for_symbol",
             return_value=config,
         ),
@@ -555,7 +555,7 @@ def test_real_weak_route_reuses_one_frozen_frame_per_symbol() -> None:
         ),
         patch.object(engine, "_frame", side_effect=_load),
         patch.object(
-            account_scan.BacktestEngine,
+            account_scan,
             "config_for_symbol",
             return_value={},
         ),

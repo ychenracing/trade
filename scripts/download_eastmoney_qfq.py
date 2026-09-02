@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Download a reproducible Eastmoney forward-adjusted OHLCV snapshot."""
 
 from __future__ import annotations
@@ -9,13 +8,6 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
-
-if __package__:
-    from scripts._bootstrap import ensure_project_root
-else:
-    from _bootstrap import ensure_project_root
-
-ensure_project_root()
 
 import pandas as pd
 
@@ -140,13 +132,14 @@ def main() -> int:
     symbols = tuple(args.symbols or DEFAULT_SYMBOLS)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
+    symbol_manifest: dict[str, object] = {}
     manifest: dict[str, object] = {
         "provider": "Eastmoney push2his",
         "adjustment": "qfq",
         "volume_unit": "shares",
         "requested_start": args.start,
         "requested_end": args.end,
-        "symbols": {},
+        "symbols": symbol_manifest,
     }
     for symbol in symbols:
         frame, name = _download(symbol, args.start, args.end)
@@ -154,7 +147,7 @@ def main() -> int:
         frame.assign(date=frame["date"].dt.strftime("%Y-%m-%d")).to_csv(
             path, index=False
         )
-        manifest["symbols"][symbol] = {
+        symbol_manifest[symbol] = {
             "name": name,
             "rows": len(frame),
             "first_date": frame["date"].iloc[0].strftime("%Y-%m-%d"),

@@ -22,9 +22,7 @@
 
 精确浮点值和经济序列指纹保存在 `tests/fixtures/backtest_golden_metrics.json`，完整冷启动、预热和两个截止日结果保存在 `artifacts/validation/universe_backtest.json`。持续集成直接重跑五池并逐项比较：成交记录、卖出记录、日期/股票/方向桶等整数指标精确一致，收益与回撤等浮点指标仅容忍严格的跨平台浮点求和顺序差异（`rel_tol=1e-9`），不允许任何真实行为漂移静默通过。
 
-`total_trades` 与 `sleeve_fill_count` 都是实际 `TradeRecord` 数量，`sell_trades` 与 `sleeve_sell_fill_count` 都是实际卖出记录数量。`date_symbol_side_count` 和 `date_symbol_sell_side_count` 只统计唯一日期、股票、方向桶；它们不是券商订单数，也不能证明券商端合单或净额。袖套继续独立成交，系统不模拟券商级净额，同日相反成交可能产生双边费用与滑点。
-
-本次 Minimal Account Correctness Closure 删除了旧跨袖套预处理器。旧实现分别在 1/3/5/13/22 股池记录了 1/71/78/166/108 个 `netted_cross_sleeve_buy` 事件，并删除或削减原买入信号；新实现保留原信号并继续卖出先于买入。五池的固定 regime route 指纹均保持 `cedb8518…`，冻结行情、策略、路由、风险阈值、费用和滑点参数均未修改，因此成交、费用和后续持仓路径变化可归因于取消伪净额；1 股池成交序列和收益完全不变，仅计数语义与净额事件序列变化。
+`total_trades` 与 `sleeve_fill_count` 都是实际 `TradeRecord` 数量，`sell_trades` 与 `sleeve_sell_fill_count` 都是实际卖出记录数量。`date_symbol_side_count` 和 `date_symbol_sell_side_count` 只统计唯一日期、股票、方向桶；它们不是券商订单数，也不能证明券商端合单或净额。每个 sleeve 独立保留信号和 fills，不做跨 sleeve 虚假净额抵消；同日相反成交可能产生双边费用与滑点。五池精确指标和交易序列指纹位于 `tests/fixtures/backtest_golden_metrics.json`，固定 regime route 指纹均为 `cedb8518…`。
 
 ## 冷启动与预热
 
@@ -50,33 +48,32 @@
 
 风险职责遵循单一执行者原则：已有趋势账本遇到指数转弱时，外层路由只记录状态，跨市场叠加层负责买入门控和风险动作；只有从空仓进入弱市时才建立弱市龙头账本。恢复确认使用 30 个连续交易日，但期间继续持有正动量龙头，不是空仓等待。动态弱势策略登记在独立外部清算注册表中，因此能被组合、板块和路由风险清算，又不会被核心信号循环重复调用。
 
-## 组合压力验证（当前候选与历史 canonical）
+## 组合压力验证（当前语义候选）
 
 当前完整 983 场景运行已保存为非 canonical 候选：
 
-- 路径：`artifacts/validation/candidates/stress-117a0ea17a333be17fbd345a14eb67fb328d046c-rejected.json`
-- 文件 SHA-256：`d3bd007e1c60b5c4296fe2629a01a370a648acfd09b376b0c1edf4339052c442`
+- 路径：`artifacts/validation/candidates/stress-f5625e5b5813a5b58c52d076ad3c38e33d8b3292-rejected.json`
+- 文件 SHA-256：`adda276bea8a11b76fa6881e4e7a9770bf8cfb79bb93a397aa5aa405327358c2`
 - 状态：`current_candidate`、`rejected`、`canonical=false`
 - 完整性：983/983，983 个唯一场景 ID，无缺失、重复或非有限指标；所有场景均为 `production_daily_replay`
-- 来源证明（provenance）：source revision `117a0ea17a333be17fbd345a14eb67fb328d046c`，source fingerprint `98b6bcd7d39ab9de3352af24dca05721b95d01b45fa3facbae7890a35dfc6ea1`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `dcebfe65f431b432cdb82e999505e0d87ef5a61b21f1b2544f5e357822ee541f`
+- 来源证明（provenance）：source revision `f5625e5b5813a5b58c52d076ad3c38e33d8b3292`，source fingerprint `a79a96c059b01d6ee98a25d3d6d8d9719906bd2fee69836dc35b5186664c51d5`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `1982b16888237ce989d3022f942d5d525c1be2bd627a58fbcf849252ec6ea814`
+- 晋级门禁：当前没有 accepted canonical 且使用 `trade_records` 语义的基线，状态为 `no_incumbent_baseline`、`applicable=false`、`passed=false`，晋级失败关闭
 - 绝对门禁：`worst_add_one_wealth_at_least_minus_18pct` 失败；`add-one-05-688205` 相对 `prefix-05` 的财富变化为 `-0.23490347753273277`，要求仍为 `>= -0.18`
 - 排列不变性：通过
 
-该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。失败运行仍返回非零状态，但完整结果会先写入独立 candidate 路径，防止证据丢失。
+该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。失败运行仍返回非零状态，但完整结果会先写入独立 candidate 路径，防止证据丢失。实时压力代码只接受 `trade_count_semantics="trade_records"`；没有 accepted canonical 当前语义基线时使用 `no_incumbent_baseline` 并失败关闭。
 
-旧 incumbent 标记为 `historical_pre_minimal_account_correctness`，早于 PR #13 已接受的经济语义。三股前缀比较精确等于 `(1 + 10.593889691663627) / (1 + 11.224308338588003) = 0.9484290947624122`，因此该 promotion 比较属于 `incomparable_economic_contract`，既不标记通过，也不再作为当前候选失败原因。逐一加入 promotion 比较同样不可比；当前独立阻塞只有上述 -18% 绝对 hard gate。
-
-`artifacts/validation/universe_stress.json` 保存本次正确性修复前的 983 个端到端场景：83 个固定前缀/留一/逐一加入场景、三个固定种子下 750 个随机子集，以及 150 个完整 22 股顺序置换。该工件中的 `total_trades` 是旧日期/股票/方向桶语义，只能作为历史压力参考，不能解释为券商订单，也不是本次候选的当前成交记录基线。本任务不修改压力阈值或优化器；当前候选以五池精确回放和序列指纹作为经济回归门禁。
+压力诊断可按精确 `scenario_id`、场景族或确定性 shard 执行。任何 selector 都使运行成为 diagnostic：只允许独立检查点、stdout 汇总和显式 diagnostic JSON，不能写正式 `prefix_stress.json` / `universe_stress.json`、更新 incumbent 或声明完整门禁通过。只有未经筛选且与 canonical 默认场景签名精确相等的 983 场景计划能够进入正式发布校验。
 
 | 场景族 | 数量 | 收益中位数 | 最差收益 | 最差回撤 | 交易中位数 | 最高交易 |
 |---|---:|---:|---:|---:|---:|---:|
-| 前缀 | 22 | 1072.2789% | 530.8950% | -18.9984% | 100 | 137 |
-| 留一 | 22 | 1070.8368% | 94.9188% | -19.0467% | 100 | 130 |
-| 逐一加入 | 39 | 1237.1641% | 965.8953% | -18.3885% | 101 | 130 |
-| 随机子集 | 750 | 117.1891% | -12.1056% | -21.2073% | 23 | 143 |
-| 顺序置换 | 150 | 1080.8378% | 1080.8378% | -15.9248% | 100 | 100 |
+| 前缀 | 22 | 1052.7670% | 530.8950% | -18.9984% | 227 | 268 |
+| 留一 | 22 | 1041.9857% | 94.9188% | -19.0467% | 228 | 273 |
+| 逐一加入 | 39 | 1250.3463% | 914.8013% | -18.3885% | 218 | 283 |
+| 随机子集 | 750 | 117.1891% | -12.1056% | -21.2231% | 60 | 289 |
+| 顺序置换 | 150 | 1052.7670% | 1052.7670% | -15.3842% | 228 | 228 |
 
-随机子集回撤严重度的 90 分位为 18.8486%，最差回撤为 -21.2073%；旧日期/股票/方向桶的 90 分位为 48，全场景最高为 143。9→10 股财富变化为 -2.6452%，最差相邻扩展为 -16.8528%，最差逐一加入为 -16.8025%，均仅描述历史工件。随机子集最差收益为 -12.1056%，说明固定五池的高收益不能外推到任意组合，历史门禁通过也不构成未来收益保证。
+随机子集回撤严重度的 90 分位为 18.8486%，最差回撤为 -21.2231%；日期/股票/方向桶的 90 分位为 47，全场景最高为 139。9→10 股财富变化为 -3.1155%，最差相邻扩展为 -15.5426%，最差逐一加入为 -23.4903%。随机子集最差收益为 -12.1056%，说明固定五池的高收益不能外推到任意组合；该候选未通过门禁，也不构成未来收益保证。
 
 ## 优化器验收协议
 
@@ -86,13 +83,13 @@
 
 账户候选评分保留 15% 行业相对强度：每只股票使用 20/60 日收益，相对其细分画像均值与完整 AI 候选池均值计算。任一预期候选缺失、被提供层标记为 stale 或实际截止日不一致时，不再缩小横截面并用中性值继续推荐，而是抑制全部新增买入。可用持仓的成本止损、趋势退出和 T+1 卖出提示仍独立保留。
 
-`--account` 只接受严格 v3 同日快照；`account_id` 和 `snapshot_date` 必须分别匹配 CLI 预期账户与请求日期。持仓峰值只使用建仓日及之后的价格、快照 `highest_close` 与当前收盘价；建仓早于加载窗口且无 `highest_close` 时标记 `PEAK_EVIDENCE_INCOMPLETE` 并禁用依赖完整峰值的保护。买入候选是时点式策略筛选，`shares` 固定为零，`indicative_target_shares` 仅为收盘价估算。真实账户历史注入、跨日状态恢复、券商连接和自动下单均保持禁用。
+`--account` 只接受严格 v3 同日 `AccountSnapshot`；`account_id` 和 `snapshot_date` 必须分别匹配 CLI 预期账户与请求日期。持仓峰值只使用建仓日及之后的价格、快照 `highest_close` 与当前收盘价；建仓早于加载窗口且无 `highest_close` 时标记 `PEAK_EVIDENCE_INCOMPLETE` 并停用依赖完整峰值的保护。买入候选是时点式策略筛选，`shares` 固定为零，`indicative_target_shares` 仅为收盘价估算。该快照只进入账户建议边界，不传入 replay engine，也不提供券商执行或跨日账户账本。
 
 ## 风险治理观测层（零行为漂移验证）
 
-`risk_governance.py` 观测层默认开启并随每次回测自动输出：预热健康契约、风险事件校准、独立风险意见、袖套共识证据、风险篮覆盖置信度与 L1 冻结机会成本。该层只读取既有状态做观测与输出，不进入任何交易决策路径。
+`quantfusion.risk.governance` 观测层默认开启并随每次回测自动输出：预热健康契约、风险事件校准、独立风险意见、袖套共识证据、风险篮覆盖置信度与 L1 冻结机会成本。该层只读取既有状态做观测与输出，不进入任何交易决策路径。
 
-验证方式：五池黄金指标冻结总收益、最大回撤、实际成交记录、日期/股票/方向桶和经济事件序列。Minimal Account Correctness Closure 有意改变成交路径与计数语义，因此已在逐字段归因后更新直接受影响基线；五池 regime route 指纹不变，风险治理代码与阈值未改。
+验证方式：五池黄金指标冻结总收益、最大回撤、实际成交记录、日期/股票/方向桶和经济事件序列；五池 regime route 指纹同时受固定断言保护。风险治理观测字段不进入交易决策路径。
 
 新增随结果附出的治理字段（均 JSON 可序列化）：
 
@@ -120,9 +117,7 @@
 
 - `tests/fixtures/backtest_golden_metrics.json`：五组趋势精确基线与序列指纹；
 - `artifacts/validation/universe_backtest.json`：冷启动与预热组合结果；
-- `artifacts/validation/prefix_stress.json`：完整 1 至 22 股前缀结果；
-- `artifacts/validation/universe_stress.json`：留一、逐一加入、随机子集和置换结果；
-- `artifacts/validation/candidates/`：完整但未通过适用门禁的非 canonical 压力候选；
+- `artifacts/validation/candidates/`：完整但未通过适用门禁的当前语义非 canonical 压力候选；
 - `artifacts/validation/cambricon_universe_backtest.json`：寒武纪映射历史回归；
 - `data/market/SHA256SUMS` 与 `data/regime/SHA256SUMS`：冻结数据哈希。
 

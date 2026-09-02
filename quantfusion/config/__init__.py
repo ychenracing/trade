@@ -15,7 +15,6 @@ from quantfusion.config.paths import (
     REGIME_DATA_DIR,
     TEST_FIXTURES_DIR,
     VALIDATION_ARTIFACT_DIR,
-    resolve_repository_data_dir,
 )
 
 __all__ = [
@@ -29,7 +28,6 @@ __all__ = [
     "REGIME_DATA_DIR",
     "TEST_FIXTURES_DIR",
     "VALIDATION_ARTIFACT_DIR",
-    "resolve_repository_data_dir",
     "default_engine_config",
     "validate_engine_config",
 ]

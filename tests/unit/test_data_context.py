@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+from quantfusion.data.contracts import refresh_regime_indices
 from quantfusion.data.providers import DataFetcher
 
 
@@ -35,15 +36,28 @@ class DataContextContracts(unittest.TestCase):
             "300308", "2026-01-01", "2026-01-02", "cache"
         )
 
-    def test_removed_market_data_name_falls_back_to_bundled_snapshot(self) -> None:
+    def test_user_supplied_market_data_name_remains_a_literal_path(self) -> None:
         with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
-            frame = DataFetcher.load_stock_data(
-                "300308",
-                "2025-04-01",
-                "2025-04-10",
-                data_dir="market_data",
-            )
-        self.assertFalse(frame.empty)
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                r"Missing local market-data file: market_data/300308\.csv$",
+            ):
+                DataFetcher.load_stock_data(
+                    "300308",
+                    "2025-04-01",
+                    "2025-04-10",
+                    data_dir="market_data",
+                )
+
+    def test_user_supplied_historical_data_name_remains_a_literal_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                r"missing frozen regime-index files: 000300, 000682$",
+            ):
+                refresh_regime_indices(
+                    "historical_data", end_date="2020-01-01", strict=True
+                )
 
 
 if __name__ == "__main__":
