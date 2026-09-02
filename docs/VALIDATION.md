@@ -63,7 +63,9 @@
 - 绝对门禁：`worst_add_one_wealth_at_least_minus_18pct` 失败；`add-one-05-688205` 相对 `prefix-05` 的财富变化为 `-0.23490347753273277`，要求仍为 `>= -0.18`
 - 排列不变性：通过
 
-该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。失败运行仍返回非零状态，但完整结果会先写入独立 candidate 路径，防止证据丢失。历史兼容语义工件已从正式路径删除；实时压力代码只接受 `trade_count_semantics="trade_records"`，不存在旧计数转换或特殊状态分支。
+该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。失败运行仍返回非零状态，但完整结果会先写入独立 candidate 路径，防止证据丢失。实时压力代码只接受 `trade_count_semantics="trade_records"`；没有 accepted canonical 当前语义基线时使用 `no_incumbent_baseline` 并失败关闭。
+
+压力诊断可按精确 `scenario_id`、场景族或确定性 shard 执行。任何 selector 都使运行成为 diagnostic：只允许独立检查点、stdout 汇总和显式 diagnostic JSON，不能写正式 `prefix_stress.json` / `universe_stress.json`、更新 incumbent 或声明完整门禁通过。只有未经筛选且与 canonical 默认场景签名精确相等的 983 场景计划能够进入正式发布校验。
 
 | 场景族 | 数量 | 收益中位数 | 最差收益 | 最差回撤 | 交易中位数 | 最高交易 |
 |---|---:|---:|---:|---:|---:|---:|

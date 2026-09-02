@@ -906,9 +906,12 @@ def _run_main() -> int:
     if not risk_identity_mismatch:
         try:
             _save_risk_state(
-                args.output_dir, end_date, result, tradable,
-                config_hash=config_fingerprint,
+                args.output_dir,
+                end_date,
+                result,
                 run_id=run_id,
+                tradable=tradable,
+                config_hash=config_fingerprint,
             )
             risk_state_saved = True
         except (OSError, ValueError, TypeError) as exc:

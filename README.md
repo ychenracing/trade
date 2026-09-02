@@ -118,8 +118,10 @@ python -m quantfusion.application.daily_scan --account account.json --end-date 2
 
 1. 新增标的必须在 `quantfusion.config.universe` 与引擎配置的行业映射中找到对应画像，否则 `strict_unmapped=True` 会直接失败。
 2. 新行业需重新建立参数画像和基线，不能直接套用现有科技参数。
-3. 使用 `python -m quantfusion.application.stress` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。
-4. 任何 cross-market / 风险层改动晋级前，还必须通过使用 `trade_records` 语义的 accepted canonical 正式压力基线晋级门（P0-4）：固定前缀牛市财富不低于基线 99%，随机子集回撤 P90/P95 最多恶化 0.5 个百分点，全场景最差回撤最多恶化 1 个百分点、最差收益最多恶化 2 个百分点，最差逐一加入财富最多下降 3 个百分点，日期/股票/方向桶 P90/最差最多增加 5/10 个，风险减仓中位数最多增加 2 笔，且同一 seed 的全排列场景指标必须完全一致。没有已接受的当前语义基线时晋级失败关闭，不会建立兼容比较状态。
+3. 使用 `python -m quantfusion.application.stress` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。定位问题时可用 `--scenario-id add-one-05-688205`、`--scenario-type add_one`，或成对提供 `--shard-index` 与 `--shard-count`；分片按正式场景顺序中的零基索引取模，映射确定且保留原顺序。
+4. 任何 cross-market / 风险层改动晋级前，还必须通过使用 `trade_records` 语义的 accepted canonical 正式压力基线晋级门（P0-4）：固定前缀牛市财富不低于基线 99%，随机子集回撤 P90/P95 最多恶化 0.5 个百分点，全场景最差回撤最多恶化 1 个百分点、最差收益最多恶化 2 个百分点，最差逐一加入财富最多下降 3 个百分点，日期/股票/方向桶 P90/最差最多增加 5/10 个，风险减仓中位数最多增加 2 笔，且同一 seed 的全排列场景指标必须完全一致。没有已接受的当前语义基线时晋级失败关闭。
+
+任何 ID、family 或 shard 选择都会进入诊断模式。诊断运行只写独立 diagnostic checkpoint，并可通过 `--diagnostic-output <路径>` 另存非 canonical JSON；它不能写入正式压力工件、更新基线或宣称 hard-gate / promotion acceptance。只有默认参数生成且未经筛选的精确正式场景计划可以进入发布路径。
 
 ## 日扫信号与账户建议
 
@@ -212,7 +214,10 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 | `scripts/download_eastmoney_qfq.py` | 东方财富前复权数据下载器 |
 | `scripts/backtest_universes.py` | 多股票池批量回测，生成验证工件 |
 | `scripts/backtest_cambricon_universe.py` | 寒武纪九股池专项回测，生成验证工件 |
-| `quantfusion/application/stress.py` | 可续跑的 983 场景生产回放压力测试，记录成交记录、袖套成交和原因归因 |
+| `quantfusion/application/stress.py` | 压力命令参数、运行编排和退出码 |
+| `quantfusion/application/stress_scenarios.py` | 正式场景构造、场景签名以及 ID/family/shard 确定性选择 |
+| `quantfusion/application/stress_metrics.py` | 汇总、指标、hard gates、promotion gates 与排列不变性 |
+| `quantfusion/application/stress_artifacts.py` | provenance、检查点校验和 formal/diagnostic 工件发布边界 |
 
 ### 测试文件
 
@@ -242,7 +247,7 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 | `artifacts/validation/` | 已审查的批量回测与压力验证工件 |
 | `examples/` | 不含真实账户信息的输入样例 |
 
-仓库内置命令的默认值使用 `data/market` 和 `data/regime`。显式传入的 `--data-dir` 与 `--regime-data-dir` 按普通路径处理（仅展开 `~`），不会改写 `market_data` 或 `historical_data`。
+仓库内置命令的默认值使用 `data/market` 和 `data/regime`。显式传入的 `--data-dir` 与 `--regime-data-dir` 始终是普通 `Path`，绝不会按目录名称映射到 canonical 目录；具体命令可以执行常规的 `expanduser()` / `resolve()` 路径规范化。
 
 ### 配置与文档
 
@@ -270,7 +275,7 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 - `data_cache/`：行情数据缓存
 - `benchmark_validation.json`：基准验证输出
 
-`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只由通过全部门禁的 accepted canonical 当前语义运行创建；当前没有此类基线，因此这两个路径不存在。完整但未通过门禁的运行保存在 `artifacts/validation/candidates/`，并标记为 `current_candidate`、`rejected`、`canonical=false`；它不会覆盖 canonical 路径，runner 仍以非零状态退出。当前保存的 983 场景候选因没有已接受的 `trade_records` 基线而失败关闭，同时 `add-one-05-688205` 的财富变化 -23.4903% 低于未变的 -18% hard floor。
+`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只由通过全部门禁的 accepted canonical 当前语义运行创建；当前没有此类基线，因此这两个路径不存在。完整但未通过门禁的运行保存在 `artifacts/validation/candidates/`，并标记为 `current_candidate`、`rejected`、`canonical=false`；它不会覆盖 canonical 路径，runner 仍以非零状态退出。当前保存的 983 场景候选因没有已接受的 `trade_records` 基线而失败关闭，同时 `add-one-05-688205` 的财富变化 -23.4903% 低于未变的 -18% hard floor。诊断输出不属于该目录，也不能进入正式发布逻辑。
 
 如需持久化某次验证结果，将对应文件放入 `artifacts/validation/` 并更新 `docs/VALIDATION.md`。
 

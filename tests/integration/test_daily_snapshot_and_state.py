@@ -93,7 +93,9 @@ class RiskStateTests(unittest.TestCase):
                 "total_return": 0.4532,
                 "final_assets": 2906400.0,
             }
-            dss._save_risk_state(tmpdir, "2026-07-30", result)
+            dss._save_risk_state(
+                tmpdir, "2026-07-30", result, run_id="roundtrip-test"
+            )
 
             loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-31")
             self.assertIsNone(error)
@@ -116,7 +118,9 @@ class RiskStateTests(unittest.TestCase):
                 "total_return": 0.10,
                 "final_assets": 2200000.0,
             }
-            dss._save_risk_state(tmpdir, "2026-07-30", result)
+            dss._save_risk_state(
+                tmpdir, "2026-07-30", result, run_id="same-day-test"
+            )
 
             # Same-day load should still return the state with no error
             loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-30")
@@ -158,6 +162,7 @@ class RiskStateMismatchTests(unittest.TestCase):
             }
             tradable1 = {"300308": "中际旭创", "300502": "新易盛"}
             dss._save_risk_state(tmpdir, "2026-07-28", result1,
+                                 run_id="mismatch-test",
                                  tradable=tradable1,
                                  config_hash="start=2026-07-01|indicator=warm")
             original_data = json.loads(
@@ -200,6 +205,7 @@ class RiskStateMismatchTests(unittest.TestCase):
             }
             tradable = {"300308": "中际旭创", "300502": "新易盛"}
             dss._save_risk_state(tmpdir, "2026-07-28", result,
+                                 run_id="consecutive-mismatch-test",
                                  tradable=tradable,
                                  config_hash="start=2026-07-01|indicator=warm")
 
@@ -234,6 +240,7 @@ class RiskStateMismatchTests(unittest.TestCase):
                 }
                 tradable = {"300308": "中际旭创"}
                 dss._save_risk_state(tmpdir, f"2026-07-{28+i}", result,
+                                     run_id=f"terminal-lock-cycle-{i}",
                                      tradable=tradable,
                                      config_hash="start=2026-07-01|indicator=warm")
                 loaded, error = dss._load_prev_risk_state(tmpdir, f"2026-07-{29+i}")

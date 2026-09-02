@@ -116,7 +116,9 @@ class AccountRiskWorkflowTests(unittest.TestCase):
                 "total_return": -0.15,
                 "final_assets": 1700000.0,
             }
-            dss._save_risk_state(tmpdir, "2026-07-28", result)
+            dss._save_risk_state(
+                tmpdir, "2026-07-28", result, run_id="terminal-lock-test"
+            )
             loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-30")
             self.assertIsNone(error)
             self.assertIsNotNone(loaded)
@@ -136,12 +138,14 @@ class AccountRiskWorkflowTests(unittest.TestCase):
                 "total_return": 0.08,
                 "final_assets": 2160000.0,
             }
-            dss._save_risk_state(tmpdir, "2026-07-29", result)
+            dss._save_risk_state(
+                tmpdir, "2026-07-29", result, run_id="valid-json-test"
+            )
             state_path = Path(tmpdir) / "risk_state.json"
             self.assertTrue(state_path.exists())
             data = json.loads(state_path.read_text(encoding="utf-8"))
             expected_keys = {
-                "schema_version", "scan_date", "terminal_risk_lock",
+                "schema_version", "run_id", "scan_date", "terminal_risk_lock",
                 "sector_guard_active", "cycle_lock_count", "max_drawdown",
                 "total_return", "final_assets",
             }
@@ -154,7 +158,13 @@ class AccountRiskWorkflowTests(unittest.TestCase):
                       "cycle_lock_count": 0, "max_drawdown": 0.0,
                       "total_return": 0.0, "final_assets": 2000000.0}
             tradable = {"300308": "中际旭创", "300502": "新易盛"}
-            dss._save_risk_state(tmpdir, "2026-07-29", result, tradable=tradable)
+            dss._save_risk_state(
+                tmpdir,
+                "2026-07-29",
+                result,
+                run_id="identity-test",
+                tradable=tradable,
+            )
             data = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
             self.assertIn("symbols_hash", data)
             self.assertIn("total_symbols", data)
@@ -169,6 +179,7 @@ class AccountRiskWorkflowTests(unittest.TestCase):
                       "total_return": 0.0, "final_assets": 2000000.0}
             tradable = {"300308": "中际旭创"}
             dss._save_risk_state(tmpdir, "2026-07-29", result, tradable=tradable,
+                                 run_id="config-hash-test",
                                  config_hash="start=2026-07-01|indicator=warm")
             data = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
             self.assertIn("symbols_hash", data)

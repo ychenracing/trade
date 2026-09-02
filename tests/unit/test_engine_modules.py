@@ -23,11 +23,13 @@ class EngineModuleContracts(unittest.TestCase):
         self.assertEqual(engine.cfg["max_drawdown"], engine.policy.confirmed_drawdown)
 
     def test_current_engine_and_replay_signatures_exclude_account_state(self) -> None:
+        ensemble = importlib.import_module("quantfusion.engine.ensemble")
         universe = importlib.import_module("quantfusion.engine.universe")
         replay = importlib.import_module("quantfusion.engine.replay")
 
         for engine_type in (
             universe.BacktestEngine,
+            ensemble.EnsembleBacktestEngine,
             replay.ProductionReplayEngine,
             replay.RegimeAdaptiveBacktestEngine,
         ):

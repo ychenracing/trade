@@ -56,11 +56,6 @@ def _golden_bull(name: str) -> tuple[float, float, int]:
     )
 
 
-# Compatibility view for callers of the former root module.  Runtime validation
-# and this mapping deliberately share the same checked-in golden source.
-GOLDEN_BULL = {name: _golden_bull(name) for name in UNIVERSES}
-
-
 def deterministic_pools() -> list[tuple[str, tuple[str, ...]]]:
     pools: list[tuple[str, tuple[str, ...]]] = []
     for size in (1, 3, 5, 8, 12):

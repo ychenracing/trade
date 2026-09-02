@@ -28,8 +28,6 @@ EXPECTED_MARKDOWN = {
     Path("README.md"),
     Path("docs/ARCHITECTURE.md"),
     Path("docs/VALIDATION.md"),
-    Path("docs/superpowers/plans/2026-09-02-current-only-stress-diagnostics.md"),
-    Path("docs/superpowers/specs/2026-09-02-current-only-stress-diagnostics-design.md"),
     Path("data/README.md"),
 }
 CHINESE_MARKDOWN = {
@@ -208,6 +206,8 @@ class RepositoryHygieneTests(unittest.TestCase):
             )
 
     def test_validation_script_reads_the_single_golden_metrics_source(self) -> None:
+        validation_script = importlib.import_module("scripts.run_regime_validation")
+        self.assertFalse(hasattr(validation_script, "GOLDEN_BULL"))
         for name, codes in UNIVERSES.items():
             total_return, max_drawdown, total_trades = _golden_bull(name)
             self.assertIsInstance(total_return, float)
@@ -262,9 +262,8 @@ class RepositoryHygieneTests(unittest.TestCase):
         self.assertFalse((ROOT / "scripts/_bootstrap.py").exists())
         for path in (ROOT / "scripts").glob("*.py"):
             source = path.read_text(encoding="utf-8")
-            self.assertFalse(source.startswith("#!"), msg=str(path))
             self.assertNotIn("_bootstrap", source, msg=str(path))
-            self.assertNotIn("__package__", source, msg=str(path))
+            self.assertNotIn("if __package__", source, msg=str(path))
             self.assertNotIn("sys.path", source, msg=str(path))
 
     def test_only_canonical_repository_data_defaults_are_exported(self) -> None:

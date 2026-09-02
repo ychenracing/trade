@@ -59,6 +59,21 @@ class SchemaValidationTests(unittest.TestCase):
         self.assertIsNotNone(error)
         self.assertIn("cycle_lock_count", error)
 
+    def test_run_id_is_required_and_non_empty(self) -> None:
+        missing = dict(VALID_RISK_STATE)
+        del missing["run_id"]
+        error = dss._validate_risk_state(missing)
+        self.assertIsNotNone(error)
+        self.assertIn("run_id", error)
+
+        for invalid in ("", "   ", 7, None):
+            with self.subTest(run_id=invalid):
+                data = dict(VALID_RISK_STATE)
+                data["run_id"] = invalid
+                error = dss._validate_risk_state(data)
+                self.assertIsNotNone(error)
+                self.assertIn("run_id", error)
+
     def test_non_dict_rejected(self) -> None:
         error = dss._validate_risk_state([1, 2, 3])
         self.assertIsNotNone(error)
@@ -284,6 +299,7 @@ class SchemaValidationTests(unittest.TestCase):
             }
             tradable = {"300308": "中际旭创", "300502": "新易盛"}
             dss._save_risk_state(tmpdir, "2026-07-30", result,
+                                 run_id="saved-state-validation",
                                  tradable=tradable,
                                  config_hash="start=2026-07-01|indicator=warm")
             loaded, error = dss._load_prev_risk_state(tmpdir, "2026-07-31")
@@ -299,23 +315,60 @@ class SchemaValidationTests(unittest.TestCase):
                       "cycle_lock_count": 0, "max_drawdown": 0.0,
                       "total_return": 0.0, "final_assets": 2000000.0}
             tradable = {"300308": "中际旭创"}
-            dss._save_risk_state(tmpdir, "2026-07-30", result, tradable=tradable)
+            dss._save_risk_state(
+                tmpdir,
+                "2026-07-30",
+                result,
+                run_id="schema-version-test",
+                tradable=tradable,
+            )
             data = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
             self.assertIn("schema_version", data)
             self.assertEqual(data["schema_version"], 1)
 
-    def test_run_id_is_unique(self) -> None:
-        """Two saves on the same date should produce different run_ids."""
+    def test_explicit_run_id_is_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             result = {"terminal_risk_lock": False, "sector_guard_active": False,
                       "cycle_lock_count": 0, "max_drawdown": 0.0,
                       "total_return": 0.0, "final_assets": 2000000.0}
             tradable = {"300308": "中际旭创"}
-            dss._save_risk_state(tmpdir, "2026-07-30", result, tradable=tradable)
-            data1 = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
-            dss._save_risk_state(tmpdir, "2026-07-30", result, tradable=tradable)
-            data2 = json.loads((Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8"))
-            self.assertNotEqual(data1["run_id"], data2["run_id"])
+            dss._save_risk_state(
+                tmpdir,
+                "2026-07-30",
+                result,
+                run_id="deterministic-run-id",
+                tradable=tradable,
+            )
+            data = json.loads(
+                (Path(tmpdir) / "risk_state.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(data["run_id"], "deterministic-run-id")
+
+    def test_save_requires_non_empty_string_run_id(self) -> None:
+        result = {
+            "terminal_risk_lock": False,
+            "sector_guard_active": False,
+            "cycle_lock_count": 0,
+            "max_drawdown": 0.0,
+            "total_return": 0.0,
+            "final_assets": 2000000.0,
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(TypeError):
+                dss._save_risk_state(tmpdir, "2026-07-30", result)
+            with self.assertRaises(TypeError):
+                dss._save_risk_state(
+                    tmpdir, "2026-07-30", result, "positional-run-id"
+                )
+            for invalid in ("", "   ", 7, None):
+                with self.subTest(run_id=invalid), self.assertRaises(ValueError):
+                    dss._save_risk_state(
+                        tmpdir,
+                        "2026-07-30",
+                        result,
+                        run_id=invalid,
+                    )
+            self.assertFalse((Path(tmpdir) / "risk_state.json").exists())
 
     def test_schema_validation_failure_returns_error(self) -> None:
         """Risk state with wrong types should return error, not state."""
@@ -324,6 +377,7 @@ class SchemaValidationTests(unittest.TestCase):
             state_file.write_text(
                 json.dumps({
                     "schema_version": 1,
+                    "run_id": "invalid-state-test",
                     "scan_date": "2026-07-30",
                     "terminal_risk_lock": "true",  # string, not bool
                     "sector_guard_active": False,
@@ -380,7 +434,9 @@ class PreSaveValidationTests(unittest.TestCase):
             result = self._base_result()
             result["max_drawdown"] = float("nan")
             with self.assertRaises(ValueError) as ctx:
-                dss._save_risk_state(tmpdir, "2026-07-30", result)
+                dss._save_risk_state(
+                    tmpdir, "2026-07-30", result, run_id="nan-max-dd-test"
+                )
             self.assertIn("max_drawdown", str(ctx.exception))
             self.assertIn("NaN", str(ctx.exception))
             # File must NOT be created
@@ -392,7 +448,9 @@ class PreSaveValidationTests(unittest.TestCase):
             result = self._base_result()
             result["total_return"] = float("inf")
             with self.assertRaises(ValueError) as ctx:
-                dss._save_risk_state(tmpdir, "2026-07-30", result)
+                dss._save_risk_state(
+                    tmpdir, "2026-07-30", result, run_id="inf-return-test"
+                )
             self.assertIn("total_return", str(ctx.exception))
 
     def test_neg_inf_final_assets_rejected_on_save(self) -> None:
@@ -401,7 +459,9 @@ class PreSaveValidationTests(unittest.TestCase):
             result = self._base_result()
             result["final_assets"] = float("-inf")
             with self.assertRaises(ValueError) as ctx:
-                dss._save_risk_state(tmpdir, "2026-07-30", result)
+                dss._save_risk_state(
+                    tmpdir, "2026-07-30", result, run_id="inf-assets-test"
+                )
             self.assertIn("final_assets", str(ctx.exception))
 
     def test_negative_cycle_lock_count_rejected_on_save(self) -> None:
@@ -410,7 +470,9 @@ class PreSaveValidationTests(unittest.TestCase):
             result = self._base_result()
             result["cycle_lock_count"] = -1
             with self.assertRaises(ValueError) as ctx:
-                dss._save_risk_state(tmpdir, "2026-07-30", result)
+                dss._save_risk_state(
+                    tmpdir, "2026-07-30", result, run_id="negative-lock-test"
+                )
             self.assertIn("cycle_lock_count", str(ctx.exception))
             self.assertIn("负值", str(ctx.exception))
 
@@ -420,6 +482,7 @@ class PreSaveValidationTests(unittest.TestCase):
             result = self._base_result()
             dss._save_risk_state(
                 tmpdir, "2026-07-30", result,
+                run_id="valid-values-test",
                 tradable={"300308": "test"},
                 config_hash="start=2026-07-01|indicator=warm",
             )
@@ -585,6 +648,7 @@ class ArtifactStrictJSONTests(unittest.TestCase):
                 "final_assets": 2160000.0,
             }
             dss._save_risk_state(tmpdir, "2026-07-30", result,
+                                 run_id="strict-json-test",
                                  tradable={"300308": "test"})
             state_content = (Path(tmpdir) / "risk_state.json").read_text(
                 encoding="utf-8"

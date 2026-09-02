@@ -34,6 +34,7 @@ FakeTrade = namedtuple("FakeTrade", ["direction", "symbol", "shares"])
 
 VALID_RISK_STATE = {
     "schema_version": 1,
+    "run_id": "test-run-20260730",
     "scan_date": "2026-07-30",
     "terminal_risk_lock": False,
     "sector_guard_active": False,
