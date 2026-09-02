@@ -17,7 +17,7 @@ import pandas as pd
 
 from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
 from quantfusion.data.providers import DataFetcher
-from quantfusion.domain.models import AccountState, MarketRegimeObservation, Signal
+from quantfusion.domain.models import MarketRegimeObservation, Signal
 from quantfusion.domain.rules import floor_to_lot, require_int
 from quantfusion.engine.core import CoreBacktestEngine
 from quantfusion.engine.ensemble import (
@@ -117,8 +117,8 @@ class EnsembleOrchestrationMixin:
             account_risk_policy,
         )
         # Restore previous risk state when explicitly provided by the caller.
-        # Note: daily_signal_scan.py does NOT use this feature — it replays
-        # the full history each time to avoid time-direction errors.
+        # Note: quantfusion.application.daily_scan does NOT use this feature —
+        # it replays the full history each time to avoid time-direction errors.
         if request.risk_state:
             if request.risk_state.get("terminal_risk_lock", False):
                 portfolio_risk.terminal_lock = True
@@ -129,19 +129,6 @@ class EnsembleOrchestrationMixin:
             if request.risk_state.get("sector_guard_active", False):
                 for state in states:
                     state.sleeve.sector_guard_active = True
-        # DEPRECATED: account_state is always None — the public run() API
-        # raises NotImplementedError before reaching this code. The entire
-        # account injection block below is dead code, retained for reference.
-        account_state = request.account_state
-        as_of_idx = max(0, len(reference_dates) - 2) if account_state else -1
-        # P0 fix: seed the portfolio-level risk manager with the account's
-        # lifetime peak so drawdown calculations start from the real
-        # high-water mark rather than building up from zero.
-        if account_state is not None:
-            peak = getattr(account_state, "peak_equity", None)
-            if peak is not None and peak > 0:
-                portfolio_risk.peak_assets = float(peak)
-                portfolio_risk.lifetime_peak_assets = float(peak)
         portfolio_risk_events: list[dict[str, Any]] = []
         symbol_count_curve: list[dict[str, Any]] = []
         # 穿越牛熊 overlay: bull-silent defensive layer on top of the ensemble.
@@ -192,13 +179,6 @@ class EnsembleOrchestrationMixin:
         prev_consensus: float | None = None
         prev_decline_streak = 0
         for idx, date in enumerate(reference_dates):
-            # Inject account snapshot at the open of the as-of date so that
-            # everything from this day onward uses the real account state
-            # while all prior dates ran as a clean simulation.
-            if account_state is not None and idx == as_of_idx and states:
-                self._apply_account_state(
-                    account_state, states[0].sleeve, set_cash=False
-                )
             # P0-4: pass the overlay so it can hard-block re-entry buys
             # for any symbol still in catastrophe cooldown (report P0-4).
             self._execute_ensemble_open(states, date, idx, cm_overlay)

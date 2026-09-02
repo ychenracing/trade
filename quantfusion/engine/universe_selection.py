@@ -17,7 +17,7 @@ import pandas as pd
 
 from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
 from quantfusion.data.providers import DataFetcher
-from quantfusion.domain.models import AccountState, MarketRegimeObservation, Signal
+from quantfusion.domain.models import MarketRegimeObservation, Signal
 from quantfusion.domain.rules import floor_to_lot, require_int
 from quantfusion.engine.core import CoreBacktestEngine
 from quantfusion.engine.ensemble import (

@@ -13,23 +13,6 @@ EXAMPLES_DIR = PROJECT_ROOT / "examples"
 VALIDATION_ARTIFACT_DIR = PROJECT_ROOT / "artifacts" / "validation"
 TEST_FIXTURES_DIR = PROJECT_ROOT / "tests" / "fixtures"
 BACKTEST_GOLDEN_METRICS = TEST_FIXTURES_DIR / "backtest_golden_metrics.json"
-_LEGACY_DATA_DIRECTORIES = {
-    Path("market_data"): MARKET_DATA_DIR,
-    Path("historical_data"): REGIME_DATA_DIR,
-}
-
-
-def resolve_repository_data_dir(value: str | Path) -> Path:
-    """Resolve removed repository data names while preserving real user paths.
-
-    Existing, absolute, and non-legacy paths are never rewritten. The fallback
-    only applies to the two historical relative directory names when they do
-    not exist in the caller's working directory.
-    """
-    path = Path(value).expanduser()
-    if path.exists() or path.is_absolute():
-        return path
-    return _LEGACY_DATA_DIRECTORIES.get(path, path)
 
 
 __all__ = [
@@ -41,5 +24,4 @@ __all__ = [
     "REGIME_DATA_DIR",
     "TEST_FIXTURES_DIR",
     "VALIDATION_ARTIFACT_DIR",
-    "resolve_repository_data_dir",
 ]

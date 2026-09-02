@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 import pandas as pd
 
@@ -115,21 +114,6 @@ class SectorObservation:
 
 
 @dataclass
-class AccountState:
-    """Real portfolio state from a live account snapshot.
-
-    Used by the daily signal scanner to derive correct action labels
-    without relying on a simulated replay from scratch.
-    """
-    cash: float
-    position_value: float
-    total_equity: float
-    peak_equity: float
-    positions: dict[str, dict[str, Any]] = field(default_factory=dict)
-    risk_state: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
 class EngineState:
     """Cross-day state that survives between successive daily runs.
 
@@ -161,13 +145,3 @@ class MarketRegimeObservation:
     volatility_percentile: float
     raw_score: int
     candidate_state: str
-
-def account_order_count(
-    trades: list[TradeRecord], *, direction: str | None = None
-) -> int:
-    """Deprecated compatibility alias for :func:`date_symbol_side_count`.
-
-    The returned value is a date/symbol/side bucket count, not a broker-level
-    order count. New code must use the canonical name.
-    """
-    return date_symbol_side_count(trades, direction=direction)

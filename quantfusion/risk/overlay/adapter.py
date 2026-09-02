@@ -1,4 +1,4 @@
-"""Translate immutable overlay decisions into legacy engine pending queues."""
+"""Translate immutable overlay decisions into engine pending queues."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def make_sell_signal(
 
 
 def _state_sequence(state_or_states: Any) -> list[Any]:
-    """Normalize the legacy one-state call and canonical multi-state call."""
+    """Normalize one-state and multi-state adapter calls."""
     if hasattr(state_or_states, "pending"):
         return [state_or_states]
     if isinstance(state_or_states, Sequence):
@@ -72,7 +72,7 @@ def consolidate_risk_sells(
     """Consolidate new and carried overlay sells across the full queue.
 
     Existing unfilled risk orders remain part of the comparison. New immutable
-    actions use their explicit priority; carried legacy signals fall back to
+    actions use their explicit priority; carried pending signals fall back to
     the stable reason-to-priority mapping.
     """
     explicit = action_priorities or {}

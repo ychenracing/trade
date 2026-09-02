@@ -7,25 +7,7 @@ import unittest
 
 
 class AccountModuleContracts(unittest.TestCase):
-    """Legacy account exports resolve to the canonical modules."""
-
-    def test_models_and_snapshot_loader_are_canonical(self) -> None:
-        legacy = importlib.import_module("account_signal_engine")
-        models = importlib.import_module("quantfusion.account.models")
-        snapshot = importlib.import_module("quantfusion.account.snapshot")
-        self.assertIs(legacy.AccountPosition, models.AccountPosition)
-        self.assertIs(legacy.AccountSnapshot, models.AccountSnapshot)
-        self.assertIs(legacy.load_account_snapshot, snapshot.load_account_snapshot)
-        self.assertIs(
-            legacy.load_account_snapshot_with_sha256,
-            snapshot.load_account_snapshot_with_sha256,
-        )
-
-    def test_account_engine_is_an_application_service(self) -> None:
-        legacy = importlib.import_module("account_signal_engine")
-        application = importlib.import_module("quantfusion.application.account_scan")
-        self.assertIs(legacy.AccountSignalEngine, application.AccountSignalEngine)
-        self.assertIs(legacy.run_account_scan, application.run_account_scan)
+    """Account sizing uses canonical domain rules."""
 
     def test_target_sizing_uses_shared_domain_lot_rule(self) -> None:
         service = importlib.import_module("quantfusion.account.service")

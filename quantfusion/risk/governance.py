@@ -2,7 +2,7 @@
 
 本模块落实《trade 深度评估与长板强化改造报告》(2026-08-16) 的 P0-1/P0-2/
 P0-3 与 P1-1/P1-2，全部为纯函数/纯数据结构，默认随引擎自动输出，不改变
-任何交易决策路径（P0-4 晋级门在 ``stress_test_prefixes.py`` 中实现）。
+任何交易决策路径（P0-4 晋级门在 ``quantfusion.application.stress`` 中实现）。
 
 注：本文件中的 P0/P1 编号均指 2026-08-16 报告；仓库旧注释（2026-08-07
 报告）使用另一套编号（如 P0-4=灾变冷却阻断再入场、P1-2=子行业参数收缩），
@@ -36,7 +36,7 @@ import pandas as pd
 REQUIRED_WARMUP_TRADING_DAYS = 240
 
 # P0-1: 外层路由指数 (000300/000682) 判定"新鲜"的最大陈旧自然日数，与
-# regime_adaptive.MAX_EVIDENCE_STALENESS_DAYS 保持一致。
+# quantfusion.config.regime.MAX_EVIDENCE_STALENESS_DAYS 保持一致。
 WARMUP_STALENESS_DAYS = 10
 
 # P0-1: 分级阈值。指标就绪比例低于该值时整体判为 NOT_READY。

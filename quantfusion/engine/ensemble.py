@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 
 from quantfusion.domain.models import (
-    AccountState,
     Signal,
     TradeRecord,
     date_symbol_side_count,
@@ -259,10 +258,6 @@ class _RunRequest:
     warmup_calendar_days: int
     risk_state: dict | None = None
     route_controller: Any | None = None
-    # DEPRECATED: account_state is always None now — the public run() API
-    # raises NotImplementedError before this field is ever set. Retained for
-    # API compatibility until the account signal engine is built.
-    account_state: AccountState | None = None
 
 
 @dataclass
@@ -540,17 +535,9 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
         warmup_calendar_days: int = 365,
         allocation_mode: str | None = None,
         risk_state: dict | None = None,
-        account_state: AccountState | None = None,
         route_controller: Any | None = None,
     ) -> dict:
         """Run the configured single sleeve or the default three-sleeve ensemble."""
-        if account_state is not None:
-            raise NotImplementedError(
-                "Real-account mode (account_state) is disabled. "
-                "The account injection logic has known architecture defects. "
-                "Use simulation mode (account_state=None) instead. "
-                "A separate account signal engine is planned."
-            )
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
         if mode not in {"single", "ensemble"}:
             raise ValueError("allocation_mode must be 'single' or 'ensemble'")
@@ -561,10 +548,6 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             if risk_state:
                 self.cfg = dict(self.cfg)
                 self.cfg["_initial_risk_state"] = risk_state
-            if account_state:
-                self._initial_positions = self._apply_account_state(
-                    account_state, self
-                )
             result = super().run(
                 symbols_dict,
                 start_date,
@@ -595,7 +578,6 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
                 warmup_calendar_days=warmup_calendar_days,
                 risk_state=risk_state,
                 route_controller=route_controller,
-                account_state=account_state,
             )
         )
 

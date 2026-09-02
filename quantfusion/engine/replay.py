@@ -16,7 +16,7 @@ from quantfusion.config.regime import (
     WEAK_TERMINAL_DRAWDOWN,
 )
 from quantfusion.config.weak import weak_regime_config, weak_regime_policy
-from quantfusion.domain.models import AccountState, BarContext
+from quantfusion.domain.models import BarContext
 from quantfusion.domain.rules import require_finite
 from quantfusion.engine.universe import BacktestEngine, SleeveBacktestEngine
 from quantfusion.regime.evidence import (
@@ -387,7 +387,6 @@ class ProductionReplayEngine:
         profile: str | None = None,
         config_route: str = "auto",
         risk_state: dict | None = None,
-        account_state: AccountState | None = None,
     ) -> dict[str, Any]:
         route_sequence = simulate_route_sequence(
             regime_data_dir,
@@ -428,7 +427,6 @@ class ProductionReplayEngine:
             warmup_calendar_days=warmup_calendar_days,
             allocation_mode="ensemble",
             risk_state=risk_state,
-            account_state=account_state,
             route_controller=controller,
         )
         result["route_sequence"] = result["production_replay"]["route_sequence"]
@@ -502,8 +500,9 @@ class RegimeAdaptiveBacktestEngine:
     ) -> DeploymentDecision:
         """Make a point-in-time route decision from data through ``as_of``.
 
-        This is the CURRENT-day route used by ``daily_signal_scan`` and the
-        account engine (report 3.3/3.4 "历史和账户使用同一状态机"). It is driven
+        This is the CURRENT-day route used by
+        ``quantfusion.application.daily_scan`` and the account engine (report
+        3.3/3.4 "历史和账户使用同一状态机"). It is driven
         by the same low-frequency daily state machine as the audited
         ``route_sequence``, so the label the user sees each day matches the
         route that drives the decision. It fails closed to CASH on stale or
@@ -603,7 +602,6 @@ class RegimeAdaptiveBacktestEngine:
         warmup_calendar_days: int = 365,
         allocation_mode: str | None = None,
         risk_state: dict | None = None,
-        account_state: AccountState | None = None,
         selection_boundary: str | None = None,
         deployment_mode: str = "auto",
         regime_data_dir: str | None = None,
@@ -662,7 +660,6 @@ class RegimeAdaptiveBacktestEngine:
                 profile=profile,
                 config_route=config_route,
                 risk_state=risk_state,
-                account_state=account_state,
             )
             self.delegate = replay.delegate
             decision = self.decide_current(
@@ -763,7 +760,6 @@ class RegimeAdaptiveBacktestEngine:
                     warmup_calendar_days=warmup_calendar_days,
                     allocation_mode=effective_allocation,
                     risk_state=risk_state,
-                    account_state=account_state,
                 )
         if decision.name != "frozen_trend_engine":
             if self.cfg or self.policy is not None:
@@ -772,7 +768,7 @@ class RegimeAdaptiveBacktestEngine:
                 )
             if per_symbol_config or profile is not None or config_route != "auto":
                 raise ValueError("weak-regime policy does not accept trend profile overrides")
-            if risk_state is not None or account_state is not None:
+            if risk_state is not None:
                 raise NotImplementedError("weak-regime policy does not inject external state")
             leaders = decision.leaders
             selected = leaders.selected_symbols if leaders is not None else ()

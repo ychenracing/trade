@@ -56,8 +56,6 @@ class _CoreBacktestEngine(
         self.cfg = self._validate_config({**self._default_config(), **self._user_cfg})
         self.cash = self.initial_capital
         self.positions: dict[str, dict[str, Position]] = {}
-        self._initial_positions: dict[str, dict[str, Position]] = {}
-        self._initial_cash: float | None = None
         self.trades: list[TradeRecord] = []
         self.equity_curve: list[dict] = []
         self.risk = RiskManager(self.cfg)

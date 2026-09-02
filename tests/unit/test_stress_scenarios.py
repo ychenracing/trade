@@ -9,7 +9,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-import stress_test_prefixes as stress
+from quantfusion.application import stress
 
 
 class StressScenarioTests(unittest.TestCase):

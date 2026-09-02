@@ -24,7 +24,6 @@ from quantfusion.config.paths import (
     PROJECT_ROOT,
     REGIME_DATA_DIR,
     VALIDATION_ARTIFACT_DIR,
-    resolve_repository_data_dir,
 )
 from quantfusion.config.universe import SYMBOL_NAMES as NAMES
 
@@ -985,8 +984,8 @@ def main() -> int:
         or not seeds
     ):
         raise ValueError("workers, sample counts, checkpoint interval and seeds must be positive")
-    data_dir = resolve_repository_data_dir(args.data_dir).resolve()
-    regime_data_dir = resolve_repository_data_dir(args.regime_data_dir).resolve()
+    data_dir = Path(args.data_dir).expanduser().resolve()
+    regime_data_dir = Path(args.regime_data_dir).expanduser().resolve()
     missing_stock = [
         code
         for code in ORDERED_CODES

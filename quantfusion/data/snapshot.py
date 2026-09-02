@@ -12,7 +12,6 @@ from typing import Any
 
 import pandas as pd
 
-from quantfusion.config.paths import resolve_repository_data_dir
 from quantfusion.config.regime import REGIME_INDEX_FILES
 
 def _sha256_file(path: Path) -> str:
@@ -96,7 +95,7 @@ def _materialize_frozen_snapshot(
         market_target.mkdir()
         regime_target.mkdir()
         for code, frame in sorted(frames.items()):
-            source = resolve_repository_data_dir(cache_dir) / f"{code}.csv"
+            source = Path(cache_dir).expanduser() / f"{code}.csv"
             destination = market_target / f"{code}.csv"
             if source.is_file():
                 shutil.copyfile(source, destination)
@@ -105,7 +104,7 @@ def _materialize_frozen_snapshot(
                 persisted.index.name = "date"
                 persisted.to_csv(destination, index=True)
         for code in sorted(REGIME_INDEX_FILES.values()):
-            source = resolve_repository_data_dir(regime_data_dir) / f"{code}.csv"
+            source = Path(regime_data_dir).expanduser() / f"{code}.csv"
             if not source.is_file():
                 raise ValueError(f"missing frozen regime evidence for {code}")
             shutil.copyfile(source, regime_target / source.name)

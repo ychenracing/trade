@@ -10,7 +10,6 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Protocol
 
-from quantfusion.config.paths import resolve_repository_data_dir
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.research import replay_api as ra
 from quantfusion.research.candidates import (
@@ -101,7 +100,7 @@ class CandidateRunner:
     ) -> None:
         self.symbols = dict(symbols)
         self.catalog = catalog
-        self.regime_data_dir = resolve_repository_data_dir(regime_data_dir)
+        self.regime_data_dir = Path(regime_data_dir).expanduser()
         if not self.regime_data_dir.is_dir():
             raise ValueError(
                 f"Regime data directory does not exist: {self.regime_data_dir}"

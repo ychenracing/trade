@@ -471,7 +471,7 @@ class ArtifactStrictJSONTests(unittest.TestCase):
              patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run",
                           return_value=mock_result):
             with patch("sys.argv", [
-                "daily_signal_scan.py",
+                "quantfusion.application.daily_scan",
                 "--output-dir", tmpdir,
                 "--end-date", "2026-07-30",
             ]):

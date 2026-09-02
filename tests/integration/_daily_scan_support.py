@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
-import daily_signal_scan as dss
+from quantfusion.application import daily_scan as dss
 
 
 @dataclass(frozen=True, slots=True)

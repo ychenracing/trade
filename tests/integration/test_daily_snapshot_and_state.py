@@ -312,7 +312,7 @@ class RiskStateDateValidationTests(unittest.TestCase):
             )
 
             with patch("sys.argv", [
-                "daily_signal_scan.py",
+                "quantfusion.application.daily_scan",
                 "--output-dir", tmpdir,
                 "--end-date", "2026-07-20",
             ]):

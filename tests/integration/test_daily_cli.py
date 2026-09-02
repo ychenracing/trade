@@ -25,7 +25,7 @@ class CLIArgumentTests(unittest.TestCase):
     """Verify CLI arguments are parsed correctly."""
 
     def test_default_arguments(self) -> None:
-        with patch("sys.argv", ["daily_signal_scan.py"]):
+        with patch("sys.argv", ["quantfusion.application.daily_scan"]):
             # The real parser is built inside _run_main() (not exposed at
             # module level), so we can't inspect it here without executing a
             # full scan. Just confirm the argparse builder is reachable.
@@ -33,10 +33,10 @@ class CLIArgumentTests(unittest.TestCase):
 
     def test_all_26_symbols_are_mapped(self) -> None:
         """Verify all SYMBOLS have explicit routing metadata."""
-        import quant_fusion as qf
+        from quantfusion.engine.core import CoreBacktestEngine
         for code, name in dss.SYMBOLS.items():
             self.assertFalse(
-                qf._CoreBacktestEngine._uses_unmapped_auto_route(code, name),
+                CoreBacktestEngine._uses_unmapped_auto_route(code, name),
                 f"{code} {name} is unmapped — add it to _SYMBOL_PROFILE and _SYMBOL_GROUP",
             )
 
@@ -60,7 +60,7 @@ class CLIArgumentTests(unittest.TestCase):
             patch(
                 "sys.argv",
                 [
-                    "daily_signal_scan.py",
+                    "quantfusion.application.daily_scan",
                     "--account",
                     "account.json",
                     "--account-id",
@@ -99,9 +99,14 @@ class CLIIntegrationTests(unittest.TestCase):
         cls._project_dir = str(Path(__file__).resolve().parents[2])
 
     def _run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
-        """Run daily_signal_scan.py with the given arguments."""
+        """Run the canonical daily-scan module with the given arguments."""
         return subprocess.run(
-            [sys.executable, "daily_signal_scan.py", *args],
+            [
+                sys.executable,
+                "-m",
+                "quantfusion.application.daily_scan",
+                *args,
+            ],
             capture_output=True,
             text=True,
             cwd=self._project_dir,

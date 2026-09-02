@@ -993,3 +993,7 @@ def _run_main() -> int:
 def main() -> int:
     """Run one scan with request-scoped market-data cache configuration."""
     return _run_main()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

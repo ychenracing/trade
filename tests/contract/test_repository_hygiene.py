@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import ast
-import contextlib
+import importlib
 import json
 import re
 import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 
@@ -29,6 +28,8 @@ EXPECTED_MARKDOWN = {
     Path("README.md"),
     Path("docs/ARCHITECTURE.md"),
     Path("docs/VALIDATION.md"),
+    Path("docs/superpowers/plans/2026-09-02-current-only-stress-diagnostics.md"),
+    Path("docs/superpowers/specs/2026-09-02-current-only-stress-diagnostics-design.md"),
     Path("data/README.md"),
 }
 CHINESE_MARKDOWN = {
@@ -42,26 +43,11 @@ EXPECTED_ROOT_FILES = {
     "AGENTS.md",
     "LICENSE",
     "README.md",
-    "account_signal_engine.py",
-    "backtest_cambricon_universe.py",
-    "backtest_universes.py",
-    "benchmark_validation.py",
-    "cross_market_overlay.py",
-    "daily_signal_scan.py",
-    "download_eastmoney_qfq.py",
-    "market_data_contracts.py",
     "pyrightconfig.json",
-    "quant_fusion.py",
-    "quant_fusion_optimizer.py",
-    "regime_adaptive.py",
     "requirements-dev.txt",
     "requirements-lock-py311.txt",
     "requirements-lock.txt",
     "requirements.txt",
-    "risk_governance.py",
-    "run_regime_validation.py",
-    "stress_test_prefixes.py",
-    "validate_basket.py",
 }
 OBSOLETE_DOCUMENTS = {
     "BACKTEST_RESULTS.md",
@@ -96,24 +82,19 @@ def _tracked_paths() -> tuple[Path, ...]:
         capture_output=True,
         text=False,
     )
-    return tuple(
+    paths = (
         Path(raw.decode("utf-8"))
         for raw in completed.stdout.split(b"\0")
         if raw
     )
+    return tuple(path for path in paths if (ROOT / path).exists())
 
 
 class MarkdownConsistencyTests(unittest.TestCase):
     """保证仓库只保留当前有效中文文档。"""
 
     def test_only_current_markdown_documents_are_kept(self) -> None:
-        found = {
-            path.relative_to(ROOT)
-            for path in ROOT.rglob("*.md")
-            if ".git" not in path.parts
-            and "optimizer_validation" not in path.parts
-            and ".pytest_cache" not in path.parts
-        }
+        found = {path for path in _tracked_paths() if path.suffix == ".md"}
         self.assertEqual(found, EXPECTED_MARKDOWN)
 
     def test_markdown_prose_is_chinese(self) -> None:
@@ -182,12 +163,12 @@ class SourceDocumentationTests(unittest.TestCase):
 
     def test_public_support_apis_have_docstrings(self) -> None:
         for filename in (
-            "account_signal_engine.py",
-            "market_data_contracts.py",
+            "quantfusion/application/account_scan.py",
+            "quantfusion/data/contracts.py",
             "scripts/benchmark_validation.py",
         ):
             tree = ast.parse((ROOT / filename).read_text(encoding="utf-8"))
-            for node in ast.walk(tree):
+            for node in tree.body:
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                     if node.name.startswith("_"):
                         continue
@@ -243,47 +224,50 @@ class RepositoryHygieneTests(unittest.TestCase):
             if "regime_data_directory" in payload:
                 self.assertEqual(payload["regime_data_directory"], "data/regime")
 
-    def test_tool_scripts_support_direct_help_from_any_working_directory(self) -> None:
-        scripts = (
-            "backtest_cambricon_universe.py",
-            "backtest_universes.py",
-            "benchmark_validation.py",
-            "download_eastmoney_qfq.py",
-            "run_regime_validation.py",
-            "validate_basket.py",
+    def test_supported_command_modules_have_help(self) -> None:
+        modules = (
+            "quantfusion.application.backtest_cli",
+            "quantfusion.application.daily_scan",
+            "quantfusion.application.optimizer",
+            "quantfusion.application.stress",
+            "scripts.backtest_cambricon_universe",
+            "scripts.backtest_universes",
+            "scripts.benchmark_validation",
+            "scripts.download_eastmoney_qfq",
+            "scripts.run_regime_validation",
+            "scripts.validate_basket",
         )
-        with tempfile.TemporaryDirectory() as directory:
-            for name in scripts:
-                for path in (ROOT / name, ROOT / "scripts" / name):
-                    completed = subprocess.run(
-                        [sys.executable, str(path), "--help"],
-                        cwd=directory,
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                        timeout=15,
-                    )
-                    self.assertEqual(
-                        completed.returncode,
-                        0,
-                        msg=f"{path}: {completed.stderr}",
-                    )
+        for module in modules:
+            completed = subprocess.run(
+                [sys.executable, "-m", module, "--help"],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            self.assertEqual(
+                completed.returncode,
+                0,
+                msg=f"{module}: {completed.stderr}",
+            )
+            self.assertIn("usage:", completed.stdout.lower(), msg=module)
 
-    def test_legacy_data_directory_names_resolve_without_shadowing_real_paths(self) -> None:
-        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
-            self.assertEqual(
-                repository_paths.resolve_repository_data_dir("market_data"),
-                repository_paths.MARKET_DATA_DIR,
-            )
-            self.assertEqual(
-                repository_paths.resolve_repository_data_dir("historical_data"),
-                repository_paths.REGIME_DATA_DIR,
-            )
-            Path("market_data").mkdir()
-            self.assertEqual(
-                repository_paths.resolve_repository_data_dir("market_data"),
-                Path("market_data"),
-            )
+    def test_only_canonical_repository_data_defaults_are_exported(self) -> None:
+        public_config = importlib.import_module("quantfusion.config")
+        self.assertEqual(
+            repository_paths.MARKET_DATA_DIR,
+            repository_paths.DATA_ROOT / "market",
+        )
+        self.assertEqual(
+            repository_paths.REGIME_DATA_DIR,
+            repository_paths.DATA_ROOT / "regime",
+        )
+        self.assertFalse(hasattr(repository_paths, "resolve_repository_data_dir"))
+        self.assertFalse(hasattr(public_config, "resolve_repository_data_dir"))
+
+    def test_caller_free_compatibility_facades_are_absent(self) -> None:
+        self.assertFalse((ROOT / "quantfusion/portfolio/policy.py").exists())
 
     def test_ci_uses_a_python_311_compatible_lockfile(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

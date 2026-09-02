@@ -7,33 +7,18 @@ import unittest
 
 
 class RegimeModuleContracts(unittest.TestCase):
-    """The legacy regime facade must re-export canonical implementation objects."""
+    """The application namespace uses canonical regime implementation objects."""
 
-    def test_models_and_state_machine_are_canonical(self) -> None:
-        legacy = importlib.import_module("regime_adaptive")
-        models = importlib.import_module("quantfusion.regime.models")
-        state = importlib.import_module("quantfusion.regime.state_machine")
-        self.assertIs(legacy.RegimeRoute, models.RegimeRoute)
-        self.assertIs(legacy.RegimeEvidence, models.RegimeEvidence)
-        self.assertIs(legacy.simulate_route_sequence, state.simulate_route_sequence)
-
-    def test_evidence_and_weak_strategy_are_canonical(self) -> None:
-        legacy = importlib.import_module("regime_adaptive")
+    def test_application_regime_api_is_canonical(self) -> None:
+        application = importlib.import_module("quantfusion.application.regime_api")
         evidence = importlib.import_module("quantfusion.regime.evidence")
-        weak = importlib.import_module("quantfusion.strategy.weak")
-        self.assertIs(legacy.detect_regime, evidence.detect_regime)
         self.assertIs(
-            legacy.select_positive_momentum_leaders,
+            application.select_positive_momentum_leaders,
             evidence.select_positive_momentum_leaders,
         )
-        self.assertIs(legacy.PositiveMomentumHoldStrategy, weak.PositiveMomentumHoldStrategy)
-
-    def test_replay_engines_are_canonical(self) -> None:
-        legacy = importlib.import_module("regime_adaptive")
         replay = importlib.import_module("quantfusion.engine.replay")
-        self.assertIs(legacy.ProductionReplayEngine, replay.ProductionReplayEngine)
         self.assertIs(
-            legacy.RegimeAdaptiveBacktestEngine,
+            application.RegimeAdaptiveBacktestEngine,
             replay.RegimeAdaptiveBacktestEngine,
         )
 

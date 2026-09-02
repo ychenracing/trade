@@ -11,8 +11,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
-import risk_governance as rg
-from cross_market_overlay import CrossMarketOverlay
+from quantfusion.risk import governance as rg
+from quantfusion.risk.overlay.policy import CrossMarketOverlay
 
 
 def _frame(

@@ -10,11 +10,22 @@ from unittest.mock import patch
 
 import pandas as pd
 
-import account_signal_engine as account
-import market_data_contracts as contracts
-import quant_fusion as qf
-import regime_adaptive as ra
+from quantfusion.account.models import (
+    AccountPosition,
+    AccountSnapshot,
+    PointInTimeSignal,
+)
+from quantfusion.account.service import compute_target_shares, trend_candidate_score
+from quantfusion.account.snapshot import load_account_snapshot
+from quantfusion.application.account_scan import AccountSignalEngine
 from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
+from quantfusion.data import contracts
+from quantfusion.data.providers import DataFetcher
+from quantfusion.domain.models import BarContext
+from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
+from quantfusion.regime.evidence import select_positive_momentum_leaders
+from quantfusion.regime.models import DeploymentDecision, LeaderSelection, RegimeEvidence
+from quantfusion.strategy.weak import PositiveMomentumHoldStrategy
 from scripts import benchmark_validation as benchmarks
 
 
@@ -32,7 +43,7 @@ class ProviderVolumeContractTests(unittest.TestCase):
                 "成交量": [123],
             }
         )
-        normalized = qf.DataFetcher._normalize_provider_volume(
+        normalized = DataFetcher._normalize_provider_volume(
             frame,
             "Eastmoney",
         )
@@ -50,7 +61,7 @@ class ProviderVolumeContractTests(unittest.TestCase):
                 "volume": [12_300],
             }
         )
-        normalized = qf.DataFetcher._normalize_provider_volume(frame, "Sina")
+        normalized = DataFetcher._normalize_provider_volume(frame, "Sina")
         self.assertEqual(float(normalized["volume"].iloc[0]), 12_300.0)
 
     def test_legacy_cache_without_unit_contract_is_rejected(self) -> None:
@@ -62,11 +73,11 @@ class ProviderVolumeContractTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertFalse(
-                qf.DataFetcher._cache_has_share_volume_contract(path)
+                DataFetcher._cache_has_share_volume_contract(path)
             )
-            qf.DataFetcher._write_cache_contract(path)
+            DataFetcher._write_cache_contract(path)
             self.assertTrue(
-                qf.DataFetcher._cache_has_share_volume_contract(path)
+                DataFetcher._cache_has_share_volume_contract(path)
             )
 
 
@@ -87,7 +98,7 @@ class RegimeFreshnessAndProtectionTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as directory:
             frame.to_csv(Path(directory) / "300308.csv", index=False)
-            selection = ra.select_positive_momentum_leaders(
+            selection = select_positive_momentum_leaders(
                 ("300308",),
                 data_dir=directory,
                 as_of="2024-12-31",
@@ -106,7 +117,7 @@ class RegimeFreshnessAndProtectionTests(unittest.TestCase):
             },
             index=dates,
         )
-        strategy = ra.PositiveMomentumHoldStrategy(
+        strategy = PositiveMomentumHoldStrategy(
             {
                 "strategy_weight": 0.5,
                 "risk_pct": 0.03,
@@ -114,7 +125,7 @@ class RegimeFreshnessAndProtectionTests(unittest.TestCase):
                 "max_units": 1,
             }
         )
-        context = qf.BarContext(
+        context = BarContext(
             i=29,
             df=frame,
             current_assets=2_000_000,
@@ -161,7 +172,7 @@ class AccountEngineTests(unittest.TestCase):
                 },
             )
             with self.assertRaises(ValueError):
-                account.load_account_snapshot(path)
+                load_account_snapshot(path)
 
     def test_account_parser_rejects_coercive_numeric_values(self) -> None:
         invalid_positions = (
@@ -206,7 +217,7 @@ class AccountEngineTests(unittest.TestCase):
                         },
                     )
                     with self.assertRaises(ValueError):
-                        account.load_account_snapshot(path)
+                        load_account_snapshot(path)
                     path.unlink(missing_ok=True)
 
     def test_account_parser_rejects_invalid_symbol_and_date(self) -> None:
@@ -235,7 +246,7 @@ class AccountEngineTests(unittest.TestCase):
                         },
                     )
                     with self.assertRaises(ValueError):
-                        account.load_account_snapshot(path)
+                        load_account_snapshot(path)
                     path.unlink(missing_ok=True)
 
     def test_account_parser_accepts_zero_cash_full_investment(self) -> None:
@@ -258,7 +269,7 @@ class AccountEngineTests(unittest.TestCase):
                     },
                 },
             )
-            snapshot = account.load_account_snapshot(path)
+            snapshot = load_account_snapshot(path)
             self.assertEqual(snapshot.cash, 0.0)
             self.assertEqual(snapshot.positions[0].shares, 900)
 
@@ -273,12 +284,12 @@ class AccountEngineTests(unittest.TestCase):
             },
             index=[pd.Timestamp("2026-01-02")],
         )
-        engine = account.AccountSignalEngine(
+        engine = AccountSignalEngine(
             cache_dir="cache",
             regime_data_dir="regime",
         )
         with patch.object(
-            qf.DataFetcher,
+            DataFetcher,
             "load_stock_data",
             return_value=frame,
         ):
@@ -286,14 +297,14 @@ class AccountEngineTests(unittest.TestCase):
                 engine._frame("300308", "2026-02-01")
 
     def test_unpriced_holding_makes_total_equity_unavailable(self) -> None:
-        snapshot = account.AccountSnapshot(
+        snapshot = AccountSnapshot(
             schema_version=3,
             account_id="main",
             snapshot_date="2026-02-01",
             cash=100.0,
             peak_equity=1_000.0,
             positions=(
-                account.AccountPosition(
+                AccountPosition(
                     symbol="300308",
                     shares=100,
                     sellable_shares=100,
@@ -302,16 +313,16 @@ class AccountEngineTests(unittest.TestCase):
                 ),
             ),
         )
-        decision = ra.DeploymentDecision(
+        decision = DeploymentDecision(
             name="cash_preservation",
             boundary="2026-01-31",
             reason="test",
-            regime=ra.RegimeEvidence(
+            regime=RegimeEvidence(
                 as_of="2026-01-31",
                 regime="unknown",
                 observations=(),
             ),
-            leaders=ra.LeaderSelection(
+            leaders=LeaderSelection(
                 as_of="2026-01-31",
                 requested_symbols=("300308",),
                 observed_symbols=0,
@@ -319,7 +330,7 @@ class AccountEngineTests(unittest.TestCase):
                 selected_returns=(),
             ),
         )
-        engine = account.AccountSignalEngine(
+        engine = AccountSignalEngine(
             cache_dir="cache",
             regime_data_dir="regime",
         )
@@ -330,7 +341,7 @@ class AccountEngineTests(unittest.TestCase):
                 return_value={},
             ),
             patch.object(
-                ra.RegimeAdaptiveBacktestEngine,
+                RegimeAdaptiveBacktestEngine,
                 "decide_current",
                 return_value=decision,
             ),
@@ -353,7 +364,7 @@ class AccountEngineTests(unittest.TestCase):
 
     def test_target_shares_use_only_selected_candidate_subset(self) -> None:
         """现金分配只按被选中的候选子集计算，不被未选中候选稀释。"""
-        snapshot = account.AccountSnapshot(
+        snapshot = AccountSnapshot(
             schema_version=3,
             account_id="main",
             snapshot_date="2026-02-01",
@@ -363,7 +374,7 @@ class AccountEngineTests(unittest.TestCase):
         )
         # 三个候选：两个被选中（target_weight 0.60 + 0.40），一个未选中。
         selected = [
-            account.PointInTimeSignal(
+            PointInTimeSignal(
                 symbol="300308",
                 strategy_name="s1",
                 direction="buy",
@@ -373,7 +384,7 @@ class AccountEngineTests(unittest.TestCase):
                 stop_price=None,
                 reasons=("r",),
             ),
-            account.PointInTimeSignal(
+            PointInTimeSignal(
                 symbol="300502",
                 strategy_name="s2",
                 direction="buy",
@@ -386,7 +397,7 @@ class AccountEngineTests(unittest.TestCase):
         ]
         # 修复前传入完整 ranked（含 unselected），分母被放大、分配被稀释。
         unselected = [
-            account.PointInTimeSignal(
+            PointInTimeSignal(
                 symbol="688256",
                 strategy_name="s3",
                 direction="buy",
@@ -397,10 +408,10 @@ class AccountEngineTests(unittest.TestCase):
                 reasons=("r",),
             )
         ]
-        shares_selected, _ = account._compute_target_shares(
+        shares_selected, _ = compute_target_shares(
             "300308", 10.0, 0.60, snapshot, selected
         )
-        shares_diluted, _ = account._compute_target_shares(
+        shares_diluted, _ = compute_target_shares(
             "300308", 10.0, 0.60, snapshot, selected + unselected
         )
         # 选中子集归一化后应分配全部现金给该股整手；包含未选中候选后份额变小。
@@ -516,11 +527,11 @@ class AccountCandidateScoreTests(unittest.TestCase):
             "ma_short": pd.Series([110.0] * 21),
             "ma_long": pd.Series([100.0] * 21),
         }
-        weak = account._trend_candidate_score(
+        weak = trend_candidate_score(
             frame, indicators, 20, 120.0, 2,
             industry_relative_strength=0.0,
         )
-        strong = account._trend_candidate_score(
+        strong = trend_candidate_score(
             frame, indicators, 20, 120.0, 2,
             industry_relative_strength=1.0,
         )

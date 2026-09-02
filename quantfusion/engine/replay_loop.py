@@ -18,7 +18,6 @@ import pandas as pd
 from quantfusion.config.engine import default_engine_config
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import (
-    AccountState,
     BarContext,
     Position,
     SectorObservation,
@@ -360,8 +359,8 @@ class CoreReplayLoopMixin:
             cache_dir,
         )
         # Apply initial risk state when explicitly provided by the caller.
-        # Note: daily_signal_scan.py does NOT use this feature — it replays
-        # the full history each time to avoid time-direction errors.
+        # Note: quantfusion.application.daily_scan does NOT use this feature —
+        # it replays the full history each time to avoid time-direction errors.
         initial_risk = self.cfg.get("_initial_risk_state")
         if initial_risk and initial_risk.get("sector_guard_active", False):
             self.sector_guard_active = True

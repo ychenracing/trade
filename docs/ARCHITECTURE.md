@@ -4,13 +4,13 @@
 
 本仓库采用单进程模块化单体。工程边界用于隔离变化原因，不改变策略参数、信号顺序、撮合顺序、组合核算、风险动作或生产回放语义。
 
-规范实现全部位于 `quantfusion/`。根目录中的历史模块名和命令行文件只负责兼容导出或启动应用，不能成为规范包的依赖源。
+全部 Python 实现与公共导入位于 `quantfusion/`。根目录不保留历史模块名或重复命令行文件；工具统一通过 `python -m scripts.<模块名>` 启动。
 
 ## 单向依赖
 
 ```mermaid
 flowchart TD
-    CLI[兼容入口与命令行] --> APP[应用服务]
+    CLI[规范模块与工具命令] --> APP[应用服务]
     APP --> ENGINE[引擎与生产回放]
     APP --> ACCOUNT[账户建议]
     APP --> RESEARCH[研究与压力验证]
@@ -21,11 +21,11 @@ flowchart TD
 
 依赖方向由 `tests/contract/test_architecture.py` 自动守卫：
 
-- 规范包禁止导入根目录兼容模块；
+- 历史根模块必须不存在，规范包禁止导入其旧名称；
 - 领域层禁止反向依赖引擎或应用层；
 - 跨子包禁止导入私有名称；
 - 规范模块导入图必须无环；
-- 根目录兼容入口必须保持薄层规模。
+- 根目录只保留文档与项目配置。
 
 ## 模块所有权
 
@@ -50,7 +50,7 @@ flowchart TD
 
 回测、日扫、优化器、股票池验证和压力验证最终都调用规范引擎或 `ProductionReplayEngine`。研究层只产生候选配置和评价请求，不能复制信号、费用、涨跌停、成交量容量、T+1 或资金核算。
 
-旧接口仍可使用，例如 `quant_fusion.BacktestEngine` 和 `regime_adaptive.ProductionReplayEngine`，但它们均导向同一规范实现。
+公共代码直接从 `quantfusion.config`、`quantfusion.data`、`quantfusion.domain`、`quantfusion.engine`、`quantfusion.risk` 与 `quantfusion.application` 的当前模块导入。
 
 ## 状态所有权
 
@@ -102,7 +102,7 @@ RiskEvidence -> RiskPolicy -> RiskAction -> EngineAdapter -> pending signal
 
 规范代码与仓库资产分开管理：`quantfusion/` 只放可导入实现，`scripts/` 放可复现研究命令，`tests/` 按单元、契约、集成和经济回归分层。冻结股票行情位于 `data/market/`，路由证据位于 `data/regime/`，测试读取的黄金指标位于 `tests/fixtures/`，已审查批量结果位于 `artifacts/validation/`，账户输入样例位于 `examples/`。
 
-以上路径由 `quantfusion.config.paths` 统一提供。旧相对数据名只在调用目录没有同名真实路径时回落到新位置，避免覆盖用户自有目录。运行缓存、日扫输出、优化器输出和压力检查点属于临时状态，受 `.gitignore` 隔离，不得混入冻结数据或已审查工件。根目录只保留项目配置与旧公开兼容入口。
+以上路径由 `quantfusion.config.paths` 统一提供。旧相对数据名只在调用目录没有同名真实路径时回落到新位置，避免覆盖用户自有目录。运行缓存、日扫输出、优化器输出和压力检查点属于临时状态，受 `.gitignore` 隔离，不得混入冻结数据或已审查工件。根目录只保留文档与项目配置。
 
 ## 公共配置事实源
 
@@ -112,7 +112,7 @@ RiskEvidence -> RiskPolicy -> RiskAction -> EngineAdapter -> pending signal
 - 路由与弱市参数来自 `quantfusion.config.regime` 和 `quantfusion.config.weak`；
 - 固定股票名称和验证股票池来自 `quantfusion.config.universe`。
 
-兼容类方法只委托给以上公共来源，禁止复制默认值。
+引擎与应用只读取以上公共来源，禁止复制默认值。
 
 ## 规模与类型约束
 

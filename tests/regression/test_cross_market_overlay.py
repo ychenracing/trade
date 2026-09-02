@@ -10,8 +10,15 @@ import unittest
 
 import pandas as pd
 
-from cross_market_overlay import CATASTROPHE_COOLDOWN_DAYS, CrossMarketOverlay
-from quantfusion.risk.overlay.adapter import apply_risk_actions
+from quantfusion.config.overlay import CATASTROPHE_COOLDOWN_DAYS
+from quantfusion.indicators.technical import Indicators
+from quantfusion.risk.overlay.adapter import (
+    apply_cooldown_buy_gate,
+    apply_risk_actions,
+    apply_risk_buy_gate,
+    consolidate_risk_sells,
+)
+from quantfusion.risk.overlay.policy import CrossMarketOverlay
 
 
 class _Pos:
@@ -49,6 +56,27 @@ def _frame(close: float) -> pd.DataFrame:
     )
 
 
+def _evaluate_and_apply(
+    overlay: CrossMarketOverlay,
+    states: list[_State],
+    date: pd.Timestamp,
+    *,
+    date_pos: int,
+    assets: float,
+    peak: float,
+    scoring_fn=None,
+) -> None:
+    actions = overlay.evaluate(
+        states, date, date_pos, assets, peak, scoring_fn
+    )
+    apply_risk_actions(
+        actions,
+        states,
+        date_str=date.strftime("%Y-%m-%d"),
+        events=overlay.events,
+    )
+
+
 class CatastropheStopTests(unittest.TestCase):
     """灾变止损机制行为。"""
 
@@ -61,8 +89,8 @@ class CatastropheStopTests(unittest.TestCase):
             for name, (peak, entry) in zip(("fast", "base", "slow"), state_peaks)
         ]
         overlay = CrossMarketOverlay()
-        overlay.on_day(
-            states, date, date_pos=1,
+        _evaluate_and_apply(
+            overlay, states, date, date_pos=1,
             assets=2_000_000, peak=2_000_000, scoring_fn=None,
         )
         sells = [sig for st in states for sig, _ in st.pending]
@@ -87,7 +115,14 @@ class CatastropheStopTests(unittest.TestCase):
             _State(_Sleeve({"AAA": {"fast": _Pos(100, 100.0, 90.0)}}), {"AAA": frame})
         ]
         overlay = CrossMarketOverlay()
-        overlay.on_day(states, date, date_pos=1, assets=2_000_000, peak=2_000_000, scoring_fn=None)
+        _evaluate_and_apply(
+            overlay,
+            states,
+            date,
+            date_pos=1,
+            assets=2_000_000,
+            peak=2_000_000,
+        )
         self.assertEqual(states[0].pending, [])
         self.assertEqual(overlay.events, [])
 
@@ -101,8 +136,8 @@ class CatastropheStopTests(unittest.TestCase):
         )
         overlay = CrossMarketOverlay()
         overlay.set_outer_route("weak", date)
-        overlay.on_day(
-            [state], date, date_pos=1,
+        _evaluate_and_apply(
+            overlay, [state], date, date_pos=1,
             assets=1_700_000, peak=2_000_000, scoring_fn=None,
         )
         self.assertEqual(state.pending, [])
@@ -186,8 +221,8 @@ class CatastropheStopTests(unittest.TestCase):
         for st in states:
             st.pending = []
             st.data_map["AAA"] = frame
-        overlay.on_day(
-            list(states), future, date_pos=2,
+        _evaluate_and_apply(
+            overlay, list(states), future, date_pos=2,
             assets=2_000_000, peak=2_000_000, scoring_fn=None,
         )
         self.assertEqual(states[0].pending, [])
@@ -292,7 +327,9 @@ class CooldownBlocksBuysTests(unittest.TestCase):
         overlay = CrossMarketOverlay()
         overlay._catastrophe_cooldown["AAA"] = 10  # 冷却到第10个交易位置
         states = self._make_state("AAA", "buy")
-        overlay.block_cooldown_buys([states], pd.Timestamp("2026-01-06"), date_pos=5)
+        apply_cooldown_buy_gate(
+            overlay, [states], pd.Timestamp("2026-01-06"), date_pos=5
+        )
         self.assertEqual(states.pending, [])
         self.assertTrue(
             any(e["event"] == "cooldown_blocked_buy" for e in overlay.events)
@@ -303,7 +340,9 @@ class CooldownBlocksBuysTests(unittest.TestCase):
         overlay = CrossMarketOverlay()
         overlay._catastrophe_cooldown["AAA"] = 10
         states = self._make_state("AAA", "buy")
-        overlay.block_cooldown_buys([states], pd.Timestamp("2026-01-06"), date_pos=12)
+        apply_cooldown_buy_gate(
+            overlay, [states], pd.Timestamp("2026-01-06"), date_pos=12
+        )
         self.assertEqual(len(states.pending), 1)
 
     def test_sell_never_blocked_by_cooldown(self) -> None:
@@ -311,7 +350,9 @@ class CooldownBlocksBuysTests(unittest.TestCase):
         overlay = CrossMarketOverlay()
         overlay._catastrophe_cooldown["AAA"] = 10
         states = self._make_state("AAA", "sell")
-        overlay.block_cooldown_buys([states], pd.Timestamp("2026-01-06"), date_pos=2)
+        apply_cooldown_buy_gate(
+            overlay, [states], pd.Timestamp("2026-01-06"), date_pos=2
+        )
         self.assertEqual(len(states.pending), 1)
 
 
@@ -345,8 +386,8 @@ class LayeredStopIndependentTriggerTests(unittest.TestCase):
         ]
         overlay = CrossMarketOverlay(enable_early_sector_risk=False)
         overlay._risk_level = risk_level
-        overlay.on_day(
-            states, frame.index[-1], date_pos=40,
+        _evaluate_and_apply(
+            overlay, states, frame.index[-1], date_pos=40,
             assets=assets, peak=peak, scoring_fn=None,
         )
         return [sig for st in states for sig, _ in st.pending]
@@ -396,7 +437,6 @@ class AtrReuseTests(unittest.TestCase):
         loc = len(closes) - 1
         atr_overlay = overlay._atr_at(frame, loc)
         # 统一口径：Indicators.atr 使用逐日 close.shift(1)，是权威实现。
-        from quant_fusion import Indicators
         atr_core = float(Indicators.atr(frame, period=20, method="wilder").iloc[loc])
         self.assertTrue(atr_overlay > 0)
         self.assertAlmostEqual(atr_overlay, atr_core, places=5)
@@ -465,7 +505,8 @@ class IndependentRiskBasketTests(unittest.TestCase):
         overlay = CrossMarketOverlay(risk_frames=risk_frames)
         overlay._assets_history = [100_000.0]
         for offset, loc in enumerate((22, 23, 24)):
-            overlay.on_day(
+            _evaluate_and_apply(
+                overlay,
                 [state],
                 frame.index[loc],
                 date_pos=loc,
@@ -489,8 +530,8 @@ class IndependentRiskBasketTests(unittest.TestCase):
         ]
         overlay = CrossMarketOverlay()
         overlay._risk_level = 2
-        overlay.block_risk_buys(
-            [state], pd.Timestamp("2026-01-06"), {"HELD"}
+        apply_risk_buy_gate(
+            overlay, [state], pd.Timestamp("2026-01-06"), {"HELD"}
         )
         self.assertEqual(len(state.pending), 1)
         self.assertEqual(state.pending[0][0].direction, "sell")
@@ -523,7 +564,7 @@ class UnifiedRiskPriorityTests(unittest.TestCase):
             _RiskSignal("AAA", "fast", "sell", 100, "concentration_trim:cluster=optical"),
             _RiskSignal("AAA", "fast", "sell", 100, "cost_stop:drop_from_peak=20.0%"),
         ])
-        overlay._consolidate_risk_sells([state], "2026-01-06")
+        consolidate_risk_sells([state], "2026-01-06", overlay.events)
         self.assertEqual(len(state.pending), 1)
         win = state.pending[0][0]
         self.assertEqual(win.reason.split(":")[0], "cost_stop")
@@ -539,7 +580,7 @@ class UnifiedRiskPriorityTests(unittest.TestCase):
             _RiskSignal("AAA", "base", "sell", 100, "catastrophe_stop:drop_from_peak=30.0%"),
             _RiskSignal("AAA", "slow", "sell", 100, "catastrophe_stop:drop_from_peak=30.0%"),
         ])
-        overlay._consolidate_risk_sells([state], "2026-01-06")
+        consolidate_risk_sells([state], "2026-01-06", overlay.events)
         self.assertEqual(len(state.pending), 3)
         self.assertEqual(overlay.events, [])
 
@@ -550,7 +591,7 @@ class UnifiedRiskPriorityTests(unittest.TestCase):
             _RiskSignal("BBB", "base", "sell", 30, "sector_risk_trim:level=2"),
             _RiskSignal("BBB", "base", "sell", 80, "sector_risk_trim:level=3"),
         ])
-        overlay._consolidate_risk_sells([state], "2026-01-06")
+        consolidate_risk_sells([state], "2026-01-06", overlay.events)
         self.assertEqual(len(state.pending), 1)
         self.assertEqual(state.pending[0][0].target_shares, 80)
 
@@ -565,7 +606,7 @@ class UnifiedRiskPriorityTests(unittest.TestCase):
         state.pending = [
             (_RiskSignal("CCC", "fast", "sell", 50, "exit_signal"), _DummyStrat()),
         ]
-        overlay._consolidate_risk_sells([state], "2026-01-06")
+        consolidate_risk_sells([state], "2026-01-06", overlay.events)
         self.assertEqual(len(state.pending), 1)
         self.assertEqual(overlay.events, [])
 

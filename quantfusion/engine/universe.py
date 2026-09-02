@@ -15,7 +15,7 @@ import pandas as pd
 
 from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
 from quantfusion.data.providers import DataFetcher
-from quantfusion.domain.models import AccountState, MarketRegimeObservation, Signal
+from quantfusion.domain.models import MarketRegimeObservation, Signal
 from quantfusion.domain.rules import floor_to_lot, require_int
 from quantfusion.engine.core import CoreBacktestEngine
 from quantfusion.engine.ensemble import (
@@ -302,17 +302,9 @@ class BacktestEngine(
         warmup_calendar_days: int = 365,
         allocation_mode: str | None = None,
         risk_state: dict | None = None,
-        account_state: AccountState | None = None,
         route_controller: Any | None = None,
     ) -> dict:
         """Run one or several portfolio sleeves under the same effective policy formula."""
-        if account_state is not None:
-            raise NotImplementedError(
-                "Real-account mode (account_state) is disabled. "
-                "The account injection logic has known architecture defects. "
-                "Use simulation mode (account_state=None) instead. "
-                "A separate account signal engine is planned."
-            )
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
         if mode == "ensemble":
             return super().run(
@@ -329,7 +321,6 @@ class BacktestEngine(
                 allocation_mode="ensemble",
                 risk_state=risk_state,
                 route_controller=route_controller,
-                account_state=account_state,
             )
         if mode != "single":
             raise ValueError("allocation_mode must be 'single' or 'ensemble'")
@@ -349,12 +340,6 @@ class BacktestEngine(
         if risk_state:
             sleeve.cfg = dict(sleeve.cfg)
             sleeve.cfg["_initial_risk_state"] = risk_state
-        if account_state:
-            # DEPRECATED: This path is unreachable — the public run() API
-            # raises NotImplementedError when account_state is not None.
-            # Retained for reference until the account signal engine replaces
-            # this injection mechanism.
-            sleeve._account_state_to_inject = account_state
         result = sleeve.run(
             symbols_dict,
             start_date,

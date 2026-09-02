@@ -179,7 +179,7 @@ class AccountRiskWorkflowTests(unittest.TestCase):
         # Simulate old format — no symbols_hash
         prev_risk = {"scan_date": "2026-07-28", "terminal_risk_lock": True,
                      "sector_guard_active": False, "cycle_lock_count": 0}
-        # This logic mirrors the validation in daily_signal_scan.py
+        # This logic mirrors the validation in quantfusion.application.daily_scan
         prev_hash = prev_risk.get("symbols_hash", "")
         if not prev_hash:
             prev_risk = None  # fail-closed
@@ -384,7 +384,7 @@ class RiskStateNotInjectedTests(unittest.TestCase):
                               return_value=mock_df), \
                  patch.object(dss.ra.RegimeAdaptiveBacktestEngine, "run", new=capture_run):
                 with patch("sys.argv", [
-                    "daily_signal_scan.py",
+                    "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
                 ]):

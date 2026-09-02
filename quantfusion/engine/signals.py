@@ -18,7 +18,6 @@ import pandas as pd
 from quantfusion.config.engine import default_engine_config
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import (
-    AccountState,
     BarContext,
     Position,
     SectorObservation,
@@ -243,23 +242,9 @@ class CoreSignalMixin:
             )
 
     def _reset_run_state(self, symbols_dict: dict[str, str]) -> None:
-        """Reset every mutable ledger and state machine for a fresh run.
-
-        If account-state injection populated ``_initial_positions`` and
-        ``_initial_cash`` before this method is called (single-sleeve mode),
-        those values are restored after the reset so the engine replays from
-        the real portfolio state instead of a zero-position, full-capital start.
-        """
-        self.cash = (
-            self._initial_cash
-            if getattr(self, "_initial_cash", None) is not None
-            else self.initial_capital
-        )
-        self.positions = (
-            dict(self._initial_positions)
-            if getattr(self, "_initial_positions", None)
-            else {}
-        )
+        """Reset every mutable ledger and state machine for a fresh run."""
+        self.cash = self.initial_capital
+        self.positions = {}
         self.trades = []
         self.equity_curve = []
         self.strategy_instances = {}

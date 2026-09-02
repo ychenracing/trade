@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 
 from quantfusion.application.backtest_cli import parse_symbols
-from quantfusion.config.paths import resolve_repository_data_dir
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.regime import REGIME_INDEX_FILES
 from quantfusion.research.artifacts import (
@@ -101,7 +100,7 @@ def main() -> int:
         symbols,
         PortfolioPolicy().regime_symbols,
     )
-    regime_data_dir = resolve_repository_data_dir(args.regime_data_dir)
+    regime_data_dir = Path(args.regime_data_dir).expanduser()
     regime_fingerprint = hashlib.sha256()
     for code in sorted(REGIME_INDEX_FILES.values()):
         path = regime_data_dir / f"{code}.csv"
@@ -170,7 +169,7 @@ def main() -> int:
     )
     report["run_metadata"] = {
         "symbols": symbols,
-        "data_directory": str(resolve_repository_data_dir(args.data_dir)),
+        "data_directory": str(Path(args.data_dir).expanduser()),
         "regime_data_directory": str(regime_data_dir),
         "data_coverage": catalog.coverage(),
         "candidate_count": len(candidates),
@@ -205,3 +204,7 @@ def main() -> int:
         )
     print(render_markdown_summary(report))
     return 0 if report["status"] != "no_feasible_candidate" else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

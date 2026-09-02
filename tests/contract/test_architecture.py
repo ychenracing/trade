@@ -1,31 +1,32 @@
-"""Canonical package boundaries and legacy compatibility contracts."""
+"""Canonical package boundaries and current-only architecture contracts."""
 
 from __future__ import annotations
 
 import ast
-import importlib
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "quantfusion"
-LEGACY_MODULES = {
-    "quant_fusion",
-    "regime_adaptive",
-    "cross_market_overlay",
-    "risk_governance",
-    "account_signal_engine",
-    "market_data_contracts",
-    "daily_signal_scan",
-    "quant_fusion_optimizer",
-    "backtest_cambricon_universe",
-    "backtest_universes",
-    "benchmark_validation",
-    "download_eastmoney_qfq",
-    "run_regime_validation",
-    "validate_basket",
+LEGACY_ROOT_FILES = {
+    "account_signal_engine.py",
+    "backtest_cambricon_universe.py",
+    "backtest_universes.py",
+    "benchmark_validation.py",
+    "cross_market_overlay.py",
+    "daily_signal_scan.py",
+    "download_eastmoney_qfq.py",
+    "market_data_contracts.py",
+    "quant_fusion.py",
+    "quant_fusion_optimizer.py",
+    "regime_adaptive.py",
+    "risk_governance.py",
+    "run_regime_validation.py",
+    "stress_test_prefixes.py",
+    "validate_basket.py",
 }
+LEGACY_MODULES = {path.removesuffix(".py") for path in LEGACY_ROOT_FILES}
 REQUIRED_PACKAGES = {
     "domain",
     "config",
@@ -68,25 +69,6 @@ ALLOWED_DEPENDENCIES = {
     },
     "research": {"domain", "config", "data", "engine", "regime"},
 }
-ROOT_SIZE_LIMITS = {
-    "quant_fusion.py": 300,
-    "daily_signal_scan.py": 180,
-    "regime_adaptive.py": 250,
-    "cross_market_overlay.py": 150,
-    "account_signal_engine.py": 150,
-    "quant_fusion_optimizer.py": 150,
-    "risk_governance.py": 150,
-    "market_data_contracts.py": 150,
-    "stress_test_prefixes.py": 150,
-    "backtest_cambricon_universe.py": 50,
-    "backtest_universes.py": 50,
-    "benchmark_validation.py": 50,
-    "download_eastmoney_qfq.py": 50,
-    "run_regime_validation.py": 50,
-    "validate_basket.py": 50,
-}
-
-
 def _module_name(path: Path) -> str:
     relative = path.relative_to(ROOT).with_suffix("")
     return ".".join(relative.parts)
@@ -126,13 +108,9 @@ class CanonicalLayoutTests(unittest.TestCase):
         )
         self.assertEqual(missing, [])
 
-    def test_legacy_roots_are_thin_facades_or_clis(self) -> None:
-        oversized = {
-            name: len((ROOT / name).read_text(encoding="utf-8").splitlines())
-            for name, limit in ROOT_SIZE_LIMITS.items()
-            if len((ROOT / name).read_text(encoding="utf-8").splitlines()) > limit
-        }
-        self.assertEqual(oversized, {})
+    def test_legacy_root_modules_are_absent(self) -> None:
+        present = sorted(name for name in LEGACY_ROOT_FILES if (ROOT / name).exists())
+        self.assertEqual(present, [])
 
 
 class DependencyDirectionTests(unittest.TestCase):
@@ -264,25 +242,8 @@ class DependencyDirectionTests(unittest.TestCase):
             visit(name, ())
 
 
-class CompatibilityTests(unittest.TestCase):
-    """Legacy imports resolve to the canonical implementation."""
-
-    def test_quant_fusion_public_api_remains_available(self) -> None:
-        legacy = importlib.import_module("quant_fusion")
-        required = {
-            "BacktestEngine",
-            "SleeveBacktestEngine",
-            "PortfolioPolicy",
-            "DataFetcher",
-            "Indicators",
-            "Position",
-            "Signal",
-            "TradeRecord",
-            "PerformanceReport",
-            "build_argument_parser",
-            "parse_symbols",
-        }
-        self.assertEqual(sorted(required - set(dir(legacy))), [])
+class CanonicalPublicApiTests(unittest.TestCase):
+    """Current public imports resolve from the canonical package."""
 
     def test_canonical_package_public_api_is_available(self) -> None:
         """The migration imports documented in the report must resolve."""
@@ -304,50 +265,6 @@ class CompatibilityTests(unittest.TestCase):
         self.assertTrue(callable(TradeRecord))
         defaults = default_engine_config()
         self.assertEqual(validate_engine_config(defaults), defaults)
-
-    def test_default_config_has_one_public_source(self) -> None:
-        legacy = importlib.import_module("quant_fusion")
-        config = importlib.import_module("quantfusion.config.engine")
-        self.assertEqual(
-            legacy._CoreBacktestEngine._default_config(),
-            config.default_engine_config(),
-        )
-
-    def test_legacy_data_contract_constants_remain_available(self) -> None:
-        legacy = importlib.import_module("quant_fusion")
-        contracts = importlib.import_module("quantfusion.data.contracts")
-        self.assertIs(legacy.REQUIRED_OHLC_COLUMNS, contracts.REQUIRED_OHLC_COLUMNS)
-        self.assertIs(legacy.OPTIONAL_COLUMNS, contracts.OPTIONAL_COLUMNS)
-
-    def test_optimizer_public_constants_remain_available(self) -> None:
-        legacy = importlib.import_module("quant_fusion_optimizer")
-        candidates = importlib.import_module("quantfusion.research.candidates")
-        names = {
-            "MAX_SYMBOL_WEIGHT",
-            "MAX_TOTAL_WEIGHT",
-            "MAX_POSITIONS",
-            "DEFAULT_DRAWDOWN_LIMIT",
-            "INTEGER_SYMBOL_PARAMETERS",
-            "POLICY_RISK_KEYS",
-            "POLICY_RISK_PROFILES",
-            "SLEEVE_WEIGHT_PROFILES",
-        }
-        for name in names:
-            self.assertIs(getattr(legacy, name), getattr(candidates, name))
-
-    def test_tool_cli_public_constants_remain_available(self) -> None:
-        validation = importlib.import_module("run_regime_validation")
-        canonical = importlib.import_module("scripts.run_regime_validation")
-        self.assertEqual(validation.ROOT, ROOT)
-        self.assertEqual(validation.GOLDEN_BULL, canonical.GOLDEN_BULL)
-        self.assertEqual(set(validation.GOLDEN_BULL), set(canonical.UNIVERSES))
-        for name in canonical.UNIVERSES:
-            self.assertEqual(validation.GOLDEN_BULL[name], canonical._golden_bull(name))
-
-        for module_name in ("backtest_universes", "backtest_cambricon_universe"):
-            module = importlib.import_module(module_name)
-            self.assertEqual(module.ROOT, ROOT)
-
 
 if __name__ == "__main__":
     unittest.main()
