@@ -187,7 +187,7 @@ class RepositoryHygieneTests(unittest.TestCase):
 
     def test_repository_assets_are_grouped_by_responsibility(self) -> None:
         expected = (
-            "artifacts/validation/candidates/stress-117a0ea17a333be17fbd345a14eb67fb328d046c-rejected.json",
+            "artifacts/validation/candidates/stress-f5625e5b5813a5b58c52d076ad3c38e33d8b3292-rejected.json",
             "data/market/300308.csv",
             "data/regime/000300.csv",
             "examples/account.json",

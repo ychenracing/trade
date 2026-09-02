@@ -52,11 +52,11 @@
 
 当前完整 983 场景运行已保存为非 canonical 候选：
 
-- 路径：`artifacts/validation/candidates/stress-117a0ea17a333be17fbd345a14eb67fb328d046c-rejected.json`
-- 文件 SHA-256：`bca0200b822ee1fc045a7cde2d8791d153338b2c5bc3ed84aa4916c820977b52`
+- 路径：`artifacts/validation/candidates/stress-f5625e5b5813a5b58c52d076ad3c38e33d8b3292-rejected.json`
+- 文件 SHA-256：`adda276bea8a11b76fa6881e4e7a9770bf8cfb79bb93a397aa5aa405327358c2`
 - 状态：`current_candidate`、`rejected`、`canonical=false`
 - 完整性：983/983，983 个唯一场景 ID，无缺失、重复或非有限指标；所有场景均为 `production_daily_replay`
-- 来源证明（provenance）：source revision `117a0ea17a333be17fbd345a14eb67fb328d046c`，source fingerprint `98b6bcd7d39ab9de3352af24dca05721b95d01b45fa3facbae7890a35dfc6ea1`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `dcebfe65f431b432cdb82e999505e0d87ef5a61b21f1b2544f5e357822ee541f`
+- 来源证明（provenance）：source revision `f5625e5b5813a5b58c52d076ad3c38e33d8b3292`，source fingerprint `a79a96c059b01d6ee98a25d3d6d8d9719906bd2fee69836dc35b5186664c51d5`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `1982b16888237ce989d3022f942d5d525c1be2bd627a58fbcf849252ec6ea814`
 - 晋级门禁：当前没有 accepted canonical 且使用 `trade_records` 语义的基线，状态为 `no_incumbent_baseline`、`applicable=false`、`passed=false`，晋级失败关闭
 - 绝对门禁：`worst_add_one_wealth_at_least_minus_18pct` 失败；`add-one-05-688205` 相对 `prefix-05` 的财富变化为 `-0.23490347753273277`，要求仍为 `>= -0.18`
 - 排列不变性：通过
