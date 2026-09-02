@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import random
 from typing import Any
 
+from quantfusion.application import stress_metrics
 from quantfusion.config.universe import SYMBOL_NAMES
-
 
 ORDERED_CODES = tuple(SYMBOL_NAMES)
 DEFAULT_RANDOM_SAMPLES = 50
@@ -122,6 +124,21 @@ def is_canonical_scenario_plan(scenarios: list[dict[str, Any]]) -> bool:
         permutation_samples=DEFAULT_PERMUTATION_SAMPLES,
         seeds=DEFAULT_SEEDS,
     )
+
+
+def _scenario_signature(scenarios: list[dict[str, Any]]) -> str:
+    payload = {
+        "engine": stress_metrics.ENGINE,
+        "deployment_policy": stress_metrics.DEPLOYMENT_POLICY,
+        "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
+        "start_date": stress_metrics.START_DATE,
+        "end_date": stress_metrics.END_DATE,
+        "initial_capital": stress_metrics.INITIAL_CAPITAL,
+        "ordered_codes": list(ORDERED_CODES),
+        "scenarios": scenarios,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def select_scenarios(

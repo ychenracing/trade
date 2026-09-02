@@ -38,10 +38,8 @@ class LeafIdentityTests(unittest.TestCase):
     def test_default_engine_config_is_a_single_source(self) -> None:
         config = importlib.import_module("quantfusion.config.engine")
         core = importlib.import_module("quantfusion.engine.core")
-        self.assertEqual(
-            config.default_engine_config(),
-            core.CoreBacktestEngine._default_config(),
-        )
+        self.assertFalse(hasattr(core.CoreBacktestEngine, "_default_config"))
+        self.assertEqual(core.CoreBacktestEngine().cfg, config.default_engine_config())
         first = config.default_engine_config()
         first["entry_period"] = 999
         self.assertEqual(config.default_engine_config()["entry_period"], 8)

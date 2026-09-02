@@ -17,8 +17,23 @@ from unittest import mock
 import pandas as pd
 
 from scripts.backtest_universes import NAMES, UNIVERSES
+from quantfusion.application import engine_api
 from quantfusion.application.backtest_cli import build_argument_parser, parse_symbols
+from quantfusion.config.engine import default_engine_config
 from quantfusion.config.portfolio import PortfolioPolicy
+from quantfusion.config.profiles import (
+    KNOWN_CLASSIFICATION,
+    SHRINKABLE_PARAMS,
+    SYMBOL_GROUPS,
+    SYMBOL_PROFILES,
+    classify_symbol,
+    config_for_symbol,
+    domestic_design_config,
+    get_symbol_classification,
+    optical_component_config,
+    optical_module_config,
+    uses_unmapped_auto_route,
+)
 from quantfusion.config.paths import (
     BACKTEST_GOLDEN_METRICS,
     MARKET_DATA_DIR,
@@ -241,37 +256,34 @@ class SymbolRoutingTests(unittest.TestCase):
     def test_cambricon_uses_the_domestic_design_semiconductor_route(self) -> None:
         code = "688256"
         name = "寒武纪"
-        engine = BacktestEngine
-
-        self.assertEqual(engine.classify_symbol(code, name=name), "semiconductor")
+        self.assertEqual(classify_symbol(code, name=name), "semiconductor")
         self.assertEqual(
-            engine._SYMBOL_GROUP[code],
+            SYMBOL_GROUPS[code],
             "domestic_semiconductor",
         )
         # Report 4.6: fine-grained AI sub-industry profiles. 688256 (寒武纪) is
         # a chip-design / domestic-compute name, so it resolves to the
         # fine-grained ``chip_design`` profile (previously ``domestic_design``).
-        self.assertEqual(engine._SYMBOL_PROFILE[code], "chip_design")
+        self.assertEqual(SYMBOL_PROFILES[code], "chip_design")
         self.assertEqual(
-            engine.config_for_symbol(code, name=name),
-            engine.chip_design_config(),
+            config_for_symbol(code, name=name),
+            domestic_design_config(),
         )
         self.assertEqual(parse_symbols(name), {code: name})
         self.assertIn(code, EXECUTION_PRIORITY)
         self.assertEqual(
-            set(engine._KNOWN_CLASSIFICATION),
-            set(engine._SYMBOL_GROUP),
+            set(KNOWN_CLASSIFICATION),
+            set(SYMBOL_GROUPS),
         )
         self.assertEqual(
-            set(engine._KNOWN_CLASSIFICATION),
-            set(engine._SYMBOL_PROFILE),
+            set(KNOWN_CLASSIFICATION),
+            set(SYMBOL_PROFILES),
         )
 
     def test_unknown_auto_routes_are_explicitly_identifiable(self) -> None:
-        engine = BacktestEngine
-        self.assertFalse(engine._uses_unmapped_auto_route("300308", "中际旭创"))
-        self.assertFalse(engine._uses_unmapped_auto_route("000001", "optical module"))
-        self.assertTrue(engine._uses_unmapped_auto_route("000001", "示例科技"))
+        self.assertFalse(uses_unmapped_auto_route("300308", "中际旭创"))
+        self.assertFalse(uses_unmapped_auto_route("000001", "optical module"))
+        self.assertTrue(uses_unmapped_auto_route("000001", "示例科技"))
 
         core = CoreBacktestEngine(initial_capital=100.0)
         core.symbol_names = {"000001": "示例科技", "300308": "中际旭创"}
@@ -283,11 +295,9 @@ class SymbolRoutingTests(unittest.TestCase):
 class SubindustryShrinkageTests(unittest.TestCase):
     """财报 P1-2：子行业参数以层级收缩拉向粗粒度父画像。"""
 
-    ENGINE = CoreBacktestEngine
-
     def test_shrinkage_is_enabled_by_default_and_validated(self) -> None:
         self.assertEqual(
-            self.ENGINE._default_config()["subindustry_shrinkage"], 0.5
+            default_engine_config()["subindustry_shrinkage"], 0.5
         )
         engine = BacktestEngine()
         self.assertEqual(engine.cfg["subindustry_shrinkage"], 0.5)
@@ -295,30 +305,30 @@ class SubindustryShrinkageTests(unittest.TestCase):
     def test_chip_design_delta_zero_is_unchanged_under_default_shrinkage(self) -> None:
         # 688256 (寒武纪) -> chip_design == domestic_design (parent), so every
         # shrinkable delta is 0 and the golden-metric profile is preserved.
-        shrunk = self.ENGINE.config_for_symbol("688256", "寒武纪")
-        self.assertEqual(shrunk, self.ENGINE.chip_design_config())
+        shrunk = config_for_symbol("688256", "寒武纪")
+        self.assertEqual(shrunk, domestic_design_config())
 
     def test_optical_component_is_pulled_toward_its_coarse_parent(self) -> None:
         # optical_component overrides trail_atr_mult (3.6 vs parent 4.0),
         # risk_pct (0.028 vs 0.03) and max_symbol_weight (0.55 vs 0.6). At the
         # default 0.5 factor each override is pulled halfway toward the parent,
         # while non-shrinkable params (e.g. exit_period) stay verbatim.
-        shrunk = self.ENGINE.config_for_symbol("688498", "")
-        sub = self.ENGINE.optical_component_config()
-        parent = self.ENGINE.optical_module_config()
-        for key in self.ENGINE.SHRINKABLE_PARAMS:
+        shrunk = config_for_symbol("688498", "")
+        sub = optical_component_config()
+        parent = optical_module_config()
+        for key in SHRINKABLE_PARAMS:
             expected = parent[key] + 0.5 * (sub[key] - parent[key])
             self.assertAlmostEqual(shrunk[key], expected)
         self.assertEqual(shrunk["exit_period"], sub["exit_period"])
 
     def test_shrinkage_zero_converges_and_one_keeps_subindustry(self) -> None:
-        sub = self.ENGINE.optical_component_config()
-        parent = self.ENGINE.optical_module_config()
-        shrunk_zero = self.ENGINE.config_for_symbol("688498", "", shrinkage=0.0)
-        for key in self.ENGINE.SHRINKABLE_PARAMS:
+        sub = optical_component_config()
+        parent = optical_module_config()
+        shrunk_zero = config_for_symbol("688498", "", shrinkage=0.0)
+        for key in SHRINKABLE_PARAMS:
             self.assertEqual(shrunk_zero[key], parent[key])
         self.assertEqual(
-            self.ENGINE.config_for_symbol("688498", "", shrinkage=1.0), sub
+            config_for_symbol("688498", "", shrinkage=1.0), sub
         )
 
     def test_non_shrinkable_params_are_not_refined_by_shrinkage(self) -> None:
@@ -326,7 +336,7 @@ class SubindustryShrinkageTests(unittest.TestCase):
         # shared through the hierarchy and must never be shrunk toward a raw
         # global default (report P1-2 "不建议独立调整").
         self.assertEqual(
-            self.ENGINE.SHRINKABLE_PARAMS,
+            SHRINKABLE_PARAMS,
             frozenset({"max_symbol_weight", "atr_multiplier", "trail_atr_mult", "risk_pct"}),
         )
 
@@ -596,8 +606,8 @@ class ExecutionControlTests(unittest.TestCase):
             },
             index=dates,
         )
-        loose_cfg = sleeve._default_config()
-        strict_cfg = sleeve._default_config()
+        loose_cfg = default_engine_config()
+        strict_cfg = default_engine_config()
         loose_cfg["max_symbol_weight"] = 0.60
         strict_cfg["max_symbol_weight"] = 0.20
         items = [
@@ -617,7 +627,7 @@ class ExecutionControlTests(unittest.TestCase):
 
     def test_batch_rejects_mixed_symbols_or_execution_prices(self) -> None:
         sleeve = self._sleeve()
-        strategy = TurtleBreakoutStrategy(sleeve._default_config())
+        strategy = TurtleBreakoutStrategy(default_engine_config())
         dates = pd.bdate_range("2026-01-02", periods=2)
         frame = pd.DataFrame(
             {
@@ -668,7 +678,7 @@ class ExecutionControlTests(unittest.TestCase):
     def test_buy_rejection_records_the_concrete_execution_reason(self) -> None:
         sleeve = self._sleeve(capital=1_000)
         sleeve.cash = 0.0
-        strategy = TurtleBreakoutStrategy(sleeve._default_config())
+        strategy = TurtleBreakoutStrategy(default_engine_config())
         signal = Signal(
             "300308", strategy.name, "buy", target_shares=100, price=10.0
         )
@@ -684,7 +694,7 @@ class ExecutionControlTests(unittest.TestCase):
 
     def test_portfolio_liquidation_audits_a_superseded_sell_reason(self) -> None:
         sleeve = self._sleeve()
-        strategy = TurtleBreakoutStrategy(sleeve._default_config())
+        strategy = TurtleBreakoutStrategy(default_engine_config())
         strategy.position = Position(
             "300308", strategy.name, 1_000, 10.0, "2026-01-02"
         )
@@ -986,12 +996,12 @@ class NewFeatureTests(unittest.TestCase):
 
     def test_get_symbol_group_returns_known_code(self) -> None:
         """get_symbol_group returns the correct group for a known symbol."""
-        result = CoreBacktestEngine.get_symbol_group("300308")
+        result = engine_api.get_symbol_group("300308")
         self.assertEqual(result, "overseas_compute")
 
     def test_get_symbol_group_returns_default_for_unknown(self) -> None:
         """get_symbol_group returns the default for an unknown symbol."""
-        result = CoreBacktestEngine.get_symbol_group("999999", "UNKNOWN")
+        result = engine_api.get_symbol_group("999999", "UNKNOWN")
         self.assertEqual(result, "UNKNOWN")
 
     def test_get_symbol_profile_returns_known_code(self) -> None:
@@ -1001,22 +1011,22 @@ class NewFeatureTests(unittest.TestCase):
         an optical-module name, so it resolves to the fine-grained
         ``optical_module`` profile (previously the coarse ``overseas_optical``).
         """
-        result = CoreBacktestEngine.get_symbol_profile("300308")
+        result = engine_api.get_symbol_profile("300308")
         self.assertEqual(result, "optical_module")
 
     def test_get_symbol_profile_returns_default_for_unknown(self) -> None:
         """get_symbol_profile returns the default for an unknown symbol."""
-        result = CoreBacktestEngine.get_symbol_profile("999999", "UNKNOWN")
+        result = engine_api.get_symbol_profile("999999", "UNKNOWN")
         self.assertEqual(result, "UNKNOWN")
 
     def test_get_symbol_classification_returns_known_code(self) -> None:
         """get_symbol_classification returns the correct value for a known symbol."""
-        result = CoreBacktestEngine.get_symbol_classification("300308")
+        result = get_symbol_classification("300308")
         self.assertEqual(result, "default")
 
     def test_get_symbol_classification_returns_default_for_unknown(self) -> None:
         """get_symbol_classification returns the default for an unknown symbol."""
-        result = CoreBacktestEngine.get_symbol_classification("999999", "UNKNOWN")
+        result = get_symbol_classification("999999", "UNKNOWN")
         self.assertEqual(result, "UNKNOWN")
 
 class CrossSleeveExecutionIndependenceTests(unittest.TestCase):
@@ -1084,7 +1094,7 @@ class CrossSleeveExecutionIndependenceTests(unittest.TestCase):
             with self.subTest(case=case):
                 sleeves = [self._sleeve(f"test-{index}") for index in range(len(orders))]
                 strategies = [
-                    TurtleBreakoutStrategy(sleeve._default_config())
+                    TurtleBreakoutStrategy(default_engine_config())
                     for sleeve in sleeves
                 ]
                 pending = [
@@ -1180,8 +1190,8 @@ class CrossSleeveExecutionIndependenceTests(unittest.TestCase):
             allocation_lookbacks=policy.single_lookbacks,
             sleeve_name="buy",
         )
-        sell_strategy = TurtleBreakoutStrategy(sell_sleeve._default_config())
-        buy_strategy = DualMAStrategy(buy_sleeve._default_config())
+        sell_strategy = TurtleBreakoutStrategy(default_engine_config())
+        buy_strategy = DualMAStrategy(default_engine_config())
         sell_position = Position(
             "300308", sell_strategy.name, 100, 10.0, "2026-01-05"
         )

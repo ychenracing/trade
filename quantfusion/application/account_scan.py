@@ -25,13 +25,13 @@ from quantfusion.account.snapshot import (
     load_account_snapshot_with_sha256,
 )
 from quantfusion.config.engine import default_engine_config
+from quantfusion.config.profiles import config_for_symbol, get_symbol_profile
 from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.config.weak import weak_regime_config
 from quantfusion.data import contracts as data_contracts
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import BarContext
 from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
-from quantfusion.engine.universe import BacktestEngine
 from quantfusion.indicators.technical import Indicators
 from quantfusion.io.artifacts import atomic_json
 from quantfusion.strategy.trend import (
@@ -145,7 +145,7 @@ class AccountSignalEngine:
 
         group_samples: dict[str, list[tuple[float, float]]] = {}
         for code, returns in momentum_by_symbol.items():
-            profile_name = BacktestEngine.get_symbol_profile(code, "unmapped")
+            profile_name = get_symbol_profile(code, "unmapped")
             group_samples.setdefault(profile_name, []).append(returns)
         group_mean = {
             profile_name: (
@@ -200,7 +200,7 @@ class AccountSignalEngine:
                 continue
             # 多策略确认数量作为置信度的主成分。
             stop_price = min(stop_prices) if stop_prices else None
-            profile_name = BacktestEngine.get_symbol_profile(code, "unmapped")
+            profile_name = get_symbol_profile(code, "unmapped")
             group20, group60 = group_mean.get(profile_name, (market20, market60))
             symbol20, symbol60 = momentum_by_symbol.get(code, (0.0, 0.0))
             relative_raw = (
@@ -274,7 +274,7 @@ class AccountSignalEngine:
             try:
                 frame = self._frame(code, as_of)
                 name = symbols.get(code, code)
-                cfg = BacktestEngine.config_for_symbol(code, name=name)
+                cfg = config_for_symbol(code, name=name)
                 indicators = Indicators.compute_all(frame, cfg)
                 close = float(frame["close"].iloc[-1])
                 if not math.isfinite(close) or close <= 0:

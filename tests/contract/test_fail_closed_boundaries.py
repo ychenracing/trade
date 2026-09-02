@@ -8,9 +8,9 @@ from unittest.mock import patch
 import pandas as pd
 
 from quantfusion.account.models import AccountPosition, AccountSnapshot
+from quantfusion.application import account_scan
 from quantfusion.application.account_scan import AccountSignalEngine
 from quantfusion.data import contracts
-from quantfusion.engine.universe import BacktestEngine
 from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
 from quantfusion.indicators.technical import Indicators
 from quantfusion.regime.models import DeploymentDecision, LeaderSelection, RegimeEvidence
@@ -129,7 +129,7 @@ class AccountFailClosedTests(unittest.TestCase):
             ),
             patch.object(engine, "_frame", return_value=frame),
             patch.object(
-                BacktestEngine,
+                account_scan,
                 "config_for_symbol",
                 return_value={
                     "hard_stop": 0.15,

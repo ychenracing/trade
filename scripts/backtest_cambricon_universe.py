@@ -15,6 +15,7 @@ from quantfusion.config.paths import (
     PROJECT_ROOT,
     VALIDATION_ARTIFACT_DIR,
 )
+from quantfusion.config.profiles import get_symbol_classification
 
 
 DATA_DIR = MARKET_DATA_DIR
@@ -91,9 +92,9 @@ def main() -> int:
         "initial_capital": INITIAL_CAPITAL,
         "symbols": SYMBOLS,
         "cambricon_mapping": {
-            "classification": qf.BacktestEngine.get_symbol_classification("688256", "unknown"),
-            "risk_group": qf.BacktestEngine.get_symbol_group("688256", "unknown"),
-            "parameter_profile": qf.BacktestEngine.get_symbol_profile("688256", "unknown"),
+            "classification": get_symbol_classification("688256", "unknown"),
+            "risk_group": qf.get_symbol_group("688256", "unknown"),
+            "parameter_profile": qf.get_symbol_profile("688256", "unknown"),
         },
         "results": results,
     }

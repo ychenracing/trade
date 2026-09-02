@@ -160,7 +160,7 @@ class PortfolioPolicy(_PortfolioPolicyBase):
     )
     # Market regime recognition controls (propagated to cfg at runtime so the
     # mixin reads them via self.cfg.get(...); the policy snapshot stays auditable).
-    # Enabled by default — see _default_config() for rationale.
+    # Enabled by default — see the canonical engine defaults for rationale.
     market_regime_enabled: bool = True
     regime_ewi_lookback: int = 20
     regime_breadth_ma_long: int = 20

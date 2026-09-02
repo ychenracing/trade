@@ -152,7 +152,7 @@ class BacktestEngine(
                 1, math.ceil(len(resolved_policy.regime_symbols) * 0.8)
             ),
             "group_min_slots": 0,
-            # Policy regime values override _default_config defaults; explicit
+            # Policy regime values override the canonical defaults; explicit
             # user cfg still wins because it is spread last.
             **regime_cfg,
             **dict(cfg or {}),

@@ -130,7 +130,7 @@ class AccountSignalSellabilityTests(unittest.TestCase):
             ),
             patch.object(engine, "_frame", return_value=frame),
             patch.object(
-                account_scan.BacktestEngine,
+                account_scan,
                 "config_for_symbol",
                 return_value={
                     "hard_stop": 0.15,
@@ -267,7 +267,7 @@ class AccountSignalSellabilityTests(unittest.TestCase):
             ),
             patch.object(engine, "_frame", return_value=frame),
             patch.object(
-                account_scan.BacktestEngine,
+                account_scan,
                 "config_for_symbol",
                 return_value={},
             ),

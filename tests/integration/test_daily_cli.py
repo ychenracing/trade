@@ -5,6 +5,8 @@ from __future__ import annotations
 
 # ruff: noqa: F401
 
+from quantfusion.config.profiles import uses_unmapped_auto_route
+
 from ._daily_scan_support import (
     FakeSignal,
     FakeTrade,
@@ -33,11 +35,10 @@ class CLIArgumentTests(unittest.TestCase):
 
     def test_all_26_symbols_are_mapped(self) -> None:
         """Verify all SYMBOLS have explicit routing metadata."""
-        from quantfusion.engine.core import CoreBacktestEngine
         for code, name in dss.SYMBOLS.items():
             self.assertFalse(
-                CoreBacktestEngine._uses_unmapped_auto_route(code, name),
-                f"{code} {name} is unmapped — add it to _SYMBOL_PROFILE and _SYMBOL_GROUP",
+                uses_unmapped_auto_route(code, name),
+                f"{code} {name} is unmapped — add it to canonical symbol routing",
             )
 
     def test_symbol_count_is_26(self) -> None:

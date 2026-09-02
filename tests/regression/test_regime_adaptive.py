@@ -12,6 +12,7 @@ import pandas as pd
 
 from quantfusion.application import daily_scan as daily
 import quantfusion.regime.evidence as regime_evidence
+from quantfusion.config.engine import default_engine_config
 from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT, REGIME_DATA_DIR
 from quantfusion.config.regime import REGIME_INDEX_FILES
 from quantfusion.domain.models import Position
@@ -218,7 +219,7 @@ class DynamicRouteStateMachineTests(unittest.TestCase):
 
     def test_outer_strategy_is_liquidatable_without_double_registration(self) -> None:
         engine = CoreBacktestEngine(1_000_000)
-        strategy = ra.PositiveMomentumHoldStrategy(engine._default_config())
+        strategy = ra.PositiveMomentumHoldStrategy(default_engine_config())
         position = Position(
             symbol="300308",
             strategy_name=strategy.name,

@@ -19,6 +19,7 @@ from quantfusion.config.engine import (
     validate_engine_config,
 )
 from quantfusion.config.portfolio import PortfolioPolicy
+from quantfusion.config.profiles import config_for_symbol
 from quantfusion.engine.universe import BacktestEngine
 
 MAX_SYMBOL_WEIGHT = 0.60
@@ -252,7 +253,7 @@ class Candidate:
         """Scale each symbol's routed profile without erasing industry differences."""
         result: dict[str, dict[str, Any]] = {}
         for code, name in symbols.items():
-            base = BacktestEngine.config_for_symbol(code, name=name)
+            base = config_for_symbol(code, name=name)
             overrides: dict[str, Any] = {
                 "max_symbol_weight": min(
                     float(base["max_symbol_weight"]), MAX_SYMBOL_WEIGHT

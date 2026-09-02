@@ -7,6 +7,8 @@ import unittest
 from dataclasses import fields
 from inspect import signature
 
+from quantfusion.config.engine import default_engine_config
+
 
 class EngineModuleContracts(unittest.TestCase):
     """Current engine construction uses the canonical implementation."""
@@ -15,7 +17,9 @@ class EngineModuleContracts(unittest.TestCase):
         universe = importlib.import_module("quantfusion.engine.universe")
         engine = universe.BacktestEngine(2_000_000)
         self.assertEqual(engine.initial_capital, 2_000_000)
-        self.assertEqual(engine.cfg["entry_period"], engine._default_config()["entry_period"])
+        self.assertEqual(
+            engine.cfg["entry_period"], default_engine_config()["entry_period"]
+        )
         self.assertEqual(engine.cfg["max_drawdown"], engine.policy.confirmed_drawdown)
 
     def test_current_engine_and_replay_signatures_exclude_account_state(self) -> None:
