@@ -1,4 +1,4 @@
-"""Canonical package boundaries and current-only architecture contracts."""
+"""Canonical package boundaries and forbidden root-surface contracts."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "quantfusion"
-LEGACY_ROOT_FILES = {
+FORBIDDEN_ROOT_FILES = {
     "account_signal_engine.py",
     "backtest_cambricon_universe.py",
     "backtest_universes.py",
@@ -26,7 +26,7 @@ LEGACY_ROOT_FILES = {
     "stress_test_prefixes.py",
     "validate_basket.py",
 }
-LEGACY_MODULES = {path.removesuffix(".py") for path in LEGACY_ROOT_FILES}
+DELETED_ROOT_MODULES = {path.removesuffix(".py") for path in FORBIDDEN_ROOT_FILES}
 REQUIRED_PACKAGES = {
     "domain",
     "config",
@@ -108,19 +108,19 @@ class CanonicalLayoutTests(unittest.TestCase):
         )
         self.assertEqual(missing, [])
 
-    def test_legacy_root_modules_are_absent(self) -> None:
-        present = sorted(name for name in LEGACY_ROOT_FILES if (ROOT / name).exists())
+    def test_forbidden_root_modules_are_absent(self) -> None:
+        present = sorted(name for name in FORBIDDEN_ROOT_FILES if (ROOT / name).exists())
         self.assertEqual(present, [])
 
 
 class DependencyDirectionTests(unittest.TestCase):
-    """Canonical modules depend inward and never back through legacy roots."""
+    """Canonical modules depend inward and never through deleted root modules."""
 
-    def test_canonical_package_never_imports_legacy_modules(self) -> None:
+    def test_canonical_package_never_imports_deleted_root_modules(self) -> None:
         violations: list[str] = []
         for path in PACKAGE.rglob("*.py") if PACKAGE.exists() else ():
             for module, _ in _imports(path):
-                if module.split(".", 1)[0] in LEGACY_MODULES:
+                if module.split(".", 1)[0] in DELETED_ROOT_MODULES:
                     violations.append(f"{path.relative_to(ROOT)} -> {module}")
         self.assertEqual(violations, [])
 
@@ -246,7 +246,7 @@ class CanonicalPublicApiTests(unittest.TestCase):
     """Current public imports resolve from the canonical package."""
 
     def test_canonical_package_public_api_is_available(self) -> None:
-        """The migration imports documented in the report must resolve."""
+        """The public imports used by applications must resolve."""
         from quantfusion.config import (
             PortfolioPolicy,
             default_engine_config,

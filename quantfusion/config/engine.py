@@ -50,7 +50,7 @@ PER_SYMBOL_OVERRIDE_KEYS: frozenset[str] = frozenset(
 
 def default_engine_config() -> dict[str, Any]:
     """Return the complete auditable strategy and execution defaults."""
-    # Values are explicit to keep every historical run auditable. Industry
+    # Values are explicit to keep every run auditable. Industry
     # profiles below copy this dictionary and override only declared fields.
     return {
         "entry_period": 8,

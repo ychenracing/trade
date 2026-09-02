@@ -885,6 +885,46 @@ class StressScenarioTests(unittest.TestCase):
 
             self.assertFalse(candidate_path.exists())
 
+    def test_cli_formal_checkpoint_rejects_validation_namespace_paths(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            validation_dir = Path(tmpdir) / "validation"
+            validation_dir.mkdir()
+            canonical_path = validation_dir / "universe_stress.json"
+            canonical_path.write_text("accepted sentinel\n", encoding="utf-8")
+            candidate_path = validation_dir / "candidates" / "checkpoint.json"
+
+            for checkpoint in (canonical_path, candidate_path):
+                with self.subTest(checkpoint=checkpoint), patch(
+                    "sys.argv",
+                    [
+                        "quantfusion.application.stress",
+                        "--checkpoint",
+                        str(checkpoint),
+                        "--source-revision",
+                        "a" * 40,
+                    ],
+                ), patch.object(
+                    stress_artifacts, "VALIDATION_ARTIFACT_DIR", validation_dir
+                ), patch.object(
+                    stress_scenarios,
+                    "_multi_seed_scenarios",
+                    side_effect=AssertionError("scenario plan must not be built"),
+                ) as build_plan, patch.object(
+                    stress,
+                    "ProcessPoolExecutor",
+                    side_effect=AssertionError("executor must not be called"),
+                ) as executor, self.assertRaisesRegex(
+                    ValueError, "validation namespace"
+                ):
+                    stress.main()
+                build_plan.assert_not_called()
+                executor.assert_not_called()
+
+            self.assertEqual(
+                canonical_path.read_text(encoding="utf-8"), "accepted sentinel\n"
+            )
+            self.assertFalse(candidate_path.exists())
+
     def test_noncanonical_plan_cannot_spoof_formal_publication(self) -> None:
         canonical = stress_scenarios._multi_seed_scenarios(
             random_samples=50,
@@ -1266,7 +1306,7 @@ class StressScenarioTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Cannot read incumbent"):
                 stress_artifacts._load_incumbent(path)
 
-    def test_legacy_trade_count_semantics_is_rejected(self) -> None:
+    def test_non_trade_record_semantics_is_rejected(self) -> None:
         current = {
             "scenario_id": "prefix-01",
             "scenario_type": "prefix",
@@ -1276,21 +1316,21 @@ class StressScenarioTests(unittest.TestCase):
             "sleeve_fill_count": 24,
             "date_symbol_side_count": 5,
         }
-        legacy_incumbent = {
-            "trade_count_semantics": "legacy_date_symbol_side_bucket",
+        invalid_incumbent = {
+            "trade_count_semantics": "date_symbol_side_bucket",
             "results": [{**current, "total_trades": 5}],
         }
 
         with self.assertRaisesRegex(ValueError, "trade_records"):
-            stress_metrics._promotion_gates([current], legacy_incumbent)
+            stress_metrics._promotion_gates([current], invalid_incumbent)
 
-    def test_load_incumbent_rejects_legacy_trade_count_semantics(self) -> None:
+    def test_load_incumbent_rejects_non_trade_record_semantics(self) -> None:
         with TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "universe_stress.json"
             path.write_text(
                 json.dumps(
                     {
-                        "trade_count_semantics": "legacy_date_symbol_side_bucket",
+                        "trade_count_semantics": "date_symbol_side_bucket",
                         "results": [],
                     }
                 ),

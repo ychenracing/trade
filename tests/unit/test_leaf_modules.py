@@ -22,6 +22,22 @@ class DomainRuleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be bool"):
             rules.require_bool("enabled", 1)
 
+    def test_domain_rules_have_no_private_duplicate_names(self) -> None:
+        rules = importlib.import_module("quantfusion.domain.rules")
+        for name in (
+            "_is_finite_number",
+            "_require_finite",
+            "_require_positive",
+            "_require_bool",
+            "_require_int",
+            "_floor_to_lot",
+            "_limit_pct_for_code",
+            "_parse_dates",
+            "_SYMBOL_RE",
+        ):
+            with self.subTest(name=name):
+                self.assertFalse(hasattr(rules, name))
+
 
 class LeafIdentityTests(unittest.TestCase):
     """Canonical public imports resolve to the implementation source."""

@@ -167,6 +167,30 @@ def main() -> int:
         raise ValueError(
             "workers, sample counts, checkpoint interval and seeds must be positive"
         )
+    selector_requested = any(
+        value is not None
+        for value in (
+            args.scenario_id,
+            args.scenario_type,
+            args.shard_index,
+            args.shard_count,
+        )
+    )
+    formal_plan_requested = (
+        not selector_requested
+        and args.random_samples == stress_scenarios.DEFAULT_RANDOM_SAMPLES
+        and args.permutation_samples == stress_scenarios.DEFAULT_PERMUTATION_SAMPLES
+        and seeds == stress_scenarios.DEFAULT_SEEDS
+    )
+    formal_checkpoint = Path(args.checkpoint).expanduser().resolve()
+    validation_namespace = stress_artifacts.VALIDATION_ARTIFACT_DIR.resolve()
+    if formal_plan_requested and (
+        formal_checkpoint == validation_namespace
+        or formal_checkpoint.is_relative_to(validation_namespace)
+    ):
+        raise ValueError(
+            "Formal checkpoint must be separate from the validation namespace"
+        )
     full_scenarios = stress_scenarios._multi_seed_scenarios(
         random_samples=args.random_samples,
         permutation_samples=args.permutation_samples,
@@ -194,8 +218,6 @@ def main() -> int:
         diagnostic_paths = [Path(args.diagnostic_checkpoint).expanduser().resolve()]
         if args.diagnostic_output is not None:
             diagnostic_paths.append(Path(args.diagnostic_output).expanduser().resolve())
-        formal_checkpoint = Path(args.checkpoint).resolve()
-        validation_namespace = stress_artifacts.VALIDATION_ARTIFACT_DIR.resolve()
         if len(set(diagnostic_paths)) != len(diagnostic_paths) or any(
             path == formal_checkpoint
             or path == validation_namespace

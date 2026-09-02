@@ -71,9 +71,8 @@ def _validate_risk_state(data: Any) -> str | None:
     9. ``symbols_hash`` (if present) is a 16-char hex string.
     10. ``total_symbols`` (if present) is a non-negative int.
 
-    Unknown ``schema_version`` values are rejected to enforce forward
-    compatibility — a future version with changed field semantics must not
-    be silently loaded by this code.
+    Only known ``schema_version`` values and their exact field contracts are
+    accepted; unknown versions are rejected rather than interpreted.
     """
     if not isinstance(data, dict):
         return "risk_state.json 内容不是有效 JSON 对象"
@@ -248,8 +247,8 @@ def _save_risk_state(
 
     The ``symbols_hash`` includes symbol set, count, and (when provided)
     config fingerprint so that the same symbol set with different
-    configuration is treated as a different identity. A ``schema_version``
-    is included for forward compatibility.
+    configuration is treated as a different identity. ``schema_version``
+    selects the exact accepted field contract.
 
     The ``run_id`` is passed from the caller (the main scan function)
     so that the artifact, risk state, and latest_success pointer all

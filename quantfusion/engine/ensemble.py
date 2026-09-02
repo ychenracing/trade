@@ -328,7 +328,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
 
     @staticmethod
     def _decorate_signal(signal: Signal, sleeve: str) -> Signal:
-        """Preserve pending-signal compatibility while adding the sleeve prefix."""
+        """Preserve the pending-signal shape while adding the sleeve prefix."""
         return replace(signal, strategy_name=f"{sleeve}:{signal.strategy_name}")
 
     @staticmethod
@@ -520,7 +520,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
             ],
         }
 
-    def run(  # noqa: PLR0913 - Keep the inherited public API compatible.
+    def run(  # noqa: PLR0913 - Match the inherited public API.
         self,
         symbols_dict: dict[str, str],
         start_date: str,

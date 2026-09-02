@@ -198,7 +198,7 @@ class RepositoryHygieneTests(unittest.TestCase):
         for relative in expected:
             self.assertTrue((ROOT / relative).is_file(), msg=relative)
 
-    def test_historical_stress_canonicals_are_absent(self) -> None:
+    def test_formal_stress_artifacts_are_absent_without_accepted_baseline(self) -> None:
         for name in ("prefix_stress.json", "universe_stress.json"):
             self.assertFalse(
                 (ROOT / "artifacts" / "validation" / name).exists(),
@@ -279,10 +279,10 @@ class RepositoryHygieneTests(unittest.TestCase):
         self.assertFalse(hasattr(repository_paths, "resolve_repository_data_dir"))
         self.assertFalse(hasattr(public_config, "resolve_repository_data_dir"))
 
-    def test_caller_free_compatibility_facades_are_absent(self) -> None:
+    def test_forbidden_portfolio_alias_module_is_absent(self) -> None:
         self.assertFalse((ROOT / "quantfusion/portfolio/policy.py").exists())
 
-    def test_ci_uses_a_python_311_compatible_lockfile(self) -> None:
+    def test_ci_uses_the_supported_python_311_lockfile(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         py311_lock = ROOT / "requirements-lock-py311.txt"
 

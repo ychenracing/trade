@@ -85,7 +85,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--resume-report",
         default="",
-        help="Reuse compatible pre-test candidate evaluations from a prior report",
+        help="Reuse matching pre-test candidate evaluations from a prior report",
     )
     parser.add_argument("--output-dir", default="optimizer_output")
     return parser

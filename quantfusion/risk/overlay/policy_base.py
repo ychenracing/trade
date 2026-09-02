@@ -307,7 +307,7 @@ class OverlayPolicyMixin:
                 )
             )
 
-        # 3) Historical structural-shock fast de-risk (opt-in only).
+        # 3) Structural-shock fast de-risk (opt-in only).
         if self.enable_shock_trim and peak > 0 and assets < peak * (1.0 - self.shock_trim_drawdown):
             if self._is_shock(states, date, prices):
                 actions.extend(

@@ -123,6 +123,20 @@ python -m quantfusion.application.daily_scan --account account.json --end-date 2
 
 任何 ID、family 或 shard 选择都会进入诊断模式。诊断运行只写独立 diagnostic checkpoint，并可通过 `--diagnostic-output <路径>` 另存非 canonical JSON；它不能写入正式压力工件、更新基线或宣称 hard-gate / promotion acceptance。只有默认参数生成且未经筛选的精确正式场景计划可以进入发布路径。
 
+将占位符替换为已核验、包含当前 Python 源码的 40 位 Git SHA：
+
+```bash
+# 完整正式计划
+python -m quantfusion.application.stress \
+  --source-revision <verified-40-char-SHA>
+
+# 单场景诊断
+python -m quantfusion.application.stress \
+  --source-revision <verified-40-char-SHA> \
+  --scenario-id add-one-05-688205 \
+  --diagnostic-output artifacts/diagnostics/add-one-05-688205.json
+```
+
 ## 日扫信号与账户建议
 
 日扫输出（`daily_signals/` 目录）以 JSON 工件形式给出。每个扫描日先建立 `snapshots/<日期>/` 冻结目录；同日重跑必须通过 manifest 哈希边车、全部 CSV 内容哈希和精确文件集合校验，任何改写或额外证据文件都失败关闭。核心字段如下：
@@ -345,7 +359,7 @@ python -m pytest -q
 pyright quantfusion
 
 # 安全审计
-bandit -r quantfusion scripts *.py -ll
+bandit -r quantfusion scripts -ll
 
 # 依赖漏洞检查
 pip-audit --strict -r requirements-lock.txt

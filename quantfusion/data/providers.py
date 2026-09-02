@@ -25,7 +25,7 @@ class DataFetcher:
 
     _COLUMN_ALIASES: ClassVar[dict[str, str]] = {
         # AKShare providers return localized headers. Unicode escapes keep the
-        # source English-only while preserving compatibility with those frames.
+        # source English-only while mapping the localized provider frames.
         "\u65e5\u671f": "date",
         "date": "date",
         "datetime": "date",
@@ -311,7 +311,7 @@ class DataFetcher:
             return combined[(combined.index >= start_ts) & (combined.index <= end_ts)].copy()
         if cache_path.is_file():
             _log(
-                f"  [Cache] {symbol}: legacy cache lacks a verified share-volume "
+                f"  [Cache] {symbol}: cache lacks a verified share-volume "
                 "contract; rebuilding from providers"
             )
         # No valid cache file: full fetch + save

@@ -22,9 +22,7 @@
 
 精确浮点值和经济序列指纹保存在 `tests/fixtures/backtest_golden_metrics.json`，完整冷启动、预热和两个截止日结果保存在 `artifacts/validation/universe_backtest.json`。持续集成直接重跑五池并逐项比较：成交记录、卖出记录、日期/股票/方向桶等整数指标精确一致，收益与回撤等浮点指标仅容忍严格的跨平台浮点求和顺序差异（`rel_tol=1e-9`），不允许任何真实行为漂移静默通过。
 
-`total_trades` 与 `sleeve_fill_count` 都是实际 `TradeRecord` 数量，`sell_trades` 与 `sleeve_sell_fill_count` 都是实际卖出记录数量。`date_symbol_side_count` 和 `date_symbol_sell_side_count` 只统计唯一日期、股票、方向桶；它们不是券商订单数，也不能证明券商端合单或净额。袖套继续独立成交，系统不模拟券商级净额，同日相反成交可能产生双边费用与滑点。
-
-本次 Minimal Account Correctness Closure 删除了旧跨袖套预处理器。旧实现分别在 1/3/5/13/22 股池记录了 1/71/78/166/108 个 `netted_cross_sleeve_buy` 事件，并删除或削减原买入信号；新实现保留原信号并继续卖出先于买入。五池的固定 regime route 指纹均保持 `cedb8518…`，冻结行情、策略、路由、风险阈值、费用和滑点参数均未修改，因此成交、费用和后续持仓路径变化可归因于取消伪净额；1 股池成交序列和收益完全不变，仅计数语义与净额事件序列变化。
+`total_trades` 与 `sleeve_fill_count` 都是实际 `TradeRecord` 数量，`sell_trades` 与 `sleeve_sell_fill_count` 都是实际卖出记录数量。`date_symbol_side_count` 和 `date_symbol_sell_side_count` 只统计唯一日期、股票、方向桶；它们不是券商订单数，也不能证明券商端合单或净额。每个 sleeve 独立保留信号和 fills，不做跨 sleeve 虚假净额抵消；同日相反成交可能产生双边费用与滑点。五池精确指标和交易序列指纹位于 `tests/fixtures/backtest_golden_metrics.json`，固定 regime route 指纹均为 `cedb8518…`。
 
 ## 冷启动与预热
 
@@ -85,13 +83,13 @@
 
 账户候选评分保留 15% 行业相对强度：每只股票使用 20/60 日收益，相对其细分画像均值与完整 AI 候选池均值计算。任一预期候选缺失、被提供层标记为 stale 或实际截止日不一致时，不再缩小横截面并用中性值继续推荐，而是抑制全部新增买入。可用持仓的成本止损、趋势退出和 T+1 卖出提示仍独立保留。
 
-`--account` 只接受严格 v3 同日快照；`account_id` 和 `snapshot_date` 必须分别匹配 CLI 预期账户与请求日期。持仓峰值只使用建仓日及之后的价格、快照 `highest_close` 与当前收盘价；建仓早于加载窗口且无 `highest_close` 时标记 `PEAK_EVIDENCE_INCOMPLETE` 并禁用依赖完整峰值的保护。买入候选是时点式策略筛选，`shares` 固定为零，`indicative_target_shares` 仅为收盘价估算。真实账户历史注入、跨日状态恢复、券商连接和自动下单均保持禁用。
+`--account` 只接受严格 v3 同日 `AccountSnapshot`；`account_id` 和 `snapshot_date` 必须分别匹配 CLI 预期账户与请求日期。持仓峰值只使用建仓日及之后的价格、快照 `highest_close` 与当前收盘价；建仓早于加载窗口且无 `highest_close` 时标记 `PEAK_EVIDENCE_INCOMPLETE` 并停用依赖完整峰值的保护。买入候选是时点式策略筛选，`shares` 固定为零，`indicative_target_shares` 仅为收盘价估算。该快照只进入账户建议边界，不传入 replay engine，也不提供券商执行或跨日账户账本。
 
 ## 风险治理观测层（零行为漂移验证）
 
 `quantfusion.risk.governance` 观测层默认开启并随每次回测自动输出：预热健康契约、风险事件校准、独立风险意见、袖套共识证据、风险篮覆盖置信度与 L1 冻结机会成本。该层只读取既有状态做观测与输出，不进入任何交易决策路径。
 
-验证方式：五池黄金指标冻结总收益、最大回撤、实际成交记录、日期/股票/方向桶和经济事件序列。Minimal Account Correctness Closure 有意改变成交路径与计数语义，因此已在逐字段归因后更新直接受影响基线；五池 regime route 指纹不变，风险治理代码与阈值未改。
+验证方式：五池黄金指标冻结总收益、最大回撤、实际成交记录、日期/股票/方向桶和经济事件序列；五池 regime route 指纹同时受固定断言保护。风险治理观测字段不进入交易决策路径。
 
 新增随结果附出的治理字段（均 JSON 可序列化）：
 

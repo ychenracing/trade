@@ -816,7 +816,7 @@ class RegimeAdaptiveBacktestEngine:
         result["selected_symbols"] = list(executed_symbols)
         result["unavailable_symbols"] = list(unavailable_symbols)
         # Report 3.3/3.4: emit the auditable daily route sequence so the
-        # historical replay, the current-day account route and the report all
+        # daily replay, the current-day account route and the report all
         # share the same state machine (P0-4 "历史和账户使用同一状态机").
         try:
             route_seq = simulate_route_sequence(

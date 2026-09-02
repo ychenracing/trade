@@ -1,1 +1,1 @@
-"""Economic and legacy-interface regression tests."""
+"""Economic and production-boundary regression tests."""

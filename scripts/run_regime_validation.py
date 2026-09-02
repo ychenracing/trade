@@ -31,7 +31,6 @@ from quantfusion.config.paths import (
 from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
 
 
-HISTORICAL_DATA = REGIME_DATA_DIR
 MARKET_DATA = MARKET_DATA_DIR
 ROOT = PROJECT_ROOT
 OUTPUT = VALIDATION_ARTIFACT_DIR / "regime_validation_results.json"
@@ -121,7 +120,7 @@ def _run_pool(task: tuple[str, tuple[str, ...], str, str, str]) -> dict[str, Any
                 symbols,
                 start_date,
                 end_date,
-                data_dir=str(HISTORICAL_DATA),
+                data_dir=str(REGIME_DATA_DIR),
                 indicator_state="warm",
             )
         else:
@@ -129,7 +128,7 @@ def _run_pool(task: tuple[str, tuple[str, ...], str, str, str]) -> dict[str, Any
                 symbols,
                 start_date,
                 end_date,
-                data_dir=str(HISTORICAL_DATA),
+                data_dir=str(REGIME_DATA_DIR),
                 indicator_state="warm",
             )
     return {
@@ -182,7 +181,7 @@ def _run_bull(task: tuple[str, tuple[str, ...]]) -> dict[str, Any]:
             "2025-04-01",
             "2026-07-20",
             data_dir=str(MARKET_DATA),
-            regime_data_dir=str(HISTORICAL_DATA),
+            regime_data_dir=str(REGIME_DATA_DIR),
             indicator_state="warm",
         )
     expected = _golden_bull(name)
@@ -214,7 +213,7 @@ def _run_bull(task: tuple[str, tuple[str, ...]]) -> dict[str, Any]:
 
 def data_integrity() -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
-    for path in sorted(HISTORICAL_DATA.glob("*.csv")):
+    for path in sorted(REGIME_DATA_DIR.glob("*.csv")):
         frame = pd_read_csv_dates(path)
         rows.append(
             {

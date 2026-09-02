@@ -64,7 +64,7 @@ class ProviderVolumeContractTests(unittest.TestCase):
         normalized = DataFetcher._normalize_provider_volume(frame, "Sina")
         self.assertEqual(float(normalized["volume"].iloc[0]), 12_300.0)
 
-    def test_legacy_cache_without_unit_contract_is_rejected(self) -> None:
+    def test_cache_without_share_volume_contract_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "300308.csv"
             path.write_text(
@@ -473,7 +473,7 @@ class MarketDataContractTests(unittest.TestCase):
                 end_date="2025-12-31",
             )
 
-    def test_strict_historical_refresh_requires_frozen_files(self) -> None:
+    def test_strict_regime_refresh_requires_frozen_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(RuntimeError, "missing frozen"):
                 contracts.refresh_regime_indices(

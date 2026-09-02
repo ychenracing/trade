@@ -105,7 +105,7 @@ class SchemaValidationTests(unittest.TestCase):
         self.assertIn("schema_version", error)
 
     def test_unknown_schema_version_rejected(self) -> None:
-        """Unknown schema versions must be rejected (forward compatibility)."""
+        """Only the known risk-state schema version is accepted."""
         data = dict(VALID_RISK_STATE)
         data["schema_version"] = 999
         error = dss._validate_risk_state(data)

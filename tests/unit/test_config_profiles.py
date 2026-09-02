@@ -92,7 +92,7 @@ def test_default_config_content_and_validation_are_exact() -> None:
     assert validate_engine_config(defaults) == defaults
 
 
-def test_engine_has_no_config_or_profile_compatibility_surface() -> None:
+def test_engine_has_no_profile_or_config_builders_and_accessors() -> None:
     removed = {
         "_default_config",
         "_PER_SYMBOL_OVERRIDE_KEYS",

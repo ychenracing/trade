@@ -37,7 +37,7 @@ Quant Fusion 提供冻结行情、趋势与弱市策略、组合回放、风险�
 - `scripts/`：只通过 `python -m scripts.<模块名>` 启动的可复现研究与验证命令。
 - `tests/`：单元、契约、集成和经济回归测试。
 
-依赖方向、无环导入、私有名称边界和 current-only 根目录由架构契约测试守卫。
+依赖方向、无环导入、私有名称边界，以及根目录不得包含 Python 实现或入口，均由架构契约测试守卫。
 
 ## 4. Non-Negotiable Constraints
 
@@ -76,7 +76,7 @@ python -m compileall -q .
 ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
 python -m pytest -q
 pyright quantfusion
-bandit -r quantfusion scripts *.py -ll
+bandit -r quantfusion scripts -ll
 pip-audit --strict -r requirements-lock.txt
 ```
 
