@@ -1501,7 +1501,7 @@ class StressScenarioTests(unittest.TestCase):
         path = (
             stress_artifacts.VALIDATION_ARTIFACT_DIR
             / "candidates"
-            / "stress-117a0ea17a333be17fbd345a14eb67fb328d046c-rejected.json"
+            / "stress-f5625e5b5813a5b58c52d076ad3c38e33d8b3292-rejected.json"
         )
         payload = json.loads(path.read_text(encoding="utf-8"))
 
@@ -1516,7 +1516,7 @@ class StressScenarioTests(unittest.TestCase):
         )
         self.assertEqual(
             payload["source_fingerprint"],
-            "98b6bcd7d39ab9de3352af24dca05721b95d01b45fa3facbae7890a35dfc6ea1",
+            "a79a96c059b01d6ee98a25d3d6d8d9719906bd2fee69836dc35b5186664c51d5",
         )
         self.assertEqual(payload["trade_count_semantics"], "trade_records")
         self.assertEqual(
