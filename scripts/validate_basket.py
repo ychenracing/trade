@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Validate that the fixed regime basket still represents the AI sector.
 
 Checks:
@@ -16,13 +15,6 @@ import argparse
 import json
 import math
 from pathlib import Path
-
-if __package__:
-    from scripts._bootstrap import ensure_project_root
-else:
-    from _bootstrap import ensure_project_root
-
-ensure_project_root()
 
 import pandas as pd
 

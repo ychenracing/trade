@@ -10,7 +10,6 @@ import io
 import json
 import math
 import os
-import random
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
@@ -19,6 +18,15 @@ from typing import Any
 
 from quantfusion.application import engine_api as qf
 from quantfusion.application import regime_api as ra
+from quantfusion.application.stress_scenarios import (
+    DEFAULT_PERMUTATION_SAMPLES,
+    DEFAULT_RANDOM_SAMPLES,
+    DEFAULT_SEEDS,
+    ORDERED_CODES,
+    _multi_seed_scenarios,
+    is_canonical_scenario_plan,
+    select_scenarios,
+)
 from quantfusion.config.paths import (
     MARKET_DATA_DIR,
     PROJECT_ROOT,
@@ -32,10 +40,7 @@ DATA_DIR = MARKET_DATA_DIR
 START_DATE = "2025-04-01"
 END_DATE = "2026-07-20"
 INITIAL_CAPITAL = 2_000_000.0
-ORDERED_CODES = tuple(NAMES)
-DEFAULT_SEEDS = (20260807, 20260817, 20260827)
 TRADE_COUNT_SEMANTICS = "trade_records"
-LEGACY_TRADE_COUNT_SEMANTICS = "legacy_date_symbol_side_bucket"
 ENGINE = "ProductionReplayEngine"
 DEPLOYMENT_POLICY = "production_daily_replay"
 ATTRIBUTION_CATEGORIES = (
@@ -167,10 +172,7 @@ def _summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     returns = [float(item["total_return"]) for item in results]
     drawdowns = [float(item["max_drawdown"]) for item in results]
     trades = [float(item["total_trades"]) for item in results]
-    side_buckets = [
-        float(item.get("date_symbol_side_count", item["total_trades"]))
-        for item in results
-    ]
+    side_buckets = [float(item["date_symbol_side_count"]) for item in results]
     fills = [float(item.get("sleeve_fill_count", 0)) for item in results]
     severities = [abs(value) for value in drawdowns]
     risk_actions = [
@@ -204,106 +206,6 @@ def _summary(results: list[dict[str, Any]]) -> dict[str, Any]:
         "sleeve_fills_worst": max(fills) if fills else 0.0,
         "risk_action_orders_median": _quantile(risk_actions, 0.50),
     }
-
-
-def _scenarios(
-    *,
-    random_samples: int,
-    permutation_samples: int,
-    seed: int,
-    include_fixed: bool = True,
-) -> list[dict[str, Any]]:
-    """Build one deterministic seed block; fixed scenarios are optional."""
-    if random_samples < 1 or permutation_samples < 1:
-        raise ValueError("sample counts must be positive")
-    smallest_capacity = min(
-        math.comb(len(ORDERED_CODES), size) for size in (3, 5, 8, 12, 16)
-    )
-    if random_samples > smallest_capacity:
-        raise ValueError(
-            f"random_samples exceeds unique subset capacity {smallest_capacity}"
-        )
-    if permutation_samples > math.factorial(len(ORDERED_CODES)):
-        raise ValueError("permutation_samples exceeds unique ordering capacity")
-    rng = random.Random(seed)
-    scenarios: list[dict[str, Any]] = []
-    if include_fixed:
-        for count in range(1, len(ORDERED_CODES) + 1):
-            scenarios.append(
-                {
-                    "scenario_id": f"prefix-{count:02d}",
-                    "scenario_type": "prefix",
-                    "symbols": list(ORDERED_CODES[:count]),
-                }
-            )
-        for omitted in ORDERED_CODES:
-            scenarios.append(
-                {
-                    "scenario_id": f"leave-one-out-{omitted}",
-                    "scenario_type": "leave_one_out",
-                    "omitted_symbol": omitted,
-                    "symbols": [code for code in ORDERED_CODES if code != omitted],
-                }
-            )
-        for base_size in (5, 9, 13):
-            base = ORDERED_CODES[:base_size]
-            for added in ORDERED_CODES[base_size:]:
-                scenarios.append(
-                    {
-                        "scenario_id": f"add-one-{base_size:02d}-{added}",
-                        "scenario_type": "add_one",
-                        "base_size": base_size,
-                        "added_symbol": added,
-                        "symbols": [*base, added],
-                    }
-                )
-    for size in (3, 5, 8, 12, 16):
-        seen: set[tuple[str, ...]] = set()
-        while len(seen) < random_samples:
-            seen.add(tuple(sorted(rng.sample(ORDERED_CODES, size))))
-        for index, subset in enumerate(sorted(seen), start=1):
-            scenarios.append(
-                {
-                    "scenario_id": f"random-{seed}-{size:02d}-{index:03d}",
-                    "scenario_type": "random_subset",
-                    "seed": seed,
-                    "sample_size": size,
-                    "symbols": list(subset),
-                }
-            )
-    permutations: set[tuple[str, ...]] = set()
-    while len(permutations) < permutation_samples:
-        sample = list(ORDERED_CODES)
-        rng.shuffle(sample)
-        permutations.add(tuple(sample))
-    for index, ordering in enumerate(sorted(permutations), start=1):
-        scenarios.append(
-            {
-                "scenario_id": f"permutation-{seed}-{index:03d}",
-                "scenario_type": "permutation",
-                "seed": seed,
-                "symbols": list(ordering),
-            }
-        )
-    return scenarios
-
-
-def _multi_seed_scenarios(
-    *, random_samples: int, permutation_samples: int, seeds: tuple[int, ...]
-) -> list[dict[str, Any]]:
-    if not seeds or len(set(seeds)) != len(seeds):
-        raise ValueError("stress seeds must be non-empty and unique")
-    scenarios: list[dict[str, Any]] = []
-    for index, seed in enumerate(seeds):
-        scenarios.extend(
-            _scenarios(
-                random_samples=random_samples,
-                permutation_samples=permutation_samples,
-                seed=seed,
-                include_fixed=index == 0,
-            )
-        )
-    return scenarios
 
 
 def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
@@ -598,51 +500,88 @@ def _permutation_invariance(results: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _current_incumbent_by_id(
+    incumbent: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Validate and index an accepted current-semantic incumbent."""
+    if incumbent.get("trade_count_semantics") != TRADE_COUNT_SEMANTICS:
+        raise ValueError("Incumbent stress artifact must use trade_records semantics")
+    if (
+        incumbent.get("acceptance_status") != "accepted"
+        or incumbent.get("canonical") is not True
+    ):
+        raise ValueError("Incumbent stress artifact must be accepted and canonical")
+    raw_results = incumbent.get("results")
+    if not isinstance(raw_results, list) or not raw_results:
+        raise ValueError("Incumbent stress artifact must contain non-empty results")
+    by_id: dict[str, dict[str, Any]] = {}
+    for item in raw_results:
+        if (
+            not isinstance(item, dict)
+            or not isinstance(item.get("scenario_id"), str)
+            or not item["scenario_id"]
+            or not isinstance(item.get("scenario_type"), str)
+            or not item["scenario_type"]
+        ):
+            raise ValueError("Incumbent stress artifact has an invalid structured result")
+        scenario_id = item["scenario_id"]
+        if scenario_id in by_id:
+            raise ValueError("Incumbent stress artifact has duplicate scenario_id values")
+        by_id[scenario_id] = item
+    return by_id
+
+
 def _promotion_gates(
     results: list[dict[str, Any]], incumbent: dict[str, Any] | None
 ) -> dict[str, Any]:
-    """相对既有基线的强制晋级门（2026-08-16 报告 P0-4），无基线时仅建立基准。"""
+    """相对既有当前基线的强制晋级门；无基线时失败关闭。"""
     permutation = _permutation_invariance(results)
     payload: dict[str, Any] = {
         "baseline": "incumbent_universe_stress",
         "permutation_invariance": permutation,
     }
-    if not incumbent or not isinstance(incumbent.get("results"), list):
+    if incumbent is None:
         payload.update(
             {
                 "status": "no_incumbent_baseline",
-                "passed": permutation["invariant"],
-                "note": (
-                    "未找到既有正式 universe stress 基线 — 本次运行仅建立"
-                    "基线并检查排列不变性。"
-                ),
-            }
-        )
-        return payload
-    if incumbent.get("artifact_status") == (
-        "historical_pre_minimal_account_correctness"
-    ):
-        payload.update(
-            {
-                "status": "incomparable_economic_contract",
                 "applicable": False,
-                "passed": None,
+                "passed": False,
                 "note": (
-                    "The incumbent predates the accepted PR #13 economic contract; "
-                    "relative promotion comparisons are not applicable."
+                    "未找到已接受且使用 trade_records 语义的正式基线；"
+                    "晋级失败关闭。"
                 ),
             }
         )
         return payload
-    by_id = {
-        str(item.get("scenario_id")): item for item in incumbent["results"]
-    }
+    by_id = _current_incumbent_by_id(incumbent)
     current_by_id = {str(item["scenario_id"]): item for item in results}
-    comparable_side_buckets = (
-        incumbent.get("trade_count_semantics")
-        in {TRADE_COUNT_SEMANTICS, LEGACY_TRADE_COUNT_SEMANTICS}
-        and all("date_symbol_side_count" in item for item in results)
-    )
+    shared_ids = sorted(sid for sid in current_by_id if sid in by_id)
+    if not shared_ids:
+        raise ValueError("Incumbent stress artifact has no shared scenario IDs")
+    fixed_families = {"prefix", "leave_one_out", "add_one"}
+    mandatory_fixed_ids = {
+        sid
+        for sid, item in current_by_id.items()
+        if item.get("scenario_type") in fixed_families
+    }
+    if any(
+        sid not in by_id
+        or by_id[sid].get("scenario_type")
+        != current_by_id[sid].get("scenario_type")
+        for sid in mandatory_fixed_ids
+    ):
+        raise ValueError(
+            "Incumbent stress artifact is missing a mandatory fixed scenario ID or family"
+        )
+    if any(
+        item.get("scenario_type") == "random_subset"
+        for item in current_by_id.values()
+    ) and not any(
+        item.get("scenario_type") == "random_subset" for item in by_id.values()
+    ):
+        raise ValueError(
+            "Incumbent stress artifact is missing the random_subset comparison family"
+        )
 
     def _family(family: str, source: dict[str, dict[str, Any]]) -> list[dict]:
         return [
@@ -668,7 +607,6 @@ def _promotion_gates(
     # ``all_*`` gates must compare the same scenario set on both sides, so
     # aggregate only scenarios present in both the current and incumbent runs
     # (random subsets may legitimately differ across runs by seed).
-    shared_ids = sorted(sid for sid in current_by_id if sid in by_id)
     cur_all = _summary([current_by_id[sid] for sid in shared_ids])
     inc_all = _summary([by_id[sid] for sid in shared_ids])
 
@@ -711,15 +649,14 @@ def _promotion_gates(
             >= inc_random["return_worst"] - PROMOTION_WORST_RETURN_TOLERANCE
         )
         observed["random_worst_return"] = cur_random["return_worst"]
-        if comparable_side_buckets:
-            checks["random_date_symbol_side_buckets_p90_not_increased"] = (
-                cur_random["date_symbol_side_buckets_p90"]
-                <= inc_random["date_symbol_side_buckets_p90"]
-                + PROMOTION_SIDE_BUCKET_P90_TOLERANCE
-            )
-            observed["random_date_symbol_side_buckets_p90"] = cur_random[
-                "date_symbol_side_buckets_p90"
-            ]
+        checks["random_date_symbol_side_buckets_p90_not_increased"] = (
+            cur_random["date_symbol_side_buckets_p90"]
+            <= inc_random["date_symbol_side_buckets_p90"]
+            + PROMOTION_SIDE_BUCKET_P90_TOLERANCE
+        )
+        observed["random_date_symbol_side_buckets_p90"] = cur_random[
+            "date_symbol_side_buckets_p90"
+        ]
         checks["random_risk_actions_not_increased"] = (
             cur_random["risk_action_orders_median"]
             <= inc_random["risk_action_orders_median"]
@@ -733,23 +670,14 @@ def _promotion_gates(
         >= inc_all["drawdown_worst"] - PROMOTION_WORST_DD_TOLERANCE
     )
     observed["all_worst_dd"] = cur_all["drawdown_worst"]
-    if comparable_side_buckets:
-        checks["all_worst_date_symbol_side_buckets_not_increased"] = (
-            cur_all["date_symbol_side_buckets_worst"]
-            <= inc_all["date_symbol_side_buckets_worst"]
-            + PROMOTION_SIDE_BUCKET_WORST_TOLERANCE
-        )
-        observed["all_worst_date_symbol_side_buckets"] = cur_all[
-            "date_symbol_side_buckets_worst"
-        ]
-        observed["date_symbol_side_bucket_comparison"] = "comparable"
-    else:
-        observed["date_symbol_side_bucket_comparison"] = (
-            "skipped_incompatible_incumbent_semantics"
-        )
-        observed["incumbent_trade_count_semantics"] = incumbent.get(
-            "trade_count_semantics", "unspecified"
-        )
+    checks["all_worst_date_symbol_side_buckets_not_increased"] = (
+        cur_all["date_symbol_side_buckets_worst"]
+        <= inc_all["date_symbol_side_buckets_worst"]
+        + PROMOTION_SIDE_BUCKET_WORST_TOLERANCE
+    )
+    observed["all_worst_date_symbol_side_buckets"] = cur_all[
+        "date_symbol_side_buckets_worst"
+    ]
     if cur_loo and inc_loo:
         checks["leave_one_out_worst_return_not_worse"] = (
             cur_loo["return_worst"]
@@ -852,7 +780,7 @@ def _validate_publish_candidate(
 
 
 def _load_incumbent(path: Path) -> dict[str, Any] | None:
-    """Load an optional incumbent, rejecting a present but corrupt artifact."""
+    """Load an optional accepted incumbent with current trade semantics."""
     if not path.is_file():
         return None
     try:
@@ -861,6 +789,7 @@ def _load_incumbent(path: Path) -> dict[str, Any] | None:
         raise ValueError(f"Cannot read incumbent stress artifact: {path}") from exc
     if not isinstance(payload, dict):
         raise ValueError(f"Cannot read incumbent stress artifact: {path}")
+    _current_incumbent_by_id(payload)
     return payload
 
 
@@ -868,8 +797,6 @@ def _promotion_accepted(promotion: dict[str, Any]) -> bool:
     permutation = promotion.get("permutation_invariance", {})
     if not isinstance(permutation, dict) or not permutation.get("invariant"):
         return False
-    if promotion.get("status") == "incomparable_economic_contract":
-        return True
     return promotion.get("passed") is True
 
 
@@ -885,10 +812,14 @@ def _rejection_reasons(universe_artifact: dict[str, Any]) -> list[dict[str, str]
         reasons.append(
             {"gate_family": "promotion_gates", "gate": "permutation_invariant"}
         )
-    if (
-        promotion.get("status") != "incomparable_economic_contract"
-        and promotion.get("passed") is not True
-    ):
+    if promotion.get("status") == "no_incumbent_baseline":
+        reasons.append(
+            {
+                "gate_family": "promotion_gates",
+                "gate": "accepted_current_semantic_incumbent",
+            }
+        )
+    elif promotion.get("passed") is not True:
         reasons.extend(
             {"gate_family": "promotion_gates", "gate": str(name)}
             for name, passed in promotion.get("checks", {}).items()
@@ -904,8 +835,13 @@ def _publish_formal_artifacts(
     scenarios: list[dict[str, Any]],
     provenance: dict[str, Any],
     incumbent: dict[str, Any] | None,
+    formal_plan_complete: bool,
 ) -> bool:
     """Retain complete failures; publish canonical files only after acceptance."""
+    if not formal_plan_complete:
+        raise ValueError("A diagnostic stress selection cannot publish formal artifacts")
+    if not is_canonical_scenario_plan(scenarios):
+        raise ValueError("Formal publication requires the exact canonical scenario plan")
     _validate_publish_candidate(
         prefix_artifact,
         universe_artifact,
@@ -950,8 +886,12 @@ def _publish_formal_artifacts(
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workers", type=int, default=min(4, os.cpu_count() or 1))
-    parser.add_argument("--random-samples", type=int, default=50)
-    parser.add_argument("--permutation-samples", type=int, default=50)
+    parser.add_argument(
+        "--random-samples", type=int, default=DEFAULT_RANDOM_SAMPLES
+    )
+    parser.add_argument(
+        "--permutation-samples", type=int, default=DEFAULT_PERMUTATION_SAMPLES
+    )
     parser.add_argument(
         "--seeds",
         default=",".join(str(seed) for seed in DEFAULT_SEEDS),
@@ -962,6 +902,23 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--checkpoint",
         default=str(PROJECT_ROOT / "artifacts" / "checkpoints" / "stress.json"),
+    )
+    parser.add_argument("--scenario-id", help="Run one exact scenario as a diagnostic")
+    parser.add_argument("--scenario-type", help="Run one scenario family as a diagnostic")
+    parser.add_argument("--shard-index", type=int, help="Zero-based diagnostic shard")
+    parser.add_argument("--shard-count", type=int, help="Diagnostic shard count")
+    parser.add_argument(
+        "--diagnostic-checkpoint",
+        default=str(
+            PROJECT_ROOT
+            / "artifacts"
+            / "checkpoints"
+            / "stress-diagnostic.json"
+        ),
+    )
+    parser.add_argument(
+        "--diagnostic-output",
+        help="Optional non-canonical diagnostic JSON output path",
     )
     parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument(
@@ -984,6 +941,45 @@ def main() -> int:
         or not seeds
     ):
         raise ValueError("workers, sample counts, checkpoint interval and seeds must be positive")
+    full_scenarios = _multi_seed_scenarios(
+        random_samples=args.random_samples,
+        permutation_samples=args.permutation_samples,
+        seeds=seeds,
+    )
+    full_scenario_ids = [str(item["scenario_id"]) for item in full_scenarios]
+    if len(set(full_scenario_ids)) != len(full_scenario_ids):
+        raise ValueError("Stress scenario plan contains duplicate scenario_id values")
+    scenarios, formal_plan_complete = select_scenarios(
+        full_scenarios,
+        scenario_id=args.scenario_id,
+        scenario_type=args.scenario_type,
+        shard_index=args.shard_index,
+        shard_count=args.shard_count,
+    )
+    selection = {
+        "scenario_id": args.scenario_id,
+        "scenario_type": args.scenario_type,
+        "shard_index": args.shard_index,
+        "shard_count": args.shard_count,
+    }
+    if formal_plan_complete and args.diagnostic_output is not None:
+        raise ValueError("--diagnostic-output requires a scenario selector")
+    if not formal_plan_complete:
+        diagnostic_paths = [Path(args.diagnostic_checkpoint).expanduser().resolve()]
+        if args.diagnostic_output is not None:
+            diagnostic_paths.append(Path(args.diagnostic_output).expanduser().resolve())
+        formal_checkpoint = Path(args.checkpoint).resolve()
+        validation_namespace = VALIDATION_ARTIFACT_DIR.resolve()
+        if len(set(diagnostic_paths)) != len(diagnostic_paths) or any(
+            path == formal_checkpoint
+            or path == validation_namespace
+            or path.is_relative_to(validation_namespace)
+            for path in diagnostic_paths
+        ):
+            raise ValueError(
+                "Diagnostic paths must be separate from the formal checkpoint "
+                "and validation namespace"
+            )
     data_dir = Path(args.data_dir).expanduser().resolve()
     regime_data_dir = Path(args.regime_data_dir).expanduser().resolve()
     missing_stock = [
@@ -1001,14 +997,7 @@ def main() -> int:
             "Stress data snapshot is incomplete "
             f"(stocks={missing_stock}, regime_indices={missing_regime})"
         )
-    scenarios = _multi_seed_scenarios(
-        random_samples=args.random_samples,
-        permutation_samples=args.permutation_samples,
-        seeds=seeds,
-    )
     scenario_ids = [str(item["scenario_id"]) for item in scenarios]
-    if len(set(scenario_ids)) != len(scenario_ids):
-        raise ValueError("Stress scenario plan contains duplicate scenario_id values")
     provenance = _build_provenance(
         scenarios,
         data_dir,
@@ -1016,7 +1005,11 @@ def main() -> int:
         source_revision=args.source_revision,
     )
     signature = str(provenance["run_signature"])
-    checkpoint = Path(args.checkpoint)
+    checkpoint = (
+        Path(args.checkpoint)
+        if formal_plan_complete
+        else Path(args.diagnostic_checkpoint).expanduser()
+    )
     completed: dict[str, dict[str, Any]] = {}
     if checkpoint.is_file():
         payload = json.loads(checkpoint.read_text(encoding="utf-8"))
@@ -1024,6 +1017,8 @@ def main() -> int:
             raise ValueError("Stress checkpoint code, data, or scenario signature changed")
         if payload.get("provenance") != provenance:
             raise ValueError("Stress checkpoint provenance changed")
+        if not formal_plan_complete and payload.get("selection") != selection:
+            raise ValueError("Stress diagnostic checkpoint selection changed")
         completed = _validated_checkpoint_results(payload, scenarios)
     pending = [
         scenario
@@ -1038,22 +1033,73 @@ def main() -> int:
             chunk = pending[start : start + args.checkpoint_every]
             for result in executor.map(worker, chunk):
                 completed[str(result["scenario_id"])] = result
-            _atomic_json(
-                checkpoint,
-                {
-                    "signature": signature,
-                    "provenance": provenance,
-                    "completed": len(completed),
-                    "scenario_count": len(scenarios),
-                    "results": sorted(
-                        completed.values(), key=lambda item: item["scenario_id"]
-                    ),
-                },
-            )
+            checkpoint_payload = {
+                "signature": signature,
+                "provenance": provenance,
+                "completed": len(completed),
+                "scenario_count": len(scenarios),
+                "results": (
+                    sorted(completed.values(), key=lambda item: item["scenario_id"])
+                    if formal_plan_complete
+                    else [
+                        completed[str(item["scenario_id"])]
+                        for item in scenarios
+                        if str(item["scenario_id"]) in completed
+                    ]
+                ),
+            }
+            if not formal_plan_complete:
+                checkpoint_payload.update(
+                    {
+                        "artifact_status": "diagnostic_checkpoint",
+                        "formal_plan_complete": False,
+                        "full_scenario_count": len(full_scenarios),
+                        "selection": selection,
+                    }
+                )
+            _atomic_json(checkpoint, checkpoint_payload)
             print(f"checkpoint {len(completed)}/{len(scenarios)}", flush=True)
-    results = sorted(completed.values(), key=lambda item: item["scenario_id"])
+    results = (
+        sorted(completed.values(), key=lambda item: item["scenario_id"])
+        if formal_plan_complete
+        else [completed[str(item["scenario_id"])] for item in scenarios]
+    )
     if set(completed) != set(scenario_ids):
         raise ValueError("Stress run did not complete the exact scenario plan")
+    common = {
+        **provenance,
+        "artifact_status": "current",
+        "trade_count_semantics": TRADE_COUNT_SEMANTICS,
+        "portfolio_policy": qf.PortfolioPolicy().as_dict(),
+        "data_directory": _artifact_path(data_dir),
+        "regime_data_directory": _artifact_path(regime_data_dir),
+        "indicator_state": "warm",
+        "seeds": list(seeds),
+    }
+    by_type = {
+        scenario_type: _summary(
+            [item for item in results if item["scenario_type"] == scenario_type]
+        )
+        for scenario_type in sorted({item["scenario_type"] for item in results})
+    }
+    summary = {"all": _summary(results), "by_type": by_type}
+    if not formal_plan_complete:
+        diagnostic_artifact = {
+            **common,
+            "artifact_status": "diagnostic",
+            "formal_plan_complete": False,
+            "canonical": False,
+            "full_scenario_count": len(full_scenarios),
+            "selection": selection,
+            "scenario_count": len(results),
+            "summary": summary,
+            "results": results,
+        }
+        if args.diagnostic_output is not None:
+            _atomic_json(Path(args.diagnostic_output).expanduser(), diagnostic_artifact)
+        print(json.dumps(diagnostic_artifact, ensure_ascii=False, indent=2))
+        return 0
+
     prefixes = sorted(
         (item for item in results if item["scenario_type"] == "prefix"),
         key=lambda item: item["symbol_count"],
@@ -1067,16 +1113,6 @@ def main() -> int:
         }
         for left, right in zip(prefixes, prefixes[1:], strict=False)
     ]
-    common = {
-        **provenance,
-        "artifact_status": "current",
-        "trade_count_semantics": TRADE_COUNT_SEMANTICS,
-        "portfolio_policy": qf.PortfolioPolicy().as_dict(),
-        "data_directory": _artifact_path(data_dir),
-        "regime_data_directory": _artifact_path(regime_data_dir),
-        "indicator_state": "warm",
-        "seeds": list(seeds),
-    }
     prefix_artifact = {
         **common,
         "ordering": list(ORDERED_CODES),
@@ -1086,12 +1122,6 @@ def main() -> int:
         ),
         "summary": _summary(prefixes),
         "results": prefixes,
-    }
-    by_type = {
-        scenario_type: _summary(
-            [item for item in results if item["scenario_type"] == scenario_type]
-        )
-        for scenario_type in sorted({item["scenario_type"] for item in results})
     }
     gates = _hard_gates(results)
     # 2026-08-16 报告 P0-4: 在覆盖正式工件之前加载既有基线，评估强制晋级门。
@@ -1105,7 +1135,7 @@ def main() -> int:
         "permutation_samples_per_seed": args.permutation_samples,
         "hard_gates": gates,
         "promotion_gates": promotion,
-        "summary": {"all": _summary(results), "by_type": by_type},
+        "summary": summary,
         "results": results,
     }
     published = _publish_formal_artifacts(
@@ -1114,6 +1144,7 @@ def main() -> int:
         scenarios=scenarios,
         provenance=provenance,
         incumbent=incumbent,
+        formal_plan_complete=formal_plan_complete,
     )
     print(
         json.dumps(

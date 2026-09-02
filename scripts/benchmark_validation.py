@@ -11,13 +11,6 @@ import tempfile
 from pathlib import Path
 from typing import Any, cast
 
-if __package__:
-    from scripts._bootstrap import ensure_project_root
-else:
-    from _bootstrap import ensure_project_root
-
-ensure_project_root()
-
 import pandas as pd
 
 from quantfusion.application import engine_api as qf

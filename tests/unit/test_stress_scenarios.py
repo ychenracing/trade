@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
+import contextlib
+import io
 import json
 import unittest
 from pathlib import Path
@@ -10,6 +11,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from quantfusion.application import stress
+from quantfusion.application.stress_scenarios import _scenarios, select_scenarios
 
 
 class StressScenarioTests(unittest.TestCase):
@@ -49,18 +51,31 @@ class StressScenarioTests(unittest.TestCase):
             "deployment_policy": "production_daily_replay",
         }
 
+    @classmethod
+    def _complete_small_plan(cls) -> list[dict[str, object]]:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        return [cls._complete_result(item) for item in scenarios]
+
     @staticmethod
-    def _historical_incumbent() -> dict[str, object]:
+    def _accepted_current_incumbent(
+        results: list[dict[str, object]],
+    ) -> dict[str, object]:
         return {
-            "artifact_status": "historical_pre_minimal_account_correctness",
-            "results": [],
+            "acceptance_status": "accepted",
+            "canonical": True,
+            "trade_count_semantics": "trade_records",
+            "results": results,
         }
 
     def test_scenarios_cover_every_requested_family_deterministically(self) -> None:
-        first = stress._scenarios(
+        first = _scenarios(
             random_samples=2, permutation_samples=2, seed=20260807
         )
-        second = stress._scenarios(
+        second = _scenarios(
             random_samples=2, permutation_samples=2, seed=20260807
         )
         self.assertEqual(first, second)
@@ -77,7 +92,12 @@ class StressScenarioTests(unittest.TestCase):
     def test_summary_reports_return_drawdown_and_trade_tails(self) -> None:
         summary = stress._summary(
             [
-                {"total_return": 1.0, "max_drawdown": -0.10, "total_trades": 10},
+                {
+                    "total_return": 1.0,
+                    "max_drawdown": -0.10,
+                    "total_trades": 10,
+                    "date_symbol_side_count": 10,
+                },
                 {
                     "total_return": 3.0,
                     "max_drawdown": -0.20,
@@ -92,9 +112,21 @@ class StressScenarioTests(unittest.TestCase):
         self.assertEqual(summary["trades_worst"], 30.0)
         self.assertEqual(summary["date_symbol_side_buckets_worst"], 12.0)
 
+    def test_summary_does_not_convert_trade_records_to_side_buckets(self) -> None:
+        with self.assertRaisesRegex(KeyError, "date_symbol_side_count"):
+            stress._summary(
+                [
+                    {
+                        "total_return": 1.0,
+                        "max_drawdown": -0.1,
+                        "total_trades": 10,
+                    }
+                ]
+            )
+
     def test_impossible_sample_count_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unique subset capacity"):
-            stress._scenarios(
+            _scenarios(
                 random_samples=2_000,
                 permutation_samples=1,
                 seed=20260807,
@@ -132,6 +164,164 @@ class StressScenarioTests(unittest.TestCase):
             len({str(item["scenario_id"]) for item in scenarios}),
             983,
         )
+
+    def test_selects_exact_add_one_scenario_without_changing_definition(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+
+        selected, formal_plan_complete = select_scenarios(
+            scenarios,
+            scenario_id="add-one-05-688205",
+            scenario_type=None,
+            shard_index=None,
+            shard_count=None,
+        )
+
+        self.assertEqual(
+            selected,
+            [
+                {
+                    "scenario_id": "add-one-05-688205",
+                    "scenario_type": "add_one",
+                    "base_size": 5,
+                    "added_symbol": "688205",
+                    "symbols": [
+                        "300308",
+                        "300502",
+                        "300394",
+                        "688008",
+                        "603986",
+                        "688205",
+                    ],
+                }
+            ],
+        )
+        self.assertFalse(formal_plan_complete)
+
+    def test_selects_add_one_family_in_formal_plan_order(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+
+        selected, formal_plan_complete = select_scenarios(
+            scenarios,
+            scenario_id=None,
+            scenario_type="add_one",
+            shard_index=None,
+            shard_count=None,
+        )
+
+        self.assertEqual(len(selected), 39)
+        self.assertEqual(selected[0]["scenario_id"], "add-one-05-002409")
+        self.assertEqual(selected[-1]["scenario_id"], "add-one-13-688082")
+        self.assertTrue(all(item["scenario_type"] == "add_one" for item in selected))
+        self.assertFalse(formal_plan_complete)
+
+    def test_shard_membership_uses_original_zero_based_indices(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )[:8]
+
+        selected, formal_plan_complete = select_scenarios(
+            scenarios,
+            scenario_id=None,
+            scenario_type=None,
+            shard_index=1,
+            shard_count=3,
+        )
+
+        self.assertEqual(
+            [item["scenario_id"] for item in selected],
+            ["prefix-02", "prefix-05", "prefix-08"],
+        )
+        self.assertFalse(formal_plan_complete)
+
+    def test_selector_rejects_invalid_shard_arguments(self) -> None:
+        scenarios = [{"scenario_id": "only", "scenario_type": "prefix"}]
+        invalid = (
+            (None, 2),
+            (0, None),
+            (0, 0),
+            (-1, 2),
+            (2, 2),
+        )
+
+        for shard_index, shard_count in invalid:
+            with self.subTest(shard_index=shard_index, shard_count=shard_count):
+                with self.assertRaisesRegex(ValueError, "shard"):
+                    select_scenarios(
+                        scenarios,
+                        scenario_id=None,
+                        scenario_type=None,
+                        shard_index=shard_index,
+                        shard_count=shard_count,
+                    )
+
+    def test_selector_rejects_unknown_or_empty_selection(self) -> None:
+        scenarios = [{"scenario_id": "only", "scenario_type": "prefix"}]
+
+        for scenario_id, scenario_type in (
+            ("unknown", None),
+            (None, "unknown"),
+            ("only", "add_one"),
+        ):
+            with self.subTest(scenario_id=scenario_id, scenario_type=scenario_type):
+                with self.assertRaisesRegex(ValueError, "no scenarios"):
+                    select_scenarios(
+                        scenarios,
+                        scenario_id=scenario_id,
+                        scenario_type=scenario_type,
+                        shard_index=None,
+                        shard_count=None,
+                    )
+
+    def test_unfiltered_selection_is_the_only_formal_complete_plan(self) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=50,
+            permutation_samples=50,
+            seeds=stress.DEFAULT_SEEDS,
+        )
+        reduced = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+
+        selected, formal_plan_complete = select_scenarios(
+            scenarios,
+            scenario_id=None,
+            scenario_type=None,
+            shard_index=None,
+            shard_count=None,
+        )
+        sharded, sharded_complete = select_scenarios(
+            scenarios,
+            scenario_id=None,
+            scenario_type=None,
+            shard_index=0,
+            shard_count=1,
+        )
+        reduced_selected, reduced_complete = select_scenarios(
+            reduced,
+            scenario_id=None,
+            scenario_type=None,
+            shard_index=None,
+            shard_count=None,
+        )
+
+        self.assertEqual(selected, scenarios)
+        self.assertTrue(formal_plan_complete)
+        self.assertEqual(sharded, scenarios)
+        self.assertFalse(sharded_complete)
+        self.assertEqual(reduced_selected, reduced)
+        self.assertFalse(reduced_complete)
 
     def test_checkpoint_rejects_mismatched_scenario_definition(self) -> None:
         scenarios = stress._multi_seed_scenarios(
@@ -252,13 +442,321 @@ class StressScenarioTests(unittest.TestCase):
 
         self.assertFalse(result["invariant"])
 
-    def test_failed_complete_candidate_is_retained_without_canonical_publish(
-        self,
-    ) -> None:
+    def test_diagnostic_selection_cannot_enter_formal_publication(self) -> None:
+        with TemporaryDirectory() as tmpdir, patch.object(
+            stress, "VALIDATION_ARTIFACT_DIR", Path(tmpdir)
+        ):
+            prefix_path = Path(tmpdir) / "prefix_stress.json"
+            universe_path = Path(tmpdir) / "universe_stress.json"
+            prefix_path.write_text("existing prefix\n", encoding="utf-8")
+            universe_path.write_text("existing universe\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "diagnostic"):
+                stress._publish_formal_artifacts(
+                    {},
+                    {},
+                    scenarios=[],
+                    provenance={},
+                    incumbent=None,
+                    formal_plan_complete=False,
+                )
+
+            self.assertEqual(
+                prefix_path.read_text(encoding="utf-8"), "existing prefix\n"
+            )
+            self.assertEqual(
+                universe_path.read_text(encoding="utf-8"), "existing universe\n"
+            )
+            self.assertEqual(
+                sorted(path.name for path in Path(tmpdir).iterdir()),
+                ["prefix_stress.json", "universe_stress.json"],
+            )
+
+    def test_cli_exact_diagnostic_uses_only_diagnostic_paths(self) -> None:
+        source_revision = "3" * 40
+        full_plan = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        selected, _ = select_scenarios(
+            full_plan,
+            scenario_id="add-one-05-688205",
+            scenario_type=None,
+            shard_index=None,
+            shard_count=None,
+        )
+        provenance = stress._build_provenance(
+            selected,
+            stress.DATA_DIR,
+            stress.REGIME_DATA_DIR,
+            source_revision=source_revision,
+        )
+        result = self._complete_result(selected[0])
+
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            formal_checkpoint = root / "formal-checkpoint.json"
+            diagnostic_checkpoint = root / "diagnostic-checkpoint.json"
+            diagnostic_output = root / "diagnostic-output.json"
+            validation_dir = root / "validation"
+            validation_dir.mkdir()
+            prefix_path = validation_dir / "prefix_stress.json"
+            universe_path = validation_dir / "universe_stress.json"
+            prefix_path.write_text("existing prefix\n", encoding="utf-8")
+            universe_path.write_text("existing universe\n", encoding="utf-8")
+            stress._atomic_json(
+                diagnostic_checkpoint,
+                {
+                    "signature": provenance["run_signature"],
+                    "provenance": provenance,
+                    "selection": {
+                        "scenario_id": "add-one-05-688205",
+                        "scenario_type": None,
+                        "shard_index": None,
+                        "shard_count": None,
+                    },
+                    "completed": 1,
+                    "scenario_count": 1,
+                    "results": [result],
+                },
+            )
+            argv = [
+                "quantfusion.application.stress",
+                "--workers",
+                "1",
+                "--random-samples",
+                "1",
+                "--permutation-samples",
+                "1",
+                "--seeds",
+                "7",
+                "--scenario-id",
+                "add-one-05-688205",
+                "--checkpoint",
+                str(formal_checkpoint),
+                "--diagnostic-checkpoint",
+                str(diagnostic_checkpoint),
+                "--diagnostic-output",
+                str(diagnostic_output),
+                "--source-revision",
+                source_revision,
+            ]
+
+            with patch("sys.argv", argv), patch.object(
+                stress, "VALIDATION_ARTIFACT_DIR", validation_dir
+            ), contextlib.redirect_stdout(io.StringIO()) as stdout:
+                exit_code = stress.main()
+
+            payload = json.loads(diagnostic_output.read_text(encoding="utf-8"))
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(payload["artifact_status"], "diagnostic")
+            self.assertFalse(payload["formal_plan_complete"])
+            self.assertFalse(payload["canonical"])
+            self.assertEqual(payload["selection"]["scenario_id"], "add-one-05-688205")
+            self.assertEqual(
+                [item["scenario_id"] for item in payload["results"]],
+                ["add-one-05-688205"],
+            )
+            self.assertNotIn("hard_gates", payload)
+            self.assertNotIn("promotion_gates", payload)
+            self.assertIn('"artifact_status": "diagnostic"', stdout.getvalue())
+            self.assertFalse(formal_checkpoint.exists())
+            self.assertEqual(
+                prefix_path.read_text(encoding="utf-8"), "existing prefix\n"
+            )
+            self.assertEqual(
+                universe_path.read_text(encoding="utf-8"), "existing universe\n"
+            )
+
+    def test_cli_diagnostic_rejects_canonical_output_path(self) -> None:
+        source_revision = "4" * 40
+        full_plan = stress._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        selected, _ = select_scenarios(
+            full_plan,
+            scenario_id="add-one-05-688205",
+            scenario_type=None,
+            shard_index=None,
+            shard_count=None,
+        )
+        provenance = stress._build_provenance(
+            selected,
+            stress.DATA_DIR,
+            stress.REGIME_DATA_DIR,
+            source_revision=source_revision,
+        )
+
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            validation_dir = root / "validation"
+            validation_dir.mkdir()
+            universe_path = validation_dir / "universe_stress.json"
+            universe_path.write_text("existing universe\n", encoding="utf-8")
+            diagnostic_checkpoint = root / "diagnostic-checkpoint.json"
+            stress._atomic_json(
+                diagnostic_checkpoint,
+                {
+                    "signature": provenance["run_signature"],
+                    "provenance": provenance,
+                    "selection": {
+                        "scenario_id": "add-one-05-688205",
+                        "scenario_type": None,
+                        "shard_index": None,
+                        "shard_count": None,
+                    },
+                    "completed": 1,
+                    "scenario_count": 1,
+                    "results": [self._complete_result(selected[0])],
+                },
+            )
+            argv = [
+                "quantfusion.application.stress",
+                "--workers",
+                "1",
+                "--random-samples",
+                "1",
+                "--permutation-samples",
+                "1",
+                "--seeds",
+                "7",
+                "--scenario-id",
+                "add-one-05-688205",
+                "--diagnostic-checkpoint",
+                str(diagnostic_checkpoint),
+                "--diagnostic-output",
+                str(universe_path),
+                "--source-revision",
+                source_revision,
+            ]
+
+            with patch("sys.argv", argv), patch.object(
+                stress, "VALIDATION_ARTIFACT_DIR", validation_dir
+            ), contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(
+                ValueError, "separate"
+            ):
+                stress.main()
+
+            self.assertEqual(
+                universe_path.read_text(encoding="utf-8"), "existing universe\n"
+            )
+
+    def test_cli_diagnostic_rejects_candidate_namespace_paths(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            validation_dir = Path(tmpdir) / "validation"
+            candidate_path = validation_dir / "candidates" / "diagnostic.json"
+            base_argv = [
+                "quantfusion.application.stress",
+                "--random-samples",
+                "1",
+                "--permutation-samples",
+                "1",
+                "--seeds",
+                "7",
+                "--scenario-id",
+                "add-one-05-688205",
+                "--source-revision",
+                "invalid",
+            ]
+
+            for option in ("--diagnostic-checkpoint", "--diagnostic-output"):
+                with self.subTest(option=option), patch(
+                    "sys.argv", [*base_argv, option, str(candidate_path)]
+                ), patch.object(
+                    stress, "VALIDATION_ARTIFACT_DIR", validation_dir
+                ), self.assertRaisesRegex(ValueError, "validation namespace"):
+                    stress.main()
+
+            self.assertFalse(candidate_path.exists())
+
+    def test_noncanonical_plan_cannot_spoof_formal_publication(self) -> None:
+        canonical = stress._multi_seed_scenarios(
+            random_samples=50,
+            permutation_samples=50,
+            seeds=stress.DEFAULT_SEEDS,
+        )
+        plans = {
+            "reduced": stress._multi_seed_scenarios(
+                random_samples=1,
+                permutation_samples=1,
+                seeds=(7,),
+            ),
+            "altered_seeds": stress._multi_seed_scenarios(
+                random_samples=50,
+                permutation_samples=50,
+                seeds=(*stress.DEFAULT_SEEDS[:-1], 999),
+            ),
+            "altered_order": [canonical[1], canonical[0], *canonical[2:]],
+        }
+
+        with TemporaryDirectory() as tmpdir, patch.object(
+            stress, "VALIDATION_ARTIFACT_DIR", Path(tmpdir)
+        ):
+            for name, scenarios in plans.items():
+                with self.subTest(name=name), self.assertRaisesRegex(
+                    ValueError, "canonical scenario plan"
+                ):
+                    stress._publish_formal_artifacts(
+                        {},
+                        {},
+                        scenarios=scenarios,
+                        provenance={},
+                        incumbent=None,
+                        formal_plan_complete=True,
+                    )
+
+            self.assertEqual(list(Path(tmpdir).iterdir()), [])
+
+    def test_reduced_complete_candidate_cannot_publish(self) -> None:
         scenarios = stress._multi_seed_scenarios(
             random_samples=1,
             permutation_samples=1,
             seeds=(7,),
+        )
+        results = [self._complete_result(item) for item in scenarios]
+        provenance = self._provenance("9" * 40, len(scenarios))
+        incumbent = self._accepted_current_incumbent(results)
+        prefix_artifact = {
+            **provenance,
+            "results": [
+                item for item in results if item["scenario_type"] == "prefix"
+            ],
+        }
+        universe_artifact = {
+            **provenance,
+            "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
+            "seeds": [7],
+            "scenario_count": len(results),
+            "hard_gates": stress._hard_gates(results),
+            "promotion_gates": stress._promotion_gates(results, incumbent),
+            "results": results,
+        }
+
+        with TemporaryDirectory() as tmpdir, patch.object(
+            stress, "VALIDATION_ARTIFACT_DIR", Path(tmpdir)
+        ):
+            with self.assertRaisesRegex(ValueError, "canonical scenario plan"):
+                stress._publish_formal_artifacts(
+                    prefix_artifact,
+                    universe_artifact,
+                    scenarios=scenarios,
+                    provenance=provenance,
+                    incumbent=incumbent,
+                    formal_plan_complete=True,
+                )
+
+            self.assertEqual(list(Path(tmpdir).iterdir()), [])
+
+    def test_failed_complete_candidate_is_retained_without_canonical_publish(
+        self,
+    ) -> None:
+        scenarios = stress._multi_seed_scenarios(
+            random_samples=stress.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress.DEFAULT_SEEDS,
         )
         results = [self._complete_result(item) for item in scenarios]
         by_id = {item["scenario_id"]: item for item in results}
@@ -275,11 +773,11 @@ class StressScenarioTests(unittest.TestCase):
             **provenance,
             "artifact_status": "current",
             "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
-            "seeds": [7],
+            "seeds": list(stress.DEFAULT_SEEDS),
             "scenario_count": len(results),
             "hard_gates": stress._hard_gates(results),
             "promotion_gates": stress._promotion_gates(
-                results, self._historical_incumbent()
+                results, self._accepted_current_incumbent(results)
             ),
             "results": results,
         }
@@ -290,7 +788,8 @@ class StressScenarioTests(unittest.TestCase):
                 universe_artifact,
                 scenarios=scenarios,
                 provenance=provenance,
-                incumbent=self._historical_incumbent(),
+                incumbent=self._accepted_current_incumbent(results),
+                formal_plan_complete=True,
             )
 
         self.assertFalse(published)
@@ -319,9 +818,9 @@ class StressScenarioTests(unittest.TestCase):
 
     def test_accepted_complete_candidate_updates_canonical_artifacts(self) -> None:
         scenarios = stress._multi_seed_scenarios(
-            random_samples=1,
-            permutation_samples=1,
-            seeds=(7,),
+            random_samples=stress.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress.DEFAULT_SEEDS,
         )
         results = [self._complete_result(item) for item in scenarios]
         provenance = self._provenance("b" * 40, len(scenarios))
@@ -336,11 +835,11 @@ class StressScenarioTests(unittest.TestCase):
             **provenance,
             "artifact_status": "current",
             "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
-            "seeds": [7],
+            "seeds": list(stress.DEFAULT_SEEDS),
             "scenario_count": len(results),
             "hard_gates": stress._hard_gates(results),
             "promotion_gates": stress._promotion_gates(
-                results, self._historical_incumbent()
+                results, self._accepted_current_incumbent(results)
             ),
             "results": results,
         }
@@ -351,7 +850,8 @@ class StressScenarioTests(unittest.TestCase):
                 universe_artifact,
                 scenarios=scenarios,
                 provenance=provenance,
-                incumbent=self._historical_incumbent(),
+                incumbent=self._accepted_current_incumbent(results),
+                formal_plan_complete=True,
             )
 
         self.assertTrue(published)
@@ -363,15 +863,15 @@ class StressScenarioTests(unittest.TestCase):
 
     def test_incomplete_candidate_is_not_retained(self) -> None:
         scenarios = stress._multi_seed_scenarios(
-            random_samples=1,
-            permutation_samples=1,
-            seeds=(7,),
+            random_samples=stress.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress.DEFAULT_SEEDS,
         )
         provenance = self._provenance("c" * 40, len(scenarios))
         universe_artifact = {
             **provenance,
             "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
-            "seeds": [7],
+            "seeds": list(stress.DEFAULT_SEEDS),
             "hard_gates": {"passed": False, "checks": {"floor": False}},
             "promotion_gates": {
                 "passed": None,
@@ -388,23 +888,24 @@ class StressScenarioTests(unittest.TestCase):
                     universe_artifact,
                     scenarios=scenarios,
                     provenance=provenance,
-                    incumbent=self._historical_incumbent(),
+                    incumbent=None,
+                    formal_plan_complete=True,
                 )
 
         write_artifact.assert_not_called()
 
     def test_provenance_mismatch_is_not_retained(self) -> None:
         scenarios = stress._multi_seed_scenarios(
-            random_samples=1,
-            permutation_samples=1,
-            seeds=(7,),
+            random_samples=stress.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress.DEFAULT_SEEDS,
         )
         expected = self._provenance("d" * 40, len(scenarios))
         actual = {**expected, "source_revision": "e" * 40}
         universe_artifact = {
             **actual,
             "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
-            "seeds": [7],
+            "seeds": list(stress.DEFAULT_SEEDS),
             "hard_gates": {"passed": False, "checks": {"floor": False}},
             "promotion_gates": {
                 "passed": None,
@@ -420,16 +921,17 @@ class StressScenarioTests(unittest.TestCase):
                     universe_artifact,
                     scenarios=scenarios,
                     provenance=expected,
-                    incumbent=self._historical_incumbent(),
+                    incumbent=None,
+                    formal_plan_complete=True,
                 )
 
         write_artifact.assert_not_called()
 
     def test_tampered_gate_summary_cannot_publish(self) -> None:
         scenarios = stress._multi_seed_scenarios(
-            random_samples=1,
-            permutation_samples=1,
-            seeds=(7,),
+            random_samples=stress.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress.DEFAULT_SEEDS,
         )
         results = [self._complete_result(item) for item in scenarios]
         by_id = {item["scenario_id"]: item for item in results}
@@ -445,10 +947,10 @@ class StressScenarioTests(unittest.TestCase):
         universe_artifact = {
             **provenance,
             "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
-            "seeds": [7],
+            "seeds": list(stress.DEFAULT_SEEDS),
             "hard_gates": {"passed": True, "checks": {}},
             "promotion_gates": stress._promotion_gates(
-                results, self._historical_incumbent()
+                results, self._accepted_current_incumbent(results)
             ),
             "results": results,
         }
@@ -461,16 +963,17 @@ class StressScenarioTests(unittest.TestCase):
                 universe_artifact,
                 scenarios=scenarios,
                 provenance=provenance,
-                incumbent=self._historical_incumbent(),
+                incumbent=self._accepted_current_incumbent(results),
+                formal_plan_complete=True,
             )
 
         write_artifact.assert_not_called()
 
     def test_wrong_seed_list_cannot_publish(self) -> None:
         scenarios = stress._multi_seed_scenarios(
-            random_samples=1,
-            permutation_samples=1,
-            seeds=(7,),
+            random_samples=stress.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress.DEFAULT_SEEDS,
         )
         results = [self._complete_result(item) for item in scenarios]
         provenance = self._provenance("1" * 40, len(scenarios))
@@ -486,7 +989,7 @@ class StressScenarioTests(unittest.TestCase):
             "seeds": [999],
             "hard_gates": stress._hard_gates(results),
             "promotion_gates": stress._promotion_gates(
-                results, self._historical_incumbent()
+                results, self._accepted_current_incumbent(results)
             ),
             "results": results,
         }
@@ -499,16 +1002,17 @@ class StressScenarioTests(unittest.TestCase):
                 universe_artifact,
                 scenarios=scenarios,
                 provenance=provenance,
-                incumbent=self._historical_incumbent(),
+                incumbent=self._accepted_current_incumbent(results),
+                formal_plan_complete=True,
             )
 
         write_artifact.assert_not_called()
 
     def test_missing_prefix_result_cannot_publish(self) -> None:
         scenarios = stress._multi_seed_scenarios(
-            random_samples=1,
-            permutation_samples=1,
-            seeds=(7,),
+            random_samples=stress.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress.DEFAULT_SEEDS,
         )
         results = [self._complete_result(item) for item in scenarios]
         provenance = self._provenance("2" * 40, len(scenarios))
@@ -519,10 +1023,10 @@ class StressScenarioTests(unittest.TestCase):
         universe_artifact = {
             **provenance,
             "trade_count_semantics": stress.TRADE_COUNT_SEMANTICS,
-            "seeds": [7],
+            "seeds": list(stress.DEFAULT_SEEDS),
             "hard_gates": stress._hard_gates(results),
             "promotion_gates": stress._promotion_gates(
-                results, self._historical_incumbent()
+                results, self._accepted_current_incumbent(results)
             ),
             "results": results,
         }
@@ -535,7 +1039,8 @@ class StressScenarioTests(unittest.TestCase):
                 universe_artifact,
                 scenarios=scenarios,
                 provenance=provenance,
-                incumbent=self._historical_incumbent(),
+                incumbent=self._accepted_current_incumbent(results),
+                formal_plan_complete=True,
             )
 
         write_artifact.assert_not_called()
@@ -548,43 +1053,196 @@ class StressScenarioTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Cannot read incumbent"):
                 stress._load_incumbent(path)
 
-    def test_persisted_formal_artifacts_are_explicit_historical_baselines(
-        self,
-    ) -> None:
-        scenarios = stress._multi_seed_scenarios(
-            random_samples=50,
-            permutation_samples=50,
-            seeds=stress.DEFAULT_SEEDS,
+    def test_legacy_trade_count_semantics_is_rejected(self) -> None:
+        current = {
+            "scenario_id": "prefix-01",
+            "scenario_type": "prefix",
+            "total_return": 1.0,
+            "max_drawdown": -0.1,
+            "total_trades": 24,
+            "sleeve_fill_count": 24,
+            "date_symbol_side_count": 5,
+        }
+        legacy_incumbent = {
+            "trade_count_semantics": "legacy_date_symbol_side_bucket",
+            "results": [{**current, "total_trades": 5}],
+        }
+
+        with self.assertRaisesRegex(ValueError, "trade_records"):
+            stress._promotion_gates([current], legacy_incumbent)
+
+    def test_load_incumbent_rejects_legacy_trade_count_semantics(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "universe_stress.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "trade_count_semantics": "legacy_date_symbol_side_bucket",
+                        "results": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "trade_records"):
+                stress._load_incumbent(path)
+
+    def test_no_incumbent_baseline_fails_closed(self) -> None:
+        result = self._complete_result(
+            {
+                "scenario_id": "permutation-7-001",
+                "scenario_type": "permutation",
+                "seed": 7,
+                "symbols": list(stress.ORDERED_CODES),
+            }
         )
-        signature = stress._run_signature(
-            scenarios,
-            stress.DATA_DIR,
-            stress.REGIME_DATA_DIR,
-            source_revision="a" * 40,
+
+        promotion = stress._promotion_gates([result], None)
+
+        self.assertEqual(promotion["status"], "no_incumbent_baseline")
+        self.assertFalse(promotion["applicable"])
+        self.assertFalse(promotion["passed"])
+        self.assertFalse(stress._promotion_accepted(promotion))
+        self.assertIn(
+            {
+                "gate_family": "promotion_gates",
+                "gate": "accepted_current_semantic_incumbent",
+            },
+            stress._rejection_reasons(
+                {
+                    "hard_gates": {"checks": {}},
+                    "promotion_gates": promotion,
+                }
+            ),
         )
-        for name in ("prefix_stress.json", "universe_stress.json"):
-            payload = json.loads(
-                (
-                    stress.VALIDATION_ARTIFACT_DIR / name
-                ).read_text(encoding="utf-8")
+
+    def test_rejected_current_artifact_cannot_be_compared_as_incumbent(self) -> None:
+        result = self._complete_result(
+            {
+                "scenario_id": "prefix-01",
+                "scenario_type": "prefix",
+                "symbols": [stress.ORDERED_CODES[0]],
+            }
+        )
+        rejected = {
+            "acceptance_status": "rejected",
+            "canonical": False,
+            "trade_count_semantics": "trade_records",
+            "results": [result],
+        }
+
+        with self.assertRaisesRegex(ValueError, "accepted and canonical"):
+            stress._promotion_gates([result], rejected)
+
+    def test_load_incumbent_rejects_noncanonical_current_candidate(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "universe_stress.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "acceptance_status": "rejected",
+                        "canonical": False,
+                        "trade_count_semantics": "trade_records",
+                        "results": [],
+                    }
+                ),
+                encoding="utf-8",
             )
-            self.assertEqual(
-                payload["artifact_status"],
-                "historical_pre_minimal_account_correctness",
+
+            with self.assertRaisesRegex(ValueError, "accepted and canonical"):
+                stress._load_incumbent(path)
+
+    def test_empty_accepted_current_incumbent_cannot_pass_promotion(self) -> None:
+        results = self._complete_small_plan()
+
+        with self.assertRaisesRegex(ValueError, "non-empty results"):
+            stress._promotion_gates(
+                results,
+                self._accepted_current_incumbent([]),
             )
-            self.assertEqual(
-                payload["trade_count_semantics"],
-                "legacy_date_symbol_side_bucket",
+
+    def test_load_incumbent_rejects_empty_accepted_current_results(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "universe_stress.json"
+            path.write_text(
+                json.dumps(self._accepted_current_incumbent([])),
+                encoding="utf-8",
             )
-            self.assertEqual(
-                payload["source_revision"],
-                "2066fbf0f99be94142c5d0cb0b6c99d276c2472d",
+
+            with self.assertRaisesRegex(ValueError, "non-empty results"):
+                stress._load_incumbent(path)
+
+    def test_disjoint_accepted_current_incumbent_cannot_pass_promotion(self) -> None:
+        results = self._complete_small_plan()
+        disjoint = [
+            {**item, "scenario_id": f"incumbent-{index}"}
+            for index, item in enumerate(results)
+        ]
+
+        with self.assertRaisesRegex(ValueError, "shared scenario"):
+            stress._promotion_gates(
+                results,
+                self._accepted_current_incumbent(disjoint),
             )
-            self.assertEqual(
-                payload["run_signature"],
-                "f4fe4580e6c792461bdeffeaea96c12f1c4ab49e63dce468e30b5fbbd19202df",
+
+    def test_incumbent_cannot_omit_mandatory_fixed_scenario_ids(self) -> None:
+        results = self._complete_small_plan()
+        incomplete = [
+            item for item in results if item["scenario_id"] != "prefix-22"
+        ]
+
+        with self.assertRaisesRegex(ValueError, "mandatory fixed scenario"):
+            stress._promotion_gates(
+                results,
+                self._accepted_current_incumbent(incomplete),
             )
-            self.assertNotEqual(payload["run_signature"], signature)
+
+    def test_incumbent_cannot_omit_random_comparison_family(self) -> None:
+        results = self._complete_small_plan()
+        without_random = [
+            item for item in results if item["scenario_type"] != "random_subset"
+        ]
+
+        with self.assertRaisesRegex(ValueError, "random_subset"):
+            stress._promotion_gates(
+                results,
+                self._accepted_current_incumbent(without_random),
+            )
+
+    def test_incumbent_results_must_be_structured_objects(self) -> None:
+        results = self._complete_small_plan()
+        malformed = self._accepted_current_incumbent(results)
+        malformed["results"] = [{}]
+
+        with self.assertRaisesRegex(ValueError, "structured result"):
+            stress._promotion_gates(results, malformed)
+
+    def test_incumbent_rejects_duplicate_scenario_ids(self) -> None:
+        results = self._complete_small_plan()
+        duplicate = [*results, results[0]]
+
+        with self.assertRaisesRegex(ValueError, "duplicate scenario_id"):
+            stress._promotion_gates(
+                results,
+                self._accepted_current_incumbent(duplicate),
+            )
+
+    def test_incumbent_cannot_relabel_mandatory_fixed_scenario(self) -> None:
+        results = self._complete_small_plan()
+        relabeled = [
+            (
+                {**item, "scenario_type": "random_subset"}
+                if item["scenario_id"] == "prefix-22"
+                else item
+            )
+            for item in results
+        ]
+
+        with self.assertRaisesRegex(ValueError, "mandatory fixed scenario"):
+            stress._promotion_gates(
+                results,
+                self._accepted_current_incumbent(relabeled),
+            )
 
     def test_rejected_candidate_retains_complete_current_evidence(self) -> None:
         path = (
@@ -607,45 +1265,15 @@ class StressScenarioTests(unittest.TestCase):
             payload["source_fingerprint"],
             "98b6bcd7d39ab9de3352af24dca05721b95d01b45fa3facbae7890a35dfc6ea1",
         )
-        self.assertEqual(
-            hashlib.sha256(path.read_bytes()).hexdigest(),
-            "d3bd007e1c60b5c4296fe2629a01a370a648acfd09b376b0c1edf4339052c442",
-        )
+        self.assertEqual(payload["trade_count_semantics"], "trade_records")
         self.assertEqual(
             payload["promotion_gates"]["status"],
-            "incomparable_economic_contract",
+            "no_incumbent_baseline",
         )
         self.assertFalse(payload["promotion_gates"]["applicable"])
-        self.assertIsNone(payload["promotion_gates"]["passed"])
-        self.assertIn("historical_promotion_audit", payload)
+        self.assertFalse(payload["promotion_gates"]["passed"])
 
-    def test_historical_pre_pr13_promotion_baseline_is_incomparable(self) -> None:
-        current = {
-            "scenario_id": "prefix-01",
-            "scenario_type": "prefix",
-            "total_return": 1.0,
-            "max_drawdown": -0.1,
-            "total_trades": 24,
-            "sleeve_fill_count": 24,
-            "date_symbol_side_count": 5,
-        }
-        incumbent = {
-            "artifact_status": "historical_pre_minimal_account_correctness",
-            "trade_count_semantics": "legacy_date_symbol_side_bucket",
-            "results": [{**current, "total_trades": 5}],
-        }
-
-        result = stress._promotion_gates([current], incumbent)
-
-        self.assertEqual(
-            result["status"], "incomparable_economic_contract"
-        )
-        self.assertFalse(result["applicable"])
-        self.assertIsNone(result["passed"])
-        self.assertTrue(result["permutation_invariance"]["invariant"])
-        self.assertNotIn("checks", result)
-
-    def test_hard_gates_keep_legacy_ceilings_on_side_buckets(self) -> None:
+    def test_hard_gates_keep_current_ceilings_on_side_buckets(self) -> None:
         def scenario(
             scenario_id: str,
             scenario_type: str,

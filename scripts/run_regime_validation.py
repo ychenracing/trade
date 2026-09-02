@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Reproduce causal weak-market and frozen bull-market validation.
 
 The final blind-pool seed is part of the public protocol.  It was opened only
@@ -19,13 +18,6 @@ import statistics
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
-
-if __package__:
-    from scripts._bootstrap import ensure_project_root
-else:
-    from _bootstrap import ensure_project_root
-
-ensure_project_root()
 
 from quantfusion.application import engine_api as qf
 from scripts.backtest_universes import NAMES, UNIVERSES

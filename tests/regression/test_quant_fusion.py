@@ -924,33 +924,6 @@ class IntegrationTests(unittest.TestCase):
                 self.assertIn("2026-06-26", on_dates)
 
 
-class PrefixStressArtifactTests(unittest.TestCase):
-    """Verify the reviewed historical one-through-22 prefix audit."""
-
-    def test_all_prefix_counts_meet_bounded_regression_contract(self) -> None:
-        path = VALIDATION_ARTIFACT_DIR / "prefix_stress.json"
-        artifact = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(
-            artifact["artifact_status"],
-            "historical_pre_minimal_account_correctness",
-        )
-        self.assertEqual(
-            artifact["trade_count_semantics"],
-            "legacy_date_symbol_side_bucket",
-        )
-        self.assertEqual(artifact["portfolio_policy"], PortfolioPolicy().as_dict())
-        results = artifact["results"]
-        self.assertEqual([item["symbol_count"] for item in results], list(range(1, 23)))
-        self.assertGreaterEqual(results[0]["total_return"], 3.0)
-        for item in results[1:]:
-            with self.subTest(symbol_count=item["symbol_count"]):
-                self.assertGreaterEqual(item["total_return"], 5.0)
-                self.assertGreaterEqual(item["max_drawdown"], -0.23)
-                self.assertLessEqual(item["max_concurrent_symbols"], 10)
-        worst = artifact["worst_adjacent_transition"]
-        self.assertGreaterEqual(worst["wealth_change"], -0.30)
-
-
 class CambriconArtifactTests(unittest.TestCase):
     """Verify the mapped nine-symbol artifact and its route metadata."""
 

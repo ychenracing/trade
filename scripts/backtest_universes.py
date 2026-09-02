@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Validate strategy across all requested universe sizes and indicator states."""
 
 from __future__ import annotations
@@ -9,13 +8,6 @@ import io
 import json
 from concurrent.futures import ProcessPoolExecutor
 from typing import Any
-
-if __package__:
-    from scripts._bootstrap import ensure_project_root
-else:
-    from _bootstrap import ensure_project_root
-
-ensure_project_root()
 
 from quantfusion.application import engine_api as qf
 from quantfusion.config.universe import (

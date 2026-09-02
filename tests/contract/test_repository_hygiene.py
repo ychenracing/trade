@@ -189,7 +189,7 @@ class RepositoryHygieneTests(unittest.TestCase):
 
     def test_repository_assets_are_grouped_by_responsibility(self) -> None:
         expected = (
-            "artifacts/validation/universe_stress.json",
+            "artifacts/validation/candidates/stress-117a0ea17a333be17fbd345a14eb67fb328d046c-rejected.json",
             "data/market/300308.csv",
             "data/regime/000300.csv",
             "examples/account.json",
@@ -199,6 +199,13 @@ class RepositoryHygieneTests(unittest.TestCase):
         )
         for relative in expected:
             self.assertTrue((ROOT / relative).is_file(), msg=relative)
+
+    def test_historical_stress_canonicals_are_absent(self) -> None:
+        for name in ("prefix_stress.json", "universe_stress.json"):
+            self.assertFalse(
+                (ROOT / "artifacts" / "validation" / name).exists(),
+                msg=name,
+            )
 
     def test_validation_script_reads_the_single_golden_metrics_source(self) -> None:
         for name, codes in UNIVERSES.items():
@@ -211,9 +218,7 @@ class RepositoryHygieneTests(unittest.TestCase):
     def test_persisted_validation_metadata_uses_portable_data_paths(self) -> None:
         for name in (
             "cambricon_universe_backtest.json",
-            "prefix_stress.json",
             "universe_backtest.json",
-            "universe_stress.json",
         ):
             payload = json.loads(
                 (ROOT / "artifacts" / "validation" / name).read_text(
@@ -252,6 +257,15 @@ class RepositoryHygieneTests(unittest.TestCase):
                 msg=f"{module}: {completed.stderr}",
             )
             self.assertIn("usage:", completed.stdout.lower(), msg=module)
+
+    def test_scripts_use_module_execution_without_path_bootstrap(self) -> None:
+        self.assertFalse((ROOT / "scripts/_bootstrap.py").exists())
+        for path in (ROOT / "scripts").glob("*.py"):
+            source = path.read_text(encoding="utf-8")
+            self.assertFalse(source.startswith("#!"), msg=str(path))
+            self.assertNotIn("_bootstrap", source, msg=str(path))
+            self.assertNotIn("__package__", source, msg=str(path))
+            self.assertNotIn("sys.path", source, msg=str(path))
 
     def test_only_canonical_repository_data_defaults_are_exported(self) -> None:
         public_config = importlib.import_module("quantfusion.config")

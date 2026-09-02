@@ -50,33 +50,30 @@
 
 风险职责遵循单一执行者原则：已有趋势账本遇到指数转弱时，外层路由只记录状态，跨市场叠加层负责买入门控和风险动作；只有从空仓进入弱市时才建立弱市龙头账本。恢复确认使用 30 个连续交易日，但期间继续持有正动量龙头，不是空仓等待。动态弱势策略登记在独立外部清算注册表中，因此能被组合、板块和路由风险清算，又不会被核心信号循环重复调用。
 
-## 组合压力验证（当前候选与历史 canonical）
+## 组合压力验证（当前语义候选）
 
 当前完整 983 场景运行已保存为非 canonical 候选：
 
 - 路径：`artifacts/validation/candidates/stress-117a0ea17a333be17fbd345a14eb67fb328d046c-rejected.json`
-- 文件 SHA-256：`d3bd007e1c60b5c4296fe2629a01a370a648acfd09b376b0c1edf4339052c442`
+- 文件 SHA-256：`bca0200b822ee1fc045a7cde2d8791d153338b2c5bc3ed84aa4916c820977b52`
 - 状态：`current_candidate`、`rejected`、`canonical=false`
 - 完整性：983/983，983 个唯一场景 ID，无缺失、重复或非有限指标；所有场景均为 `production_daily_replay`
 - 来源证明（provenance）：source revision `117a0ea17a333be17fbd345a14eb67fb328d046c`，source fingerprint `98b6bcd7d39ab9de3352af24dca05721b95d01b45fa3facbae7890a35dfc6ea1`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `dcebfe65f431b432cdb82e999505e0d87ef5a61b21f1b2544f5e357822ee541f`
+- 晋级门禁：当前没有 accepted canonical 且使用 `trade_records` 语义的基线，状态为 `no_incumbent_baseline`、`applicable=false`、`passed=false`，晋级失败关闭
 - 绝对门禁：`worst_add_one_wealth_at_least_minus_18pct` 失败；`add-one-05-688205` 相对 `prefix-05` 的财富变化为 `-0.23490347753273277`，要求仍为 `>= -0.18`
 - 排列不变性：通过
 
-该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。失败运行仍返回非零状态，但完整结果会先写入独立 candidate 路径，防止证据丢失。
-
-旧 incumbent 标记为 `historical_pre_minimal_account_correctness`，早于 PR #13 已接受的经济语义。三股前缀比较精确等于 `(1 + 10.593889691663627) / (1 + 11.224308338588003) = 0.9484290947624122`，因此该 promotion 比较属于 `incomparable_economic_contract`，既不标记通过，也不再作为当前候选失败原因。逐一加入 promotion 比较同样不可比；当前独立阻塞只有上述 -18% 绝对 hard gate。
-
-`artifacts/validation/universe_stress.json` 保存本次正确性修复前的 983 个端到端场景：83 个固定前缀/留一/逐一加入场景、三个固定种子下 750 个随机子集，以及 150 个完整 22 股顺序置换。该工件中的 `total_trades` 是旧日期/股票/方向桶语义，只能作为历史压力参考，不能解释为券商订单，也不是本次候选的当前成交记录基线。本任务不修改压力阈值或优化器；当前候选以五池精确回放和序列指纹作为经济回归门禁。
+该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。失败运行仍返回非零状态，但完整结果会先写入独立 candidate 路径，防止证据丢失。历史兼容语义工件已从正式路径删除；实时压力代码只接受 `trade_count_semantics="trade_records"`，不存在旧计数转换或特殊状态分支。
 
 | 场景族 | 数量 | 收益中位数 | 最差收益 | 最差回撤 | 交易中位数 | 最高交易 |
 |---|---:|---:|---:|---:|---:|---:|
-| 前缀 | 22 | 1072.2789% | 530.8950% | -18.9984% | 100 | 137 |
-| 留一 | 22 | 1070.8368% | 94.9188% | -19.0467% | 100 | 130 |
-| 逐一加入 | 39 | 1237.1641% | 965.8953% | -18.3885% | 101 | 130 |
-| 随机子集 | 750 | 117.1891% | -12.1056% | -21.2073% | 23 | 143 |
-| 顺序置换 | 150 | 1080.8378% | 1080.8378% | -15.9248% | 100 | 100 |
+| 前缀 | 22 | 1052.7670% | 530.8950% | -18.9984% | 227 | 268 |
+| 留一 | 22 | 1041.9857% | 94.9188% | -19.0467% | 228 | 273 |
+| 逐一加入 | 39 | 1250.3463% | 914.8013% | -18.3885% | 218 | 283 |
+| 随机子集 | 750 | 117.1891% | -12.1056% | -21.2231% | 60 | 289 |
+| 顺序置换 | 150 | 1052.7670% | 1052.7670% | -15.3842% | 228 | 228 |
 
-随机子集回撤严重度的 90 分位为 18.8486%，最差回撤为 -21.2073%；旧日期/股票/方向桶的 90 分位为 48，全场景最高为 143。9→10 股财富变化为 -2.6452%，最差相邻扩展为 -16.8528%，最差逐一加入为 -16.8025%，均仅描述历史工件。随机子集最差收益为 -12.1056%，说明固定五池的高收益不能外推到任意组合，历史门禁通过也不构成未来收益保证。
+随机子集回撤严重度的 90 分位为 18.8486%，最差回撤为 -21.2231%；日期/股票/方向桶的 90 分位为 47，全场景最高为 139。9→10 股财富变化为 -3.1155%，最差相邻扩展为 -15.5426%，最差逐一加入为 -23.4903%。随机子集最差收益为 -12.1056%，说明固定五池的高收益不能外推到任意组合；该候选未通过门禁，也不构成未来收益保证。
 
 ## 优化器验收协议
 
@@ -120,9 +117,7 @@
 
 - `tests/fixtures/backtest_golden_metrics.json`：五组趋势精确基线与序列指纹；
 - `artifacts/validation/universe_backtest.json`：冷启动与预热组合结果；
-- `artifacts/validation/prefix_stress.json`：完整 1 至 22 股前缀结果；
-- `artifacts/validation/universe_stress.json`：留一、逐一加入、随机子集和置换结果；
-- `artifacts/validation/candidates/`：完整但未通过适用门禁的非 canonical 压力候选；
+- `artifacts/validation/candidates/`：完整但未通过适用门禁的当前语义非 canonical 压力候选；
 - `artifacts/validation/cambricon_universe_backtest.json`：寒武纪映射历史回归；
 - `data/market/SHA256SUMS` 与 `data/regime/SHA256SUMS`：冻结数据哈希。
 
