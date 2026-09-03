@@ -36,9 +36,9 @@ jobs:
           path.write_text(text.replace(old, new, 1), encoding="utf-8")
           PY
           rm -f .github/workflows/stage-formal-stress-v11.yml
-          changed="$(git diff --name-only acf4cccf4117edb35e6beb57aa2f9004476c8b93 HEAD)"
+          changed="$(git diff --name-only acf4cccf4117edb35e6beb57aa2f9004476c8b93)"
           test "$changed" = ".github/workflows/run-formal-stress-958-v2.yml"
-          git diff --quiet acf4cccf4117edb35e6beb57aa2f9004476c8b93 HEAD -- quantfusion data README.md docs tests
+          git diff --quiet acf4cccf4117edb35e6beb57aa2f9004476c8b93 -- quantfusion data README.md docs tests
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
