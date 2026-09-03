@@ -92,6 +92,10 @@ REPLAY_FIELDS = (
     "random_samples_per_size_per_seed",
     "permutation_samples_per_seed",
 )
+CURRENT_PLAN_COUNT_LINE = (
+    "当前计划计数：17 股；958 场景；prefix=17；leave-one-out=17；"
+    "add-one=24；random-subset=750；permutation=150。"
+)
 TEMPORARY_GLOBS = (
     ".github/task-bootstrap/*formal-stress-958*",
     ".github/workflows/*formal-stress-958*.yml",
@@ -100,6 +104,8 @@ TEMPORARY_GLOBS = (
 )
 HISTORICAL_TOKEN = re.compile(r"历史|historical", re.IGNORECASE)
 SYMBOL_22_TOKEN = re.compile(r"22\s*股|22-symbol", re.IGNORECASE)
+SCENARIO_983_TOKEN = re.compile(r"(?<![0-9A-Za-z])983(?![0-9A-Za-z])")
+CURRENT_TOKEN = re.compile(r"当前|current", re.IGNORECASE)
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
 
@@ -114,12 +120,18 @@ def _managed_block(text: str, start: str, end: str, *, path: Path) -> str:
 
 def _assert_983_is_historical(text: str, *, path: Path) -> None:
     """Require explicit historical 22-symbol context for every old-plan mention."""
-    for raw in re.split(r"[。！？.!?；;，,\n]+", text):
-        sentence = raw.strip()
-        if "983" not in sentence:
+    clauses = re.split(
+        r"[。！？.!?；;\n]+|\b(?:and|but|while)\b|(?:并且|而且|但是|同时|以及|与|和)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    for raw in clauses:
+        clause = raw.strip()
+        if SCENARIO_983_TOKEN.search(clause) is None:
             continue
-        assert HISTORICAL_TOKEN.search(sentence), (path, sentence)
-        assert SYMBOL_22_TOKEN.search(sentence), (path, sentence)
+        assert HISTORICAL_TOKEN.search(clause), (path, clause)
+        assert SYMBOL_22_TOKEN.search(clause), (path, clause)
+        assert CURRENT_TOKEN.search(clause) is None, (path, clause)
 
 
 def _assert_22_symbol_is_historical(text: str, *, path: Path) -> None:
@@ -170,6 +182,45 @@ def _plan_metadata(plan_block: str, *, path: Path) -> dict[str, Any]:
     payload = json.loads(matches[0])
     assert isinstance(payload, dict), path
     return payload
+
+
+def _assert_visible_plan_counts(plan_block: str, *, path: Path) -> None:
+    assert CURRENT_PLAN_COUNT_LINE in plan_block, path
+    visible = PLAN_META.sub("", plan_block)
+    before, rest = visible.split(CURRENT_RESULT_START, 1)
+    _, after = rest.split(CURRENT_RESULT_END, 1)
+    visible = before + after
+    current_clauses = [
+        clause
+        for clause in re.split(r"[。！？.!?；;，\n]+", visible)
+        if not (
+            HISTORICAL_TOKEN.search(clause)
+            and SYMBOL_22_TOKEN.search(clause)
+        )
+    ]
+    current_text = "\n".join(current_clauses)
+    for family, expected in EXPECTED_FAMILIES.items():
+        label = re.escape(FAMILY_LABELS[family])
+        counts = {
+            int(match)
+            for match in re.findall(
+                rf"(\d+)\s*个\s+(?:deterministic\s+)?{label}",
+                current_text,
+            )
+        }
+        counts.update(
+            int(match)
+            for match in re.findall(rf"{label}\s*=\s*(\d+)", current_text)
+        )
+        assert counts == {expected}, (path, family, counts)
+    symbol_counts = {
+        int(value) for value in re.findall(r"(\d+)\s*股", current_text)
+    }
+    scenario_counts = {
+        int(value) for value in re.findall(r"(\d+)\s*(?:个\s*)?场景", current_text)
+    }
+    assert symbol_counts == {17}, (path, symbol_counts)
+    assert scenario_counts == {958}, (path, scenario_counts)
 
 
 def _tracked_python_files() -> list[Path]:
@@ -243,10 +294,11 @@ def test_current_documentation_separates_958_from_historical_983() -> None:
             "scenario_count": 958,
             "family_counts": EXPECTED_FAMILIES,
         }
+        _assert_visible_plan_counts(plan_block, path=relative)
         if relative in DETAILED_PLAN_DOCUMENTS:
             for family in EXPECTED_FAMILIES:
                 assert FAMILY_LABELS[family] in plan_block, (relative, family)
-        assert "983" not in result_block, relative
+        assert SCENARIO_983_TOKEN.search(result_block) is None, relative
         _assert_983_is_historical(text, path=relative)
         _assert_22_symbol_is_historical(text, path=relative)
 
@@ -392,8 +444,34 @@ def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
     assert candidate["initial_baseline_gates"] == (
         stress_metrics._initial_baseline_gates(results, None)
     )
-    if summary["acceptance_status"] == "accepted":
-        assert summary["artifact_status"] == "current"
+    route_accepted = (
+        stress_metrics._promotion_accepted(candidate["promotion_gates"])
+        if incumbent is not None
+        else False
+    )
+    expected_accepted = (
+        candidate["absolute_hard_gates"]["passed"]
+        and candidate["retained_robustness_hard_gates"]["passed"]
+        and route_accepted
+    )
+    expected_status = "accepted" if expected_accepted else "rejected"
+    assert summary["acceptance_status"] == expected_status
+    assert summary["canonical"] is expected_accepted
+    assert summary["formal_exit_status"] == (0 if expected_accepted else 2)
+    assert summary["artifact_status"] == (
+        "current" if expected_accepted else "current_candidate"
+    )
+    expected_reasons = (
+        []
+        if expected_accepted
+        else stress_artifacts._rejection_reasons(
+            candidate,
+            incumbent=incumbent,
+            establish_initial_baseline=False,
+        )
+    )
+    assert candidate.get("rejection_reasons", []) == expected_reasons
+    assert summary["rejection_reasons"] == expected_reasons
 
     expected_result = _expected_result_text(summary)
     for relative in CURRENT_DOCUMENTS:
