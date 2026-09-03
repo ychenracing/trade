@@ -118,8 +118,8 @@ python -m quantfusion.application.daily_scan --account account.json --end-date 2
 
 1. 新增标的必须在 `quantfusion.config.universe` 与引擎配置的行业映射中找到对应画像，否则 `strict_unmapped=True` 会直接失败。
 2. 新行业需重新建立参数画像和基线，不能直接套用现有科技参数。
-3. 使用 `python -m quantfusion.application.stress` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。定位问题时可用 `--scenario-id add-one-05-688205`、`--scenario-type add_one`、`--scenario-ids-file <路径>`，或成对提供 `--shard-index` 与 `--shard-count`；选择结果始终恢复为正式场景顺序。
-4. 压力合同 v2 的 absolute hard gate 要求全部 983 个正式场景都满足 `abs(max_drawdown) <= 0.18`。add-one 相对终值变化是股票池扩展路径敏感度诊断，不是账户回撤 hard gate；其最差值、分布、配对回撤/成交/桶/锁变化仍完整保留。已有 v2 incumbent 时，独立的 promotion gate 继续限制固定前缀财富、随机回撤、最差收益、add-one 退化、交易桶和风险减仓。
+3. 使用 `python -m quantfusion.application.stress` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 958 次生产逐日回放，并每 10 个场景原子检查点续跑。定位问题时可用 `--scenario-id add-one-05-688205`、`--scenario-type add_one`、`--scenario-ids-file <路径>`，或成对提供 `--shard-index` 与 `--shard-count`；选择结果始终恢复为正式场景顺序。
+4. 压力合同 v2 的 absolute hard gate 要求全部 958 个正式场景都满足 `abs(max_drawdown) <= 0.18`。add-one 相对终值变化是股票池扩展路径敏感度诊断，不是账户回撤 hard gate；其最差值、分布、配对回撤/成交/桶/锁变化仍完整保留。已有 v2 incumbent 时，独立的 promotion gate 继续限制固定前缀财富、随机回撤、最差收益、add-one 退化、交易桶和风险减仓。
 
 任何 ID、family、ID 文件或 shard 选择都会进入诊断模式。诊断运行只写独立 diagnostic checkpoint，并可通过 `--diagnostic-output <路径>` 另存非 canonical JSON；它不能写入正式压力工件、更新基线或宣称 hard-gate / promotion acceptance。只有默认参数生成且未经筛选的精确正式场景计划可以进入发布路径。当前没有 v2 incumbent 时还必须显式同时提供 `--establish-initial-baseline` 与 `--initial-baseline-reference <当前语义参考工件>`；任一绝对门禁、收益保护、完整性、排列或 provenance 检查失败都会拒绝发布。有 incumbent 时再次使用首基线动作也会失败关闭。
 
@@ -366,3 +366,15 @@ pip-audit --strict -r requirements-lock.txt
 ```
 
 CI 在每次推送时自动执行上述全部检查，并额外运行五组趋势基线回归（1/3/5/13/22 只股票池）：成交记录、卖出记录和日期/股票/方向桶等整数指标要求精确一致，总收益与最大回撤等浮点指标仅容忍严格的跨平台浮点求和顺序差异（`rel_tol=1e-9`，远小于任何真实行为漂移的量级）。任何策略、费用、数据或映射变更都必须更新基线并在 `docs/VALIDATION.md` 中说明变化原因。
+
+<!-- CURRENT_FORMAL_STRESS_PLAN:START -->
+### 当前 17 股 formal stress 计划
+
+日扫与 formal stress 共用 `quantfusion.config.universe.SYMBOL_NAMES` 的同一有序 17 股股票池。当前正式计划固定为 958 个生产逐日回放场景：17 个 prefix、17 个 leave-one-out、24 个 add-one、750 个 deterministic random-subset、150 个 permutation。场景顺序、三个固定 seed、冻结行情、费用、滑点、容量、T+1 和撮合语义均属于 provenance；任一变化都会形成新的 scenario/run fingerprint。
+
+压力合同 v2 对当前完整计划执行 absolute hard gates、retained robustness hard gates、promotion/initial-baseline gates。历史 22 股/983 场景 rejected 工件仅作为不可变历史证据，不能代表当前 17 股/958 计划，也不能被覆盖或重新标记为 canonical。
+
+<!-- CURRENT_FORMAL_STRESS_RESULT:START -->
+完整 958 场景尚未在本次任务中形成最终工件。
+<!-- CURRENT_FORMAL_STRESS_RESULT:END -->
+<!-- CURRENT_FORMAL_STRESS_PLAN:END -->

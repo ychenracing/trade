@@ -50,7 +50,7 @@
 
 ## 组合压力验证（合同 v2 与历史候选）
 
-当前完整 983 场景运行已保存为非 canonical 候选：
+历史 22 股完整 983 场景运行已保存为非 canonical 候选：
 
 - 路径：`artifacts/validation/candidates/stress-f5625e5b5813a5b58c52d076ad3c38e33d8b3292-rejected.json`
 - 文件 SHA-256：`adda276bea8a11b76fa6881e4e7a9770bf8cfb79bb93a397aa5aa405327358c2`
@@ -129,3 +129,15 @@
 ## 质量门禁
 
 持续集成要求 Python 3.11/3.12 完整测试、全仓编译、Ruff、规范包 Pyright、Bandit、依赖漏洞审计和五池基线回归（整数精确、浮点 `rel_tol=1e-9`）全部通过。任何策略、费用、数据、映射或执行逻辑变化，都必须同时更新代码、测试、JSON 工件和本文件，不能静默刷新数字。风险层改动额外受正式压力晋级门约束。
+
+<!-- CURRENT_FORMAL_STRESS_PLAN:START -->
+## 当前 17 股 / 958 场景 formal stress
+
+当前 formal plan 从唯一有序 17 股股票池确定性生成：17 个 prefix、17 个 leave-one-out、24 个 add-one、750 个 random-subset（3 个固定 seed × 5 个规模 × 每规模 50 个）和 150 个 permutation（3 个固定 seed × 50 个），合计 958。完整运行必须具有 958 个唯一 scenario ID、有限指标、`ProductionReplayEngine` / `production_daily_replay` 语义以及相互独立的 source、data、scenario 和 run fingerprints。
+
+历史 22 股/983 场景工件保持原字节与原哈希，只用于审计历史合同。它不构成当前计划的 incumbent、current candidate 或 canonical 证据。
+
+<!-- CURRENT_FORMAL_STRESS_RESULT:START -->
+完整 958 场景尚未在本次任务中形成最终工件。
+<!-- CURRENT_FORMAL_STRESS_RESULT:END -->
+<!-- CURRENT_FORMAL_STRESS_PLAN:END -->
