@@ -1,0 +1,237 @@
+name: Review sharded 958 recovery before replay
+
+on:
+  push:
+    branches:
+      - codex/formal-stress-958-acceptance
+    paths:
+      - .github/workflows/fix-formal-stress-958-sharded-recovery.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/formal-stress-958-acceptance
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+
+      - name: Apply the reviewed recovery contract in one pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path(".github/workflows/run-formal-stress-958-v2.yml")
+          text = path.read_text(encoding="utf-8")
+
+          old_name = "name: Run exact 958-scenario formal acceptance v8 sharded recovery\n"
+          new_name = "name: Run exact 958-scenario formal acceptance v9 reviewed sharded recovery\n"
+          if text.count(old_name) != 1:
+              raise SystemExit("unexpected sharded workflow name anchor")
+          text = text.replace(old_name, new_name, 1)
+
+          jobs_anchor = "jobs:\n  shard:\n"
+          preflight = '''jobs:
+  preflight:
+    name: Validate sharded recovery contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+
+      - name: Verify immutable source and install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only "$SOURCE_SHA" "$GITHUB_SHA")
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = ".github/workflows/run-formal-stress-958-v2.yml"
+          git diff --quiet "$SOURCE_SHA" "$GITHUB_SHA" -- quantfusion data README.md docs tests
+          python -m pip install -r requirements-lock.txt
+
+      - name: Exercise selector, provenance and formal checkpoint APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PYCODE'
+          import os
+
+          from quantfusion.application import stress_artifacts, stress_scenarios
+          from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
+
+          full = stress_scenarios._multi_seed_scenarios(
+              random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+              permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+              seeds=stress_scenarios.DEFAULT_SEEDS,
+          )
+          assert len(full) == 958
+          selected, formal_complete = stress_scenarios.select_scenarios(
+              full,
+              scenario_id=None,
+              scenario_type=None,
+              shard_index=0,
+              shard_count=int(os.environ["SHARD_COUNT"]),
+              scenario_ids=None,
+          )
+          assert selected and formal_complete is False
+          full_provenance = stress_artifacts._build_provenance(
+              full,
+              MARKET_DATA_DIR.resolve(),
+              REGIME_DATA_DIR.resolve(),
+              source_revision=os.environ["SOURCE_SHA"],
+          )
+          assert stress_artifacts._validated_checkpoint(
+              {
+                  "signature": full_provenance["run_signature"],
+                  "provenance": full_provenance,
+                  "completed": 0,
+                  "scenario_count": len(full),
+                  "results": [],
+              },
+              full,
+              signature=str(full_provenance["run_signature"]),
+              provenance=full_provenance,
+              diagnostic_selection=None,
+          ) == {}
+          shard_provenance = stress_artifacts._build_provenance(
+              selected,
+              MARKET_DATA_DIR.resolve(),
+              REGIME_DATA_DIR.resolve(),
+              source_revision=os.environ["SOURCE_SHA"],
+          )
+          assert shard_provenance["scenario_count"] == len(selected)
+          PYCODE
+          python -m pytest -q \
+            tests/unit/test_stress_scenarios.py::StressScenarioTests::test_unfiltered_selection_is_the_only_formal_complete_plan \
+            tests/unit/test_stress_scenarios.py::StressScenarioTests::test_shard_membership_uses_original_zero_based_indices \
+            tests/unit/test_stress_scenarios.py::StressScenarioTests::test_checkpoint_envelope_validation_returns_completed_results
+
+  shard:
+    needs: preflight
+'''
+          if text.count(jobs_anchor) != 1:
+              raise SystemExit("unexpected jobs/shard anchor")
+          text = text.replace(jobs_anchor, preflight, 1)
+
+          shard_anchor = '''              assert 0 <= shard < shard_count and shard not in seen_shards
+              seen_shards.add(shard)
+              source_fingerprints.add(str(payload["source_fingerprint"]))
+              data_fingerprints.add(str(payload["data_fingerprint"]))
+              results = payload["results"]
+              assert len(results) == int(payload["scenario_count"])
+'''
+          reviewed_shard = '''              assert 0 <= shard < shard_count and shard not in seen_shards
+              seen_shards.add(shard)
+              expected_selection = {
+                  "scenario_id": None,
+                  "scenario_ids_file": None,
+                  "scenario_ids": None,
+                  "scenario_type": None,
+                  "shard_index": shard,
+                  "shard_count": shard_count,
+              }
+              assert selection == expected_selection
+              selected, formal_complete = stress_scenarios.select_scenarios(
+                  full,
+                  scenario_id=None,
+                  scenario_type=None,
+                  shard_index=shard,
+                  shard_count=shard_count,
+                  scenario_ids=None,
+              )
+              assert formal_complete is False
+              expected_ids = [str(item["scenario_id"]) for item in selected]
+              source_fingerprints.add(str(payload["source_fingerprint"]))
+              data_fingerprints.add(str(payload["data_fingerprint"]))
+              expected_provenance = stress_artifacts._build_provenance(
+                  selected,
+                  MARKET_DATA_DIR.resolve(),
+                  REGIME_DATA_DIR.resolve(),
+                  source_revision=source_sha,
+              )
+              for field in stress_artifacts.PROVENANCE_FIELDS:
+                  assert payload[field] == expected_provenance[field], (shard, field)
+              results = payload["results"]
+              assert len(results) == int(payload["scenario_count"])
+              actual_ids = [str(item["scenario_id"]) for item in results]
+              assert actual_ids == expected_ids, shard
+              validated_shard = stress_artifacts._validated_checkpoint_results(
+                  {"results": results}, selected
+              )
+              assert set(validated_shard) == set(expected_ids)
+'''
+          if text.count(shard_anchor) != 1:
+              raise SystemExit("unexpected shard validation anchor")
+          text = text.replace(shard_anchor, reviewed_shard, 1)
+
+          checkpoint_anchor = '''              signature=str(provenance["run_signature"]),
+              provenance=provenance,
+          )
+'''
+          checkpoint_fix = '''              signature=str(provenance["run_signature"]),
+              provenance=provenance,
+              diagnostic_selection=None,
+          )
+'''
+          if text.count(checkpoint_anchor) != 1:
+              raise SystemExit("unexpected formal checkpoint call anchor")
+          text = text.replace(checkpoint_anchor, checkpoint_fix, 1)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Verify the patched workflow before restarting shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          path = Path(".github/workflows/run-formal-stress-958-v2.yml")
+          text = path.read_text(encoding="utf-8")
+          yaml.safe_load(text)
+          assert "diagnostic_selection=None" in text
+          assert "actual_ids == expected_ids" in text
+          assert "payload[field] == expected_provenance[field]" in text
+          assert "needs: preflight" in text
+          assert text.count("name: Run exact 958-scenario formal acceptance v9") == 1
+          PY
+          git diff --check
+
+      - name: Commit reviewed workflow and remove this fixer
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/fix-formal-stress-958-sharded-recovery.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ci: validate sharded recovery before replay"
+          git push origin HEAD:codex/formal-stress-958-acceptance
+          remote="$(git ls-remote origin refs/heads/codex/formal-stress-958-acceptance | cut -f1)"
+          test "$remote" = "$(git rev-parse HEAD)"
