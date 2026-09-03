@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 # ruff: noqa: F401
-
 import contextlib
 import io
 import math
@@ -13,6 +12,7 @@ from typing import Any, ClassVar
 import numpy as np
 import pandas as pd
 
+from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import MarketRegimeObservation, Signal
@@ -26,7 +26,6 @@ from quantfusion.engine.ensemble import (
 )
 from quantfusion.execution.priorities import EXECUTION_PRIORITY
 from quantfusion.indicators.technical import Indicators
-from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import (
     RecoverableDrawdownRiskManager,
     RiskManager,
@@ -169,6 +168,7 @@ class BacktestEngine(
         self._new_candidate_intent_streak: dict[str, int] = {}
         self._tail_guard_active = False
         self._tail_guard_policies: dict[str, PortfolioPolicy] = {}
+        self._drawdown_budget_controller = None
 
     def _effective_policy(self, tradable_count: int) -> PortfolioPolicy:
         """Tighten drawdown gates smoothly as diversification approaches one."""

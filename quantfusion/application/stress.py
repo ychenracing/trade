@@ -122,6 +122,8 @@ def _diagnostic_telemetry(result: dict[str, Any]) -> dict[str, Any]:
         str(item["date"]): int(item["symbol_count"])
         for item in result.get("portfolio_symbol_count_curve", [])
     }
+    budget_curve = list(result.get("drawdown_budget_curve", []))
+    budget_by_date = {str(item["date"]): item for item in budget_curve}
 
     def snapshot(index: Any) -> dict[str, Any]:
         date = _date_text(index)
@@ -132,7 +134,7 @@ def _diagnostic_telemetry(result: dict[str, Any]) -> dict[str, Any]:
         for symbol in held:
             group = str(SYMBOL_SUB_INDUSTRY.get(symbol, "unmapped"))
             group_counts[group] = group_counts.get(group, 0) + 1
-        return {
+        result_snapshot = {
             "date": date,
             "assets": assets,
             "cash_ratio": float(row["cash"]) / assets if assets else 0.0,
@@ -142,6 +144,33 @@ def _diagnostic_telemetry(result: dict[str, Any]) -> dict[str, Any]:
                 max(group_counts.values()) / len(held) if held else 0.0
             ),
         }
+        budget = budget_by_date.get(date)
+        if budget is not None:
+            result_snapshot["drawdown_budget"] = {
+                key: budget[key]
+                for key in (
+                    "state",
+                    "warning_active",
+                    "drawdown",
+                    "remaining_cushion",
+                    "available_budget",
+                    "projected_adverse_loss",
+                    "risk_driver_loss",
+                    "projected_loss_ratio",
+                    "group_adverse_losses",
+                    "allow_new_risk",
+                    "new_risk_capacity",
+                    "reduction_fraction",
+                    "evidence_complete",
+                    "missing_symbols",
+                )
+                if key in budget
+            }
+        return result_snapshot
+
+    def previous_snapshot(index: Any) -> dict[str, Any] | None:
+        position = int(equity.index.get_loc(index))
+        return snapshot(equity.index[position - 1]) if position > 0 else None
 
     trigger_snapshot = (
         snapshot(equity.index[equity.index.get_indexer([trigger_date], method="pad")[0]])
@@ -162,8 +191,13 @@ def _diagnostic_telemetry(result: dict[str, Any]) -> dict[str, Any]:
         if first_trigger is not None
         else None
     )
+    exposure = equity["position_value"] / equity["assets"].replace(0.0, float("nan"))
+    exposure = exposure.fillna(0.0)
+    cash_day_count = int((equity["position_value"].abs() <= 1e-12).sum())
+    budget_states = [str(item.get("state", "")) for item in budget_curve]
     return {
         "peak": snapshot(peak_index),
+        "peak_previous_session": previous_snapshot(peak_index),
         "first_risk_trigger": (
             {
                 key: first_trigger[key]
@@ -174,6 +208,13 @@ def _diagnostic_telemetry(result: dict[str, Any]) -> dict[str, Any]:
             else None
         ),
         "trigger_snapshot": trigger_snapshot,
+        "trigger_previous_session": (
+            previous_snapshot(
+                equity.index[equity.index.get_indexer([trigger_date], method="pad")[0]]
+            )
+            if trigger_date is not None
+            else None
+        ),
         "trough": snapshot(trough_index),
         "recovery_date": recovery_date,
         "first_executable_reduction": (
@@ -203,6 +244,26 @@ def _diagnostic_telemetry(result: dict[str, Any]) -> dict[str, Any]:
         "concentration": {
             "max_concurrent_symbols": int(result.get("max_concurrent_symbols", 0)),
             "portfolio_max_positions": int(result.get("portfolio_max_positions", 0)),
+        },
+        "path_summary": {
+            "cash_day_count": cash_day_count,
+            "average_exposure_ratio": float(exposure.mean()),
+            "peak_exposure_ratio": float(exposure.max()),
+        },
+        "drawdown_budget_summary": {
+            "observation_count": len(budget_curve),
+            "constrained_day_count": budget_states.count("constrained"),
+            "recovering_day_count": budget_states.count("recovering"),
+            "reduction_decision_count": sum(
+                float(item.get("reduction_fraction", 0.0)) > 0.0
+                for item in budget_curve
+            ),
+            "state_transition_count": sum(
+                current != previous
+                for previous, current in zip(
+                    budget_states, budget_states[1:], strict=False
+                )
+            ),
         },
         "locks": {
             "cycle_lock_count": int(result.get("cycle_lock_count", 0)),

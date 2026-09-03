@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
-
 # ruff: noqa: F401
-
 import contextlib
 import io
 import math
@@ -15,6 +13,7 @@ from typing import Any, ClassVar
 import numpy as np
 import pandas as pd
 
+from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import MarketRegimeObservation, Signal
@@ -28,7 +27,6 @@ from quantfusion.engine.ensemble import (
 )
 from quantfusion.execution.priorities import EXECUTION_PRIORITY
 from quantfusion.indicators.technical import Indicators
-from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
 from quantfusion.risk.overlay.adapter import apply_risk_actions
 from quantfusion.strategy.trend import BaseStrategy
@@ -101,6 +99,8 @@ class EnsembleOrchestrationMixin:
         self._new_candidate_intent_streak = {}
         self._tail_guard_active = False
         self._tail_guard_policies = {}
+        self._drawdown_budget_controller = None
+        self._drawdown_budget_curve = []
         effective_policy = self._effective_policy(tradable_count)
         states = self._prepare_ensemble_sleeves(request, effective_policy)
         reference_dates = states[0].all_dates
@@ -218,6 +218,15 @@ class EnsembleOrchestrationMixin:
             portfolio_risk_events.extend(portfolio_risk.drain_audit_events())
             if status:
                 self._apply_global_risk_lock(states, date)
+            self._apply_drawdown_budget(
+                states,
+                date,
+                idx,
+                assets,
+                float(portfolio_risk.lifetime_peak_assets),
+                warning_active=bool(portfolio_risk.alert_active or status),
+                events=portfolio_risk_events,
+            )
             self._update_tail_sleeve_guard(
                 states,
                 date,
@@ -344,6 +353,12 @@ class EnsembleOrchestrationMixin:
                     + sum(int(result.get("cycle_lock_count", 0)) for result in results)
                 ),
                 "portfolio_cycle_lock_count": int(portfolio_risk.cycle_lock_count),
+                "drawdown_budget_state": (
+                    self._drawdown_budget_controller.state
+                    if self._drawdown_budget_controller is not None
+                    else "disabled"
+                ),
+                "drawdown_budget_curve": list(self._drawdown_budget_curve),
                 "persistent_risk_lock": bool(
                     portfolio_risk.persistent_lock or combined["persistent_risk_lock"]
                 ),
