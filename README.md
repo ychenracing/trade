@@ -118,10 +118,10 @@ python -m quantfusion.application.daily_scan --account account.json --end-date 2
 
 1. 新增标的必须在 `quantfusion.config.universe` 与引擎配置的行业映射中找到对应画像，否则 `strict_unmapped=True` 会直接失败。
 2. 新行业需重新建立参数画像和基线，不能直接套用现有科技参数。
-3. 使用 `python -m quantfusion.application.stress` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。定位问题时可用 `--scenario-id add-one-05-688205`、`--scenario-type add_one`，或成对提供 `--shard-index` 与 `--shard-count`；分片按正式场景顺序中的零基索引取模，映射确定且保留原顺序。
-4. 任何 cross-market / 风险层改动晋级前，还必须通过使用 `trade_records` 语义的 accepted canonical 正式压力基线晋级门（P0-4）：固定前缀牛市财富不低于基线 99%，随机子集回撤 P90/P95 最多恶化 0.5 个百分点，全场景最差回撤最多恶化 1 个百分点、最差收益最多恶化 2 个百分点，最差逐一加入财富最多下降 3 个百分点，日期/股票/方向桶 P90/最差最多增加 5/10 个，风险减仓中位数最多增加 2 笔，且同一 seed 的全排列场景指标必须完全一致。没有已接受的当前语义基线时晋级失败关闭。
+3. 使用 `python -m quantfusion.application.stress` 检查全部前缀、留一、逐一加入、随机子集和顺序置换；默认使用 3 个固定种子，每个种子的每种随机规模与顺序各抽样 50 次，共 983 次生产逐日回放，并每 10 个场景原子检查点续跑。定位问题时可用 `--scenario-id add-one-05-688205`、`--scenario-type add_one`、`--scenario-ids-file <路径>`，或成对提供 `--shard-index` 与 `--shard-count`；选择结果始终恢复为正式场景顺序。
+4. 压力合同 v2 的 absolute hard gate 要求全部 983 个正式场景都满足 `abs(max_drawdown) <= 0.18`。add-one 相对终值变化是股票池扩展路径敏感度诊断，不是账户回撤 hard gate；其最差值、分布、配对回撤/成交/桶/锁变化仍完整保留。已有 v2 incumbent 时，独立的 promotion gate 继续限制固定前缀财富、随机回撤、最差收益、add-one 退化、交易桶和风险减仓。
 
-任何 ID、family 或 shard 选择都会进入诊断模式。诊断运行只写独立 diagnostic checkpoint，并可通过 `--diagnostic-output <路径>` 另存非 canonical JSON；它不能写入正式压力工件、更新基线或宣称 hard-gate / promotion acceptance。只有默认参数生成且未经筛选的精确正式场景计划可以进入发布路径。
+任何 ID、family、ID 文件或 shard 选择都会进入诊断模式。诊断运行只写独立 diagnostic checkpoint，并可通过 `--diagnostic-output <路径>` 另存非 canonical JSON；它不能写入正式压力工件、更新基线或宣称 hard-gate / promotion acceptance。只有默认参数生成且未经筛选的精确正式场景计划可以进入发布路径。当前没有 v2 incumbent 时还必须显式同时提供 `--establish-initial-baseline` 与 `--initial-baseline-reference <当前语义参考工件>`；任一绝对门禁、收益保护、完整性、排列或 provenance 检查失败都会拒绝发布。有 incumbent 时再次使用首基线动作也会失败关闭。
 
 将占位符替换为已核验、包含当前 Python 源码的 40 位 Git SHA：
 
@@ -289,7 +289,7 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 - `data_cache/`：行情数据缓存
 - `benchmark_validation.json`：基准验证输出
 
-`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只由通过全部门禁的 accepted canonical 当前语义运行创建；当前没有此类基线，因此这两个路径不存在。完整但未通过门禁的运行保存在 `artifacts/validation/candidates/`，并标记为 `current_candidate`、`rejected`、`canonical=false`；它不会覆盖 canonical 路径，runner 仍以非零状态退出。当前保存的 983 场景候选因没有已接受的 `trade_records` 基线而失败关闭，同时 `add-one-05-688205` 的财富变化 -23.4903% 低于未变的 -18% hard floor。诊断输出不属于该目录，也不能进入正式发布逻辑。
+`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只由通过全部门禁的 accepted canonical 合同 v2 运行创建；当前没有此类基线，因此这两个路径不存在。旧的完整 983 场景 rejected 工件保持不可变；按 v2 离线复算后仍因全场景最差回撤 `-21.2231%` 超过 18% 而拒绝。`add-one-05-688205` 相对 `prefix-05` 的终值财富变化 `-23.4903%` 作为 robustness diagnostic 保留，不代表账户损失或最大回撤，也不再使用绝对 `-18%` floor。诊断输出不属于正式发布目录，不能进入 canonical 发布逻辑。
 
 如需持久化某次验证结果，将对应文件放入 `artifacts/validation/` 并更新 `docs/VALIDATION.md`。
 

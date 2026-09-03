@@ -103,10 +103,25 @@
         "random-20260827-16-050",
         "permutation-20260807-001"
       ]
+    },
+    {
+      "candidate_id": "C3-standing-account-stop",
+      "mechanism": "Before each session's intraday path, arm a merged-account stop at 17.5% drawdown from the previously observed account peak. If the conservative synchronized OHLC path crosses the stop, liquidate every held sleeve position at the interpolated trigger price, including normal slippage and costs; ordinary close-generated entries remain eligible on later sessions.",
+      "causal_prediction": "Contains discontinuous intraday losses that jump over close-only alerts while leaving paths whose intraday account drawdown never reaches 17.5% unchanged; the 0.5 percentage-point buffer is reserved for execution costs.",
+      "decisive_l1_scenarios": [
+        "random-20260807-03-030",
+        "prefix-01",
+        "prefix-02",
+        "prefix-03",
+        "prefix-05",
+        "add-one-05-688205",
+        "random-20260827-16-050",
+        "permutation-20260807-001"
+      ]
     }
   ],
   "redesign_budget": {
-    "remaining_candidate_slots": 1,
+    "remaining_candidate_slots": 0,
     "allowed_only_after_first_round": true,
     "condition": "Use only if C1 and C2 provide causal evidence yet neither satisfies both the 18% safety boundary and return protections."
   }

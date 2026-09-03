@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "decision": "blocked_product_tradeoff",
+  "evaluation_base_revision": "06f488d0ae36b00c06dd83e90eed73177bc7bb4d",
+  "retained_reference": "artifacts/validation/candidates/stress-f5625e5b5813a5b58c52d076ad3c38e33d8b3292-rejected.json",
+  "root_cause_evidence": "artifacts/diagnostics/18pct-drawdown-root-cause-analysis.json",
+  "candidate_limit": 3,
+  "candidate_implementations_retained": false,
+  "full_983_run_performed": false,
+  "reason_full_run_was_skipped": "Every preregistered candidate failed decisive L1 hard-drawdown and/or return-retention checks.",
+  "acceptance_thresholds": {
+    "absolute_max_drawdown": 0.18,
+    "prefix_05_wealth_ratio_min": 0.99,
+    "other_prefix_wealth_ratio_min": 0.95,
+    "worst_total_return_delta_min": -0.02,
+    "worst_add_one_diagnostic_delta_min": -0.03
+  },
+  "reference_results": [
+    {"scenario_id": "random-20260807-03-030", "total_return": 1.96450796262025, "max_drawdown": -0.2122314802406625},
+    {"scenario_id": "prefix-01", "total_return": 5.308949754885001, "max_drawdown": -0.1834136674871038},
+    {"scenario_id": "prefix-02", "total_return": 6.244891154865128, "max_drawdown": -0.18998415088010956},
+    {"scenario_id": "prefix-03", "total_return": 10.593889691663627, "max_drawdown": -0.16815250478566787},
+    {"scenario_id": "prefix-05", "total_return": 12.263702428603752, "max_drawdown": -0.15634939634465247},
+    {"scenario_id": "add-one-05-688205", "total_return": 9.148012603165377, "max_drawdown": -0.17055024124812426},
+    {"scenario_id": "random-20260827-16-050", "total_return": 2.031964254274, "max_drawdown": -0.17680568094250992},
+    {"scenario_id": "permutation-20260807-001", "total_return": 10.527670351088624, "max_drawdown": -0.15384225392744566}
+  ],
+  "candidates": [
+    {
+      "candidate_id": "C1-alert-deleveraging",
+      "parameters": {"first_alert_reduction_ratio": 0.25},
+      "result_precision": "Values retained to the precision emitted in the bounded-run console summary.",
+      "results": [
+        {"scenario_id": "random-20260807-03-030", "total_return": 1.99764, "max_drawdown": -0.20342819},
+        {"scenario_id": "prefix-01", "total_return": 4.466, "max_drawdown": -0.1834136675},
+        {"scenario_id": "prefix-02", "total_return": 6.18835, "max_drawdown": -0.1899841509},
+        {"scenario_id": "prefix-05", "total_return": 7.71268, "max_drawdown": -0.17886218},
+        {"scenario_id": "add-one-05-688205", "total_return": 6.43428, "max_drawdown": -0.19164063},
+        {"scenario_id": "random-20260827-16-050", "total_return": 2.031964, "max_drawdown": -0.17680568},
+        {"scenario_id": "permutation-20260807-001", "total_return": 6.88233, "max_drawdown": -0.17000564}
+      ],
+      "gate_summary": {
+        "drawdown_failures": 4,
+        "prefix_05_wealth_ratio": 0.6568814436918251,
+        "accepted": false,
+        "rejection": "A close-confirmed 25% reduction cannot repair paths already beyond 18%, and it destroys far more than 1% of prefix-05 terminal wealth."
+      }
+    },
+    {
+      "candidate_id": "C2-concentrated-gross-cap",
+      "parameters": {"max_gross_exposure": 0.85, "max_held_symbols": 3},
+      "results": [
+        {"scenario_id": "random-20260807-03-030", "total_return": 2.074543473501875, "max_drawdown": -0.2059888219176832},
+        {"scenario_id": "prefix-01", "total_return": 5.308949754885001, "max_drawdown": -0.1834136674871038},
+        {"scenario_id": "prefix-02", "total_return": 5.965591548919, "max_drawdown": -0.19395280663899975},
+        {"scenario_id": "prefix-03", "total_return": 2.011775884647875, "max_drawdown": -0.21616780899744556},
+        {"scenario_id": "prefix-05", "total_return": 2.1539977197693756, "max_drawdown": -0.20253744746978292},
+        {"scenario_id": "add-one-05-688205", "total_return": 2.1539977197693756, "max_drawdown": -0.20253744746978292},
+        {"scenario_id": "random-20260827-16-050", "total_return": 2.2033166967531246, "max_drawdown": -0.1652100052113621},
+        {"scenario_id": "permutation-20260807-001", "total_return": 2.6070050377451253, "max_drawdown": -0.18672641427015207}
+      ],
+      "gate_summary": {
+        "drawdown_failures": 7,
+        "prefix_05_wealth_ratio": 0.23779165257565205,
+        "accepted": false,
+        "rejection": "Repeatedly trimming appreciated positions changes the path, destroys compounding, and still does not contain the tail; a single-symbol book is already below the static cap and remains unprotected."
+      }
+    },
+    {
+      "candidate_id": "C3-standing-account-stop",
+      "parameters": {"standing_account_stop_drawdown": 0.175},
+      "results": [
+        {"scenario_id": "random-20260807-03-030", "total_return": 2.0798714218650214, "max_drawdown": -0.181575566116133, "stop_count": 10},
+        {"scenario_id": "prefix-01", "total_return": 1.3039131003494813, "max_drawdown": -0.20685846982204223, "stop_count": 36},
+        {"scenario_id": "prefix-02", "total_return": 2.783552953058749, "max_drawdown": -0.23089382652171186, "stop_count": 41},
+        {"scenario_id": "prefix-03", "total_return": 2.8967112170004303, "max_drawdown": -0.18309841991208972, "stop_count": 6},
+        {"scenario_id": "prefix-05", "total_return": 2.930338707664851, "max_drawdown": -0.18280106677972932, "stop_count": 6},
+        {"scenario_id": "add-one-05-688205", "total_return": 2.418074423592172, "max_drawdown": -0.1813349651859874, "stop_count": 6},
+        {"scenario_id": "random-20260827-16-050", "total_return": 1.9659658013692276, "max_drawdown": -0.17630378900028051, "stop_count": 1},
+        {"scenario_id": "permutation-20260807-001", "total_return": 2.315335414269282, "max_drawdown": -0.17603320498315325, "stop_count": 1}
+      ],
+      "gate_summary": {
+        "drawdown_failures": 6,
+        "prefix_05_wealth_ratio": 0.296323,
+        "accepted": false,
+        "rejection": "The standing stop contains an individual discontinuity, but unrestricted next-session re-entry creates 6-41 stop cycles, lower peaks, later drawdowns, and severe wealth loss."
+      }
+    }
+  ],
+  "conclusion": {
+    "non_dominated_candidate": null,
+    "selected_mechanism": null,
+    "required_product_decision": "Choose whether to permit a materially longer post-stop cooldown/lower exposure regime with expected wealth loss beyond the current guards, or revise another constraint. The 18% hard gate was not relaxed.",
+    "invariants": {
+      "core_alpha_changed": false,
+      "symbol_688205_removed": false,
+      "symbol_or_scenario_special_case_added": false,
+      "formal_scenarios_changed": false
+    }
+  }
+}

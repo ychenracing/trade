@@ -136,7 +136,7 @@
 
   Compare all failures, boundaries and controls; quantify warning-to-trigger, trigger-to-fill overshoot, post-warning risk additions, exposure, concentration, locks and rearm. Record supported causes and rejected hypotheses in the diagnostic artifact and PR body.
 
-- [ ] **Step 9: Checkpoint B**
+- [x] **Step 9: Checkpoint B**
 
   Run exact selector/diagnostic tests; commit code plus compact evidence, push, verify remote head, and refresh PR #20.
 
@@ -192,6 +192,13 @@
   Run all affected L1/L2 checks; commit only the selected implementation/tests and the Pareto evidence, push, verify remote head, and refresh PR #20.
 
 ### Task 4: Affected Family/Shard L3
+
+**Blocked after bounded Task-3 evaluation:** C1, C2, and the single authorized
+mechanism redesign C3 all failed decisive L1 drawdown and return-retention
+checks. Their production prototypes were removed; only the preregistration,
+root-cause report, and Pareto evidence remain. Per the product spec, L3/L4,
+canonical publication, review/merge, and Tasks 4-6 must not proceed until the
+owner resolves the documented drawdown-versus-wealth tradeoff.
 
 **Files:**
 - Modify only for common-cause defects found by L3: the Task-3 affected production/test files

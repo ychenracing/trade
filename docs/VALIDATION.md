@@ -48,7 +48,7 @@
 
 风险职责遵循单一执行者原则：已有趋势账本遇到指数转弱时，外层路由只记录状态，跨市场叠加层负责买入门控和风险动作；只有从空仓进入弱市时才建立弱市龙头账本。恢复确认使用 30 个连续交易日，但期间继续持有正动量龙头，不是空仓等待。动态弱势策略登记在独立外部清算注册表中，因此能被组合、板块和路由风险清算，又不会被核心信号循环重复调用。
 
-## 组合压力验证（当前语义候选）
+## 组合压力验证（合同 v2 与历史候选）
 
 当前完整 983 场景运行已保存为非 canonical 候选：
 
@@ -57,13 +57,18 @@
 - 状态：`current_candidate`、`rejected`、`canonical=false`
 - 完整性：983/983，983 个唯一场景 ID，无缺失、重复或非有限指标；所有场景均为 `production_daily_replay`
 - 来源证明（provenance）：source revision `f5625e5b5813a5b58c52d076ad3c38e33d8b3292`，source fingerprint `a79a96c059b01d6ee98a25d3d6d8d9719906bd2fee69836dc35b5186664c51d5`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `1982b16888237ce989d3022f942d5d525c1be2bd627a58fbcf849252ec6ea814`
-- 晋级门禁：当前没有 accepted canonical 且使用 `trade_records` 语义的基线，状态为 `no_incumbent_baseline`、`applicable=false`、`passed=false`，晋级失败关闭
-- 绝对门禁：`worst_add_one_wealth_at_least_minus_18pct` 失败；`add-one-05-688205` 相对 `prefix-05` 的财富变化为 `-0.23490347753273277`，要求仍为 `>= -0.18`
+- 合同版本：该历史工件早于合同 v2，不能作为 v2 incumbent，也未被迁移、覆盖或改写
+- v2 离线复算：absolute hard gate 失败；全场景最差 `max_drawdown=-0.2122314802406625`，超过统一的 18% 上限
+- robustness diagnostic：`add-one-05-688205` 相对 `prefix-05` 的终值财富变化为 `-0.23490347753273277`；这是 universe-expansion 路径敏感度，不是账户亏损或最大回撤，也不决定 absolute hard gate
 - 排列不变性：通过
 
-该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。失败运行仍返回非零状态，但完整结果会先写入独立 candidate 路径，防止证据丢失。实时压力代码只接受 `trade_count_semantics="trade_records"`；没有 accepted canonical 当前语义基线时使用 `no_incumbent_baseline` 并失败关闭。
+该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。合同 v2 将职责分成三层：`absolute_hard_gates` 检查全部正式场景 18% 回撤上限及账本正确性；`robustness_diagnostics` 完整报告 add-one 分布与配对变化；`promotion_gates` 只比较未来 v2 incumbent。当前没有 v2 incumbent 时，普通运行使用 `no_incumbent_baseline` 失败关闭；只有显式首基线动作、精确 canonical 983、当前语义参考工件、absolute/收益/排列/provenance 全部通过时才可建立一次初始基线。
 
-压力诊断可按精确 `scenario_id`、场景族或确定性 shard 执行。任何 selector 都使运行成为 diagnostic：只允许独立检查点、stdout 汇总和显式 diagnostic JSON，不能写正式 `prefix_stress.json` / `universe_stress.json`、更新 incumbent 或声明完整门禁通过。只有未经筛选且与 canonical 默认场景签名精确相等的 983 场景计划能够进入正式发布校验。
+压力诊断可按精确 `scenario_id`、场景族、换行分隔的 `--scenario-ids-file` 或确定性 shard 执行。任何 selector 都使运行成为 diagnostic：只允许独立检查点、stdout 汇总和显式 diagnostic JSON，不能写正式 `prefix_stress.json` / `universe_stress.json`、更新 incumbent 或声明完整门禁通过。只有未经筛选且与 canonical 默认场景签名精确相等的 983 场景计划能够进入正式发布校验。
+
+批量诊断工件 `artifacts/diagnostics/18pct-drawdown-root-cause.json` 覆盖 152 个历史失败、123 个 17%—18% 边界场景及 6 个去重控制。共同链路是账户常以 90%—100% 敞口集中持有 2—3 个标的，单日同步下跌可在首个收盘风险事件前直接越过 18%；109/152 个失败场景首次记录风险触发时已经超过 18%。三种预注册通用候选均在决定性 L1 场景失败，详见 `artifacts/diagnostics/18pct-drawdown-pareto.json`；因此未选择生产风控实现、未运行新的 canonical 983，也未建立 v2 baseline。
+
+18% 是冻结数据、规范日线执行和 canonical formal stress 的验收目标，不是实盘损失保证。现有风险信号在收盘形成并于下一可交易开盘执行；真实跳空、连续跌停、流动性不足和日线内路径不可观测都可能产生额外超调。
 
 | 场景族 | 数量 | 收益中位数 | 最差收益 | 最差回撤 | 交易中位数 | 最高交易 |
 |---|---:|---:|---:|---:|---:|---:|

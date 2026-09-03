@@ -65,7 +65,7 @@ def _reason_category(trade: qf.TradeRecord) -> str:
     return "strategy_exit"
 
 
-def _date_text(value: object) -> str:
+def _date_text(value: Any) -> str:
     return value.strftime("%Y-%m-%d") if hasattr(value, "strftime") else str(value)
 
 
