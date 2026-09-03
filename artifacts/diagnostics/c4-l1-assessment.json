@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "status": "rejected_at_L1",
+  "owner_decision_condition": "C",
+  "source_revision": "8713d0074b4a87a5c1709476b7055f1b57e87bf5",
+  "source_fingerprint": "f8c53cd0ce74fce19e6c1bffa7e25f3ccf3725ac5856e3436b6d0ec97095d4c6",
+  "reference": {
+    "path": "artifacts/diagnostics/18pct-drawdown-root-cause.json",
+    "sha256": "eabde710c19e4d33d76d44ccc1ba8e242085119046f36cb8d7653958436f2830"
+  },
+  "runs": {
+    "balanced": {
+      "path": "artifacts/diagnostics/c4-l1-balanced.json",
+      "sha256": "c1650a9e8c81e7fcdf5f1ab7e023ec51c28aacc97026fa601d3325d73bf1f37c",
+      "execution_buffer_peak_fraction": 0.005,
+      "worst_max_drawdown": -0.2129024473970307,
+      "drawdown_failures": [
+        "prefix-02",
+        "add-one-05-688205",
+        "random-20260807-03-030"
+      ],
+      "prefix_05_wealth_retention": 0.9002352703914537,
+      "other_prefix_worst_wealth_retention": 0.5559973294662444,
+      "wealth_retention_p10": 0.4863484183949506,
+      "wealth_retention_median": 0.8573905873817258,
+      "worst_total_return_gate_delta": 0.06745629165375,
+      "add_one_diagnostic_delta": -0.4898745896640292,
+      "median_sharpe_delta": -0.05976513822221241,
+      "median_calmar_delta": -3.0069047461111644,
+      "trade_records": 1066,
+      "date_symbol_side_buckets": 460,
+      "risk_action_records": 332,
+      "cash_days": 749,
+      "median_average_exposure": 0.4368871126857412,
+      "median_peak_exposure": 0.9991752734505455,
+      "cycle_locks": 8,
+      "reentry_records": 412
+    },
+    "conservative": {
+      "path": "artifacts/diagnostics/c4-l1-conservative.json",
+      "sha256": "91335d176ef871f093f3a43b836ad10f3da048d153a624867a52528d73fa8206",
+      "execution_buffer_peak_fraction": 0.0075,
+      "worst_max_drawdown": -0.21221467160982185,
+      "drawdown_failures": [
+        "prefix-02",
+        "add-one-05-688205",
+        "random-20260807-03-030"
+      ],
+      "prefix_05_wealth_retention": 0.8095168671465393,
+      "other_prefix_worst_wealth_retention": 0.5469405363708694,
+      "wealth_retention_p10": 0.4800935543772288,
+      "wealth_retention_median": 0.8086818279731434,
+      "worst_total_return_gate_delta": 0.06745629165375,
+      "add_one_diagnostic_delta": -0.45876443613044704,
+      "median_sharpe_delta": -0.09787785415449779,
+      "median_calmar_delta": -5.333083241997095,
+      "trade_records": 1053,
+      "date_symbol_side_buckets": 462,
+      "risk_action_records": 331,
+      "cash_days": 749,
+      "median_average_exposure": 0.4352386135448656,
+      "median_peak_exposure": 0.9993353808131551,
+      "cycle_locks": 8,
+      "reentry_records": 399
+    }
+  },
+  "reference_totals_for_same_eight_scenarios": {
+    "trade_records": 1215,
+    "date_symbol_side_buckets": 547,
+    "risk_action_records": 367,
+    "cycle_locks": 10,
+    "reentry_records": 482,
+    "add_one_diagnostic": -0.23490347753273277
+  },
+  "hard_gate_results": {
+    "balanced": {
+      "all_evaluated_max_drawdown_at_most_0_18": false,
+      "prefix_05_wealth_ratio_at_least_0_99": false,
+      "other_prefix_worst_wealth_ratio_at_least_0_95": false,
+      "worst_total_return_delta_at_least_minus_0_02": true,
+      "add_one_worst_diagnostic_delta_at_least_minus_0_03": false
+    },
+    "conservative": {
+      "all_evaluated_max_drawdown_at_most_0_18": false,
+      "prefix_05_wealth_ratio_at_least_0_99": false,
+      "other_prefix_worst_wealth_ratio_at_least_0_95": false,
+      "worst_total_return_delta_at_least_minus_0_02": true,
+      "add_one_worst_diagnostic_delta_at_least_minus_0_03": false
+    }
+  },
+  "pre_trigger_failure_evidence": {
+    "balanced": {
+      "prefix-02": {
+        "previous_drawdown": 0.12161144805846043,
+        "previous_projected_loss_ratio": 0.8529338478359322,
+        "next_close_drawdown": 0.17058454094418818,
+        "final_max_drawdown": 0.18578970222824015
+      },
+      "add-one-05-688205": {
+        "previous_drawdown": 0.0019612324972519053,
+        "previous_projected_loss_ratio": 0.43924081770651935,
+        "next_close_drawdown": 0.14682502371592604,
+        "final_max_drawdown": 0.2129024473970307
+      },
+      "random-20260807-03-030": {
+        "previous_drawdown": 0.05289501298052081,
+        "previous_projected_loss_ratio": 0.5740652717730722,
+        "next_close_drawdown": 0.18501588850779532,
+        "final_max_drawdown": 0.18501588850779532
+      }
+    },
+    "interpretation": "All three drawdown failures were below the preregistered ex-ante budget on the preceding close. The next observed close moved drawdown by about 4.8 to 14.5 percentage points. A close decision routed to the next executable open cannot undo the maximum drawdown already printed by that move."
+  },
+  "common_root_cause": [
+    "The causal one-ATR/effective-stop adverse-loss estimate did not identify the decisive next-session shocks while they were still preventable.",
+    "Increasing only the preregistered execution buffer from 0.5% to 0.75% did not change the failing scenario set.",
+    "The path changes also caused add-one-05-688205, formerly a 17.055% drawdown control, to reach about 21.22%-21.29% drawdown and retain only about 32.4% of reference wealth; this is a generic-path failure, not a symbol exception.",
+    "A materially larger pre-shock charge would approach a gross/gap cap and repeat the already observed compounding cost of over-constraining healthy winner paths. No unregistered ATR value or case-specific rule was tested."
+  ],
+  "decision": {
+    "selected_configuration": null,
+    "run_L2": false,
+    "run_L3": false,
+    "run_L4": false,
+    "reason": "Both preregistered C4 configurations failed L1 drawdown and wealth gates. The decisive failures remained prior to an actionable close-confirmed warning or budget breach, satisfying owner-decision condition C."
+  }
+}
