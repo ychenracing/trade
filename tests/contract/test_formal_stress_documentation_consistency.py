@@ -132,14 +132,19 @@ def _assert_983_is_historical(text: str, *, path: Path) -> None:
         flags=re.IGNORECASE,
     )
     clauses = re.split(
-        r"[。！？.!?；;，,\n]+|\b(?:and|but|while)\b|(?:并且|而且|但是|同时|以及|与|和)",
+        r"[。！？.!?；;：:，,\n]+|\b(?:and|but|while)\b|"
+        r"(?:并且|而且|但是|但|同时|以及|与|和)",
         normalized,
         flags=re.IGNORECASE,
     )
     for raw in clauses:
         clause = raw.strip()
-        if SCENARIO_983_TOKEN.search(clause) is None:
+        occurrences = list(SCENARIO_983_TOKEN.finditer(clause))
+        if not occurrences:
             continue
+        # One claim per clause prevents a second, current-plan occurrence from
+        # borrowing the first occurrence's historical 22-symbol qualifier.
+        assert len(occurrences) == 1, (path, clause)
         assert HISTORICAL_TOKEN.search(clause), (path, clause)
         assert SYMBOL_22_TOKEN.search(clause), (path, clause)
 
@@ -202,7 +207,12 @@ def _assert_visible_plan_counts(plan_block: str, *, path: Path) -> None:
     visible = before + after
     current_clauses = [
         clause
-        for clause in re.split(r"[。！？.!?；;，\n]+", visible)
+        for clause in re.split(
+            r"[。！？.!?；;：:，,\n]+|\b(?:and|but|while)\b|"
+            r"(?:并且|而且|但是|但|同时|以及|与|和)",
+            visible,
+            flags=re.IGNORECASE,
+        )
         if not (
             HISTORICAL_TOKEN.search(clause)
             and SYMBOL_22_TOKEN.search(clause)
