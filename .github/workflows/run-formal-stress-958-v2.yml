@@ -1,4 +1,4 @@
-name: Run exact 958-scenario formal acceptance v9 sharded recovery
+name: Run exact 958-scenario formal acceptance v10 production shards
 
 on:
   push:
@@ -16,11 +16,11 @@ concurrency:
 
 env:
   SOURCE_SHA: acf4cccf4117edb35e6beb57aa2f9004476c8b93
-  SHARD_COUNT: "12"
+  SHARD_COUNT: "20"
 
 jobs:
   preflight:
-    name: Validate sharded recovery contract
+    name: Validate production-shard recovery contract
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -28,13 +28,11 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-lock.txt
-
       - name: Verify immutable source and install dependencies
         shell: bash
         run: |
@@ -45,15 +43,14 @@ jobs:
           test "${changed[0]}" = ".github/workflows/run-formal-stress-958-v2.yml"
           git diff --quiet "$SOURCE_SHA" "$GITHUB_SHA" -- quantfusion data README.md docs tests
           python -m pip install -r requirements-lock.txt
-
-      - name: Exercise selector, provenance and formal checkpoint APIs
+      - name: Exercise selector, production runner, provenance and checkpoint APIs
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           import os
 
-          from quantfusion.application import stress_artifacts, stress_scenarios
+          from quantfusion.application import stress, stress_artifacts, stress_scenarios
           from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
 
           source_sha = os.environ["SOURCE_SHA"]
@@ -76,23 +73,22 @@ jobs:
                   shard_count=shard_count,
                   scenario_ids=None,
               )
-              assert selected and formal_complete is False
               expected = [
                   item for index, item in enumerate(full) if index % shard_count == shard
               ]
-              assert selected == expected
+              assert selected == expected and formal_complete is False
               selected_ids.extend(str(item["scenario_id"]) for item in selected)
           assert len(selected_ids) == 958
           assert len(set(selected_ids)) == 958
           assert set(selected_ids) == set(full_ids)
-
+          assert stress._run_scenario.__module__ == "quantfusion.application.stress"
           provenance = stress_artifacts._build_provenance(
               full,
               MARKET_DATA_DIR.resolve(),
               REGIME_DATA_DIR.resolve(),
               source_revision=source_sha,
           )
-          empty_checkpoint = {
+          checkpoint = {
               "signature": provenance["run_signature"],
               "provenance": provenance,
               "completed": 0,
@@ -100,7 +96,7 @@ jobs:
               "results": [],
           }
           assert stress_artifacts._validated_checkpoint(
-              empty_checkpoint,
+              checkpoint,
               full,
               signature=str(provenance["run_signature"]),
               provenance=provenance,
@@ -111,95 +107,120 @@ jobs:
             -k "unfiltered_selection_is_the_only_formal_complete_plan or shard_membership_uses_original_zero_based_indices or checkpoint_envelope_validation_returns_completed_results"
 
   shard:
-    name: Replay shard ${{ matrix.shard }} of 12
+    name: Replay production shard ${{ matrix.shard }} of 20
     needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      max-parallel: 12
+      max-parallel: 20
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-lock.txt
-
       - name: Verify immutable replay source
         shell: bash
         run: |
           set -euo pipefail
-          git cat-file -e "${SOURCE_SHA}^{commit}"
           mapfile -t changed < <(git diff --name-only "$SOURCE_SHA" "$GITHUB_SHA")
           test "${#changed[@]}" -eq 1
           test "${changed[0]}" = ".github/workflows/run-formal-stress-958-v2.yml"
           git diff --quiet "$SOURCE_SHA" "$GITHUB_SHA" -- quantfusion data README.md docs tests
-
       - name: Install locked dependencies
         run: python -m pip install -r requirements-lock.txt
-
-      - name: Run one deterministic production-replay shard
+      - name: Run one deterministic telemetry-free production shard
         shell: bash
         run: |
           set -euo pipefail
           shard="${{ matrix.shard }}"
-          checkpoint="${RUNNER_TEMP}/checkpoint-${shard}.json"
           output="${RUNNER_TEMP}/shard-${shard}.json"
           log="${RUNNER_TEMP}/shard-${shard}.log"
-          python -m quantfusion.application.stress \
-            --workers 4 \
-            --shard-index "$shard" \
-            --shard-count "$SHARD_COUNT" \
-            --diagnostic-checkpoint "$checkpoint" \
-            --diagnostic-output "$output" \
-            --checkpoint-every 10 \
-            --source-revision "$SOURCE_SHA" \
-            >"$log" 2>&1
-          tail -n 40 "$log"
-          python - "$output" "$shard" <<'PY'
+          python - "$shard" "$output" >"$log" 2>&1 <<'PY'
+          from concurrent.futures import ProcessPoolExecutor
+          from functools import partial
           import json
           import math
-          import sys
+          import os
           from pathlib import Path
+          import sys
 
-          path = Path(sys.argv[1])
-          shard = int(sys.argv[2])
-          payload = json.loads(path.read_text(encoding="utf-8"))
-          assert payload["artifact_status"] == "diagnostic"
-          assert payload["formal_plan_complete"] is False
-          assert payload["canonical"] is False
-          assert payload["full_scenario_count"] == 958
-          assert payload["source_revision"] == "acf4cccf4117edb35e6beb57aa2f9004476c8b93"
-          selection = payload["selection"]
-          assert selection == {
-              "scenario_id": None,
-              "scenario_ids_file": None,
-              "scenario_ids": None,
-              "scenario_type": None,
-              "shard_index": shard,
-              "shard_count": 12,
-          }
-          results = payload["results"]
-          assert results and len(results) == payload["scenario_count"]
-          ids = [str(item["scenario_id"]) for item in results]
-          assert len(ids) == len(set(ids))
+          from quantfusion.application import stress, stress_artifacts, stress_scenarios
+          from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
+
+          shard = int(sys.argv[1])
+          output = Path(sys.argv[2])
+          source_sha = os.environ["SOURCE_SHA"]
+          shard_count = int(os.environ["SHARD_COUNT"])
+          full = stress_scenarios._multi_seed_scenarios(
+              random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+              permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+              seeds=stress_scenarios.DEFAULT_SEEDS,
+          )
+          selected, formal_complete = stress_scenarios.select_scenarios(
+              full,
+              scenario_id=None,
+              scenario_type=None,
+              shard_index=shard,
+              shard_count=shard_count,
+              scenario_ids=None,
+          )
+          assert selected and formal_complete is False
+          worker = partial(
+              stress._run_scenario,
+              data_dir=MARKET_DATA_DIR.resolve(),
+              regime_data_dir=REGIME_DATA_DIR.resolve(),
+              include_diagnostics=False,
+          )
+          with ProcessPoolExecutor(max_workers=4) as executor:
+              results = list(executor.map(worker, selected))
+          assert [str(item["scenario_id"]) for item in results] == [
+              str(item["scenario_id"]) for item in selected
+          ]
           for item in results:
               assert item["deployment_policy"] == "production_daily_replay"
+              assert "diagnostic_telemetry" not in item
               for key in ("total_return", "max_drawdown", "sharpe", "calmar"):
                   assert math.isfinite(float(item[key])), (item["scenario_id"], key)
+          provenance = stress_artifacts._build_provenance(
+              selected,
+              MARKET_DATA_DIR.resolve(),
+              REGIME_DATA_DIR.resolve(),
+              source_revision=source_sha,
+          )
+          payload = {
+              "artifact_status": "production_replay_shard",
+              "formal_plan_complete": False,
+              "full_scenario_count": len(full),
+              "source_revision": source_sha,
+              "source_fingerprint": provenance["source_fingerprint"],
+              "data_fingerprint": provenance["data_fingerprint"],
+              "selection": {
+                  "scenario_id": None,
+                  "scenario_ids_file": None,
+                  "scenario_ids": None,
+                  "scenario_type": None,
+                  "shard_index": shard,
+                  "shard_count": shard_count,
+              },
+              "scenario_count": len(results),
+              "results": results,
+          }
+          stress_artifacts._atomic_json(output, payload)
+          print(json.dumps({"shard": shard, "scenario_count": len(results)}))
           PY
-
+          cat "$log"
       - name: Upload exact shard evidence
         uses: actions/upload-artifact@v4
         with:
-          name: formal-stress-958-shard-${{ matrix.shard }}
+          name: formal-stress-958-production-shard-${{ matrix.shard }}
           path: |
             ${{ runner.temp }}/shard-${{ matrix.shard }}.json
             ${{ runner.temp }}/shard-${{ matrix.shard }}.log
@@ -216,13 +237,11 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-lock.txt
-
       - name: Verify immutable source and install dependencies
         shell: bash
         run: |
@@ -232,14 +251,12 @@ jobs:
           test "${changed[0]}" = ".github/workflows/run-formal-stress-958-v2.yml"
           git diff --quiet "$SOURCE_SHA" "$GITHUB_SHA" -- quantfusion data README.md docs tests
           python -m pip install -r requirements-lock.txt
-
       - name: Download all deterministic shards
         uses: actions/download-artifact@v4
         with:
-          pattern: formal-stress-958-shard-*
+          pattern: formal-stress-958-production-shard-*
           path: ${{ runner.temp }}/shards
           merge-multiple: true
-
       - name: Reconstruct and validate the one formal checkpoint
         shell: bash
         run: |
@@ -247,14 +264,11 @@ jobs:
           PYTHONPATH=. python scripts/_formal_stress_958_task snapshot-prior \
             --output "${RUNNER_TEMP}/prior-candidate-hashes.json"
           python - <<'PY'
-          from __future__ import annotations
-
           from collections import Counter
           import json
           import math
           import os
           from pathlib import Path
-          from typing import Any
 
           from quantfusion.application import stress_artifacts, stress_scenarios
           from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
@@ -268,29 +282,17 @@ jobs:
           )
           assert len(full) == 958
           expected = {str(item["scenario_id"]): item for item in full}
-          assert len(expected) == 958
-
-          def jsonable(value: Any) -> Any:
-              if isinstance(value, tuple):
-                  return [jsonable(item) for item in value]
-              if isinstance(value, list):
-                  return [jsonable(item) for item in value]
-              if isinstance(value, dict):
-                  return {key: jsonable(item) for key, item in value.items()}
-              return value
-
           root = Path(os.environ["RUNNER_TEMP"]) / "shards"
           files = sorted(root.glob("shard-*.json"))
           assert len(files) == shard_count, [str(path) for path in files]
           seen_shards: set[int] = set()
-          combined: dict[str, dict[str, Any]] = {}
+          combined: dict[str, dict] = {}
           source_fingerprints: set[str] = set()
           data_fingerprints: set[str] = set()
           for path in files:
               payload = json.loads(path.read_text(encoding="utf-8"))
-              assert payload["artifact_status"] == "diagnostic"
+              assert payload["artifact_status"] == "production_replay_shard"
               assert payload["formal_plan_complete"] is False
-              assert payload["canonical"] is False
               assert payload["full_scenario_count"] == 958
               assert payload["source_revision"] == source_sha
               selection = payload["selection"]
@@ -321,19 +323,16 @@ jobs:
               assert [str(item["scenario_id"]) for item in results] == [
                   str(item["scenario_id"]) for item in selected
               ]
-              for raw in results:
-                  scenario_id = str(raw["scenario_id"])
+              for item in results:
+                  scenario_id = str(item["scenario_id"])
                   assert scenario_id in expected and scenario_id not in combined
-                  definition = expected[scenario_id]
-                  for key, value in definition.items():
-                      assert raw.get(key) == jsonable(value), (scenario_id, key)
-                  assert raw["deployment_policy"] == "production_daily_replay"
+                  assert item["deployment_policy"] == "production_daily_replay"
+                  assert "diagnostic_telemetry" not in item
+                  for key, value in expected[scenario_id].items():
+                      assert item.get(key) == value, (scenario_id, key)
                   for key in ("total_return", "max_drawdown", "sharpe", "calmar"):
-                      assert math.isfinite(float(raw[key])), (scenario_id, key)
-                  item = dict(raw)
-                  item.pop("diagnostic_telemetry", None)
+                      assert math.isfinite(float(item[key])), (scenario_id, key)
                   combined[scenario_id] = item
-
           assert seen_shards == set(range(shard_count))
           assert set(combined) == set(expected)
           assert len(source_fingerprints) == 1
@@ -371,25 +370,17 @@ jobs:
           assert len(validated) == 958 and set(validated) == set(expected)
           output = Path(os.environ["RUNNER_TEMP"]) / "formal-stress-958-checkpoint.json"
           stress_artifacts._atomic_json(output, checkpoint)
-          print(
-              json.dumps(
-                  {
-                      "scenario_count": len(results),
-                      "unique_scenario_ids": len(combined),
-                      "family_counts": dict(
-                          Counter(item["scenario_type"] for item in results)
-                      ),
-                      "source_revision": source_sha,
-                      "source_fingerprint": provenance["source_fingerprint"],
-                      "data_fingerprint": provenance["data_fingerprint"],
-                      "scenario_signature": provenance["scenario_signature"],
-                      "run_signature": provenance["run_signature"],
-                  },
-                  indent=2,
-              )
-          )
+          print(json.dumps({
+              "scenario_count": len(results),
+              "unique_scenario_ids": len(combined),
+              "family_counts": dict(Counter(item["scenario_type"] for item in results)),
+              "source_revision": source_sha,
+              "source_fingerprint": provenance["source_fingerprint"],
+              "data_fingerprint": provenance["data_fingerprint"],
+              "scenario_signature": provenance["scenario_signature"],
+              "run_signature": provenance["run_signature"],
+          }, indent=2))
           PY
-
       - name: Publish through the production formal-stress entry point
         id: publish
         shell: bash
@@ -412,7 +403,6 @@ jobs:
             exit "$status"
           fi
           echo "formal_exit_status=$status" >> "$GITHUB_OUTPUT"
-
       - name: Validate candidate, preserve history and update result documentation
         shell: bash
         run: |
@@ -476,7 +466,6 @@ jobs:
           target = Path(os.environ["RUNNER_TEMP"]) / "formal-stress-958-current-candidate.json"
           target.write_bytes(candidate_path.read_bytes())
           PY
-
       - name: Upload complete independently validated evidence
         uses: actions/upload-artifact@v4
         with:
@@ -488,7 +477,6 @@ jobs:
             artifacts/validation/formal_stress_958_acceptance_summary.json
           if-no-files-found: error
           retention-days: 30
-
       - name: Remove all temporary acceptance infrastructure
         shell: bash
         run: |
@@ -504,7 +492,6 @@ jobs:
             scripts/_formal_stress_958_task.py \
             scripts/_formal_stress_958_docs \
             scripts/_formal_stress_958_generated_test_fix
-
       - name: Run complete engineering verification on the final tree
         shell: bash
         run: |
@@ -516,7 +503,6 @@ jobs:
           bandit -r quantfusion scripts -ll
           pip-audit --strict -r requirements-lock.txt
           git diff --check
-
       - name: Commit complete evidence and verify remote checkpoint
         shell: bash
         run: |
