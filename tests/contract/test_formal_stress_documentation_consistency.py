@@ -104,7 +104,10 @@ TEMPORARY_GLOBS = (
 )
 HISTORICAL_TOKEN = re.compile(r"历史|historical", re.IGNORECASE)
 SYMBOL_22_TOKEN = re.compile(r"22\s*股|22-symbol", re.IGNORECASE)
-CURRENT_TOKEN = re.compile(r"当前|现行|\b(?:current|active)\b", re.IGNORECASE)
+CURRENT_TOKEN = re.compile(
+    r"当前|现行|(?<![A-Za-z])(?:current|active)(?![A-Za-z])",
+    re.IGNORECASE,
+)
 SCENARIO_983_TOKEN = re.compile(r"(?<![0-9A-Za-z])983(?![0-9A-Za-z])")
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
