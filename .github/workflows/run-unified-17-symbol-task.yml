@@ -35,7 +35,7 @@ jobs:
         run: python -m scripts._patch_unified_reference_core
       - name: Migrate the remaining intentional test expectations
         run: python -m scripts._patch_unified_test_expectations
-      - name: Migrate stale old-universe quality assertions
+      - name: Remove stale cross-universe quality gates
         run: python -m scripts._patch_unified_quality_contract
       - name: Verify focused contracts before economic regeneration
         run: |
