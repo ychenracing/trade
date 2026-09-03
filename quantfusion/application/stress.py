@@ -32,6 +32,11 @@ _DRAWDOWN_RISK_EVENTS = {
     "persistent_portfolio_risk_lock",
 }
 
+_DRAWDOWN_BUDGET_CONFIGURATIONS = {
+    "balanced": 0.005,
+    "conservative": 0.0075,
+}
+
 
 def _reason_category(trade: qf.TradeRecord) -> str:
     """Map free-text execution reasons into stable audit categories."""
@@ -286,9 +291,16 @@ def _metrics(
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
     include_diagnostics: bool = False,
+    drawdown_budget_configuration: str = "balanced",
 ) -> dict[str, Any]:
+    execution_buffer = _DRAWDOWN_BUDGET_CONFIGURATIONS[
+        drawdown_budget_configuration
+    ]
     with contextlib.redirect_stdout(io.StringIO()):
-        result = ra.ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL).run(
+        result = ra.ProductionReplayEngine(
+            stress_metrics.INITIAL_CAPITAL,
+            drawdown_budget_execution_buffer=execution_buffer,
+        ).run(
             {code: NAMES[code] for code in codes},
             stress_metrics.START_DATE,
             stress_metrics.END_DATE,
@@ -313,6 +325,7 @@ def _metrics(
         "max_concurrent_symbols": int(result["max_concurrent_symbols"]),
         "terminal_risk_lock": bool(result["terminal_risk_lock"]),
         "deployment_policy": str(result["deployment_policy"]),
+        "drawdown_budget_configuration": drawdown_budget_configuration,
     }
     if include_diagnostics:
         metrics["diagnostic_telemetry"] = _diagnostic_telemetry(result)
@@ -325,6 +338,7 @@ def _run_scenario(
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
     include_diagnostics: bool = False,
+    drawdown_budget_configuration: str = "balanced",
 ) -> dict[str, Any]:
     codes = tuple(str(code) for code in scenario["symbols"])
     return {
@@ -334,6 +348,7 @@ def _run_scenario(
             data_dir=data_dir,
             regime_data_dir=regime_data_dir,
             include_diagnostics=include_diagnostics,
+            drawdown_budget_configuration=drawdown_budget_configuration,
         ),
     }
 
@@ -341,6 +356,12 @@ def _run_scenario(
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workers", type=int, default=min(4, os.cpu_count() or 1))
+    parser.add_argument(
+        "--drawdown-budget-configuration",
+        choices=tuple(_DRAWDOWN_BUDGET_CONFIGURATIONS),
+        default="balanced",
+        help="Use one preregistered C4 execution-buffer configuration.",
+    )
     parser.add_argument(
         "--random-samples", type=int, default=stress_scenarios.DEFAULT_RANDOM_SAMPLES
     )
@@ -479,6 +500,7 @@ def main() -> int:
         "scenario_type": args.scenario_type,
         "shard_index": args.shard_index,
         "shard_count": args.shard_count,
+        "drawdown_budget_configuration": args.drawdown_budget_configuration,
     }
     if formal_plan_complete and args.diagnostic_output is not None:
         raise ValueError("--diagnostic-output requires a scenario selector")
@@ -546,6 +568,7 @@ def main() -> int:
         data_dir=data_dir,
         regime_data_dir=regime_data_dir,
         include_diagnostics=not formal_plan_complete,
+        drawdown_budget_configuration=args.drawdown_budget_configuration,
     )
     with ProcessPoolExecutor(max_workers=args.workers) as executor:
         for start in range(0, len(pending), args.checkpoint_every):

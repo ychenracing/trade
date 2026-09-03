@@ -62,6 +62,7 @@ class StressScenarioTests(unittest.TestCase):
             "max_concurrent_symbols": 0,
             "terminal_risk_lock": False,
             "deployment_policy": "production_daily_replay",
+            "drawdown_budget_configuration": "balanced",
         }
 
     @classmethod
@@ -499,6 +500,33 @@ class StressScenarioTests(unittest.TestCase):
 
         self.assertTrue(args.establish_initial_baseline)
         self.assertEqual(args.initial_baseline_reference, "retained.json")
+
+    def test_diagnostic_configuration_is_restricted_to_preregistered_values(
+        self,
+    ) -> None:
+        parser = stress.build_argument_parser()
+
+        conservative = parser.parse_args(
+            [
+                "--source-revision",
+                "a" * 40,
+                "--drawdown-budget-configuration",
+                "conservative",
+            ]
+        )
+
+        self.assertEqual(
+            conservative.drawdown_budget_configuration, "conservative"
+        )
+        with self.assertRaises(SystemExit):
+            parser.parse_args(
+                [
+                    "--source-revision",
+                    "a" * 40,
+                    "--drawdown-budget-configuration",
+                    "searched-value",
+                ]
+            )
 
     def test_selects_exact_add_one_scenario_without_changing_definition(self) -> None:
         scenarios = stress_scenarios._multi_seed_scenarios(
@@ -1133,6 +1161,7 @@ class StressScenarioTests(unittest.TestCase):
                         "scenario_type": None,
                         "shard_index": None,
                         "shard_count": None,
+                        "drawdown_budget_configuration": "balanced",
                     },
                     "completed": 1,
                     "scenario_count": 1,
