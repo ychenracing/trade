@@ -1,0 +1,47 @@
+name: Bootstrap formal stress 958 acceptance
+
+on:
+  push:
+    branches:
+      - codex/formal-stress-958-acceptance
+    paths:
+      - .github/workflows/bootstrap-formal-stress-958.yml
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/formal-stress-958-acceptance
+          fetch-depth: 0
+      - name: Persist exact remote task contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          base_sha="$(git merge-base HEAD origin/main)"
+          mkdir -p .github/task-bootstrap
+          cat > .github/task-bootstrap/formal-stress-958-acceptance.md <<EOF
+          # Formal Stress 958 Acceptance Task
+
+          - Objective: run the exact current 17-symbol, 958-scenario formal stress acceptance; retain truthful accepted/rejected outcome; update all directly related code comments and documentation so counts, semantics, provenance, and publication state agree.
+          - Acceptance criteria: exact 958/958 completion; unique scenario IDs; finite metrics; production replay semantics; valid source/data/scenario/run fingerprints; all current contract gates evaluated; immutable prior artifacts preserved; comments/docs/tests synchronized; required CI green; merge only when repository and product gates permit.
+          - Included scope: current formal stress plan/runner/artifact publication, directly related tests, README, docs/VALIDATION.md, docs/ARCHITECTURE.md, CLI help/comments, generated current 17-symbol stress evidence.
+          - Excluded scope: changing alpha, risk economics, 18% threshold, universe membership/order, seeds, fees/slippage/capacity/T+1/matching semantics, or forcing rejected evidence canonical.
+          - Verified baseline SHA: ${base_sha}
+          - Feature branch: codex/formal-stress-958-acceptance
+          - Immutable constraints: no direct push to main; no reset/clean/rebase/force-push/history rewrite; old 22-symbol/983 artifacts remain byte-identical; exact current GitHub state is authoritative.
+          - Risks: full formal run can truthfully reject; source-fingerprint changes after the run invalidate provenance; stale 983 wording or hard-coded counts can create contract drift.
+          - UNKNOWN: current 958 gate outcome, incumbent/baseline eligibility, exact runtime until the complete run finishes.
+          - Next step: verify this remote checkpoint SHA, inspect current main/PR/workflow/contract, finish all fingerprinted source/comment updates, run focused verification, then execute the exact complete 958 plan once.
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/task-bootstrap/formal-stress-958-acceptance.md
+          git commit -m "chore: persist formal stress 958 task contract"
+          git push origin HEAD:codex/formal-stress-958-acceptance
