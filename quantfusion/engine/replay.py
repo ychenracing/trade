@@ -391,6 +391,7 @@ class ProductionReplayEngine:
             return policy
         return replace(
             policy,
+            drawdown_budget_enabled=True,
             drawdown_budget_execution_buffer=(
                 self.drawdown_budget_execution_buffer
             ),

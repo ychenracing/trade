@@ -22,7 +22,7 @@ class DrawdownBudgetFormulaTests(unittest.TestCase):
     def test_policy_snapshot_exposes_preregistered_parameters(self) -> None:
         snapshot = PortfolioPolicy().as_dict()
 
-        self.assertTrue(snapshot["drawdown_budget_enabled"])
+        self.assertFalse(snapshot["drawdown_budget_enabled"])
         self.assertEqual(snapshot["drawdown_budget_peak_fraction"], 0.175)
         self.assertEqual(snapshot["drawdown_budget_execution_buffer"], 0.005)
         self.assertEqual(snapshot["drawdown_budget_adverse_atr_multiple"], 1.0)
@@ -269,7 +269,9 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
         )
 
     def test_warning_removes_buy_but_keeps_sell(self) -> None:
-        engine = BacktestEngine()
+        engine = BacktestEngine(
+            policy=PortfolioPolicy(drawdown_budget_enabled=True)
+        )
         strategy = SimpleNamespace(name="turtle_breakout")
         buy = Signal(
             "688205", "turtle_breakout", "buy", 100, 100.0, 90.0,
@@ -302,7 +304,9 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
         )
 
     def test_buy_is_lot_clipped_to_remaining_adverse_loss_capacity(self) -> None:
-        engine = BacktestEngine()
+        engine = BacktestEngine(
+            policy=PortfolioPolicy(drawdown_budget_enabled=True)
+        )
         strategy = SimpleNamespace(name="turtle_breakout")
         buy = Signal(
             "300308", "turtle_breakout", "buy", 2_000, 100.0, 90.0,
@@ -321,7 +325,9 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
         )
 
     def test_worsening_existing_risk_queues_next_open_reduction(self) -> None:
-        engine = BacktestEngine()
+        engine = BacktestEngine(
+            policy=PortfolioPolicy(drawdown_budget_enabled=True)
+        )
         position = Position(
             "300308", "turtle_breakout", 2_000, 100.0, "2025-12-01",
             stop_loss=80.0,
@@ -345,7 +351,9 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
         self.assertEqual(events[-1]["event"], "drawdown_budget_state")
 
     def test_zero_budget_ratio_is_json_safe_in_evidence_curve(self) -> None:
-        engine = BacktestEngine()
+        engine = BacktestEngine(
+            policy=PortfolioPolicy(drawdown_budget_enabled=True)
+        )
         position = Position(
             "300308", "turtle_breakout", 100, 100.0, "2025-12-01",
             stop_loss=80.0,

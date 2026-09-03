@@ -128,17 +128,26 @@ class AdaptiveEngineTests(unittest.TestCase):
 
         configured = engine._with_drawdown_budget_buffer(base)
 
+        self.assertTrue(configured.drawdown_budget_enabled)
         self.assertEqual(configured.drawdown_budget_execution_buffer, 0.0075)
         self.assertEqual(
             {
                 key: value
                 for key, value in configured.as_dict().items()
-                if key != "drawdown_budget_execution_buffer"
+                if key
+                not in {
+                    "drawdown_budget_enabled",
+                    "drawdown_budget_execution_buffer",
+                }
             },
             {
                 key: value
                 for key, value in base.as_dict().items()
-                if key != "drawdown_budget_execution_buffer"
+                if key
+                not in {
+                    "drawdown_budget_enabled",
+                    "drawdown_budget_execution_buffer",
+                }
             },
         )
 

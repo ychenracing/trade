@@ -151,7 +151,7 @@ class PortfolioPolicy(_PortfolioPolicyBase):
     terminal_drawdown: float = 0.28
     concentration_drawdown_adjustment: float = 0.02
     candidate_reference_percentile: float = 0.50
-    drawdown_budget_enabled: bool = True
+    drawdown_budget_enabled: bool = False
     drawdown_budget_peak_fraction: float = 0.175
     drawdown_budget_execution_buffer: float = 0.005
     drawdown_budget_adverse_atr_multiple: float = 1.0

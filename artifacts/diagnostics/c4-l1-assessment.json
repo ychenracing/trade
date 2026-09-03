@@ -117,6 +117,12 @@
     "The path changes also caused add-one-05-688205, formerly a 17.055% drawdown control, to reach about 21.22%-21.29% drawdown and retain only about 32.4% of reference wealth; this is a generic-path failure, not a symbol exception.",
     "A materially larger pre-shock charge would approach a gross/gap cap and repeat the already observed compounding cost of over-constraining healthy winner paths. No unregistered ATR value or case-specific rule was tested."
   ],
+  "post_l1_disposition": {
+    "production_default_enabled": false,
+    "diagnostic_runner_enables_registered_configurations_explicitly": true,
+    "economic_goldens_updated": false,
+    "reason": "A rejected mechanism must not silently replace the verified production path while the Draft PR and its evidence remain available for review."
+  },
   "decision": {
     "selected_configuration": null,
     "run_L2": false,
