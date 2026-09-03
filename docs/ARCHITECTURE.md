@@ -157,6 +157,6 @@ canonical 仓库路径由 `quantfusion.config.paths` 提供。用户显式传入
 历史 22 股/983 工件属于不同 scenario/data/run fingerprint，不会自动迁移到当前计划。
 
 <!-- CURRENT_FORMAL_STRESS_RESULT:START -->
-完整 958 场景尚未在本次任务中形成最终工件。
+完整计划已运行：`958/958`，唯一 scenario ID：`958`。工件状态为 `current_candidate`，acceptance 为 `rejected`，canonical 为 `false`；absolute hard gates passed=`False`，retained robustness gates passed=`False`。全场景最差最大回撤为 `-23.992778%`（`random-20260807-03-004`），17 股完整 prefix 的总收益为 `286.202912%`、最大回撤为 `-20.499296%`。当前候选：`artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json`，SHA-256：`63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c`；source revision：`acf4cccf4117edb35e6beb57aa2f9004476c8b93`。详细 gates 与 provenance 见 `artifacts/validation/formal_stress_958_acceptance_summary.json`。
 <!-- CURRENT_FORMAL_STRESS_RESULT:END -->
 <!-- CURRENT_FORMAL_STRESS_PLAN:END -->
