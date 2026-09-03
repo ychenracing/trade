@@ -1,0 +1,412 @@
+#!/usr/bin/env python3
+"""Branch-only helper for the exact current 958-scenario acceptance task."""
+
+from __future__ import annotations
+
+import argparse
+from collections import Counter
+from datetime import datetime, timezone
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+from typing import Any
+
+
+EXPECTED_SYMBOLS = (
+    "300308",
+    "300502",
+    "300394",
+    "688256",
+    "603986",
+    "688072",
+    "688300",
+    "300054",
+    "688361",
+    "002409",
+    "688498",
+    "688120",
+    "002384",
+    "688082",
+    "300604",
+    "601869",
+    "300408",
+)
+EXPECTED_FAMILIES = Counter(
+    prefix=17,
+    leave_one_out=17,
+    add_one=24,
+    random_subset=750,
+    permutation=150,
+)
+PLAN_START = "<!-- CURRENT_FORMAL_STRESS_PLAN:START -->"
+PLAN_END = "<!-- CURRENT_FORMAL_STRESS_PLAN:END -->"
+RESULT_START = "<!-- CURRENT_FORMAL_STRESS_RESULT:START -->"
+RESULT_END = "<!-- CURRENT_FORMAL_STRESS_RESULT:END -->"
+DOC_PATHS = (
+    Path("README.md"),
+    Path("docs/VALIDATION.md"),
+    Path("docs/ARCHITECTURE.md"),
+)
+
+
+def _formal_scenarios() -> list[dict[str, Any]]:
+    from quantfusion.application import stress_scenarios
+
+    return stress_scenarios._multi_seed_scenarios(
+        random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+        permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+        seeds=stress_scenarios.DEFAULT_SEEDS,
+    )
+
+
+def _validate_current_plan() -> list[dict[str, Any]]:
+    from quantfusion.config import daily
+    from quantfusion.config.universe import SYMBOL_NAMES
+
+    if tuple(SYMBOL_NAMES) != EXPECTED_SYMBOLS:
+        raise RuntimeError(f"unexpected formal universe: {tuple(SYMBOL_NAMES)!r}")
+    if tuple(daily.SYMBOLS) != EXPECTED_SYMBOLS:
+        raise RuntimeError(f"unexpected daily universe: {tuple(daily.SYMBOLS)!r}")
+    scenarios = _formal_scenarios()
+    ids = [str(item["scenario_id"]) for item in scenarios]
+    families = Counter(str(item["scenario_type"]) for item in scenarios)
+    if len(scenarios) != 958 or len(set(ids)) != 958:
+        raise RuntimeError(
+            f"current formal plan is not 958 unique scenarios: "
+            f"count={len(scenarios)}, unique={len(set(ids))}"
+        )
+    if families != EXPECTED_FAMILIES:
+        raise RuntimeError(f"unexpected formal family counts: {families!r}")
+    return scenarios
+
+
+def _replace_managed_block(text: str, start: str, end: str, block: str) -> str:
+    normalized = block.strip() + "\n"
+    if start in text or end in text:
+        if text.count(start) != 1 or text.count(end) != 1:
+            raise RuntimeError(f"malformed managed block: {start}")
+        left, rest = text.split(start, 1)
+        _, right = rest.split(end, 1)
+        return left.rstrip() + "\n\n" + normalized + right.lstrip("\n")
+    return text.rstrip() + "\n\n" + normalized
+
+
+def _plan_block(path: Path) -> str:
+    if path.name == "README.md":
+        body = """
+### 当前 17 股 formal stress 计划
+
+日扫与 formal stress 共用 `quantfusion.config.universe.SYMBOL_NAMES` 的同一有序 17 股股票池。当前正式计划固定为 958 个生产逐日回放场景：17 个 prefix、17 个 leave-one-out、24 个 add-one、750 个 deterministic random-subset、150 个 permutation。场景顺序、三个固定 seed、冻结行情、费用、滑点、容量、T+1 和撮合语义均属于 provenance；任一变化都会形成新的 scenario/run fingerprint。
+
+压力合同 v2 对当前完整计划执行 absolute hard gates、retained robustness hard gates、promotion/initial-baseline gates。历史 22 股/983 场景 rejected 工件仅作为不可变历史证据，不能代表当前 17 股/958 计划，也不能被覆盖或重新标记为 canonical。
+"""
+    elif path.name == "VALIDATION.md":
+        body = """
+## 当前 17 股 / 958 场景 formal stress
+
+当前 formal plan 从唯一有序 17 股股票池确定性生成：17 个 prefix、17 个 leave-one-out、24 个 add-one、750 个 random-subset（3 个固定 seed × 5 个规模 × 每规模 50 个）和 150 个 permutation（3 个固定 seed × 50 个），合计 958。完整运行必须具有 958 个唯一 scenario ID、有限指标、`ProductionReplayEngine` / `production_daily_replay` 语义以及相互独立的 source、data、scenario 和 run fingerprints。
+
+历史 22 股/983 场景工件保持原字节与原哈希，只用于审计历史合同。它不构成当前计划的 incumbent、current candidate 或 canonical 证据。
+"""
+    else:
+        body = """
+## Formal stress 的当前边界
+
+日扫与 formal stress 读取同一个有序 17 股权威映射。场景生成器在该顺序上构造 958 个完整场景；诊断 selector、单场景、family 或 shard 运行永远不是 formal plan，不能发布 canonical 工件。正式发布同时校验计划完整性、scenario ID 唯一性、生产回放语义、provenance、absolute hard gates、retained robustness gates 和 promotion/initial-baseline 状态。
+
+历史 22 股/983 工件属于不同 scenario/data/run fingerprint，不会自动迁移到当前计划。
+"""
+    return (
+        f"{PLAN_START}\n{body.strip()}\n\n"
+        f"{RESULT_START}\n"
+        "完整 958 场景尚未在本次任务中形成最终工件。\n"
+        f"{RESULT_END}\n{PLAN_END}"
+    )
+
+
+def prepare() -> None:
+    _validate_current_plan()
+    replacements = {
+        "共 983 次生产逐日回放": "共 958 次生产逐日回放",
+        "全部 983 个正式场景": "全部 958 个正式场景",
+        "当前完整 983 场景运行已保存为非 canonical 候选": (
+            "历史 22 股完整 983 场景运行已保存为非 canonical 候选"
+        ),
+        "当前完整983场景运行已保存为非 canonical 候选": (
+            "历史22股完整983场景运行已保存为非 canonical 候选"
+        ),
+        "当前完整 983 场景": "历史 22 股完整 983 场景",
+        "当前983场景": "历史22股983场景",
+    }
+    for path in DOC_PATHS:
+        text = path.read_text(encoding="utf-8")
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        text = _replace_managed_block(text, PLAN_START, PLAN_END, _plan_block(path))
+        path.write_text(text, encoding="utf-8")
+
+    test_path = Path("tests/unit/test_current_formal_stress_plan.py")
+    test_path.write_text(
+        '''"""Current 17-symbol / 958-scenario formal stress contract."""
+
+from collections import Counter
+
+from quantfusion.application import stress_scenarios
+from quantfusion.config import daily
+from quantfusion.config.universe import SYMBOL_NAMES
+
+
+EXPECTED_SYMBOLS = (
+    "300308", "300502", "300394", "688256", "603986",
+    "688072", "688300", "300054", "688361", "002409",
+    "688498", "688120", "002384", "688082", "300604",
+    "601869", "300408",
+)
+
+
+def test_daily_and_formal_stress_share_current_ordered_universe() -> None:
+    assert tuple(SYMBOL_NAMES) == EXPECTED_SYMBOLS
+    assert tuple(daily.SYMBOLS) == EXPECTED_SYMBOLS
+
+
+def test_current_formal_plan_has_exact_958_family_counts() -> None:
+    scenarios = stress_scenarios._multi_seed_scenarios(
+        random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+        permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+        seeds=stress_scenarios.DEFAULT_SEEDS,
+    )
+    assert len(scenarios) == 958
+    assert len({item["scenario_id"] for item in scenarios}) == 958
+    assert Counter(item["scenario_type"] for item in scenarios) == {
+        "prefix": 17,
+        "leave_one_out": 17,
+        "add_one": 24,
+        "random_subset": 750,
+        "permutation": 150,
+    }
+''',
+        encoding="utf-8",
+    )
+
+
+def snapshot_prior(output: Path) -> None:
+    root = Path("artifacts/validation/candidates")
+    payload = (
+        {
+            str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(root.glob("*.json"))
+        }
+        if root.is_dir()
+        else {}
+    )
+    output.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+
+def _validate_prior_hashes(prior: dict[str, str]) -> None:
+    for filename, digest in prior.items():
+        path = Path(filename)
+        if not path.is_file():
+            raise RuntimeError(f"prior candidate disappeared: {filename}")
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != digest:
+            raise RuntimeError(f"prior candidate changed: {filename}")
+
+
+def _find_current_candidate(source_sha: str) -> tuple[Path, dict[str, Any]]:
+    candidates: list[tuple[Path, dict[str, Any]]] = []
+    for path in sorted(Path("artifacts/validation/candidates").glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if (
+            payload.get("source_revision") == source_sha
+            and payload.get("scenario_count") == 958
+            and isinstance(payload.get("results"), list)
+        ):
+            candidates.append((path, payload))
+    if len(candidates) != 1:
+        raise RuntimeError(
+            f"expected exactly one current 958 candidate, found {len(candidates)}"
+        )
+    return candidates[0]
+
+
+def _validate_candidate(payload: dict[str, Any]) -> Counter[str]:
+    results = payload["results"]
+    ids = [str(item["scenario_id"]) for item in results]
+    if len(results) != 958 or len(set(ids)) != 958:
+        raise RuntimeError("formal evidence is not exact 958/958 unique completion")
+    families = Counter(str(item["scenario_type"]) for item in results)
+    if families != EXPECTED_FAMILIES:
+        raise RuntimeError(f"unexpected result family counts: {families!r}")
+    for item in results:
+        if item.get("deployment_policy") != "production_daily_replay":
+            raise RuntimeError(
+                f"non-production replay result: {item.get('scenario_id')}"
+            )
+        for key in ("total_return", "max_drawdown", "sharpe", "calmar"):
+            value = item.get(key)
+            if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+                raise RuntimeError(
+                    f"non-finite {key} in {item.get('scenario_id')}: {value!r}"
+                )
+    for key in (
+        "source_fingerprint",
+        "data_fingerprint",
+        "scenario_signature",
+        "run_signature",
+    ):
+        if not isinstance(payload.get(key), str) or len(payload[key]) < 32:
+            raise RuntimeError(f"missing/invalid provenance field: {key}")
+    return families
+
+
+def _result_block(summary: dict[str, Any]) -> str:
+    worst = summary["worst_all"]
+    prefix = summary["prefix_17"]
+    return f"""{RESULT_START}
+完整计划已运行：`958/958`，唯一 scenario ID：`958`。工件状态为 `{summary['artifact_status']}`，acceptance 为 `{summary['acceptance_status']}`，canonical 为 `{str(summary['canonical']).lower()}`；absolute hard gates passed=`{summary['absolute_hard_gates'].get('passed')}`，retained robustness gates passed=`{summary['retained_robustness_hard_gates'].get('passed')}`。全场景最差最大回撤为 `{worst['max_drawdown']:.6%}`（`{worst['scenario_id']}`），17 股完整 prefix 的总收益为 `{prefix['total_return']:.6%}`、最大回撤为 `{prefix['max_drawdown']:.6%}`。当前候选：`{summary['candidate_path']}`，SHA-256：`{summary['candidate_sha256']}`；source revision：`{summary['source_revision']}`。详细 gates 与 provenance 见 `artifacts/validation/formal_stress_958_acceptance_summary.json`。
+{RESULT_END}"""
+
+
+def finalize(source_sha: str, prior_path: Path, exit_status: int) -> None:
+    _validate_current_plan()
+    prior = json.loads(prior_path.read_text(encoding="utf-8"))
+    _validate_prior_hashes(prior)
+    candidate_path, payload = _find_current_candidate(source_sha)
+    families = _validate_candidate(payload)
+    results = payload["results"]
+    candidate_sha = hashlib.sha256(candidate_path.read_bytes()).hexdigest()
+    worst = min(results, key=lambda item: float(item["max_drawdown"]))
+    random_worst = min(
+        (item for item in results if item["scenario_type"] == "random_subset"),
+        key=lambda item: float(item["max_drawdown"]),
+    )
+    add_one_worst = min(
+        (item for item in results if item["scenario_type"] == "add_one"),
+        key=lambda item: float(item["max_drawdown"]),
+    )
+    prefix17 = next(
+        item
+        for item in results
+        if item["scenario_type"] == "prefix" and item["symbol_count"] == 17
+    )
+    summary = {
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "formal_exit_status": exit_status,
+        "source_revision": source_sha,
+        "candidate_path": str(candidate_path),
+        "candidate_sha256": candidate_sha,
+        "scenario_count": 958,
+        "unique_scenario_ids": 958,
+        "family_counts": dict(sorted(families.items())),
+        "artifact_status": str(payload.get("artifact_status", "unknown")),
+        "acceptance_status": str(payload.get("acceptance_status", "unknown")),
+        "canonical": bool(payload.get("canonical", False)),
+        "absolute_hard_gates": payload.get("absolute_hard_gates", {}),
+        "retained_robustness_hard_gates": payload.get(
+            "retained_robustness_hard_gates", {}
+        ),
+        "robustness_diagnostics": payload.get("robustness_diagnostics", {}),
+        "promotion_gates": payload.get("promotion_gates", {}),
+        "initial_baseline_gates": payload.get("initial_baseline_gates", {}),
+        "provenance": {
+            key: payload[key]
+            for key in (
+                "source_fingerprint",
+                "data_fingerprint",
+                "scenario_signature",
+                "run_signature",
+            )
+        },
+        "worst_all": {
+            "scenario_id": worst["scenario_id"],
+            "max_drawdown": float(worst["max_drawdown"]),
+            "total_return": float(worst["total_return"]),
+        },
+        "worst_random_subset": {
+            "scenario_id": random_worst["scenario_id"],
+            "max_drawdown": float(random_worst["max_drawdown"]),
+            "total_return": float(random_worst["total_return"]),
+        },
+        "worst_add_one_drawdown": {
+            "scenario_id": add_one_worst["scenario_id"],
+            "max_drawdown": float(add_one_worst["max_drawdown"]),
+            "total_return": float(add_one_worst["total_return"]),
+        },
+        "prefix_17": {
+            key: prefix17[key]
+            for key in (
+                "scenario_id",
+                "total_return",
+                "max_drawdown",
+                "sharpe",
+                "calmar",
+                "total_trades",
+            )
+        },
+        "historical_candidate_hashes_verified_unchanged": prior,
+    }
+    summary_path = Path(
+        "artifacts/validation/formal_stress_958_acceptance_summary.json"
+    )
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+
+    result_block = _result_block(summary)
+    for path in DOC_PATHS:
+        text = path.read_text(encoding="utf-8")
+        if text.count(RESULT_START) != 1 or text.count(RESULT_END) != 1:
+            raise RuntimeError(f"missing/malformed result block in {path}")
+        left, rest = text.split(RESULT_START, 1)
+        _, right = rest.split(RESULT_END, 1)
+        path.write_text(left + result_block + right, encoding="utf-8")
+
+    stale_patterns = (
+        "共 983 次生产逐日回放",
+        "全部 983 个正式场景",
+        "当前完整 983 场景",
+        "当前983场景",
+    )
+    for path in DOC_PATHS:
+        text = path.read_text(encoding="utf-8")
+        stale = [pattern for pattern in stale_patterns if pattern in text]
+        if stale:
+            raise RuntimeError(f"stale current-plan wording in {path}: {stale}")
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("prepare")
+    snapshot_parser = subparsers.add_parser("snapshot-prior")
+    snapshot_parser.add_argument("--output", required=True)
+    finalize_parser = subparsers.add_parser("finalize")
+    finalize_parser.add_argument("--source-sha", required=True)
+    finalize_parser.add_argument("--prior-hashes", required=True)
+    finalize_parser.add_argument("--exit-status", required=True, type=int)
+    args = parser.parse_args()
+    if args.command == "prepare":
+        prepare()
+    elif args.command == "snapshot-prior":
+        snapshot_prior(Path(args.output))
+    else:
+        finalize(
+            args.source_sha,
+            Path(args.prior_hashes),
+            args.exit_status,
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
