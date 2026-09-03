@@ -121,8 +121,7 @@ def _managed_block(text: str, start: str, end: str, *, path: Path) -> str:
     return block
 
 
-def _assert_983_is_historical(text: str, *, path: Path) -> None:
-    """Require explicit historical 22-symbol context for every old-plan mention."""
+def _normalize_historical_22(text: str) -> str:
     normalized = re.sub(
         r"(历史|historical)\s*[,，]\s*(22\s*股|22-symbol)",
         r"\1 \2",
@@ -135,6 +134,12 @@ def _assert_983_is_historical(text: str, *, path: Path) -> None:
         normalized,
         flags=re.IGNORECASE,
     )
+    return normalized
+
+
+def _assert_983_is_historical(text: str, *, path: Path) -> None:
+    """Require explicit historical 22-symbol context for every old-plan mention."""
+    normalized = _normalize_historical_22(text)
     clauses = re.split(
         r"[。！？.!?；;：:，,\n]+",
         normalized,
@@ -155,7 +160,8 @@ def _assert_983_is_historical(text: str, *, path: Path) -> None:
 
 
 def _assert_22_symbol_is_historical(text: str, *, path: Path) -> None:
-    for raw in re.split(r"[。！？.!?；;，,\n]+", text):
+    normalized = _normalize_historical_22(text)
+    for raw in re.split(r"[。！？.!?；;，,\n]+", normalized):
         sentence = raw.strip()
         if not SYMBOL_22_TOKEN.search(sentence):
             continue
