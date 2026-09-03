@@ -1,4 +1,4 @@
-name: Run exact 958-scenario formal acceptance v6
+name: Run exact 958-scenario formal acceptance v7
 
 on:
   push:
@@ -40,10 +40,12 @@ jobs:
           test -f .github/task-bootstrap/formal-stress-958-acceptance.md
           test -f scripts/_formal_stress_958_task
           test -f scripts/_formal_stress_958_docs
+          test -f scripts/_formal_stress_958_generated_test_fix
           git fetch origin main
           git merge-base --is-ancestor 88690b2cb1db8803c8f6cc48f774eebe9db40b9e HEAD
           PYTHONPATH=. python scripts/_formal_stress_958_task prepare
           PYTHONPATH=. python scripts/_formal_stress_958_docs
+          PYTHONPATH=. python scripts/_formal_stress_958_generated_test_fix
           python -m pytest -q \
             tests/unit/test_current_formal_stress_plan.py \
             tests/contract/test_current_formal_documentation.py \
@@ -142,7 +144,8 @@ jobs:
             .github/task-bootstrap/formal-stress-958-acceptance.md \
             scripts/_formal_stress_958_task \
             scripts/_formal_stress_958_task.py \
-            scripts/_formal_stress_958_docs
+            scripts/_formal_stress_958_docs \
+            scripts/_formal_stress_958_generated_test_fix
 
       - name: Run complete engineering verification on final tree
         shell: bash
