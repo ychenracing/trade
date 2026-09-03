@@ -86,6 +86,8 @@ def _wealth_change(result: dict[str, Any], base: dict[str, Any]) -> float:
 
 def _absolute_hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Evaluate absolute safety and retained accounting-correctness gates."""
+    if not results:
+        raise ValueError("Absolute hard gates require non-empty results")
     random_results = [
         item for item in results if item["scenario_type"] == "random_subset"
     ]
@@ -122,6 +124,39 @@ def _absolute_hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
             "all_worst_date_symbol_side_buckets": all_summary[
                 "date_symbol_side_buckets_worst"
             ],
+        },
+    }
+
+
+def _retained_robustness_hard_gates(
+    results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Evaluate the pre-existing prefix discontinuity protections."""
+    by_id = {str(item["scenario_id"]): item for item in results}
+    prefixes = sorted(
+        (item for item in results if item["scenario_type"] == "prefix"),
+        key=lambda item: int(item["symbol_count"]),
+    )
+    if "prefix-09" not in by_id or "prefix-10" not in by_id or len(prefixes) < 2:
+        raise ValueError("Retained robustness hard gates require prefix results")
+    nine_to_ten = _wealth_change(by_id["prefix-10"], by_id["prefix-09"])
+    adjacent_changes = [
+        _wealth_change(right, left)
+        for left, right in zip(prefixes, prefixes[1:], strict=False)
+    ]
+    worst_adjacent = min(adjacent_changes)
+    checks = {
+        "prefix_9_to_10_wealth_above_minus_10pct": nine_to_ten > -0.10,
+        "worst_adjacent_wealth_at_least_minus_30pct": (
+            worst_adjacent >= -0.30 - 1e-12
+        ),
+    }
+    return {
+        "passed": all(checks.values()),
+        "checks": checks,
+        "observed": {
+            "prefix_9_to_10_wealth_change": nine_to_ten,
+            "worst_adjacent_wealth_change": worst_adjacent,
         },
     }
 

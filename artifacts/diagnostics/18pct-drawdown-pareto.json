@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "decision": "blocked_product_tradeoff",
+  "decision": "c1_c2_c3_rejected_c4_authorized_separately",
   "evaluation_base_revision": "06f488d0ae36b00c06dd83e90eed73177bc7bb4d",
   "retained_reference": "artifacts/validation/candidates/stress-f5625e5b5813a5b58c52d076ad3c38e33d8b3292-rejected.json",
   "root_cause_evidence": "artifacts/diagnostics/18pct-drawdown-root-cause-analysis.json",
@@ -90,7 +90,13 @@
   "conclusion": {
     "non_dominated_candidate": null,
     "selected_mechanism": null,
-    "required_product_decision": "Choose whether to permit a materially longer post-stop cooldown/lower exposure regime with expected wealth loss beyond the current guards, or revise another constraint. The 18% hard gate was not relaxed.",
+    "infeasibility_proven": false,
+    "next_authorized_step": "In a separate production-risk PR, preregister and evaluate one C4 mechanism: ex-ante drawdown-budgeted risk plus underwater re-entry hysteresis. Keep the 18% drawdown gate and current return protections unchanged.",
+    "interpretation": {
+      "C1": "The late fixed 25% cut failed; this does not reject every gradual risk budget.",
+      "C2": "The static gross cap repeatedly trimmed appreciated winners; this does not reject every ex-ante exposure or adverse-loss budget.",
+      "C3": "Ordinary full-risk re-entry caused 6-41 stop cycles. Fixed cooldown cannot restore lifetime-peak drawdown cushion, and daily OHLC cannot establish a formal interpolated intraday fill path."
+    },
     "invariants": {
       "core_alpha_changed": false,
       "symbol_688205_removed": false,

@@ -289,7 +289,7 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 - `data_cache/`：行情数据缓存
 - `benchmark_validation.json`：基准验证输出
 
-`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只由通过全部门禁的 accepted canonical 合同 v2 运行创建；当前没有此类基线，因此这两个路径不存在。旧的完整 983 场景 rejected 工件保持不可变；按 v2 离线复算后仍因全场景最差回撤 `-21.2231%` 超过 18% 而拒绝。`add-one-05-688205` 相对 `prefix-05` 的终值财富变化 `-23.4903%` 作为 robustness diagnostic 保留，不代表账户损失或最大回撤，也不再使用绝对 `-18%` floor。诊断输出不属于正式发布目录，不能进入 canonical 发布逻辑。
+`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只由通过全部门禁的 accepted canonical 合同 v2 运行创建；当前没有此类基线，因此这两个路径不存在。旧的完整 983 场景 rejected 工件保持不可变；按 v2 离线复算后仍因全场景最差回撤 `-21.2231%` 超过 18% 而拒绝。原有 9→10 与最差相邻前缀财富保护继续作为 retained robustness hard gates；`add-one-05-688205` 相对 `prefix-05` 的终值财富变化 `-23.4903%` 只作为 robustness diagnostic 保留，不代表账户损失或最大回撤，也不再使用绝对 `-18%` floor。诊断输出不属于正式发布目录，不能进入 canonical 发布逻辑。
 
 如需持久化某次验证结果，将对应文件放入 `artifacts/validation/` 并更新 `docs/VALIDATION.md`。
 

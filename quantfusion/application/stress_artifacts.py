@@ -280,6 +280,12 @@ def _validate_publish_candidate(
     expected_absolute_gates = stress_metrics._absolute_hard_gates(results)
     if universe_artifact.get("absolute_hard_gates") != expected_absolute_gates:
         raise ValueError("Stress candidate absolute hard gates changed")
+    expected_retained_gates = stress_metrics._retained_robustness_hard_gates(results)
+    if (
+        universe_artifact.get("retained_robustness_hard_gates")
+        != expected_retained_gates
+    ):
+        raise ValueError("Stress candidate retained robustness hard gates changed")
     expected_diagnostics = stress_metrics._robustness_diagnostics(results)
     if universe_artifact.get("robustness_diagnostics") != expected_diagnostics:
         raise ValueError("Stress candidate robustness diagnostics changed")
@@ -335,6 +341,13 @@ def _rejection_reasons(
         for name, passed in universe_artifact["absolute_hard_gates"]["checks"].items()
         if not passed
     ]
+    reasons.extend(
+        {"gate_family": "retained_robustness_hard_gates", "gate": str(name)}
+        for name, passed in universe_artifact["retained_robustness_hard_gates"][
+            "checks"
+        ].items()
+        if not passed
+    )
     promotion = universe_artifact["promotion_gates"]
     permutation = promotion.get("permutation_invariance", {})
     if not permutation.get("invariant"):
@@ -415,7 +428,9 @@ def _publish_formal_artifacts(
         ]
     )
     accepted = (
-        universe_artifact["absolute_hard_gates"]["passed"] and route_accepted
+        universe_artifact["absolute_hard_gates"]["passed"]
+        and universe_artifact["retained_robustness_hard_gates"]["passed"]
+        and route_accepted
     )
     if not accepted:
         candidate = {

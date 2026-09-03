@@ -119,7 +119,7 @@ canonical 仓库路径由 `quantfusion.config.paths` 提供。用户显式传入
 
 普通业务模块超过约一千行或单函数超过约一百二十行时必须审查。`config/engine.py` 是默认值、可按标的单股覆盖字段与配置校验的唯一事实源；`config/profiles.py` 组合这些默认值并唯一拥有行业分类、符号路由和画像构造，engine 不提供同名 wrapper。`application/daily_scan.py` 保留不可交换的事务顺序编排，其快照、信号、工件和状态实现已拆出。
 
-压力执行按四个直接职责分开：`application/stress_scenarios.py` 构造及选择计划，`stress_metrics.py` 计算汇总和门禁，`stress_artifacts.py` 校验检查点与控制发布，`stress.py` 只负责参数、编排和退出码。合同 v2 将所有正式场景 `abs(max_drawdown) <= 0.18` 与账本上限放在 absolute hard gates；add-one 相对终值及其配对回撤、成交、桶和锁变化只属于 robustness diagnostics；已有 incumbent 的相对非回归属于 promotion gates。任何 ID、family、ID 文件或 shard selector 都产生 diagnostic 计划；诊断检查点和输出与正式验证 namespace 隔离，只有未经筛选且与 canonical 默认场景计划精确一致的运行可以调用正式发布边界。没有 v2 incumbent 时，发布还要求显式的一次性首基线动作及独立当前语义参考工件，并对 hard gate、收益保护、排列不变性和 provenance 失败关闭。
+压力执行按四个直接职责分开：`application/stress_scenarios.py` 构造及选择计划，`stress_metrics.py` 计算汇总和门禁，`stress_artifacts.py` 校验检查点与控制发布，`stress.py` 只负责参数、编排和退出码。合同 v2 将所有正式场景 `abs(max_drawdown) <= 0.18` 与账本上限放在 absolute hard gates；9→10 与最差相邻前缀财富保护属于 retained robustness hard gates；add-one 相对终值及其配对回撤、成交、桶和锁变化只属于 robustness diagnostics；已有 incumbent 的相对非回归属于 promotion gates。整体接受要求两个 hard-gate family 同时通过。任何 ID、family、ID 文件或 shard selector 都产生 diagnostic 计划；诊断检查点和输出与正式验证 namespace 隔离，只有未经筛选且与 canonical 默认场景计划精确一致的运行可以调用正式发布边界。没有 v2 incumbent 时，发布还要求显式的一次性首基线动作及独立当前语义参考工件，并对 hard gates、收益保护、排列不变性和 provenance 失败关闭。
 
 `pyright quantfusion` 覆盖整个规范包。由于 pandas 本身未提供随包类型声明，配置不读取第三方库实现来推断类型；协作式 mixin 文件仅关闭无法从单文件推断的组合属性诊断，其余参数、返回值、可选值和导入检查继续生效。
 

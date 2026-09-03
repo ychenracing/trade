@@ -584,6 +584,7 @@ def main() -> int:
         "results": prefixes,
     }
     gates = stress_metrics._absolute_hard_gates(results)
+    retained_gates = stress_metrics._retained_robustness_hard_gates(results)
     robustness = stress_metrics._robustness_diagnostics(results)
     # 2026-08-16 报告 P0-4: 在覆盖正式工件之前加载既有基线，评估强制晋级门。
     incumbent_path = stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json"
@@ -605,6 +606,7 @@ def main() -> int:
         "random_samples_per_size_per_seed": args.random_samples,
         "permutation_samples_per_seed": args.permutation_samples,
         "absolute_hard_gates": gates,
+        "retained_robustness_hard_gates": retained_gates,
         "robustness_diagnostics": robustness,
         "promotion_gates": promotion,
         "initial_baseline_gates": initial_baseline_gates,
@@ -625,6 +627,7 @@ def main() -> int:
         json.dumps(
             {
                 "absolute_hard_gates": gates,
+                "retained_robustness_hard_gates": retained_gates,
                 "robustness_diagnostics": robustness,
                 "promotion_gates": promotion,
                 "initial_baseline_gates": initial_baseline_gates,

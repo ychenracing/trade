@@ -120,9 +120,15 @@
       ]
     }
   ],
+  "candidate_interpretation": {
+    "C1-alert-deleveraging": "Rejects a late and coarse fixed 25% reduction; it does not reject all gradual risk budgets.",
+    "C2-concentrated-gross-cap": "Rejects a static current-market-value gross cap that repeatedly trims appreciated winners; it does not reject all ex-ante exposure or adverse-loss budgets.",
+    "C3-standing-account-stop": "Rejects an interpolated intraday stop followed by ordinary full-risk re-entry; the 6-41 repeated stop cycles do not reject all recovery state machines. Daily OHLC also cannot prove a formal synchronized intraday fill path.",
+    "underwater_cushion": "At 17.5% drawdown from lifetime peak, the 18% floor leaves loss capacity equal to about 0.606% of current equity; fixed cooldown alone neither restores equity nor increases that cushion."
+  },
   "redesign_budget": {
-    "remaining_candidate_slots": 0,
-    "allowed_only_after_first_round": true,
-    "condition": "Use only if C1 and C2 provide causal evidence yet neither satisfies both the 18% safety boundary and return protections."
+    "prior_scope_candidate_slots_remaining": 0,
+    "prior_scope_superseded": true,
+    "new_authorization": "Evaluate one separately preregistered C4 mechanism: ex-ante drawdown-budgeted risk plus underwater re-entry hysteresis."
   }
 }
