@@ -1,0 +1,704 @@
+{
+  "generated_at_utc": "2026-09-03T15:15:19.936692+00:00",
+  "formal_exit_status": 2,
+  "source_revision": "acf4cccf4117edb35e6beb57aa2f9004476c8b93",
+  "candidate_path": "artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json",
+  "candidate_sha256": "63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c",
+  "scenario_count": 958,
+  "unique_scenario_ids": 958,
+  "family_counts": {
+    "add_one": 24,
+    "leave_one_out": 17,
+    "permutation": 150,
+    "prefix": 17,
+    "random_subset": 750
+  },
+  "artifact_status": "current_candidate",
+  "acceptance_status": "rejected",
+  "canonical": false,
+  "absolute_hard_gates": {
+    "passed": false,
+    "checks": {
+      "all_scenarios_max_drawdown_at_most_18pct": false,
+      "random_p90_date_symbol_side_buckets_at_most_160": true,
+      "all_date_symbol_side_buckets_at_most_200": true
+    },
+    "observed": {
+      "worst_scenario_id": "random-20260807-03-004",
+      "all_worst_drawdown": -0.23992777738218005,
+      "random_p90_date_symbol_side_buckets": 85.0,
+      "all_worst_date_symbol_side_buckets": 129.0
+    }
+  },
+  "retained_robustness_hard_gates": {
+    "passed": false,
+    "checks": {
+      "prefix_9_to_10_wealth_above_minus_10pct": true,
+      "worst_adjacent_wealth_at_least_minus_30pct": false
+    },
+    "observed": {
+      "prefix_9_to_10_wealth_change": 2.087108236059743,
+      "worst_adjacent_wealth_change": -0.6913077398252812
+    }
+  },
+  "robustness_diagnostics": {
+    "scenario_count": 24,
+    "wealth_change": {
+      "minimum": -0.7145312965039285,
+      "p05": -0.697151596641257,
+      "p10": -0.5549805825071209,
+      "median": -0.00157395008312744
+    },
+    "worst_case": {
+      "scenario_id": "add-one-13-601869",
+      "base_scenario_id": "prefix-13",
+      "wealth_change": -0.7145312965039285,
+      "drawdown_severity_change": 0.014647133385794403,
+      "trade_record_delta": -141,
+      "date_symbol_side_bucket_delta": -68,
+      "terminal_risk_lock_transition": "false_to_true",
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 7,
+        "re_entry": 33,
+        "risk_reduction": 25,
+        "strategy_exit": 13,
+        "sector_liquidation": 0,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      }
+    },
+    "cases": [
+      {
+        "scenario_id": "add-one-05-002384",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": -0.6977500982431639,
+        "drawdown_severity_change": 0.016907301580270984,
+        "trade_record_delta": -141,
+        "date_symbol_side_bucket_delta": -70,
+        "terminal_risk_lock_transition": "false_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 8,
+          "re_entry": 30,
+          "risk_reduction": 22,
+          "strategy_exit": 15,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-002409",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": -0.0006243962947373172,
+        "drawdown_severity_change": -0.01487506664718699,
+        "trade_record_delta": 19,
+        "date_symbol_side_bucket_delta": 7,
+        "terminal_risk_lock_transition": "false_to_false",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 36,
+          "re_entry": 85,
+          "risk_reduction": 45,
+          "strategy_exit": 43,
+          "sector_liquidation": 26,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-300054",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": -0.23116173737490486,
+        "drawdown_severity_change": -0.0014273824953208725,
+        "trade_record_delta": 9,
+        "date_symbol_side_bucket_delta": 14,
+        "terminal_risk_lock_transition": "false_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 30,
+          "re_entry": 90,
+          "risk_reduction": 51,
+          "strategy_exit": 36,
+          "sector_liquidation": 18,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-300408",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": 0.05773791327321698,
+        "drawdown_severity_change": 4.9262332754929083e-05,
+        "trade_record_delta": 7,
+        "date_symbol_side_bucket_delta": 6,
+        "terminal_risk_lock_transition": "false_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 16,
+          "re_entry": 106,
+          "risk_reduction": 43,
+          "strategy_exit": 40,
+          "sector_liquidation": 18,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-300604",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": -0.01880694843226771,
+        "drawdown_severity_change": 0.008032442646133342,
+        "trade_record_delta": 0,
+        "date_symbol_side_bucket_delta": -4,
+        "terminal_risk_lock_transition": "false_to_false",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 33,
+          "re_entry": 83,
+          "risk_reduction": 38,
+          "strategy_exit": 40,
+          "sector_liquidation": 22,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-601869",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": -0.693760087563785,
+        "drawdown_severity_change": 0.013782882146120501,
+        "trade_record_delta": -134,
+        "date_symbol_side_bucket_delta": -68,
+        "terminal_risk_lock_transition": "false_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 12,
+          "re_entry": 32,
+          "risk_reduction": 21,
+          "strategy_exit": 17,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-688072",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": 0.01973976987418191,
+        "drawdown_severity_change": -0.006184439286362559,
+        "trade_record_delta": 7,
+        "date_symbol_side_bucket_delta": 12,
+        "terminal_risk_lock_transition": "false_to_false",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 17,
+          "re_entry": 103,
+          "risk_reduction": 41,
+          "strategy_exit": 41,
+          "sector_liquidation": 21,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-688082",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": 0.00644892396399066,
+        "drawdown_severity_change": 0.0,
+        "trade_record_delta": 9,
+        "date_symbol_side_bucket_delta": 5,
+        "terminal_risk_lock_transition": "false_to_false",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 16,
+          "re_entry": 106,
+          "risk_reduction": 38,
+          "strategy_exit": 45,
+          "sector_liquidation": 20,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-688120",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": -0.19495981630160353,
+        "drawdown_severity_change": -0.0015367313458228282,
+        "trade_record_delta": 35,
+        "date_symbol_side_bucket_delta": 22,
+        "terminal_risk_lock_transition": "false_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 31,
+          "re_entry": 107,
+          "risk_reduction": 49,
+          "strategy_exit": 45,
+          "sector_liquidation": 19,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-688300",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": 0.018409299639898125,
+        "drawdown_severity_change": 1.2176823982440466e-05,
+        "trade_record_delta": 22,
+        "date_symbol_side_bucket_delta": 20,
+        "terminal_risk_lock_transition": "false_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 27,
+          "re_entry": 104,
+          "risk_reduction": 45,
+          "strategy_exit": 44,
+          "sector_liquidation": 18,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-688361",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": -0.073766396062796,
+        "drawdown_severity_change": -0.008352000294919892,
+        "trade_record_delta": 4,
+        "date_symbol_side_bucket_delta": 7,
+        "terminal_risk_lock_transition": "false_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 16,
+          "re_entry": 102,
+          "risk_reduction": 41,
+          "strategy_exit": 45,
+          "sector_liquidation": 16,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-05-688498",
+        "base_scenario_id": "prefix-05",
+        "wealth_change": 0.022974055614132682,
+        "drawdown_severity_change": -0.010154159242315025,
+        "trade_record_delta": -12,
+        "date_symbol_side_bucket_delta": -2,
+        "terminal_risk_lock_transition": "false_to_false",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 14,
+          "re_entry": 94,
+          "risk_reduction": 36,
+          "strategy_exit": 38,
+          "sector_liquidation": 22,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-09-002384",
+        "base_scenario_id": "prefix-09",
+        "wealth_change": -0.02903147005944484,
+        "drawdown_severity_change": 0.015892433682160756,
+        "trade_record_delta": 6,
+        "date_symbol_side_bucket_delta": 6,
+        "terminal_risk_lock_transition": "true_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 6,
+          "re_entry": 36,
+          "risk_reduction": 26,
+          "strategy_exit": 15,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-09-002409",
+        "base_scenario_id": "prefix-09",
+        "wealth_change": 2.087108236059743,
+        "drawdown_severity_change": -0.010991773215175749,
+        "trade_record_delta": 153,
+        "date_symbol_side_bucket_delta": 71,
+        "terminal_risk_lock_transition": "true_to_false",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 28,
+          "re_entry": 90,
+          "risk_reduction": 48,
+          "strategy_exit": 40,
+          "sector_liquidation": 24,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-09-300408",
+        "base_scenario_id": "prefix-09",
+        "wealth_change": 0.0,
+        "drawdown_severity_change": 0.0,
+        "trade_record_delta": 0,
+        "date_symbol_side_bucket_delta": 0,
+        "terminal_risk_lock_transition": "true_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 7,
+          "re_entry": 34,
+          "risk_reduction": 18,
+          "strategy_exit": 18,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-09-300604",
+        "base_scenario_id": "prefix-09",
+        "wealth_change": -0.0016228225243535288,
+        "drawdown_severity_change": 0.0013213930574750843,
+        "trade_record_delta": 7,
+        "date_symbol_side_bucket_delta": 4,
+        "terminal_risk_lock_transition": "true_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 7,
+          "re_entry": 37,
+          "risk_reduction": 22,
+          "strategy_exit": 18,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-09-601869",
+        "base_scenario_id": "prefix-09",
+        "wealth_change": -0.017322199867444987,
+        "drawdown_severity_change": 0.014104706030103192,
+        "trade_record_delta": 3,
+        "date_symbol_side_bucket_delta": 0,
+        "terminal_risk_lock_transition": "true_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 7,
+          "re_entry": 36,
+          "risk_reduction": 21,
+          "strategy_exit": 16,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-09-688082",
+        "base_scenario_id": "prefix-09",
+        "wealth_change": 0.0,
+        "drawdown_severity_change": 0.0,
+        "trade_record_delta": 0,
+        "date_symbol_side_bucket_delta": 0,
+        "terminal_risk_lock_transition": "true_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 7,
+          "re_entry": 34,
+          "risk_reduction": 18,
+          "strategy_exit": 18,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-09-688120",
+        "base_scenario_id": "prefix-09",
+        "wealth_change": -0.0015250776419013512,
+        "drawdown_severity_change": 0.0012418036956454714,
+        "trade_record_delta": 7,
+        "date_symbol_side_bucket_delta": 2,
+        "terminal_risk_lock_transition": "true_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 7,
+          "re_entry": 38,
+          "risk_reduction": 21,
+          "strategy_exit": 18,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-09-688498",
+        "base_scenario_id": "prefix-09",
+        "wealth_change": -0.0038372828762130995,
+        "drawdown_severity_change": -0.00023221421231714445,
+        "trade_record_delta": 6,
+        "date_symbol_side_bucket_delta": 5,
+        "terminal_risk_lock_transition": "true_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 7,
+          "re_entry": 37,
+          "risk_reduction": 21,
+          "strategy_exit": 18,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-13-300408",
+        "base_scenario_id": "prefix-13",
+        "wealth_change": -0.01249806862821723,
+        "drawdown_severity_change": 0.0,
+        "trade_record_delta": -15,
+        "date_symbol_side_bucket_delta": -10,
+        "terminal_risk_lock_transition": "false_to_false",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 22,
+          "re_entry": 87,
+          "risk_reduction": 38,
+          "strategy_exit": 33,
+          "sector_liquidation": 24,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-13-300604",
+        "base_scenario_id": "prefix-13",
+        "wealth_change": 0.0,
+        "drawdown_severity_change": 0.0,
+        "trade_record_delta": 0,
+        "date_symbol_side_bucket_delta": 0,
+        "terminal_risk_lock_transition": "false_to_false",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 22,
+          "re_entry": 96,
+          "risk_reduction": 43,
+          "strategy_exit": 33,
+          "sector_liquidation": 25,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-13-601869",
+        "base_scenario_id": "prefix-13",
+        "wealth_change": -0.7145312965039285,
+        "drawdown_severity_change": 0.014647133385794403,
+        "trade_record_delta": -141,
+        "date_symbol_side_bucket_delta": -68,
+        "terminal_risk_lock_transition": "false_to_true",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 7,
+          "re_entry": 33,
+          "risk_reduction": 25,
+          "strategy_exit": 13,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "add-one-13-688082",
+        "base_scenario_id": "prefix-13",
+        "wealth_change": 0.0,
+        "drawdown_severity_change": 0.0,
+        "trade_record_delta": 0,
+        "date_symbol_side_bucket_delta": 0,
+        "terminal_risk_lock_transition": "false_to_false",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 22,
+          "re_entry": 96,
+          "risk_reduction": 43,
+          "strategy_exit": 33,
+          "sector_liquidation": 25,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      }
+    ]
+  },
+  "promotion_gates": {
+    "baseline": "incumbent_universe_stress",
+    "permutation_invariance": {
+      "checked_groups": 3,
+      "worst_deviation": 0.0,
+      "invariant": true
+    },
+    "status": "no_incumbent_baseline",
+    "applicable": false,
+    "passed": false,
+    "note": "未找到已接受且使用 trade_records 语义的正式基线；晋级失败关闭。"
+  },
+  "initial_baseline_gates": {
+    "status": "no_transition_reference",
+    "applicable": false,
+    "passed": false,
+    "checks": {},
+    "observed": {}
+  },
+  "provenance": {
+    "stress_contract_version": 2,
+    "source_revision": "acf4cccf4117edb35e6beb57aa2f9004476c8b93",
+    "source_fingerprint": "bc999a432587fe52360608d2779482a245eacb84c148d69f0f2ff02d55605406",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+    "run_signature": "442d85e0b015da900a4501925e6380445d33766cb14886b77f7eb4cf437e2eca",
+    "scenario_count": 958,
+    "start_date": "2025-04-01",
+    "end_date": "2026-07-20",
+    "initial_capital": 2000000.0,
+    "engine": "ProductionReplayEngine",
+    "deployment_policy": "production_daily_replay"
+  },
+  "replay_contract": {
+    "engine": "ProductionReplayEngine",
+    "deployment_policy": "production_daily_replay",
+    "trade_count_semantics": "trade_records",
+    "portfolio_policy": {
+      "allocation_mode": "ensemble",
+      "single_lookbacks": [
+        5,
+        10,
+        20
+      ],
+      "allocation_horizons": [
+        [
+          3,
+          5,
+          10
+        ],
+        [
+          5,
+          10,
+          20
+        ],
+        [
+          5,
+          20,
+          60
+        ]
+      ],
+      "drawdown_alert": 0.18,
+      "confirmed_drawdown": 0.23,
+      "drawdown_confirmations": 2,
+      "emergency_drawdown": 0.27,
+      "adv_lookback": 20,
+      "max_order_adv_ratio": 0.005,
+      "rearm_trading_days": 10,
+      "terminal_drawdown": 0.28,
+      "candidate_lookbacks": [
+        10,
+        20,
+        40
+      ],
+      "candidate_horizons": [
+        [
+          10,
+          20,
+          40
+        ],
+        [
+          10,
+          20,
+          40
+        ],
+        [
+          10,
+          40,
+          80
+        ]
+      ],
+      "concentration_drawdown_adjustment": 0.02,
+      "candidate_reference_percentile": 0.5,
+      "regime_symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "market_regime_enabled": true,
+      "regime_ewi_lookback": 20,
+      "regime_breadth_ma_long": 20,
+      "regime_adx_trend": 25.0,
+      "regime_adx_choppy": 20.0,
+      "regime_hurst_window": 100,
+      "regime_hurst_trend": 0.55,
+      "regime_hurst_choppy": 0.45,
+      "regime_vol_lookback": 60,
+      "regime_vol_extreme_pct": 0.9,
+      "regime_ewi_slope_trend": 0.02,
+      "regime_ewi_slope_choppy": -0.02,
+      "regime_score_trend": 2,
+      "regime_score_choppy": -3,
+      "regime_choppy_confirmations": 2,
+      "regime_trend_confirmations": 3,
+      "regime_recovery_confirmations": 3,
+      "regime_min_state_hold": 3,
+      "regime_transition_scale": 1.0,
+      "regime_trend_to_transition_confirmations": 3,
+      "regime_choppy_exit_ratio": 0.3,
+      "regime_transition_exit_ratio": 0.0
+    },
+    "data_directory": "data/market",
+    "regime_data_directory": "data/regime",
+    "indicator_state": "warm",
+    "seeds": [
+      20260807,
+      20260817,
+      20260827
+    ],
+    "random_samples_per_size_per_seed": 50,
+    "permutation_samples_per_seed": 50
+  },
+  "rejection_reasons": [
+    {
+      "gate_family": "absolute_hard_gates",
+      "gate": "all_scenarios_max_drawdown_at_most_18pct"
+    },
+    {
+      "gate_family": "retained_robustness_hard_gates",
+      "gate": "worst_adjacent_wealth_at_least_minus_30pct"
+    },
+    {
+      "gate_family": "initial_baseline",
+      "gate": "explicit_establish_initial_baseline_action"
+    }
+  ],
+  "worst_all": {
+    "scenario_id": "random-20260807-03-004",
+    "max_drawdown": -0.23992777738218005,
+    "total_return": 2.3213578006188764
+  },
+  "worst_random_subset": {
+    "scenario_id": "random-20260807-03-004",
+    "max_drawdown": -0.23992777738218005,
+    "total_return": 2.3213578006188764
+  },
+  "worst_add_one_drawdown": {
+    "scenario_id": "add-one-09-002384",
+    "max_drawdown": -0.20163638433294848,
+    "total_return": 2.7949096725313756
+  },
+  "prefix_17": {
+    "scenario_id": "prefix-17",
+    "total_return": 2.8620291194196263,
+    "max_drawdown": -0.20499295904714276,
+    "sharpe": 2.63032853924695,
+    "calmar": 9.451179571829115,
+    "total_trades": 96
+  },
+  "historical_candidate_hashes_verified_unchanged": {
+    "artifacts/validation/candidates/stress-f5625e5b5813a5b58c52d076ad3c38e33d8b3292-rejected.json": "adda276bea8a11b76fa6881e4e7a9770bf8cfb79bb93a397aa5aa405327358c2"
+  }
+}

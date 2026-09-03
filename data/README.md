@@ -6,7 +6,7 @@
 
 ## 目录内容
 
-- `market/`：22 只生产股票及寒武纪（`688256`）专项验证样本的前复权日线、`manifest.json` 与 `SHA256SUMS`；
+- `market/`：当前 17 只交易股票所需的冻结前复权日线，以及不再属于默认交易池但仍供历史研究审计的样本、`manifest.json` 与 `SHA256SUMS`；
 - `regime/`：16 只验证股票的历史前复权日线、两个非交易指数、`MANIFEST.json` 与 `SHA256SUMS`；
 - `regime/000300.csv` 和 `regime/000682.csv` 只提供路由证据，不会进入股票交易池。
 

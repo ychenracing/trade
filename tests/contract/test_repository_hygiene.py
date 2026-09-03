@@ -66,7 +66,10 @@ def _markdown_prose_lines(content: str) -> list[str]:
         if stripped.startswith("```"):
             in_fence = not in_fence
             continue
-        if not in_fence and stripped:
+        is_html_comment = (
+            stripped.startswith("<!--") and stripped.endswith("-->")
+        )
+        if not in_fence and stripped and not is_html_comment:
             lines.append(stripped)
     return lines
 
@@ -94,6 +97,14 @@ class MarkdownConsistencyTests(unittest.TestCase):
     def test_only_current_markdown_documents_are_kept(self) -> None:
         found = {path for path in _tracked_paths() if path.suffix == ".md"}
         self.assertEqual(found, EXPECTED_MARKDOWN)
+
+    def test_markdown_metadata_comments_are_not_prose(self) -> None:
+        lines = _markdown_prose_lines(
+            "<!-- CURRENT_FORMAL_STRESS_PLAN:START -->\n"
+            "当前正式压力计划。\n"
+            "<!-- CURRENT_FORMAL_STRESS_PLAN:END -->\n"
+        )
+        self.assertEqual(lines, ["当前正式压力计划。"])
 
     def test_markdown_prose_is_chinese(self) -> None:
         for relative in CHINESE_MARKDOWN:
