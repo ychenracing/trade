@@ -10,10 +10,12 @@ import json
 import math
 from pathlib import Path
 import re
+import subprocess
 import tokenize
 from typing import Any
 
-from quantfusion.application import stress_artifacts, stress_scenarios
+from quantfusion import config as qf
+from quantfusion.application import stress_artifacts, stress_metrics, stress_scenarios
 from quantfusion.config import daily
 from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
 from quantfusion.config.universe import SYMBOL_NAMES
@@ -46,6 +48,7 @@ EXPECTED_FAMILIES = {
     "random_subset": 750,
     "permutation": 150,
 }
+EXPECTED_SOURCE_REVISION = "acf4cccf4117edb35e6beb57aa2f9004476c8b93"
 FAMILY_LABELS = {
     "prefix": "prefix",
     "leave_one_out": "leave-one-out",
@@ -57,6 +60,10 @@ CURRENT_PLAN_START = "<!-- CURRENT_FORMAL_STRESS_PLAN:START -->"
 CURRENT_PLAN_END = "<!-- CURRENT_FORMAL_STRESS_PLAN:END -->"
 CURRENT_RESULT_START = "<!-- CURRENT_FORMAL_STRESS_RESULT:START -->"
 CURRENT_RESULT_END = "<!-- CURRENT_FORMAL_STRESS_RESULT:END -->"
+PLAN_META = re.compile(
+    r"^<!-- CURRENT_FORMAL_STRESS_PLAN_META: (\{.*\}) -->$",
+    re.MULTILINE,
+)
 CURRENT_DOCUMENTS = (
     Path("README.md"),
     Path("docs/VALIDATION.md"),
@@ -91,16 +98,8 @@ TEMPORARY_GLOBS = (
     "artifacts/validation/formal_stress_958_*checkpoint*.md",
     "scripts/_formal_stress_958*",
 )
-HISTORICAL_983 = re.compile(
-    r"(?:历史|historical)\s*(?:的\s*)?(?:22\s*股|22-symbol).*?983"
-    r"|(?:22\s*股|22-symbol).*?983.*?(?:历史|historical)",
-    re.IGNORECASE | re.DOTALL,
-)
-HISTORICAL_22 = re.compile(
-    r"(?:历史|historical)\s*(?:的\s*)?(?:22\s*股|22-symbol)"
-    r"|(?:22\s*股|22-symbol).*?(?:历史|historical)",
-    re.IGNORECASE,
-)
+HISTORICAL_TOKEN = re.compile(r"历史|historical", re.IGNORECASE)
+SYMBOL_22_TOKEN = re.compile(r"22\s*股|22-symbol", re.IGNORECASE)
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
 
@@ -115,14 +114,20 @@ def _managed_block(text: str, start: str, end: str, *, path: Path) -> str:
 
 def _assert_983_is_historical(text: str, *, path: Path) -> None:
     """Require explicit historical 22-symbol context for every old-plan mention."""
-    heading = ""
-    for raw in text.splitlines():
-        line = raw.strip()
-        if line.startswith("#"):
-            heading = line
-        if "983" not in line:
+    for raw in re.split(r"[。！？.!?；;，,\n]+", text):
+        sentence = raw.strip()
+        if "983" not in sentence:
             continue
-        assert HISTORICAL_983.search(f"{heading}\n{line}"), (path, line)
+        assert HISTORICAL_TOKEN.search(sentence), (path, sentence)
+        assert SYMBOL_22_TOKEN.search(sentence), (path, sentence)
+
+
+def _assert_22_symbol_is_historical(text: str, *, path: Path) -> None:
+    for raw in re.split(r"[。！？.!?；;，,\n]+", text):
+        sentence = raw.strip()
+        if not SYMBOL_22_TOKEN.search(sentence):
+            continue
+        assert HISTORICAL_TOKEN.search(sentence), (path, sentence)
 
 
 def _python_comments_and_docstrings(path: Path) -> list[str]:
@@ -157,6 +162,28 @@ def _current_scenarios() -> list[dict[str, Any]]:
         permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
         seeds=stress_scenarios.DEFAULT_SEEDS,
     )
+
+
+def _plan_metadata(plan_block: str, *, path: Path) -> dict[str, Any]:
+    matches = PLAN_META.findall(plan_block)
+    assert len(matches) == 1, path
+    payload = json.loads(matches[0])
+    assert isinstance(payload, dict), path
+    return payload
+
+
+def _tracked_python_files() -> list[Path]:
+    completed = subprocess.run(
+        ["git", "ls-files", "-z", "*.py"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+    return [
+        ROOT / raw.decode()
+        for raw in completed.stdout.split(b"\0")
+        if raw
+    ]
 
 
 def _expected_result_text(summary: dict[str, Any]) -> str:
@@ -211,27 +238,26 @@ def test_current_documentation_separates_958_from_historical_983() -> None:
         )
         assert "958" in plan_block, relative
         assert "17 股" in plan_block or "17股" in plan_block, relative
+        assert _plan_metadata(plan_block, path=relative) == {
+            "symbol_count": 17,
+            "scenario_count": 958,
+            "family_counts": EXPECTED_FAMILIES,
+        }
         if relative in DETAILED_PLAN_DOCUMENTS:
-            for family, count in EXPECTED_FAMILIES.items():
-                label = re.escape(FAMILY_LABELS[family])
-                assert re.search(
-                    rf"{count}\s*个\s+(?:deterministic\s+)?{label}",
-                    plan_block,
-                ), (relative, family, count)
-        for raw in plan_block.splitlines():
-            if re.search(r"(?:22\s*股|22-symbol)", raw, re.IGNORECASE):
-                assert HISTORICAL_22.search(raw), (relative, raw)
+            for family in EXPECTED_FAMILIES:
+                assert FAMILY_LABELS[family] in plan_block, (relative, family)
         assert "983" not in result_block, relative
         _assert_983_is_historical(text, path=relative)
+        _assert_22_symbol_is_historical(text, path=relative)
 
 
 def test_all_python_comments_and_docstrings_mark_983_as_historical_22() -> None:
-    for path in ROOT.rglob("*.py"):
+    for path in _tracked_python_files():
         for text in _python_comments_and_docstrings(path):
             if "983" in text:
-                assert HISTORICAL_983.search(text), (
-                    path.relative_to(ROOT),
+                _assert_983_is_historical(
                     text,
+                    path=path.relative_to(ROOT),
                 )
 
 
@@ -247,7 +273,7 @@ def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
     assert summary["formal_exit_status"] in {0, 2}
     assert summary["acceptance_status"] in {"accepted", "rejected"}
     assert isinstance(summary["canonical"], bool)
-    assert HEX_40.fullmatch(str(summary["source_revision"]))
+    assert summary["source_revision"] == EXPECTED_SOURCE_REVISION
     assert HEX_64.fullmatch(str(summary["candidate_sha256"]))
 
     if summary["acceptance_status"] == "rejected":
@@ -305,6 +331,14 @@ def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
     assert candidate["engine"] == "ProductionReplayEngine"
     assert candidate["deployment_policy"] == "production_daily_replay"
     assert candidate["trade_count_semantics"] == "trade_records"
+    assert candidate["portfolio_policy"] == qf.PortfolioPolicy().as_dict()
+    assert candidate["data_directory"] == stress_artifacts._artifact_path(
+        MARKET_DATA_DIR.resolve()
+    )
+    assert candidate["regime_data_directory"] == stress_artifacts._artifact_path(
+        REGIME_DATA_DIR.resolve()
+    )
+    assert candidate["indicator_state"] == "warm"
     assert candidate["seeds"] == list(stress_scenarios.DEFAULT_SEEDS)
     assert (
         candidate["random_samples_per_size_per_seed"]
@@ -326,12 +360,40 @@ def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
     assert Counter(str(item["scenario_type"]) for item in results) == Counter(
         EXPECTED_FAMILIES
     )
+    validated = stress_artifacts._validated_checkpoint_results(
+        {"results": results},
+        scenarios,
+    )
+    assert set(validated) == result_ids
     for item in results:
         assert item["deployment_policy"] == "production_daily_replay"
         for key in ("total_return", "max_drawdown", "sharpe", "calmar"):
             value = item[key]
             assert type(value) in (int, float), (item["scenario_id"], key)
             assert math.isfinite(value), (item["scenario_id"], key)
+
+    assert candidate["absolute_hard_gates"] == (
+        stress_metrics._absolute_hard_gates(results)
+    )
+    assert candidate["retained_robustness_hard_gates"] == (
+        stress_metrics._retained_robustness_hard_gates(results)
+    )
+    assert candidate["robustness_diagnostics"] == (
+        stress_metrics._robustness_diagnostics(results)
+    )
+    incumbent = stress_artifacts._load_incumbent(
+        stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json"
+    )
+    assert incumbent is None
+    assert candidate["promotion_gates"] == stress_metrics._promotion_gates(
+        results,
+        incumbent,
+    )
+    assert candidate["initial_baseline_gates"] == (
+        stress_metrics._initial_baseline_gates(results, None)
+    )
+    if summary["acceptance_status"] == "accepted":
+        assert summary["artifact_status"] == "current"
 
     expected_result = _expected_result_text(summary)
     for relative in CURRENT_DOCUMENTS:
