@@ -108,6 +108,11 @@ CURRENT_TOKEN = re.compile(
     r"当前|现行|(?<![A-Za-z])(?:current|active)(?![A-Za-z])",
     re.IGNORECASE,
 )
+HISTORICAL_22_PAIR = re.compile(
+    r"(?:(?:历史|historical)\s*(?:22\s*股|22-symbol))|"
+    r"(?:(?:22\s*股|22-symbol)\s*(?:历史|historical))",
+    re.IGNORECASE,
+)
 SCENARIO_983_TOKEN = re.compile(r"(?<![0-9A-Za-z])983(?![0-9A-Za-z])")
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
@@ -210,48 +215,107 @@ def _plan_metadata(plan_block: str, *, path: Path) -> dict[str, Any]:
     return payload
 
 
+def _current_claim_values(text: str, pattern: re.Pattern[str]) -> set[int]:
+    values: set[int] = set()
+    normalized = _normalize_historical_22(text)
+    for line in normalized.splitlines():
+        historical_pairs = list(HISTORICAL_22_PAIR.finditer(line))
+        for match in pattern.finditer(line):
+            start, end = match.span(1)
+            if any(
+                pair.start() <= start and end <= pair.end()
+                for pair in historical_pairs
+            ):
+                continue
+            historical = list(HISTORICAL_TOKEN.finditer(line, 0, start))
+            current = list(CURRENT_TOKEN.finditer(line, 0, start))
+            last_historical = historical[-1].start() if historical else -1
+            last_current = current[-1].start() if current else -1
+            if last_historical > last_current:
+                continue
+            values.add(int(match.group(1)))
+    return values
+
+
 def _assert_visible_plan_counts(plan_block: str, *, path: Path) -> None:
     assert CURRENT_PLAN_COUNT_LINE in plan_block, path
     visible = PLAN_META.sub("", plan_block)
     before, rest = visible.split(CURRENT_RESULT_START, 1)
     _, after = rest.split(CURRENT_RESULT_END, 1)
     visible = before + after
-    current_clauses = [
-        clause
-        for clause in re.split(
-            r"[。！？.!?；;：:，,\n]+|\b(?:and|but|while)\b|"
-            r"(?:并且|而且|但是|但|同时|以及|与|和)",
-            visible,
-            flags=re.IGNORECASE,
-        )
-        if not (
-            HISTORICAL_TOKEN.search(clause)
-            and SYMBOL_22_TOKEN.search(clause)
-        )
-    ]
-    current_text = "\n".join(current_clauses)
     for family, expected in EXPECTED_FAMILIES.items():
         label = re.escape(FAMILY_LABELS[family])
-        counts = {
-            int(match)
-            for match in re.findall(
-                rf"(\d+)\s*个\s+(?:deterministic\s+)?{label}",
-                current_text,
-            )
-        }
+        counts = _current_claim_values(
+            visible,
+            re.compile(rf"(\d+)\s*个\s+(?:deterministic\s+)?{label}"),
+        )
         counts.update(
-            int(match)
-            for match in re.findall(rf"{label}\s*=\s*(\d+)", current_text)
+            _current_claim_values(
+                visible,
+                re.compile(rf"{label}\s*=\s*(\d+)"),
+            )
         )
         assert counts == {expected}, (path, family, counts)
-    symbol_counts = {
-        int(value) for value in re.findall(r"(\d+)\s*股", current_text)
-    }
-    scenario_counts = {
-        int(value) for value in re.findall(r"(\d+)\s*(?:个\s*)?场景", current_text)
-    }
+    symbol_counts = _current_claim_values(visible, re.compile(r"(\d+)\s*股"))
+    scenario_counts = _current_claim_values(
+        visible,
+        re.compile(r"(\d+)\s*(?:个\s*)?场景"),
+    )
     assert symbol_counts == {17}, (path, symbol_counts)
     assert scenario_counts == {958}, (path, scenario_counts)
+
+
+def _assert_summary_result_slices(
+    summary: dict[str, Any],
+    results: list[dict[str, Any]],
+) -> None:
+    by_id = {str(item["scenario_id"]): item for item in results}
+    worst_fields = {
+        "worst_all": None,
+        "worst_random_subset": "random_subset",
+        "worst_add_one_drawdown": "add_one",
+    }
+    worst_keys = ("scenario_id", "max_drawdown", "total_return")
+    for field, scenario_type in worst_fields.items():
+        record = summary[field]
+        assert isinstance(record, dict), field
+        assert set(record) == set(worst_keys), field
+        scenario_id = str(record["scenario_id"])
+        assert scenario_id in by_id, (field, scenario_id)
+        selected = by_id[scenario_id]
+        eligible = results
+        if scenario_type is not None:
+            assert selected["scenario_type"] == scenario_type, field
+            eligible = [
+                item for item in results if item["scenario_type"] == scenario_type
+            ]
+        assert record == {key: selected[key] for key in worst_keys}, field
+        assert record["max_drawdown"] == min(
+            item["max_drawdown"] for item in eligible
+        ), field
+        for key in ("max_drawdown", "total_return"):
+            value = record[key]
+            assert type(value) in (int, float), (field, key)
+            assert math.isfinite(value), (field, key)
+
+    prefix_keys = (
+        "scenario_id",
+        "total_return",
+        "max_drawdown",
+        "sharpe",
+        "calmar",
+        "total_trades",
+    )
+    prefix = summary["prefix_17"]
+    assert isinstance(prefix, dict)
+    assert set(prefix) == set(prefix_keys)
+    selected_prefix = by_id["prefix-17"]
+    assert prefix == {key: selected_prefix[key] for key in prefix_keys}
+    assert type(prefix["total_trades"]) is int
+    for key in ("total_return", "max_drawdown", "sharpe", "calmar"):
+        value = prefix[key]
+        assert type(value) in (int, float), ("prefix_17", key)
+        assert math.isfinite(value), ("prefix_17", key)
 
 
 def _tracked_python_files() -> list[Path]:
@@ -454,6 +518,7 @@ def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
             value = item[key]
             assert type(value) in (int, float), (item["scenario_id"], key)
             assert math.isfinite(value), (item["scenario_id"], key)
+    _assert_summary_result_slices(summary, results)
 
     assert candidate["absolute_hard_gates"] == (
         stress_metrics._absolute_hard_gates(results)
