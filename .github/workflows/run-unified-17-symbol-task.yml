@@ -30,7 +30,7 @@ jobs:
         run: python -m scripts._patch_unified_sampling
       - name: Apply source, mapping, and deterministic contract changes
         run: python -m scripts._apply_unified_universe_task transform
-      - name: Synchronize the five-symbol strategy reference core
+      - name: Separate tradable cores from signal-only regime evidence
         run: python -m scripts._patch_unified_reference_core
       - name: Migrate the remaining intentional test expectations
         run: python -m scripts._patch_unified_test_expectations
@@ -55,6 +55,8 @@ jobs:
             quantfusion/execution/priorities.py \
             quantfusion/application/backtest_cli.py \
             quantfusion/application/stress_scenarios.py \
+            quantfusion/engine/ensemble_allocation.py \
+            quantfusion/engine/ensemble_orchestration.py \
             scripts/download_eastmoney_qfq.py \
             tests/unit/test_unified_universe.py \
             tests/unit/test_stress_sampling_capacity.py \
