@@ -707,7 +707,7 @@ class StressScenarioTests(unittest.TestCase):
                     ("2025-01-01", "normal", 17.5, 0.0, 0.0, 0.0),
                     ("2025-01-02", "normal", 20.0, 10.0, 0.5, 0.0),
                     ("2025-01-03", "constrained", 8.0, 12.0, 1.5, 0.25),
-                    ("2025-01-06", "constrained", 0.0, 5.0, float("inf"), 1.0),
+                    ("2025-01-06", "constrained", 0.0, 5.0, None, 1.0),
                     ("2025-01-07", "recovering", 20.0, 0.0, 0.0, 0.0),
                 )
             ],
@@ -754,6 +754,7 @@ class StressScenarioTests(unittest.TestCase):
             telemetry["drawdown_budget_summary"]["state_transition_count"], 2
         )
         self.assertNotIn("equity_curve", telemetry)
+        json.dumps(telemetry, allow_nan=False)
 
     def test_selects_add_one_family_in_formal_plan_order(self) -> None:
         scenarios = stress_scenarios._multi_seed_scenarios(

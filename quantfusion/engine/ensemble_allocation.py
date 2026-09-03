@@ -464,7 +464,11 @@ class EnsembleAllocationMixin:
                 "available_budget": snapshot.available_budget,
                 "projected_adverse_loss": snapshot.projected_loss,
                 "risk_driver_loss": snapshot.risk_driver_loss,
-                "projected_loss_ratio": snapshot.projected_loss_ratio,
+                "projected_loss_ratio": (
+                    snapshot.projected_loss_ratio
+                    if math.isfinite(snapshot.projected_loss_ratio)
+                    else None
+                ),
                 "group_adverse_losses": dict(snapshot.group_losses),
                 "allow_new_risk": decision.allow_new_risk,
                 "new_risk_capacity": decision.new_risk_capacity,

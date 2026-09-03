@@ -344,6 +344,25 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
         self.assertGreaterEqual(signal.target_shares, 100)
         self.assertEqual(events[-1]["event"], "drawdown_budget_state")
 
+    def test_zero_budget_ratio_is_json_safe_in_evidence_curve(self) -> None:
+        engine = BacktestEngine()
+        position = Position(
+            "300308", "turtle_breakout", 100, 100.0, "2025-12-01",
+            stop_loss=80.0,
+        )
+        state = self._state(
+            positions={"300308": {"turtle_breakout": position}}
+        )
+
+        engine._apply_drawdown_budget(
+            [state], pd.Timestamp("2026-01-05"), 0, 82_000.0, 100_000.0,
+            warning_active=False, events=[],
+        )
+
+        self.assertIsNone(
+            engine._drawdown_budget_curve[-1]["projected_loss_ratio"]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
