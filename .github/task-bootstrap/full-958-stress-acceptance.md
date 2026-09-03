@@ -1,0 +1,27 @@
+# Full 958-Scenario Formal Stress Acceptance
+
+- Goal: run the complete current 17-symbol / 958-scenario production-replay stress plan exactly once, publish the truthful formal result, and align code comments and documentation with the current contract and observed outcome.
+- Acceptance criteria:
+  - current formal plan is proven to contain exactly 958 unique scenario IDs;
+  - every scenario is executed with `ProductionReplayEngine` against the frozen repository data and current fixed seeds;
+  - a merged full-plan checkpoint is validated by the production stress orchestrator before gates and publication;
+  - accepted/rejected status, canonical flag, gate results, provenance, fingerprints, signatures, and key metrics are preserved without falsification;
+  - README, validation documentation, code comments, tests, and workflow descriptions consistently distinguish the current 958 plan from historical 983-scenario evidence;
+  - affected tests, full repository tests, static checks, and CI pass, except that a truthful rejected product artifact is not to be rewritten as accepted.
+- Scope: stress execution orchestration, generated stress/checkpoint artifacts needed for audit, narrowly related tests/comments/docs, and temporary branch-only workflow machinery removed before final readiness.
+- Immutable constraints:
+  - do not tune strategy economics, thresholds, scenario definitions, seeds, frozen data, or metrics merely to make acceptance green;
+  - do not relabel rejected evidence as canonical;
+  - do not overwrite historical 983-scenario evidence;
+  - do not push directly to `main`, rewrite shared history, force-push, reset, clean, rebase, or discard unrelated work.
+- Verified baseline SHA: PENDING_BOOTSTRAP_RESOLUTION
+- Risks:
+  - full replay is compute-intensive and individual runners can fail transiently;
+  - the current product gates may truthfully reject the candidate;
+  - source-revision provenance must refer to a commit containing the final Python source used for all 958 executions;
+  - current and historical scenario counts must not be conflated in documentation.
+- UNKNOWN before execution:
+  - whether the 958 candidate passes all absolute, retained-robustness, initial-baseline, and promotion requirements;
+  - whether an accepted current-contract incumbent exists;
+  - exact runtime and shard retry requirements.
+- Next step: resolve and persist the exact branch-point SHA, verify remote head, then inspect the stress publication contract and launch a deterministic parallel full-plan run.
