@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from scripts.download_eastmoney_qfq import DEFAULT_SYMBOLS as DOWNLOAD_SYMBOLS
 from quantfusion.application.backtest_cli import DEFAULT_SYMBOLS as BACKTEST_DEFAULTS
@@ -14,10 +15,12 @@ from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
 from quantfusion.config.paths import MARKET_DATA_DIR
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.universe import (
+    ESTABLISHED_BASE_CORE,
     ESTABLISHED_EXPANSION_CORE,
     SYMBOL_NAMES,
     VALIDATION_UNIVERSES,
 )
+from quantfusion.engine.universe import BacktestEngine
 from quantfusion.execution.priorities import EXECUTION_PRIORITY
 
 
@@ -40,6 +43,13 @@ EXPECTED_SYMBOLS = (
     "601869",
     "300408",
 )
+FIXED_SIGNAL_REFERENCE = (
+    "300308",
+    "300502",
+    "300394",
+    "688008",
+    "603986",
+)
 
 
 def test_current_entry_points_share_one_ordered_universe() -> None:
@@ -60,8 +70,22 @@ def test_validation_universes_are_prefixes_of_the_current_universe() -> None:
         "13_symbols": EXPECTED_SYMBOLS[:13],
         "17_symbols": EXPECTED_SYMBOLS,
     }
+    assert ESTABLISHED_BASE_CORE == frozenset(EXPECTED_SYMBOLS[:5])
     assert ESTABLISHED_EXPANSION_CORE == frozenset(EXPECTED_SYMBOLS[:13])
-    assert PortfolioPolicy().regime_symbols == EXPECTED_SYMBOLS[:5]
+
+
+def test_signal_reference_is_loaded_beside_but_not_inside_the_trade_pool() -> None:
+    policy = PortfolioPolicy()
+    assert policy.regime_symbols == FIXED_SIGNAL_REFERENCE
+    assert "688008" not in SYMBOL_NAMES
+    states = [
+        SimpleNamespace(
+            data_map={code: object() for code in (*EXPECTED_SYMBOLS, *FIXED_SIGNAL_REFERENCE)}
+        )
+    ]
+    assert BacktestEngine._reference_evidence_complete(
+        states, policy.regime_symbols
+    )
 
 
 def test_every_current_symbol_has_strict_routing_and_risk_metadata() -> None:
