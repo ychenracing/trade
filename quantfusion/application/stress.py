@@ -18,10 +18,19 @@ from typing import Any
 from quantfusion.application import engine_api as qf
 from quantfusion.application import regime_api as ra
 from quantfusion.application import stress_artifacts, stress_metrics, stress_scenarios
+from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
 from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT, REGIME_DATA_DIR
 from quantfusion.config.universe import SYMBOL_NAMES as NAMES
 
 DATA_DIR = MARKET_DATA_DIR
+
+_DRAWDOWN_RISK_EVENTS = {
+    "portfolio_drawdown_alert_on",
+    "confirmed_cycle_drawdown_lock",
+    "emergency_drawdown_lock",
+    "terminal_drawdown_lock",
+    "persistent_portfolio_risk_lock",
+}
 
 
 def _reason_category(trade: qf.TradeRecord) -> str:
@@ -56,11 +65,166 @@ def _reason_category(trade: qf.TradeRecord) -> str:
     return "strategy_exit"
 
 
+def _date_text(value: object) -> str:
+    return value.strftime("%Y-%m-%d") if hasattr(value, "strftime") else str(value)
+
+
+def _held_symbols_at(trades: list[Any], date: str) -> list[str]:
+    shares: dict[str, int] = {}
+    for trade in trades:
+        if str(trade.date) > date:
+            continue
+        signed = int(trade.shares) if trade.direction == "buy" else -int(trade.shares)
+        shares[str(trade.symbol)] = shares.get(str(trade.symbol), 0) + signed
+    return sorted(symbol for symbol, quantity in shares.items() if quantity > 0)
+
+
+def _diagnostic_telemetry(result: dict[str, Any]) -> dict[str, Any]:
+    """Reduce replay paths to compact causal evidence for diagnostic runs."""
+    equity = result["equity_curve"]
+    drawdown = result["drawdown_series"]
+    trough_index = drawdown.idxmin()
+    peak_index = equity.loc[:trough_index, "assets"].idxmax()
+    peak_assets = float(equity.at[peak_index, "assets"])
+    post_trough = equity.loc[trough_index:]
+    recovered = post_trough[post_trough["assets"] >= peak_assets]
+    recovery_date = _date_text(recovered.index[0]) if not recovered.empty else None
+    trades = list(result.get("trades", []))
+    risk_events = [
+        event
+        for event in result.get("risk_events", [])
+        if event.get("event") in _DRAWDOWN_RISK_EVENTS
+        or "rearm" in str(event.get("event", ""))
+    ]
+    first_trigger = next(
+        (
+            event
+            for event in risk_events
+            if event.get("event") in _DRAWDOWN_RISK_EVENTS
+        ),
+        None,
+    )
+    trigger_date = str(first_trigger["date"]) if first_trigger is not None else None
+    reduction = next(
+        (
+            trade
+            for trade in trades
+            if trigger_date is not None
+            and str(trade.date) >= trigger_date
+            and trade.direction == "sell"
+            and _reason_category(trade) in {"risk_reduction", "sector_liquidation"}
+        ),
+        None,
+    )
+    reduction_date = str(reduction.date) if reduction is not None else None
+
+    symbol_counts = {
+        str(item["date"]): int(item["symbol_count"])
+        for item in result.get("portfolio_symbol_count_curve", [])
+    }
+
+    def snapshot(index: Any) -> dict[str, Any]:
+        date = _date_text(index)
+        row = equity.loc[index]
+        assets = float(row["assets"])
+        held = _held_symbols_at(trades, date)
+        group_counts: dict[str, int] = {}
+        for symbol in held:
+            group = str(SYMBOL_SUB_INDUSTRY.get(symbol, "unmapped"))
+            group_counts[group] = group_counts.get(group, 0) + 1
+        return {
+            "date": date,
+            "assets": assets,
+            "cash_ratio": float(row["cash"]) / assets if assets else 0.0,
+            "exposure_ratio": float(row["position_value"]) / assets if assets else 0.0,
+            "held_symbol_count": symbol_counts.get(date, len(held)),
+            "largest_group_symbol_share": (
+                max(group_counts.values()) / len(held) if held else 0.0
+            ),
+        }
+
+    trigger_snapshot = (
+        snapshot(equity.index[equity.index.get_indexer([trigger_date], method="pad")[0]])
+        if trigger_date is not None
+        else None
+    )
+    warning_buys = [
+        trade
+        for trade in trades
+        if trigger_date is not None
+        and str(trade.date) >= trigger_date
+        and (reduction_date is None or str(trade.date) < reduction_date)
+        and trade.direction == "buy"
+    ]
+    max_drawdown = abs(float(drawdown.min()))
+    trigger_drawdown = (
+        float(first_trigger.get("drawdown", first_trigger.get("threshold", 0.0)))
+        if first_trigger is not None
+        else None
+    )
+    return {
+        "peak": snapshot(peak_index),
+        "first_risk_trigger": (
+            {
+                key: first_trigger[key]
+                for key in ("date", "event", "sleeve", "drawdown", "threshold")
+                if key in first_trigger
+            }
+            if first_trigger is not None
+            else None
+        ),
+        "trigger_snapshot": trigger_snapshot,
+        "trough": snapshot(trough_index),
+        "recovery_date": recovery_date,
+        "first_executable_reduction": (
+            {
+                "date": str(reduction.date),
+                "symbol": str(reduction.symbol),
+                "reason_category": _reason_category(reduction),
+            }
+            if reduction is not None
+            else None
+        ),
+        "execution_overshoot": (
+            max_drawdown - trigger_drawdown if trigger_drawdown is not None else None
+        ),
+        "warning_period_buy_count": len(warning_buys),
+        "warning_period_add_count": sum(
+            _reason_category(trade) == "add" for trade in warning_buys
+        ),
+        "risk_milestones": [
+            {
+                key: event[key]
+                for key in ("date", "event", "sleeve", "drawdown", "threshold")
+                if key in event
+            }
+            for event in risk_events
+        ],
+        "concentration": {
+            "max_concurrent_symbols": int(result.get("max_concurrent_symbols", 0)),
+            "portfolio_max_positions": int(result.get("portfolio_max_positions", 0)),
+        },
+        "locks": {
+            "cycle_lock_count": int(result.get("cycle_lock_count", 0)),
+            "portfolio_cycle_lock_count": int(
+                result.get("portfolio_cycle_lock_count", 0)
+            ),
+            "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
+            "persistent_risk_lock": bool(result.get("persistent_risk_lock", False)),
+            "all_sleeves_locked": bool(result.get("all_sleeves_locked", False)),
+            "rearm_event_count": sum(
+                "rearm" in str(event.get("event", "")) for event in risk_events
+            ),
+        },
+    }
+
+
 def _metrics(
     codes: tuple[str, ...],
     *,
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
+    include_diagnostics: bool = False,
 ) -> dict[str, Any]:
     with contextlib.redirect_stdout(io.StringIO()):
         result = ra.ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL).run(
@@ -74,7 +238,7 @@ def _metrics(
     attribution = {category: 0 for category in stress_metrics.ATTRIBUTION_CATEGORIES}
     for trade in result["trades"]:
         attribution[_reason_category(trade)] += 1
-    return {
+    metrics = {
         "symbol_count": len(codes),
         "symbols": list(codes),
         "total_return": float(result["total_return"]),
@@ -89,6 +253,9 @@ def _metrics(
         "terminal_risk_lock": bool(result["terminal_risk_lock"]),
         "deployment_policy": str(result["deployment_policy"]),
     }
+    if include_diagnostics:
+        metrics["diagnostic_telemetry"] = _diagnostic_telemetry(result)
+    return metrics
 
 
 def _run_scenario(
@@ -96,11 +263,17 @@ def _run_scenario(
     *,
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
+    include_diagnostics: bool = False,
 ) -> dict[str, Any]:
     codes = tuple(str(code) for code in scenario["symbols"])
     return {
         **scenario,
-        **_metrics(codes, data_dir=data_dir, regime_data_dir=regime_data_dir),
+        **_metrics(
+            codes,
+            data_dir=data_dir,
+            regime_data_dir=regime_data_dir,
+            include_diagnostics=include_diagnostics,
+        ),
     }
 
 
@@ -127,6 +300,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=str(PROJECT_ROOT / "artifacts" / "checkpoints" / "stress.json"),
     )
     parser.add_argument("--scenario-id", help="Run one exact scenario as a diagnostic")
+    parser.add_argument(
+        "--scenario-ids-file",
+        help="Run the listed exact scenarios as one non-canonical diagnostic batch",
+    )
     parser.add_argument(
         "--scenario-type", help="Run one scenario family as a diagnostic"
     )
@@ -180,6 +357,7 @@ def main() -> int:
         value is not None
         for value in (
             args.scenario_id,
+            args.scenario_ids_file,
             args.scenario_type,
             args.shard_index,
             args.shard_count,
@@ -218,15 +396,25 @@ def main() -> int:
     full_scenario_ids = [str(item["scenario_id"]) for item in full_scenarios]
     if len(set(full_scenario_ids)) != len(full_scenario_ids):
         raise ValueError("Stress scenario plan contains duplicate scenario_id values")
+    selected_scenario_ids = (
+        stress_scenarios._scenario_ids_from_file(
+            Path(args.scenario_ids_file).expanduser().resolve()
+        )
+        if args.scenario_ids_file is not None
+        else None
+    )
     scenarios, formal_plan_complete = stress_scenarios.select_scenarios(
         full_scenarios,
         scenario_id=args.scenario_id,
         scenario_type=args.scenario_type,
         shard_index=args.shard_index,
         shard_count=args.shard_count,
+        scenario_ids=selected_scenario_ids,
     )
     selection = {
         "scenario_id": args.scenario_id,
+        "scenario_ids_file": args.scenario_ids_file,
+        "scenario_ids": selected_scenario_ids,
         "scenario_type": args.scenario_type,
         "shard_index": args.shard_index,
         "shard_count": args.shard_count,
@@ -292,7 +480,12 @@ def main() -> int:
         for scenario in scenarios
         if str(scenario["scenario_id"]) not in completed
     ]
-    worker = partial(_run_scenario, data_dir=data_dir, regime_data_dir=regime_data_dir)
+    worker = partial(
+        _run_scenario,
+        data_dir=data_dir,
+        regime_data_dir=regime_data_dir,
+        include_diagnostics=not formal_plan_complete,
+    )
     with ProcessPoolExecutor(max_workers=args.workers) as executor:
         for start in range(0, len(pending), args.checkpoint_every):
             chunk = pending[start : start + args.checkpoint_every]

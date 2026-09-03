@@ -12,7 +12,10 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 from unittest.mock import patch
+
+import pandas as pd
 
 from quantfusion.application import (
     stress,
@@ -502,6 +505,158 @@ class StressScenarioTests(unittest.TestCase):
         )
         self.assertFalse(formal_plan_complete)
 
+    def test_scenario_ids_file_normalizes_to_canonical_order(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        requested = ["prefix-05", "prefix-01", "add-one-05-688205"]
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "scenario-ids.txt"
+            path.write_text("\n".join(requested) + "\n", encoding="utf-8")
+
+            scenario_ids = stress_scenarios._scenario_ids_from_file(path)
+            selected, formal_plan_complete = select_scenarios(
+                scenarios,
+                scenario_id=None,
+                scenario_type=None,
+                shard_index=None,
+                shard_count=None,
+                scenario_ids=scenario_ids,
+            )
+
+        self.assertEqual(
+            [item["scenario_id"] for item in selected],
+            ["prefix-01", "prefix-05", "add-one-05-688205"],
+        )
+        self.assertFalse(formal_plan_complete)
+
+    def test_scenario_ids_file_rejects_duplicates_and_empty_input(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            duplicate = Path(tmpdir) / "duplicate.txt"
+            duplicate.write_text("prefix-01\nprefix-01\n", encoding="utf-8")
+            empty = Path(tmpdir) / "empty.txt"
+            empty.write_text("\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "duplicate"):
+                stress_scenarios._scenario_ids_from_file(duplicate)
+            with self.assertRaisesRegex(ValueError, "empty"):
+                stress_scenarios._scenario_ids_from_file(empty)
+
+    def test_scenario_ids_file_rejects_unknown_ids(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+
+        with self.assertRaisesRegex(ValueError, "unknown scenario IDs"):
+            select_scenarios(
+                scenarios,
+                scenario_id=None,
+                scenario_type=None,
+                shard_index=None,
+                shard_count=None,
+                scenario_ids=["not-a-scenario"],
+            )
+
+    def test_scenario_ids_file_cannot_be_combined_with_other_selectors(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+
+        with self.assertRaisesRegex(ValueError, "cannot be combined"):
+            select_scenarios(
+                scenarios,
+                scenario_id="prefix-01",
+                scenario_type=None,
+                shard_index=None,
+                shard_count=None,
+                scenario_ids=["prefix-01"],
+            )
+
+    def test_diagnostic_telemetry_summarizes_peak_trigger_trough_and_reduction(
+        self,
+    ) -> None:
+        equity = pd.DataFrame(
+            {
+                "assets": [100.0, 120.0, 108.0, 96.0, 121.0],
+                "cash": [100.0, 20.0, 18.0, 50.0, 121.0],
+                "position_value": [0.0, 100.0, 90.0, 46.0, 0.0],
+            },
+            index=pd.to_datetime(
+                ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]
+            ),
+        )
+        raw = {
+            "equity_curve": equity,
+            "drawdown_series": (equity["assets"] - equity["assets"].cummax())
+            / equity["assets"].cummax(),
+            "risk_events": [
+                {
+                    "sleeve": "portfolio",
+                    "date": "2025-01-03",
+                    "event": "portfolio_drawdown_alert_on",
+                    "drawdown": 0.10,
+                    "threshold": 0.10,
+                },
+                {
+                    "sleeve": "portfolio",
+                    "date": "2025-01-06",
+                    "event": "confirmed_cycle_drawdown_lock",
+                    "drawdown": 0.20,
+                    "threshold": 0.18,
+                },
+            ],
+            "trades": [
+                SimpleNamespace(
+                    date="2025-01-02",
+                    symbol="688205",
+                    direction="buy",
+                    shares=100,
+                    reason="breakout",
+                ),
+                SimpleNamespace(
+                    date="2025-01-06",
+                    symbol="688205",
+                    direction="sell",
+                    shares=100,
+                    reason="portfolio risk reduction",
+                ),
+            ],
+            "portfolio_symbol_count_curve": [
+                {"date": "2025-01-01", "symbol_count": 0},
+                {"date": "2025-01-02", "symbol_count": 1},
+                {"date": "2025-01-03", "symbol_count": 1},
+                {"date": "2025-01-06", "symbol_count": 0},
+                {"date": "2025-01-07", "symbol_count": 0},
+            ],
+            "max_concurrent_symbols": 1,
+            "portfolio_max_positions": 6,
+            "cycle_lock_count": 1,
+            "portfolio_cycle_lock_count": 1,
+            "terminal_risk_lock": False,
+            "persistent_risk_lock": True,
+            "all_sleeves_locked": True,
+        }
+
+        telemetry = stress._diagnostic_telemetry(raw)
+
+        self.assertEqual(telemetry["peak"]["date"], "2025-01-02")
+        self.assertEqual(telemetry["trough"]["date"], "2025-01-06")
+        self.assertEqual(telemetry["recovery_date"], "2025-01-07")
+        self.assertEqual(telemetry["first_risk_trigger"]["date"], "2025-01-03")
+        self.assertEqual(
+            telemetry["first_executable_reduction"]["date"], "2025-01-06"
+        )
+        self.assertAlmostEqual(telemetry["execution_overshoot"], 0.10)
+        self.assertEqual(telemetry["warning_period_buy_count"], 0)
+        self.assertEqual(telemetry["locks"]["cycle_lock_count"], 1)
+        self.assertNotIn("equity_curve", telemetry)
+
     def test_selects_add_one_family_in_formal_plan_order(self) -> None:
         scenarios = stress_scenarios._multi_seed_scenarios(
             random_samples=1,
@@ -903,6 +1058,8 @@ class StressScenarioTests(unittest.TestCase):
                     "provenance": provenance,
                     "selection": {
                         "scenario_id": "add-one-05-688205",
+                        "scenario_ids_file": None,
+                        "scenario_ids": None,
                         "scenario_type": None,
                         "shard_index": None,
                         "shard_count": None,

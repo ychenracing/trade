@@ -81,7 +81,7 @@
 
   Expected: rejected because worst max drawdown is `-0.2122314802406625`; add-one `-0.23490347753273277` remains diagnostic.
 
-- [ ] **Step 10: Checkpoint A**
+- [x] **Step 10: Checkpoint A**
 
   Run compile/lint on changed files plus the complete stress test module; commit one coherent contract-v2 state, push via GitHub Git Data API, verify remote head, and replace PR #20's current state.
 
@@ -98,29 +98,29 @@
 - Consumes: retained candidate results and an ordered newline-delimited scenario-ID file.
 - Produces: one non-canonical diagnostic artifact with compact peak/trough, risk-trigger, execution-overshoot, exposure/cash, concentration, trade/bucket, lock and rearm evidence.
 
-- [ ] **Step 1: Freeze the diagnostic cohort**
+- [x] **Step 1: Freeze the diagnostic cohort**
 
   Derive all 152 `abs(max_drawdown) > 0.18` failures, all 123 `0.17 <= abs(max_drawdown) <= 0.18` boundaries, `prefix-05`, `add-one-05-688205`, and one deterministic passing control per family from the retained candidate. Preserve canonical order and de-duplicate IDs.
 
-- [ ] **Step 2: Write failing multi-ID selector tests**
+- [x] **Step 2: Write failing multi-ID selector tests**
 
   Prove file-order normalization to canonical order, duplicate rejection, unknown-ID rejection, empty-file rejection, selector/canonical separation, and inability to publish diagnostic results.
 
-- [ ] **Step 3: Verify selector tests fail**
+- [x] **Step 3: Verify selector tests fail**
 
   Run: `python -m pytest -q tests/unit/test_stress_scenarios.py -k "scenario_ids_file or diagnostic_selection"`
 
   Expected: failures because `--scenario-ids-file` is missing.
 
-- [ ] **Step 4: Implement only the required file selector**
+- [x] **Step 4: Implement only the required file selector**
 
   Extend `select_scenarios` and the CLI with `--scenario-ids-file`; do not change scenario construction, IDs, order, signature, or formal completeness.
 
-- [ ] **Step 5: Add compact diagnostic telemetry**
+- [x] **Step 5: Add compact diagnostic telemetry**
 
   From the real replay result, serialize only summary evidence: peak/trough/recovery dates, alert/confirmed/emergency/terminal dates and drawdowns, first following executable reduction, overshoot, peak/trigger/trough exposure and cash, held/group concentration, warning-period buys/adds, risk/sector/re-entry counts, locks/rearm, and trade/bucket deltas. Do not add daily paths to canonical artifacts.
 
-- [ ] **Step 6: Run selector and telemetry tests**
+- [x] **Step 6: Run selector and telemetry tests**
 
   Run: `python -m pytest -q tests/unit/test_stress_scenarios.py -k "scenario_ids_file or diagnostic"`
 
