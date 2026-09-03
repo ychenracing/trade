@@ -31,9 +31,15 @@ jobs:
 
       - name: Apply the reviewed recovery contract in one pass
         shell: bash
+        env:
+          PREFLIGHT_B64: am9iczoKICBwcmVmbGlnaHQ6CiAgICBuYW1lOiBWYWxpZGF0ZSBzaGFyZGVkIHJlY292ZXJ5IGNvbnRyYWN0CiAgICBydW5zLW9uOiB1YnVudHUtbGF0ZXN0CiAgICB0aW1lb3V0LW1pbnV0ZXM6IDEwCiAgICBzdGVwczoKICAgICAgLSB1c2VzOiBhY3Rpb25zL2NoZWNrb3V0QHY0CiAgICAgICAgd2l0aDoKICAgICAgICAgIHJlZjogJHt7IGdpdGh1Yi5zaGEgfX0KICAgICAgICAgIGZldGNoLWRlcHRoOiAwCgogICAgICAtIHVzZXM6IGFjdGlvbnMvc2V0dXAtcHl0aG9uQHY1CiAgICAgICAgd2l0aDoKICAgICAgICAgIHB5dGhvbi12ZXJzaW9uOiAiMy4xMiIKICAgICAgICAgIGNhY2hlOiBwaXAKICAgICAgICAgIGNhY2hlLWRlcGVuZGVuY3ktcGF0aDogcmVxdWlyZW1lbnRzLWxvY2sudHh0CgogICAgICAtIG5hbWU6IFZlcmlmeSBpbW11dGFibGUgc291cmNlIGFuZCBpbnN0YWxsIGRlcGVuZGVuY2llcwogICAgICAgIHNoZWxsOiBiYXNoCiAgICAgICAgcnVuOiB8CiAgICAgICAgICBzZXQgLWV1byBwaXBlZmFpbAogICAgICAgICAgbWFwZmlsZSAtdCBjaGFuZ2VkIDwgPChnaXQgZGlmZiAtLW5hbWUtb25seSAiJFNPVVJDRV9TSEEiICIkR0lUSFVCX1NIQSIpCiAgICAgICAgICB0ZXN0ICIkeyNjaGFuZ2VkW0BdfSIgLWVxIDEKICAgICAgICAgIHRlc3QgIiR7Y2hhbmdlZFswXX0iID0gIi5naXRodWIvd29ya2Zsb3dzL3J1bi1mb3JtYWwtc3RyZXNzLTk1OC12Mi55bWwiCiAgICAgICAgICBnaXQgZGlmZiAtLXF1aWV0ICIkU09VUkNFX1NIQSIgIiRHSVRIVUJfU0hBIiAtLSBxdWFudGZ1c2lvbiBkYXRhIFJFQURNRS5tZCBkb2NzIHRlc3RzCiAgICAgICAgICBweXRob24gLW0gcGlwIGluc3RhbGwgLXIgcmVxdWlyZW1lbnRzLWxvY2sudHh0CgogICAgICAtIG5hbWU6IEV4ZXJjaXNlIHNlbGVjdG9yLCBwcm92ZW5hbmNlIGFuZCBmb3JtYWwgY2hlY2twb2ludCBBUElzCiAgICAgICAgc2hlbGw6IGJhc2gKICAgICAgICBydW46IHwKICAgICAgICAgIHNldCAtZXVvIHBpcGVmYWlsCiAgICAgICAgICBweXRob24gLSA8PCdQWUNPREUnCiAgICAgICAgICBpbXBvcnQgb3MKCiAgICAgICAgICBmcm9tIHF1YW50ZnVzaW9uLmFwcGxpY2F0aW9uIGltcG9ydCBzdHJlc3NfYXJ0aWZhY3RzLCBzdHJlc3Nfc2NlbmFyaW9zCiAgICAgICAgICBmcm9tIHF1YW50ZnVzaW9uLmNvbmZpZy5wYXRocyBpbXBvcnQgTUFSS0VUX0RBVEFfRElSLCBSRUdJTUVfREFUQV9ESVIKCiAgICAgICAgICBmdWxsID0gc3RyZXNzX3NjZW5hcmlvcy5fbXVsdGlfc2VlZF9zY2VuYXJpb3MoCiAgICAgICAgICAgICAgcmFuZG9tX3NhbXBsZXM9c3RyZXNzX3NjZW5hcmlvcy5ERUZBVUxUX1JBTkRPTV9TQU1QTEVTLAogICAgICAgICAgICAgIHBlcm11dGF0aW9uX3NhbXBsZXM9c3RyZXNzX3NjZW5hcmlvcy5ERUZBVUxUX1BFUk1VVEFUSU9OX1NBTVBMRVMsCiAgICAgICAgICAgICAgc2VlZHM9c3RyZXNzX3NjZW5hcmlvcy5ERUZBVUxUX1NFRURTLAogICAgICAgICAgKQogICAgICAgICAgYXNzZXJ0IGxlbihmdWxsKSA9PSA5NTgKICAgICAgICAgIHNlbGVjdGVkLCBmb3JtYWxfY29tcGxldGUgPSBzdHJlc3Nfc2NlbmFyaW9zLnNlbGVjdF9zY2VuYXJpb3MoCiAgICAgICAgICAgICAgZnVsbCwKICAgICAgICAgICAgICBzY2VuYXJpb19pZD1Ob25lLAogICAgICAgICAgICAgIHNjZW5hcmlvX3R5cGU9Tm9uZSwKICAgICAgICAgICAgICBzaGFyZF9pbmRleD0wLAogICAgICAgICAgICAgIHNoYXJkX2NvdW50PWludChvcy5lbnZpcm9uWyJTSEFSRF9DT1VOVCJdKSwKICAgICAgICAgICAgICBzY2VuYXJpb19pZHM9Tm9uZSwKICAgICAgICAgICkKICAgICAgICAgIGFzc2VydCBzZWxlY3RlZCBhbmQgZm9ybWFsX2NvbXBsZXRlIGlzIEZhbHNlCiAgICAgICAgICBmdWxsX3Byb3ZlbmFuY2UgPSBzdHJlc3NfYXJ0aWZhY3RzLl9idWlsZF9wcm92ZW5hbmNlKAogICAgICAgICAgICAgIGZ1bGwsCiAgICAgICAgICAgICAgTUFSS0VUX0RBVEFfRElSLnJlc29sdmUoKSwKICAgICAgICAgICAgICBSRUdJTUVfREFUQV9ESVIucmVzb2x2ZSgpLAogICAgICAgICAgICAgIHNvdXJjZV9yZXZpc2lvbj1vcy5lbnZpcm9uWyJTT1VSQ0VfU0hBIl0sCiAgICAgICAgICApCiAgICAgICAgICBhc3NlcnQgc3RyZXNzX2FydGlmYWN0cy5fdmFsaWRhdGVkX2NoZWNrcG9pbnQoCiAgICAgICAgICAgICAgewogICAgICAgICAgICAgICAgICAic2lnbmF0dXJlIjogZnVsbF9wcm92ZW5hbmNlWyJydW5fc2lnbmF0dXJlIl0sCiAgICAgICAgICAgICAgICAgICJwcm92ZW5hbmNlIjogZnVsbF9wcm92ZW5hbmNlLAogICAgICAgICAgICAgICAgICAiY29tcGxldGVkIjogMCwKICAgICAgICAgICAgICAgICAgInNjZW5hcmlvX2NvdW50IjogbGVuKGZ1bGwpLAogICAgICAgICAgICAgICAgICAicmVzdWx0cyI6IFtdLAogICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgZnVsbCwKICAgICAgICAgICAgICBzaWduYXR1cmU9c3RyKGZ1bGxfcHJvdmVuYW5jZVsicnVuX3NpZ25hdHVyZSJdKSwKICAgICAgICAgICAgICBwcm92ZW5hbmNlPWZ1bGxfcHJvdmVuYW5jZSwKICAgICAgICAgICAgICBkaWFnbm9zdGljX3NlbGVjdGlvbj1Ob25lLAogICAgICAgICAgKSA9PSB7fQogICAgICAgICAgc2hhcmRfcHJvdmVuYW5jZSA9IHN0cmVzc19hcnRpZmFjdHMuX2J1aWxkX3Byb3ZlbmFuY2UoCiAgICAgICAgICAgICAgc2VsZWN0ZWQsCiAgICAgICAgICAgICAgTUFSS0VUX0RBVEFfRElSLnJlc29sdmUoKSwKICAgICAgICAgICAgICBSRUdJTUVfREFUQV9ESVIucmVzb2x2ZSgpLAogICAgICAgICAgICAgIHNvdXJjZV9yZXZpc2lvbj1vcy5lbnZpcm9uWyJTT1VSQ0VfU0hBIl0sCiAgICAgICAgICApCiAgICAgICAgICBhc3NlcnQgc2hhcmRfcHJvdmVuYW5jZVsic2NlbmFyaW9fY291bnQiXSA9PSBsZW4oc2VsZWN0ZWQpCiAgICAgICAgICBQWUNPREUKICAgICAgICAgIHB5dGhvbiAtbSBweXRlc3QgLXEg dGVzdHMvdW5pdC90ZXN0X3N0cmVzc19zY2VuYXJpb3MucHkgXAogICAgICAgICAgICAtayAidW5maWx0ZXJlZF9zZWxlY3Rpb25faXNfdGhlX29ubHlfZm9ybWFsX2NvbXBsZXRlX3BsYW4gb3Igc2hhcmRfbWVtYmVyc2hpcF91c2VzX29yaWdpbmFsX3plcm9fYmFzZWRfaW5kaWNlcyBvciBjaGVja3BvaW50X2VudmVsb3BlX3ZhbGlkYXRpb25fcmV0dXJuc19jb21wbGV0ZWRfcmVzdWx0cyIKCiAgc2hhcmQ6CiAgICBuZWVkczogcHJlZmxpZ2h0Cg==
+          SHARD_ANCHOR_B64: ICAgICAgICAgICAgICBhc3NlcnQgMCA8PSBzaGFyZCA8IHNoYXJkX2NvdW50IGFuZCBzaGFyZCBub3QgaW4gc2Vlbl9zaGFyZHMKICAgICAgICAgICAgICBzZWVuX3NoYXJkcy5hZGQoc2hhcmQpCiAgICAgICAgICAgICAgc291cmNlX2ZpbmdlcnByaW50cy5hZGQoc3RyKHBheWxvYWRbInNvdXJjZV9maW5nZXJwcmludCJdKSkKICAgICAgICAgICAgICBkYXRhX2ZpbmdlcnByaW50cy5hZGQoc3RyKHBheWxvYWRbImRhdGFfZmluZ2VycHJpbnQiXSkpCiAgICAgICAgICAgICAgcmVzdWx0cyA9IHBheWxvYWRbInJlc3VsdHMiXQogICAgICAgICAgICAgIGFzc2VydCBsZW4ocmVzdWx0cykgPT0gaW50KHBheWxvYWRbInNjZW5hcmlvX2NvdW50Il0pCg==
+          REVIEWED_SHARD_B64: ICAgICAgICAgICAgICBhc3NlcnQgMCA8PSBzaGFyZCA8IHNoYXJkX2NvdW50IGFuZCBzaGFyZCBub3QgaW4gc2Vlbl9zaGFyZHMKICAgICAgICAgICAgICBzZWVuX3NoYXJkcy5hZGQoc2hhcmQpCiAgICAgICAgICAgICAgZXhwZWN0ZWRfc2VsZWN0aW9uID0gewogICAgICAgICAgICAgICAgICAic2NlbmFyaW9faWQiOiBOb25lLAogICAgICAgICAgICAgICAgICAic2NlbmFyaW9faWRzX2ZpbGUiOiBOb25lLAogICAgICAgICAgICAgICAgICAic2NlbmFyaW9faWRzIjogTm9uZSwKICAgICAgICAgICAgICAgICAgInNjZW5hcmlvX3R5cGUiOiBOb25lLAogICAgICAgICAgICAgICAgICAic2hhcmRfaW5kZXgiOiBzaGFyZCwKICAgICAgICAgICAgICAgICAgInNoYXJkX2NvdW50Ijogc2hhcmRfY291bnQsCiAgICAgICAgICAgICAgfQogICAgICAgICAgICAgIGFzc2VydCBzZWxlY3Rpb24gPT0gZXhwZWN0ZWRfc2VsZWN0aW9uCiAgICAgICAgICAgICAgc2VsZWN0ZWQsIGZvcm1hbF9jb21wbGV0ZSA9IHN0cmVzc19zY2VuYXJpb3Muc2VsZWN0X3NjZW5hcmlvcygKICAgICAgICAgICAgICAgICAgZnVsbCwKICAgICAgICAgICAgICAgICAgc2NlbmFyaW9faWQ9Tm9uZSwKICAgICAgICAgICAgICAgICAgc2NlbmFyaW9fdHlwZT1Ob25lLAogICAgICAgICAgICAgICAgICBzaGFyZF9pbmRleD1zaGFyZCwKICAgICAgICAgICAgICAgICAgc2hhcmRfY291bnQ9c2hhcmRfY291bnQsCiAgICAgICAgICAgICAgICAgIHNjZW5hcmlvX2lkcz1Ob25lLAogICAgICAgICAgICAgICkKICAgICAgICAgICAgICBhc3NlcnQgZm9ybWFsX2NvbXBsZXRlIGlzIEZhbHNlCiAgICAgICAgICAgICAgZXhwZWN0ZWRfaWRzID0gW3N0cihpdGVtWyJzY2VuYXJpb19pZCJdKSBmb3IgaXRlbSBpbiBzZWxlY3RlZF0KICAgICAgICAgICAgICBzb3VyY2VfZmluZ2VycHJpbnRzLmFkZChzdHIocGF5bG9hZFsic291cmNlX2ZpbmdlcnByaW50Il0pKQogICAgICAgICAgICAgIGRhdGFfZmluZ2VycHJpbnRzLmFkZChzdHIocGF5bG9hZFsiZGF0YV9maW5nZXJwcmludCJdKSkKICAgICAgICAgICAgICBleHBlY3RlZF9wcm92ZW5hbmNlID0gc3RyZXNzX2FydGlmYWN0cy5fYnVpbGRfcHJvdmVuYW5jZSgKICAgICAgICAgICAgICAgICAgc2VsZWN0ZWQsCiAgICAgICAgICAgICAgICAgIE1BUktFVF9EQVRBX0RJUi5yZXNvbHZlKCksCiAgICAgICAgICAgICAgICAgIFJFR0lNRV9EQVRBX0RJUi5yZXNvbHZlKCksCiAgICAgICAgICAgICAgICAgIHNvdXJjZV9yZXZpc2lvbj1zb3VyY2Vfc2hhLAogICAgICAgICAgICAgICkKICAgICAgICAgICAgICBmb3IgZmllbGQgaW4gc3RyZXNzX2FydGlmYWN0cy5QUk9WRU5BTkNFX0ZJRUxEUzoKICAgICAgICAgICAgICAgICAgYXNzZXJ0IHBheWxvYWRbZmllbGRdID09IGV4cGVjdGVkX3Byb3ZlbmFuY2VbZmllbGRdLCAoc2hhcmQsIGZpZWxkKQogICAgICAgICAgICAgIHJlc3VsdHMgPSBwYXlsb2FkWyJyZXN1bHRzIl0KICAgICAgICAgICAgICBhc3NlcnQgbGVuKHJlc3VsdHMpID09IGludChwYXlsb2FkWyJzY2VuYXJpb19jb3VudCJdKQogICAgICAgICAgICAgIGFjdHVhbF9pZHMgPSBbc3RyKGl0ZW1bInNjZW5hcmlvX2lkIl0pIGZvciBpdGVtIGluIHJlc3VsdHNdCiAgICAgICAgICAgICAgYXNzZXJ0IGFjdHVhbF9pZHMgPT0gZXhwZWN0ZWRfaWRzLCBzaGFyZAogICAgICAgICAgICAgIHZhbGlkYXRlZF9zaGFyZCA9IHN0cmVzc19hcnRpZmFjdHMuX3ZhbGlkYXRlZF9jaGVja3BvaW50X3Jlc3VsdHMoCiAgICAgICAgICAgICAgICAgIHsicmVzdWx0cyI6IHJlc3VsdHN9LCBzZWxlY3RlZAogICAgICAgICAgICAgICkKICAgICAgICAgICAgICBhc3NlcnQgc2V0KHZhbGlkYXRlZF9zaGFyZCkgPT0gc2V0KGV4cGVjdGVkX2lkcykK
         run: |
           set -euo pipefail
           python - <<'PY'
+          import base64
+          import os
           from pathlib import Path
 
           path = Path(".github/workflows/run-formal-stress-958-v2.yml")
@@ -46,161 +52,33 @@ jobs:
           text = text.replace(old_name, new_name, 1)
 
           jobs_anchor = "jobs:\n  shard:\n"
-          preflight = '''jobs:
-  preflight:
-    name: Validate sharded recovery contract
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements-lock.txt
-
-      - name: Verify immutable source and install dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t changed < <(git diff --name-only "$SOURCE_SHA" "$GITHUB_SHA")
-          test "${#changed[@]}" -eq 1
-          test "${changed[0]}" = ".github/workflows/run-formal-stress-958-v2.yml"
-          git diff --quiet "$SOURCE_SHA" "$GITHUB_SHA" -- quantfusion data README.md docs tests
-          python -m pip install -r requirements-lock.txt
-
-      - name: Exercise selector, provenance and formal checkpoint APIs
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PYCODE'
-          import os
-
-          from quantfusion.application import stress_artifacts, stress_scenarios
-          from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
-
-          full = stress_scenarios._multi_seed_scenarios(
-              random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
-              permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
-              seeds=stress_scenarios.DEFAULT_SEEDS,
-          )
-          assert len(full) == 958
-          selected, formal_complete = stress_scenarios.select_scenarios(
-              full,
-              scenario_id=None,
-              scenario_type=None,
-              shard_index=0,
-              shard_count=int(os.environ["SHARD_COUNT"]),
-              scenario_ids=None,
-          )
-          assert selected and formal_complete is False
-          full_provenance = stress_artifacts._build_provenance(
-              full,
-              MARKET_DATA_DIR.resolve(),
-              REGIME_DATA_DIR.resolve(),
-              source_revision=os.environ["SOURCE_SHA"],
-          )
-          assert stress_artifacts._validated_checkpoint(
-              {
-                  "signature": full_provenance["run_signature"],
-                  "provenance": full_provenance,
-                  "completed": 0,
-                  "scenario_count": len(full),
-                  "results": [],
-              },
-              full,
-              signature=str(full_provenance["run_signature"]),
-              provenance=full_provenance,
-              diagnostic_selection=None,
-          ) == {}
-          shard_provenance = stress_artifacts._build_provenance(
-              selected,
-              MARKET_DATA_DIR.resolve(),
-              REGIME_DATA_DIR.resolve(),
-              source_revision=os.environ["SOURCE_SHA"],
-          )
-          assert shard_provenance["scenario_count"] == len(selected)
-          PYCODE
-          python -m pytest -q \
-            tests/unit/test_stress_scenarios.py::StressScenarioTests::test_unfiltered_selection_is_the_only_formal_complete_plan \
-            tests/unit/test_stress_scenarios.py::StressScenarioTests::test_shard_membership_uses_original_zero_based_indices \
-            tests/unit/test_stress_scenarios.py::StressScenarioTests::test_checkpoint_envelope_validation_returns_completed_results
-
-  shard:
-    needs: preflight
-'''
+          preflight = base64.b64decode(os.environ["PREFLIGHT_B64"]).decode()
           if text.count(jobs_anchor) != 1:
               raise SystemExit("unexpected jobs/shard anchor")
           text = text.replace(jobs_anchor, preflight, 1)
 
-          shard_anchor = '''              assert 0 <= shard < shard_count and shard not in seen_shards
-              seen_shards.add(shard)
-              source_fingerprints.add(str(payload["source_fingerprint"]))
-              data_fingerprints.add(str(payload["data_fingerprint"]))
-              results = payload["results"]
-              assert len(results) == int(payload["scenario_count"])
-'''
-          reviewed_shard = '''              assert 0 <= shard < shard_count and shard not in seen_shards
-              seen_shards.add(shard)
-              expected_selection = {
-                  "scenario_id": None,
-                  "scenario_ids_file": None,
-                  "scenario_ids": None,
-                  "scenario_type": None,
-                  "shard_index": shard,
-                  "shard_count": shard_count,
-              }
-              assert selection == expected_selection
-              selected, formal_complete = stress_scenarios.select_scenarios(
-                  full,
-                  scenario_id=None,
-                  scenario_type=None,
-                  shard_index=shard,
-                  shard_count=shard_count,
-                  scenario_ids=None,
-              )
-              assert formal_complete is False
-              expected_ids = [str(item["scenario_id"]) for item in selected]
-              source_fingerprints.add(str(payload["source_fingerprint"]))
-              data_fingerprints.add(str(payload["data_fingerprint"]))
-              expected_provenance = stress_artifacts._build_provenance(
-                  selected,
-                  MARKET_DATA_DIR.resolve(),
-                  REGIME_DATA_DIR.resolve(),
-                  source_revision=source_sha,
-              )
-              for field in stress_artifacts.PROVENANCE_FIELDS:
-                  assert payload[field] == expected_provenance[field], (shard, field)
-              results = payload["results"]
-              assert len(results) == int(payload["scenario_count"])
-              actual_ids = [str(item["scenario_id"]) for item in results]
-              assert actual_ids == expected_ids, shard
-              validated_shard = stress_artifacts._validated_checkpoint_results(
-                  {"results": results}, selected
-              )
-              assert set(validated_shard) == set(expected_ids)
-'''
+          shard_anchor = base64.b64decode(os.environ["SHARD_ANCHOR_B64"]).decode()
+          reviewed_shard = base64.b64decode(
+              os.environ["REVIEWED_SHARD_B64"]
+          ).decode()
           if text.count(shard_anchor) != 1:
               raise SystemExit("unexpected shard validation anchor")
           text = text.replace(shard_anchor, reviewed_shard, 1)
 
-          checkpoint_anchor = '''              signature=str(provenance["run_signature"]),
-              provenance=provenance,
+          checkpoint_anchor = (
+              '              signature=str(provenance["run_signature"]),\n'
+              "              provenance=provenance,\n"
+              "          )\n"
           )
-'''
-          checkpoint_fix = '''              signature=str(provenance["run_signature"]),
-              provenance=provenance,
-              diagnostic_selection=None,
+          checkpoint_fix = (
+              '              signature=str(provenance["run_signature"]),\n'
+              "              provenance=provenance,\n"
+              "              diagnostic_selection=None,\n"
+              "          )\n"
           )
-'''
           if text.count(checkpoint_anchor) != 1:
               raise SystemExit("unexpected formal checkpoint call anchor")
           text = text.replace(checkpoint_anchor, checkpoint_fix, 1)
-
           path.write_text(text, encoding="utf-8")
           PY
 
@@ -214,12 +92,14 @@ jobs:
 
           path = Path(".github/workflows/run-formal-stress-958-v2.yml")
           text = path.read_text(encoding="utf-8")
-          yaml.safe_load(text)
+          yaml.compose(text)
           assert "diagnostic_selection=None" in text
           assert "actual_ids == expected_ids" in text
           assert "payload[field] == expected_provenance[field]" in text
           assert "needs: preflight" in text
-          assert text.count("name: Run exact 958-scenario formal acceptance v9") == 1
+          assert text.count(
+              "name: Run exact 958-scenario formal acceptance v9"
+          ) == 1
           PY
           git diff --check
 
