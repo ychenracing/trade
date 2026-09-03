@@ -104,7 +104,7 @@ TEMPORARY_GLOBS = (
 )
 HISTORICAL_TOKEN = re.compile(r"历史|historical", re.IGNORECASE)
 SYMBOL_22_TOKEN = re.compile(r"22\s*股|22-symbol", re.IGNORECASE)
-CURRENT_TOKEN = re.compile(r"当前|现行|current|active", re.IGNORECASE)
+CURRENT_TOKEN = re.compile(r"当前|现行|\b(?:current|active)\b", re.IGNORECASE)
 SCENARIO_983_TOKEN = re.compile(r"(?<![0-9A-Za-z])983(?![0-9A-Za-z])")
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
@@ -133,8 +133,7 @@ def _assert_983_is_historical(text: str, *, path: Path) -> None:
         flags=re.IGNORECASE,
     )
     clauses = re.split(
-        r"[。！？.!?；;：:，,\n]+|\b(?:and|but|while)\b|"
-        r"(?:并且|而且|但是|但|同时|以及|与|和)",
+        r"[。！？.!?；;：:，,\n]+",
         normalized,
         flags=re.IGNORECASE,
     )
