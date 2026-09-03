@@ -97,11 +97,7 @@ def main() -> None:
         count=1,
         label="immutable historical artifact unique count",
     )
-    text = (
-        text[:historical_function_start]
-        + historical
-        + text[historical_function_end:]
-    )
+    text = text[:historical_function_start] + historical + text[historical_function_end:]
 
     small_plan = stress_scenarios._multi_seed_scenarios(
         random_samples=1,
@@ -137,9 +133,6 @@ def main() -> None:
 
     regression_path = Path("tests/regression/test_quant_fusion.py")
     regression = regression_path.read_text(encoding="utf-8")
-    if "22_symbols" not in regression:
-        raise SystemExit("regression test has no 22_symbols references")
-    regression = regression.replace("22_symbols", "17_symbols")
     old_policy_contract = '''        self.assertTrue(
             set(policy.regime_symbols).issubset(ESTABLISHED_EXPANSION_CORE)
         )'''
