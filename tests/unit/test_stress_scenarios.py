@@ -140,7 +140,7 @@ class StressScenarioTests(unittest.TestCase):
             counts[kind] = counts.get(kind, 0) + 1
         self.assertEqual(counts["prefix"], len(stress_scenarios.ORDERED_CODES))
         self.assertEqual(counts["leave_one_out"], len(stress_scenarios.ORDERED_CODES))
-        self.assertEqual(counts["add_one"], 39)
+        self.assertEqual(counts["add_one"], 24)
         self.assertEqual(counts["random_subset"], 10)
         self.assertEqual(counts["permutation"], 2)
 
@@ -193,7 +193,7 @@ class StressScenarioTests(unittest.TestCase):
             permutation_samples=2,
             seeds=(1, 2),
         )
-        self.assertEqual(len(scenarios), 83 + 2 * (10 + 2))
+        self.assertEqual(len(scenarios), 58 + 2 * (10 + 2))
         self.assertEqual(
             len([item for item in scenarios if item["scenario_type"] == "prefix"]),
             len(stress_scenarios.ORDERED_CODES),
@@ -207,17 +207,17 @@ class StressScenarioTests(unittest.TestCase):
                 seeds=(7, 7),
             )
 
-    def test_formal_plan_has_983_unique_scenario_ids(self) -> None:
+    def test_formal_plan_has_958_unique_scenario_ids(self) -> None:
         scenarios = stress_scenarios._multi_seed_scenarios(
             random_samples=50,
             permutation_samples=50,
             seeds=stress_scenarios.DEFAULT_SEEDS,
         )
 
-        self.assertEqual(len(scenarios), 983)
+        self.assertEqual(len(scenarios), 958)
         self.assertEqual(
             len({str(item["scenario_id"]) for item in scenarios}),
-            983,
+            958,
         )
 
     def test_formal_plan_order_and_signature_are_frozen(self) -> None:
@@ -231,11 +231,11 @@ class StressScenarioTests(unittest.TestCase):
 
         self.assertEqual(
             hashlib.sha256(encoded_ids).hexdigest(),
-            "73d6f2bd580490cd6e0bf7af9a72b79af60ef2bd7890774949304d40cb52bb5c",
+            "29c5d626d4cbd176eb18f0c0390016f6f9adad24babbd368cf483d0bc99834e3",
         )
         self.assertEqual(
             stress_scenarios._scenario_signature(scenarios),
-            "ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223",
+            "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
         )
 
     def test_gate_and_promotion_payloads_are_frozen(self) -> None:
@@ -270,8 +270,8 @@ class StressScenarioTests(unittest.TestCase):
                     "invariant": True,
                 },
                 "status": "compared",
-                "incumbent_scenario_count": 89,
-                "shared_scenario_count": 89,
+                "incumbent_scenario_count": 64,
+                "shared_scenario_count": 64,
                 "tolerances": {
                     "prefix_wealth_ratio": 0.99,
                     "dd_p90": 0.005,
@@ -413,7 +413,7 @@ class StressScenarioTests(unittest.TestCase):
         add_one = {
             **self._complete_result(
                 {
-                    "scenario_id": "add-one-05-688205",
+                    "scenario_id": "add-one-05-688072",
                     "scenario_type": "add_one",
                     "base_size": 5,
                     "added_symbol": "688205",
@@ -445,7 +445,7 @@ class StressScenarioTests(unittest.TestCase):
         self.assertEqual(
             diagnostic["worst_case"],
             {
-                "scenario_id": "add-one-05-688205",
+                "scenario_id": "add-one-05-688072",
                 "base_scenario_id": "prefix-05",
                 "wealth_change": -0.2349,
                 "drawdown_severity_change": 0.01999999999999999,
@@ -509,7 +509,7 @@ class StressScenarioTests(unittest.TestCase):
 
         selected, formal_plan_complete = select_scenarios(
             scenarios,
-            scenario_id="add-one-05-688205",
+            scenario_id="add-one-05-688072",
             scenario_type=None,
             shard_index=None,
             shard_count=None,
@@ -519,17 +519,17 @@ class StressScenarioTests(unittest.TestCase):
             selected,
             [
                 {
-                    "scenario_id": "add-one-05-688205",
+                    "scenario_id": "add-one-05-688072",
                     "scenario_type": "add_one",
                     "base_size": 5,
-                    "added_symbol": "688205",
+                    "added_symbol": "688072",
                     "symbols": [
                         "300308",
                         "300502",
                         "300394",
-                        "688008",
+                        "688256",
                         "603986",
-                        "688205",
+                        "688072",
                     ],
                 }
             ],
@@ -542,7 +542,7 @@ class StressScenarioTests(unittest.TestCase):
             permutation_samples=1,
             seeds=(7,),
         )
-        requested = ["prefix-05", "prefix-01", "add-one-05-688205"]
+        requested = ["prefix-05", "prefix-01", "add-one-05-688072"]
         with TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "scenario-ids.txt"
             path.write_text("\n".join(requested) + "\n", encoding="utf-8")
@@ -559,7 +559,7 @@ class StressScenarioTests(unittest.TestCase):
 
         self.assertEqual(
             [item["scenario_id"] for item in selected],
-            ["prefix-01", "prefix-05", "add-one-05-688205"],
+            ["prefix-01", "prefix-05", "add-one-05-688072"],
         )
         self.assertFalse(formal_plan_complete)
 
@@ -703,9 +703,9 @@ class StressScenarioTests(unittest.TestCase):
             shard_count=None,
         )
 
-        self.assertEqual(len(selected), 39)
-        self.assertEqual(selected[0]["scenario_id"], "add-one-05-002409")
-        self.assertEqual(selected[-1]["scenario_id"], "add-one-13-688082")
+        self.assertEqual(len(selected), 24)
+        self.assertEqual(selected[0]["scenario_id"], "add-one-05-688072")
+        self.assertEqual(selected[-1]["scenario_id"], "add-one-13-300408")
         self.assertTrue(all(item["scenario_type"] == "add_one" for item in selected))
         self.assertFalse(formal_plan_complete)
 
@@ -959,10 +959,10 @@ class StressScenarioTests(unittest.TestCase):
                 "source_fingerprint": "source-fingerprint",
                 "data_fingerprint": "data-fingerprint",
                 "scenario_signature": (
-                    "aea62b6423a0b3fdc587c4b5cb080b184850c67bc086fa92aaa8b9483b87cee1"
+                    "b4c38909f96e42d54207c28cf402350411ad3a6beac754ef33d5314253a364aa"
                 ),
                 "run_signature": (
-                    "505e3e723957a6ad106ddb8ec94ea19d8b27edcf2567de36809875cd1fbafde3"
+                    "42a175c2c8587c6e548c6808443d21bb466962781261540f461cfeb010ec9d48"
                 ),
                 "scenario_count": len(scenarios),
                 "start_date": "2025-04-01",
@@ -1058,7 +1058,7 @@ class StressScenarioTests(unittest.TestCase):
         )
         selected, _ = select_scenarios(
             full_plan,
-            scenario_id="add-one-05-688205",
+            scenario_id="add-one-05-688072",
             scenario_type=None,
             shard_index=None,
             shard_count=None,
@@ -1088,7 +1088,7 @@ class StressScenarioTests(unittest.TestCase):
                     "signature": provenance["run_signature"],
                     "provenance": provenance,
                     "selection": {
-                        "scenario_id": "add-one-05-688205",
+                        "scenario_id": "add-one-05-688072",
                         "scenario_ids_file": None,
                         "scenario_ids": None,
                         "scenario_type": None,
@@ -1111,7 +1111,7 @@ class StressScenarioTests(unittest.TestCase):
                 "--seeds",
                 "7",
                 "--scenario-id",
-                "add-one-05-688205",
+                "add-one-05-688072",
                 "--checkpoint",
                 str(formal_checkpoint),
                 "--diagnostic-checkpoint",
@@ -1132,10 +1132,10 @@ class StressScenarioTests(unittest.TestCase):
             self.assertEqual(payload["artifact_status"], "diagnostic")
             self.assertFalse(payload["formal_plan_complete"])
             self.assertFalse(payload["canonical"])
-            self.assertEqual(payload["selection"]["scenario_id"], "add-one-05-688205")
+            self.assertEqual(payload["selection"]["scenario_id"], "add-one-05-688072")
             self.assertEqual(
                 [item["scenario_id"] for item in payload["results"]],
-                ["add-one-05-688205"],
+                ["add-one-05-688072"],
             )
             self.assertNotIn("hard_gates", payload)
             self.assertNotIn("promotion_gates", payload)
@@ -1157,7 +1157,7 @@ class StressScenarioTests(unittest.TestCase):
         )
         selected, _ = select_scenarios(
             full_plan,
-            scenario_id="add-one-05-688205",
+            scenario_id="add-one-05-688072",
             scenario_type=None,
             shard_index=None,
             shard_count=None,
@@ -1182,7 +1182,7 @@ class StressScenarioTests(unittest.TestCase):
                     "signature": provenance["run_signature"],
                     "provenance": provenance,
                     "selection": {
-                        "scenario_id": "add-one-05-688205",
+                        "scenario_id": "add-one-05-688072",
                         "scenario_type": None,
                         "shard_index": None,
                         "shard_count": None,
@@ -1203,7 +1203,7 @@ class StressScenarioTests(unittest.TestCase):
                 "--seeds",
                 "7",
                 "--scenario-id",
-                "add-one-05-688205",
+                "add-one-05-688072",
                 "--diagnostic-checkpoint",
                 str(diagnostic_checkpoint),
                 "--diagnostic-output",
@@ -1236,7 +1236,7 @@ class StressScenarioTests(unittest.TestCase):
                 "--seeds",
                 "7",
                 "--scenario-id",
-                "add-one-05-688205",
+                "add-one-05-688072",
                 "--source-revision",
                 "invalid",
             ]
@@ -1379,7 +1379,7 @@ class StressScenarioTests(unittest.TestCase):
         results = [self._complete_result(item) for item in scenarios]
         reference = self._transition_reference(results)
         by_id = {item["scenario_id"]: item for item in results}
-        by_id["add-one-05-688205"]["max_drawdown"] = -0.19
+        by_id["add-one-05-688072"]["max_drawdown"] = -0.19
         provenance = self._provenance("a" * 40, len(scenarios))
         prefix_artifact = {
             **provenance,
@@ -1742,7 +1742,7 @@ class StressScenarioTests(unittest.TestCase):
         )
         results = [self._complete_result(item) for item in scenarios]
         by_id = {item["scenario_id"]: item for item in results}
-        by_id["add-one-05-688205"]["max_drawdown"] = -0.19
+        by_id["add-one-05-688072"]["max_drawdown"] = -0.19
         self.assertFalse(stress_metrics._absolute_hard_gates(results)["passed"])
         provenance = self._provenance("f" * 40, len(scenarios))
         prefix_artifact = {
@@ -2007,7 +2007,7 @@ class StressScenarioTests(unittest.TestCase):
     def test_incumbent_cannot_omit_mandatory_fixed_scenario_ids(self) -> None:
         results = self._complete_small_plan()
         incomplete = [
-            item for item in results if item["scenario_id"] != "prefix-22"
+            item for item in results if item["scenario_id"] != "prefix-17"
         ]
 
         with self.assertRaisesRegex(ValueError, "mandatory fixed scenario"):
@@ -2051,7 +2051,7 @@ class StressScenarioTests(unittest.TestCase):
         relabeled = [
             (
                 {**item, "scenario_type": "random_subset"}
-                if item["scenario_id"] == "prefix-22"
+                if item["scenario_id"] == "prefix-17"
                 else item
             )
             for item in results

@@ -47,6 +47,7 @@ RISK_SUB_BASKETS = {
 SYMBOL_SUB_INDUSTRY: dict[str, str] = {
     "300308": "optical", "300502": "optical", "300394": "optical",
     "688205": "optical", "920045": "optical",
+    "688498": "optical", "601869": "optical", "002384": "optical",
     "688008": "memory", "603986": "memory",
     "688256": "compute",
     "688072": "equipment", "688082": "equipment", "300776": "equipment",
@@ -54,6 +55,7 @@ SYMBOL_SUB_INDUSTRY: dict[str, str] = {
     "688361": "equipment", "300604": "equipment", "688120": "equipment",
     "002409": "material", "300054": "material", "688300": "material",
     "688535": "material", "300666": "material", "600206": "material",
+    "300408": "material",
 }
 RISK_SUB_FAST_RETURN_SHOCK = -0.06
 RISK_SUB_BREADTH_SHOCK = 0.60

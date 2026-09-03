@@ -1,0 +1,31 @@
+{
+  "ordered_symbols": [
+    "300308",
+    "300502",
+    "300394",
+    "688256",
+    "603986",
+    "688072",
+    "688300",
+    "300054",
+    "688361",
+    "002409",
+    "688498",
+    "688120",
+    "002384",
+    "688082",
+    "300604",
+    "601869",
+    "300408"
+  ],
+  "formal_scenario_count": 958,
+  "ordered_scenario_ids_sha256": "29c5d626d4cbd176eb18f0c0390016f6f9adad24babbd368cf483d0bc99834e3",
+  "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+  "profile_mapping_count": 36,
+  "profile_mapping_hashes": {
+    "__EFFECTIVE_PROFILE_HASH__": "872ecbc6e5e0fc478ad81aff5f7775f499cbdb7642925c26cc23335a870575f2",
+    "__CLASSIFICATION_HASH__": "b1ed03255f1b896baac27065e595dd67b4f1e574931727e78ba96f31ccdd7bb2",
+    "__GROUP_HASH__": "c99c880825820e2778d41a24e2dddb091de79696c1c31d7399063dbc2c409504",
+    "__SYMBOL_PROFILE_HASH__": "d16f148d723542a52ec72726af967b8e6dfd124420c33441718ccf9355579e3d"
+  }
+}

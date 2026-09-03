@@ -240,6 +240,7 @@ KNOWN_CLASSIFICATION: Mapping[str, str] = MappingProxyType({
     "688498": "default",
     "002281": "default",
     "601869": "default",
+    "002384": "default",
     "688256": "semiconductor",
     "603986": "semiconductor",
     "688072": "semiconductor",
@@ -263,6 +264,7 @@ KNOWN_CLASSIFICATION: Mapping[str, str] = MappingProxyType({
     "688037": "semiconductor",
     "688019": "semiconductor",
     "688268": "semiconductor",
+    "300408": "semiconductor",
 })
 
 SYMBOL_GROUPS: Mapping[str, str] = MappingProxyType({
@@ -277,6 +279,7 @@ SYMBOL_GROUPS: Mapping[str, str] = MappingProxyType({
     "688498": "overseas_compute",
     "002281": "overseas_compute",
     "601869": "overseas_compute",
+    "002384": "overseas_compute",
     "688256": "domestic_semiconductor",
     "603986": "domestic_semiconductor",
     "688072": "domestic_semiconductor",
@@ -300,6 +303,7 @@ SYMBOL_GROUPS: Mapping[str, str] = MappingProxyType({
     "688037": "domestic_semiconductor",
     "688019": "domestic_semiconductor",
     "688268": "domestic_semiconductor",
+    "300408": "domestic_semiconductor",
 })
 
 SYMBOL_PROFILES: Mapping[str, str] = MappingProxyType({
@@ -318,6 +322,7 @@ SYMBOL_PROFILES: Mapping[str, str] = MappingProxyType({
     "688498": "optical_component",  # 源杰科技 - 光芯片
     "002281": "optical_component",  # 光迅科技 - 光器件
     "601869": "optical_component",  # 长飞光纤 - 光器件
+    "002384": "optical_component",  # 东山精密 - PCB/光通信组件
     "688008": "memory_interface",  # 澜起科技 - 存储接口
     "002409": "semiconductor_material",  # 雅克科技 - 材料
     "688300": "semiconductor_material",  # 联瑞新材 - 材料
@@ -339,6 +344,7 @@ SYMBOL_PROFILES: Mapping[str, str] = MappingProxyType({
     "600206": "semiconductor_material",  # 有研新材 - 材料
     "688019": "semiconductor_material",  # 安集科技 - 材料
     "688268": "semiconductor_material",  # 华特气体 - 电子特气
+    "300408": "semiconductor_material",  # 三环集团 - 电子陶瓷材料
     "688249": "advanced_packaging",  # 晶合集成 - 制造/封测
     "688347": "advanced_packaging",  # 华虹宏力 - 制造
     "688825": "advanced_packaging",  # 晶合集成(华虹系) - 制造

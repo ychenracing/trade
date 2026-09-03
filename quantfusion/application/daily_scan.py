@@ -62,6 +62,11 @@ _load_prev_risk_state = load_prev_risk_state
 _save_risk_state = save_risk_state
 _validate_risk_state = validate_risk_state
 
+
+def _scan_title() -> str:
+    return f"AI 板块 {len(SYMBOLS)} 标的每日信号扫描"
+
+
 def _run_main() -> int:
     parser = argparse.ArgumentParser(description="Daily AI-sector signal scan")
     parser.add_argument(
@@ -174,7 +179,7 @@ def _run_main() -> int:
 
     mode_label = "模拟模式"
     print("=" * 72)
-    print("  AI 板块 26 标的每日信号扫描")
+    print(f"  {_scan_title()}")
     print("=" * 72)
     print(f"  运行模式:   {mode_label}")
     print(f"  标的数量:   {len(SYMBOLS)}")

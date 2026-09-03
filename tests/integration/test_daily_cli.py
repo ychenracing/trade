@@ -6,6 +6,7 @@ from __future__ import annotations
 # ruff: noqa: F401
 
 from quantfusion.config.profiles import uses_unmapped_auto_route
+from quantfusion.config.universe import ORDERED_SYMBOLS
 
 from ._daily_scan_support import (
     FakeSignal,
@@ -33,7 +34,7 @@ class CLIArgumentTests(unittest.TestCase):
             # full scan. Just confirm the argparse builder is reachable.
             self.assertTrue(callable(dss._run_main))
 
-    def test_all_26_symbols_are_mapped(self) -> None:
+    def test_all_symbols_are_mapped(self) -> None:
         """Verify all SYMBOLS have explicit routing metadata."""
         for code, name in dss.SYMBOLS.items():
             self.assertFalse(
@@ -41,8 +42,14 @@ class CLIArgumentTests(unittest.TestCase):
                 f"{code} {name} is unmapped — add it to canonical symbol routing",
             )
 
-    def test_symbol_count_is_26(self) -> None:
-        self.assertEqual(len(dss.SYMBOLS), 26)
+    def test_symbol_order_matches_authoritative_universe(self) -> None:
+        self.assertEqual(tuple(dss.SYMBOLS), ORDERED_SYMBOLS)
+
+    def test_scan_title_matches_current_universe(self) -> None:
+        self.assertEqual(
+            dss._scan_title(),
+            f"AI 板块 {len(dss.SYMBOLS)} 标的每日信号扫描",
+        )
 
     def test_no_duplicate_codes(self) -> None:
         codes = list(dss.SYMBOLS.keys())

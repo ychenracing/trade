@@ -1,4 +1,4 @@
-name: Run exact 958-scenario formal acceptance v2
+name: Run exact 958-scenario formal acceptance v3
 
 on:
   push:
@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: formal-stress-958-acceptance
+  cancel-in-progress: true
+
 jobs:
   acceptance:
     runs-on: ubuntu-latest
@@ -19,28 +23,33 @@ jobs:
         with:
           ref: codex/formal-stress-958-acceptance
           fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-lock.txt
+
       - name: Install locked dependencies
         run: python -m pip install -r requirements-lock.txt
-      - name: Verify bootstrap and prepare current contracts
+
+      - name: Verify merged main and prepare current contracts
         shell: bash
         run: |
           set -euo pipefail
           test -f .github/task-bootstrap/formal-stress-958-acceptance.md
-          python -m scripts._formal_stress_958_task prepare
+          test -f scripts/_formal_stress_958_task
+          git fetch origin main
+          git merge-base --is-ancestor 88690b2cb1db8803c8f6cc48f774eebe9db40b9e HEAD
+          PYTHONPATH=. python scripts/_formal_stress_958_task prepare
           python -m pytest -q \
             tests/unit/test_current_formal_stress_plan.py \
             tests/unit/test_stress_sampling_capacity.py \
             tests/unit/test_stress_scenarios.py
-          python -m compileall -q quantfusion scripts/_formal_stress_958_task.py \
-            tests/unit/test_current_formal_stress_plan.py
+          python -m compileall -q quantfusion tests/unit/test_current_formal_stress_plan.py
           ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
-            quantfusion scripts/_formal_stress_958_task.py \
-            tests/unit/test_current_formal_stress_plan.py
+            quantfusion tests/unit/test_current_formal_stress_plan.py
+
       - name: Commit stable pre-run source and documentation
         shell: bash
         run: |
@@ -55,8 +64,9 @@ jobs:
           fi
           git rev-parse HEAD > /tmp/formal_source_sha
           echo "formal_source_sha=$(cat /tmp/formal_source_sha)"
-          python -m scripts._formal_stress_958_task snapshot-prior \
+          PYTHONPATH=. python scripts/_formal_stress_958_task snapshot-prior \
             --output /tmp/prior_candidate_hashes.json
+
       - name: Run exact complete 958-scenario formal plan once
         id: stress
         shell: bash
@@ -80,12 +90,13 @@ jobs:
             exit "$status"
           fi
           echo "formal_exit_status=$status" >> "$GITHUB_OUTPUT"
-      - name: Validate complete evidence and update all result documentation
+
+      - name: Validate complete evidence and update result documentation
         shell: bash
         run: |
           set -euo pipefail
           source_sha="$(cat /tmp/formal_source_sha)"
-          python -m scripts._formal_stress_958_task finalize \
+          PYTHONPATH=. python scripts/_formal_stress_958_task finalize \
             --source-sha "$source_sha" \
             --prior-hashes /tmp/prior_candidate_hashes.json \
             --exit-status "${{ steps.stress.outputs.formal_exit_status }}"
@@ -94,6 +105,7 @@ jobs:
             git diff "$source_sha" -- quantfusion '*.py'
             exit 1
           fi
+
       - name: Run complete engineering verification
         shell: bash
         run: |
@@ -105,6 +117,7 @@ jobs:
           bandit -r quantfusion scripts -ll
           pip-audit --strict -r requirements-lock.txt
           git diff --check
+
       - name: Commit complete evidence and remove temporary infrastructure
         shell: bash
         run: |
@@ -114,9 +127,14 @@ jobs:
             .github/workflows/run-formal-stress-958.yml \
             .github/workflows/run-formal-stress-958-v2.yml \
             .github/task-bootstrap/formal-stress-958-acceptance.md \
+            scripts/_formal_stress_958_task \
             scripts/_formal_stress_958_task.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+          if git diff --cached --quiet; then
+            echo "Expected final evidence and cleanup changes" >&2
+            exit 1
+          fi
           git commit -m "test: record exact 958-scenario formal acceptance"
           git push origin HEAD:codex/formal-stress-958-acceptance

@@ -29,7 +29,7 @@ def _scenarios(
     if random_samples < 1 or permutation_samples < 1:
         raise ValueError("sample counts must be positive")
     smallest_capacity = min(
-        math.comb(len(ORDERED_CODES), size) for size in (3, 5, 8, 12, 16)
+        math.comb(len(ORDERED_CODES), size) for size in (3, 5, 8, 12, 15)
     )
     if random_samples > smallest_capacity:
         raise ValueError(
@@ -69,7 +69,7 @@ def _scenarios(
                         "symbols": [*base, added],
                     }
                 )
-    for size in (3, 5, 8, 12, 16):
+    for size in (3, 5, 8, 12, 15):
         seen: set[tuple[str, ...]] = set()
         while len(seen) < random_samples:
             seen.add(tuple(sorted(rng.sample(ORDERED_CODES, size))))

@@ -1,32 +1,7 @@
 """Stable deterministic execution priorities."""
 
+from quantfusion.config.universe import SYMBOL_NAMES
+
 EXECUTION_PRIORITY = {
-    code: rank
-    for rank, code in enumerate(
-        (
-            "300308",
-            "688256",
-            "300502",
-            "300394",
-            "688008",
-            "603986",
-            "002409",
-            "688072",
-            "688300",
-            "300054",
-            "688205",
-            "920045",
-            "300776",
-            "688535",
-            "688249",
-            "688347",
-            "300666",
-            "600206",
-            "688409",
-            "688361",
-            "300604",
-            "688120",
-            "688082",
-        )
-    )
+    code: rank for rank, code in enumerate(SYMBOL_NAMES)
 }
