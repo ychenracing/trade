@@ -14,7 +14,7 @@
   - do not relabel rejected evidence as canonical;
   - do not overwrite historical 983-scenario evidence;
   - do not push directly to `main`, rewrite shared history, force-push, reset, clean, rebase, or discard unrelated work.
-- Verified baseline SHA: PENDING_BOOTSTRAP_RESOLUTION
+- Verified baseline SHA: aaa136fb6c9cf65d6abafde5b1707df4d7297cf4
 - Risks:
   - full replay is compute-intensive and individual runners can fail transiently;
   - the current product gates may truthfully reject the candidate;
