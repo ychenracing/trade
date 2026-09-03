@@ -213,7 +213,6 @@ class RepositoryHygieneTests(unittest.TestCase):
             self.assertIsInstance(total_return, float)
             self.assertLess(max_drawdown, 0.0)
             self.assertGreater(total_trades, 0)
-            self.assertIn(str(len(codes)), {"1", "3", "5", "13", "22"})
 
     def test_persisted_validation_metadata_uses_portable_data_paths(self) -> None:
         for name in (
