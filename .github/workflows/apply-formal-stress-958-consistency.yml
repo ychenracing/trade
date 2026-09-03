@@ -1,0 +1,212 @@
+name: Apply formal stress 958 consistency closure
+
+on:
+  push:
+    branches:
+      - codex/formal-stress-958-consistency-closure
+    paths:
+      - .github/workflows/apply-formal-stress-958-consistency.yml
+
+permissions:
+  contents: write
+
+jobs:
+  consistency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/formal-stress-958-consistency-closure
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Add semantic consistency contract and remove task infrastructure
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f \
+            .github/workflows/bootstrap-formal-stress-958.yml \
+            .github/workflows/run-formal-stress-958.yml \
+            .github/workflows/run-formal-stress-958-v2.yml \
+            .github/workflows/finalize-formal-stress-958.yml \
+            .github/workflows/bootstrap-formal-stress-958-consistency.yml \
+            .github/workflows/apply-formal-stress-958-consistency.yml \
+            .github/task-bootstrap/formal-stress-958-acceptance.md \
+            .github/task-bootstrap/formal-stress-958-consistency.md \
+            scripts/_formal_stress_958_task.py
+          cat > tests/unit/test_formal_stress_documentation_consistency.py <<'PY'
+          """Keep current formal stress code and documentation on one contract."""
+
+          from __future__ import annotations
+
+          import ast
+          from collections import Counter
+          import io
+          from pathlib import Path
+          import tokenize
+
+          from quantfusion.application import stress_scenarios
+          from quantfusion.config import daily
+          from quantfusion.config.universe import SYMBOL_NAMES
+
+
+          EXPECTED_SYMBOLS = (
+              "300308", "300502", "300394", "688256", "603986",
+              "688072", "688300", "300054", "688361", "002409",
+              "688498", "688120", "002384", "688082", "300604",
+              "601869", "300408",
+          )
+          EXPECTED_FAMILIES = {
+              "prefix": 17,
+              "leave_one_out": 17,
+              "add_one": 24,
+              "random_subset": 750,
+              "permutation": 150,
+          }
+          HISTORICAL_QUALIFIERS = (
+              "历史", "旧", "22 股", "22股", "historical", "legacy",
+              "prior", "previous", "rejected", "immutable",
+          )
+          DOCUMENTS = (
+              Path("README.md"),
+              Path("docs/VALIDATION.md"),
+              Path("docs/ARCHITECTURE.md"),
+          )
+          FORBIDDEN_TEMP_FILES = (
+              Path(".github/workflows/bootstrap-formal-stress-958.yml"),
+              Path(".github/workflows/run-formal-stress-958.yml"),
+              Path(".github/workflows/run-formal-stress-958-v2.yml"),
+              Path(".github/workflows/finalize-formal-stress-958.yml"),
+              Path(".github/workflows/bootstrap-formal-stress-958-consistency.yml"),
+              Path(".github/workflows/apply-formal-stress-958-consistency.yml"),
+              Path(".github/task-bootstrap/formal-stress-958-acceptance.md"),
+              Path(".github/task-bootstrap/formal-stress-958-consistency.md"),
+              Path("scripts/_formal_stress_958_task.py"),
+          )
+
+
+          def _is_explicitly_historical(text: str) -> bool:
+              lowered = text.lower()
+              return any(token.lower() in lowered for token in HISTORICAL_QUALIFIERS)
+
+
+          def _python_comments_and_docstrings(path: Path) -> list[str]:
+              source = path.read_text(encoding="utf-8")
+              comments = [
+                  token.string
+                  for token in tokenize.generate_tokens(io.StringIO(source).readline)
+                  if token.type == tokenize.COMMENT
+              ]
+              tree = ast.parse(source, filename=str(path))
+              docstrings: list[str] = []
+              for node in ast.walk(tree):
+                  if isinstance(
+                      node,
+                      (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef),
+                  ):
+                      value = ast.get_docstring(node, clean=False)
+                      if value:
+                          docstrings.append(value)
+              return comments + docstrings
+
+
+          def test_current_formal_plan_is_exactly_17_symbols_and_958_scenarios() -> None:
+              assert tuple(SYMBOL_NAMES) == EXPECTED_SYMBOLS
+              assert tuple(daily.SYMBOLS) == EXPECTED_SYMBOLS
+              scenarios = stress_scenarios._multi_seed_scenarios(
+                  random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+                  permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+                  seeds=stress_scenarios.DEFAULT_SEEDS,
+              )
+              assert len(scenarios) == 958
+              assert len({item["scenario_id"] for item in scenarios}) == 958
+              assert Counter(item["scenario_type"] for item in scenarios) == EXPECTED_FAMILIES
+
+
+          def test_current_documentation_uses_958_and_marks_983_as_historical() -> None:
+              for path in DOCUMENTS:
+                  text = path.read_text(encoding="utf-8")
+                  assert "958" in text, path
+                  assert "17 股" in text or "17股" in text, path
+                  for line_number, line in enumerate(text.splitlines(), start=1):
+                      if "983" in line:
+                          assert _is_explicitly_historical(line), (
+                              path,
+                              line_number,
+                              line,
+                          )
+
+
+          def test_python_comments_and_docstrings_do_not_call_983_current() -> None:
+              roots = (Path("quantfusion"), Path("scripts"))
+              for root in roots:
+                  for path in root.rglob("*.py"):
+                      for text in _python_comments_and_docstrings(path):
+                          if "983" in text:
+                              assert _is_explicitly_historical(text), (path, text)
+
+
+          def test_recorded_958_summary_is_complete_and_truthful() -> None:
+              import json
+
+              path = Path("artifacts/validation/formal_stress_958_acceptance_summary.json")
+              payload = json.loads(path.read_text(encoding="utf-8"))
+              assert payload["scenario_count"] == 958
+              assert payload["unique_scenario_ids"] == 958
+              assert payload["family_counts"] == EXPECTED_FAMILIES
+              assert isinstance(payload["acceptance_status"], str)
+              assert isinstance(payload["canonical"], bool)
+              assert len(payload["candidate_sha256"]) == 64
+              for key in (
+                  "source_fingerprint",
+                  "data_fingerprint",
+                  "scenario_signature",
+                  "run_signature",
+              ):
+                  assert len(payload["provenance"][key]) >= 32
+
+
+          def test_temporary_acceptance_infrastructure_is_absent() -> None:
+              assert not [path for path in FORBIDDEN_TEMP_FILES if path.exists()]
+          PY
+      - name: Verify focused consistency contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q \
+            tests/unit/test_current_formal_stress_plan.py \
+            tests/unit/test_formal_stress_documentation_consistency.py \
+            tests/unit/test_stress_sampling_capacity.py \
+            tests/unit/test_stress_scenarios.py
+          python -m compileall -q \
+            tests/unit/test_current_formal_stress_plan.py \
+            tests/unit/test_formal_stress_documentation_consistency.py
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
+            tests/unit/test_current_formal_stress_plan.py \
+            tests/unit/test_formal_stress_documentation_consistency.py
+      - name: Verify complete repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q
+          python -m compileall -q .
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
+          pyright quantfusion
+          bandit -r quantfusion scripts -ll
+          pip-audit --strict -r requirements-lock.txt
+          git diff --check
+      - name: Commit coherent consistency closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test: enforce 958-scenario documentation consistency"
+          git push origin HEAD:codex/formal-stress-958-consistency-closure
