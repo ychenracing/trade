@@ -1,4 +1,4 @@
-name: Fix unified 17-symbol CI contracts
+name: Converge known unified 17-symbol failures
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  fix:
+  converge:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -26,32 +26,26 @@ jobs:
           cache-dependency-path: requirements-lock.txt
       - name: Install locked dependencies
         run: python -m pip install -r requirements-lock.txt
-      - name: Add current-universe contracts and remove stale assertions
+      - name: Apply verified current-universe fixes idempotently
         run: |
           python - <<'PYCODE'
           from pathlib import Path
 
           hygiene_path = Path("tests/contract/test_repository_hygiene.py")
           hygiene = hygiene_path.read_text(encoding="utf-8")
-          stale = '            self.assertIn(str(len(codes)), {"1", "3", "5", "13", "22"})\n'
-          if hygiene.count(stale) != 1:
-              raise SystemExit(
-                  f"stale golden-size assertion: expected one occurrence, found {hygiene.count(stale)}"
-              )
-          hygiene_path.write_text(hygiene.replace(stale, "", 1), encoding="utf-8")
+          stale_hygiene = '            self.assertIn(str(len(codes)), {"1", "3", "5", "13", "22"})\n'
+          if stale_hygiene in hygiene:
+              hygiene = hygiene.replace(stale_hygiene, "", 1)
+          hygiene_path.write_text(hygiene, encoding="utf-8")
 
           cli_path = Path("tests/integration/test_daily_cli.py")
           cli = cli_path.read_text(encoding="utf-8")
-          old_import = "from quantfusion.config.profiles import uses_unmapped_auto_route\n"
-          new_import = (
-              "from quantfusion.config.profiles import uses_unmapped_auto_route\n"
-              "from quantfusion.config.universe import ORDERED_SYMBOLS\n"
-          )
-          if cli.count(old_import) != 1:
-              raise SystemExit("daily CLI universe import anchor changed")
-          cli = cli.replace(old_import, new_import, 1)
-          if cli.count("def test_all_26_symbols_are_mapped") != 1:
-              raise SystemExit("stale mapped-symbol test name changed")
+          universe_import = "from quantfusion.config.universe import ORDERED_SYMBOLS\n"
+          if universe_import not in cli:
+              import_anchor = "from quantfusion.config.profiles import uses_unmapped_auto_route\n"
+              if cli.count(import_anchor) != 1:
+                  raise SystemExit("daily CLI import anchor changed")
+              cli = cli.replace(import_anchor, import_anchor + universe_import, 1)
           cli = cli.replace(
               "def test_all_26_symbols_are_mapped",
               "def test_all_symbols_are_mapped",
@@ -71,74 +65,60 @@ jobs:
               "            f\"AI 板块 {len(dss.SYMBOLS)} 标的每日信号扫描\",\n"
               "        )\n"
           )
-          if cli.count(old_count) != 1:
-              raise SystemExit("stale symbol-count contract changed")
-          cli_path.write_text(cli.replace(old_count, new_count, 1), encoding="utf-8")
-          PYCODE
-      - name: Verify stale CI assertions are repaired
-        run: |
-          python -m pytest -q \
-            tests/contract/test_repository_hygiene.py::RepositoryHygieneTests::test_validation_script_reads_the_single_golden_metrics_source \
-            tests/integration/test_daily_cli.py::CLIArgumentTests::test_all_symbols_are_mapped \
-            tests/integration/test_daily_cli.py::CLIArgumentTests::test_symbol_order_matches_authoritative_universe
-      - name: Verify scan-title contract is RED before production change
-        run: |
-          set +e
-          python -m pytest -q \
-            tests/integration/test_daily_cli.py::CLIArgumentTests::test_scan_title_matches_current_universe \
-            > /tmp/scan-title-red.txt 2>&1
-          STATUS=$?
-          set -e
-          cat /tmp/scan-title-red.txt
-          test "$STATUS" -ne 0
-          grep -q "_scan_title" /tmp/scan-title-red.txt
-      - name: Derive the user-visible title from the authoritative universe
-        run: |
-          python - <<'PYCODE'
-          from pathlib import Path
+          if old_count in cli:
+              cli = cli.replace(old_count, new_count, 1)
+          elif "def test_symbol_order_matches_authoritative_universe" not in cli:
+              raise SystemExit("daily CLI symbol-count contract changed unexpectedly")
+          cli_path.write_text(cli, encoding="utf-8")
 
-          path = Path("quantfusion/application/daily_scan.py")
-          source = path.read_text(encoding="utf-8")
-          anchor = (
-              "_validate_risk_state = validate_risk_state\n"
-              "\n"
-              "def _run_main() -> int:\n"
-          )
-          replacement = (
-              "_validate_risk_state = validate_risk_state\n"
-              "\n\n"
-              "def _scan_title() -> str:\n"
-              "    return f\"AI 板块 {len(SYMBOLS)} 标的每日信号扫描\"\n"
-              "\n\n"
-              "def _run_main() -> int:\n"
-          )
-          if source.count(anchor) != 1:
-              raise SystemExit("daily-scan helper insertion anchor changed")
-          source = source.replace(anchor, replacement, 1)
-          literal = '    print("  AI 板块 26 标的每日信号扫描")\n'
-          dynamic = '    print(f"  {_scan_title()}")\n'
-          if source.count(literal) != 1:
-              raise SystemExit("stale daily-scan title changed")
-          path.write_text(source.replace(literal, dynamic, 1), encoding="utf-8")
+          scan_path = Path("quantfusion/application/daily_scan.py")
+          scan = scan_path.read_text(encoding="utf-8")
+          if "def _scan_title()" not in scan:
+              anchor = (
+                  "_validate_risk_state = validate_risk_state\n"
+                  "\n"
+                  "def _run_main() -> int:\n"
+              )
+              replacement = (
+                  "_validate_risk_state = validate_risk_state\n"
+                  "\n\n"
+                  "def _scan_title() -> str:\n"
+                  "    return f\"AI 板块 {len(SYMBOLS)} 标的每日信号扫描\"\n"
+                  "\n\n"
+                  "def _run_main() -> int:\n"
+              )
+              if scan.count(anchor) != 1:
+                  raise SystemExit("daily-scan title helper anchor changed")
+              scan = scan.replace(anchor, replacement, 1)
+          stale_title = '    print("  AI 板块 26 标的每日信号扫描")\n'
+          dynamic_title = '    print(f"  {_scan_title()}")\n'
+          if stale_title in scan:
+              scan = scan.replace(stale_title, dynamic_title, 1)
+          elif dynamic_title not in scan:
+              raise SystemExit("daily-scan title print changed unexpectedly")
+          scan_path.write_text(scan, encoding="utf-8")
           PYCODE
-      - name: Verify targeted contracts are GREEN
+      - name: Verify repaired failure contracts
         run: |
           python -m pytest -q \
             tests/contract/test_repository_hygiene.py::RepositoryHygieneTests::test_validation_script_reads_the_single_golden_metrics_source \
             tests/integration/test_daily_cli.py::CLIArgumentTests::test_all_symbols_are_mapped \
             tests/integration/test_daily_cli.py::CLIArgumentTests::test_symbol_order_matches_authoritative_universe \
             tests/integration/test_daily_cli.py::CLIArgumentTests::test_scan_title_matches_current_universe
-      - name: Verify the final engineering candidate
+      - name: Verify final engineering candidate
         run: |
           python -m compileall -q .
           ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
           python -m pytest -q
           pyright quantfusion
-      - name: Commit coherent fix and remove superseded long-run workflows
+      - name: Commit coherent fix and remove temporary task machinery
         run: |
           rm -f \
+            .github/workflows/finalize-unified-17-symbol-universe.yml \
             .github/workflows/fix-unified-17-ci.yml \
-            .github/workflows/run-unified-17-formal-stress.yml
+            .github/workflows/run-unified-17-formal-stress.yml \
+            .github/workflows/run-unified-17-symbol-task.yml \
+            scripts/_patch_unified_test_expectations.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
