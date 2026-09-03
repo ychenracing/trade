@@ -129,7 +129,7 @@
     "drawdown_floor": "0.82 * lifetime_peak_assets",
     "remaining_drawdown_cushion": "max(current_assets - drawdown_floor, 0)",
     "available_budget": "max(min(0.175 * lifetime_peak_assets, remaining_drawdown_cushion - execution_buffer), 0)",
-    "book_adverse_loss": "shares * max(max(mark_price - effective_stop, 0), 6.0 * causal_atr)",
+    "book_adverse_loss": "shares * max(max(cost_basis_price - effective_stop, 0), 1.0 * causal_atr)",
     "group_adverse_loss": "sum(book_adverse_loss for books in the same risk group)",
     "projected_adverse_loss": "largest_group_adverse_loss + 0.50 * sum(other_group_adverse_losses)",
     "proposed_trade_gate": "projected_adverse_loss(after proposed buy/add) <= available_budget",
@@ -137,7 +137,8 @@
     "notes": [
       "Same-group books receive no diversification credit; one-symbol and one-group portfolios remain fully constrained.",
       "The 50% residual-group charge is a transparent stress credit, not covariance estimation.",
-      "Existing positions use the close and effective stop/ATR known at that close; proposed orders use their signal-date stop/ATR.",
+      "Existing positions use cost basis plus the effective stop/ATR known at the close; proposed orders use their signal price and signal-date stop/ATR. Mark appreciation alone is excluded from invested risk because lifetime-peak cushion already accounts for the accrued equity.",
+      "One causal ATR is the existing position-sizing loss unit. The effective stop already captures any wider committed loss; the strategy's 6-ATR layered trailing-stop distance is not reused as an additional gap shock.",
       "A proposed order with missing or non-finite stop/ATR evidence is rejected. An existing book with missing evidence is charged its full marked value.",
       "Risk sells use the existing next-executable-open queue; no intraday fill or daily-OHLC interpolation is introduced."
     ]
@@ -145,7 +146,7 @@
   "fixed_parameters": {
     "max_account_drawdown": 0.18,
     "base_account_risk_budget_peak_fraction": 0.175,
-    "adverse_atr_multiple": 6.0,
+    "adverse_atr_multiple": 1.0,
     "other_group_loss_weight": 0.5,
     "constraint_entry_ratio": 1.0,
     "constraint_release_ratio": 0.8,
@@ -162,6 +163,12 @@
       }
     },
     "configuration_difference": "Only execution_buffer_peak_fraction differs."
+  },
+  "pre_l1_correction": {
+    "status": "corrected before the first remote production-code checkpoint and formal L1 batch",
+    "from": "6.0 * causal_atr floor",
+    "to": "1.0 * causal_atr floor plus the effective-stop distance",
+    "reason": "The 6-ATR value belongs to the existing layered trailing-stop distance. Reusing it as a separate adverse gap double-charged the same risk and violated the winner-appreciation invariant. A targeted prefix regression exposed the mismatch; no formal L1 batch or configuration search was used."
   },
   "state_machine": {
     "normal_to_constrained": "Enter when projected_adverse_loss exceeds available_budget or the existing account warning becomes active.",
