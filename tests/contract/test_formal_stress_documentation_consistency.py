@@ -13,8 +13,9 @@ import re
 import tokenize
 from typing import Any
 
-from quantfusion.application import stress_scenarios
+from quantfusion.application import stress_artifacts, stress_scenarios
 from quantfusion.config import daily
+from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
 from quantfusion.config.universe import SYMBOL_NAMES
 
 
@@ -45,6 +46,13 @@ EXPECTED_FAMILIES = {
     "random_subset": 750,
     "permutation": 150,
 }
+FAMILY_LABELS = {
+    "prefix": "prefix",
+    "leave_one_out": "leave-one-out",
+    "add_one": "add-one",
+    "random_subset": "random-subset",
+    "permutation": "permutation",
+}
 CURRENT_PLAN_START = "<!-- CURRENT_FORMAL_STRESS_PLAN:START -->"
 CURRENT_PLAN_END = "<!-- CURRENT_FORMAL_STRESS_PLAN:END -->"
 CURRENT_RESULT_START = "<!-- CURRENT_FORMAL_STRESS_RESULT:START -->"
@@ -58,23 +66,40 @@ DETAILED_PLAN_DOCUMENTS = (
     Path("README.md"),
     Path("docs/VALIDATION.md"),
 )
-HISTORICAL_QUALIFIERS = (
-    "历史",
-    "旧",
-    "22 股",
-    "22股",
-    "22-symbol",
-    "historical",
-    "legacy",
-    "prior",
-    "previous",
-    "immutable",
+GATE_FIELDS = (
+    "absolute_hard_gates",
+    "retained_robustness_hard_gates",
+    "robustness_diagnostics",
+    "promotion_gates",
+    "initial_baseline_gates",
+)
+REPLAY_FIELDS = (
+    "engine",
+    "deployment_policy",
+    "trade_count_semantics",
+    "portfolio_policy",
+    "data_directory",
+    "regime_data_directory",
+    "indicator_state",
+    "seeds",
+    "random_samples_per_size_per_seed",
+    "permutation_samples_per_seed",
 )
 TEMPORARY_GLOBS = (
     ".github/task-bootstrap/*formal-stress-958*",
     ".github/workflows/*formal-stress-958*.yml",
     "artifacts/validation/formal_stress_958_*checkpoint*.md",
     "scripts/_formal_stress_958*",
+)
+HISTORICAL_983 = re.compile(
+    r"(?:历史|historical)\s*(?:的\s*)?(?:22\s*股|22-symbol).*?983"
+    r"|(?:22\s*股|22-symbol).*?983.*?(?:历史|historical)",
+    re.IGNORECASE | re.DOTALL,
+)
+HISTORICAL_22 = re.compile(
+    r"(?:历史|historical)\s*(?:的\s*)?(?:22\s*股|22-symbol)"
+    r"|(?:22\s*股|22-symbol).*?(?:历史|historical)",
+    re.IGNORECASE,
 )
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
@@ -89,7 +114,7 @@ def _managed_block(text: str, start: str, end: str, *, path: Path) -> str:
 
 
 def _assert_983_is_historical(text: str, *, path: Path) -> None:
-    """要求每个 983 引用在本行或所属 Markdown 小节中明确标为历史。"""
+    """Require explicit historical 22-symbol context for every old-plan mention."""
     heading = ""
     for raw in text.splitlines():
         line = raw.strip()
@@ -97,10 +122,7 @@ def _assert_983_is_historical(text: str, *, path: Path) -> None:
             heading = line
         if "983" not in line:
             continue
-        context = f"{heading}\n{line}".lower()
-        assert any(
-            qualifier.lower() in context for qualifier in HISTORICAL_QUALIFIERS
-        ), (path, line)
+        assert HISTORICAL_983.search(f"{heading}\n{line}"), (path, line)
 
 
 def _python_comments_and_docstrings(path: Path) -> list[str]:
@@ -129,14 +151,41 @@ def _load_json(path: Path) -> dict[str, Any]:
     return payload
 
 
-def test_current_formal_plan_is_exactly_17_symbols_and_958_scenarios() -> None:
-    assert tuple(SYMBOL_NAMES) == EXPECTED_SYMBOLS
-    assert tuple(daily.SYMBOLS) == EXPECTED_SYMBOLS
-    scenarios = stress_scenarios._multi_seed_scenarios(
+def _current_scenarios() -> list[dict[str, Any]]:
+    return stress_scenarios._multi_seed_scenarios(
         random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
         permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
         seeds=stress_scenarios.DEFAULT_SEEDS,
     )
+
+
+def _expected_result_text(summary: dict[str, Any]) -> str:
+    worst = summary["worst_all"]
+    prefix = summary["prefix_17"]
+    return (
+        "完整计划已运行：`958/958`，唯一 scenario ID：`958`。"
+        f"工件状态为 `{summary['artifact_status']}`，"
+        f"acceptance 为 `{summary['acceptance_status']}`，"
+        f"canonical 为 `{str(summary['canonical']).lower()}`；"
+        "absolute hard gates passed="
+        f"`{summary['absolute_hard_gates']['passed']}`，"
+        "retained robustness gates passed="
+        f"`{summary['retained_robustness_hard_gates']['passed']}`。"
+        f"全场景最差最大回撤为 `{worst['max_drawdown']:.6%}`"
+        f"（`{worst['scenario_id']}`），17 股完整 prefix 的总收益为 "
+        f"`{prefix['total_return']:.6%}`、最大回撤为 "
+        f"`{prefix['max_drawdown']:.6%}`。当前候选："
+        f"`{summary['candidate_path']}`，SHA-256："
+        f"`{summary['candidate_sha256']}`；source revision："
+        f"`{summary['source_revision']}`。详细 gates 与 provenance 见 "
+        "`artifacts/validation/formal_stress_958_acceptance_summary.json`。"
+    )
+
+
+def test_current_formal_plan_is_exactly_17_symbols_and_958_scenarios() -> None:
+    assert tuple(SYMBOL_NAMES) == EXPECTED_SYMBOLS
+    assert tuple(daily.SYMBOLS) == EXPECTED_SYMBOLS
+    scenarios = _current_scenarios()
     ids = [str(item["scenario_id"]) for item in scenarios]
     assert len(scenarios) == 958
     assert len(set(ids)) == 958
@@ -163,29 +212,30 @@ def test_current_documentation_separates_958_from_historical_983() -> None:
         assert "958" in plan_block, relative
         assert "17 股" in plan_block or "17股" in plan_block, relative
         if relative in DETAILED_PLAN_DOCUMENTS:
-            for family in EXPECTED_FAMILIES:
-                assert family.replace("_", "-") in plan_block, (
-                    relative,
-                    family,
-                )
+            for family, count in EXPECTED_FAMILIES.items():
+                label = re.escape(FAMILY_LABELS[family])
+                assert re.search(
+                    rf"{count}\s*个\s+(?:deterministic\s+)?{label}",
+                    plan_block,
+                ), (relative, family, count)
+        for raw in plan_block.splitlines():
+            if re.search(r"(?:22\s*股|22-symbol)", raw, re.IGNORECASE):
+                assert HISTORICAL_22.search(raw), (relative, raw)
         assert "983" not in result_block, relative
         _assert_983_is_historical(text, path=relative)
 
 
-def test_python_comments_and_docstrings_do_not_call_983_current() -> None:
-    for root in (ROOT / "quantfusion", ROOT / "scripts"):
-        for path in root.rglob("*.py"):
-            for text in _python_comments_and_docstrings(path):
-                if "983" not in text:
-                    continue
-                lowered = text.lower()
-                assert any(
-                    qualifier.lower() in lowered
-                    for qualifier in HISTORICAL_QUALIFIERS
-                ), (path.relative_to(ROOT), text)
+def test_all_python_comments_and_docstrings_mark_983_as_historical_22() -> None:
+    for path in ROOT.rglob("*.py"):
+        for text in _python_comments_and_docstrings(path):
+            if "983" in text:
+                assert HISTORICAL_983.search(text), (
+                    path.relative_to(ROOT),
+                    text,
+                )
 
 
-def test_recorded_958_summary_and_candidate_are_complete_and_consistent() -> None:
+def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
     summary_path = (
         ROOT / "artifacts/validation/formal_stress_958_acceptance_summary.json"
     )
@@ -203,53 +253,87 @@ def test_recorded_958_summary_and_candidate_are_complete_and_consistent() -> Non
     if summary["acceptance_status"] == "rejected":
         assert summary["formal_exit_status"] == 2
         assert summary["canonical"] is False
+        assert summary["artifact_status"] == "current_candidate"
+        assert summary["rejection_reasons"]
     else:
         assert summary["formal_exit_status"] == 0
+        assert summary["canonical"] is True
+        assert summary["rejection_reasons"] == []
 
+    for gate_name in GATE_FIELDS:
+        assert isinstance(summary[gate_name], dict), gate_name
     for gate_name in (
         "absolute_hard_gates",
         "retained_robustness_hard_gates",
     ):
-        gates = summary[gate_name]
-        assert isinstance(gates, dict)
-        assert isinstance(gates.get("passed"), bool)
+        assert isinstance(summary[gate_name].get("passed"), bool), gate_name
 
-    provenance = summary["provenance"]
-    assert isinstance(provenance, dict)
-    for key in (
-        "source_fingerprint",
-        "data_fingerprint",
-        "scenario_signature",
-        "run_signature",
-    ):
-        assert isinstance(provenance[key], str)
-        assert len(provenance[key]) >= 32
+    scenarios = _current_scenarios()
+    expected_provenance = stress_artifacts._build_provenance(
+        scenarios,
+        MARKET_DATA_DIR.resolve(),
+        REGIME_DATA_DIR.resolve(),
+        source_revision=summary["source_revision"],
+    )
+    assert summary["provenance"] == {
+        field: expected_provenance[field]
+        for field in stress_artifacts.PROVENANCE_FIELDS
+    }
 
-    candidate_path = ROOT / str(summary["candidate_path"])
+    candidate_relative = Path(str(summary["candidate_path"]))
+    assert not candidate_relative.is_absolute()
+    candidate_path = (ROOT / candidate_relative).resolve()
+    assert candidate_path.is_relative_to((ROOT / "artifacts/validation").resolve())
     assert candidate_path.is_file()
     assert hashlib.sha256(candidate_path.read_bytes()).hexdigest() == summary[
         "candidate_sha256"
     ]
     candidate = _load_json(candidate_path)
+
     assert candidate["source_revision"] == summary["source_revision"]
     assert candidate["scenario_count"] == 958
+    assert candidate["artifact_status"] == summary["artifact_status"]
     assert candidate["acceptance_status"] == summary["acceptance_status"]
     assert candidate["canonical"] == summary["canonical"]
-    for key, value in provenance.items():
-        assert candidate[key] == value
+    assert candidate.get("rejection_reasons", []) == summary["rejection_reasons"]
+    assert summary["provenance"] == {
+        field: candidate[field] for field in stress_artifacts.PROVENANCE_FIELDS
+    }
+    assert summary["replay_contract"] == {
+        field: candidate[field] for field in REPLAY_FIELDS
+    }
+    assert candidate["engine"] == "ProductionReplayEngine"
+    assert candidate["deployment_policy"] == "production_daily_replay"
+    assert candidate["trade_count_semantics"] == "trade_records"
+    assert candidate["seeds"] == list(stress_scenarios.DEFAULT_SEEDS)
+    assert (
+        candidate["random_samples_per_size_per_seed"]
+        == stress_scenarios.DEFAULT_RANDOM_SAMPLES
+    )
+    assert (
+        candidate["permutation_samples_per_seed"]
+        == stress_scenarios.DEFAULT_PERMUTATION_SAMPLES
+    )
+    for gate_name in GATE_FIELDS:
+        assert candidate[gate_name] == summary[gate_name], gate_name
 
     results = candidate["results"]
     assert isinstance(results, list)
     assert len(results) == 958
-    assert len({str(item["scenario_id"]) for item in results}) == 958
+    result_ids = {str(item["scenario_id"]) for item in results}
+    assert len(result_ids) == 958
+    assert result_ids == {str(item["scenario_id"]) for item in scenarios}
     assert Counter(str(item["scenario_type"]) for item in results) == Counter(
         EXPECTED_FAMILIES
     )
     for item in results:
         assert item["deployment_policy"] == "production_daily_replay"
         for key in ("total_return", "max_drawdown", "sharpe", "calmar"):
-            assert math.isfinite(float(item[key])), (item["scenario_id"], key)
+            value = item[key]
+            assert type(value) in (int, float), (item["scenario_id"], key)
+            assert math.isfinite(value), (item["scenario_id"], key)
 
+    expected_result = _expected_result_text(summary)
     for relative in CURRENT_DOCUMENTS:
         text = (ROOT / relative).read_text(encoding="utf-8")
         result_block = _managed_block(
@@ -258,9 +342,7 @@ def test_recorded_958_summary_and_candidate_are_complete_and_consistent() -> Non
             CURRENT_RESULT_END,
             path=relative,
         )
-        assert summary["source_revision"] in result_block, relative
-        assert summary["candidate_sha256"] in result_block, relative
-        assert str(summary["candidate_path"]) in result_block, relative
+        assert result_block.strip() == expected_result, relative
 
 
 def test_temporary_acceptance_and_consistency_infrastructure_is_absent() -> None:
