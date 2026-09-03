@@ -241,6 +241,9 @@ def _validate_candidate(payload: dict[str, Any]) -> Counter[str]:
     ids = [str(item["scenario_id"]) for item in results]
     if len(results) != 958 or len(set(ids)) != 958:
         raise RuntimeError("formal evidence is not exact 958/958 unique completion")
+    expected_ids = {str(item["scenario_id"]) for item in _formal_scenarios()}
+    if set(ids) != expected_ids:
+        raise RuntimeError("formal evidence IDs do not equal the current plan")
     families = Counter(str(item["scenario_type"]) for item in results)
     if families != EXPECTED_FAMILIES:
         raise RuntimeError(f"unexpected result family counts: {families!r}")
@@ -251,7 +254,7 @@ def _validate_candidate(payload: dict[str, Any]) -> Counter[str]:
             )
         for key in ("total_return", "max_drawdown", "sharpe", "calmar"):
             value = item.get(key)
-            if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+            if type(value) not in (int, float) or not math.isfinite(value):
                 raise RuntimeError(
                     f"non-finite {key} in {item.get('scenario_id')}: {value!r}"
                 )
@@ -275,11 +278,16 @@ def _result_block(summary: dict[str, Any]) -> str:
 
 
 def finalize(source_sha: str, prior_path: Path, exit_status: int) -> None:
+    from quantfusion.application import stress_artifacts
+
     _validate_current_plan()
     prior = json.loads(prior_path.read_text(encoding="utf-8"))
     _validate_prior_hashes(prior)
     candidate_path, payload = _find_current_candidate(source_sha)
     families = _validate_candidate(payload)
+    canonical = payload.get("canonical")
+    if not isinstance(canonical, bool):
+        raise RuntimeError(f"invalid canonical flag: {canonical!r}")
     results = payload["results"]
     candidate_sha = hashlib.sha256(candidate_path.read_bytes()).hexdigest()
     worst = min(results, key=lambda item: float(item["max_drawdown"]))
@@ -307,7 +315,7 @@ def finalize(source_sha: str, prior_path: Path, exit_status: int) -> None:
         "family_counts": dict(sorted(families.items())),
         "artifact_status": str(payload.get("artifact_status", "unknown")),
         "acceptance_status": str(payload.get("acceptance_status", "unknown")),
-        "canonical": bool(payload.get("canonical", False)),
+        "canonical": canonical,
         "absolute_hard_gates": payload.get("absolute_hard_gates", {}),
         "retained_robustness_hard_gates": payload.get(
             "retained_robustness_hard_gates", {}
@@ -316,14 +324,24 @@ def finalize(source_sha: str, prior_path: Path, exit_status: int) -> None:
         "promotion_gates": payload.get("promotion_gates", {}),
         "initial_baseline_gates": payload.get("initial_baseline_gates", {}),
         "provenance": {
+            key: payload[key] for key in stress_artifacts.PROVENANCE_FIELDS
+        },
+        "replay_contract": {
             key: payload[key]
             for key in (
-                "source_fingerprint",
-                "data_fingerprint",
-                "scenario_signature",
-                "run_signature",
+                "engine",
+                "deployment_policy",
+                "trade_count_semantics",
+                "portfolio_policy",
+                "data_directory",
+                "regime_data_directory",
+                "indicator_state",
+                "seeds",
+                "random_samples_per_size_per_seed",
+                "permutation_samples_per_seed",
             )
         },
+        "rejection_reasons": payload.get("rejection_reasons", []),
         "worst_all": {
             "scenario_id": worst["scenario_id"],
             "max_drawdown": float(worst["max_drawdown"]),
