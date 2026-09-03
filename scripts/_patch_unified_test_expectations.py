@@ -133,8 +133,31 @@ def main() -> None:
         count=1,
         label="small-plan run signature",
     )
-
     path.write_text(text, encoding="utf-8")
+
+    regression_path = Path("tests/regression/test_quant_fusion.py")
+    regression = regression_path.read_text(encoding="utf-8")
+    if "22_symbols" not in regression:
+        raise SystemExit("regression test has no 22_symbols references")
+    regression = regression.replace("22_symbols", "17_symbols")
+    old_policy_contract = '''        self.assertTrue(
+            set(policy.regime_symbols).issubset(ESTABLISHED_EXPANSION_CORE)
+        )'''
+    new_policy_contract = '''        self.assertEqual(
+            policy.regime_symbols,
+            ("300308", "300502", "300394", "688008", "603986"),
+        )
+        self.assertFalse(
+            set(policy.regime_symbols).issubset(ESTABLISHED_EXPANSION_CORE)
+        )'''
+    regression = replace_exact(
+        regression,
+        old_policy_contract,
+        new_policy_contract,
+        count=1,
+        label="independent fixed signal-reference contract",
+    )
+    regression_path.write_text(regression, encoding="utf-8")
 
 
 if __name__ == "__main__":
