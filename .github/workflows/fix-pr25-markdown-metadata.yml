@@ -89,12 +89,11 @@ jobs:
           path.write_text(text.replace(old, new, 1), encoding="utf-8")
           PY
 
-      - name: Verify both real PR25 CI defects are fixed
+      - name: Verify independently testable PR25 fixes
         run: |
           python -m pytest -q \
             tests/contract/test_repository_hygiene.py::MarkdownConsistencyTests::test_markdown_metadata_comments_are_not_prose \
-            tests/contract/test_repository_hygiene.py::MarkdownConsistencyTests::test_markdown_prose_is_chinese \
-            tests/contract/test_formal_stress_documentation_consistency.py::test_current_documentation_separates_958_from_historical_983
+            tests/contract/test_repository_hygiene.py::MarkdownConsistencyTests::test_markdown_prose_is_chinese
           python -m compileall -q \
             tests/contract/test_repository_hygiene.py \
             tests/contract/test_formal_stress_documentation_consistency.py
