@@ -1,0 +1,463 @@
+name: Recover and finalize complete 958-scenario stress acceptance
+
+on:
+  push:
+    branches:
+      - codex/full-958-stress-acceptance
+    paths:
+      - .github/workflows/recover-full-958-stress-acceptance-v2.yml
+
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  pull-requests: write
+
+env:
+  BRANCH_NAME: codex/full-958-stress-acceptance
+  RECOVERY_SCRIPT: scripts/_full_958_acceptance_recovery_v2.py
+  SHARD_COUNT: "12"
+  PYTHONHASHSEED: "0"
+
+concurrency:
+  group: recover-full-958-stress-acceptance-v2
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      needs_recovery: ${{ steps.state.outputs.needs_recovery }}
+      source_sha: ${{ steps.source.outputs.source_sha }}
+      branch_sha: ${{ steps.source.outputs.branch_sha }}
+      workflow_sha: ${{ github.sha }}
+      previous_run_id: ${{ steps.previous.outputs.previous_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Inspect any existing complete result
+        id: state
+        run: python "$RECOVERY_SCRIPT" inspect --github-output "$GITHUB_OUTPUT"
+      - name: Resolve one exact source revision
+        id: source
+        env:
+          NEEDS_RECOVERY: ${{ steps.state.outputs.needs_recovery }}
+          SUMMARY_SOURCE_SHA: ${{ steps.state.outputs.summary_source_sha }}
+        run: |
+          branch_sha="$(git rev-parse HEAD)"
+          if [ "$NEEDS_RECOVERY" = "false" ]; then
+            source_sha="$SUMMARY_SOURCE_SHA"
+            git cat-file -e "$source_sha^{commit}"
+          else
+            source_sha="$(git log --all --grep='docs: align current 958 stress contract before execution' --format=%H -n 1)"
+            if [ -z "$source_sha" ]; then
+              python "$RECOVERY_SCRIPT" prepare
+              python -m pytest -q \
+                tests/unit/test_current_formal_stress_contract.py \
+                tests/unit/test_stress_scenarios.py
+              python -m compileall -q \
+                quantfusion scripts tests/unit/test_current_formal_stress_contract.py
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add \
+                README.md \
+                docs/VALIDATION.md \
+                tests/unit/test_current_formal_stress_contract.py \
+                artifacts/diagnostics/full-958-acceptance-preflight.json
+              git diff --cached --check
+              if ! git diff --cached --quiet; then
+                git commit -m "docs: align current 958 stress contract before execution"
+                git push origin "HEAD:$BRANCH_NAME"
+              fi
+              source_sha="$(git rev-parse HEAD)"
+              branch_sha="$source_sha"
+            else
+              git cat-file -e "$source_sha^{commit}"
+              if ! git diff --quiet "$source_sha" HEAD -- \
+                quantfusion \
+                data/market \
+                data/regime \
+                requirements-lock.txt; then
+                echo "production source or frozen data changed after the recorded source revision" >&2
+                exit 1
+              fi
+              test "$(git show "$source_sha:artifacts/diagnostics/full-958-acceptance-preflight.json" | python -c 'import json,sys; p=json.load(sys.stdin); print(p["scenario_count"], p["unique_scenario_ids"])')" = "958 958"
+            fi
+          fi
+          remote_sha="$(git ls-remote origin "refs/heads/$BRANCH_NAME" | cut -f1)"
+          if [ "$remote_sha" != "$branch_sha" ]; then
+            echo "remote task branch SHA does not match the recoverable branch checkpoint" >&2
+            exit 1
+          fi
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "branch_sha=$branch_sha" >> "$GITHUB_OUTPUT"
+      - name: Locate and settle the prior full-run attempt
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEEDS_RECOVERY: ${{ steps.state.outputs.needs_recovery }}
+        run: |
+          previous_run_id=""
+          if [ "$NEEDS_RECOVERY" = "true" ]; then
+            previous_run_id="$(
+              gh api --method GET "repos/$GITHUB_REPOSITORY/actions/runs" \
+                -f branch="$BRANCH_NAME" \
+                -f per_page=100 \
+                --jq '.workflow_runs[] | select(.path == ".github/workflows/run-full-958-stress-acceptance.yml") | .id' \
+                | head -n 1
+            )"
+            if [ -n "$previous_run_id" ]; then
+              for _ in $(seq 1 60); do
+                status="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$previous_run_id" --jq '.status')"
+                if [ "$status" = "completed" ]; then
+                  break
+                fi
+                sleep 10
+              done
+            fi
+          fi
+          echo "previous_run_id=$previous_run_id" >> "$GITHUB_OUTPUT"
+
+  shard:
+    needs: prepare
+    if: needs.prepare.outputs.needs_recovery == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 125
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.source_sha }}
+          fetch-depth: 0
+      - name: Load the branch-only recovery runner
+        env:
+          WORKFLOW_SHA: ${{ needs.prepare.outputs.workflow_sha }}
+        run: |
+          git fetch origin "$WORKFLOW_SHA"
+          git show "$WORKFLOW_SHA:$RECOVERY_SCRIPT" > /tmp/full_958_recovery.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Download the matching prior shard when retained
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_RUN_ID: ${{ needs.prepare.outputs.previous_run_id }}
+          SHARD_INDEX: ${{ matrix.shard }}
+        run: |
+          mkdir -p previous-shard
+          if [ -n "$PREVIOUS_RUN_ID" ]; then
+            gh run download "$PREVIOUS_RUN_ID" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name "stress-shard-$SHARD_INDEX" \
+              --dir previous-shard || true
+          fi
+      - name: Reuse the validated shard or run only this missing shard
+        env:
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+          SHARD_INDEX: ${{ matrix.shard }}
+        run: |
+          python /tmp/full_958_recovery.py run-or-reuse-shard \
+            --source-sha "$SOURCE_SHA" \
+            --shard-index "$SHARD_INDEX" \
+            --existing previous-shard \
+            --output shard-results.json \
+            --workers 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recovered-stress-shard-${{ matrix.shard }}
+          path: shard-results.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: [prepare, shard]
+    if: needs.prepare.outputs.needs_recovery == 'true' && needs.shard.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.source_sha }}
+          fetch-depth: 0
+      - name: Load the branch-only recovery runner
+        env:
+          WORKFLOW_SHA: ${{ needs.prepare.outputs.workflow_sha }}
+        run: |
+          git fetch origin "$WORKFLOW_SHA"
+          git show "$WORKFLOW_SHA:$RECOVERY_SCRIPT" > /tmp/full_958_recovery.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: recovered-stress-shard-*
+          path: recovered-shards
+      - name: Aggregate the exact plan and publish through production code
+        env:
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+        run: |
+          python /tmp/full_958_recovery.py aggregate \
+            --source-sha "$SOURCE_SHA" \
+            --shard-root recovered-shards
+          python /tmp/full_958_recovery.py verify
+      - name: Package only the coherent repository result
+        run: |
+          mkdir -p \
+            recovery-output/docs \
+            recovery-output/tests/unit \
+            recovery-output/artifacts/diagnostics \
+            recovery-output/artifacts
+          cp README.md recovery-output/README.md
+          cp docs/VALIDATION.md recovery-output/docs/VALIDATION.md
+          cp tests/unit/test_current_formal_stress_contract.py \
+            recovery-output/tests/unit/test_current_formal_stress_contract.py
+          cp artifacts/diagnostics/full-958-acceptance-preflight.json \
+            recovery-output/artifacts/diagnostics/full-958-acceptance-preflight.json
+          cp artifacts/diagnostics/full-958-acceptance-summary.json \
+            recovery-output/artifacts/diagnostics/full-958-acceptance-summary.json
+          cp -a artifacts/validation recovery-output/artifacts/validation
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recovered-full-958-formal-result
+          path: recovery-output
+          if-no-files-found: error
+          retention-days: 30
+
+  finalize:
+    needs: [prepare, shard, aggregate]
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      (
+        needs.prepare.outputs.needs_recovery == 'false' ||
+        needs.aggregate.result == 'success'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.branch_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Restore the aggregated result when recovery was required
+        if: needs.prepare.outputs.needs_recovery == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: recovered-full-958-formal-result
+          path: recovered-full-result
+      - name: Overlay the recovered repository result
+        if: needs.prepare.outputs.needs_recovery == 'true'
+        run: cp -a recovered-full-result/. .
+      - name: Verify result semantics and documentation before cleanup
+        run: |
+          cp "$RECOVERY_SCRIPT" /tmp/full_958_recovery.py
+          python /tmp/full_958_recovery.py verify
+          python /tmp/full_958_recovery.py report > /tmp/full-958-report.json
+      - name: Remove temporary task machinery
+        run: |
+          rm -f \
+            "$RECOVERY_SCRIPT" \
+            .github/workflows/recover-full-958-stress-acceptance-v2.yml \
+            .github/workflows/run-full-958-stress-acceptance.yml \
+            .github/workflows/finalize-full-958-stress-acceptance.yml \
+            .github/workflows/finalize-full-958-bootstrap.yml \
+            .github/workflows/finalize-full-958-bootstrap-v2.yml \
+            .github/task-bootstrap/full-958-stress-acceptance.md
+          rm -rf recovered-full-result
+      - name: Run complete repository verification
+        run: |
+          python -m pytest -q
+          python -m compileall -q .
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
+          pyright
+          bandit -r quantfusion scripts -q
+          pip-audit --strict
+          git diff --check
+      - name: Commit, push, and verify the final remote checkpoint
+        id: checkpoint
+        env:
+          EXPECTED_REMOTE_SHA: ${{ needs.prepare.outputs.branch_sha }}
+        run: |
+          remote_before="$(git ls-remote origin "refs/heads/$BRANCH_NAME" | cut -f1)"
+          if [ "$remote_before" != "$EXPECTED_REMOTE_SHA" ]; then
+            echo "remote task branch advanced before final checkpoint" >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            final_sha="$(git rev-parse HEAD)"
+          else
+            git commit -m "test: finalize complete 958-scenario stress acceptance"
+            final_sha="$(git rev-parse HEAD)"
+            git push origin "HEAD:$BRANCH_NAME"
+          fi
+          remote_after="$(git ls-remote origin "refs/heads/$BRANCH_NAME" | cut -f1)"
+          if [ "$remote_after" != "$final_sha" ]; then
+            echo "remote final checkpoint SHA mismatch" >&2
+            exit 1
+          fi
+          echo "final_sha=$final_sha" >> "$GITHUB_OUTPUT"
+      - name: Wait for the final-SHA repository checks
+        id: checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINAL_SHA: ${{ steps.checkpoint.outputs.final_sha }}
+        run: |
+          check_state="pending"
+          for _ in $(seq 1 120); do
+            payload="$(gh api "repos/$GITHUB_REPOSITORY/commits/$FINAL_SHA/check-runs?per_page=100")"
+            total="$(jq '.total_count' <<<"$payload")"
+            pending="$(jq '[.check_runs[] | select(.status != "completed")] | length' <<<"$payload")"
+            failed="$(jq '[.check_runs[] | select(.status == "completed" and (.conclusion | IN("success", "neutral", "skipped") | not))] | length' <<<"$payload")"
+            if [ "$failed" -gt 0 ]; then
+              jq '[.check_runs[] | select(.status == "completed" and (.conclusion | IN("success", "neutral", "skipped") | not)) | {name, conclusion, details_url}]' <<<"$payload"
+              exit 1
+            fi
+            if [ "$total" -gt 0 ] && [ "$pending" -eq 0 ]; then
+              check_state="success"
+              break
+            fi
+            sleep 10
+          done
+          if [ "$check_state" != "success" ]; then
+            echo "final-SHA checks did not complete inside the bounded verification window" >&2
+            exit 1
+          fi
+          echo "check_state=$check_state" >> "$GITHUB_OUTPUT"
+      - name: Refresh the PR from the verified artifact and mark it ready
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINAL_SHA: ${{ steps.checkpoint.outputs.final_sha }}
+        run: |
+          FINAL_SHA="$FINAL_SHA" python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          from pathlib import Path
+
+          summary = json.loads(
+              Path("artifacts/diagnostics/full-958-acceptance-summary.json")
+              .read_text(encoding="utf-8")
+          )
+          gate_fields = (
+              "absolute_hard_gates",
+              "retained_robustness_hard_gates",
+              "promotion_gates",
+              "initial_baseline_gates",
+          )
+          lines = [
+              "## Goal",
+              "",
+              "Run the complete current 17-symbol / 958-scenario formal stress plan exactly once, preserve the truthful product-gate result, and align code comments and documentation with the observed evidence.",
+              "",
+              "## Actual result",
+              "",
+              f"- Acceptance status: `{summary['acceptance_status']}`",
+              f"- Canonical: `{str(summary['canonical']).lower()}`",
+              f"- Production orchestrator exit code: `{summary['orchestrator_exit_code']}`",
+              "- Completed scenarios: `958 / 958`",
+              "- Unique scenario IDs: `958`",
+              f"- Source revision used for every replay: `{summary['source_revision']}`",
+              f"- Final branch checkpoint: `{os.environ['FINAL_SHA']}`",
+              f"- Formal artifact: `{summary['artifact_path']}`",
+              f"- Stress contract: `{summary.get('stress_contract_version')}`",
+              f"- Source fingerprint: `{summary.get('source_fingerprint')}`",
+              f"- Data fingerprint: `{summary.get('data_fingerprint')}`",
+              f"- Scenario signature: `{summary.get('scenario_signature')}`",
+              f"- Run signature: `{summary.get('run_signature')}`",
+              "",
+              "## Gate families",
+              "",
+              "| Gate family | passed | status |",
+              "|---|---:|---|",
+          ]
+          gates = summary.get("gates", {})
+          for name in gate_fields:
+              gate = gates.get(name)
+              if isinstance(gate, dict):
+                  lines.append(
+                      f"| `{name}` | `{gate.get('passed')}` | "
+                      f"`{gate.get('status', '')}` |"
+                  )
+          lines.extend(
+              [
+                  "",
+                  "## Scope and constraints",
+                  "",
+                  "No strategy economics, thresholds, seeds, scenario definitions, frozen data, or metrics were changed to obtain a green result. Historical 22-symbol / 983-scenario evidence remains historical and was not overwritten.",
+                  "",
+                  "## Verification",
+                  "",
+                  "- Exact 17-symbol / 958-unique-scenario contract: passed",
+                  "- All 12 deterministic shards present and validated: passed",
+                  "- Full checkpoint accepted by the production checkpoint validator: passed",
+                  "- Formal publication semantics: passed",
+                  "- Full pytest: passed",
+                  "- compileall: passed",
+                  "- Ruff: passed",
+                  "- Pyright: passed",
+                  "- Bandit: passed",
+                  "- pip-audit --strict: passed",
+                  "- Final-SHA GitHub checks: passed",
+                  "- Documentation/comment consistency contract: passed",
+                  "- Temporary execution/bootstrap machinery: removed",
+                  "",
+                  "## Remaining work",
+                  "",
+                  "No implementation or verification work remains. A rejected product artifact, if applicable, remains rejected and non-canonical by design.",
+                  "",
+                  "## Merge readiness",
+                  "",
+                  "Ready for review and merge. This task did not push directly to main.",
+              ]
+          )
+          Path("/tmp/full-958-pr-body.md").write_text(
+              "\n".join(lines) + "\n", encoding="utf-8"
+          )
+          PY
+          pr_number="$(
+            gh api --method GET "repos/$GITHUB_REPOSITORY/pulls" \
+              -f state=open \
+              -f head="$GITHUB_REPOSITORY_OWNER:$BRANCH_NAME" \
+              --jq '.[0].number'
+          )"
+          if [ -z "$pr_number" ] || [ "$pr_number" = "null" ]; then
+            echo "matching pull request was not found" >&2
+            exit 1
+          fi
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/pulls/$pr_number" \
+            --raw-field body="$(cat /tmp/full-958-pr-body.md)"
+          gh pr ready "$pr_number"
