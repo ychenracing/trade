@@ -1,66 +1,34 @@
-"""Frozen universe classifications used by portfolio routing."""
+"""One authoritative ordered universe for daily scan and formal stress."""
 
 SYMBOL_NAMES = {
     "300308": "中际旭创",
     "300502": "新易盛",
     "300394": "天孚通信",
-    "688008": "澜起科技",
+    "688256": "寒武纪",
     "603986": "兆易创新",
-    "002409": "雅克科技",
     "688072": "拓荆科技",
     "688300": "联瑞新材",
     "300054": "鼎龙股份",
-    "688205": "德科立",
-    "920045": "蘅东光",
-    "300776": "帝尔激光",
-    "688535": "华海诚科",
-    "688249": "晶合集成",
-    "688347": "华虹宏力",
-    "300666": "江丰电子",
-    "600206": "有研新材",
-    "688409": "富创精密",
     "688361": "中科飞测",
-    "300604": "长川科技",
+    "002409": "雅克科技",
+    "688498": "源杰科技",
     "688120": "华海清科",
+    "002384": "东山精密",
     "688082": "盛美上海",
+    "300604": "长川科技",
+    "601869": "长飞光纤",
+    "300408": "三环集团",
 }
+
+ORDERED_SYMBOLS = tuple(SYMBOL_NAMES)
 
 VALIDATION_UNIVERSES = {
-    "1_symbol": ("300308",),
-    "3_symbols": ("300308", "300502", "300394"),
-    "5_symbols": ("300308", "300502", "300394", "688008", "603986"),
-    "13_symbols": (
-        "300308",
-        "300502",
-        "300394",
-        "688008",
-        "603986",
-        "002409",
-        "688072",
-        "688300",
-        "300054",
-        "688205",
-        "920045",
-        "300776",
-        "688535",
-    ),
-    "22_symbols": tuple(SYMBOL_NAMES),
+    "1_symbol": ORDERED_SYMBOLS[:1],
+    "3_symbols": ORDERED_SYMBOLS[:3],
+    "5_symbols": ORDERED_SYMBOLS[:5],
+    "13_symbols": ORDERED_SYMBOLS[:13],
+    "17_symbols": ORDERED_SYMBOLS,
 }
 
-ESTABLISHED_EXPANSION_CORE = frozenset(
-    {
-        "300308",
-        "300502",
-        "300394",
-        "688008",
-        "603986",
-        "002409",
-        "688072",
-        "688300",
-        "300054",
-        "688205",
-        "920045",
-        "300776",
-        "688535",
-    }
-)
+ESTABLISHED_BASE_CORE = frozenset(ORDERED_SYMBOLS[:5])
+ESTABLISHED_EXPANSION_CORE = frozenset(ORDERED_SYMBOLS[:13])

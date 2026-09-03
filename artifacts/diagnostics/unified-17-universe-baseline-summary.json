@@ -1,0 +1,42 @@
+{
+  "1_symbol": {
+    "total_return": 5.308949754885001,
+    "max_drawdown": -0.1834136674871038,
+    "sharpe": 3.2061091353019706,
+    "calmar": 18.234772272416887,
+    "total_trades": 24,
+    "date_symbol_side_count": 5
+  },
+  "3_symbols": {
+    "total_return": 10.593889691663627,
+    "max_drawdown": -0.16815250478566787,
+    "sharpe": 3.6863803366154326,
+    "calmar": 36.02753759670465,
+    "total_trades": 183,
+    "date_symbol_side_count": 77
+  },
+  "5_symbols": {
+    "total_return": 11.707227042345128,
+    "max_drawdown": -0.18220622643791715,
+    "sharpe": 3.8121424711304437,
+    "calmar": 36.187360520015446,
+    "total_trades": 216,
+    "date_symbol_side_count": 99
+  },
+  "13_symbols": {
+    "total_return": 12.325668002613376,
+    "max_drawdown": -0.17463578943651512,
+    "sharpe": 3.9119994491662045,
+    "calmar": 39.43553267103776,
+    "total_trades": 219,
+    "date_symbol_side_count": 106
+  },
+  "17_symbols": {
+    "total_return": 2.8620291194196263,
+    "max_drawdown": -0.20499295904714276,
+    "sharpe": 2.63032853924695,
+    "calmar": 9.451179571829115,
+    "total_trades": 96,
+    "date_symbol_side_count": 43
+  }
+}

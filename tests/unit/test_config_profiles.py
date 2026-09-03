@@ -56,21 +56,21 @@ def test_every_mapped_symbol_has_exact_effective_profile_at_default_shrinkage() 
         code: profiles.config_for_symbol(code)
         for code in sorted(profiles.SYMBOL_PROFILES)
     }
-    assert len(effective) == 34
+    assert len(effective) == 36
     assert _digest(effective) == (
-        "2773900b46759cf5ef3a4d5f814791596cb9994f7f47c094a49482fe31537712"
+        "872ecbc6e5e0fc478ad81aff5f7775f499cbdb7642925c26cc23335a870575f2"
     )
 
 
 def test_symbol_routing_fact_sets_are_exact() -> None:
     assert _digest(profiles.KNOWN_CLASSIFICATION) == (
-        "c70c8c4e26ad396385faed2c4e8f8ca153e746ea7e255f7379c23215f01eb557"
+        "b1ed03255f1b896baac27065e595dd67b4f1e574931727e78ba96f31ccdd7bb2"
     )
     assert _digest(profiles.SYMBOL_GROUPS) == (
-        "fcd39e00a02bdcaeea671816975f3eb1449fe23f8a93dc7b335e9ec5fd89bd78"
+        "c99c880825820e2778d41a24e2dddb091de79696c1c31d7399063dbc2c409504"
     )
     assert _digest(profiles.SYMBOL_PROFILES) == (
-        "6c269dde2bd740bebfc07641d8c1a3deb030729b02b76436337f525b92986f6b"
+        "d16f148d723542a52ec72726af967b8e6dfd124420c33441718ccf9355579e3d"
     )
 
 
