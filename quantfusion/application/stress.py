@@ -142,6 +142,15 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--diagnostic-output",
         help="Optional non-canonical diagnostic JSON output path",
     )
+    parser.add_argument(
+        "--establish-initial-baseline",
+        action="store_true",
+        help="Explicitly establish the first accepted artifact for this contract",
+    )
+    parser.add_argument(
+        "--initial-baseline-reference",
+        help="Retained current-semantic artifact used for transition protections",
+    )
     parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument(
         "--source-revision",
@@ -182,6 +191,16 @@ def main() -> int:
         and args.permutation_samples == stress_scenarios.DEFAULT_PERMUTATION_SAMPLES
         and seeds == stress_scenarios.DEFAULT_SEEDS
     )
+    if selector_requested and (
+        args.establish_initial_baseline or args.initial_baseline_reference is not None
+    ):
+        raise ValueError("Initial baseline establishment requires the formal plan")
+    if args.establish_initial_baseline != (
+        args.initial_baseline_reference is not None
+    ):
+        raise ValueError(
+            "--establish-initial-baseline and --initial-baseline-reference are required together"
+        )
     formal_checkpoint = Path(args.checkpoint).expanduser().resolve()
     validation_namespace = stress_artifacts.VALIDATION_ARTIFACT_DIR.resolve()
     if formal_plan_requested and (
@@ -371,18 +390,31 @@ def main() -> int:
         "summary": stress_metrics._summary(prefixes),
         "results": prefixes,
     }
-    gates = stress_metrics._hard_gates(results)
+    gates = stress_metrics._absolute_hard_gates(results)
+    robustness = stress_metrics._robustness_diagnostics(results)
     # 2026-08-16 报告 P0-4: 在覆盖正式工件之前加载既有基线，评估强制晋级门。
     incumbent_path = stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json"
     incumbent = stress_artifacts._load_incumbent(incumbent_path)
+    initial_baseline_reference = (
+        stress_artifacts._load_initial_baseline_reference(
+            Path(args.initial_baseline_reference).expanduser().resolve()
+        )
+        if args.initial_baseline_reference is not None
+        else None
+    )
     promotion = stress_metrics._promotion_gates(results, incumbent)
+    initial_baseline_gates = stress_metrics._initial_baseline_gates(
+        results, initial_baseline_reference
+    )
     universe_artifact = {
         **common,
         "scenario_count": len(results),
         "random_samples_per_size_per_seed": args.random_samples,
         "permutation_samples_per_seed": args.permutation_samples,
-        "hard_gates": gates,
+        "absolute_hard_gates": gates,
+        "robustness_diagnostics": robustness,
         "promotion_gates": promotion,
+        "initial_baseline_gates": initial_baseline_gates,
         "summary": summary,
         "results": results,
     }
@@ -393,12 +425,16 @@ def main() -> int:
         provenance=provenance,
         incumbent=incumbent,
         formal_plan_complete=formal_plan_complete,
+        establish_initial_baseline=args.establish_initial_baseline,
+        initial_baseline_reference=initial_baseline_reference,
     )
     print(
         json.dumps(
             {
-                "hard_gates": gates,
+                "absolute_hard_gates": gates,
+                "robustness_diagnostics": robustness,
                 "promotion_gates": promotion,
+                "initial_baseline_gates": initial_baseline_gates,
                 "summary": universe_artifact["summary"],
             },
             ensure_ascii=False,
