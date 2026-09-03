@@ -35,6 +35,8 @@ jobs:
         run: python -m scripts._patch_unified_reference_core
       - name: Migrate the remaining intentional test expectations
         run: python -m scripts._patch_unified_test_expectations
+      - name: Migrate stale old-universe quality assertions
+        run: python -m scripts._patch_unified_quality_contract
       - name: Verify focused contracts before economic regeneration
         run: |
           python -m pytest -q \
@@ -82,7 +84,8 @@ jobs:
             scripts/_apply_unified_universe_task.py \
             scripts/_patch_unified_sampling.py \
             scripts/_patch_unified_reference_core.py \
-            scripts/_patch_unified_test_expectations.py
+            scripts/_patch_unified_test_expectations.py \
+            scripts/_patch_unified_quality_contract.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
