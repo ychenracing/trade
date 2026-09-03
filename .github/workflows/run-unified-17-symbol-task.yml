@@ -1,6 +1,7 @@
 name: Build unified 17-symbol universe
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - codex/unify-17-symbol-universe
