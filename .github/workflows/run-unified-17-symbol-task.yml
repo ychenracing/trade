@@ -1,0 +1,68 @@
+name: Build unified 17-symbol universe
+
+on:
+  push:
+    branches:
+      - codex/unify-17-symbol-universe
+    paths:
+      - .github/workflows/run-unified-17-symbol-task.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/unify-17-symbol-universe
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Apply source, mapping, and deterministic contract changes
+        run: python -m scripts._apply_unified_universe_task transform
+      - name: Verify focused contracts before economic regeneration
+        run: |
+          python -m pytest -q \
+            tests/unit/test_unified_universe.py \
+            tests/unit/test_config_profiles.py \
+            tests/unit/test_stress_scenarios.py
+          python -m compileall -q quantfusion scripts tests/unit/test_unified_universe.py
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
+            quantfusion/config/universe.py \
+            quantfusion/config/daily.py \
+            quantfusion/config/profiles.py \
+            quantfusion/config/overlay.py \
+            quantfusion/execution/priorities.py \
+            quantfusion/application/backtest_cli.py \
+            scripts/download_eastmoney_qfq.py \
+            tests/unit/test_unified_universe.py \
+            tests/unit/test_config_profiles.py \
+            tests/unit/test_stress_scenarios.py \
+            tests/regression/test_quant_fusion.py
+      - name: Regenerate intentional five-universe economic evidence once
+        run: python -m scripts._apply_unified_universe_task regenerate
+      - name: Verify exact affected regressions
+        run: |
+          python -m pytest -q \
+            tests/unit/test_unified_universe.py \
+            tests/unit/test_config_profiles.py \
+            tests/unit/test_stress_scenarios.py \
+            tests/regression/test_quant_fusion.py
+          python -m compileall -q .
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
+      - name: Commit coherent implementation checkpoint
+        run: |
+          rm scripts/_apply_unified_universe_task.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: unify daily and stress universe on 17 symbols"
+          git push origin HEAD:codex/unify-17-symbol-universe
