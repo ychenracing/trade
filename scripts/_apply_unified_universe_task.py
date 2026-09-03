@@ -1,0 +1,525 @@
+#!/usr/bin/env python3
+"""Temporary branch-only task runner for the unified 17-symbol universe."""
+
+from __future__ import annotations
+
+import argparse
+import contextlib
+import hashlib
+import io
+import json
+import re
+from collections.abc import Mapping
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+from typing import Any
+
+SYMBOLS = (
+    ("300308", "中际旭创"),
+    ("300502", "新易盛"),
+    ("300394", "天孚通信"),
+    ("688256", "寒武纪"),
+    ("603986", "兆易创新"),
+    ("688072", "拓荆科技"),
+    ("688300", "联瑞新材"),
+    ("300054", "鼎龙股份"),
+    ("688361", "中科飞测"),
+    ("002409", "雅克科技"),
+    ("688498", "源杰科技"),
+    ("688120", "华海清科"),
+    ("002384", "东山精密"),
+    ("688082", "盛美上海"),
+    ("300604", "长川科技"),
+    ("601869", "长飞光纤"),
+    ("300408", "三环集团"),
+)
+
+
+def replace_once(text: str, old: str, new: str, label: str) -> str:
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"{label}: expected one occurrence, found {count}")
+    return text.replace(old, new, 1)
+
+
+def apply_transform() -> None:
+    universe_lines = [
+        '"""One authoritative ordered universe for daily scan and formal stress."""',
+        "",
+        "SYMBOL_NAMES = {",
+    ]
+    universe_lines.extend(f'    "{code}": "{name}",' for code, name in SYMBOLS)
+    universe_lines.extend(
+        [
+            "}",
+            "",
+            "ORDERED_SYMBOLS = tuple(SYMBOL_NAMES)",
+            "",
+            "VALIDATION_UNIVERSES = {",
+            '    "1_symbol": ORDERED_SYMBOLS[:1],',
+            '    "3_symbols": ORDERED_SYMBOLS[:3],',
+            '    "5_symbols": ORDERED_SYMBOLS[:5],',
+            '    "13_symbols": ORDERED_SYMBOLS[:13],',
+            '    "17_symbols": ORDERED_SYMBOLS,',
+            "}",
+            "",
+            "ESTABLISHED_EXPANSION_CORE = frozenset(ORDERED_SYMBOLS[:13])",
+            "",
+        ]
+    )
+    Path("quantfusion/config/universe.py").write_text(
+        "\n".join(universe_lines), encoding="utf-8"
+    )
+
+    Path("quantfusion/config/daily.py").write_text(
+        "\n".join(
+            [
+                '"""Daily scan universe and request defaults."""',
+                "",
+                "from quantfusion.config.paths import REGIME_DATA_DIR",
+                "from quantfusion.config.universe import SYMBOL_NAMES",
+                "",
+                "SYMBOLS: dict[str, str] = dict(SYMBOL_NAMES)",
+                'START_DATE = "2026-07-01"',
+                "INITIAL_CAPITAL = 2_000_000.0",
+                'DEFAULT_CACHE_DIR = "data_cache"',
+                'DEFAULT_OUTPUT_DIR = "daily_signals"',
+                "DEFAULT_REGIME_DATA_DIR = str(REGIME_DATA_DIR)",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    Path("quantfusion/execution/priorities.py").write_text(
+        "\n".join(
+            [
+                '"""Stable deterministic execution priorities."""',
+                "",
+                "from quantfusion.config.universe import SYMBOL_NAMES",
+                "",
+                "EXECUTION_PRIORITY = {",
+                "    code: rank for rank, code in enumerate(SYMBOL_NAMES)",
+                "}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    profiles_path = Path("quantfusion/config/profiles.py")
+    profiles = profiles_path.read_text(encoding="utf-8")
+    profiles = replace_once(
+        profiles,
+        '    "601869": "default",\n    "688256": "semiconductor",',
+        '    "601869": "default",\n    "002384": "default",\n    "688256": "semiconductor",',
+        "classification 002384",
+    )
+    profiles = replace_once(
+        profiles,
+        '    "688268": "semiconductor",\n})',
+        '    "688268": "semiconductor",\n    "300408": "semiconductor",\n})',
+        "classification 300408",
+    )
+    profiles = replace_once(
+        profiles,
+        '    "601869": "overseas_compute",\n    "688256": "domestic_semiconductor",',
+        '    "601869": "overseas_compute",\n    "002384": "overseas_compute",\n    "688256": "domestic_semiconductor",',
+        "group 002384",
+    )
+    profiles = replace_once(
+        profiles,
+        '    "688268": "domestic_semiconductor",\n})',
+        '    "688268": "domestic_semiconductor",\n    "300408": "domestic_semiconductor",\n})',
+        "group 300408",
+    )
+    profiles = replace_once(
+        profiles,
+        '    "601869": "optical_component",  # 长飞光纤 - 光器件\n    "688008":',
+        '    "601869": "optical_component",  # 长飞光纤 - 光器件\n'
+        '    "002384": "optical_component",  # 东山精密 - PCB/光通信组件\n'
+        '    "688008":',
+        "profile 002384",
+    )
+    profiles = replace_once(
+        profiles,
+        '    "688268": "semiconductor_material",  # 华特气体 - 电子特气\n'
+        '    "688249":',
+        '    "688268": "semiconductor_material",  # 华特气体 - 电子特气\n'
+        '    "300408": "semiconductor_material",  # 三环集团 - 电子陶瓷材料\n'
+        '    "688249":',
+        "profile 300408",
+    )
+    profiles_path.write_text(profiles, encoding="utf-8")
+
+    overlay_path = Path("quantfusion/config/overlay.py")
+    overlay = overlay_path.read_text(encoding="utf-8")
+    overlay = replace_once(
+        overlay,
+        '    "688205": "optical", "920045": "optical",\n',
+        '    "688205": "optical", "920045": "optical",\n'
+        '    "688498": "optical", "601869": "optical", "002384": "optical",\n',
+        "overlay optical mappings",
+    )
+    overlay = replace_once(
+        overlay,
+        '    "688535": "material", "300666": "material", "600206": "material",\n',
+        '    "688535": "material", "300666": "material", "600206": "material",\n'
+        '    "300408": "material",\n',
+        "overlay material mapping",
+    )
+    overlay_path.write_text(overlay, encoding="utf-8")
+
+    backtest_path = Path("quantfusion/application/backtest_cli.py")
+    backtest = backtest_path.read_text(encoding="utf-8")
+    backtest = replace_once(
+        backtest,
+        "from quantfusion.domain.rules import SYMBOL_RE\n",
+        "from quantfusion.config.universe import SYMBOL_NAMES\n"
+        "from quantfusion.domain.rules import SYMBOL_RE\n",
+        "backtest universe import",
+    )
+    pattern = re.compile(
+        r"DEFAULT_SYMBOLS = \{.*?"
+        r"DEFAULT_SYMBOL_NAMES = \{v: k for k, v in SYMBOL_NAME_TABLE.items\(\)\}",
+        re.DOTALL,
+    )
+    replacement = (
+        "DEFAULT_SYMBOLS = dict(list(SYMBOL_NAMES.items())[:5])\n\n"
+        "SYMBOL_NAME_TABLE: dict[str, str] = dict(SYMBOL_NAMES)\n\n"
+        "DEFAULT_SYMBOL_NAMES = {v: k for k, v in SYMBOL_NAME_TABLE.items()}"
+    )
+    backtest, count = pattern.subn(replacement, backtest, count=1)
+    if count != 1:
+        raise SystemExit(f"backtest symbol block: expected one replacement, got {count}")
+    backtest_path.write_text(backtest, encoding="utf-8")
+
+    downloader_path = Path("scripts/download_eastmoney_qfq.py")
+    downloader = downloader_path.read_text(encoding="utf-8")
+    downloader = replace_once(
+        downloader,
+        "from quantfusion.config.paths import MARKET_DATA_DIR\n",
+        "from quantfusion.config.paths import MARKET_DATA_DIR\n"
+        "from quantfusion.config.universe import SYMBOL_NAMES\n",
+        "downloader universe import",
+    )
+    downloader, count = re.subn(
+        r"DEFAULT_SYMBOLS = \(.*?\n\)\n",
+        "DEFAULT_SYMBOLS = tuple(SYMBOL_NAMES)\n",
+        downloader,
+        count=1,
+        flags=re.DOTALL,
+    )
+    if count != 1:
+        raise SystemExit(f"downloader symbol block: expected one replacement, got {count}")
+    downloader_path.write_text(downloader, encoding="utf-8")
+
+    stress_test_path = Path("tests/unit/test_stress_scenarios.py")
+    stress_test = stress_test_path.read_text(encoding="utf-8")
+    replacements = {
+        'self.assertEqual(counts["add_one"], 39)': 'self.assertEqual(counts["add_one"], 24)',
+        "self.assertEqual(len(scenarios), 83 + 2 * (10 + 2))": "self.assertEqual(len(scenarios), 58 + 2 * (10 + 2))",
+        "test_formal_plan_has_983_unique_scenario_ids": "test_formal_plan_has_958_unique_scenario_ids",
+        "self.assertEqual(len(scenarios), 983)": "self.assertEqual(len(scenarios), 958)",
+        "            983,\n        )": "            958,\n        )",
+        '"incumbent_scenario_count": 89': '"incumbent_scenario_count": 64',
+        '"shared_scenario_count": 89': '"shared_scenario_count": 64',
+        '"73d6f2bd580490cd6e0bf7af9a72b79af60ef2bd7890774949304d40cb52bb5c"': '"__ORDERED_IDS_HASH__"',
+        '"ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223"': '"__SCENARIO_SIGNATURE__"',
+        "add-one-05-688205": "add-one-05-688072",
+    }
+    for old, new in replacements.items():
+        if old not in stress_test:
+            raise SystemExit(f"stress test replacement missing: {old}")
+        stress_test = stress_test.replace(old, new)
+    stress_test_path.write_text(stress_test, encoding="utf-8")
+
+    regression_path = Path("tests/regression/test_quant_fusion.py")
+    regression = regression_path.read_text(encoding="utf-8")
+    if "22_symbols" not in regression:
+        raise SystemExit("regression test has no 22_symbols references")
+    regression_path.write_text(
+        regression.replace("22_symbols", "17_symbols"), encoding="utf-8"
+    )
+
+    profile_test_path = Path("tests/unit/test_config_profiles.py")
+    profile_test = profile_test_path.read_text(encoding="utf-8")
+    profile_test = replace_once(
+        profile_test,
+        "assert len(effective) == 34",
+        "assert len(effective) == 36",
+        "profile effective count",
+    )
+    for old, placeholder in (
+        (
+            "2773900b46759cf5ef3a4d5f814791596cb9994f7f47c094a49482fe31537712",
+            "__EFFECTIVE_PROFILE_HASH__",
+        ),
+        (
+            "c70c8c4e26ad396385faed2c4e8f8ca153e746ea7e255f7379c23215f01eb557",
+            "__CLASSIFICATION_HASH__",
+        ),
+        (
+            "fcd39e00a02bdcaeea671816975f3eb1449fe23f8a93dc7b335e9ec5fd89bd78",
+            "__GROUP_HASH__",
+        ),
+        (
+            "6c269dde2bd740bebfc07641d8c1a3deb030729b02b76436337f525b92986f6b",
+            "__SYMBOL_PROFILE_HASH__",
+        ),
+    ):
+        profile_test = replace_once(profile_test, old, placeholder, placeholder)
+    profile_test_path.write_text(profile_test, encoding="utf-8")
+
+
+def normalize(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: normalize(item) for key, item in sorted(value.items())}
+    if isinstance(value, (set, frozenset)):
+        return sorted(normalize(item) for item in value)
+    if isinstance(value, (tuple, list)):
+        return [normalize(item) for item in value]
+    return value
+
+
+def digest(value: Any) -> str:
+    payload = json.dumps(
+        normalize(value),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def freeze_hashes() -> None:
+    from quantfusion.application import stress_scenarios
+    from quantfusion.config import profiles
+
+    scenarios = stress_scenarios._multi_seed_scenarios(
+        random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+        permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+        seeds=stress_scenarios.DEFAULT_SEEDS,
+    )
+    if len(scenarios) != 958:
+        raise SystemExit(f"expected 958 scenarios, got {len(scenarios)}")
+    ordered_ids = [str(item["scenario_id"]) for item in scenarios]
+    ordered_hash = hashlib.sha256(
+        json.dumps(ordered_ids, separators=(",", ":")).encode()
+    ).hexdigest()
+    scenario_signature = stress_scenarios._scenario_signature(scenarios)
+
+    path = Path("tests/unit/test_stress_scenarios.py")
+    text = path.read_text(encoding="utf-8")
+    text = replace_once(text, "__ORDERED_IDS_HASH__", ordered_hash, "ordered ID hash")
+    text = replace_once(
+        text, "__SCENARIO_SIGNATURE__", scenario_signature, "scenario signature"
+    )
+    path.write_text(text, encoding="utf-8")
+
+    effective = {
+        code: profiles.config_for_symbol(code)
+        for code in sorted(profiles.SYMBOL_PROFILES)
+    }
+    replacements = {
+        "__EFFECTIVE_PROFILE_HASH__": digest(effective),
+        "__CLASSIFICATION_HASH__": digest(profiles.KNOWN_CLASSIFICATION),
+        "__GROUP_HASH__": digest(profiles.SYMBOL_GROUPS),
+        "__SYMBOL_PROFILE_HASH__": digest(profiles.SYMBOL_PROFILES),
+    }
+    path = Path("tests/unit/test_config_profiles.py")
+    text = path.read_text(encoding="utf-8")
+    for placeholder, value in replacements.items():
+        text = replace_once(text, placeholder, value, placeholder)
+    path.write_text(text, encoding="utf-8")
+
+    Path("artifacts/diagnostics/unified-17-universe-contract.json").write_text(
+        json.dumps(
+            {
+                "ordered_symbols": list(stress_scenarios.ORDERED_CODES),
+                "formal_scenario_count": len(scenarios),
+                "ordered_scenario_ids_sha256": ordered_hash,
+                "scenario_signature": scenario_signature,
+                "profile_mapping_count": len(profiles.SYMBOL_PROFILES),
+                "profile_mapping_hashes": replacements,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+START_DATE = "2025-04-01"
+END_DATES = ("2026-06-30", "2026-07-20")
+STATES = ("cold", "warm")
+INITIAL_CAPITAL = 2_000_000.0
+
+
+def route_fingerprint(result: dict[str, Any]) -> str:
+    fields = ("date", "state", "previous_state", "candidate")
+    route = [
+        {key: item.get(key) for key in fields}
+        for item in result.get("regime_state_series", [])
+    ]
+    encoded = json.dumps(
+        route,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def run_validation_task(
+    task: tuple[str, tuple[str, ...], str, str],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    from quantfusion.config.paths import MARKET_DATA_DIR
+    from quantfusion.config.universe import SYMBOL_NAMES
+    from quantfusion.engine import BacktestEngine
+    from quantfusion.research.fingerprints import economic_sequence_fingerprints
+
+    universe, codes, state, end_date = task
+    with contextlib.redirect_stdout(io.StringIO()):
+        result = BacktestEngine(INITIAL_CAPITAL).run(
+            {code: SYMBOL_NAMES[code] for code in codes},
+            START_DATE,
+            end_date,
+            data_dir=str(MARKET_DATA_DIR),
+            indicator_state=state,
+        )
+    record = {
+        "universe": universe,
+        "symbol_count": len(codes),
+        "symbols": list(codes),
+        "indicator_state": state,
+        "start_date": START_DATE,
+        "end_date": end_date,
+        "initial_capital": INITIAL_CAPITAL,
+        "final_assets": float(result["final_assets"]),
+        "total_return": float(result["total_return"]),
+        "annual_return": float(result["annual_return"]),
+        "max_drawdown": float(result["max_drawdown"]),
+        "sharpe": float(result["sharpe"]),
+        "calmar": float(result["calmar"]),
+        "total_trades": int(result["total_trades"]),
+        "sell_trades": int(result["sell_trades"]),
+        "sleeve_fill_count": int(result["sleeve_fill_count"]),
+        "sleeve_sell_fill_count": int(result["sleeve_sell_fill_count"]),
+        "date_symbol_side_count": int(result["date_symbol_side_count"]),
+        "date_symbol_sell_side_count": int(result["date_symbol_sell_side_count"]),
+        "sector_guard_active": bool(result["sector_guard_active"]),
+        "persistent_risk_lock": bool(result["persistent_risk_lock"]),
+        "terminal_risk_lock": bool(result["terminal_risk_lock"]),
+        "cycle_lock_count": int(result["cycle_lock_count"]),
+        "locked_sleeves": list(result.get("locked_sleeves", [])),
+        "open_positions": int(result["open_positions"]),
+        "max_concurrent_symbols": int(result["max_concurrent_symbols"]),
+        "portfolio_max_positions": int(result["portfolio_max_positions"]),
+        "portfolio_cash_model": str(result["portfolio_cash_model"]),
+        "allocation_mode": str(result["allocation_mode"]),
+        "portfolio_policy": result["portfolio_policy"],
+        "effective_portfolio_policy": result["effective_portfolio_policy"],
+        "sleeve_summaries": result["sleeve_summaries"],
+    }
+    golden = None
+    if state == "warm" and end_date == END_DATES[-1]:
+        golden = {
+            key: int(result[key])
+            for key in (
+                "total_trades",
+                "sell_trades",
+                "sleeve_fill_count",
+                "sleeve_sell_fill_count",
+                "date_symbol_side_count",
+                "date_symbol_sell_side_count",
+            )
+        }
+        golden["total_return"] = float(result["total_return"])
+        golden["max_drawdown"] = float(result["max_drawdown"])
+        golden.update(economic_sequence_fingerprints(result))
+        golden["regime_route_sha256"] = route_fingerprint(result)
+    return record, golden
+
+
+def regenerate_baselines() -> None:
+    from quantfusion.config.paths import VALIDATION_ARTIFACT_DIR
+    from quantfusion.config.universe import VALIDATION_UNIVERSES
+
+    tasks = [
+        (name, codes, state, end_date)
+        for name, codes in VALIDATION_UNIVERSES.items()
+        for state in STATES
+        for end_date in END_DATES
+    ]
+    with ProcessPoolExecutor(max_workers=4) as executor:
+        rows = list(executor.map(run_validation_task, tasks))
+
+    order = {name: index for index, name in enumerate(VALIDATION_UNIVERSES)}
+    records = [record for record, _ in rows]
+    records.sort(
+        key=lambda item: (
+            order[item["universe"]],
+            item["indicator_state"],
+            item["end_date"],
+        )
+    )
+    artifact = {
+        "engine": "Quant Fusion",
+        "data_directory": "data/market",
+        "data_adjustment": "qfq",
+        "data_provider": "Eastmoney push2his",
+        "initial_capital": INITIAL_CAPITAL,
+        "results": records,
+    }
+    (VALIDATION_ARTIFACT_DIR / "universe_backtest.json").write_text(
+        json.dumps(artifact, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+
+    golden = {
+        str(record["symbol_count"]): item
+        for record, item in rows
+        if item is not None
+    }
+    if set(golden) != {"1", "3", "5", "13", "17"}:
+        raise SystemExit(f"unexpected golden keys: {sorted(golden)}")
+    Path("tests/fixtures/backtest_golden_metrics.json").write_text(
+        json.dumps(golden, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    summary = {
+        item["universe"]: {
+            "total_return": item["total_return"],
+            "max_drawdown": item["max_drawdown"],
+            "sharpe": item["sharpe"],
+            "calmar": item["calmar"],
+            "total_trades": item["total_trades"],
+            "date_symbol_side_count": item["date_symbol_side_count"],
+        }
+        for item in records
+        if item["indicator_state"] == "warm" and item["end_date"] == END_DATES[-1]
+    }
+    Path(
+        "artifacts/diagnostics/unified-17-universe-baseline-summary.json"
+    ).write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", choices=("transform", "regenerate"))
+    args = parser.parse_args()
+    if args.mode == "transform":
+        apply_transform()
+        freeze_hashes()
+    else:
+        regenerate_baselines()
+
+
+if __name__ == "__main__":
+    main()
