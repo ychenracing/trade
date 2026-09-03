@@ -30,6 +30,8 @@ jobs:
         run: python -m scripts._patch_unified_sampling
       - name: Apply source, mapping, and deterministic contract changes
         run: python -m scripts._apply_unified_universe_task transform
+      - name: Synchronize the five-symbol strategy reference core
+        run: python -m scripts._patch_unified_reference_core
       - name: Migrate the remaining intentional test expectations
         run: python -m scripts._patch_unified_test_expectations
       - name: Verify focused contracts before economic regeneration
@@ -38,7 +40,8 @@ jobs:
             tests/unit/test_unified_universe.py \
             tests/unit/test_stress_sampling_capacity.py \
             tests/unit/test_config_profiles.py \
-            tests/unit/test_stress_scenarios.py
+            tests/unit/test_stress_scenarios.py \
+            tests/regression/test_quant_fusion.py::PolicyTests::test_default_policy_contract
           python -m compileall -q \
             quantfusion scripts \
             tests/unit/test_unified_universe.py \
@@ -48,6 +51,7 @@ jobs:
             quantfusion/config/daily.py \
             quantfusion/config/profiles.py \
             quantfusion/config/overlay.py \
+            quantfusion/config/portfolio.py \
             quantfusion/execution/priorities.py \
             quantfusion/application/backtest_cli.py \
             quantfusion/application/stress_scenarios.py \
@@ -74,6 +78,7 @@ jobs:
           rm \
             scripts/_apply_unified_universe_task.py \
             scripts/_patch_unified_sampling.py \
+            scripts/_patch_unified_reference_core.py \
             scripts/_patch_unified_test_expectations.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
