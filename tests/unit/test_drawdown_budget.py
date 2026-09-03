@@ -16,6 +16,7 @@ from quantfusion.risk.budget import (
     portfolio_adverse_loss,
 )
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager
+from quantfusion.strategy.weak import PositiveMomentumHoldStrategy
 
 
 class DrawdownBudgetFormulaTests(unittest.TestCase):
@@ -92,14 +93,36 @@ class DrawdownBudgetFormulaTests(unittest.TestCase):
         self.assertEqual(estimate.projected_loss, 200.0)
         self.assertTrue(estimate.complete)
 
-    def test_mark_appreciation_does_not_increase_invested_risk(self) -> None:
+    def test_existing_book_uses_current_mark_to_effective_exit_loss(self) -> None:
+        book = RiskBook("x", "optical", 10, 200.0, 100.0, 180.0, 5.0)
+
+        estimate = portfolio_adverse_loss([book])
+
+        self.assertEqual(estimate.projected_loss, 200.0)
+
+    def test_ratio_preserving_appreciation_preserves_risk_budget_ratio(self) -> None:
+        controller = DrawdownBudgetController(execution_buffer_peak_fraction=0.005)
+        state_a = controller.snapshot(
+            1_000.0,
+            1_000.0,
+            [RiskBook("x", "optical", 1, 100.0, 100.0, 90.0, 1.0)],
+        )
+        state_b = controller.snapshot(
+            2_000.0,
+            2_000.0,
+            [RiskBook("x", "optical", 1, 200.0, 100.0, 180.0, 2.0)],
+        )
+
+        self.assertAlmostEqual(
+            state_a.projected_loss_ratio, state_b.projected_loss_ratio
+        )
+
+    def test_lagging_stop_increases_marked_drawdown_risk(self) -> None:
         before = RiskBook("x", "optical", 10, 100.0, 100.0, 90.0, 1.0)
         after = RiskBook("x", "optical", 10, 200.0, 100.0, 90.0, 1.0)
 
-        self.assertEqual(
-            portfolio_adverse_loss([before]).projected_loss,
-            portfolio_adverse_loss([after]).projected_loss,
-        )
+        self.assertEqual(portfolio_adverse_loss([before]).projected_loss, 100.0)
+        self.assertEqual(portfolio_adverse_loss([after]).projected_loss, 1_100.0)
 
     def test_single_group_and_missing_evidence_fail_closed(self) -> None:
         estimate = portfolio_adverse_loss(
@@ -129,37 +152,62 @@ class DrawdownBudgetStateTests(unittest.TestCase):
         controller = DrawdownBudgetController(execution_buffer_peak_fraction=0.005)
         snapshot = controller.snapshot(1_000.0, 1_000.0, [])
 
-        decision = controller.decide(snapshot, position=0, warning_active=True)
+        decision = controller.decide(
+            snapshot,
+            position=0,
+            soft_alert_active=True,
+            hard_lock_active=False,
+        )
 
         self.assertEqual(decision.state, "constrained")
         self.assertEqual(decision.new_risk_capacity, 0.0)
         self.assertFalse(decision.allow_new_risk)
 
-    def test_winner_appreciation_alone_does_not_queue_reduction(self) -> None:
+    def test_mark_to_exit_risk_below_budget_does_not_queue_reduction(self) -> None:
         controller = DrawdownBudgetController(execution_buffer_peak_fraction=0.005)
-        first = controller.snapshot(1_000.0, 1_000.0, [self._book(mark=100.0)])
-        controller.decide(first, position=0, warning_active=False)
+        first = controller.snapshot(
+            1_000.0, 1_000.0, [self._book(mark=100.0, stop=90.0)]
+        )
+        controller.decide(
+            first,
+            position=0,
+            soft_alert_active=False,
+            hard_lock_active=False,
+        )
         appreciated = controller.snapshot(
-            1_050.0, 1_050.0, [self._book(mark=150.0)]
+            1_010.0, 1_010.0, [self._book(mark=110.0, stop=90.0)]
         )
 
         decision = controller.decide(
-            appreciated, position=1, warning_active=False
+            appreciated,
+            position=1,
+            soft_alert_active=False,
+            hard_lock_active=False,
         )
 
         self.assertEqual(decision.reduction_fraction, 0.0)
-        self.assertFalse(decision.risk_driver_worsened)
+        self.assertTrue(decision.risk_driver_worsened)
         self.assertFalse(decision.cushion_worsened)
 
     def test_worsening_atr_queues_budget_reduction(self) -> None:
         controller = DrawdownBudgetController(execution_buffer_peak_fraction=0.005)
         first = controller.snapshot(1_000.0, 1_000.0, [self._book(mark=100.0)])
-        controller.decide(first, position=0, warning_active=False)
+        controller.decide(
+            first,
+            position=0,
+            soft_alert_active=False,
+            hard_lock_active=False,
+        )
         stressed = controller.snapshot(
             900.0, 1_000.0, [self._book(mark=100.0, atr=25.0)]
         )
 
-        decision = controller.decide(stressed, position=1, warning_active=False)
+        decision = controller.decide(
+            stressed,
+            position=1,
+            soft_alert_active=False,
+            hard_lock_active=False,
+        )
 
         self.assertGreater(decision.reduction_fraction, 0.0)
         self.assertTrue(decision.risk_driver_worsened)
@@ -170,14 +218,22 @@ class DrawdownBudgetStateTests(unittest.TestCase):
         first = controller.snapshot(
             900.0, 1_000.0, [self._book(mark=100.0, atr=25.0)]
         )
-        initial = controller.decide(first, position=0, warning_active=False)
+        initial = controller.decide(
+            first,
+            position=0,
+            soft_alert_active=False,
+            hard_lock_active=False,
+        )
         self.assertGreater(initial.reduction_fraction, 0.0)
 
         slightly_worse = controller.snapshot(
             895.0, 1_000.0, [self._book(mark=100.0, atr=25.2)]
         )
         repeated = controller.decide(
-            slightly_worse, position=1, warning_active=False
+            slightly_worse,
+            position=1,
+            soft_alert_active=False,
+            hard_lock_active=False,
         )
 
         self.assertEqual(repeated.reduction_fraction, 0.0)
@@ -187,7 +243,12 @@ class DrawdownBudgetStateTests(unittest.TestCase):
         breached = controller.snapshot(
             850.0, 1_000.0, [self._book(mark=90.0, stop=80.0, atr=6.0)]
         )
-        entered = controller.decide(breached, position=0, warning_active=False)
+        entered = controller.decide(
+            breached,
+            position=0,
+            soft_alert_active=False,
+            hard_lock_active=False,
+        )
         self.assertEqual(entered.state, "constrained")
         self.assertFalse(entered.allow_new_risk)
 
@@ -196,12 +257,20 @@ class DrawdownBudgetStateTests(unittest.TestCase):
         )
         for position in range(1, 7):
             decision = controller.decide(
-                safe, position=position, warning_active=False
+                safe,
+                position=position,
+                soft_alert_active=False,
+                hard_lock_active=False,
             )
             self.assertEqual(decision.state, "constrained")
             self.assertFalse(decision.allow_new_risk)
 
-        recovered = controller.decide(safe, position=7, warning_active=False)
+        recovered = controller.decide(
+            safe,
+            position=7,
+            soft_alert_active=False,
+            hard_lock_active=False,
+        )
         self.assertEqual(recovered.state, "recovering")
         self.assertTrue(recovered.allow_new_risk)
         first_capacity = recovered.new_risk_capacity
@@ -210,11 +279,19 @@ class DrawdownBudgetStateTests(unittest.TestCase):
             900.0, 1_000.0, [self._book(mark=100.0, stop=96.0, atr=1.0)]
         )
         next_decision = controller.decide(
-            improved, position=8, warning_active=False
+            improved,
+            position=8,
+            soft_alert_active=False,
+            hard_lock_active=False,
         )
         self.assertGreater(next_decision.new_risk_capacity, first_capacity)
 
-        warned = controller.decide(improved, position=9, warning_active=True)
+        warned = controller.decide(
+            improved,
+            position=9,
+            soft_alert_active=True,
+            hard_lock_active=False,
+        )
         self.assertEqual(warned.state, "constrained")
         self.assertFalse(warned.allow_new_risk)
 
@@ -223,16 +300,115 @@ class DrawdownBudgetStateTests(unittest.TestCase):
         breached = controller.snapshot(
             950.0, 1_000.0, [self._book(mark=150.0, atr=30.0)]
         )
-        controller.decide(breached, position=0, warning_active=False)
+        controller.decide(
+            breached,
+            position=0,
+            soft_alert_active=False,
+            hard_lock_active=False,
+        )
         cash = controller.snapshot(950.0, 1_000.0, [])
 
         for position in range(1, 7):
-            decision = controller.decide(cash, position=position, warning_active=False)
+            decision = controller.decide(
+                cash,
+                position=position,
+                soft_alert_active=False,
+                hard_lock_active=False,
+            )
             self.assertEqual(decision.state, "constrained")
-        recovered = controller.decide(cash, position=7, warning_active=False)
+        recovered = controller.decide(
+            cash,
+            position=7,
+            soft_alert_active=False,
+            hard_lock_active=False,
+        )
 
         self.assertEqual(recovered.state, "recovering")
         self.assertGreater(recovered.new_risk_capacity, 0.0)
+
+    def test_soft_alert_cash_book_recovers_only_to_budget_limited_state(self) -> None:
+        controller = DrawdownBudgetController(execution_buffer_peak_fraction=0.005)
+        cash = controller.snapshot(853.0, 1_000.0, [])
+
+        warning_day = controller.decide(
+            cash,
+            position=0,
+            soft_alert_active=True,
+            hard_lock_active=False,
+        )
+        self.assertEqual(warning_day.state, "constrained")
+        self.assertEqual(warning_day.new_risk_capacity, 0.0)
+
+        for position in range(1, 7):
+            decision = controller.decide(
+                cash,
+                position=position,
+                soft_alert_active=True,
+                hard_lock_active=False,
+            )
+            self.assertEqual(decision.state, "constrained")
+        recovered = controller.decide(
+            cash,
+            position=7,
+            soft_alert_active=True,
+            hard_lock_active=False,
+        )
+
+        self.assertEqual(recovered.state, "recovering")
+        self.assertEqual(recovered.new_risk_capacity, 28.0)
+        self.assertTrue(recovered.allow_new_risk)
+        self.assertAlmostEqual(cash.lifetime_peak_assets, 1_000.0)
+
+    def test_hard_lock_blocks_soft_alert_recovery(self) -> None:
+        controller = DrawdownBudgetController(execution_buffer_peak_fraction=0.005)
+        cash = controller.snapshot(853.0, 1_000.0, [])
+        controller.decide(
+            cash,
+            position=0,
+            soft_alert_active=True,
+            hard_lock_active=False,
+        )
+
+        for position in range(1, 10):
+            decision = controller.decide(
+                cash,
+                position=position,
+                soft_alert_active=True,
+                hard_lock_active=True,
+            )
+
+        self.assertEqual(decision.state, "constrained")
+        self.assertEqual(decision.new_risk_capacity, 0.0)
+        self.assertFalse(decision.allow_new_risk)
+
+    def test_pending_reduction_blocks_recovery_confirmation(self) -> None:
+        controller = DrawdownBudgetController(execution_buffer_peak_fraction=0.005)
+        cash = controller.snapshot(853.0, 1_000.0, [])
+        controller.decide(
+            cash,
+            position=0,
+            soft_alert_active=True,
+            hard_lock_active=False,
+        )
+
+        for position in range(1, 8):
+            blocked = controller.decide(
+                cash,
+                position=position,
+                soft_alert_active=True,
+                hard_lock_active=False,
+                has_pending_reduction=True,
+            )
+        self.assertEqual(blocked.state, "constrained")
+
+        for position in range(8, 11):
+            released = controller.decide(
+                cash,
+                position=position,
+                soft_alert_active=True,
+                hard_lock_active=False,
+            )
+        self.assertEqual(released.state, "recovering")
 
 
 class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
@@ -241,6 +417,8 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
         *,
         positions: dict | None = None,
         pending: list | None = None,
+        strategy_instances: dict | None = None,
+        external_strategy_instances: dict | None = None,
         close: float = 100.0,
         atr: float = 1.0,
     ) -> SimpleNamespace:
@@ -252,6 +430,10 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
 
         sleeve = SimpleNamespace(
             positions=positions or {},
+            strategy_instances=strategy_instances or {},
+            external_strategy_instances=external_strategy_instances or {},
+            sleeve_name="test",
+            risk=SimpleNamespace(persistent_lock=False),
             _record_order_event=record_order_event,
             order_events=order_events,
         )
@@ -286,7 +468,7 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
 
         engine._apply_drawdown_budget(
             [state], pd.Timestamp("2026-01-05"), 0, 100_000.0, 100_000.0,
-            warning_active=True, events=events,
+            soft_alert_active=True, hard_lock_active=False, events=events,
         )
 
         self.assertEqual([item[0].direction for item in state.pending], ["sell"])
@@ -316,7 +498,7 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
 
         engine._apply_drawdown_budget(
             [state], pd.Timestamp("2026-01-05"), 0, 100_000.0, 100_000.0,
-            warning_active=False, events=[],
+            soft_alert_active=False, hard_lock_active=False, events=[],
         )
 
         self.assertEqual(state.pending[0][0].target_shares, 1_700)
@@ -339,7 +521,7 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
 
         engine._apply_drawdown_budget(
             [state], pd.Timestamp("2026-01-05"), 0, 90_000.0, 100_000.0,
-            warning_active=False, events=events,
+            soft_alert_active=False, hard_lock_active=False, events=events,
         )
 
         signal, strategy = state.pending[0]
@@ -364,11 +546,105 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
 
         engine._apply_drawdown_budget(
             [state], pd.Timestamp("2026-01-05"), 0, 82_000.0, 100_000.0,
-            warning_active=False, events=[],
+            soft_alert_active=False, hard_lock_active=False, events=[],
         )
 
         self.assertIsNone(
             engine._drawdown_budget_curve[-1]["projected_loss_ratio"]
+        )
+
+    def test_weak_book_uses_current_profit_chandelier_as_effective_exit(self) -> None:
+        engine = BacktestEngine(policy=PortfolioPolicy(drawdown_budget_enabled=True))
+        strategy = PositiveMomentumHoldStrategy({})
+        position = Position(
+            "300308",
+            strategy.name,
+            10,
+            100.0,
+            "2025-12-01",
+            stop_loss=80.0,
+        )
+        strategy.position = position
+        strategy._trail_stop = 180.0
+        state = self._state(
+            positions={"300308": {strategy.name: position}},
+            external_strategy_instances={"300308": [strategy]},
+            close=200.0,
+            atr=5.0,
+        )
+
+        books, _ = engine._drawdown_budget_books(
+            [state], pd.Timestamp("2026-01-05")
+        )
+
+        self.assertEqual(books[0].stop_price, 180.0)
+
+    def test_real_soft_alert_state_can_recover_cash_without_hard_lock(self) -> None:
+        policy = PortfolioPolicy(
+            drawdown_budget_enabled=True,
+            concentration_drawdown_adjustment=0.0,
+        )
+        manager = RecoverableDrawdownRiskManager(
+            {"max_drawdown": policy.confirmed_drawdown}, policy
+        )
+        manager.check_portfolio_risk(1_000.0, "2026-01-01")
+        status = manager.check_portfolio_risk(853.0, "2026-01-02")
+        engine = BacktestEngine(policy=policy)
+        state = self._state()
+        soft_alert, hard_lock = engine._drawdown_budget_risk_flags(
+            manager, [state]
+        )
+
+        self.assertIsNone(status)
+        self.assertTrue(soft_alert)
+        self.assertFalse(hard_lock)
+        for position in range(8):
+            engine._apply_drawdown_budget(
+                [state],
+                pd.Timestamp("2026-01-05"),
+                position,
+                853.0,
+                manager.lifetime_peak_assets,
+                soft_alert_active=soft_alert,
+                hard_lock_active=hard_lock,
+                events=[],
+            )
+
+        latest = engine._drawdown_budget_curve[-1]
+        self.assertEqual(latest["state"], "recovering")
+        self.assertTrue(latest["soft_alert_active"])
+        self.assertFalse(latest["hard_lock_active"])
+        self.assertGreater(latest["new_risk_capacity"], 0.0)
+        self.assertEqual(manager.lifetime_peak_assets, 1_000.0)
+
+    def test_real_sleeve_hard_lock_keeps_engine_capacity_zero(self) -> None:
+        policy = PortfolioPolicy(drawdown_budget_enabled=True)
+        manager = RecoverableDrawdownRiskManager(
+            {"max_drawdown": policy.confirmed_drawdown}, policy
+        )
+        manager.check_portfolio_risk(1_000.0, "2026-01-01")
+        engine = BacktestEngine(policy=policy)
+        state = self._state()
+        state.sleeve.risk.persistent_lock = True
+        soft_alert, hard_lock = engine._drawdown_budget_risk_flags(
+            manager, [state]
+        )
+
+        self.assertFalse(soft_alert)
+        self.assertTrue(hard_lock)
+        engine._apply_drawdown_budget(
+            [state],
+            pd.Timestamp("2026-01-05"),
+            0,
+            1_000.0,
+            manager.lifetime_peak_assets,
+            soft_alert_active=soft_alert,
+            hard_lock_active=hard_lock,
+            events=[],
+        )
+
+        self.assertEqual(
+            engine._drawdown_budget_curve[-1]["new_risk_capacity"], 0.0
         )
 
 
