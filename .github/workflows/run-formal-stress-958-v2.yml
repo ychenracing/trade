@@ -1,4 +1,4 @@
-name: Run exact 958-scenario formal acceptance v3
+name: Run exact 958-scenario formal acceptance v4
 
 on:
   push:
@@ -51,6 +51,7 @@ jobs:
             quantfusion tests/unit/test_current_formal_stress_plan.py
 
       - name: Commit stable pre-run source and documentation
+        id: source
         shell: bash
         run: |
           set -euo pipefail
@@ -62,8 +63,10 @@ jobs:
             git commit -m "docs: align current formal stress plan to 958 scenarios"
             git push origin HEAD:codex/formal-stress-958-acceptance
           fi
-          git rev-parse HEAD > /tmp/formal_source_sha
-          echo "formal_source_sha=$(cat /tmp/formal_source_sha)"
+          source_sha="$(git rev-parse HEAD)"
+          printf '%s\n' "$source_sha" > /tmp/formal_source_sha
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "formal_source_sha=$source_sha"
           PYTHONPATH=. python scripts/_formal_stress_958_task snapshot-prior \
             --output /tmp/prior_candidate_hashes.json
 
@@ -91,6 +94,19 @@ jobs:
           fi
           echo "formal_exit_status=$status" >> "$GITHUB_OUTPUT"
 
+      - name: Preserve raw exact-run evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: formal-stress-958-${{ steps.source.outputs.source_sha }}
+          path: |
+            ${{ runner.temp }}/formal-stress-958-${{ steps.source.outputs.source_sha }}.json
+            ${{ runner.temp }}/formal-stress-958.log
+            artifacts/validation/candidates/stress-${{ steps.source.outputs.source_sha }}-rejected.json
+            artifacts/validation/prefix_stress.json
+            artifacts/validation/universe_stress.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Validate complete evidence and update result documentation
         shell: bash
         run: |
@@ -106,7 +122,19 @@ jobs:
             exit 1
           fi
 
-      - name: Run complete engineering verification
+      - name: Remove temporary task infrastructure before final verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f \
+            .github/workflows/bootstrap-formal-stress-958.yml \
+            .github/workflows/run-formal-stress-958.yml \
+            .github/workflows/run-formal-stress-958-v2.yml \
+            .github/task-bootstrap/formal-stress-958-acceptance.md \
+            scripts/_formal_stress_958_task \
+            scripts/_formal_stress_958_task.py
+
+      - name: Run complete engineering verification on final tree
         shell: bash
         run: |
           set -euo pipefail
@@ -118,17 +146,10 @@ jobs:
           pip-audit --strict -r requirements-lock.txt
           git diff --check
 
-      - name: Commit complete evidence and remove temporary infrastructure
+      - name: Commit complete evidence
         shell: bash
         run: |
           set -euo pipefail
-          rm -f \
-            .github/workflows/bootstrap-formal-stress-958.yml \
-            .github/workflows/run-formal-stress-958.yml \
-            .github/workflows/run-formal-stress-958-v2.yml \
-            .github/task-bootstrap/formal-stress-958-acceptance.md \
-            scripts/_formal_stress_958_task \
-            scripts/_formal_stress_958_task.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
