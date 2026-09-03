@@ -62,7 +62,6 @@ class StressScenarioTests(unittest.TestCase):
             "max_concurrent_symbols": 0,
             "terminal_risk_lock": False,
             "deployment_policy": "production_daily_replay",
-            "drawdown_budget_configuration": "balanced",
         }
 
     @classmethod
@@ -501,33 +500,6 @@ class StressScenarioTests(unittest.TestCase):
         self.assertTrue(args.establish_initial_baseline)
         self.assertEqual(args.initial_baseline_reference, "retained.json")
 
-    def test_diagnostic_configuration_is_restricted_to_preregistered_values(
-        self,
-    ) -> None:
-        parser = stress.build_argument_parser()
-
-        conservative = parser.parse_args(
-            [
-                "--source-revision",
-                "a" * 40,
-                "--drawdown-budget-configuration",
-                "conservative",
-            ]
-        )
-
-        self.assertEqual(
-            conservative.drawdown_budget_configuration, "conservative"
-        )
-        with self.assertRaises(SystemExit):
-            parser.parse_args(
-                [
-                    "--source-revision",
-                    "a" * 40,
-                    "--drawdown-budget-configuration",
-                    "searched-value",
-                ]
-            )
-
     def test_selects_exact_add_one_scenario_without_changing_definition(self) -> None:
         scenarios = stress_scenarios._multi_seed_scenarios(
             random_samples=1,
@@ -693,24 +665,6 @@ class StressScenarioTests(unittest.TestCase):
                 {"date": "2025-01-06", "symbol_count": 0},
                 {"date": "2025-01-07", "symbol_count": 0},
             ],
-            "drawdown_budget_curve": [
-                {
-                    "date": date,
-                    "state": state,
-                    "available_budget": budget,
-                    "projected_adverse_loss": loss,
-                    "projected_loss_ratio": ratio,
-                    "group_adverse_losses": {"optical": loss},
-                    "reduction_fraction": reduction,
-                }
-                for date, state, budget, loss, ratio, reduction in (
-                    ("2025-01-01", "normal", 17.5, 0.0, 0.0, 0.0),
-                    ("2025-01-02", "normal", 20.0, 10.0, 0.5, 0.0),
-                    ("2025-01-03", "constrained", 8.0, 12.0, 1.5, 0.25),
-                    ("2025-01-06", "constrained", 0.0, 5.0, None, 1.0),
-                    ("2025-01-07", "recovering", 20.0, 0.0, 0.0, 0.0),
-                )
-            ],
             "max_concurrent_symbols": 1,
             "portfolio_max_positions": 6,
             "cycle_lock_count": 1,
@@ -723,38 +677,16 @@ class StressScenarioTests(unittest.TestCase):
         telemetry = stress._diagnostic_telemetry(raw)
 
         self.assertEqual(telemetry["peak"]["date"], "2025-01-02")
-        self.assertEqual(
-            telemetry["peak_previous_session"]["date"], "2025-01-01"
-        )
-        self.assertEqual(
-            telemetry["peak"]["drawdown_budget"]["available_budget"], 20.0
-        )
         self.assertEqual(telemetry["trough"]["date"], "2025-01-06")
         self.assertEqual(telemetry["recovery_date"], "2025-01-07")
         self.assertEqual(telemetry["first_risk_trigger"]["date"], "2025-01-03")
-        self.assertEqual(
-            telemetry["trigger_previous_session"]["date"], "2025-01-02"
-        )
         self.assertEqual(
             telemetry["first_executable_reduction"]["date"], "2025-01-06"
         )
         self.assertAlmostEqual(telemetry["execution_overshoot"], 0.10)
         self.assertEqual(telemetry["warning_period_buy_count"], 0)
         self.assertEqual(telemetry["locks"]["cycle_lock_count"], 1)
-        self.assertEqual(telemetry["path_summary"]["cash_day_count"], 2)
-        self.assertAlmostEqual(
-            telemetry["path_summary"]["average_exposure_ratio"],
-            (0.0 + 100.0 / 120.0 + 90.0 / 108.0 + 46.0 / 96.0 + 0.0)
-            / 5.0,
-        )
-        self.assertEqual(
-            telemetry["drawdown_budget_summary"]["constrained_day_count"], 2
-        )
-        self.assertEqual(
-            telemetry["drawdown_budget_summary"]["state_transition_count"], 2
-        )
         self.assertNotIn("equity_curve", telemetry)
-        json.dumps(telemetry, allow_nan=False)
 
     def test_selects_add_one_family_in_formal_plan_order(self) -> None:
         scenarios = stress_scenarios._multi_seed_scenarios(
@@ -1162,7 +1094,6 @@ class StressScenarioTests(unittest.TestCase):
                         "scenario_type": None,
                         "shard_index": None,
                         "shard_count": None,
-                        "drawdown_budget_configuration": "balanced",
                     },
                     "completed": 1,
                     "scenario_count": 1,

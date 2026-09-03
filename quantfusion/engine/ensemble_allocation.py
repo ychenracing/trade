@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
+
 # ruff: noqa: F401
+
 import contextlib
 import io
 import math
@@ -13,12 +15,10 @@ from typing import Any, ClassVar
 import numpy as np
 import pandas as pd
 
-from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
-from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import MarketRegimeObservation, Signal
-from quantfusion.domain.rules import floor_to_lot, is_finite_number, require_int
+from quantfusion.domain.rules import floor_to_lot, require_int
 from quantfusion.engine.core import CoreBacktestEngine
 from quantfusion.engine.ensemble import (
     EnsembleBacktestEngine,
@@ -28,18 +28,12 @@ from quantfusion.engine.ensemble import (
 )
 from quantfusion.execution.priorities import EXECUTION_PRIORITY
 from quantfusion.indicators.technical import Indicators
-from quantfusion.risk.budget import (
-    DrawdownBudgetController,
-    RiskBook,
-    portfolio_adverse_loss,
-)
+from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
 from quantfusion.risk.overlay.adapter import (
     apply_cooldown_buy_gate,
-    apply_risk_actions,
     apply_risk_buy_gate,
 )
-from quantfusion.risk.overlay.models import RiskAction
 from quantfusion.strategy.trend import BaseStrategy
 
 _CoreBacktestEngine = CoreBacktestEngine
@@ -49,7 +43,6 @@ _EnsembleSleeveBacktestEngine = EnsembleSleeveBacktestEngine
 _PreparedSleeveRun = PreparedSleeveRun
 _RunRequest = RunRequest
 _floor_to_lot = floor_to_lot
-_is_finite_number = is_finite_number
 _require_int = require_int
 
 
@@ -328,296 +321,6 @@ class EnsembleAllocationMixin:
                 samples.append(float(scores.get(symbol, 0.0)))
             return float(np.mean(samples)) if samples else 0.0
         return _score
-
-    def _drawdown_budget_controller_instance(self) -> DrawdownBudgetController:
-        controller = getattr(self, "_drawdown_budget_controller", None)
-        if controller is None:
-            controller = DrawdownBudgetController(
-                base_budget_peak_fraction=self.policy.drawdown_budget_peak_fraction,
-                execution_buffer_peak_fraction=(
-                    self.policy.drawdown_budget_execution_buffer
-                ),
-                adverse_atr_multiple=(
-                    self.policy.drawdown_budget_adverse_atr_multiple
-                ),
-                other_group_loss_weight=(
-                    self.policy.drawdown_budget_other_group_weight
-                ),
-                constraint_release_ratio=self.policy.drawdown_budget_release_ratio,
-                minimum_reentry_cooldown=self.policy.drawdown_budget_reentry_days,
-                recovery_confirmation_days=(
-                    self.policy.drawdown_budget_recovery_confirmations
-                ),
-                minimum_drawdown_recovery=(
-                    self.policy.drawdown_budget_recovery_delta
-                ),
-                normal_state_drawdown_exit=self.policy.drawdown_budget_normal_exit,
-            )
-            self._drawdown_budget_controller = controller
-        return controller
-
-    @staticmethod
-    def _drawdown_budget_risk_flags(
-        portfolio_risk: RecoverableDrawdownRiskManager,
-    ) -> tuple[bool, bool]:
-        """Keep audit-only soft alerts separate from authoritative hard locks."""
-        soft_alert_active = bool(portfolio_risk.alert_active)
-        hard_lock_active = bool(
-            portfolio_risk.persistent_lock
-            or portfolio_risk.terminal_lock
-        )
-        return soft_alert_active, hard_lock_active
-
-    @staticmethod
-    def _drawdown_budget_books(
-        states: list[_PreparedSleeveRun], date: pd.Timestamp
-    ) -> tuple[list[RiskBook], list[tuple[int, str, str, Any]]]:
-        books: list[RiskBook] = []
-        owners: list[tuple[int, str, str, Any]] = []
-        for state_index, state in enumerate(states):
-            for symbol, positions in state.sleeve.positions.items():
-                strategies = {
-                    strategy.name: strategy
-                    for strategy in (
-                        state.sleeve.strategy_instances.get(symbol, [])
-                        + state.sleeve.external_strategy_instances.get(symbol, [])
-                    )
-                }
-                frame = state.data_map.get(symbol)
-                mark = 0.0
-                if frame is not None and date in frame.index:
-                    value = frame.at[date, "close"]
-                    mark = float(value) if _is_finite_number(value) else 0.0
-                atr_series = state.indicator_map.get(symbol, {}).get("atr")
-                atr = 0.0
-                if atr_series is not None and date in atr_series.index:
-                    value = atr_series.at[date]
-                    atr = float(value) if _is_finite_number(value) else 0.0
-                for strategy_name, position in positions.items():
-                    strategy = strategies.get(strategy_name)
-                    effective_exit = (
-                        strategy.effective_exit_floor()
-                        if strategy is not None
-                        else float(position.stop_loss)
-                    )
-                    books.append(
-                        RiskBook(
-                            symbol=str(symbol),
-                            group=str(SYMBOL_SUB_INDUSTRY.get(symbol, "unmapped")),
-                            shares=int(position.shares),
-                            mark_price=(
-                                mark if mark > 0 else float(position.entry_price)
-                            ),
-                            entry_price=float(position.entry_price),
-                            stop_price=float(effective_exit),
-                            atr=atr,
-                        )
-                    )
-                    owners.append(
-                        (state_index, str(symbol), str(strategy_name), position)
-                    )
-        return books, owners
-
-    @staticmethod
-    def _pending_budget_books(
-        states: list[_PreparedSleeveRun],
-    ) -> tuple[list[RiskBook], list[tuple[int, Any, Any]]]:
-        books: list[RiskBook] = []
-        owners: list[tuple[int, Any, Any]] = []
-        for state_index, state in enumerate(states):
-            for signal, strategy in state.pending:
-                if signal.direction != "buy":
-                    continue
-                books.append(
-                    RiskBook(
-                        symbol=str(signal.symbol),
-                        group=str(
-                            SYMBOL_SUB_INDUSTRY.get(signal.symbol, "unmapped")
-                        ),
-                        shares=int(signal.target_shares),
-                        mark_price=float(signal.price),
-                        entry_price=float(signal.price),
-                        stop_price=float(signal.stop_loss),
-                        atr=float(signal.atr),
-                    )
-                )
-                owners.append((state_index, signal, strategy))
-        return books, owners
-
-    def _apply_drawdown_budget(
-        self,
-        states: list[_PreparedSleeveRun],
-        date: pd.Timestamp,
-        date_position: int,
-        current_assets: float,
-        lifetime_peak_assets: float,
-        *,
-        soft_alert_active: bool,
-        hard_lock_active: bool,
-        events: list[dict[str, Any]],
-    ) -> None:
-        """Budget close-known risk before orders reach the next open."""
-        if not self.policy.drawdown_budget_enabled:
-            return
-        controller = self._drawdown_budget_controller_instance()
-        books, owners = self._drawdown_budget_books(states, date)
-        snapshot = controller.snapshot(current_assets, lifetime_peak_assets, books)
-        has_pending_reduction = any(
-            signal.direction == "sell"
-            and signal.reason.split(":")[0] == "drawdown_budget_reduction"
-            for state in states
-            for signal, _ in state.pending
-        )
-        previous_state = controller.state
-        decision = controller.decide(
-            snapshot,
-            position=date_position,
-            soft_alert_active=soft_alert_active,
-            hard_lock_active=hard_lock_active,
-            has_pending_reduction=has_pending_reduction,
-        )
-        date_str = date.strftime("%Y-%m-%d")
-        curve = getattr(self, "_drawdown_budget_curve", None)
-        if curve is None:
-            curve = []
-            self._drawdown_budget_curve = curve
-        curve.append(
-            {
-                "date": date_str,
-                "state": decision.state,
-                "soft_alert_active": bool(soft_alert_active),
-                "hard_lock_active": bool(hard_lock_active),
-                "drawdown": snapshot.drawdown,
-                "remaining_cushion": snapshot.remaining_cushion,
-                "available_budget": snapshot.available_budget,
-                "projected_adverse_loss": snapshot.projected_loss,
-                "risk_driver_loss": snapshot.risk_driver_loss,
-                "projected_loss_ratio": (
-                    snapshot.projected_loss_ratio
-                    if math.isfinite(snapshot.projected_loss_ratio)
-                    else None
-                ),
-                "group_adverse_losses": dict(snapshot.group_losses),
-                "allow_new_risk": decision.allow_new_risk,
-                "new_risk_capacity": decision.new_risk_capacity,
-                "reduction_fraction": decision.reduction_fraction,
-                "evidence_complete": snapshot.evidence_complete,
-                "missing_symbols": list(snapshot.missing_symbols),
-            }
-        )
-        actions: list[RiskAction] = []
-        if decision.reduction_fraction > 0:
-            for state_index, symbol, strategy_name, position in owners:
-                shares = _floor_to_lot(
-                    int(position.shares) * decision.reduction_fraction
-                )
-                if shares <= 0:
-                    continue
-                frame = states[state_index].data_map.get(symbol)
-                price = (
-                    float(frame.at[date, "close"])
-                    if frame is not None and date in frame.index
-                    else float(position.entry_price)
-                )
-                actions.append(
-                    RiskAction(
-                        symbol=symbol,
-                        strategy_name=strategy_name,
-                        shares=shares,
-                        price=price,
-                        signal_date=date_str,
-                        reason="drawdown_budget_reduction",
-                        priority=70,
-                        extra=f"fraction={decision.reduction_fraction:.6f}",
-                        state_index=state_index,
-                    )
-                )
-        if actions:
-            apply_risk_actions(actions, states, date_str=date_str, events=events)
-
-        pending_books, pending_owners = self._pending_budget_books(states)
-        incomplete = {
-            book.symbol
-            for book in pending_books
-            if not all(
-                _is_finite_number(value) and float(value) > 0
-                for value in (book.mark_price, book.stop_price, book.atr)
-            )
-        }
-        if pending_owners:
-            if not decision.allow_new_risk:
-                scale = 0.0
-            else:
-                valid_pending = [
-                    book for book in pending_books if book.symbol not in incomplete
-                ]
-                combined = portfolio_adverse_loss(
-                    [*books, *valid_pending],
-                    adverse_atr_multiple=controller.adverse_atr_multiple,
-                    other_group_loss_weight=controller.other_group_loss_weight,
-                )
-                incremental = max(
-                    combined.projected_loss - snapshot.projected_loss, 0.0
-                )
-                scale = (
-                    min(1.0, decision.new_risk_capacity / incremental)
-                    if incremental > 0
-                    else 1.0
-                )
-            for state_index, signal, strategy in pending_owners:
-                state = states[state_index]
-                state.pending = [
-                    item for item in state.pending if item[0] is not signal
-                ]
-                if signal.symbol in incomplete:
-                    state.sleeve._record_order_event(
-                        date=date_str,
-                        signal=signal,
-                        event="rejected_drawdown_budget_missing_evidence",
-                    )
-                    continue
-                adjusted_shares = _floor_to_lot(int(signal.target_shares) * scale)
-                if adjusted_shares <= 0:
-                    state.sleeve._record_order_event(
-                        date=date_str,
-                        signal=signal,
-                        event="blocked_drawdown_budget",
-                        state=decision.state,
-                    )
-                    continue
-                adjusted = (
-                    replace(signal, target_shares=adjusted_shares)
-                    if adjusted_shares < signal.target_shares
-                    else signal
-                )
-                state.pending.append((adjusted, strategy))
-                if adjusted is not signal:
-                    state.sleeve._record_order_event(
-                        date=date_str,
-                        signal=signal,
-                        event="clipped_to_drawdown_budget",
-                        requested_shares=int(signal.target_shares),
-                        adjusted_shares=int(adjusted_shares),
-                    )
-
-        if previous_state != decision.state or actions or pending_owners:
-            events.append(
-                {
-                    "date": date_str,
-                    "event": "drawdown_budget_state",
-                    "state": decision.state,
-                    "drawdown": snapshot.drawdown,
-                    "remaining_cushion": snapshot.remaining_cushion,
-                    "available_budget": snapshot.available_budget,
-                    "projected_adverse_loss": snapshot.projected_loss,
-                    "new_risk_capacity": decision.new_risk_capacity,
-                    "reduction_fraction": decision.reduction_fraction,
-                    "evidence_complete": snapshot.evidence_complete,
-                    "missing_symbols": list(snapshot.missing_symbols),
-                    "soft_alert_active": bool(soft_alert_active),
-                    "hard_lock_active": bool(hard_lock_active),
-                }
-            )
 
     def _authorize_portfolio_buys(
         self,

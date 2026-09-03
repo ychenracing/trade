@@ -364,38 +364,13 @@ class ProductionReplayEngine:
         initial_capital: float = 2_000_000,
         cfg: dict | None = None,
         policy: PortfolioPolicy | None = None,
-        drawdown_budget_execution_buffer: float | None = None,
     ) -> None:
         self.initial_capital = require_finite(
             "initial_capital", initial_capital, min_value=0.01
         )
         self.cfg = dict(cfg or {})
         self.policy = policy
-        self.drawdown_budget_execution_buffer = (
-            None
-            if drawdown_budget_execution_buffer is None
-            else require_finite(
-                "drawdown_budget_execution_buffer",
-                drawdown_budget_execution_buffer,
-                min_value=1e-12,
-                max_value=0.18,
-            )
-        )
         self.delegate: BacktestEngine | None = None
-
-    def _with_drawdown_budget_buffer(
-        self, policy: PortfolioPolicy
-    ) -> PortfolioPolicy:
-        """Apply only the preregistered execution-buffer variant."""
-        if self.drawdown_budget_execution_buffer is None:
-            return policy
-        return replace(
-            policy,
-            drawdown_budget_enabled=True,
-            drawdown_budget_execution_buffer=(
-                self.drawdown_budget_execution_buffer
-            ),
-        )
 
     def run(
         self,
@@ -435,7 +410,6 @@ class ProductionReplayEngine:
             if starts_defensive
             else PortfolioPolicy()
         )
-        replay_policy = self._with_drawdown_budget_buffer(replay_policy)
         self.delegate = BacktestEngine(
             self.initial_capital,
             cfg=self.cfg,

@@ -151,16 +151,6 @@ class PortfolioPolicy(_PortfolioPolicyBase):
     terminal_drawdown: float = 0.28
     concentration_drawdown_adjustment: float = 0.02
     candidate_reference_percentile: float = 0.50
-    drawdown_budget_enabled: bool = False
-    drawdown_budget_peak_fraction: float = 0.175
-    drawdown_budget_execution_buffer: float = 0.005
-    drawdown_budget_adverse_atr_multiple: float = 1.0
-    drawdown_budget_other_group_weight: float = 0.50
-    drawdown_budget_release_ratio: float = 0.80
-    drawdown_budget_reentry_days: int = 5
-    drawdown_budget_recovery_confirmations: int = 3
-    drawdown_budget_recovery_delta: float = 0.02
-    drawdown_budget_normal_exit: float = 0.05
     regime_symbols: tuple[str, ...] = (
         "300308",
         "300502",
@@ -222,48 +212,6 @@ class PortfolioPolicy(_PortfolioPolicyBase):
             min_value=0.0,
             max_value=1.0,
         )
-        budget_enabled = _require_bool(
-            "drawdown_budget_enabled", self.drawdown_budget_enabled
-        )
-        budget_peak_fraction = _require_positive(
-            "drawdown_budget_peak_fraction",
-            self.drawdown_budget_peak_fraction,
-            max_value=0.18,
-        )
-        budget_buffer = _require_positive(
-            "drawdown_budget_execution_buffer",
-            self.drawdown_budget_execution_buffer,
-            max_value=0.18,
-        )
-        budget_atr_multiple = _require_positive(
-            "drawdown_budget_adverse_atr_multiple",
-            self.drawdown_budget_adverse_atr_multiple,
-        )
-        budget_other_group_weight = _require_finite(
-            "drawdown_budget_other_group_weight",
-            self.drawdown_budget_other_group_weight,
-            min_value=0.0,
-            max_value=1.0,
-        )
-        budget_release_ratio = _require_positive_ratio(
-            "drawdown_budget_release_ratio", self.drawdown_budget_release_ratio
-        )
-        budget_reentry_days = _require_int(
-            "drawdown_budget_reentry_days",
-            self.drawdown_budget_reentry_days,
-            min_value=1,
-        )
-        budget_recovery_confirmations = _require_int(
-            "drawdown_budget_recovery_confirmations",
-            self.drawdown_budget_recovery_confirmations,
-            min_value=1,
-        )
-        budget_recovery_delta = _require_positive_ratio(
-            "drawdown_budget_recovery_delta", self.drawdown_budget_recovery_delta
-        )
-        budget_normal_exit = _require_positive_ratio(
-            "drawdown_budget_normal_exit", self.drawdown_budget_normal_exit
-        )
         regime_symbols = tuple(str(symbol) for symbol in self.regime_symbols)
         if not regime_symbols:
             raise ValueError("regime_symbols must contain at least one symbol")
@@ -291,30 +239,6 @@ class PortfolioPolicy(_PortfolioPolicyBase):
             self, "concentration_drawdown_adjustment", concentration_adjustment
         )
         object.__setattr__(self, "candidate_reference_percentile", reference_percentile)
-        object.__setattr__(self, "drawdown_budget_enabled", budget_enabled)
-        object.__setattr__(
-            self, "drawdown_budget_peak_fraction", budget_peak_fraction
-        )
-        object.__setattr__(self, "drawdown_budget_execution_buffer", budget_buffer)
-        object.__setattr__(
-            self, "drawdown_budget_adverse_atr_multiple", budget_atr_multiple
-        )
-        object.__setattr__(
-            self, "drawdown_budget_other_group_weight", budget_other_group_weight
-        )
-        object.__setattr__(
-            self, "drawdown_budget_release_ratio", budget_release_ratio
-        )
-        object.__setattr__(self, "drawdown_budget_reentry_days", budget_reentry_days)
-        object.__setattr__(
-            self,
-            "drawdown_budget_recovery_confirmations",
-            budget_recovery_confirmations,
-        )
-        object.__setattr__(
-            self, "drawdown_budget_recovery_delta", budget_recovery_delta
-        )
-        object.__setattr__(self, "drawdown_budget_normal_exit", budget_normal_exit)
         object.__setattr__(self, "regime_symbols", regime_symbols)
         self._validate_market_regime_fields()
 
@@ -470,24 +394,6 @@ class PortfolioPolicy(_PortfolioPolicyBase):
                     self.concentration_drawdown_adjustment
                 ),
                 "candidate_reference_percentile": (self.candidate_reference_percentile),
-                "drawdown_budget_enabled": self.drawdown_budget_enabled,
-                "drawdown_budget_peak_fraction": self.drawdown_budget_peak_fraction,
-                "drawdown_budget_execution_buffer": (
-                    self.drawdown_budget_execution_buffer
-                ),
-                "drawdown_budget_adverse_atr_multiple": (
-                    self.drawdown_budget_adverse_atr_multiple
-                ),
-                "drawdown_budget_other_group_weight": (
-                    self.drawdown_budget_other_group_weight
-                ),
-                "drawdown_budget_release_ratio": self.drawdown_budget_release_ratio,
-                "drawdown_budget_reentry_days": self.drawdown_budget_reentry_days,
-                "drawdown_budget_recovery_confirmations": (
-                    self.drawdown_budget_recovery_confirmations
-                ),
-                "drawdown_budget_recovery_delta": self.drawdown_budget_recovery_delta,
-                "drawdown_budget_normal_exit": self.drawdown_budget_normal_exit,
                 "regime_symbols": list(self.regime_symbols),
                 "market_regime_enabled": self.market_regime_enabled,
                 "regime_ewi_lookback": self.regime_ewi_lookback,

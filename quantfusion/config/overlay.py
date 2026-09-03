@@ -93,7 +93,6 @@ RISK_ACTION_PRIORITY: dict[str, int] = {
     "profit_tier_stop": 90,       # full exit, layered profit-protection line
     "layered_stop": 90,           # generic full-exit tag
     "sector_risk_trim": 60,       # graded early-sector-risk trim (L2/L3)
-    "drawdown_budget_reduction": 70,  # account-wide ex-ante risk budget
     "concentration_trim": 50,     # sub-industry concentration guard trim
     "shock_trim": 40,             # structural-shock fast de-risk (opt-in)
 }

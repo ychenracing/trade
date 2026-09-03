@@ -14,7 +14,6 @@ from quantfusion.application import daily_scan as daily
 import quantfusion.regime.evidence as regime_evidence
 from quantfusion.config.engine import default_engine_config
 from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT, REGIME_DATA_DIR
-from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.regime import REGIME_INDEX_FILES
 from quantfusion.domain.models import Position
 from quantfusion.engine import replay as ra
@@ -120,37 +119,6 @@ class LeaderSelectionTests(unittest.TestCase):
 
 
 class AdaptiveEngineTests(unittest.TestCase):
-    def test_replay_buffer_override_preserves_every_other_policy_field(self) -> None:
-        base = PortfolioPolicy()
-        engine = ra.ProductionReplayEngine(
-            drawdown_budget_execution_buffer=0.0075
-        )
-
-        configured = engine._with_drawdown_budget_buffer(base)
-
-        self.assertTrue(configured.drawdown_budget_enabled)
-        self.assertEqual(configured.drawdown_budget_execution_buffer, 0.0075)
-        self.assertEqual(
-            {
-                key: value
-                for key, value in configured.as_dict().items()
-                if key
-                not in {
-                    "drawdown_budget_enabled",
-                    "drawdown_budget_execution_buffer",
-                }
-            },
-            {
-                key: value
-                for key, value in base.as_dict().items()
-                if key
-                not in {
-                    "drawdown_budget_enabled",
-                    "drawdown_budget_execution_buffer",
-                }
-            },
-        )
-
     def test_daily_entrypoint_has_no_process_global_cache_configuration(self) -> None:
         self.assertFalse(hasattr(daily.qf.DataFetcher, "_cache_dir"))
         with patch.object(daily, "_run_main", return_value=0) as run:

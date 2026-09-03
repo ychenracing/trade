@@ -26,10 +26,6 @@ class BaseStrategy:
         """Generate a close-based signal for one bar."""
         raise NotImplementedError
 
-    def effective_exit_floor(self) -> float:
-        """Return the current close-known downside exit used by risk controls."""
-        return float(self.position.stop_loss) if self.position is not None else 0.0
-
     def _calc_shares(
         self, capital: float, price: float, atr_val: float, unit_number: int = 1
     ) -> int:
