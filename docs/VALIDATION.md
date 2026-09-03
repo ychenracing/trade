@@ -55,7 +55,7 @@
 - 路径：`artifacts/validation/candidates/stress-f5625e5b5813a5b58c52d076ad3c38e33d8b3292-rejected.json`
 - 文件 SHA-256：`adda276bea8a11b76fa6881e4e7a9770bf8cfb79bb93a397aa5aa405327358c2`
 - 状态：`current_candidate`、`rejected`、`canonical=false`
-- 完整性：983/983，983 个唯一场景 ID，无缺失、重复或非有限指标；所有场景均为 `production_daily_replay`
+- 完整性：历史 22 股计划完成 983/983；历史 22 股计划含 983 个唯一场景 ID，无缺失、重复或非有限指标；所有场景均为 `production_daily_replay`
 - 来源证明（provenance）：source revision `f5625e5b5813a5b58c52d076ad3c38e33d8b3292`，source fingerprint `a79a96c059b01d6ee98a25d3d6d8d9719906bd2fee69836dc35b5186664c51d5`，data fingerprint `8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40`，scenario signature `ceb116649ced622bd5aa653c6734fbfbb241c4e20853c98939b6689d940ed223`，run signature `1982b16888237ce989d3022f942d5d525c1be2bd627a58fbcf849252ec6ea814`
 - 合同版本：该历史工件早于合同 v2，不能作为 v2 incumbent，也未被迁移、覆盖或改写
 - v2 离线复算：absolute hard gate 失败；全场景最差 `max_drawdown=-0.2122314802406625`，超过统一的 18% 上限；原有 9→10 财富变化与最差相邻前缀变化继续作为 retained robustness hard gates
@@ -131,7 +131,10 @@
 持续集成要求 Python 3.11/3.12 完整测试、全仓编译、Ruff、规范包 Pyright、Bandit、依赖漏洞审计和五池基线回归（整数精确、浮点 `rel_tol=1e-9`）全部通过。任何策略、费用、数据、映射或执行逻辑变化，都必须同时更新代码、测试、JSON 工件和本文件，不能静默刷新数字。风险层改动额外受正式压力晋级门约束。
 
 <!-- CURRENT_FORMAL_STRESS_PLAN:START -->
+<!-- CURRENT_FORMAL_STRESS_PLAN_META: {"symbol_count": 17, "scenario_count": 958, "family_counts": {"prefix": 17, "leave_one_out": 17, "add_one": 24, "random_subset": 750, "permutation": 150}} -->
 ## 当前 17 股 / 958 场景 formal stress
+
+当前计划计数：17 股；958 场景；prefix=17；leave-one-out=17；add-one=24；random-subset=750；permutation=150。
 
 当前 formal plan 从唯一有序 17 股股票池确定性生成：17 个 prefix、17 个 leave-one-out、24 个 add-one、750 个 random-subset（3 个固定 seed × 5 个规模 × 每规模 50 个）和 150 个 permutation（3 个固定 seed × 50 个），合计 958。完整运行必须具有 958 个唯一 scenario ID、有限指标、`ProductionReplayEngine` / `production_daily_replay` 语义以及相互独立的 source、data、scenario 和 run fingerprints。
 

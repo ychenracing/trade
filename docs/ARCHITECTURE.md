@@ -150,7 +150,10 @@ canonical 仓库路径由 `quantfusion.config.paths` 提供。用户显式传入
 该分层避免对每个中间状态重复做昂贵证明，同时保证最终候选树获得完整工程与经济验证。
 
 <!-- CURRENT_FORMAL_STRESS_PLAN:START -->
+<!-- CURRENT_FORMAL_STRESS_PLAN_META: {"symbol_count": 17, "scenario_count": 958, "family_counts": {"prefix": 17, "leave_one_out": 17, "add_one": 24, "random_subset": 750, "permutation": 150}} -->
 ## Formal stress 的当前边界
+
+当前计划计数：17 股；958 场景；prefix=17；leave-one-out=17；add-one=24；random-subset=750；permutation=150。
 
 日扫与 formal stress 读取同一个有序 17 股权威映射。场景生成器在该顺序上构造 958 个完整场景；诊断 selector、单场景、family 或 shard 运行永远不是 formal plan，不能发布 canonical 工件。正式发布同时校验计划完整性、scenario ID 唯一性、生产回放语义、provenance、absolute hard gates、retained robustness gates 和 promotion/initial-baseline 状态。
 

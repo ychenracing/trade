@@ -289,7 +289,7 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 - `data_cache/`：行情数据缓存
 - `benchmark_validation.json`：基准验证输出
 
-`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只由通过全部门禁的 accepted canonical 合同 v2 运行创建；当前没有此类基线，因此这两个路径不存在。旧的完整 983 场景 rejected 工件保持不可变；按 v2 离线复算后仍因全场景最差回撤 `-21.2231%` 超过 18% 而拒绝。原有 9→10 与最差相邻前缀财富保护继续作为 retained robustness hard gates；`add-one-05-688205` 相对 `prefix-05` 的终值财富变化 `-23.4903%` 只作为 robustness diagnostic 保留，不代表账户损失或最大回撤，也不再使用绝对 `-18%` floor。诊断输出不属于正式发布目录，不能进入 canonical 发布逻辑。
+`artifacts/validation/prefix_stress.json` 与 `artifacts/validation/universe_stress.json` 只由通过全部门禁的 accepted canonical 合同 v2 运行创建；当前没有此类基线，因此这两个路径不存在。历史 22 股的完整 983 场景 rejected 工件保持不可变；按 v2 离线复算后仍因全场景最差回撤 `-21.2231%` 超过 18% 而拒绝。原有 9→10 与最差相邻前缀财富保护继续作为 retained robustness hard gates；`add-one-05-688205` 相对 `prefix-05` 的终值财富变化 `-23.4903%` 只作为 robustness diagnostic 保留，不代表账户损失或最大回撤，也不再使用绝对 `-18%` floor。诊断输出不属于正式发布目录，不能进入 canonical 发布逻辑。
 
 如需持久化某次验证结果，将对应文件放入 `artifacts/validation/` 并更新 `docs/VALIDATION.md`。
 
@@ -368,7 +368,10 @@ pip-audit --strict -r requirements-lock.txt
 CI 在每次推送时自动执行上述全部检查，并额外运行五组趋势基线回归（1/3/5/13/17 只股票池）：成交记录、卖出记录和日期/股票/方向桶等整数指标要求精确一致，总收益与最大回撤等浮点指标仅容忍严格的跨平台浮点求和顺序差异（`rel_tol=1e-9`，远小于任何真实行为漂移的量级）。任何策略、费用、数据或映射变更都必须更新基线并在 `docs/VALIDATION.md` 中说明变化原因。
 
 <!-- CURRENT_FORMAL_STRESS_PLAN:START -->
+<!-- CURRENT_FORMAL_STRESS_PLAN_META: {"symbol_count": 17, "scenario_count": 958, "family_counts": {"prefix": 17, "leave_one_out": 17, "add_one": 24, "random_subset": 750, "permutation": 150}} -->
 ### 当前 17 股 formal stress 计划
+
+当前计划计数：17 股；958 场景；prefix=17；leave-one-out=17；add-one=24；random-subset=750；permutation=150。
 
 日扫与 formal stress 共用 `quantfusion.config.universe.SYMBOL_NAMES` 的同一有序 17 股股票池。当前正式计划固定为 958 个生产逐日回放场景：17 个 prefix、17 个 leave-one-out、24 个 add-one、750 个 deterministic random-subset、150 个 permutation。场景顺序、三个固定 seed、冻结行情、费用、滑点、容量、T+1 和撮合语义均属于 provenance；任一变化都会形成新的 scenario/run fingerprint。
 
