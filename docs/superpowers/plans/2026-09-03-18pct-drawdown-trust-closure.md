@@ -126,13 +126,13 @@
 
   Expected: 0 failures.
 
-- [ ] **Step 7: Run the cohort once as one diagnostic batch**
+- [x] **Step 7: Run the cohort once as one diagnostic batch**
 
   Set `CHECKPOINT_A_REMOTE_SHA` to the exact remote PR head returned and read back by the GitHub connector, then run: `python -m quantfusion.application.stress --source-revision "$CHECKPOINT_A_REMOTE_SHA" --scenario-ids-file artifacts/diagnostics/18pct-drawdown-cohort.txt --diagnostic-checkpoint artifacts/checkpoints/18pct-diagnostic.json --diagnostic-output artifacts/diagnostics/18pct-drawdown-root-cause.json`
 
   Expected: every frozen cohort ID completes once; output is diagnostic/non-canonical.
 
-- [ ] **Step 8: Derive one common-cause report**
+- [x] **Step 8: Derive one common-cause report**
 
   Compare all failures, boundaries and controls; quantify warning-to-trigger, trigger-to-fill overshoot, post-warning risk additions, exposure, concentration, locks and rearm. Record supported causes and rejected hypotheses in the diagnostic artifact and PR body.
 
