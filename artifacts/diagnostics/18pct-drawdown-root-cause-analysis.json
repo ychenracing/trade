@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "diagnostic_artifact": "artifacts/diagnostics/18pct-drawdown-root-cause.json",
+  "diagnostic_artifact_sha256": "eabde710c19e4d33d76d44ccc1ba8e242085119046f36cb8d7653958436f2830",
+  "source_revision": "f01b305df5f818fb10bc9033167a8207ffd10c54",
+  "source_fingerprint": "634df4a7f6716128adf1283b9156f759028c3b2cd417f233550469d6be34d59b",
+  "data_fingerprint": "8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40",
+  "scenario_signature": "1b1d6e46dbe2e37529621c989dd92a2583ec68be4a5e78f3d0c23a36f8ec893d",
+  "cohort": {
+    "scenario_count": 281,
+    "retained_failure_count": 152,
+    "retained_boundary_count": 123,
+    "control_count": 6,
+    "fresh_results_matching_retained": 281
+  },
+  "failure_evidence": {
+    "first_trigger_already_above_18pct_count": 109,
+    "first_trigger_already_above_18pct_ratio": 0.7171052631578947,
+    "first_trigger_drawdown_median": 0.18492133875090655,
+    "first_trigger_drawdown_min": 0.10359839816710442,
+    "first_trigger_drawdown_max": 0.270696093068595,
+    "trigger_exposure_ratio_median": 0.9301163442309682,
+    "trigger_exposure_ratio_max": 0.9997283216123318,
+    "trigger_held_symbol_count": {
+      "1": 8,
+      "2": 80,
+      "3": 53,
+      "4": 11
+    },
+    "trigger_largest_group_symbol_share_median": 0.6666666666666666,
+    "peak_date_mode": {
+      "date": "2025-09-01",
+      "count": 117
+    },
+    "trough_date_mode": {
+      "date": "2025-09-04",
+      "count": 88
+    },
+    "first_reduction_next_calendar_day_count": 102,
+    "warning_period_buy_count": 249,
+    "warning_period_buy_scenario_count": 28,
+    "terminal_risk_lock_count": 144,
+    "failure_count_by_symbol_count": {
+      "1": 1,
+      "2": 1,
+      "3": 69,
+      "5": 10,
+      "6": 1,
+      "8": 27,
+      "12": 15,
+      "16": 27,
+      "21": 1
+    }
+  },
+  "boundary_evidence": {
+    "first_trigger_already_above_18pct_count": 11,
+    "first_trigger_drawdown_median": 0.1740853892941436,
+    "trigger_exposure_ratio_median": 0.8999365655372035,
+    "first_reduction_next_calendar_day_count": 116,
+    "terminal_risk_lock_count": 92
+  },
+  "causal_conclusion": {
+    "common_chain": [
+      "The merged account commonly carries 90%-100% close exposure in only two or three distinct symbols.",
+      "A synchronized loss often moves the account beyond 18% before the first close-confirmed drawdown event can act.",
+      "The existing close-to-next-open reduction path is causal but cannot undo an already-recorded close drawdown.",
+      "Warning state permits later buys in 28 failure scenarios, extending a minority of tails.",
+      "Therefore threshold-only retuning cannot be sufficient; an ex-ante account exposure/concentration budget is the required mechanism class."
+    ],
+    "not_causal": [
+      "688205-specific behavior",
+      "scenario construction or ordering",
+      "trade-count aggregation",
+      "pre-PR13 pending-order pseudo-netting"
+    ]
+  },
+  "preregistered_candidates": [
+    {
+      "candidate_id": "C1-alert-deleveraging",
+      "mechanism": "At the first merged-account drawdown alert, cancel pending buys and queue a fixed 25% proportional account reduction for the next executable open; confirmation and emergency locks remain unchanged.",
+      "causal_prediction": "Improves continuation tails and removes warning-period risk additions, but cannot repair scenarios already beyond 18% at the first alert.",
+      "decisive_l1_scenarios": [
+        "random-20260807-03-030",
+        "prefix-01",
+        "prefix-02",
+        "prefix-05",
+        "add-one-05-688205",
+        "random-20260827-16-050",
+        "permutation-20260807-001"
+      ]
+    },
+    {
+      "candidate_id": "C2-concentrated-gross-cap",
+      "mechanism": "When the merged account holds at most three distinct symbols, enforce an 85% gross-exposure ceiling by scaling new buys and queuing proportional next-open reductions; the rule is symbol-, date-, scenario-, and seed-agnostic.",
+      "causal_prediction": "Creates headroom before synchronized losses and should address the dominant two-to-three-symbol failure cohort; prefix-05 wealth retention is the decisive cost check.",
+      "decisive_l1_scenarios": [
+        "random-20260807-03-030",
+        "prefix-01",
+        "prefix-02",
+        "prefix-03",
+        "prefix-05",
+        "add-one-05-688205",
+        "random-20260827-16-050",
+        "permutation-20260807-001"
+      ]
+    },
+    {
+      "candidate_id": "C3-standing-account-stop",
+      "mechanism": "Before each session's intraday path, arm a merged-account stop at 17.5% drawdown from the previously observed account peak. If the conservative synchronized OHLC path crosses the stop, liquidate every held sleeve position at the interpolated trigger price, including normal slippage and costs; ordinary close-generated entries remain eligible on later sessions.",
+      "causal_prediction": "Contains discontinuous intraday losses that jump over close-only alerts while leaving paths whose intraday account drawdown never reaches 17.5% unchanged; the 0.5 percentage-point buffer is reserved for execution costs.",
+      "decisive_l1_scenarios": [
+        "random-20260807-03-030",
+        "prefix-01",
+        "prefix-02",
+        "prefix-03",
+        "prefix-05",
+        "add-one-05-688205",
+        "random-20260827-16-050",
+        "permutation-20260807-001"
+      ]
+    }
+  ],
+  "candidate_interpretation": {
+    "C1-alert-deleveraging": "Rejects a late and coarse fixed 25% reduction; it does not reject all gradual risk budgets.",
+    "C2-concentrated-gross-cap": "Rejects a static current-market-value gross cap that repeatedly trims appreciated winners; it does not reject all ex-ante exposure or adverse-loss budgets.",
+    "C3-standing-account-stop": "Rejects an interpolated intraday stop followed by ordinary full-risk re-entry; the 6-41 repeated stop cycles do not reject all recovery state machines. Daily OHLC also cannot prove a formal synchronized intraday fill path.",
+    "underwater_cushion": "At 17.5% drawdown from lifetime peak, the 18% floor leaves loss capacity equal to about 0.606% of current equity; fixed cooldown alone neither restores equity nor increases that cushion."
+  },
+  "redesign_budget": {
+    "prior_scope_candidate_slots_remaining": 0,
+    "prior_scope_superseded": true,
+    "new_authorization": "Evaluate one separately preregistered C4 mechanism: ex-ante drawdown-budgeted risk plus underwater re-entry hysteresis."
+  }
+}

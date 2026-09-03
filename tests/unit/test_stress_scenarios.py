@@ -12,7 +12,10 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 from unittest.mock import patch
+
+import pandas as pd
 
 from quantfusion.application import (
     stress,
@@ -27,6 +30,7 @@ class StressScenarioTests(unittest.TestCase):
     @staticmethod
     def _provenance(revision: str, scenario_count: int) -> dict[str, object]:
         return {
+            "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
             "source_revision": revision,
             "source_fingerprint": "source",
             "data_fingerprint": "data",
@@ -76,8 +80,36 @@ class StressScenarioTests(unittest.TestCase):
         return {
             "acceptance_status": "accepted",
             "canonical": True,
+            "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
             "trade_count_semantics": "trade_records",
             "results": results,
+        }
+
+    @staticmethod
+    def _candidate_gates(
+        results: list[dict[str, object]], incumbent: dict[str, object] | None
+    ) -> dict[str, object]:
+        return {
+            "absolute_hard_gates": stress_metrics._absolute_hard_gates(results),
+            "retained_robustness_hard_gates": (
+                stress_metrics._retained_robustness_hard_gates(results)
+            ),
+            "robustness_diagnostics": stress_metrics._robustness_diagnostics(results),
+            "promotion_gates": stress_metrics._promotion_gates(results, incumbent),
+            "initial_baseline_gates": stress_metrics._initial_baseline_gates(
+                results, None
+            ),
+        }
+
+    @staticmethod
+    def _transition_reference(
+        results: list[dict[str, object]],
+    ) -> dict[str, object]:
+        return {
+            "acceptance_status": "rejected",
+            "canonical": False,
+            "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
+            "results": json.loads(json.dumps(results)),
         }
 
     def test_orchestrator_does_not_reexport_moved_implementation(self) -> None:
@@ -85,7 +117,7 @@ class StressScenarioTests(unittest.TestCase):
             "_multi_seed_scenarios",
             "_scenario_signature",
             "_summary",
-            "_hard_gates",
+            "_absolute_hard_gates",
             "_promotion_gates",
             "_build_provenance",
             "_validated_checkpoint_results",
@@ -210,26 +242,17 @@ class StressScenarioTests(unittest.TestCase):
         results = self._complete_small_plan()
 
         self.assertEqual(
-            stress_metrics._hard_gates(results),
+            stress_metrics._absolute_hard_gates(results),
             {
                 "passed": True,
                 "checks": {
-                    "random_p90_drawdown_at_most_20pct": True,
-                    "random_worst_drawdown_at_most_22pct": True,
-                    "all_worst_drawdown_at_most_22_5pct": True,
-                    "prefix_9_to_10_wealth_above_minus_10pct": True,
-                    "worst_adjacent_wealth_at_least_minus_30pct": True,
-                    "worst_add_one_wealth_at_least_minus_18pct": True,
+                    "all_scenarios_max_drawdown_at_most_18pct": True,
                     "random_p90_date_symbol_side_buckets_at_most_160": True,
                     "all_date_symbol_side_buckets_at_most_200": True,
                 },
                 "observed": {
-                    "random_p90_drawdown": 0.1,
-                    "random_worst_drawdown": -0.1,
+                    "worst_scenario_id": "prefix-01",
                     "all_worst_drawdown": -0.1,
-                    "prefix_9_to_10_wealth_change": 0.0,
-                    "worst_adjacent_wealth_change": 0.0,
-                    "worst_add_one_wealth_change": 0.0,
                     "random_p90_date_symbol_side_buckets": 0.0,
                     "all_worst_date_symbol_side_buckets": 0.0,
                 },
@@ -289,6 +312,194 @@ class StressScenarioTests(unittest.TestCase):
             },
         )
 
+    def test_absolute_drawdown_gate_accepts_exactly_18pct(self) -> None:
+        results = [
+            {
+                **self._complete_result(
+                    {
+                        "scenario_id": "boundary",
+                        "scenario_type": "random_subset",
+                        "symbols": ["688205"],
+                    }
+                ),
+                "max_drawdown": -0.18,
+            }
+        ]
+
+        gates = stress_metrics._absolute_hard_gates(results)
+
+        self.assertTrue(gates["passed"])
+        self.assertEqual(
+            gates["checks"],
+            {
+                "all_scenarios_max_drawdown_at_most_18pct": True,
+                "random_p90_date_symbol_side_buckets_at_most_160": True,
+                "all_date_symbol_side_buckets_at_most_200": True,
+            },
+        )
+        self.assertEqual(gates["observed"]["worst_scenario_id"], "boundary")
+
+    def test_absolute_drawdown_gate_rejects_any_value_below_minus_18pct(
+        self,
+    ) -> None:
+        results = [
+            {
+                **self._complete_result(
+                    {
+                        "scenario_id": "just-over",
+                        "scenario_type": "random_subset",
+                        "symbols": ["688205"],
+                    }
+                ),
+                "max_drawdown": -0.180000000001,
+            }
+        ]
+
+        gates = stress_metrics._absolute_hard_gates(results)
+
+        self.assertFalse(gates["passed"])
+        self.assertFalse(
+            gates["checks"]["all_scenarios_max_drawdown_at_most_18pct"]
+        )
+        self.assertNotIn("random_p90_drawdown_at_most_20pct", gates["checks"])
+        self.assertNotIn("random_worst_drawdown_at_most_22pct", gates["checks"])
+        self.assertNotIn("all_worst_drawdown_at_most_22_5pct", gates["checks"])
+
+    def test_absolute_hard_gates_reject_empty_results(self) -> None:
+        with self.assertRaisesRegex(ValueError, "non-empty"):
+            stress_metrics._absolute_hard_gates([])
+
+    def test_retained_robustness_hard_gates_preserve_prefix_contracts(
+        self,
+    ) -> None:
+        results = self._complete_small_plan()
+        by_id = {str(item["scenario_id"]): item for item in results}
+        by_id["prefix-10"]["total_return"] = 0.75
+
+        gates = stress_metrics._retained_robustness_hard_gates(results)
+
+        self.assertEqual(
+            gates,
+            {
+                "passed": False,
+                "checks": {
+                    "prefix_9_to_10_wealth_above_minus_10pct": False,
+                    "worst_adjacent_wealth_at_least_minus_30pct": True,
+                },
+                "observed": {
+                    "prefix_9_to_10_wealth_change": -0.125,
+                    "worst_adjacent_wealth_change": -0.125,
+                },
+            },
+        )
+
+    def test_robustness_diagnostic_preserves_add_one_distribution_and_attribution(
+        self,
+    ) -> None:
+        base = {
+            **self._complete_result(
+                {
+                    "scenario_id": "prefix-05",
+                    "scenario_type": "prefix",
+                    "symbols": ["a", "b", "c", "d", "e"],
+                }
+            ),
+            "total_return": 3.0,
+            "max_drawdown": -0.10,
+            "total_trades": 10,
+            "date_symbol_side_count": 7,
+            "terminal_risk_lock": False,
+        }
+        add_one = {
+            **self._complete_result(
+                {
+                    "scenario_id": "add-one-05-688205",
+                    "scenario_type": "add_one",
+                    "base_size": 5,
+                    "added_symbol": "688205",
+                    "symbols": ["a", "b", "c", "d", "e", "688205"],
+                }
+            ),
+            "total_return": 2.0604,
+            "max_drawdown": -0.12,
+            "total_trades": 15,
+            "date_symbol_side_count": 10,
+            "terminal_risk_lock": True,
+            "reason_attribution": {
+                **{
+                    category: 0
+                    for category in stress_metrics.ATTRIBUTION_CATEGORIES
+                },
+                "risk_reduction": 2,
+                "re_entry": 1,
+            },
+        }
+
+        diagnostic = stress_metrics._robustness_diagnostics([base, add_one])
+
+        self.assertEqual(diagnostic["scenario_count"], 1)
+        self.assertAlmostEqual(diagnostic["wealth_change"]["minimum"], -0.2349)
+        self.assertAlmostEqual(diagnostic["wealth_change"]["p05"], -0.2349)
+        self.assertAlmostEqual(diagnostic["wealth_change"]["p10"], -0.2349)
+        self.assertAlmostEqual(diagnostic["wealth_change"]["median"], -0.2349)
+        self.assertEqual(
+            diagnostic["worst_case"],
+            {
+                "scenario_id": "add-one-05-688205",
+                "base_scenario_id": "prefix-05",
+                "wealth_change": -0.2349,
+                "drawdown_severity_change": 0.01999999999999999,
+                "trade_record_delta": 5,
+                "date_symbol_side_bucket_delta": 3,
+                "terminal_risk_lock_transition": "false_to_true",
+                "reason_attribution": add_one["reason_attribution"],
+            },
+        )
+        self.assertNotIn("passed", diagnostic)
+
+    def test_contract_version_mismatch_cannot_be_an_incumbent(self) -> None:
+        incumbent = self._accepted_current_incumbent(self._complete_small_plan())
+        incumbent["stress_contract_version"] = 1
+
+        with self.assertRaisesRegex(ValueError, "contract version"):
+            stress_metrics._current_incumbent_by_id(incumbent)
+
+    def test_initial_baseline_reference_gates_protect_retained_returns(self) -> None:
+        results = self._complete_small_plan()
+        reference = {
+            "acceptance_status": "rejected",
+            "canonical": False,
+            "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
+            "results": json.loads(json.dumps(results)),
+        }
+
+        gates = stress_metrics._initial_baseline_gates(results, reference)
+
+        self.assertTrue(gates["passed"])
+        self.assertEqual(
+            gates["checks"],
+            {
+                "prefix_05_wealth_at_least_99pct": True,
+                "other_prefix_wealth_at_least_95pct": True,
+                "worst_total_return_not_worse_by_0_02": True,
+                "worst_add_one_diagnostic_not_worse_by_0_03": True,
+            },
+        )
+
+    def test_initial_baseline_flags_are_explicit_and_separate(self) -> None:
+        args = stress.build_argument_parser().parse_args(
+            [
+                "--source-revision",
+                "a" * 40,
+                "--establish-initial-baseline",
+                "--initial-baseline-reference",
+                "retained.json",
+            ]
+        )
+
+        self.assertTrue(args.establish_initial_baseline)
+        self.assertEqual(args.initial_baseline_reference, "retained.json")
+
     def test_selects_exact_add_one_scenario_without_changing_definition(self) -> None:
         scenarios = stress_scenarios._multi_seed_scenarios(
             random_samples=1,
@@ -324,6 +535,158 @@ class StressScenarioTests(unittest.TestCase):
             ],
         )
         self.assertFalse(formal_plan_complete)
+
+    def test_scenario_ids_file_normalizes_to_canonical_order(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+        requested = ["prefix-05", "prefix-01", "add-one-05-688205"]
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "scenario-ids.txt"
+            path.write_text("\n".join(requested) + "\n", encoding="utf-8")
+
+            scenario_ids = stress_scenarios._scenario_ids_from_file(path)
+            selected, formal_plan_complete = select_scenarios(
+                scenarios,
+                scenario_id=None,
+                scenario_type=None,
+                shard_index=None,
+                shard_count=None,
+                scenario_ids=scenario_ids,
+            )
+
+        self.assertEqual(
+            [item["scenario_id"] for item in selected],
+            ["prefix-01", "prefix-05", "add-one-05-688205"],
+        )
+        self.assertFalse(formal_plan_complete)
+
+    def test_scenario_ids_file_rejects_duplicates_and_empty_input(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            duplicate = Path(tmpdir) / "duplicate.txt"
+            duplicate.write_text("prefix-01\nprefix-01\n", encoding="utf-8")
+            empty = Path(tmpdir) / "empty.txt"
+            empty.write_text("\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "duplicate"):
+                stress_scenarios._scenario_ids_from_file(duplicate)
+            with self.assertRaisesRegex(ValueError, "empty"):
+                stress_scenarios._scenario_ids_from_file(empty)
+
+    def test_scenario_ids_file_rejects_unknown_ids(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+
+        with self.assertRaisesRegex(ValueError, "unknown scenario IDs"):
+            select_scenarios(
+                scenarios,
+                scenario_id=None,
+                scenario_type=None,
+                shard_index=None,
+                shard_count=None,
+                scenario_ids=["not-a-scenario"],
+            )
+
+    def test_scenario_ids_file_cannot_be_combined_with_other_selectors(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=1,
+            permutation_samples=1,
+            seeds=(7,),
+        )
+
+        with self.assertRaisesRegex(ValueError, "cannot be combined"):
+            select_scenarios(
+                scenarios,
+                scenario_id="prefix-01",
+                scenario_type=None,
+                shard_index=None,
+                shard_count=None,
+                scenario_ids=["prefix-01"],
+            )
+
+    def test_diagnostic_telemetry_summarizes_peak_trigger_trough_and_reduction(
+        self,
+    ) -> None:
+        equity = pd.DataFrame(
+            {
+                "assets": [100.0, 120.0, 108.0, 96.0, 121.0],
+                "cash": [100.0, 20.0, 18.0, 50.0, 121.0],
+                "position_value": [0.0, 100.0, 90.0, 46.0, 0.0],
+            },
+            index=pd.to_datetime(
+                ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]
+            ),
+        )
+        raw = {
+            "equity_curve": equity,
+            "drawdown_series": (equity["assets"] - equity["assets"].cummax())
+            / equity["assets"].cummax(),
+            "risk_events": [
+                {
+                    "sleeve": "portfolio",
+                    "date": "2025-01-03",
+                    "event": "portfolio_drawdown_alert_on",
+                    "drawdown": 0.10,
+                    "threshold": 0.10,
+                },
+                {
+                    "sleeve": "portfolio",
+                    "date": "2025-01-06",
+                    "event": "confirmed_cycle_drawdown_lock",
+                    "drawdown": 0.20,
+                    "threshold": 0.18,
+                },
+            ],
+            "trades": [
+                SimpleNamespace(
+                    date="2025-01-02",
+                    symbol="688205",
+                    direction="buy",
+                    shares=100,
+                    reason="breakout",
+                ),
+                SimpleNamespace(
+                    date="2025-01-06",
+                    symbol="688205",
+                    direction="sell",
+                    shares=100,
+                    reason="portfolio risk reduction",
+                ),
+            ],
+            "portfolio_symbol_count_curve": [
+                {"date": "2025-01-01", "symbol_count": 0},
+                {"date": "2025-01-02", "symbol_count": 1},
+                {"date": "2025-01-03", "symbol_count": 1},
+                {"date": "2025-01-06", "symbol_count": 0},
+                {"date": "2025-01-07", "symbol_count": 0},
+            ],
+            "max_concurrent_symbols": 1,
+            "portfolio_max_positions": 6,
+            "cycle_lock_count": 1,
+            "portfolio_cycle_lock_count": 1,
+            "terminal_risk_lock": False,
+            "persistent_risk_lock": True,
+            "all_sleeves_locked": True,
+        }
+
+        telemetry = stress._diagnostic_telemetry(raw)
+
+        self.assertEqual(telemetry["peak"]["date"], "2025-01-02")
+        self.assertEqual(telemetry["trough"]["date"], "2025-01-06")
+        self.assertEqual(telemetry["recovery_date"], "2025-01-07")
+        self.assertEqual(telemetry["first_risk_trigger"]["date"], "2025-01-03")
+        self.assertEqual(
+            telemetry["first_executable_reduction"]["date"], "2025-01-06"
+        )
+        self.assertAlmostEqual(telemetry["execution_overshoot"], 0.10)
+        self.assertEqual(telemetry["warning_period_buy_count"], 0)
+        self.assertEqual(telemetry["locks"]["cycle_lock_count"], 1)
+        self.assertNotIn("equity_curve", telemetry)
 
     def test_selects_add_one_family_in_formal_plan_order(self) -> None:
         scenarios = stress_scenarios._multi_seed_scenarios(
@@ -591,6 +954,7 @@ class StressScenarioTests(unittest.TestCase):
         self.assertEqual(
             provenance,
             {
+                "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
                 "source_revision": "a" * 40,
                 "source_fingerprint": "source-fingerprint",
                 "data_fingerprint": "data-fingerprint",
@@ -598,7 +962,7 @@ class StressScenarioTests(unittest.TestCase):
                     "aea62b6423a0b3fdc587c4b5cb080b184850c67bc086fa92aaa8b9483b87cee1"
                 ),
                 "run_signature": (
-                    "6eb1b66bc1a181ab6eb032efffc3863a2b3a384f978a0c9e164e3406f0d7eacd"
+                    "505e3e723957a6ad106ddb8ec94ea19d8b27edcf2567de36809875cd1fbafde3"
                 ),
                 "scenario_count": len(scenarios),
                 "start_date": "2025-04-01",
@@ -725,6 +1089,8 @@ class StressScenarioTests(unittest.TestCase):
                     "provenance": provenance,
                     "selection": {
                         "scenario_id": "add-one-05-688205",
+                        "scenario_ids_file": None,
+                        "scenario_ids": None,
                         "scenario_type": None,
                         "shard_index": None,
                         "shard_count": None,
@@ -983,8 +1349,7 @@ class StressScenarioTests(unittest.TestCase):
             "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
             "seeds": [7],
             "scenario_count": len(results),
-            "hard_gates": stress_metrics._hard_gates(results),
-            "promotion_gates": stress_metrics._promotion_gates(results, incumbent),
+            **self._candidate_gates(results, incumbent),
             "results": results,
         }
 
@@ -1012,8 +1377,9 @@ class StressScenarioTests(unittest.TestCase):
             seeds=stress_scenarios.DEFAULT_SEEDS,
         )
         results = [self._complete_result(item) for item in scenarios]
+        reference = self._transition_reference(results)
         by_id = {item["scenario_id"]: item for item in results}
-        by_id["add-one-05-688205"]["total_return"] = 0.0
+        by_id["add-one-05-688205"]["max_drawdown"] = -0.19
         provenance = self._provenance("a" * 40, len(scenarios))
         prefix_artifact = {
             **provenance,
@@ -1028,9 +1394,14 @@ class StressScenarioTests(unittest.TestCase):
             "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
             "seeds": list(stress_scenarios.DEFAULT_SEEDS),
             "scenario_count": len(results),
-            "hard_gates": stress_metrics._hard_gates(results),
-            "promotion_gates": stress_metrics._promotion_gates(
-                results, self._accepted_current_incumbent(results)
+            "absolute_hard_gates": stress_metrics._absolute_hard_gates(results),
+            "retained_robustness_hard_gates": (
+                stress_metrics._retained_robustness_hard_gates(results)
+            ),
+            "robustness_diagnostics": stress_metrics._robustness_diagnostics(results),
+            "promotion_gates": stress_metrics._promotion_gates(results, None),
+            "initial_baseline_gates": stress_metrics._initial_baseline_gates(
+                results, reference
             ),
             "results": results,
         }
@@ -1041,8 +1412,10 @@ class StressScenarioTests(unittest.TestCase):
                 universe_artifact,
                 scenarios=scenarios,
                 provenance=provenance,
-                incumbent=self._accepted_current_incumbent(results),
+                incumbent=None,
                 formal_plan_complete=True,
+                establish_initial_baseline=True,
+                initial_baseline_reference=reference,
             )
 
         self.assertFalse(published)
@@ -1063,8 +1436,8 @@ class StressScenarioTests(unittest.TestCase):
             candidate["rejection_reasons"],
             [
                 {
-                    "gate_family": "hard_gates",
-                    "gate": "worst_add_one_wealth_at_least_minus_18pct",
+                    "gate_family": "absolute_hard_gates",
+                    "gate": "all_scenarios_max_drawdown_at_most_18pct",
                 }
             ],
         )
@@ -1090,8 +1463,7 @@ class StressScenarioTests(unittest.TestCase):
             "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
             "seeds": list(stress_scenarios.DEFAULT_SEEDS),
             "scenario_count": len(results),
-            "hard_gates": stress_metrics._hard_gates(results),
-            "promotion_gates": stress_metrics._promotion_gates(
+            **self._candidate_gates(
                 results, self._accepted_current_incumbent(results)
             ),
             "results": results,
@@ -1114,6 +1486,188 @@ class StressScenarioTests(unittest.TestCase):
             ["prefix_stress.json", "universe_stress.json"],
         )
 
+    def test_retained_robustness_failure_blocks_canonical_publish(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress_scenarios.DEFAULT_SEEDS,
+        )
+        results = [self._complete_result(item) for item in scenarios]
+        by_id = {str(item["scenario_id"]): item for item in results}
+        by_id["prefix-10"]["total_return"] = 0.75
+        provenance = self._provenance("7" * 40, len(scenarios))
+        incumbent = self._accepted_current_incumbent(results)
+        prefix_artifact = {
+            **provenance,
+            "results": [
+                item for item in results if item["scenario_type"] == "prefix"
+            ],
+        }
+        universe_artifact = {
+            **provenance,
+            "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
+            "seeds": list(stress_scenarios.DEFAULT_SEEDS),
+            "scenario_count": len(results),
+            **self._candidate_gates(results, incumbent),
+            "retained_robustness_hard_gates": {
+                "passed": False,
+                "checks": {
+                    "prefix_9_to_10_wealth_above_minus_10pct": False,
+                    "worst_adjacent_wealth_at_least_minus_30pct": True,
+                },
+                "observed": {
+                    "prefix_9_to_10_wealth_change": -0.125,
+                    "worst_adjacent_wealth_change": -0.125,
+                },
+            },
+            "results": results,
+        }
+
+        with patch.object(stress_artifacts, "_atomic_json") as write_artifact:
+            published = stress_artifacts._publish_formal_artifacts(
+                prefix_artifact,
+                universe_artifact,
+                scenarios=scenarios,
+                provenance=provenance,
+                incumbent=incumbent,
+                formal_plan_complete=True,
+            )
+
+        self.assertFalse(published)
+        self.assertEqual(write_artifact.call_count, 1)
+        self.assertEqual(
+            write_artifact.call_args.args[1]["rejection_reasons"],
+            [
+                {
+                    "gate_family": "retained_robustness_hard_gates",
+                    "gate": "prefix_9_to_10_wealth_above_minus_10pct",
+                }
+            ],
+        )
+
+    def test_no_current_contract_incumbent_does_not_auto_publish(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress_scenarios.DEFAULT_SEEDS,
+        )
+        results = [self._complete_result(item) for item in scenarios]
+        provenance = self._provenance("3" * 40, len(scenarios))
+        prefix_artifact = {
+            **provenance,
+            "results": [item for item in results if item["scenario_type"] == "prefix"],
+        }
+        universe_artifact = {
+            **provenance,
+            "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
+            "seeds": list(stress_scenarios.DEFAULT_SEEDS),
+            "scenario_count": len(results),
+            **self._candidate_gates(results, None),
+            "results": results,
+        }
+
+        with patch.object(stress_artifacts, "_atomic_json") as write_artifact:
+            published = stress_artifacts._publish_formal_artifacts(
+                prefix_artifact,
+                universe_artifact,
+                scenarios=scenarios,
+                provenance=provenance,
+                incumbent=None,
+                formal_plan_complete=True,
+            )
+
+        self.assertFalse(published)
+        self.assertEqual(
+            write_artifact.call_args.args[1]["rejection_reasons"],
+            [
+                {
+                    "gate_family": "initial_baseline",
+                    "gate": "explicit_establish_initial_baseline_action",
+                }
+            ],
+        )
+
+    def test_explicit_initial_baseline_publishes_with_audit_marker(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress_scenarios.DEFAULT_SEEDS,
+        )
+        results = [self._complete_result(item) for item in scenarios]
+        reference = self._transition_reference(results)
+        provenance = self._provenance("4" * 40, len(scenarios))
+        prefix_artifact = {
+            **provenance,
+            "results": [item for item in results if item["scenario_type"] == "prefix"],
+        }
+        universe_artifact = {
+            **provenance,
+            "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
+            "seeds": list(stress_scenarios.DEFAULT_SEEDS),
+            "scenario_count": len(results),
+            "absolute_hard_gates": stress_metrics._absolute_hard_gates(results),
+            "retained_robustness_hard_gates": (
+                stress_metrics._retained_robustness_hard_gates(results)
+            ),
+            "robustness_diagnostics": stress_metrics._robustness_diagnostics(results),
+            "promotion_gates": stress_metrics._promotion_gates(results, None),
+            "initial_baseline_gates": stress_metrics._initial_baseline_gates(
+                results, reference
+            ),
+            "results": results,
+        }
+
+        with patch.object(stress_artifacts, "_atomic_json") as write_artifact:
+            published = stress_artifacts._publish_formal_artifacts(
+                prefix_artifact,
+                universe_artifact,
+                scenarios=scenarios,
+                provenance=provenance,
+                incumbent=None,
+                formal_plan_complete=True,
+                establish_initial_baseline=True,
+                initial_baseline_reference=reference,
+            )
+
+        self.assertTrue(published)
+        for call in write_artifact.call_args_list:
+            self.assertEqual(
+                call.args[1]["baseline_kind"], "initial_current_contract"
+            )
+
+    def test_initial_baseline_action_fails_when_an_incumbent_exists(self) -> None:
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
+            permutation_samples=stress_scenarios.DEFAULT_PERMUTATION_SAMPLES,
+            seeds=stress_scenarios.DEFAULT_SEEDS,
+        )
+
+        with self.assertRaisesRegex(ValueError, "incumbent exists"):
+            stress_artifacts._publish_formal_artifacts(
+                {},
+                {},
+                scenarios=scenarios,
+                provenance={},
+                incumbent=self._accepted_current_incumbent([]),
+                formal_plan_complete=True,
+                establish_initial_baseline=True,
+                initial_baseline_reference=self._transition_reference([]),
+            )
+
+    def test_old_contract_candidate_cannot_bootstrap_v2(self) -> None:
+        provenance = self._provenance("5" * 40, 0)
+        provenance["stress_contract_version"] = 1
+
+        with self.assertRaisesRegex(ValueError, "contract version"):
+            stress_artifacts._validate_publish_candidate(
+                provenance,
+                provenance,
+                scenarios=[],
+                provenance=provenance,
+                incumbent=None,
+                initial_baseline_reference=None,
+            )
+
     def test_incomplete_candidate_is_not_retained(self) -> None:
         scenarios = stress_scenarios._multi_seed_scenarios(
             random_samples=stress_scenarios.DEFAULT_RANDOM_SAMPLES,
@@ -1125,7 +1679,7 @@ class StressScenarioTests(unittest.TestCase):
             **provenance,
             "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
             "seeds": list(stress_scenarios.DEFAULT_SEEDS),
-            "hard_gates": {"passed": False, "checks": {"floor": False}},
+            "absolute_hard_gates": {"passed": False, "checks": {"floor": False}},
             "promotion_gates": {
                 "passed": None,
                 "permutation_invariance": {"invariant": True},
@@ -1159,7 +1713,7 @@ class StressScenarioTests(unittest.TestCase):
             **actual,
             "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
             "seeds": list(stress_scenarios.DEFAULT_SEEDS),
-            "hard_gates": {"passed": False, "checks": {"floor": False}},
+            "absolute_hard_gates": {"passed": False, "checks": {"floor": False}},
             "promotion_gates": {
                 "passed": None,
                 "permutation_invariance": {"invariant": True},
@@ -1188,8 +1742,8 @@ class StressScenarioTests(unittest.TestCase):
         )
         results = [self._complete_result(item) for item in scenarios]
         by_id = {item["scenario_id"]: item for item in results}
-        by_id["add-one-05-688205"]["total_return"] = 0.0
-        self.assertFalse(stress_metrics._hard_gates(results)["passed"])
+        by_id["add-one-05-688205"]["max_drawdown"] = -0.19
+        self.assertFalse(stress_metrics._absolute_hard_gates(results)["passed"])
         provenance = self._provenance("f" * 40, len(scenarios))
         prefix_artifact = {
             **provenance,
@@ -1201,9 +1755,16 @@ class StressScenarioTests(unittest.TestCase):
             **provenance,
             "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
             "seeds": list(stress_scenarios.DEFAULT_SEEDS),
-            "hard_gates": {"passed": True, "checks": {}},
+            "absolute_hard_gates": {"passed": True, "checks": {}},
+            "retained_robustness_hard_gates": (
+                stress_metrics._retained_robustness_hard_gates(results)
+            ),
+            "robustness_diagnostics": stress_metrics._robustness_diagnostics(results),
             "promotion_gates": stress_metrics._promotion_gates(
                 results, self._accepted_current_incumbent(results)
+            ),
+            "initial_baseline_gates": stress_metrics._initial_baseline_gates(
+                results, None
             ),
             "results": results,
         }
@@ -1240,8 +1801,7 @@ class StressScenarioTests(unittest.TestCase):
             **provenance,
             "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
             "seeds": [999],
-            "hard_gates": stress_metrics._hard_gates(results),
-            "promotion_gates": stress_metrics._promotion_gates(
+            **self._candidate_gates(
                 results, self._accepted_current_incumbent(results)
             ),
             "results": results,
@@ -1277,8 +1837,7 @@ class StressScenarioTests(unittest.TestCase):
             **provenance,
             "trade_count_semantics": stress_metrics.TRADE_COUNT_SEMANTICS,
             "seeds": list(stress_scenarios.DEFAULT_SEEDS),
-            "hard_gates": stress_metrics._hard_gates(results),
-            "promotion_gates": stress_metrics._promotion_gates(
+            **self._candidate_gates(
                 results, self._accepted_current_incumbent(results)
             ),
             "results": results,
@@ -1317,6 +1876,7 @@ class StressScenarioTests(unittest.TestCase):
             "date_symbol_side_count": 5,
         }
         invalid_incumbent = {
+            "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
             "trade_count_semantics": "date_symbol_side_bucket",
             "results": [{**current, "total_trades": 5}],
         }
@@ -1330,6 +1890,7 @@ class StressScenarioTests(unittest.TestCase):
             path.write_text(
                 json.dumps(
                     {
+                        "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
                         "trade_count_semantics": "date_symbol_side_bucket",
                         "results": [],
                     }
@@ -1358,14 +1919,17 @@ class StressScenarioTests(unittest.TestCase):
         self.assertFalse(stress_metrics._promotion_accepted(promotion))
         self.assertIn(
             {
-                "gate_family": "promotion_gates",
-                "gate": "accepted_current_semantic_incumbent",
+                "gate_family": "initial_baseline",
+                "gate": "explicit_establish_initial_baseline_action",
             },
             stress_artifacts._rejection_reasons(
                 {
-                    "hard_gates": {"checks": {}},
+                    "absolute_hard_gates": {"checks": {}},
+                    "retained_robustness_hard_gates": {"checks": {}},
                     "promotion_gates": promotion,
-                }
+                },
+                incumbent=None,
+                establish_initial_baseline=False,
             ),
         )
 
@@ -1380,6 +1944,7 @@ class StressScenarioTests(unittest.TestCase):
         rejected = {
             "acceptance_status": "rejected",
             "canonical": False,
+            "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
             "trade_count_semantics": "trade_records",
             "results": [result],
         }
@@ -1395,6 +1960,7 @@ class StressScenarioTests(unittest.TestCase):
                     {
                         "acceptance_status": "rejected",
                         "canonical": False,
+                        "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
                         "trade_count_semantics": "trade_records",
                         "results": [],
                     }
@@ -1526,7 +2092,7 @@ class StressScenarioTests(unittest.TestCase):
         self.assertFalse(payload["promotion_gates"]["applicable"])
         self.assertFalse(payload["promotion_gates"]["passed"])
 
-    def test_hard_gates_keep_current_ceilings_on_side_buckets(self) -> None:
+    def test_absolute_hard_gates_keep_current_ceilings_on_side_buckets(self) -> None:
         def scenario(
             scenario_id: str,
             scenario_type: str,
@@ -1552,7 +2118,7 @@ class StressScenarioTests(unittest.TestCase):
         }
         random_subset = scenario("random", "random_subset")
 
-        result = stress_metrics._hard_gates(
+        result = stress_metrics._absolute_hard_gates(
             [prefix_09, prefix_10, add_one, random_subset]
         )
 

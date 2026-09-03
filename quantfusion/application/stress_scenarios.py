@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import random
+from pathlib import Path
 from typing import Any
 
 from quantfusion.application import stress_metrics
@@ -148,8 +149,14 @@ def select_scenarios(
     scenario_type: str | None,
     shard_index: int | None,
     shard_count: int | None,
+    scenario_ids: list[str] | None = None,
 ) -> tuple[list[dict[str, Any]], bool]:
     """Select diagnostics in formal order and report formal completeness."""
+    if scenario_ids is not None and any(
+        value is not None
+        for value in (scenario_id, scenario_type, shard_index, shard_count)
+    ):
+        raise ValueError("scenario-ids-file cannot be combined with other selectors")
     if (shard_index is None) != (shard_count is None):
         raise ValueError("shard-index and shard-count must be provided together")
     if shard_count is not None and (
@@ -160,17 +167,47 @@ def select_scenarios(
     ):
         raise ValueError("shard-count must be positive and shard-index in range")
 
+    requested_ids = set(scenario_ids) if scenario_ids is not None else None
+    known_ids = {str(scenario["scenario_id"]) for scenario in scenarios}
+    if requested_ids is not None:
+        unknown_ids = sorted(requested_ids - known_ids)
+        if unknown_ids:
+            raise ValueError(f"Stress selection has unknown scenario IDs: {unknown_ids}")
     selected = [
         scenario
         for index, scenario in enumerate(scenarios)
         if (scenario_id is None or scenario["scenario_id"] == scenario_id)
         and (scenario_type is None or scenario["scenario_type"] == scenario_type)
         and (shard_count is None or index % shard_count == shard_index)
+        and (requested_ids is None or scenario["scenario_id"] in requested_ids)
     ]
     if not selected:
         raise ValueError("Stress selection matched no scenarios")
     selector_used = any(
         value is not None
-        for value in (scenario_id, scenario_type, shard_index, shard_count)
+        for value in (
+            scenario_id,
+            scenario_type,
+            shard_index,
+            shard_count,
+            scenario_ids,
+        )
     )
     return selected, not selector_used and is_canonical_scenario_plan(scenarios)
+
+
+def _scenario_ids_from_file(path: Path) -> list[str]:
+    """Read one unique scenario ID per line."""
+    try:
+        scenario_ids = [
+            line.strip()
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except OSError as exc:
+        raise ValueError(f"Cannot read scenario IDs file: {path}") from exc
+    if not scenario_ids:
+        raise ValueError("Scenario IDs file must not be empty")
+    if len(set(scenario_ids)) != len(scenario_ids):
+        raise ValueError("Scenario IDs file contains duplicate IDs")
+    return scenario_ids

@@ -17,6 +17,7 @@ from quantfusion.application import stress_metrics, stress_scenarios
 from quantfusion.config.paths import PROJECT_ROOT, VALIDATION_ARTIFACT_DIR
 
 PROVENANCE_FIELDS = (
+    "stress_contract_version",
     "source_revision",
     "source_fingerprint",
     "data_fingerprint",
@@ -95,6 +96,7 @@ def _build_provenance(
     data_fingerprint = _tree_fingerprint(_data_files(data_dir, regime_data_dir))
     scenario_signature = stress_scenarios._scenario_signature(scenarios)
     payload = {
+        "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
         "source_revision": source_revision,
         "source_fingerprint": source_fingerprint,
         "data_fingerprint": data_fingerprint,
@@ -230,8 +232,14 @@ def _validate_publish_candidate(
     scenarios: list[dict[str, Any]],
     provenance: dict[str, Any],
     incumbent: dict[str, Any] | None,
+    initial_baseline_reference: dict[str, Any] | None,
 ) -> None:
     """Fail closed before retaining or publishing a completed stress run."""
+    if (
+        provenance.get("stress_contract_version")
+        != stress_metrics.STRESS_CONTRACT_VERSION
+    ):
+        raise ValueError("Stress candidate has an invalid contract version")
     for field in PROVENANCE_FIELDS:
         if field not in provenance or any(
             artifact.get(field) != provenance[field]
@@ -269,12 +277,26 @@ def _validate_publish_candidate(
         prefix_scenarios
     ):
         raise ValueError("Stress candidate did not complete the prefix scenario plan")
-    expected_hard_gates = stress_metrics._hard_gates(results)
-    if universe_artifact.get("hard_gates") != expected_hard_gates:
-        raise ValueError("Stress candidate hard gates changed")
+    expected_absolute_gates = stress_metrics._absolute_hard_gates(results)
+    if universe_artifact.get("absolute_hard_gates") != expected_absolute_gates:
+        raise ValueError("Stress candidate absolute hard gates changed")
+    expected_retained_gates = stress_metrics._retained_robustness_hard_gates(results)
+    if (
+        universe_artifact.get("retained_robustness_hard_gates")
+        != expected_retained_gates
+    ):
+        raise ValueError("Stress candidate retained robustness hard gates changed")
+    expected_diagnostics = stress_metrics._robustness_diagnostics(results)
+    if universe_artifact.get("robustness_diagnostics") != expected_diagnostics:
+        raise ValueError("Stress candidate robustness diagnostics changed")
     expected_promotion_gates = stress_metrics._promotion_gates(results, incumbent)
     if universe_artifact.get("promotion_gates") != expected_promotion_gates:
         raise ValueError("Stress candidate promotion gates changed")
+    expected_initial_gates = stress_metrics._initial_baseline_gates(
+        results, initial_baseline_reference
+    )
+    if universe_artifact.get("initial_baseline_gates") != expected_initial_gates:
+        raise ValueError("Stress candidate initial baseline gates changed")
 
 
 def _load_incumbent(path: Path) -> dict[str, Any] | None:
@@ -287,28 +309,65 @@ def _load_incumbent(path: Path) -> dict[str, Any] | None:
         raise ValueError(f"Cannot read incumbent stress artifact: {path}") from exc
     if not isinstance(payload, dict):
         raise ValueError(f"Cannot read incumbent stress artifact: {path}")
+    if (
+        payload.get("stress_contract_version")
+        != stress_metrics.STRESS_CONTRACT_VERSION
+    ):
+        return None
     stress_metrics._current_incumbent_by_id(payload)
     return payload
 
 
-def _rejection_reasons(universe_artifact: dict[str, Any]) -> list[dict[str, str]]:
+def _load_initial_baseline_reference(path: Path) -> dict[str, Any]:
+    """Load a retained artifact for one-time economic comparison only."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cannot read initial baseline reference: {path}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"Cannot read initial baseline reference: {path}")
+    stress_metrics._transition_reference_by_id(payload)
+    return payload
+
+
+def _rejection_reasons(
+    universe_artifact: dict[str, Any],
+    *,
+    incumbent: dict[str, Any] | None,
+    establish_initial_baseline: bool,
+) -> list[dict[str, str]]:
     reasons = [
-        {"gate_family": "hard_gates", "gate": str(name)}
-        for name, passed in universe_artifact["hard_gates"]["checks"].items()
+        {"gate_family": "absolute_hard_gates", "gate": str(name)}
+        for name, passed in universe_artifact["absolute_hard_gates"]["checks"].items()
         if not passed
     ]
+    reasons.extend(
+        {"gate_family": "retained_robustness_hard_gates", "gate": str(name)}
+        for name, passed in universe_artifact["retained_robustness_hard_gates"][
+            "checks"
+        ].items()
+        if not passed
+    )
     promotion = universe_artifact["promotion_gates"]
     permutation = promotion.get("permutation_invariance", {})
     if not permutation.get("invariant"):
         reasons.append(
             {"gate_family": "promotion_gates", "gate": "permutation_invariant"}
         )
-    if promotion.get("status") == "no_incumbent_baseline":
+    if incumbent is None and not establish_initial_baseline:
         reasons.append(
             {
-                "gate_family": "promotion_gates",
-                "gate": "accepted_current_semantic_incumbent",
+                "gate_family": "initial_baseline",
+                "gate": "explicit_establish_initial_baseline_action",
             }
+        )
+    elif incumbent is None:
+        reasons.extend(
+            {"gate_family": "initial_baseline_gates", "gate": str(name)}
+            for name, passed in universe_artifact["initial_baseline_gates"]
+            .get("checks", {})
+            .items()
+            if not passed
         )
     elif promotion.get("passed") is not True:
         reasons.extend(
@@ -327,6 +386,8 @@ def _publish_formal_artifacts(
     provenance: dict[str, Any],
     incumbent: dict[str, Any] | None,
     formal_plan_complete: bool,
+    establish_initial_baseline: bool = False,
+    initial_baseline_reference: dict[str, Any] | None = None,
 ) -> bool:
     """Retain complete failures; publish canonical files only after acceptance."""
     if not formal_plan_complete:
@@ -337,23 +398,51 @@ def _publish_formal_artifacts(
         raise ValueError(
             "Formal publication requires the exact canonical scenario plan"
         )
+    if incumbent is not None and (
+        establish_initial_baseline or initial_baseline_reference is not None
+    ):
+        raise ValueError(
+            "Cannot establish an initial baseline when a current-contract incumbent exists"
+        )
+    if incumbent is None and (
+        establish_initial_baseline != (initial_baseline_reference is not None)
+    ):
+        raise ValueError(
+            "Initial baseline establishment requires both the explicit action and reference"
+        )
     _validate_publish_candidate(
         prefix_artifact,
         universe_artifact,
         scenarios=scenarios,
         provenance=provenance,
         incumbent=incumbent,
+        initial_baseline_reference=initial_baseline_reference,
     )
-    accepted = universe_artifact["hard_gates"][
-        "passed"
-    ] and stress_metrics._promotion_accepted(universe_artifact["promotion_gates"])
+    route_accepted = (
+        stress_metrics._promotion_accepted(universe_artifact["promotion_gates"])
+        if incumbent is not None
+        else establish_initial_baseline
+        and universe_artifact["initial_baseline_gates"]["passed"] is True
+        and universe_artifact["promotion_gates"]["permutation_invariance"][
+            "invariant"
+        ]
+    )
+    accepted = (
+        universe_artifact["absolute_hard_gates"]["passed"]
+        and universe_artifact["retained_robustness_hard_gates"]["passed"]
+        and route_accepted
+    )
     if not accepted:
         candidate = {
             **universe_artifact,
             "artifact_status": "current_candidate",
             "acceptance_status": "rejected",
             "canonical": False,
-            "rejection_reasons": _rejection_reasons(universe_artifact),
+            "rejection_reasons": _rejection_reasons(
+                universe_artifact,
+                incumbent=incumbent,
+                establish_initial_baseline=establish_initial_baseline,
+            ),
         }
         source_revision = str(provenance["source_revision"])
         _atomic_json(
@@ -373,6 +462,9 @@ def _publish_formal_artifacts(
         "acceptance_status": "accepted",
         "canonical": True,
     }
+    if incumbent is None:
+        prefix_artifact["baseline_kind"] = "initial_current_contract"
+        universe_artifact["baseline_kind"] = "initial_current_contract"
     _atomic_json(VALIDATION_ARTIFACT_DIR / "prefix_stress.json", prefix_artifact)
     _atomic_json(VALIDATION_ARTIFACT_DIR / "universe_stress.json", universe_artifact)
     return True

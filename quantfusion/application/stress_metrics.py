@@ -13,6 +13,10 @@ INITIAL_CAPITAL = 2_000_000.0
 TRADE_COUNT_SEMANTICS = "trade_records"
 ENGINE = "ProductionReplayEngine"
 DEPLOYMENT_POLICY = "production_daily_replay"
+STRESS_CONTRACT_VERSION = 2
+MAX_ACCOUNT_DRAWDOWN = 0.18
+# Exact 18% is valid; the tolerance only absorbs machine representation noise.
+DRAWDOWN_COMPARISON_TOLERANCE = 1e-15
 ATTRIBUTION_CATEGORIES = (
     "initial_entry",
     "add",
@@ -80,43 +84,22 @@ def _wealth_change(result: dict[str, Any], base: dict[str, Any]) -> float:
     ) - 1.0
 
 
-def _hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
-    by_id = {str(item["scenario_id"]): item for item in results}
+def _absolute_hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Evaluate absolute safety and retained accounting-correctness gates."""
+    if not results:
+        raise ValueError("Absolute hard gates require non-empty results")
     random_results = [
         item for item in results if item["scenario_type"] == "random_subset"
     ]
-    add_one = [item for item in results if item["scenario_type"] == "add_one"]
-    prefixes = sorted(
-        (item for item in results if item["scenario_type"] == "prefix"),
-        key=lambda item: int(item["symbol_count"]),
-    )
     random_summary = _summary(random_results)
     all_summary = _summary(results)
-    add_one_changes = [
-        _wealth_change(item, by_id[f"prefix-{int(item['base_size']):02d}"])
-        for item in add_one
-    ]
-    nine_to_ten = _wealth_change(by_id["prefix-10"], by_id["prefix-09"])
-    adjacent_changes = [
-        _wealth_change(right, left)
-        for left, right in zip(prefixes, prefixes[1:], strict=False)
-    ]
+    worst = min(results, key=lambda item: float(item["max_drawdown"]), default=None)
     checks = {
-        "random_p90_drawdown_at_most_20pct": (
-            random_summary["drawdown_p90_severity"] <= 0.20 + 1e-12
-        ),
-        "random_worst_drawdown_at_most_22pct": (
-            abs(random_summary["drawdown_worst"]) <= 0.22 + 1e-12
-        ),
-        "all_worst_drawdown_at_most_22_5pct": (
-            abs(all_summary["drawdown_worst"]) <= 0.225 + 1e-12
-        ),
-        "prefix_9_to_10_wealth_above_minus_10pct": nine_to_ten > -0.10,
-        "worst_adjacent_wealth_at_least_minus_30pct": (
-            min(adjacent_changes) >= -0.30 - 1e-12
-        ),
-        "worst_add_one_wealth_at_least_minus_18pct": (
-            min(add_one_changes) >= -0.18 - 1e-12
+        "all_scenarios_max_drawdown_at_most_18pct": (
+            abs(float(worst["max_drawdown"]))
+            <= MAX_ACCOUNT_DRAWDOWN + DRAWDOWN_COMPARISON_TOLERANCE
+            if worst is not None
+            else True
         ),
         "random_p90_date_symbol_side_buckets_at_most_160": (
             random_summary["date_symbol_side_buckets_p90"] <= 160
@@ -129,18 +112,196 @@ def _hard_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
         "passed": all(checks.values()),
         "checks": checks,
         "observed": {
-            "random_p90_drawdown": random_summary["drawdown_p90_severity"],
-            "random_worst_drawdown": random_summary["drawdown_worst"],
-            "all_worst_drawdown": all_summary["drawdown_worst"],
-            "prefix_9_to_10_wealth_change": nine_to_ten,
-            "worst_adjacent_wealth_change": min(adjacent_changes),
-            "worst_add_one_wealth_change": min(add_one_changes),
+            "worst_scenario_id": (
+                str(worst["scenario_id"]) if worst is not None else None
+            ),
+            "all_worst_drawdown": (
+                float(worst["max_drawdown"]) if worst is not None else None
+            ),
             "random_p90_date_symbol_side_buckets": random_summary[
                 "date_symbol_side_buckets_p90"
             ],
             "all_worst_date_symbol_side_buckets": all_summary[
                 "date_symbol_side_buckets_worst"
             ],
+        },
+    }
+
+
+def _retained_robustness_hard_gates(
+    results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Evaluate the pre-existing prefix discontinuity protections."""
+    by_id = {str(item["scenario_id"]): item for item in results}
+    prefixes = sorted(
+        (item for item in results if item["scenario_type"] == "prefix"),
+        key=lambda item: int(item["symbol_count"]),
+    )
+    if "prefix-09" not in by_id or "prefix-10" not in by_id or len(prefixes) < 2:
+        raise ValueError("Retained robustness hard gates require prefix results")
+    nine_to_ten = _wealth_change(by_id["prefix-10"], by_id["prefix-09"])
+    adjacent_changes = [
+        _wealth_change(right, left)
+        for left, right in zip(prefixes, prefixes[1:], strict=False)
+    ]
+    worst_adjacent = min(adjacent_changes)
+    checks = {
+        "prefix_9_to_10_wealth_above_minus_10pct": nine_to_ten > -0.10,
+        "worst_adjacent_wealth_at_least_minus_30pct": (
+            worst_adjacent >= -0.30 - 1e-12
+        ),
+    }
+    return {
+        "passed": all(checks.values()),
+        "checks": checks,
+        "observed": {
+            "prefix_9_to_10_wealth_change": nine_to_ten,
+            "worst_adjacent_wealth_change": worst_adjacent,
+        },
+    }
+
+
+def _terminal_lock_transition(base: object, result: object) -> str:
+    return f"{str(bool(base)).lower()}_to_{str(bool(result)).lower()}"
+
+
+def _robustness_diagnostics(results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Describe add-one discontinuities without turning them into hard gates."""
+    by_id = {str(item["scenario_id"]): item for item in results}
+    cases: list[dict[str, Any]] = []
+    for result in results:
+        if result.get("scenario_type") != "add_one":
+            continue
+        base_id = f"prefix-{int(result['base_size']):02d}"
+        base = by_id.get(base_id)
+        if base is None:
+            continue
+        cases.append(
+            {
+                "scenario_id": str(result["scenario_id"]),
+                "base_scenario_id": base_id,
+                "wealth_change": _wealth_change(result, base),
+                "drawdown_severity_change": abs(float(result["max_drawdown"]))
+                - abs(float(base["max_drawdown"])),
+                "trade_record_delta": int(result["total_trades"])
+                - int(base["total_trades"]),
+                "date_symbol_side_bucket_delta": int(
+                    result["date_symbol_side_count"]
+                )
+                - int(base["date_symbol_side_count"]),
+                "terminal_risk_lock_transition": _terminal_lock_transition(
+                    base.get("terminal_risk_lock", False),
+                    result.get("terminal_risk_lock", False),
+                ),
+                "reason_attribution": result.get("reason_attribution", {}),
+            }
+        )
+    wealth_changes = [float(item["wealth_change"]) for item in cases]
+    worst = min(cases, key=lambda item: float(item["wealth_change"]), default=None)
+    return {
+        "scenario_count": len(cases),
+        "wealth_change": {
+            "minimum": min(wealth_changes) if wealth_changes else None,
+            "p05": _quantile(wealth_changes, 0.05) if wealth_changes else None,
+            "p10": _quantile(wealth_changes, 0.10) if wealth_changes else None,
+            "median": _quantile(wealth_changes, 0.50) if wealth_changes else None,
+        },
+        "worst_case": worst,
+        "cases": cases,
+    }
+
+
+def _transition_reference_by_id(
+    reference: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Validate a retained current-semantic artifact used only for transition."""
+    if reference.get("trade_count_semantics") != TRADE_COUNT_SEMANTICS:
+        raise ValueError("Initial baseline reference must use trade_records semantics")
+    raw_results = reference.get("results")
+    if not isinstance(raw_results, list) or not raw_results:
+        raise ValueError("Initial baseline reference must contain non-empty results")
+    by_id: dict[str, dict[str, Any]] = {}
+    for item in raw_results:
+        if (
+            not isinstance(item, dict)
+            or not isinstance(item.get("scenario_id"), str)
+            or not isinstance(item.get("scenario_type"), str)
+        ):
+            raise TypeError("Initial baseline reference has an invalid result")
+        scenario_id = item["scenario_id"]
+        if scenario_id in by_id:
+            raise ValueError("Initial baseline reference has duplicate scenario IDs")
+        by_id[scenario_id] = item
+    return by_id
+
+
+def _initial_baseline_gates(
+    results: list[dict[str, Any]], reference: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Protect retained economics while establishing contract v2 once."""
+    if reference is None:
+        return {
+            "status": "no_transition_reference",
+            "applicable": False,
+            "passed": False,
+            "checks": {},
+            "observed": {},
+        }
+    reference_by_id = _transition_reference_by_id(reference)
+    current_by_id = {str(item["scenario_id"]): item for item in results}
+    if set(current_by_id) != set(reference_by_id) or any(
+        current_by_id[scenario_id].get("scenario_type")
+        != reference_by_id[scenario_id].get("scenario_type")
+        for scenario_id in current_by_id
+    ):
+        raise ValueError(
+            "Initial baseline reference must match the exact scenario IDs and families"
+        )
+    prefix_ratios = {
+        scenario_id: (1.0 + float(item["total_return"]))
+        / (1.0 + float(reference_by_id[scenario_id]["total_return"]))
+        for scenario_id, item in current_by_id.items()
+        if item.get("scenario_type") == "prefix"
+    }
+    if "prefix-05" not in prefix_ratios:
+        raise ValueError("Initial baseline reference is missing prefix-05")
+    other_prefix_ratios = [
+        ratio for scenario_id, ratio in prefix_ratios.items() if scenario_id != "prefix-05"
+    ]
+    if not other_prefix_ratios:
+        raise ValueError("Initial baseline reference is missing other prefix scenarios")
+    current_worst_return = min(float(item["total_return"]) for item in results)
+    reference_worst_return = min(
+        float(item["total_return"]) for item in reference_by_id.values()
+    )
+    current_add_one = _robustness_diagnostics(results)["wealth_change"]["minimum"]
+    reference_add_one = _robustness_diagnostics(list(reference_by_id.values()))[
+        "wealth_change"
+    ]["minimum"]
+    if current_add_one is None or reference_add_one is None:
+        raise ValueError("Initial baseline comparison requires add-one scenarios")
+    checks = {
+        "prefix_05_wealth_at_least_99pct": prefix_ratios["prefix-05"]
+        >= 0.99 - 1e-12,
+        "other_prefix_wealth_at_least_95pct": min(other_prefix_ratios)
+        >= 0.95 - 1e-12,
+        "worst_total_return_not_worse_by_0_02": current_worst_return
+        >= reference_worst_return - 0.02 - 1e-12,
+        "worst_add_one_diagnostic_not_worse_by_0_03": float(current_add_one)
+        >= float(reference_add_one) - 0.03 - 1e-12,
+    }
+    return {
+        "status": "compared",
+        "applicable": True,
+        "passed": all(checks.values()),
+        "checks": checks,
+        "observed": {
+            "prefix_05_wealth_ratio": prefix_ratios["prefix-05"],
+            "other_prefix_wealth_ratio_min": min(other_prefix_ratios),
+            "worst_total_return": current_worst_return,
+            "reference_worst_total_return": reference_worst_return,
+            "worst_add_one_wealth_change": current_add_one,
+            "reference_worst_add_one_wealth_change": reference_add_one,
         },
     }
 
@@ -202,6 +363,10 @@ def _current_incumbent_by_id(
     incumbent: dict[str, Any],
 ) -> dict[str, dict[str, Any]]:
     """Validate and index an accepted current-semantic incumbent."""
+    if incumbent.get("stress_contract_version") != STRESS_CONTRACT_VERSION:
+        raise ValueError(
+            f"Incumbent stress artifact must use contract version {STRESS_CONTRACT_VERSION}"
+        )
     if incumbent.get("trade_count_semantics") != TRADE_COUNT_SEMANTICS:
         raise ValueError("Incumbent stress artifact must use trade_records semantics")
     if (
