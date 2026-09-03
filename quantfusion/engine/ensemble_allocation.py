@@ -15,7 +15,10 @@ from typing import Any, ClassVar
 import numpy as np
 import pandas as pd
 
-from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
+from quantfusion.config.universe import (
+    ESTABLISHED_BASE_CORE,
+    ESTABLISHED_EXPANSION_CORE,
+)
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import MarketRegimeObservation, Signal
 from quantfusion.domain.rules import floor_to_lot, require_int
@@ -37,6 +40,7 @@ from quantfusion.risk.overlay.adapter import (
 from quantfusion.strategy.trend import BaseStrategy
 
 _CoreBacktestEngine = CoreBacktestEngine
+_ESTABLISHED_BASE_CORE = ESTABLISHED_BASE_CORE
 _ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
 _EnsembleBacktestEngine = EnsembleBacktestEngine
 _EnsembleSleeveBacktestEngine = EnsembleSleeveBacktestEngine
@@ -377,7 +381,7 @@ class EnsembleAllocationMixin:
         # basket on its established path; only additional names must earn
         # new-candidate evidence.  Reclassifying the same core as "new" at
         # seven names creates an artificial 6 -> 7 discontinuity.
-        reference_core = set(self.policy.regime_symbols)
+        reference_core = set(_ESTABLISHED_BASE_CORE)
         tradable_symbols = (
             set(states[0].sleeve._tradable_symbol_codes) if states else set()
         )

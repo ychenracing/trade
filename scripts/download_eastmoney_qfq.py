@@ -12,32 +12,10 @@ from pathlib import Path
 import pandas as pd
 
 from quantfusion.config.paths import MARKET_DATA_DIR
+from quantfusion.config.universe import SYMBOL_NAMES
 
 
-DEFAULT_SYMBOLS = (
-    "300308",
-    "300502",
-    "300394",
-    "688008",
-    "603986",
-    "002409",
-    "688072",
-    "688300",
-    "300054",
-    "688205",
-    "920045",
-    "300776",
-    "688535",
-    "688249",
-    "688347",
-    "300666",
-    "600206",
-    "688409",
-    "688361",
-    "300604",
-    "688120",
-    "688082",
-)
+DEFAULT_SYMBOLS = tuple(SYMBOL_NAMES)
 
 
 def _market_id(symbol: str) -> str:

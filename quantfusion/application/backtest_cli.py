@@ -5,40 +5,15 @@ from __future__ import annotations
 import argparse
 
 from quantfusion.application.reporting import PerformanceReport
+from quantfusion.config.universe import SYMBOL_NAMES
 from quantfusion.domain.rules import SYMBOL_RE
 from quantfusion.engine.universe import BacktestEngine
 
 _SYMBOL_RE = SYMBOL_RE
 
-DEFAULT_SYMBOLS = {
-    "300308": "中际旭创",
-    "300502": "新易盛",
-    "300394": "天孚通信",
-    "688008": "澜起科技",
-    "603986": "兆易创新",
-}
+DEFAULT_SYMBOLS = dict(list(SYMBOL_NAMES.items())[:5])
 
-SYMBOL_NAME_TABLE: dict[str, str] = {
-    **DEFAULT_SYMBOLS,
-    "688256": "寒武纪",
-    "002409": "雅克科技",
-    "688072": "拓荆科技",
-    "688300": "联瑞新材",
-    "300054": "鼎龙股份",
-    "688205": "德科立",
-    "920045": "蘅东光",
-    "300776": "帝尔激光",
-    "688535": "华海诚科",
-    "688249": "晶合集成",
-    "688347": "华虹宏力",
-    "300666": "江丰电子",
-    "600206": "有研新材",
-    "688409": "富创精密",
-    "688361": "中科飞测",
-    "300604": "长川科技",
-    "688120": "华海清科",
-    "688082": "盛美上海",
-}
+SYMBOL_NAME_TABLE: dict[str, str] = dict(SYMBOL_NAMES)
 
 DEFAULT_SYMBOL_NAMES = {v: k for k, v in SYMBOL_NAME_TABLE.items()}
 
