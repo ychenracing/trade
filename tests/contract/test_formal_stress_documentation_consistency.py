@@ -104,6 +104,7 @@ TEMPORARY_GLOBS = (
 )
 HISTORICAL_TOKEN = re.compile(r"历史|historical", re.IGNORECASE)
 SYMBOL_22_TOKEN = re.compile(r"22\s*股|22-symbol", re.IGNORECASE)
+CURRENT_TOKEN = re.compile(r"当前|现行|current|active", re.IGNORECASE)
 SCENARIO_983_TOKEN = re.compile(r"(?<![0-9A-Za-z])983(?![0-9A-Za-z])")
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
@@ -140,13 +141,15 @@ def _assert_983_is_historical(text: str, *, path: Path) -> None:
     for raw in clauses:
         clause = raw.strip()
         occurrences = list(SCENARIO_983_TOKEN.finditer(clause))
-        if not occurrences:
-            continue
-        # One claim per clause prevents a second, current-plan occurrence from
-        # borrowing the first occurrence's historical 22-symbol qualifier.
-        assert len(occurrences) == 1, (path, clause)
-        assert HISTORICAL_TOKEN.search(clause), (path, clause)
-        assert SYMBOL_22_TOKEN.search(clause), (path, clause)
+        for occurrence in occurrences:
+            prefix = clause[: occurrence.start()]
+            historical = list(HISTORICAL_TOKEN.finditer(prefix))
+            symbol_22 = list(SYMBOL_22_TOKEN.finditer(prefix))
+            current = list(CURRENT_TOKEN.finditer(prefix))
+            assert historical and symbol_22, (path, clause)
+            last_current = current[-1].start() if current else -1
+            assert historical[-1].start() > last_current, (path, clause)
+            assert symbol_22[-1].start() > last_current, (path, clause)
 
 
 def _assert_22_symbol_is_historical(text: str, *, path: Path) -> None:
