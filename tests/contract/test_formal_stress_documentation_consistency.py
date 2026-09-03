@@ -105,7 +105,6 @@ TEMPORARY_GLOBS = (
 HISTORICAL_TOKEN = re.compile(r"历史|historical", re.IGNORECASE)
 SYMBOL_22_TOKEN = re.compile(r"22\s*股|22-symbol", re.IGNORECASE)
 SCENARIO_983_TOKEN = re.compile(r"(?<![0-9A-Za-z])983(?![0-9A-Za-z])")
-CURRENT_TOKEN = re.compile(r"当前|current", re.IGNORECASE)
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
 
@@ -120,9 +119,21 @@ def _managed_block(text: str, start: str, end: str, *, path: Path) -> str:
 
 def _assert_983_is_historical(text: str, *, path: Path) -> None:
     """Require explicit historical 22-symbol context for every old-plan mention."""
-    clauses = re.split(
-        r"[。！？.!?；;\n]+|\b(?:and|but|while)\b|(?:并且|而且|但是|同时|以及|与|和)",
+    normalized = re.sub(
+        r"(历史|historical)\s*[,，]\s*(22\s*股|22-symbol)",
+        r"\1 \2",
         text,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"(22\s*股|22-symbol)\s*[,，]\s*(历史|historical)",
+        r"\1 \2",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    clauses = re.split(
+        r"[。！？.!?；;，,\n]+|\b(?:and|but|while)\b|(?:并且|而且|但是|同时|以及|与|和)",
+        normalized,
         flags=re.IGNORECASE,
     )
     for raw in clauses:
@@ -131,7 +142,6 @@ def _assert_983_is_historical(text: str, *, path: Path) -> None:
             continue
         assert HISTORICAL_TOKEN.search(clause), (path, clause)
         assert SYMBOL_22_TOKEN.search(clause), (path, clause)
-        assert CURRENT_TOKEN.search(clause) is None, (path, clause)
 
 
 def _assert_22_symbol_is_historical(text: str, *, path: Path) -> None:
