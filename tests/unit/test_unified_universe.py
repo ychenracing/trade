@@ -12,6 +12,7 @@ from quantfusion.application.backtest_cli import SYMBOL_NAME_TABLE
 from quantfusion.config import daily, profiles
 from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
 from quantfusion.config.paths import MARKET_DATA_DIR
+from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.universe import (
     ESTABLISHED_EXPANSION_CORE,
     SYMBOL_NAMES,
@@ -60,6 +61,7 @@ def test_validation_universes_are_prefixes_of_the_current_universe() -> None:
         "17_symbols": EXPECTED_SYMBOLS,
     }
     assert ESTABLISHED_EXPANSION_CORE == frozenset(EXPECTED_SYMBOLS[:13])
+    assert PortfolioPolicy().regime_symbols == EXPECTED_SYMBOLS[:5]
 
 
 def test_every_current_symbol_has_strict_routing_and_risk_metadata() -> None:
