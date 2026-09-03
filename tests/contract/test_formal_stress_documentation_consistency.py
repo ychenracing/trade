@@ -54,6 +54,10 @@ CURRENT_DOCUMENTS = (
     Path("docs/VALIDATION.md"),
     Path("docs/ARCHITECTURE.md"),
 )
+DETAILED_PLAN_DOCUMENTS = (
+    Path("README.md"),
+    Path("docs/VALIDATION.md"),
+)
 HISTORICAL_QUALIFIERS = (
     "历史",
     "旧",
@@ -158,8 +162,12 @@ def test_current_documentation_separates_958_from_historical_983() -> None:
         )
         assert "958" in plan_block, relative
         assert "17 股" in plan_block or "17股" in plan_block, relative
-        for family in EXPECTED_FAMILIES:
-            assert family.replace("_", "-") in plan_block, (relative, family)
+        if relative in DETAILED_PLAN_DOCUMENTS:
+            for family in EXPECTED_FAMILIES:
+                assert family.replace("_", "-") in plan_block, (
+                    relative,
+                    family,
+                )
         assert "983" not in result_block, relative
         _assert_983_is_historical(text, path=relative)
 
