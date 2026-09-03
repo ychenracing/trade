@@ -59,39 +59,44 @@ HISTORICAL_QUALIFIERS = (
     "旧",
     "22 股",
     "22股",
+    "22-symbol",
     "historical",
     "legacy",
     "prior",
     "previous",
-    "rejected",
     "immutable",
 )
-TEMPORARY_TASK_PATHS = (
-    Path(".github/task-bootstrap/formal-stress-958-acceptance.md"),
-    Path(".github/task-bootstrap/formal-stress-958-consistency.md"),
-    Path(".github/workflows/bootstrap-formal-stress-958.yml"),
-    Path(".github/workflows/run-formal-stress-958.yml"),
-    Path(".github/workflows/run-formal-stress-958-v2.yml"),
-    Path(".github/workflows/finalize-formal-stress-958.yml"),
-    Path(".github/workflows/bootstrap-formal-stress-958-consistency.yml"),
-    Path(".github/workflows/apply-formal-stress-958-consistency.yml"),
-    Path("artifacts/validation/formal_stress_958_remote_checkpoint.md"),
-    Path("artifacts/validation/formal_stress_958_consistency_checkpoint.md"),
-    Path("scripts/_formal_stress_958_task"),
-    Path("scripts/_formal_stress_958_task.py"),
-    Path("scripts/_formal_stress_958_docs"),
-    Path("scripts/_formal_stress_958_generated_test_fix"),
+TEMPORARY_GLOBS = (
+    ".github/task-bootstrap/*formal-stress-958*",
+    ".github/workflows/*formal-stress-958*.yml",
+    "artifacts/validation/formal_stress_958_*checkpoint*.md",
+    "scripts/_formal_stress_958*",
 )
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
 
 
-def _current_plan_block(text: str, *, path: Path) -> str:
-    assert text.count(CURRENT_PLAN_START) == 1, path
-    assert text.count(CURRENT_PLAN_END) == 1, path
-    _, rest = text.split(CURRENT_PLAN_START, 1)
-    block, _ = rest.split(CURRENT_PLAN_END, 1)
+def _managed_block(text: str, start: str, end: str, *, path: Path) -> str:
+    assert text.count(start) == 1, path
+    assert text.count(end) == 1, path
+    _, rest = text.split(start, 1)
+    block, _ = rest.split(end, 1)
     return block
+
+
+def _assert_983_is_historical(text: str, *, path: Path) -> None:
+    """要求每个 983 引用在本行或所属 Markdown 小节中明确标为历史。"""
+    heading = ""
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line.startswith("#"):
+            heading = line
+        if "983" not in line:
+            continue
+        context = f"{heading}\n{line}".lower()
+        assert any(
+            qualifier.lower() in context for qualifier in HISTORICAL_QUALIFIERS
+        ), (path, line)
 
 
 def _python_comments_and_docstrings(path: Path) -> list[str]:
@@ -136,21 +141,27 @@ def test_current_formal_plan_is_exactly_17_symbols_and_958_scenarios() -> None:
     )
 
 
-def test_current_managed_documentation_is_958_only() -> None:
+def test_current_documentation_separates_958_from_historical_983() -> None:
     for relative in CURRENT_DOCUMENTS:
         text = (ROOT / relative).read_text(encoding="utf-8")
-        block = _current_plan_block(text, path=relative)
-        assert "958" in block, relative
-        assert "17 股" in block or "17股" in block, relative
-        assert "983" not in block, relative
-        assert block.count(CURRENT_RESULT_START) == 1, relative
-        assert block.count(CURRENT_RESULT_END) == 1, relative
-        if "983" in text:
-            lowered = text.lower()
-            assert any(token.lower() in lowered for token in HISTORICAL_QUALIFIERS), (
-                relative,
-                "983 evidence is not identified as historical",
-            )
+        plan_block = _managed_block(
+            text,
+            CURRENT_PLAN_START,
+            CURRENT_PLAN_END,
+            path=relative,
+        )
+        result_block = _managed_block(
+            text,
+            CURRENT_RESULT_START,
+            CURRENT_RESULT_END,
+            path=relative,
+        )
+        assert "958" in plan_block, relative
+        assert "17 股" in plan_block or "17股" in plan_block, relative
+        for family in EXPECTED_FAMILIES:
+            assert family.replace("_", "-") in plan_block, (relative, family)
+        assert "983" not in result_block, relative
+        _assert_983_is_historical(text, path=relative)
 
 
 def test_python_comments_and_docstrings_do_not_call_983_current() -> None:
@@ -161,7 +172,8 @@ def test_python_comments_and_docstrings_do_not_call_983_current() -> None:
                     continue
                 lowered = text.lower()
                 assert any(
-                    token.lower() in lowered for token in HISTORICAL_QUALIFIERS
+                    qualifier.lower() in lowered
+                    for qualifier in HISTORICAL_QUALIFIERS
                 ), (path.relative_to(ROOT), text)
 
 
@@ -185,6 +197,14 @@ def test_recorded_958_summary_and_candidate_are_complete_and_consistent() -> Non
         assert summary["canonical"] is False
     else:
         assert summary["formal_exit_status"] == 0
+
+    for gate_name in (
+        "absolute_hard_gates",
+        "retained_robustness_hard_gates",
+    ):
+        gates = summary[gate_name]
+        assert isinstance(gates, dict)
+        assert isinstance(gates.get("passed"), bool)
 
     provenance = summary["provenance"]
     assert isinstance(provenance, dict)
@@ -222,9 +242,25 @@ def test_recorded_958_summary_and_candidate_are_complete_and_consistent() -> Non
         for key in ("total_return", "max_drawdown", "sharpe", "calmar"):
             assert math.isfinite(float(item[key])), (item["scenario_id"], key)
 
+    for relative in CURRENT_DOCUMENTS:
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        result_block = _managed_block(
+            text,
+            CURRENT_RESULT_START,
+            CURRENT_RESULT_END,
+            path=relative,
+        )
+        assert summary["source_revision"] in result_block, relative
+        assert summary["candidate_sha256"] in result_block, relative
+        assert str(summary["candidate_path"]) in result_block, relative
+
 
 def test_temporary_acceptance_and_consistency_infrastructure_is_absent() -> None:
-    leftovers = [
-        path.as_posix() for path in TEMPORARY_TASK_PATHS if (ROOT / path).exists()
-    ]
+    leftovers = sorted(
+        {
+            path.relative_to(ROOT).as_posix()
+            for pattern in TEMPORARY_GLOBS
+            for path in ROOT.glob(pattern)
+        }
+    )
     assert leftovers == []
