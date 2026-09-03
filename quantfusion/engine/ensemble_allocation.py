@@ -357,6 +357,18 @@ class EnsembleAllocationMixin:
         return controller
 
     @staticmethod
+    def _drawdown_budget_risk_flags(
+        portfolio_risk: RecoverableDrawdownRiskManager,
+    ) -> tuple[bool, bool]:
+        """Keep audit-only soft alerts separate from authoritative hard locks."""
+        soft_alert_active = bool(portfolio_risk.alert_active)
+        hard_lock_active = bool(
+            portfolio_risk.persistent_lock
+            or portfolio_risk.terminal_lock
+        )
+        return soft_alert_active, hard_lock_active
+
+    @staticmethod
     def _drawdown_budget_books(
         states: list[_PreparedSleeveRun], date: pd.Timestamp
     ) -> tuple[list[RiskBook], list[tuple[int, str, str, Any]]]:
@@ -364,6 +376,13 @@ class EnsembleAllocationMixin:
         owners: list[tuple[int, str, str, Any]] = []
         for state_index, state in enumerate(states):
             for symbol, positions in state.sleeve.positions.items():
+                strategies = {
+                    strategy.name: strategy
+                    for strategy in (
+                        state.sleeve.strategy_instances.get(symbol, [])
+                        + state.sleeve.external_strategy_instances.get(symbol, [])
+                    )
+                }
                 frame = state.data_map.get(symbol)
                 mark = 0.0
                 if frame is not None and date in frame.index:
@@ -375,6 +394,12 @@ class EnsembleAllocationMixin:
                     value = atr_series.at[date]
                     atr = float(value) if _is_finite_number(value) else 0.0
                 for strategy_name, position in positions.items():
+                    strategy = strategies.get(strategy_name)
+                    effective_exit = (
+                        strategy.effective_exit_floor()
+                        if strategy is not None
+                        else float(position.stop_loss)
+                    )
                     books.append(
                         RiskBook(
                             symbol=str(symbol),
@@ -384,7 +409,7 @@ class EnsembleAllocationMixin:
                                 mark if mark > 0 else float(position.entry_price)
                             ),
                             entry_price=float(position.entry_price),
-                            stop_price=float(position.stop_loss),
+                            stop_price=float(effective_exit),
                             atr=atr,
                         )
                     )
@@ -427,7 +452,8 @@ class EnsembleAllocationMixin:
         current_assets: float,
         lifetime_peak_assets: float,
         *,
-        warning_active: bool,
+        soft_alert_active: bool,
+        hard_lock_active: bool,
         events: list[dict[str, Any]],
     ) -> None:
         """Budget close-known risk before orders reach the next open."""
@@ -446,7 +472,8 @@ class EnsembleAllocationMixin:
         decision = controller.decide(
             snapshot,
             position=date_position,
-            warning_active=warning_active,
+            soft_alert_active=soft_alert_active,
+            hard_lock_active=hard_lock_active,
             has_pending_reduction=has_pending_reduction,
         )
         date_str = date.strftime("%Y-%m-%d")
@@ -458,7 +485,8 @@ class EnsembleAllocationMixin:
             {
                 "date": date_str,
                 "state": decision.state,
-                "warning_active": bool(warning_active),
+                "soft_alert_active": bool(soft_alert_active),
+                "hard_lock_active": bool(hard_lock_active),
                 "drawdown": snapshot.drawdown,
                 "remaining_cushion": snapshot.remaining_cushion,
                 "available_budget": snapshot.available_budget,
@@ -586,6 +614,8 @@ class EnsembleAllocationMixin:
                     "reduction_fraction": decision.reduction_fraction,
                     "evidence_complete": snapshot.evidence_complete,
                     "missing_symbols": list(snapshot.missing_symbols),
+                    "soft_alert_active": bool(soft_alert_active),
+                    "hard_lock_active": bool(hard_lock_active),
                 }
             )
 

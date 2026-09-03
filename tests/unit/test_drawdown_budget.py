@@ -292,8 +292,8 @@ class DrawdownBudgetStateTests(unittest.TestCase):
             soft_alert_active=True,
             hard_lock_active=False,
         )
-        self.assertEqual(warned.state, "constrained")
-        self.assertFalse(warned.allow_new_risk)
+        self.assertEqual(warned.state, "recovering")
+        self.assertTrue(warned.allow_new_risk)
 
     def test_cash_book_can_recover_without_an_impossible_equity_rally(self) -> None:
         controller = DrawdownBudgetController(execution_buffer_peak_fraction=0.005)
@@ -355,7 +355,7 @@ class DrawdownBudgetStateTests(unittest.TestCase):
         )
 
         self.assertEqual(recovered.state, "recovering")
-        self.assertEqual(recovered.new_risk_capacity, 28.0)
+        self.assertAlmostEqual(recovered.new_risk_capacity, 28.0)
         self.assertTrue(recovered.allow_new_risk)
         self.assertAlmostEqual(cash.lifetime_peak_assets, 1_000.0)
 
@@ -409,6 +409,40 @@ class DrawdownBudgetStateTests(unittest.TestCase):
                 hard_lock_active=False,
             )
         self.assertEqual(released.state, "recovering")
+
+    def test_incomplete_evidence_blocks_recovering_capacity(self) -> None:
+        controller = DrawdownBudgetController(execution_buffer_peak_fraction=0.005)
+        cash = controller.snapshot(853.0, 1_000.0, [])
+        controller.decide(
+            cash,
+            position=0,
+            soft_alert_active=True,
+            hard_lock_active=False,
+        )
+        for position in range(1, 8):
+            recovered = controller.decide(
+                cash,
+                position=position,
+                soft_alert_active=True,
+                hard_lock_active=False,
+            )
+        self.assertEqual(recovered.state, "recovering")
+
+        incomplete = controller.snapshot(
+            853.0,
+            1_000.0,
+            [RiskBook("x", "optical", 1, 1.0, 1.0, 0.0, 0.0)],
+        )
+        blocked = controller.decide(
+            incomplete,
+            position=8,
+            soft_alert_active=True,
+            hard_lock_active=False,
+        )
+
+        self.assertFalse(incomplete.evidence_complete)
+        self.assertFalse(blocked.allow_new_risk)
+        self.assertEqual(blocked.new_risk_capacity, 0.0)
 
 
 class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
@@ -582,6 +616,10 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
     def test_real_soft_alert_state_can_recover_cash_without_hard_lock(self) -> None:
         policy = PortfolioPolicy(
             drawdown_budget_enabled=True,
+            drawdown_alert=0.14,
+            confirmed_drawdown=0.23,
+            emergency_drawdown=0.27,
+            terminal_drawdown=0.28,
             concentration_drawdown_adjustment=0.0,
         )
         manager = RecoverableDrawdownRiskManager(
@@ -592,7 +630,7 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
         engine = BacktestEngine(policy=policy)
         state = self._state()
         soft_alert, hard_lock = engine._drawdown_budget_risk_flags(
-            manager, [state]
+            manager
         )
 
         self.assertIsNone(status)
@@ -617,20 +655,25 @@ class DrawdownBudgetEngineBoundaryTests(unittest.TestCase):
         self.assertGreater(latest["new_risk_capacity"], 0.0)
         self.assertEqual(manager.lifetime_peak_assets, 1_000.0)
 
-    def test_real_sleeve_hard_lock_keeps_engine_capacity_zero(self) -> None:
-        policy = PortfolioPolicy(drawdown_budget_enabled=True)
+    def test_real_portfolio_hard_lock_keeps_engine_capacity_zero(self) -> None:
+        policy = PortfolioPolicy(
+            drawdown_budget_enabled=True,
+            confirmed_drawdown=0.23,
+            emergency_drawdown=0.27,
+            terminal_drawdown=0.28,
+            drawdown_confirmations=1,
+        )
         manager = RecoverableDrawdownRiskManager(
             {"max_drawdown": policy.confirmed_drawdown}, policy
         )
         manager.check_portfolio_risk(1_000.0, "2026-01-01")
+        status = manager.check_portfolio_risk(760.0, "2026-01-02")
         engine = BacktestEngine(policy=policy)
         state = self._state()
-        state.sleeve.risk.persistent_lock = True
-        soft_alert, hard_lock = engine._drawdown_budget_risk_flags(
-            manager, [state]
-        )
+        soft_alert, hard_lock = engine._drawdown_budget_risk_flags(manager)
 
-        self.assertFalse(soft_alert)
+        self.assertIsNotNone(status)
+        self.assertTrue(soft_alert)
         self.assertTrue(hard_lock)
         engine._apply_drawdown_budget(
             [state],

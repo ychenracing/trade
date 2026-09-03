@@ -97,7 +97,6 @@ def portfolio_adverse_loss(
             _finite_positive(value)
             for value in (
                 book.mark_price,
-                book.entry_price,
                 book.stop_price,
                 book.atr,
             )
@@ -105,7 +104,7 @@ def portfolio_adverse_loss(
         if values_complete:
             stressed_atr = float(adverse_atr_multiple) * float(book.atr)
             driver_unit_loss = max(
-                float(book.entry_price) - float(book.stop_price),
+                float(book.mark_price) - float(book.stop_price),
                 stressed_atr,
                 0.0,
             )
@@ -246,7 +245,8 @@ class DrawdownBudgetController:
         snapshot: DrawdownBudgetSnapshot,
         *,
         position: int,
-        warning_active: bool,
+        soft_alert_active: bool,
+        hard_lock_active: bool,
         has_pending_reduction: bool = False,
     ) -> DrawdownBudgetDecision:
         """Advance the deterministic state and return next-session limits."""
@@ -262,9 +262,12 @@ class DrawdownBudgetController:
         over_budget = snapshot.projected_loss_ratio > 1.0 + 1e-12
         just_entered = False
 
-        if self.state in {"normal", "recovering"} and (
-            over_budget or warning_active
-        ):
+        must_constrain = (
+            over_budget
+            or hard_lock_active
+            or (self.state == "normal" and soft_alert_active)
+        )
+        if self.state in {"normal", "recovering"} and must_constrain:
             self.state = "constrained"
             self.entered_position = int(position)
             self.max_constrained_drawdown = snapshot.drawdown
@@ -287,8 +290,11 @@ class DrawdownBudgetController:
                 or snapshot.projected_loss <= 1e-12
             )
             release_ready = (
-                not warning_active
+                not hard_lock_active
                 and not over_budget
+                and not has_pending_reduction
+                and snapshot.evidence_complete
+                and snapshot.available_budget > 0
                 and snapshot.projected_loss_ratio
                 <= self.constraint_release_ratio + 1e-12
                 and elapsed >= self.minimum_reentry_cooldown
@@ -301,7 +307,10 @@ class DrawdownBudgetController:
 
         elif self.state == "recovering":
             normal_ready = (
-                not warning_active
+                not soft_alert_active
+                and not hard_lock_active
+                and not has_pending_reduction
+                and snapshot.evidence_complete
                 and snapshot.projected_loss_ratio
                 <= self.constraint_release_ratio + 1e-12
                 and snapshot.drawdown <= self.normal_state_drawdown_exit + 1e-12
@@ -342,7 +351,15 @@ class DrawdownBudgetController:
             )
             self._last_reduction_ratio = snapshot.projected_loss_ratio
 
-        allow_new = self.state in {"normal", "recovering"} and not warning_active
+        allow_new = (
+            self.state == "recovering"
+            or (self.state == "normal" and not soft_alert_active)
+        ) and (
+            not hard_lock_active
+            and not has_pending_reduction
+            and snapshot.evidence_complete
+            and not over_budget
+        )
         capacity = (
             max(snapshot.available_budget - snapshot.projected_loss, 0.0)
             if allow_new

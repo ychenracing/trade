@@ -156,6 +156,8 @@ def _diagnostic_telemetry(result: dict[str, Any]) -> dict[str, Any]:
                 for key in (
                     "state",
                     "warning_active",
+                    "soft_alert_active",
+                    "hard_lock_active",
                     "drawdown",
                     "remaining_cushion",
                     "available_budget",

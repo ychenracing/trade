@@ -72,6 +72,10 @@ class PositiveMomentumHoldStrategy(BaseStrategy):
         weight = float(self.cfg["strategy_weight"]) * ratio
         return floor_to_lot(ctx.current_assets * weight / float(ctx.df["close"].iloc[ctx.i]))
 
+    def effective_exit_floor(self) -> float:
+        """Expose the active disaster/chandelier floor without changing exits."""
+        return max(super().effective_exit_floor(), float(self._trail_stop))
+
     def _reentry_ok(self, ctx: BarContext) -> bool:
         """Re-entry gates (report 3.5): momentum repaired, trend restored."""
         closes = self._closes(ctx)

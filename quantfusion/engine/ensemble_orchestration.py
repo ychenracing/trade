@@ -218,13 +218,17 @@ class EnsembleOrchestrationMixin:
             portfolio_risk_events.extend(portfolio_risk.drain_audit_events())
             if status:
                 self._apply_global_risk_lock(states, date)
+            soft_alert_active, hard_lock_active = self._drawdown_budget_risk_flags(
+                portfolio_risk
+            )
             self._apply_drawdown_budget(
                 states,
                 date,
                 idx,
                 assets,
                 float(portfolio_risk.lifetime_peak_assets),
-                warning_active=bool(portfolio_risk.alert_active or status),
+                soft_alert_active=soft_alert_active,
+                hard_lock_active=hard_lock_active,
                 events=portfolio_risk_events,
             )
             self._update_tail_sleeve_guard(
