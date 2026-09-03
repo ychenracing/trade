@@ -1,0 +1,333 @@
+#!/usr/bin/env python3
+"""Synchronize current 17-symbol baseline and formal-stress documentation."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from textwrap import dedent
+
+
+ROOT = Path(__file__).resolve().parents[1]
+UNIVERSES = (
+    ("1_symbol", "1"),
+    ("3_symbols", "3"),
+    ("5_symbols", "5"),
+    ("13_symbols", "13"),
+    ("17_symbols", "17"),
+)
+
+
+def _selected(
+    results: list[dict[str, object]], name: str, state: str
+) -> dict[str, object]:
+    matches = [
+        item
+        for item in results
+        if item.get("universe") == name
+        and item.get("indicator_state") == state
+        and item.get("end_date") == "2026-07-20"
+    ]
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"expected one {name}/{state}/2026-07-20 result, got {len(matches)}"
+        )
+    return matches[0]
+
+
+def _pct(value: object) -> str:
+    return f"{float(value):.4%}"
+
+
+def _replace_required(text: str, old: str, new: str) -> str:
+    if old in text:
+        return text.replace(old, new)
+    if new in text:
+        return text
+    raise RuntimeError(f"missing expected documentation text: {old[:80]!r}")
+
+
+def _replace_table(text: str, heading: str, header: str, table: str) -> str:
+    heading_index = text.index(heading)
+    table_start = text.index(header, heading_index)
+    table_end = text.index("\n\n", table_start)
+    return text[:table_start] + table.rstrip() + text[table_end:]
+
+
+def _baseline_table(warm: dict[str, dict[str, object]]) -> str:
+    rows = [
+        "| 股票数量 | 总收益 | 最大回撤 | 实际成交记录 | 日期/股票/方向桶 |",
+        "|---:|---:|---:|---:|---:|",
+    ]
+    for _, label in UNIVERSES:
+        item = warm[label]
+        rows.append(
+            f"| {label} | {_pct(item['total_return'])} | "
+            f"{_pct(item['max_drawdown'])} | {int(item['total_trades'])} | "
+            f"{int(item['date_symbol_side_count'])} |"
+        )
+    return "\n".join(rows)
+
+
+def _sync_readme(
+    warm: dict[str, dict[str, object]], baseline_table: str
+) -> None:
+    del warm
+    path = ROOT / "README.md"
+    text = path.read_text(encoding="utf-8")
+    text = _replace_required(
+        text, "1/3/5/13/22 只股票池", "1/3/5/13/17 只股票池"
+    )
+    if text.count("add-one-05-688205") < 3 and "add-one-05-688072" not in text:
+        raise RuntimeError("README current diagnostic example is missing")
+    text = text.replace("add-one-05-688205", "add-one-05-688072", 3)
+    text = _replace_table(
+        text,
+        "## 已验证基线",
+        "| 股票数量 | 总收益 | 最大回撤 | 实际成交记录 | 日期/股票/方向桶 |",
+        baseline_table,
+    )
+    path.write_text(text, encoding="utf-8")
+
+
+def _sync_validation(
+    warm: dict[str, dict[str, object]],
+    cold: dict[str, dict[str, object]],
+    baseline_table: str,
+) -> None:
+    path = ROOT / "docs/VALIDATION.md"
+    text = path.read_text(encoding="utf-8")
+    summary = (
+        "当前默认配置在 2025-04-01 至 2026-07-20 的冻结牛市样本中，"
+        "1/3/5/13/17 股池分别取得 "
+        + "、".join(_pct(warm[label]["total_return"]) for _, label in UNIVERSES)
+        + " 总收益。当前实现的聚合指标和经济事件序列均受冻结基线保护。"
+    )
+    text = _replace_required(
+        text,
+        "当前默认配置在 2025-04-01 至 2026-07-20 的冻结牛市样本中，"
+        "1/3/5/13/22 股池分别取得 530.8950%、1059.3890%、1226.3702%、"
+        "1039.0505% 和 1052.7670% 总收益。当前实现的聚合指标和经济事件序列"
+        "均受冻结基线保护。",
+        summary,
+    )
+    text = _replace_table(
+        text,
+        "## 生产趋势基线",
+        "| 股票数量 | 总收益 | 最大回撤 | 实际成交记录 | 日期/股票/方向桶 |",
+        baseline_table,
+    )
+
+    cold_rows = [
+        "| 股票数量 | 冷启动收益 | 冷启动回撤 | 成交记录/侧桶 | "
+        "预热收益 | 预热回撤 | 成交记录/侧桶 |",
+        "|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for _, label in UNIVERSES:
+        cold_item = cold[label]
+        warm_item = warm[label]
+        cold_rows.append(
+            f"| {label} | {_pct(cold_item['total_return'])} | "
+            f"{_pct(cold_item['max_drawdown'])} | "
+            f"{int(cold_item['total_trades'])} / "
+            f"{int(cold_item['date_symbol_side_count'])} | "
+            f"{_pct(warm_item['total_return'])} | "
+            f"{_pct(warm_item['max_drawdown'])} | "
+            f"{int(warm_item['total_trades'])} / "
+            f"{int(warm_item['date_symbol_side_count'])} |"
+        )
+    text = _replace_table(
+        text,
+        "## 冷启动与预热",
+        "| 股票数量 | 冷启动收益 | 冷启动回撤 | 成交记录/侧桶 |",
+        "\n".join(cold_rows),
+    )
+
+    one = warm["1"]
+    five = warm["5"]
+    text = _replace_required(
+        text,
+        "2024-01-02 至 2024-12-31 的五股 `ProductionReplayEngine` 逐日回放取得 "
+        "52.2276% 收益、-17.2195% 最大回撤和 18 条成交记录。动态弱势持仓完整"
+        "参与组合、板块和路由清算。牛市生产回放不会重复执行外层和叠加层风控："
+        "1 股和 5 股结果分别与趋势生产基线完全一致。",
+        "2024-01-02 至 2024-12-31 的历史五股弱市 `ProductionReplayEngine` "
+        "逐日回放取得 52.2276% 收益、-17.2195% 最大回撤和 18 条成交记录。"
+        "动态弱势持仓完整参与组合、板块和路由清算。当前牛市生产回放不会重复"
+        "执行外层和叠加层风控：1 股和 5 股结果分别与当前趋势生产基线完全一致。",
+    )
+    route_table = "\n".join(
+        (
+            "| 场景 | 总收益 | 最大回撤 | 实际成交记录 | 日期/股票/方向桶 | 说明 |",
+            "|---|---:|---:|---:|---:|---|",
+            "| 2024 历史五股弱市 | 52.2276% | -17.2195% | 18 | 18 | "
+            "空仓进入弱市，启用冻结龙头账本并接受统一清算 |",
+            f"| 2025—2026 一股牛市 | {_pct(one['total_return'])} | "
+            f"{_pct(one['max_drawdown'])} | {int(one['total_trades'])} | "
+            f"{int(one['date_symbol_side_count'])} | 与当前趋势基线完全一致 |",
+            f"| 2025—2026 五股牛市 | {_pct(five['total_return'])} | "
+            f"{_pct(five['max_drawdown'])} | {int(five['total_trades'])} | "
+            f"{int(five['date_symbol_side_count'])} | 与当前趋势基线完全一致 |",
+        )
+    )
+    text = _replace_table(
+        text,
+        "## 生产逐日路由验证",
+        "| 场景 | 总收益 | 最大回撤 | 实际成交记录 | 日期/股票/方向桶 | 说明 |",
+        route_table,
+    )
+    text = _replace_required(
+        text,
+        "只有显式首基线动作、精确 canonical 983、当前语义参考工件",
+        "只有显式首基线动作、精确 canonical 958、当前语义参考工件",
+    )
+    text = _replace_required(
+        text,
+        "只有未经筛选且与 canonical 默认场景签名精确相等的 983 场景计划",
+        "只有未经筛选且与 canonical 默认场景签名精确相等的 958 场景计划",
+    )
+    text = _replace_required(
+        text,
+        "该 PR 未选择生产风控实现、未运行新的 canonical 983，也未建立 v2 baseline。",
+        "该历史研究未选择生产风控实现，也未建立当时的 v2 baseline。",
+    )
+    path.write_text(text, encoding="utf-8")
+
+
+def _sync_data_readme() -> None:
+    path = ROOT / "data/README.md"
+    text = path.read_text(encoding="utf-8")
+    text = _replace_required(
+        text,
+        "- `market/`：22 只生产股票及寒武纪（`688256`）专项验证样本的前复权日线、"
+        "`manifest.json` 与 `SHA256SUMS`；",
+        "- `market/`：当前 17 只交易股票所需的冻结前复权日线，以及不再属于默认"
+        "交易池但仍供历史研究审计的样本、`manifest.json` 与 `SHA256SUMS`；",
+    )
+    path.write_text(text, encoding="utf-8")
+
+
+def _write_contract_test() -> None:
+    path = ROOT / "tests/contract/test_current_formal_documentation.py"
+    path.write_text(
+        dedent(
+            """\
+            # Current 17-symbol baseline and formal-stress documentation contracts.
+
+            from __future__ import annotations
+
+            import json
+            from pathlib import Path
+
+
+            ROOT = Path(__file__).resolve().parents[2]
+            UNIVERSES = (
+                ("1_symbol", "1"),
+                ("3_symbols", "3"),
+                ("5_symbols", "5"),
+                ("13_symbols", "13"),
+                ("17_symbols", "17"),
+            )
+
+
+            def _warm_result(name: str) -> dict[str, object]:
+                payload = json.loads(
+                    (ROOT / "artifacts/validation/universe_backtest.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                matches = [
+                    item
+                    for item in payload["results"]
+                    if item.get("universe") == name
+                    and item.get("indicator_state") == "warm"
+                    and item.get("end_date") == "2026-07-20"
+                ]
+                assert len(matches) == 1
+                return matches[0]
+
+
+            def test_current_baseline_tables_match_the_frozen_artifact() -> None:
+                readme = (ROOT / "README.md").read_text(encoding="utf-8")
+                validation = (ROOT / "docs/VALIDATION.md").read_text(encoding="utf-8")
+                for name, label in UNIVERSES:
+                    item = _warm_result(name)
+                    row = (
+                        f"| {label} | {float(item['total_return']):.4%} | "
+                        f"{float(item['max_drawdown']):.4%} | "
+                        f"{int(item['total_trades'])} | "
+                        f"{int(item['date_symbol_side_count'])} |"
+                    )
+                    assert row in readme
+                    assert row in validation
+
+
+            def test_current_plan_wording_is_not_mixed_with_historical_983_evidence() -> None:
+                readme = (ROOT / "README.md").read_text(encoding="utf-8")
+                validation = (ROOT / "docs/VALIDATION.md").read_text(encoding="utf-8")
+                architecture = (ROOT / "docs/ARCHITECTURE.md").read_text(
+                    encoding="utf-8"
+                )
+                data_readme = (ROOT / "data/README.md").read_text(encoding="utf-8")
+                combined_current = "\n".join((readme, validation, architecture))
+                assert "1/3/5/13/22" not in combined_current
+                assert "共 983 次生产逐日回放" not in combined_current
+                assert "全部 983 个正式场景" not in combined_current
+                assert "精确 canonical 983" not in validation
+                assert "983 场景计划能够进入正式发布校验" not in validation
+                assert "add-one-05-688072" in readme
+                assert "当前 17 只交易股票" in data_readme
+                assert "历史 22 股完整 983 场景" in validation
+
+
+            def test_final_result_block_replaces_pending_text_after_publication() -> None:
+                summary = (
+                    ROOT
+                    / "artifacts/validation/formal_stress_958_acceptance_summary.json"
+                )
+                if not summary.exists():
+                    return
+                for relative in (
+                    "README.md",
+                    "docs/VALIDATION.md",
+                    "docs/ARCHITECTURE.md",
+                ):
+                    text = (ROOT / relative).read_text(encoding="utf-8")
+                    assert (
+                        "完整 958 场景尚未在本次任务中形成最终工件" not in text
+                    )
+                    assert "完整计划已运行：`958/958`" in text
+            """
+        ),
+        encoding="utf-8",
+    )
+
+
+def main() -> int:
+    artifact = json.loads(
+        (ROOT / "artifacts/validation/universe_backtest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    results = artifact["results"]
+    if not isinstance(results, list):
+        raise RuntimeError("universe validation results must be a list")
+    typed_results = [dict(item) for item in results]
+    warm = {
+        label: _selected(typed_results, name, "warm")
+        for name, label in UNIVERSES
+    }
+    cold = {
+        label: _selected(typed_results, name, "cold")
+        for name, label in UNIVERSES
+    }
+    baseline_table = _baseline_table(warm)
+    _sync_readme(warm, baseline_table)
+    _sync_validation(warm, cold, baseline_table)
+    _sync_data_readme()
+    _write_contract_test()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
