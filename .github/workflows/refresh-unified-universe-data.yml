@@ -1,0 +1,93 @@
+name: Refresh unified universe frozen data
+
+on:
+  push:
+    branches:
+      - codex/unify-17-symbol-universe
+    paths:
+      - .github/workflows/refresh-unified-universe-data.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    name: Download and commit missing frozen histories
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/unify-17-symbol-universe
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Download the four missing forward-adjusted histories
+        run: |
+          python -m scripts.download_eastmoney_qfq \
+            --start 2024-01-01 \
+            --end 2026-07-20 \
+            --output /tmp/unified-universe-data \
+            --symbol 688498 \
+            --symbol 601869 \
+            --symbol 002384 \
+            --symbol 300408
+      - name: Merge provenance, checksums, and remove this one-shot workflow
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import shutil
+          from pathlib import Path
+
+          source = Path('/tmp/unified-universe-data')
+          target = Path('data/market')
+          downloaded = json.loads((source / 'manifest.json').read_text(encoding='utf-8'))
+          manifest_path = target / 'manifest.json'
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          if downloaded['requested_start'] != manifest['requested_start']:
+              raise SystemExit('download start does not match frozen manifest')
+          if downloaded['requested_end'] != manifest['requested_end']:
+              raise SystemExit('download end does not match frozen manifest')
+          if downloaded['adjustment'] != manifest['adjustment']:
+              raise SystemExit('download adjustment does not match frozen manifest')
+          if downloaded['volume_unit'] != manifest['volume_unit']:
+              raise SystemExit('download volume unit does not match frozen manifest')
+          expected = ('688498', '601869', '002384', '300408')
+          if tuple(downloaded['symbols']) != expected:
+              raise SystemExit(f'unexpected downloaded symbols: {tuple(downloaded["symbols"])}')
+          for symbol in expected:
+              source_path = source / f'{symbol}.csv'
+              if not source_path.is_file():
+                  raise SystemExit(f'missing downloaded CSV: {source_path}')
+              shutil.copyfile(source_path, target / source_path.name)
+              manifest['symbols'][symbol] = downloaded['symbols'][symbol]
+          manifest_path.write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          checksum_lines = []
+          for path in sorted(target.glob('*.csv'), key=lambda item: item.name):
+              checksum_lines.append(
+                  f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}'
+              )
+          (target / 'SHA256SUMS').write_text(
+              '\n'.join(checksum_lines) + '\n', encoding='utf-8'
+          )
+          PY
+          rm .github/workflows/refresh-unified-universe-data.yml
+      - name: Commit generated frozen evidence
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/market/002384.csv data/market/300408.csv \
+            data/market/601869.csv data/market/688498.csv \
+            data/market/manifest.json data/market/SHA256SUMS \
+            .github/workflows/refresh-unified-universe-data.yml
+          git commit -m "data: add frozen histories for unified universe"
+          git push origin HEAD:codex/unify-17-symbol-universe
