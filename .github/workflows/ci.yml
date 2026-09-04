@@ -98,13 +98,45 @@ jobs:
               "tests/regression/test_regime_adaptive.py::DynamicRouteStateMachineTests::test_route_sequence_is_emitted_and_current_day_route_is_consistent",
           }
 
+          discovered_files = {
+              path.as_posix() for path in Path("tests").rglob("test_*.py")
+          }
+          c6_files = {
+              path for path in discovered_files if path.startswith(safe_prefixes)
+          }
+          unknown_files = discovered_files - safe_files - c6_files
+          missing_files = safe_files - discovered_files
+          if unknown_files or missing_files:
+              raise SystemExit(
+                  "unclassified pre-freeze test files:\n"
+                  + "\n".join(sorted(unknown_files | missing_files))
+              )
           collected = subprocess.run(
-              [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+              [
+                  sys.executable,
+                  "-m",
+                  "pytest",
+                  "--collect-only",
+                  "-q",
+                  *sorted(safe_files | c6_files),
+              ],
               check=True,
               capture_output=True,
               text=True,
           ).stdout.splitlines()
           nodes = [line.strip() for line in collected if line.startswith("tests/") and "::" in line]
+          collected_nodes = set(nodes)
+          unmatched_embargoed = embargoed_nodes - collected_nodes
+          unmatched_prefixes = {
+              prefix
+              for prefix in embargoed_prefixes
+              if not any(node.startswith(prefix) for node in nodes)
+          }
+          if unmatched_embargoed or unmatched_prefixes:
+              raise SystemExit(
+                  "unmatched embargo selectors:\n"
+                  + "\n".join(sorted(unmatched_embargoed | unmatched_prefixes))
+              )
           safe = []
           unknown = []
           for node in nodes:
@@ -175,11 +207,13 @@ jobs:
 
           event = json.loads(open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8").read())
           head = event["pull_request"]["head"]
-          assert head["repo"]["full_name"] == os.environ["GITHUB_REPOSITORY"]
-          assert head["ref"] in {
+          if head["repo"]["full_name"] != os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("C6 pre-freeze PR must originate in this repository")
+          if head["ref"] not in {
               "codex/c6-workflow-preflight",
               "codex/c6-causal-risk-closure",
-          }
+          }:
+              raise SystemExit("unapproved C6 pre-freeze branch")
           PY
       - uses: actions/setup-python@v5
         if: env.C6_PREFREEZE != 'true'
