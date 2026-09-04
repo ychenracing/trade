@@ -11,7 +11,6 @@ import math
 import subprocess
 from pathlib import Path
 from collections.abc import Mapping, Sequence
-from concurrent.futures import ProcessPoolExecutor
 from typing import Any
 
 
@@ -705,6 +704,7 @@ def _attach_interventions(evaluations: list[dict[str, Any]]) -> None:
 
 def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
     from quantfusion.application import stress_artifacts, stress_scenarios
+    from quantfusion.application.c6_bound_run import DiagnosticCheckpoint, execution_item_ids
     from quantfusion.application.c6_contract import load_preregistration, load_run_bindings, select_binding, strict_json_load
 
     prereg = load_preregistration(args.preregistration, repository=Path.cwd())
@@ -721,23 +721,19 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
     base = binding["candidate_id"] == "C6-Base"
     variants = manifests["L1_BASE_EVALUATION_MANIFEST"]["core_variant_order"] if base else ["C6-Base+S"]
     tasks = [(variant, by_id[scenario], "DEFAULT") for variant in variants for scenario in scenario_ids]
+    checkpoint = DiagnosticCheckpoint.from_environment(execution_item_ids(binding, prereg), chunk_size=binding["runtime"]["checkpoint_every"])
+    evaluations = checkpoint.map(_l1_evaluate, tasks, [f"evaluation/{variant}::{scenario['scenario_id']}" for variant, scenario, _ in tasks])
     if base:
-        tasks += [(variant, by_id["add-one-13-601869"], "DEFAULT") for variant in manifests["L1_BASE_EVALUATION_MANIFEST"]["causal_intervention_order"]]
-    with ProcessPoolExecutor(max_workers=4) as executor:
-        evaluations = list(executor.map(_l1_evaluate, tasks))
-    if base:
-        _attach_interventions(evaluations)
+        interventions = [(variant, by_id["add-one-13-601869"], "DEFAULT") for variant in manifests["L1_BASE_EVALUATION_MANIFEST"]["causal_intervention_order"]]
+        # Six interdependent intervention rows are finalized and committed together.
+        if checkpoint.chunk_size < len(interventions):
+            raise ValueError("checkpoint chunk must hold all causal interventions")
+        evaluations += checkpoint.map(_l1_evaluate, interventions, [f"evaluation/{variant}::{scenario['scenario_id']}" for variant, scenario, _ in interventions], finalize=_attach_interventions)
     chosen = "C6-Base" if base else "C6-Base+S"
-    drift_tasks = [(chosen, by_id[item], mode) for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"] for mode in ("OFF", "ON")]
-    with ProcessPoolExecutor(max_workers=4) as executor:
-        drift_records = list(executor.map(_l1_evaluate, drift_tasks))
-    pairs = []
-    for index, scenario in enumerate(manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]):
-        off, on = drift_records[2 * index:2 * index + 2]
-        a, b = _path_hashes(off), _path_hashes(on)
-        pairs.append({"scenario_id": scenario, "recording_off_path_hashes": a, "recording_on_path_hashes": b, "equal": a == b})
     control_name = "L1_BASE_SYNTHETIC_CONTROL_IDS" if base else "L1_S_SYNTHETIC_CONTROL_IDS"
-    controls = _controls(prereg, control_name)
+    controls = checkpoint.map(_identity, _controls(prereg, control_name), [f"control/{item}" for item in manifests[control_name]["ids"]], workers=1)
+    drift_tasks = [(chosen, by_id[item]) for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]]
+    pairs = checkpoint.map(_no_drift_pair, drift_tasks, [f"no-drift/{item}" for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]])
     specs = prereg["diagnostic_predicate_manifests"]["L1_APPLICABLE_DIAGNOSTIC_PREDICATES"]
     selected = [item for item in evaluations if item["variant_id"] == chosen]
     eval_name = "L1_BASE_EVALUATION_MANIFEST" if base else "L1_S_EVALUATION_MANIFEST"
@@ -784,8 +780,21 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _identity(value: dict[str, Any]) -> dict[str, Any]:
+    return value
+
+
+def _no_drift_pair(task: tuple[str, Mapping[str, Any]]) -> dict[str, Any]:
+    variant, scenario = task
+    off = _l1_evaluate((variant, scenario, "OFF"))
+    on = _l1_evaluate((variant, scenario, "ON"))
+    a, b = _path_hashes(off), _path_hashes(on)
+    return {"scenario_id": scenario["scenario_id"], "recording_off_path_hashes": a, "recording_on_path_hashes": b, "equal": a == b}
+
+
 def _produce_l2(args: argparse.Namespace) -> dict[str, Any]:
     from quantfusion.application import stress_artifacts, stress_metrics, stress_scenarios
+    from quantfusion.application.c6_bound_run import DiagnosticCheckpoint, execution_item_ids
     from quantfusion.application.c6_contract import load_preregistration, load_run_bindings, select_binding
 
     prereg = load_preregistration(args.preregistration, repository=Path.cwd())
@@ -806,8 +815,9 @@ def _produce_l2(args: argparse.Namespace) -> dict[str, Any]:
         seeds=(20260807, 20260817, 20260827),
     )
     by_id = {item["scenario_id"]: item for item in plan}
-    with ProcessPoolExecutor(max_workers=4) as executor:
-        results = list(executor.map(_l2_evaluate, (by_id[item] for item in ids)))
+    item_ids = execution_item_ids(binding, prereg)
+    checkpoint = DiagnosticCheckpoint.from_environment(item_ids, chunk_size=binding["runtime"]["checkpoint_every"])
+    results = checkpoint.map(_l2_evaluate, [by_id[item] for item in ids], item_ids)
     summary = stress_metrics._summary(results)
     for key in ("trades_worst", "date_symbol_side_buckets_worst", "sleeve_fills_worst"):
         summary[key] = int(summary[key])

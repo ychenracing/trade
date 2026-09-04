@@ -7,6 +7,7 @@ actual command; this module only protects identity, ownership, and publication.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import io
 import os
@@ -16,14 +17,16 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
 from dataclasses import dataclass
+from concurrent.futures import ProcessPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
-from typing import Any, Mapping, Never, Sequence
+from typing import Any, Callable, Mapping, Never, Sequence
 
 from quantfusion.application.c6_contract import (
     ContractError,
@@ -485,7 +488,6 @@ class GitHubActionsLeaseStore:
             except ContractError as exc:
                 _raise(str(exc), exc)
             completed_ids = wrapper_payload["completed_item_ids"]
-            item_contract = binding["item_manifest_contract"]
             child_completed = checkpoint_progress(child, stage=binding["stage"], binding_signature=wrapper_payload["binding_signature"], item_ids=item_ids)
             if (
                 wrapper_payload["schema_version"] != 2
@@ -504,8 +506,8 @@ class GitHubActionsLeaseStore:
                 or wrapper_payload["child_checkpoint_byte_size"] != len(child)
                 or wrapper_payload["child_checkpoint_full_byte_sha256"]
                 != hashlib.sha256(child).hexdigest()
-                or wrapper_payload["item_manifest_count"] != item_contract["count"]
-                or wrapper_payload["item_manifest_sha256"] != item_contract["sha256"]
+                or wrapper_payload["item_manifest_count"] != len(item_ids)
+                or wrapper_payload["item_manifest_sha256"] != hashlib.sha256("".join(f"{item}\n" for item in item_ids).encode()).hexdigest()
                 or not isinstance(completed_ids, list)
                 or completed_ids != child_completed
                 or completed_ids != list(item_ids[: len(completed_ids)])
@@ -714,6 +716,11 @@ def checkpoint_progress(
         if not isinstance(results, list) or payload["completed"] != len(results):
             _raise("official child checkpoint progress is invalid")
         completed = [f"scenario/{item.get('scenario_id')}" for item in results if isinstance(item, dict)]
+        prefix = list(item_ids[:len(completed)])
+        if (type(payload["completed"]) is not int or payload["scenario_count"] != len(item_ids)
+            or len(completed) != len(results) or completed != sorted(prefix)):
+            _raise("official child checkpoint does not store the exact sorted prefix")
+        completed = prefix
     else:
         expected = {
             "schema_version", "kind", "binding_signature", "item_manifest_count",
@@ -725,17 +732,123 @@ def checkpoint_progress(
             _raise(str(exc), exc)
         items = payload["completed_items"]
         if (
-            payload["schema_version"] != 2
+            type(payload["schema_version"]) is not int
+            or payload["schema_version"] != 2
             or payload["kind"] != "c6_diagnostic_shard_v2"
             or payload["binding_signature"] != binding_signature
             or not isinstance(items, list)
             or payload["completed_count"] != len(items)
         ):
             _raise("diagnostic child checkpoint identity/progress is invalid")
+        expected_hash = hashlib.sha256("".join(f"{item}\n" for item in item_ids).encode()).hexdigest()
+        if (type(payload["item_manifest_count"]) is not int
+            or payload["item_manifest_count"] != len(item_ids)
+            or payload["item_manifest_sha256"] != expected_hash
+            or type(payload["completed_count"]) is not int):
+            _raise("diagnostic checkpoint manifest identity is invalid")
+        for item in items:
+            if (not isinstance(item, dict)
+                or set(item) != {"item_id", "item_kind", "result_schema", "result_sha256", "result"}
+                or not isinstance(item["result"], dict)
+                or (item["item_kind"], item["result_schema"]) != _ITEM_SCHEMAS.get(str(item["item_id"]).split("/", 1)[0])
+                or item["result_sha256"] != canonical_payload_hash(item["result"])):
+                _raise("diagnostic checkpoint item hash/schema is invalid")
         completed = [str(item.get("item_id", "")) for item in items if isinstance(item, dict)]
     if not completed or completed != list(item_ids[: len(completed)]):
         _raise("child checkpoint does not contain an exact nonempty prefix")
     return completed
+
+
+_ITEM_SCHEMAS = {
+    "evaluation": ("evaluation", "evaluation_record"),
+    "control": ("control", "synthetic_control"),
+    "no-drift": ("no_drift", "no_drift_pair"),
+    "qualification": ("qualification", "S_QUALIFICATION_RUN.per_residual_schema"),
+    "scenario": ("l2_scenario", "L2_result"),
+}
+
+
+class DiagnosticCheckpoint:
+    """Run bounded ordered chunks; persist completed results before exiting 75."""
+
+    def __init__(self, path: Path, item_ids: Sequence[str], signature: str, *,
+                 resume_signature: str = "", budget_seconds: float = 900,
+                 chunk_size: int = 10) -> None:
+        if len(set(item_ids)) != len(item_ids) or not item_ids or chunk_size < 1 or budget_seconds < 0:
+            _raise("invalid checkpoint execution manifest or budget")
+        self.path, self.ids, self.signature = path, list(item_ids), signature
+        self.deadline = time.monotonic() + budget_seconds
+        self.chunk_size, self.cursor, self.new_count = chunk_size, 0, 0
+        self.items: list[dict[str, Any]] = []
+        if path.is_symlink():
+            _raise("checkpoint cannot be a symlink")
+        if path.exists():
+            if not resume_signature:
+                _raise("checkpoint exists without authorized resume")
+            raw = path.read_bytes()
+            checkpoint_progress(raw, stage="L1", binding_signature=resume_signature, item_ids=self.ids)
+            self.items = strict_json_loads(raw)["completed_items"]
+        elif resume_signature:
+            _raise("authorized resume checkpoint is missing")
+
+    @classmethod
+    def from_environment(cls, item_ids: Sequence[str], *, chunk_size: int = 10) -> DiagnosticCheckpoint:
+        path = os.environ.get("C6_BOUND_CHECKPOINT_PATH")
+        signature = os.environ.get("C6_BOUND_SIGNATURE")
+        if not path or not signature:
+            _raise("diagnostic execution requires a bound checkpoint identity")
+        return cls(Path(path), item_ids, signature, chunk_size=chunk_size,
+                   resume_signature=os.environ.get("C6_BOUND_RESUME_SIGNATURE", ""))
+
+    def map(self, worker: Callable[..., Any], tasks: Sequence[Any], ids: Sequence[str], *,
+            workers: int = 4, finalize: Callable[[list[Any]], None] | None = None) -> list[Any]:
+        start, end = self.cursor, self.cursor + len(ids)
+        if len(tasks) != len(ids) or list(ids) != self.ids[start:end]:
+            _raise("checkpoint work is not the next exact manifest segment")
+        self.cursor = end
+        offset = max(start, len(self.items))
+        while offset < end:
+            if self.new_count and time.monotonic() >= self.deadline:
+                raise SystemExit(75)
+            stop = min(offset + self.chunk_size, end)
+            batch = tasks[offset - start:stop - start]
+            if workers == 1:
+                results = list(map(worker, batch))
+            else:
+                with ProcessPoolExecutor(max_workers=workers) as executor:
+                    results = list(executor.map(worker, batch))
+            if finalize is not None:
+                finalize(results)
+            for item_id, result in zip(self.ids[offset:stop], results):
+                kind, schema = _ITEM_SCHEMAS[item_id.split("/", 1)[0]]
+                self.items.append({"item_id": item_id, "item_kind": kind, "result_schema": schema,
+                                   "result_sha256": canonical_payload_hash(result), "result": result})
+            self.new_count += stop - offset
+            offset = stop
+            self.save()
+        if self.new_count and end < len(self.ids) and time.monotonic() >= self.deadline:
+            raise SystemExit(75)
+        return copy.deepcopy([item["result"] for item in self.items[start:end]])
+
+    def save(self) -> None:
+        payload = {"schema_version": 2, "kind": "c6_diagnostic_shard_v2",
+                   "binding_signature": self.signature, "item_manifest_count": len(self.ids),
+                   "item_manifest_sha256": hashlib.sha256("".join(f"{item}\n" for item in self.ids).encode()).hexdigest(),
+                   "completed_count": len(self.items), "completed_items": self.items}
+        _atomic_bytes(self.path, canonical_json_bytes(payload), replace=True)
+
+
+def producer_dependency(record_id: str, records: Sequence[Mapping[str, Any]]) -> tuple[str, str] | None:
+    """Resolve producer names from this experiment's R, never a version literal."""
+    target = {"c6.s.qualification": "c6.base.l1", "c6.base_plus_s.l1": "c6.s.qualification",
+              "c6.base.selected.l4": "c6.base.selected.l2",
+              "c6.base_plus_s.selected.l4": "c6.base_plus_s.selected.l2"}.get(record_id)
+    if target is None:
+        return None
+    matches = [record for record in records if record["record_id"] == target]
+    if len(matches) != 1:
+        _raise("R must contain exactly one producer record")
+    return str(matches[0]["workflow_binding_id"]), str(matches[0]["logical_run_id"])
 
 
 def runtime_binding_signature(payload: Mapping[str, Any]) -> str:
@@ -1094,17 +1207,9 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
         "artifact_full_byte_sha256": "", "attempt_id": "", "binding_id": "",
         "logical_run_id": "", "workflow_run_id": "",
     }
-    producer_map = {
-        "c6.s.qualification": ("c6.base.l1", "c6-v6-base-l1"),
-        "c6.base_plus_s.l1": ("c6.s.qualification", "c6-v6-s-qualification"),
-        "c6.base.selected.l4": ("c6.selected.l2", "c6-v6-base-l2"),
-        "c6.base_plus_s.selected.l4": (
-            "c6.selected.l2", "c6-v6-base-plus-s-l2"
-        ),
-    }
     direct_export = None
     direct_root = None
-    expected_producer = producer_map.get(binding["record_id"])
+    expected_producer = producer_dependency(binding["record_id"], run_bindings["binding_records"])
     if expected_producer is None:
         if producer_identity != empty_producer:
             _raise("binding requires the empty producer identity")
@@ -1141,7 +1246,7 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
         store.producer(
             transitive_identity,
             expected_record="c6.base.l1",
-            expected_logical_run="c6-v6-base-l1",
+            expected_logical_run=next(record["logical_run_id"] for record in run_bindings["binding_records"] if record["record_id"] == "c6.base.l1"),
             workflow=binding["workflow"],
             run_bindings_revision=args.run_bindings_revision,
             destination=base_root,
@@ -1271,6 +1376,9 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
         fencing_token=fencing_token,
         resume_from=args.resume_from,
     )
+    if args.resume_from and binding["stage"] != "L4":
+        # restore() authenticated these exact bytes against the prior sealed wrapper.
+        environment["C6_BOUND_RESUME_SIGNATURE"] = strict_json_load(checkpoint_path)["binding_signature"]
     completed = subprocess.run(argv, check=False, env=environment)
     export_root = Path("artifacts/checkpoints/c6/sealed-export")
     valid_result_codes = set(binding["exit_semantics"]["terminal_success_exit_codes"])

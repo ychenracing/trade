@@ -337,6 +337,7 @@ def qualify_base_payload(
     R_revision: str,
     I_B: Mapping[str, Any],
     I_S: Mapping[str, Any],
+    checkpointed: bool = False,
 ) -> dict[str, Any]:
     evaluations = base_payload.get("evaluations")
     if not isinstance(evaluations, list):
@@ -363,7 +364,13 @@ def qualify_base_payload(
     if not residual:
         raise ValueError("empty residual set forbids S qualification")
     ids = [item["scenario_id"] for item in residual]
-    results = [_qualify(item) for item in residual]
+    if checkpointed:
+        from quantfusion.application.c6_bound_run import DiagnosticCheckpoint
+        item_ids = [f"qualification/{item}" for item in ids]
+        checkpoint = DiagnosticCheckpoint.from_environment(item_ids)
+        results = checkpoint.map(_qualify, residual, item_ids, workers=1)
+    else:
+        results = [_qualify(item) for item in residual]
     return {
         "schema_version": 2,
         "kind": "c6_s_qualification",
@@ -427,7 +434,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     }
     if (
         base_identity["binding_id"] != "c6.base.l1"
-        or base_identity["logical_run_id"] != "c6-v6-base-l1"
+        or base_identity["logical_run_id"] != next(record["logical_run_id"] for record in bindings["binding_records"] if record["record_id"] == "c6.base.l1")
         or manifest["candidate_id"] != "C6-Base"
         or manifest["source_revision"]
         != bindings["implementations"]["I_B"]["commit"]
@@ -440,6 +447,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         R_revision=manifest["run_bindings_revision"],
         I_B=bindings["implementations"]["I_B"],
         I_S=bindings["implementations"]["I_S"],
+        checkpointed=True,
     )
     qualification = prereg["S_QUALIFICATION_RUN"]
     expected = qualification["criteria"]

@@ -16,6 +16,97 @@ from quantfusion.application.c6_bound_run import (
 from quantfusion.application.c6_contract import canonical_payload_hash, strict_json_load
 TOKEN_1 = "0000000000000001"
 TOKEN_2 = "0000000000000002"
+
+def _checkpoint_square(value: int) -> dict:
+    return {"square": value * value}
+
+
+def test_child_checkpoint_resumes_exact_prefix_without_recomputation(tmp_path) -> None:
+    from quantfusion.application import c6_bound_run as runner
+    assert hasattr(runner, "DiagnosticCheckpoint"), "children need an actual checkpoint executor"
+    path = tmp_path / "child.json"
+    ids = [f"scenario/{i}" for i in range(5)]
+    first = runner.DiagnosticCheckpoint(path, ids, "a" * 64, budget_seconds=0, chunk_size=2)
+    with pytest.raises(SystemExit) as stopped:
+        first.map(_checkpoint_square, list(range(5)), ids, workers=1)
+    assert stopped.value.code == 75
+    saved = strict_json_load(path)
+    assert [item["item_id"] for item in saved["completed_items"]] == ids[:2]
+    assert runner.checkpoint_progress(path.read_bytes(), stage="L2", binding_signature="a" * 64, item_ids=ids) == ids[:2]
+    second = runner.DiagnosticCheckpoint(path, ids, "b" * 64, resume_signature="a" * 64)
+    # Poison completed inputs: resumed work must never evaluate these again.
+    resumed = second.map(_checkpoint_square, [None, None, 2, 3, 4], ids, workers=1)
+    assert resumed == [_checkpoint_square(i) for i in range(5)]
+    assert strict_json_load(path)["binding_signature"] == "b" * 64
+    with pytest.raises(runner.BoundRunError):
+        runner.DiagnosticCheckpoint(path, ids[::-1], "c" * 64, resume_signature="b" * 64)
+    with pytest.raises(runner.BoundRunError):
+        runner.DiagnosticCheckpoint(path, ids, "c" * 64)
+
+
+def test_producer_dependency_uses_frozen_record_instead_of_version_literal() -> None:
+    from quantfusion.application import c6_bound_run as runner
+    assert hasattr(runner, "producer_dependency"), "producer identity must be derived from R"
+    records = [{"record_id": "c6.base.l1", "workflow_binding_id": "c6.base.l1", "logical_run_id": "c6-v10-base-l1"}]
+    assert runner.producer_dependency("c6.s.qualification", records) == ("c6.base.l1", "c6-v10-base-l1")
+    with pytest.raises(runner.BoundRunError):
+        runner.producer_dependency("c6.s.qualification", records + records)
+
+
+def test_official_checkpoint_sorted_storage_preserves_execution_prefix() -> None:
+    from quantfusion.application.c6_bound_run import checkpoint_progress
+    from quantfusion.application.c6_contract import canonical_json_bytes
+    ids = ["scenario/prefix-05", "scenario/add-one-01", "scenario/random-01"]
+    payload = {"signature": "a" * 64, "provenance": {}, "completed": 2,
+               "scenario_count": 3, "results": [{"scenario_id": "add-one-01"}, {"scenario_id": "prefix-05"}]}
+    assert checkpoint_progress(canonical_json_bytes(payload), stage="L4", binding_signature="b" * 64, item_ids=ids) == ids[:2]
+
+
+def test_official_bound_budget_yields_only_after_a_durable_incomplete_chunk(monkeypatch) -> None:
+    from quantfusion.application import stress
+    assert hasattr(stress, "_bound_budget_expired"), "official runner must yield before platform cancellation"
+    monkeypatch.setenv("C6_BOUND_CHECKPOINT_PATH", "checkpoint.json")
+    assert stress._bound_budget_expired(0, 901, completed=10, total=100)
+    assert not stress._bound_budget_expired(0, 899, completed=10, total=100)
+    assert not stress._bound_budget_expired(0, 901, completed=100, total=100)
+    monkeypatch.delenv("C6_BOUND_CHECKPOINT_PATH")
+    assert not stress._bound_budget_expired(0, 901, completed=10, total=100)
+
+
+def _cloud_checkpoint_smoke(stage: str, directory: Path) -> None:
+    """Exercise real process pools and sealed artifact transfer using synthetic rows."""
+    import hashlib
+    import json
+    from quantfusion.application.c6_bound_run import DiagnosticCheckpoint, checkpoint_progress
+    directory.mkdir(parents=True, exist_ok=True)
+    ids = [f"scenario/{i}" for i in range(5)]
+    path = directory / "child-checkpoint.bin"
+    if stage == "checkpoint":
+        checkpoint = DiagnosticCheckpoint(path, ids, "a" * 64, budget_seconds=0, chunk_size=2)
+        try:
+            checkpoint.map(dict, [{"ordinal": i} for i in range(5)], ids, workers=2)
+        except SystemExit as stopped:
+            assert stopped.code == 75
+        else:
+            raise AssertionError("fixture must checkpoint before completion")
+        assert checkpoint_progress(path.read_bytes(), stage="L2", binding_signature="a" * 64, item_ids=ids) == ids[:2]
+        seal_export(directory / "export", kind="checkpoint", source_revision="a" * 40,
+                    run_bindings_revision="b" * 40, workflow_revision="c" * 40,
+                    binding_id="c6.fixture", logical_run_id="fixture", attempt_id="attempt-1",
+                    fencing_token=TOKEN_1, attempt_identity=_attempt_identity(),
+                    files={"child-checkpoint.bin": path.read_bytes()})
+    elif stage == "resume":
+        manifest = strict_json_load(directory / "manifest.json")
+        assert manifest["kind"] == "checkpoint" and manifest["sealed"] is True
+        assert set(manifest["files"]) == {"child-checkpoint.bin"}
+        assert manifest["files"]["child-checkpoint.bin"] == hashlib.sha256(path.read_bytes()).hexdigest()
+        checkpoint = DiagnosticCheckpoint(path, ids, "b" * 64, resume_signature="a" * 64)
+        actual = checkpoint.map(dict, [None, None, *({"ordinal": i} for i in range(2, 5))], ids, workers=2)
+        expected = [{"ordinal": i} for i in range(5)]
+        assert actual == expected
+        (directory / "verified.json").write_text(json.dumps({"passed": True, "completed": len(actual), "resumed_without_recompute": True}))
+    else:
+        raise ValueError("unknown fixture stage")
 def test_v2_attempt_paths_are_derived_only_from_r_identity() -> None:
     paths = resolve_attempt_paths(
         {"logical_run_id": "c6-v6-base-l1", "stage": "L1"}, "r1-aabbccddeeff"
