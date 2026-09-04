@@ -1,0 +1,37 @@
+{
+  "schema_version": 2,
+  "kind": "c6_baseline_rebuild_preregistration_supersession",
+  "status": "frozen_before_rebuild_evidence",
+  "supersedes": {
+    "path": "artifacts/diagnostics/c6-baseline-rebuild-preregistration.json",
+    "commit": "4cd65fe12fde6bb404fecc7b872123205dab2367",
+    "sha256": "84247d47bf5bb17aa85905c7f8490ad5b7c525c60469efcb785d9d0fc59e2cca",
+    "git_blob": "e5daf40afccf1e3d0e22375c39ff3876ab1b48a9"
+  },
+  "reason": "The v1 authorized new test path is outside the workflow's classified pre-freeze test prefix and would fail closed as an unknown test file.",
+  "resolution": {
+    "method": "Use every v1 field unchanged except replace authorized_writes_after_this_commit with the complete list below.",
+    "authorized_writes_after_this_commit": [
+      "artifacts/diagnostics/c6-current-baseline-cohort.txt",
+      "artifacts/diagnostics/c6-baseline-rebuild.json",
+      "tests/c6_non_economic/test_baseline_rebuild.py",
+      "README.md",
+      "docs/ARCHITECTURE.md",
+      "docs/VALIDATION.md"
+    ]
+  },
+  "unchanged_frozen_economic_contract": {
+    "economic_contract_changed": false,
+    "transition_reference_sha256": "63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c",
+    "failure_count": 649,
+    "failure_ids_text_sha256": "d616908f2831f3d92fc50a20c303b840cd0db273d8d7cb206bad64940821f9d7",
+    "boundary_count": 110,
+    "boundary_ids_text_sha256": "2881a47ee1c856e214f30b5ff232f7232614b97bc93fec8f20b55b3499c31c69",
+    "control_count": 6,
+    "control_ids_text_sha256": "61ba665ca0ecc31aa7aa0e5d6b93a5712ef40622b7cb05a41989cac9a34c5b8f",
+    "cohort_count": 765,
+    "cohort_text_sha256": "8a2bb25716cb94adc43c4bb4fd39ff868ba5223d788f62a580917c12cbe2c4d7",
+    "new_backtest_authorized": false,
+    "accepted_or_canonical_publication_authorized": false
+  }
+}
