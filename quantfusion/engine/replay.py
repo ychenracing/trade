@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, replace
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any
 
 import pandas as pd
 
@@ -41,6 +42,29 @@ _local_frame = local_frame
 _normalized_timestamp = normalized_timestamp
 _weak_regime_config = weak_regime_config
 _weak_regime_policy = weak_regime_policy
+
+_C6_DIAGNOSTIC_REQUEST_KEYS = {
+    "schema_version",
+    "intervention_id",
+    "recording_mode",
+    "scenario_id",
+    "diagnostic_noncanonical",
+    "allow_publication",
+}
+_C6_INTERVENTIONS = {
+    "BASELINE",
+    "F0_ONLY",
+    "F0_F1",
+    "U_ONLY",
+    "C6_BASE",
+    "C6_BASE_PLUS_S",
+    "W0_NO_601869",
+    "W1_DATA_MAP_ONLY",
+    "W2_POOL_DENOMINATOR_ONLY",
+    "W3_REAL_INTENTS_FIXED_REFERENCE_U",
+    "W4_FULL_BASE_PRODUCTION_POOL_RELATIVE",
+    "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK",
+}
 
 class ProductionRouteController:
     """Apply the daily outer route inside one persistent production ledger.
@@ -372,6 +396,44 @@ class ProductionReplayEngine:
         self.policy = policy
         self.delegate: BacktestEngine | None = None
 
+    @staticmethod
+    def validate_c6_diagnostic_request(
+        request: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        """Validate the frozen, non-publishable v5 diagnostic request."""
+        if not isinstance(request, Mapping) or any(
+            not isinstance(key, str) for key in request
+        ):
+            raise ValueError("diagnostic_request must be an object with string keys")
+        missing = sorted(_C6_DIAGNOSTIC_REQUEST_KEYS - set(request))
+        extra = sorted(set(request) - _C6_DIAGNOSTIC_REQUEST_KEYS)
+        if missing or extra:
+            raise ValueError(
+                f"diagnostic_request has missing={missing} extra={extra}"
+            )
+        if request["schema_version"] != 1 or isinstance(
+            request["schema_version"], bool
+        ):
+            raise ValueError("schema_version must be literal integer 1")
+        if request["intervention_id"] not in _C6_INTERVENTIONS:
+            raise ValueError("intervention_id is not in the frozen enum")
+        if request["recording_mode"] not in {"DEFAULT", "OFF", "ON"}:
+            raise ValueError("recording_mode is not in the frozen enum")
+        if not isinstance(request["scenario_id"], str) or not request["scenario_id"]:
+            raise ValueError("scenario_id must be a nonempty string")
+        if request["recording_mode"] != "DEFAULT":
+            scenario = request["scenario_id"]
+            no_drift = scenario in {"add-one-13-601869", "random-20260807-03-004"} or (
+                scenario.startswith("prefix-") and scenario[7:] in {f"{n:02d}" for n in range(5, 18)}
+            )
+            if request["intervention_id"] not in {"C6_BASE", "C6_BASE_PLUS_S"} or not no_drift:
+                raise ValueError("recording_mode is restricted to the frozen selected-candidate no-drift manifest")
+        if request["diagnostic_noncanonical"] is not True:
+            raise ValueError("diagnostic_noncanonical must be literal true")
+        if request["allow_publication"] is not False:
+            raise ValueError("allow_publication must be literal false")
+        return request
+
     def run(
         self,
         symbols_dict: dict[str, str],
@@ -434,6 +496,79 @@ class ProductionReplayEngine:
         result["requested_symbols"] = sorted(symbols_dict)
         result["selected_symbols"] = sorted(symbols_dict)
         result["unavailable_symbols"] = []
+        return result
+
+    def run_c6_diagnostic(
+        self,
+        symbols_dict: dict[str, str],
+        start_date: str,
+        end_date: str,
+        *,
+        diagnostic_request: Mapping[str, Any],
+        data_dir: str,
+        regime_data_dir: str,
+        leader_data_dir: str | None = None,
+        indicator_state: str = "warm",
+        warmup_calendar_days: int = 365,
+        per_symbol_config: dict[str, dict] | None = None,
+        profile: str | None = None,
+        config_route: str = "auto",
+        risk_state: dict | None = None,
+    ) -> dict[str, Any]:
+        """Run the explicit non-canonical C6 diagnostic entrypoint."""
+        request = dict(self.validate_c6_diagnostic_request(diagnostic_request))
+        diagnostic_symbols = dict(symbols_dict)
+        if request["intervention_id"] == "W0_NO_601869":
+            diagnostic_symbols.pop("601869", None)
+
+        route_sequence = simulate_route_sequence(
+            regime_data_dir,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        controller = ProductionRouteController(
+            route_sequence,
+            leader_data_dir=leader_data_dir or data_dir,
+        )
+        starts_defensive = controller.starts_defensive
+        replay_policy = self.policy or (
+            replace(
+                PortfolioPolicy(),
+                drawdown_alert=WEAK_DRAWDOWN_ALERT,
+                confirmed_drawdown=WEAK_CONFIRMED_DRAWDOWN,
+                emergency_drawdown=WEAK_EMERGENCY_DRAWDOWN,
+                terminal_drawdown=WEAK_TERMINAL_DRAWDOWN,
+                concentration_drawdown_adjustment=0.01,
+            )
+            if starts_defensive
+            else PortfolioPolicy()
+        )
+        self.delegate = BacktestEngine(
+            self.initial_capital,
+            cfg=self.cfg,
+            policy=replay_policy,
+        )
+        setattr(self.delegate, "_c6_diagnostic_request", request)
+        result = self.delegate.run(
+            diagnostic_symbols,
+            start_date,
+            end_date,
+            per_symbol_config=per_symbol_config,
+            profile=profile,
+            config_route=config_route,
+            data_dir=data_dir,
+            indicator_state=indicator_state,
+            warmup_calendar_days=warmup_calendar_days,
+            allocation_mode="ensemble",
+            risk_state=risk_state,
+            route_controller=controller,
+        )
+        result["route_sequence"] = result["production_replay"]["route_sequence"]
+        result["deployment_policy"] = "production_daily_replay"
+        result["requested_symbols"] = sorted(symbols_dict)
+        result["selected_symbols"] = sorted(diagnostic_symbols)
+        result["unavailable_symbols"] = []
+        result["diagnostic_request"] = request
         return result
 
 

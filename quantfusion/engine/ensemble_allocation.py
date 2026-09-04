@@ -53,6 +53,31 @@ _require_int = require_int
 class EnsembleAllocationMixin:
     """Sleeve preparation, buy authorization, execution, and finalization."""
 
+    def _c6_feature_enabled(self, feature: str) -> bool:
+        """Return the explicit diagnostic ablation state; production is full-on."""
+        request = getattr(self, "_c6_diagnostic_request", None)
+        if request is None:
+            return True
+        enabled = {
+            "BASELINE": set(),
+            "F0_ONLY": {"F0"},
+            "F0_F1": {"F0", "F1"},
+            "U_ONLY": {"U"},
+            "C6_BASE": {"F0", "F1", "U"},
+            "C6_BASE_PLUS_S": {"F0", "F1", "U", "S"},
+            "W0_NO_601869": set(),
+            "W1_DATA_MAP_ONLY": set(),
+            "W2_POOL_DENOMINATOR_ONLY": set(),
+            "W3_REAL_INTENTS_FIXED_REFERENCE_U": {"F0", "F1", "U"},
+            "W4_FULL_BASE_PRODUCTION_POOL_RELATIVE": {"F0", "F1"},
+            "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK": {"F0", "F1"},
+        }
+        return feature in enabled[str(request["intervention_id"])]
+
+    def _c6_intervention_id(self) -> str | None:
+        request = getattr(self, "_c6_diagnostic_request", None)
+        return None if request is None else str(request["intervention_id"])
+
     def _assess_run_warmup_health(
         self,
         request: _RunRequest,
@@ -183,6 +208,10 @@ class EnsembleAllocationMixin:
                 allocation_lookbacks=lookbacks,
                 sleeve_name=name,
             )
+            diagnostic = getattr(self, "_c6_diagnostic_request", None)
+            if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
+                sleeve._c6_action_lifecycle = []
+                sleeve._c6_action_by_signal = {}
             sleeve._indicator_state = indicator_state
             sleeve._warmup_calendar_days = warmup_days
             sleeve._requested_start_date = request.start_date
@@ -331,9 +360,17 @@ class EnsembleAllocationMixin:
         states: list[_PreparedSleeveRun],
         date: pd.Timestamp,
         external_risk_level: int = 0,
-    ) -> None:
+        carried_symbols: set[str] | None = None,
+    ) -> dict[str, float]:
         """Admit symbols by the mean of comparable percentile ranks (Borda score)."""
         held = self._held_portfolio_symbols(states)
+        carried = set(carried_symbols or ()) & {
+            signal.symbol
+            for state in states
+            for signal, _ in state.pending
+            if signal.direction == "buy"
+        }
+        existing = held | carried
         hard_limit = int(self.cfg["max_positions"])
         maximum = self._current_position_limit(states, external_risk_level)
         if len(held) > hard_limit:
@@ -344,38 +381,54 @@ class EnsembleAllocationMixin:
                 signal.symbol
                 for signal, _ in state.pending
                 if signal.direction == "buy"
-                and signal.symbol not in held
+                and signal.symbol not in existing
                 and signal.symbol in state.data_map
                 and date in state.data_map[signal.symbol].index
             }
             candidate_symbols.update(candidates)
-        score_samples = {
-            symbol: [] for symbol in candidate_symbols
-        }
-        for state in states:
-            scores = state.sleeve._allocation_scores(state.data_map, date)
+        score_samples = {symbol: [] for symbol in candidate_symbols}
+        missing_scores: set[str] = set()
+        for state_index, state in enumerate(states):
             candidates = {
                 signal.symbol
                 for signal, _ in state.pending
                 if signal.direction == "buy"
-                and signal.symbol not in held
+                and signal.symbol not in existing
                 and signal.symbol in state.data_map
                 and date in state.data_map[signal.symbol].index
             }
+            score_data_map = state.data_map
+            if self._c6_intervention_id() == "W1_DATA_MAP_ONLY":
+                score_data_map = {
+                    symbol: frame
+                    for symbol, frame in state.data_map.items()
+                    if symbol != "601869"
+                }
+            scores = (
+                state.sleeve._fixed_reference_scores(date, candidates)
+                if self._c6_feature_enabled("U")
+                else state.sleeve._allocation_scores(score_data_map, date)
+            )
+            if getattr(self, "_c6_score_trace", None) is not None:
+                self._c6_score_trace.append({"decision_timestamp": date.strftime("%Y-%m-%d"), "state_index": state_index, "sleeve_name": state.sleeve.sleeve_name, "fixed_reference": self._c6_feature_enabled("U"), "pool_members": sorted(score_data_map), "scores": {symbol: float(scores[symbol]) for symbol in sorted(scores)}})
             for symbol in candidates:
-                score_samples[symbol].append(scores.get(symbol, 0.0))
+                if symbol in scores:
+                    score_samples[symbol].append(scores[symbol])
+                elif self._c6_feature_enabled("U"):
+                    missing_scores.add(symbol)
         date_str = date.strftime("%Y-%m-%d")
         route_migrations = {
             signal.symbol
             for state in states
             for signal, strategy in state.pending
             if signal.direction == "buy"
-            and signal.symbol not in held
+            and signal.symbol not in existing
             and getattr(strategy, "name", "") == "positive_momentum_hold"
         }
         admission_scores = {
             symbol: float(np.mean(samples))
             for symbol, samples in score_samples.items()
+            if samples and symbol not in missing_scores
         }
         # A six-to-twelve-name expansion keeps the fixed five-name production
         # basket on its established path; only additional names must earn
@@ -447,9 +500,11 @@ class EnsembleAllocationMixin:
         else:
             required_confirmation_days = 1
             self._new_candidate_intent_streak = {}
-            confirmation_eligible = set(score_samples)
+            confirmation_eligible = set(admission_scores)
 
-        eligible_new = set(score_samples) & score_eligible & confirmation_eligible
+        eligible_new = (
+            set(admission_scores) & score_eligible & confirmation_eligible
+        )
         ranked = sorted(
             eligible_new,
             key=lambda symbol: (
@@ -458,7 +513,7 @@ class EnsembleAllocationMixin:
                 symbol,
             ),
         )
-        migration_capacity = max(maximum - len(held), 0)
+        migration_capacity = max(maximum - len(existing), 0)
         admitted_migrations = set(
             sorted(
                 route_migrations,
@@ -466,9 +521,9 @@ class EnsembleAllocationMixin:
             )[:migration_capacity]
         )
         candidate_capacity = max(
-            maximum - len(held) - len(admitted_migrations), 0
+            maximum - len(existing) - len(admitted_migrations), 0
         )
-        allowed = held | admitted_migrations | set(ranked[:candidate_capacity])
+        allowed = existing | admitted_migrations | set(ranked[:candidate_capacity])
         for state in states:
             retained: list[tuple[Signal, BaseStrategy]] = []
             for signal, strategy in state.pending:
@@ -476,13 +531,20 @@ class EnsembleAllocationMixin:
                     if signal.symbol in route_migrations:
                         event = "rejected_portfolio_symbol_limit"
                     elif (
-                        signal.symbol in score_samples
+                        signal.symbol in candidate_symbols
+                        and signal.symbol not in admission_scores
+                    ):
+                        event = (
+                            "rejected_new_candidate_missing_fixed_reference_score"
+                        )
+                    elif (
+                        signal.symbol in admission_scores
                         and signal.symbol not in score_eligible
                     ):
                         event = "rejected_new_candidate_allocation_score"
                     elif (
                         confirmation_required
-                        and signal.symbol in score_samples
+                        and signal.symbol in admission_scores
                         and signal.symbol not in confirmation_eligible
                     ):
                         event = "rejected_new_candidate_confirmation"
@@ -502,6 +564,7 @@ class EnsembleAllocationMixin:
                     continue
                 retained.append((signal, strategy))
             state.pending = retained
+        return admission_scores
 
     def _update_tail_sleeve_guard(
         self,
@@ -598,6 +661,18 @@ class EnsembleAllocationMixin:
         # internal-transfer or fill-allocation ledger that this model does not
         # have. Opposite same-day fills therefore execute on both sides and pay
         # their respective modeled costs; sells still execute before buys.
+        carried_symbols = self._held_portfolio_symbols(states)
+        retained_defensive_books = {
+            (
+                state_index,
+                str(state.sleeve.sleeve_name),
+                str(signal.symbol),
+                str(signal.strategy_name),
+            )
+            for state_index, state in enumerate(states)
+            for signal, strategy in state.pending
+            if signal.direction == "sell" and strategy is None
+        }
         for state in states:
             state.sleeve._start_trading_day()
             state.pending = state.sleeve._execute_pending_signals(
@@ -607,6 +682,29 @@ class EnsembleAllocationMixin:
                 state.date_to_pos,
                 frozenset({"sell"}),
             )
+        if self._c6_feature_enabled("F1"):
+            date_str = date.strftime("%Y-%m-%d")
+            for state_index, state in enumerate(states):
+                sleeve_name = str(state.sleeve.sleeve_name)
+                retained: list[tuple[Signal, BaseStrategy]] = []
+                for signal, strategy in state.pending:
+                    book = (
+                        state_index,
+                        sleeve_name,
+                        str(signal.symbol),
+                        str(signal.strategy_name),
+                    )
+                    if signal.direction == "buy" and book in retained_defensive_books:
+                        state.sleeve._record_order_event(
+                            date=date_str,
+                            signal=signal,
+                            event="blocked_retained_defensive_sell",
+                            state_index=state_index,
+                            sleeve_name=sleeve_name,
+                        )
+                        continue
+                    retained.append((signal, strategy))
+                state.pending = retained
         self._rebalance_free_sleeve_cash(states, date)
         if cm_overlay is not None:
             apply_cooldown_buy_gate(cm_overlay, states, date, date_pos)
@@ -616,12 +714,14 @@ class EnsembleAllocationMixin:
                 cm_overlay,
                 states, date, self._held_portfolio_symbols(states)
             )
-        self._authorize_portfolio_buys(
+        admission_scores = self._authorize_portfolio_buys(
             states,
             date,
             cm_overlay.risk_level if cm_overlay is not None else 0,
+            carried_symbols,
         )
         for state in states:
+            setattr(state.sleeve, "_c6_buy_scores", admission_scores)
             state.pending = state.sleeve._execute_pending_signals(
                 state.pending,
                 state.data_map,
@@ -629,6 +729,7 @@ class EnsembleAllocationMixin:
                 state.date_to_pos,
                 frozenset({"buy"}),
             )
+            delattr(state.sleeve, "_c6_buy_scores")
         if len(self._held_portfolio_symbols(states)) > int(self.cfg["max_positions"]):
             raise RuntimeError("portfolio symbol limit exceeded after buy execution")
 
