@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  C6_PREFREEZE: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'codex/c6-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure' || github.head_ref == 'codex/c6-causal-risk-closure-v4' || github.head_ref == 'codex/c6-v4-ci-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v5' || github.head_ref == 'codex/c6-v5-ci-preflight' || github.head_ref == 'codex/c6-baseline-rebuild') }}
+  C6_PREFREEZE: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'codex/c6-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure' || github.head_ref == 'codex/c6-causal-risk-closure-v4' || github.head_ref == 'codex/c6-v4-ci-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v5' || github.head_ref == 'codex/c6-v5-ci-preflight' || github.head_ref == 'codex/c6-v6-ci-execution' || github.head_ref == 'codex/c6-baseline-rebuild') }}
 
 jobs:
   test:
@@ -31,27 +31,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        if: env.C6_PREFREEZE != 'true'
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: ${{ matrix.lock-file }}
       - name: Install locked dependencies
-        if: env.C6_PREFREEZE != 'true'
         run: python -m pip install -r ${{ matrix.lock-file }}
       - name: Compile every Python file
-        if: env.C6_PREFREEZE != 'true'
         run: python -m compileall -q .
       - name: Lint every Python file
-        if: env.C6_PREFREEZE != 'true'
         run: ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
       - name: Run complete test suite
         if: env.C6_PREFREEZE != 'true'
         run: python -m pytest -q ${{ matrix.pytest-args }}
-      - name: Validate C6 pre-freeze engineering surface
+      - name: Run C6 pre-freeze engineering tests
         if: env.C6_PREFREEZE == 'true'
         run: |
-          python3 -I -S - <<'PY'
+          python - <<'PY'
+          import os
+          import subprocess
+          import sys
           from pathlib import Path
 
           safe_files = {
@@ -103,6 +102,14 @@ jobs:
               "tests/c6_non_economic/test_c6_early_concentration.py",
               "tests/c6_non_economic/test_c6_s_qualification.py",
           }
+          embargoed_prefixes = (
+              "tests/regression/test_quant_fusion.py::IntegrationTests::",
+          )
+          embargoed_nodes = {
+              "tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_weak_real_execution_matches_frozen_research_point",
+              "tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_frozen_bull_single_symbol_golden_metric",
+              "tests/regression/test_regime_adaptive.py::DynamicRouteStateMachineTests::test_route_sequence_is_emitted_and_current_day_route_is_consistent",
+          }
           discovered_files = {
               path.as_posix() for path in Path("tests").rglob("test_*.py")
           }
@@ -144,11 +151,43 @@ jobs:
                       sorted(unknown_files | unplanned_c6_python | missing_files)
                   )
               )
-          print(
-              "C6 pre-freeze surface is static-only; "
-              f"{len(required_c6_files)} staged C6 test files are present"
+          selected_files = safe_files | required_c6_files
+          collected = subprocess.run(
+              [sys.executable, "-m", "pytest", "--collect-only", "-q", *sorted(selected_files)],
+              check=True,
+              capture_output=True,
+              text=True,
+          ).stdout.splitlines()
+          nodes = [
+              line.strip()
+              for line in collected
+              if line.startswith("tests/") and "::" in line
+          ]
+          collected_nodes = set(nodes)
+          unmatched_embargoed = embargoed_nodes - collected_nodes
+          unmatched_prefixes = {
+              prefix
+              for prefix in embargoed_prefixes
+              if not any(node.startswith(prefix) for node in nodes)
+          }
+          if unmatched_embargoed or unmatched_prefixes:
+              raise SystemExit(
+                  "unmatched economic embargo selectors:\n"
+                  + "\n".join(sorted(unmatched_embargoed | unmatched_prefixes))
+              )
+          executable_nodes = [
+              node
+              for node in nodes
+              if node not in embargoed_nodes
+              and not node.startswith(embargoed_prefixes)
+          ]
+          if not executable_nodes:
+              raise SystemExit("no pre-freeze engineering tests collected")
+          Path(os.environ["RUNNER_TEMP"], "c6-prefreeze-nodes").write_text(
+              "\n".join(executable_nodes) + "\n", encoding="utf-8"
           )
           PY
+          xargs -d '\n' python -m pytest -q < "$RUNNER_TEMP/c6-prefreeze-nodes"
 
   typecheck:
     name: Canonical package typecheck
@@ -157,20 +196,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        if: env.C6_PREFREEZE != 'true'
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-lock.txt
       - name: Install locked dependencies
-        if: env.C6_PREFREEZE != 'true'
         run: python -m pip install -r requirements-lock.txt
       - name: Run Pyright
-        if: env.C6_PREFREEZE != 'true'
         run: pyright quantfusion
-      - name: Verify C6 pre-freeze typecheck embargo
-        if: env.C6_PREFREEZE == 'true'
-        run: test "$C6_PREFREEZE" = true
 
   security:
     name: Security and dependency audit
@@ -179,23 +212,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        if: env.C6_PREFREEZE != 'true'
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-lock.txt
       - name: Install locked dependencies
-        if: env.C6_PREFREEZE != 'true'
         run: python -m pip install -r requirements-lock.txt
       - name: Run Bandit
-        if: env.C6_PREFREEZE != 'true'
         run: bandit -r quantfusion scripts -ll
       - name: Audit locked dependencies
-        if: env.C6_PREFREEZE != 'true'
         run: pip-audit --strict -r requirements-lock.txt
-      - name: Verify C6 pre-freeze security embargo
-        if: env.C6_PREFREEZE == 'true'
-        run: test "$C6_PREFREEZE" = true
 
   regression:
     name: Exact backtest regression
@@ -222,6 +248,7 @@ jobs:
               "codex/c6-v4-ci-preflight",
               "codex/c6-causal-risk-closure-v5",
               "codex/c6-v5-ci-preflight",
+              "codex/c6-v6-ci-execution",
               "codex/c6-baseline-rebuild",
           }:
               raise SystemExit("unapproved C6 pre-freeze branch")
