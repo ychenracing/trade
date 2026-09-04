@@ -1,0 +1,88 @@
+name: C6 Bound Economic Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_revision:
+        description: Frozen I_B or I_S 40-character commit SHA
+        required: true
+        type: string
+      run_bindings_revision:
+        description: Frozen evidence-only R commit SHA
+        required: true
+        type: string
+      binding_id:
+        description: Exact logical binding ID frozen by R
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: c6-bound-${{ inputs.binding_id }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Execute frozen binding
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Validate immutable inputs
+        env:
+          C6_SOURCE_REVISION: ${{ inputs.source_revision }}
+          C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
+          C6_BINDING_ID: ${{ inputs.binding_id }}
+        run: |
+          [[ "$C6_SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$C6_RUN_BINDINGS_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$C6_BINDING_ID" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]]
+      - name: Check out frozen source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_revision }}
+          path: source
+          persist-credentials: false
+      - name: Check out frozen bindings
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.run_bindings_revision }}
+          path: bindings
+          persist-credentials: false
+      - name: Verify checked-out identities
+        env:
+          C6_SOURCE_REVISION: ${{ inputs.source_revision }}
+          C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
+        run: |
+          test "$(git -C source rev-parse HEAD)" = "$C6_SOURCE_REVISION"
+          test "$(git -C bindings rev-parse HEAD)" = "$C6_RUN_BINDINGS_REVISION"
+          test -z "$(git -C source status --porcelain -uall)"
+          test -z "$(git -C bindings status --porcelain -uall)"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: source/requirements-lock.txt
+      - name: Install frozen dependencies
+        run: python -m pip install -r source/requirements-lock.txt
+      - name: Execute exact run binding
+        working-directory: source
+        env:
+          C6_SOURCE_REVISION: ${{ inputs.source_revision }}
+          C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
+          C6_BINDING_ID: ${{ inputs.binding_id }}
+        run: |
+          python -m quantfusion.application.c6_bound_run \
+            --bindings-file "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" \
+            --binding-id "$C6_BINDING_ID" \
+            --source-revision "$C6_SOURCE_REVISION" \
+            --run-bindings-revision "$C6_RUN_BINDINGS_REVISION"
+      - name: Upload immutable run output
+        if: ${{ always() && hashFiles('source/artifacts/checkpoints/c6/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: c6-bound-${{ github.run_id }}-${{ github.run_attempt }}
+          path: source/artifacts/checkpoints/c6/
+          if-no-files-found: error
+          retention-days: 30

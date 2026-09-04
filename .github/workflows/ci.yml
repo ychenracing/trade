@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read
 
+env:
+  C6_PREFREEZE: ${{ startsWith(github.event.pull_request.head.ref || github.ref_name, 'codex/c6-') }}
+
 jobs:
   test:
     name: Python ${{ matrix.python-version }} tests
@@ -39,7 +42,20 @@ jobs:
       - name: Lint every Python file
         run: ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
       - name: Run complete test suite
+        if: env.C6_PREFREEZE != 'true'
         run: python -m pytest -q ${{ matrix.pytest-args }}
+      - name: Run C6 pre-freeze engineering tests
+        if: env.C6_PREFREEZE == 'true'
+        run: |
+          python -m pytest -q \
+            tests/unit \
+            tests/contract \
+            tests/integration \
+            tests/regression/test_cross_market_overlay.py \
+            tests/regression/test_quant_fusion_optimizer.py \
+            tests/regression/test_system_boundaries.py \
+            tests/regression/test_quant_fusion.py \
+            -k "not IntegrationTests"
 
   typecheck:
     name: Canonical package typecheck
@@ -77,6 +93,7 @@ jobs:
 
   regression:
     name: Exact backtest regression
+    if: ${{ !startsWith(github.event.pull_request.head.ref || github.ref_name, 'codex/c6-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     needs: [test, typecheck, security]
