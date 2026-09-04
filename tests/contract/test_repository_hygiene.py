@@ -330,6 +330,26 @@ class RepositoryHygieneTests(unittest.TestCase):
         )
         self.assertNotIn("c6-v7-*) C6_REF_VERSION=v7", workflow)
 
+    def test_c6_bound_workflow_accepts_only_frozen_push_dispatch_envelopes(self) -> None:
+        workflow = (
+            ROOT / ".github/workflows/c6-bound-economic.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("      - codex/c6-dispatch/**\n", workflow)
+        self.assertIn("      - name: Check out dispatch envelope\n", workflow)
+        self.assertIn('test "$GITHUB_EVENT_NAME" = "push"', workflow)
+        self.assertIn('test "$trigger_parent" = "$C6_WORKFLOW_REVISION"', workflow)
+        self.assertIn(
+            'test "$trigger_diff" = $\'A\\t.github/c6-dispatch-request.json\'',
+            workflow,
+        )
+        self.assertIn('test "$GITHUB_SHA" = "$trigger_commit"', workflow)
+        self.assertIn(
+            "C6_SOURCE_REVISION: ${{ steps.resolve.outputs.source_revision }}",
+            workflow,
+        )
+        self.assertNotIn("ref: ${{ inputs.source_revision }}", workflow)
+
     def test_generated_directories_are_not_committed(self) -> None:
         forbidden_parts = {
             "__pycache__",
