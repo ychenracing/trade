@@ -1,0 +1,66 @@
+{
+  "schema_version": 3,
+  "kind": "c6_baseline_integrity_test_repair_preregistration",
+  "status": "frozen_before_test_repair",
+  "base_revision": "92e8caa657120008b2b2c8db5e756228bd709540",
+  "problem": {
+    "test": "tests/c6_non_economic/test_baseline_rebuild.py::test_transition_reference_matches_current_formal_identity",
+    "current_assertion": "The current checkout's complete quantfusion/**/*.py fingerprint must equal the historical transition reference source fingerprint.",
+    "contradiction": "Every future legitimate source candidate necessarily changes that fingerprint, so the immutable baseline-integrity test rejects all source evolution, including the mandatory C6 implementation files.",
+    "independent_review_result": "No semantics-preserving bypass exists; stop the affected C6 run and repair this baseline-integrity test independently."
+  },
+  "frozen_inputs": {
+    "v1_preregistration": {
+      "path": "artifacts/diagnostics/c6-baseline-rebuild-preregistration.json",
+      "sha256": "84247d47bf5bb17aa85905c7f8490ad5b7c525c60469efcb785d9d0fc59e2cca",
+      "git_blob": "e5daf40afccf1e3d0e22375c39ff3876ab1b48a9"
+    },
+    "v2_preregistration": {
+      "path": "artifacts/diagnostics/c6-baseline-rebuild-preregistration-v2.json",
+      "sha256": "31fd49b3e0777424103a3ccfc1663d489bd49048ee0aea13224ad1883dd9ed1b",
+      "git_blob": "fd2301e7b7f303c46350e1cbccd3a0e9fa998ed9"
+    },
+    "test": {
+      "path": "tests/c6_non_economic/test_baseline_rebuild.py",
+      "sha256": "9ba837f6839bbe43284ec25de99c79fd576ffb1610aa97b7691126b5213f4bcb",
+      "git_blob": "da2efbe0e748fc79bd0a8572f2d66726bd091427"
+    },
+    "cohort": {
+      "path": "artifacts/diagnostics/c6-current-baseline-cohort.txt",
+      "sha256": "8a2bb25716cb94adc43c4bb4fd39ff868ba5223d788f62a580917c12cbe2c4d7"
+    },
+    "evidence": {
+      "path": "artifacts/diagnostics/c6-baseline-rebuild.json",
+      "sha256": "55c0cf9e0d6a4cc0a65adb44d9069a900845c5fbe3eee976b236c72a5f438ef7"
+    },
+    "transition_reference": {
+      "path": "artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json",
+      "sha256": "63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c"
+    }
+  },
+  "authorized_followup": {
+    "paths": [
+      "tests/c6_non_economic/test_baseline_rebuild.py"
+    ],
+    "exact_changes": [
+      "Rename test_transition_reference_matches_current_formal_identity to test_transition_reference_matches_frozen_formal_identity.",
+      "Remove only the assertion that fingerprints the mutable current checkout and compares it with current_checkout_identity.source_fingerprint.",
+      "Keep the frozen preregistration, cohort, evidence and transition-reference SHA checks, exact 958 scenario IDs and families, historical provenance checks, current data fingerprint check, current scenario signature check, and transition-reference internal source/data/scenario identity checks unchanged."
+    ]
+  },
+  "forbidden": [
+    "source implementation changes",
+    "workflow or dependency changes",
+    "data, scenario, cohort, evidence or transition-reference changes",
+    "economic gate, comparator, threshold or seed changes",
+    "new scenario or backtest execution",
+    "accepted or canonical publication"
+  ],
+  "verification": [
+    "python -m pytest -q tests/c6_non_economic/test_baseline_rebuild.py",
+    "python -m pytest -q tests/c6_non_economic/test_baseline_rebuild.py after adding an unrelated synthetic quantfusion Python file",
+    "python -m ruff check --select=E,F,W --ignore=E501,E402,E731,E741 tests/c6_non_economic/test_baseline_rebuild.py",
+    "python -m compileall -q tests/c6_non_economic/test_baseline_rebuild.py",
+    "git diff --check"
+  ]
+}
