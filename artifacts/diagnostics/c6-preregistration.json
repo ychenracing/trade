@@ -2,14 +2,15 @@
   "schema_version": 1,
   "kind": "c6_causal_risk_closure_preregistration",
   "status": "frozen_before_implementation_or_economic_dispatch",
-  "experiment_id": "c6-causal-risk-closure-17x958-v2",
+  "experiment_id": "c6-causal-risk-closure-17x958-v3",
   "authority": {
     "repository": "ychenracing/trade",
     "branch": "codex/c6-causal-risk-closure",
     "pull_request": null,
     "prior_stopped_pull_requests": [
       27,
-      30
+      30,
+      32
     ],
     "baseline_repair_pull_requests": [
       29,
@@ -1986,8 +1987,8 @@
       "object_oid": "lowercase hexadecimal Git object OID emitted by ls-tree"
     },
     "manifest_algorithm": "Read the entire tracked tree using git-ls-tree -rz --full-tree semantics; remove only exact A_ALLOWLIST paths; construct each object with exactly manifest_record_exact_keys and no others; sort records by decoded raw path bytes; serialize the record array with json.dumps(records, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False) plus one LF encoded as UTF-8; SHA-256 the exact bytes.",
-    "base_manifest_entry_count": 209,
-    "base_economic_tree_sha256": "32379bda0f23fd1065daab02c95d9f5ab4e3a8ed644eb819cd5b9070a77db0ea",
+    "base_manifest_entry_count": 210,
+    "base_economic_tree_sha256": "fa207ea9a12f6343aee434abbbe1364bb9d982bbf02202e625bbbac9632ff0c4",
     "required_proof": "git diff --raw -z C A touches only allowed 100644 add/modify paths and economic_tree_hash(C) equals economic_tree_hash(A)",
     "source_revision_in_artifact": "C_even_if_A_exists",
     "fallback": "If source/head validation or required CI would rerun L4, keep A null and retain the sealed workflow artifact externally."
