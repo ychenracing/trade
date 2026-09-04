@@ -144,6 +144,7 @@ jobs:
           case "$C6_LOGICAL_RUN_ID" in
             c6-v4-*) C6_REF_VERSION=v4 ;;
             c6-v5-*) C6_REF_VERSION=v5 ;;
+            c6-v6-*) C6_REF_VERSION=v6 ;;
             *) exit 1 ;;
           esac
           readonly C6_REF_VERSION
