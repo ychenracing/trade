@@ -1,4 +1,5 @@
 name: C6 Bound Economic Run
+run-name: c6-bound-${{ inputs.binding_id }}-${{ inputs.logical_run_id }}-${{ inputs.attempt_id }}
 
 on:
   workflow_dispatch:
@@ -19,6 +20,13 @@ on:
         description: Exact logical binding ID frozen by R
         required: true
         type: string
+      candidate_id:
+        description: Exact C6 candidate selected for this binding
+        required: true
+        type: choice
+        options:
+          - C6-Base
+          - C6-Base+S
       logical_run_id:
         description: Unique R-bound logical run identity
         required: true
@@ -35,6 +43,31 @@ on:
         description: Optional R-authorized sealed checkpoint identity
         required: false
         default: ""
+        type: string
+      resume_workflow_run_id:
+        description: Exact prior workflow run containing resume_from
+        required: false
+        default: ""
+        type: string
+      d_commit:
+        description: Selected D commit for L2/L4 only
+        required: false
+        default: ""
+        type: string
+      d_selection_blob_oid:
+        description: Exact c6-selection.json blob OID for L2/L4 only
+        required: false
+        default: ""
+        type: string
+      d_selection_file_sha256:
+        description: Exact c6-selection.json full-byte SHA-256 for L2/L4 only
+        required: false
+        default: ""
+        type: string
+      producer_identity_json:
+        description: Exact prior-stage producer identity or the frozen empty object
+        required: false
+        default: '{"artifact_full_byte_sha256":"","attempt_id":"","binding_id":"","logical_run_id":"","workflow_run_id":""}'
         type: string
       runner_image_os:
         description: Frozen GitHub runner ImageOS value
@@ -69,10 +102,16 @@ jobs:
           C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
           C6_WORKFLOW_REVISION: ${{ inputs.workflow_revision }}
           C6_BINDING_ID: ${{ inputs.binding_id }}
+          C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
           C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
           C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
           C6_FENCING_TOKEN: ${{ inputs.fencing_token }}
           C6_RESUME_FROM: ${{ inputs.resume_from }}
+          C6_RESUME_WORKFLOW_RUN_ID: ${{ inputs.resume_workflow_run_id }}
+          C6_D_COMMIT: ${{ inputs.d_commit }}
+          C6_D_SELECTION_BLOB_OID: ${{ inputs.d_selection_blob_oid }}
+          C6_D_SELECTION_FILE_SHA256: ${{ inputs.d_selection_file_sha256 }}
+          C6_PRODUCER_IDENTITY_JSON: ${{ inputs.producer_identity_json }}
           C6_RUNNER_IMAGE_OS: ${{ inputs.runner_image_os }}
           C6_RUNNER_IMAGE_VERSION: ${{ inputs.runner_image_version }}
           C6_PYTHON_VERSION: ${{ inputs.python_version }}
@@ -80,15 +119,95 @@ jobs:
           [[ "$C6_SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]
           [[ "$C6_RUN_BINDINGS_REVISION" =~ ^[0-9a-f]{40}$ ]]
           [[ "$C6_WORKFLOW_REVISION" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$C6_BINDING_ID" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]]
-          [[ "$C6_LOGICAL_RUN_ID" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]]
-          [[ "$C6_ATTEMPT_ID" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]]
+          [[ "$C6_BINDING_ID" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ ]]
+          [[ "$C6_CANDIDATE_ID" = "C6-Base" || "$C6_CANDIDATE_ID" = "C6-Base+S" ]]
+          [[ "$C6_LOGICAL_RUN_ID" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ ]]
+          [[ "$C6_ATTEMPT_ID" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ ]]
           [[ "$C6_FENCING_TOKEN" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{15,255}$ ]]
-          [[ -z "$C6_RESUME_FROM" || "$C6_RESUME_FROM" =~ ^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$ ]]
+          [[ -z "$C6_RESUME_FROM" || "$C6_RESUME_FROM" =~ ^[0-9a-f]{64}$ ]]
+          [[ -z "$C6_RESUME_WORKFLOW_RUN_ID" || "$C6_RESUME_WORKFLOW_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ -z "$C6_D_COMMIT" || "$C6_D_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ -z "$C6_D_SELECTION_BLOB_OID" || "$C6_D_SELECTION_BLOB_OID" =~ ^[0-9a-f]{40}$ ]]
+          [[ -z "$C6_D_SELECTION_FILE_SHA256" || "$C6_D_SELECTION_FILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
           [[ "$C6_RUNNER_IMAGE_OS" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]
           [[ "$C6_RUNNER_IMAGE_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]
           [[ "$C6_PYTHON_VERSION" =~ ^3\.12\.[0-9]+$ ]]
+          [[ "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          test "$GITHUB_RUN_ATTEMPT" = "1"
           echo "::add-mask::$C6_FENCING_TOKEN"
+          if [[ -n "$C6_RESUME_FROM" ]]; then
+            test -n "$C6_RESUME_WORKFLOW_RUN_ID"
+            (( C6_RESUME_WORKFLOW_RUN_ID < GITHUB_RUN_ID ))
+          else
+            test -z "$C6_RESUME_WORKFLOW_RUN_ID"
+          fi
+          case "$C6_BINDING_ID:$C6_CANDIDATE_ID" in
+            c6.base.l1:C6-Base)
+              test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
+              ;;
+            c6.s.qualification:C6-Base+S)
+              test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
+              ;;
+            c6.base_plus_s.l1:C6-Base+S)
+              test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
+              ;;
+            c6.selected.l2:C6-Base|c6.selected.l2:C6-Base+S|c6.selected.l4:C6-Base|c6.selected.l4:C6-Base+S)
+              test -n "$C6_D_COMMIT" && test -n "$C6_D_SELECTION_BLOB_OID" && test -n "$C6_D_SELECTION_FILE_SHA256"
+              ;;
+            *) exit 1 ;;
+          esac
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          def unique(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise SystemExit(f"duplicate producer identity key: {key}")
+                  result[key] = value
+              return result
+
+          def reject_constant(value):
+              raise ValueError(f"non-finite JSON constant: {value}")
+
+          producer = json.loads(
+              os.environ["C6_PRODUCER_IDENTITY_JSON"],
+              object_pairs_hook=unique,
+              parse_constant=reject_constant,
+          )
+          keys = {
+              "artifact_full_byte_sha256",
+              "attempt_id",
+              "binding_id",
+              "logical_run_id",
+              "workflow_run_id",
+          }
+          if not isinstance(producer, dict) or set(producer) != keys:
+              raise SystemExit("producer identity has the wrong schema")
+          if any(type(value) is not str for value in producer.values()):
+              raise SystemExit("producer identity values must be strings")
+          expected = {
+              "c6.base.l1": "",
+              "c6.s.qualification": "c6.base.l1",
+              "c6.base_plus_s.l1": "c6.s.qualification",
+              "c6.selected.l2": "",
+              "c6.selected.l4": "c6.selected.l2",
+          }[os.environ["C6_BINDING_ID"]]
+          if expected:
+              if producer["binding_id"] != expected:
+                  raise SystemExit("producer binding does not match this stage")
+              if re.fullmatch(r"[1-9][0-9]*", producer["workflow_run_id"]) is None:
+                  raise SystemExit("producer workflow run ID is invalid")
+              for key in ("attempt_id", "logical_run_id"):
+                  if re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,62}", producer[key]) is None:
+                      raise SystemExit(f"producer {key} is invalid")
+              if re.fullmatch(r"[0-9a-f]{64}", producer["artifact_full_byte_sha256"]) is None:
+                  raise SystemExit("producer artifact SHA-256 is invalid")
+          elif producer != {key: "" for key in keys}:
+              raise SystemExit("this stage forbids a producer identity")
+          PY
           test "$GITHUB_SHA" = "$C6_WORKFLOW_REVISION"
           test "${ImageOS:-}" = "$C6_RUNNER_IMAGE_OS"
           test "${ImageVersion:-}" = "$C6_RUNNER_IMAGE_VERSION"
@@ -104,15 +223,37 @@ jobs:
           ref: ${{ inputs.run_bindings_revision }}
           path: bindings
           persist-credentials: false
+      - name: Check out frozen decision
+        if: ${{ inputs.d_commit != '' }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.d_commit }}
+          path: decision
+          persist-credentials: false
       - name: Verify checked-out identities
         env:
           C6_SOURCE_REVISION: ${{ inputs.source_revision }}
           C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
+          C6_D_COMMIT: ${{ inputs.d_commit }}
+          C6_D_SELECTION_BLOB_OID: ${{ inputs.d_selection_blob_oid }}
+          C6_D_SELECTION_FILE_SHA256: ${{ inputs.d_selection_file_sha256 }}
         run: |
           test "$(git -C source rev-parse HEAD)" = "$C6_SOURCE_REVISION"
           test "$(git -C bindings rev-parse HEAD)" = "$C6_RUN_BINDINGS_REVISION"
           test -z "$(git -C source status --porcelain -uall)"
           test -z "$(git -C bindings status --porcelain -uall)"
+          test "$(git -C source rev-parse "$C6_SOURCE_REVISION:requirements-lock.txt")" = "103f5db04d4d2f31a40294cceab5dbbedfda553c"
+          test "$(git -C source ls-tree "$C6_SOURCE_REVISION" -- requirements-lock.txt | cut -d' ' -f1)" = "100644"
+          test "$(sha256sum source/requirements-lock.txt | cut -d' ' -f1)" = "22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434"
+          if [[ -n "$C6_D_COMMIT" ]]; then
+            test "$(git -C decision rev-parse HEAD)" = "$C6_D_COMMIT"
+            test -z "$(git -C decision status --porcelain -uall)"
+            test "$(git -C decision rev-parse "$C6_D_COMMIT:artifacts/diagnostics/c6-selection.json")" = "$C6_D_SELECTION_BLOB_OID"
+            test "$(sha256sum decision/artifacts/diagnostics/c6-selection.json | cut -d' ' -f1)" = "$C6_D_SELECTION_FILE_SHA256"
+            test "$(git -C decision ls-tree "$C6_D_COMMIT" -- artifacts/diagnostics/c6-selection.json | cut -d' ' -f1)" = "100644"
+          else
+            test ! -e decision
+          fi
           test ! -e source/artifacts/checkpoints/c6/sealed-export
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
@@ -124,7 +265,7 @@ jobs:
           C6_PYTHON_VERSION: ${{ inputs.python_version }}
         run: test "$(python -c 'import platform; print(platform.python_version())')" = "$C6_PYTHON_VERSION"
       - name: Install frozen dependencies
-        run: python -m pip install -r source/requirements-lock.txt
+        run: python -m pip install --require-hashes -r source/requirements-lock.txt
       - name: Execute exact run binding
         id: execute
         working-directory: source
@@ -134,10 +275,16 @@ jobs:
           C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
           C6_WORKFLOW_REVISION: ${{ inputs.workflow_revision }}
           C6_BINDING_ID: ${{ inputs.binding_id }}
+          C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
           C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
           C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
           C6_FENCING_TOKEN: ${{ inputs.fencing_token }}
           C6_RESUME_FROM: ${{ inputs.resume_from }}
+          C6_RESUME_WORKFLOW_RUN_ID: ${{ inputs.resume_workflow_run_id }}
+          C6_D_COMMIT: ${{ inputs.d_commit }}
+          C6_D_SELECTION_BLOB_OID: ${{ inputs.d_selection_blob_oid }}
+          C6_D_SELECTION_FILE_SHA256: ${{ inputs.d_selection_file_sha256 }}
+          C6_PRODUCER_IDENTITY_JSON: ${{ inputs.producer_identity_json }}
           C6_RUNNER_IMAGE_OS: ${{ inputs.runner_image_os }}
           C6_RUNNER_IMAGE_VERSION: ${{ inputs.runner_image_version }}
           C6_PYTHON_VERSION: ${{ inputs.python_version }}
@@ -145,10 +292,17 @@ jobs:
           python -m quantfusion.application.c6_bound_run \
             --bindings-file "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" \
             --binding-id "$C6_BINDING_ID" \
+            --candidate-id "$C6_CANDIDATE_ID" \
             --logical-run-id "$C6_LOGICAL_RUN_ID" \
             --attempt-id "$C6_ATTEMPT_ID" \
             --fencing-token "$C6_FENCING_TOKEN" \
             --resume-from "$C6_RESUME_FROM" \
+            --resume-workflow-run-id "$C6_RESUME_WORKFLOW_RUN_ID" \
+            --d-commit "$C6_D_COMMIT" \
+            --d-selection-blob-oid "$C6_D_SELECTION_BLOB_OID" \
+            --d-selection-file-sha256 "$C6_D_SELECTION_FILE_SHA256" \
+            --decision-checkout "$GITHUB_WORKSPACE/decision" \
+            --producer-identity-json "$C6_PRODUCER_IDENTITY_JSON" \
             --source-revision "$C6_SOURCE_REVISION" \
             --run-bindings-revision "$C6_RUN_BINDINGS_REVISION" \
             --workflow-revision "$C6_WORKFLOW_REVISION" \
@@ -168,9 +322,19 @@ jobs:
           C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
           C6_WORKFLOW_REVISION: ${{ inputs.workflow_revision }}
           C6_BINDING_ID: ${{ inputs.binding_id }}
+          C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
           C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
           C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
           C6_FENCING_TOKEN: ${{ inputs.fencing_token }}
+          C6_RESUME_FROM: ${{ inputs.resume_from }}
+          C6_RESUME_WORKFLOW_RUN_ID: ${{ inputs.resume_workflow_run_id }}
+          C6_D_COMMIT: ${{ inputs.d_commit }}
+          C6_D_SELECTION_BLOB_OID: ${{ inputs.d_selection_blob_oid }}
+          C6_D_SELECTION_FILE_SHA256: ${{ inputs.d_selection_file_sha256 }}
+          C6_PRODUCER_IDENTITY_JSON: ${{ inputs.producer_identity_json }}
+          C6_RUNNER_IMAGE_OS: ${{ inputs.runner_image_os }}
+          C6_RUNNER_IMAGE_VERSION: ${{ inputs.runner_image_version }}
+          C6_PYTHON_VERSION: ${{ inputs.python_version }}
         run: |
           python - <<'PY'
           import hashlib
@@ -214,8 +378,21 @@ jobs:
               "run_bindings_revision",
               "workflow_revision",
               "binding_id",
+              "candidate_id",
               "logical_run_id",
               "attempt_id",
+              "repository",
+              "workflow_run_id",
+              "workflow_run_attempt",
+              "resume_from",
+              "resume_workflow_run_id",
+              "d_commit",
+              "d_selection_blob_oid",
+              "d_selection_file_sha256",
+              "producer_identity",
+              "runner_image_os",
+              "runner_image_version",
+              "python_version",
               "fencing_token_sha256",
               "files",
           }
@@ -224,19 +401,38 @@ jobs:
           if type(manifest["schema_version"]) is not int:
               raise SystemExit("sealed export schema_version must be an integer")
           expected = {
-              "schema_version": 1,
+              "schema_version": 2,
               "source_revision": os.environ["C6_SOURCE_REVISION"],
               "run_bindings_revision": os.environ["C6_RUN_BINDINGS_REVISION"],
               "workflow_revision": os.environ["C6_WORKFLOW_REVISION"],
               "binding_id": os.environ["C6_BINDING_ID"],
+              "candidate_id": os.environ["C6_CANDIDATE_ID"],
               "logical_run_id": os.environ["C6_LOGICAL_RUN_ID"],
               "attempt_id": os.environ["C6_ATTEMPT_ID"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "workflow_run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "resume_from": os.environ["C6_RESUME_FROM"],
+              "resume_workflow_run_id": os.environ["C6_RESUME_WORKFLOW_RUN_ID"],
+              "d_commit": os.environ["C6_D_COMMIT"],
+              "d_selection_blob_oid": os.environ["C6_D_SELECTION_BLOB_OID"],
+              "d_selection_file_sha256": os.environ["C6_D_SELECTION_FILE_SHA256"],
+              "runner_image_os": os.environ["C6_RUNNER_IMAGE_OS"],
+              "runner_image_version": os.environ["C6_RUNNER_IMAGE_VERSION"],
+              "python_version": os.environ["C6_PYTHON_VERSION"],
               "fencing_token_sha256": hashlib.sha256(
                   os.environ["C6_FENCING_TOKEN"].encode("utf-8")
               ).hexdigest(),
           }
           if any(manifest[key] != value for key, value in expected.items()):
               raise SystemExit("sealed export identity does not match this attempt")
+          producer_identity = json.loads(
+              os.environ["C6_PRODUCER_IDENTITY_JSON"],
+              object_pairs_hook=unique_object,
+              parse_constant=reject_constant,
+          )
+          if manifest["producer_identity"] != producer_identity:
+              raise SystemExit("sealed export producer identity does not match this attempt")
           if manifest["sealed"] is not True or manifest["kind"] not in {
               "checkpoint",
               "result",
