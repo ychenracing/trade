@@ -350,6 +350,13 @@ class RepositoryHygieneTests(unittest.TestCase):
         )
         self.assertNotIn("ref: ${{ inputs.source_revision }}", workflow)
 
+    def test_c6_prefreeze_branch_allowlist_has_one_source_of_truth(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+        self.assertEqual(workflow.count("codex/c6-push-dispatch-preflight"), 1)
+        self.assertEqual(workflow.count("codex/c6-causal-risk-closure-v9"), 1)
+        self.assertNotIn("unapproved C6 pre-freeze branch", workflow)
+
     def test_generated_directories_are_not_committed(self) -> None:
         forbidden_parts = {
             "__pycache__",

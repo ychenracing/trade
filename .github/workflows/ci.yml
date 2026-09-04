@@ -243,7 +243,7 @@ jobs:
     needs: [test, typecheck, security]
     steps:
       - uses: actions/checkout@v4
-      - name: Verify C6 pre-freeze embargo identity
+      - name: Verify C6 pre-freeze embargo origin
         if: env.C6_PREFREEZE == 'true'
         run: |
           python3 -I -S - <<'PY'
@@ -254,22 +254,6 @@ jobs:
           head = event["pull_request"]["head"]
           if head["repo"]["full_name"] != os.environ["GITHUB_REPOSITORY"]:
               raise SystemExit("C6 pre-freeze PR must originate in this repository")
-          if head["ref"] not in {
-              "codex/c6-workflow-preflight",
-              "codex/c6-causal-risk-closure",
-              "codex/c6-causal-risk-closure-v4",
-              "codex/c6-v4-ci-preflight",
-              "codex/c6-causal-risk-closure-v5",
-              "codex/c6-v5-ci-preflight",
-              "codex/c6-v6-ci-execution",
-              "codex/c6-causal-risk-closure-v6",
-              "codex/c6-v7-workflow-preflight",
-              "codex/c6-causal-risk-closure-v7",
-              "codex/c6-v8-workflow-preflight",
-              "codex/c6-causal-risk-closure-v8",
-              "codex/c6-baseline-rebuild",
-          }:
-              raise SystemExit("unapproved C6 pre-freeze branch")
           PY
       - uses: actions/setup-python@v5
         if: env.C6_PREFREEZE != 'true'
