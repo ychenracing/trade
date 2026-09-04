@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  C6_PREFREEZE: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'codex/c6-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure' || github.head_ref == 'codex/c6-causal-risk-closure-v4' || github.head_ref == 'codex/c6-v4-ci-preflight' || github.head_ref == 'codex/c6-baseline-rebuild') }}
+  C6_PREFREEZE: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'codex/c6-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure' || github.head_ref == 'codex/c6-causal-risk-closure-v4' || github.head_ref == 'codex/c6-v4-ci-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v5' || github.head_ref == 'codex/c6-v5-ci-preflight' || github.head_ref == 'codex/c6-baseline-rebuild') }}
 
 jobs:
   test:
@@ -214,6 +214,8 @@ jobs:
               "codex/c6-causal-risk-closure",
               "codex/c6-causal-risk-closure-v4",
               "codex/c6-v4-ci-preflight",
+              "codex/c6-causal-risk-closure-v5",
+              "codex/c6-v5-ci-preflight",
               "codex/c6-baseline-rebuild",
           }:
               raise SystemExit("unapproved C6 pre-freeze branch")
