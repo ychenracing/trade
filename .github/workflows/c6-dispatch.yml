@@ -1,0 +1,236 @@
+name: C6 Immutable Dispatch Envelope
+run-name: c6-dispatch-${{ github.ref_name }}
+
+on:
+  push:
+    branches:
+      - codex/c6-dispatch/**
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: c6-dispatch-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Validate and dispatch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out dispatch envelope
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Validate immutable request
+        run: |
+          python3 -I -S - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          def unique(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise SystemExit(f"duplicate dispatch key: {key}")
+                  result[key] = value
+              return result
+
+          def reject_constant(value):
+              raise ValueError(f"non-finite JSON constant: {value}")
+
+          if os.environ["GITHUB_EVENT_NAME"] != "push":
+              raise SystemExit("unsupported dispatch event")
+          event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+          if (
+              event.get("created") is not True
+              or event.get("deleted") is not False
+              or event.get("before") != "0" * 40
+          ):
+              raise SystemExit("dispatch must create a new branch")
+
+          request_path = Path(".github/c6-dispatch-request.json")
+          raw = request_path.read_text(encoding="utf-8")
+          request = json.loads(
+              raw,
+              object_pairs_hook=unique,
+              parse_constant=reject_constant,
+          )
+          if not isinstance(request, dict) or set(request) != {
+              "schema_version",
+              "workflow_ref",
+              "inputs",
+          }:
+              raise SystemExit("dispatch request has the wrong schema")
+          if request["schema_version"] != 1:
+              raise SystemExit("dispatch request schema version is invalid")
+          inputs = request["inputs"]
+          input_names = {
+              "source_revision",
+              "run_bindings_revision",
+              "workflow_revision",
+              "binding_id",
+              "candidate_id",
+              "logical_run_id",
+              "attempt_id",
+              "resume_from",
+              "resume_workflow_run_id",
+              "d_commit",
+              "d_selection_blob_oid",
+              "d_selection_file_sha256",
+              "producer_identity_json",
+              "runner_image_os",
+              "runner_image_version",
+              "python_version",
+          }
+          if not isinstance(inputs, dict) or set(inputs) != input_names:
+              raise SystemExit("dispatch inputs have the wrong schema")
+          if any(type(value) is not str for value in inputs.values()):
+              raise SystemExit("dispatch input values must be strings")
+          if any("\n" in value or "\r" in value for value in inputs.values()):
+              raise SystemExit("dispatch input values cannot contain newlines")
+          if not isinstance(request["workflow_ref"], str):
+              raise SystemExit("workflow ref must be a string")
+          canonical = json.dumps(
+              request,
+              sort_keys=True,
+              separators=(",", ":"),
+              ensure_ascii=False,
+              allow_nan=False,
+          ) + "\n"
+          if raw != canonical:
+              raise SystemExit("dispatch request is not canonical JSON")
+
+          sha = re.compile(r"[0-9a-f]{40}").fullmatch
+          sha256 = re.compile(r"[0-9a-f]{64}").fullmatch
+          slug = re.compile(r"[a-z0-9][a-z0-9._-]{0,62}").fullmatch
+          if not all(sha(inputs[name]) for name in (
+              "source_revision", "run_bindings_revision", "workflow_revision"
+          )):
+              raise SystemExit("dispatch contains an invalid commit SHA")
+          if not slug(inputs["binding_id"]) or not slug(inputs["logical_run_id"]):
+              raise SystemExit("dispatch contains an invalid logical identity")
+          if not slug(inputs["attempt_id"]):
+              raise SystemExit("dispatch contains an invalid attempt identity")
+          if inputs["candidate_id"] not in {"C6-Base", "C6-Base+S"}:
+              raise SystemExit("dispatch contains an invalid candidate")
+          for name in ("d_commit", "d_selection_blob_oid"):
+              if inputs[name] and not sha(inputs[name]):
+                  raise SystemExit(f"dispatch contains an invalid {name}")
+          if inputs["d_selection_file_sha256"] and not sha256(
+              inputs["d_selection_file_sha256"]
+          ):
+              raise SystemExit("dispatch contains an invalid selection SHA-256")
+          if inputs["resume_from"] and not sha256(inputs["resume_from"]):
+              raise SystemExit("dispatch contains an invalid checkpoint identity")
+          if inputs["resume_workflow_run_id"] and not re.fullmatch(
+              r"[1-9][0-9]*", inputs["resume_workflow_run_id"]
+          ):
+              raise SystemExit("dispatch contains an invalid resume run ID")
+          if not re.fullmatch(r"3\.12\.[0-9]+", inputs["python_version"]):
+              raise SystemExit("dispatch contains an invalid Python version")
+
+          producer = json.loads(
+              inputs["producer_identity_json"],
+              object_pairs_hook=unique,
+              parse_constant=reject_constant,
+          )
+          if not isinstance(producer, dict) or set(producer) != {
+              "artifact_full_byte_sha256",
+              "attempt_id",
+              "binding_id",
+              "logical_run_id",
+              "workflow_run_id",
+          }:
+              raise SystemExit("dispatch producer identity has the wrong schema")
+          if inputs["producer_identity_json"] != json.dumps(
+              producer, sort_keys=True, separators=(",", ":")
+          ):
+              raise SystemExit("dispatch producer identity is not canonical JSON")
+
+          trigger_commit = subprocess.check_output(
+              ("git", "rev-parse", "HEAD"), text=True
+          ).strip()
+          parents = subprocess.check_output(
+              ("git", "rev-list", "--parents", "-n", "1", "HEAD"), text=True
+          ).split()
+          if len(parents) != 2:
+              raise SystemExit("dispatch envelope must have exactly one parent")
+          trigger_parent = parents[1]
+          trigger_diff = subprocess.check_output(
+              ("git", "diff", "--name-status", trigger_parent, trigger_commit),
+              text=True,
+          ).rstrip("\n")
+          if trigger_diff != "A\t.github/c6-dispatch-request.json":
+              raise SystemExit("dispatch envelope has a non-request change")
+          mode = subprocess.check_output(
+              ("git", "ls-tree", trigger_commit, "--", str(request_path)), text=True
+          )
+          if not mode.startswith("100644 blob "):
+              raise SystemExit("dispatch request must be a regular file")
+          if os.environ["GITHUB_SHA"] != trigger_commit:
+              raise SystemExit("dispatch trigger SHA does not match its checkout")
+          if trigger_parent != inputs["workflow_revision"]:
+              raise SystemExit("dispatch parent is not the frozen workflow revision")
+          version = re.fullmatch(r"c6-(v[1-9][0-9]*)-.+", inputs["logical_run_id"])
+          if version is None:
+              raise SystemExit("logical run ID has no valid version")
+          expected_workflow_ref = f"codex/c6-{version.group(1)}-workflow-anchor"
+          if request["workflow_ref"] != expected_workflow_ref:
+              raise SystemExit("dispatch workflow ref does not match its version")
+          expected_ref = (
+              "refs/heads/codex/c6-dispatch/"
+              f'{inputs["logical_run_id"]}/{inputs["binding_id"]}/'
+              f'{inputs["attempt_id"]}'
+          )
+          if os.environ["GITHUB_REF"] != expected_ref:
+              raise SystemExit("dispatch branch does not match the request identity")
+          remote = f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}.git'
+          anchor = subprocess.check_output(
+              ("git", "ls-remote", "--refs", remote, f'refs/heads/{request["workflow_ref"]}'),
+              text=True,
+          ).rstrip("\n")
+          if anchor != f'{inputs["workflow_revision"]}\trefs/heads/{request["workflow_ref"]}':
+              raise SystemExit("workflow ref is not anchored to the frozen revision")
+
+          payload = json.dumps(
+              {"ref": request["workflow_ref"], "inputs": inputs},
+              sort_keys=True,
+              separators=(",", ":"),
+          ).encode("utf-8")
+          Path(os.environ["RUNNER_TEMP"], "c6-dispatch-payload.json").write_bytes(payload)
+          PY
+      - name: Dispatch bound workflow
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 -I -S - <<'PY'
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          url = (
+              f'https://api.github.com/repos/{os.environ["GITHUB_REPOSITORY"]}/'
+              "actions/workflows/c6-bound-economic.yml/dispatches"
+          )
+          request = urllib.request.Request(
+              url,
+              data=Path(os.environ["RUNNER_TEMP"], "c6-dispatch-payload.json").read_bytes(),
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f'Bearer {os.environ["GITHUB_TOKEN"]}',
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              if response.status != 204:
+                  raise SystemExit(f"workflow dispatch returned HTTP {response.status}")
+          PY

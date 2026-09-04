@@ -330,6 +330,38 @@ class RepositoryHygieneTests(unittest.TestCase):
         )
         self.assertNotIn("c6-v7-*) C6_REF_VERSION=v7", workflow)
 
+    def test_c6_bound_workflow_accepts_only_frozen_push_dispatch_envelopes(self) -> None:
+        bound_workflow = (
+            ROOT / ".github/workflows/c6-bound-economic.yml"
+        ).read_text(encoding="utf-8")
+        dispatcher = (
+            ROOT / ".github/workflows/c6-dispatch.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn("      - codex/c6-dispatch/**\n", bound_workflow)
+        self.assertIn("      - codex/c6-dispatch/**\n", dispatcher)
+        self.assertIn("  actions: write\n", dispatcher)
+        self.assertIn("  contents: read\n", dispatcher)
+        self.assertIn("      - name: Check out dispatch envelope\n", dispatcher)
+        self.assertIn('if os.environ["GITHUB_EVENT_NAME"] != "push":', dispatcher)
+        self.assertIn('if trigger_parent != inputs["workflow_revision"]:', dispatcher)
+        self.assertIn(
+            'if trigger_diff != "A\\t.github/c6-dispatch-request.json":',
+            dispatcher,
+        )
+        self.assertIn(
+            '"actions/workflows/c6-bound-economic.yml/dispatches"',
+            dispatcher,
+        )
+        self.assertNotIn("workflow_dispatch:", dispatcher)
+
+    def test_c6_prefreeze_branch_allowlist_has_one_source_of_truth(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+        self.assertEqual(workflow.count("codex/c6-push-dispatch-preflight"), 1)
+        self.assertEqual(workflow.count("codex/c6-causal-risk-closure-v9"), 1)
+        self.assertNotIn("unapproved C6 pre-freeze branch", workflow)
+
     def test_generated_directories_are_not_committed(self) -> None:
         forbidden_parts = {
             "__pycache__",
