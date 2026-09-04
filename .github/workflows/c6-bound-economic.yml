@@ -35,10 +35,6 @@ on:
         description: R-authorized attempt identity
         required: true
         type: string
-      fencing_token:
-        description: R-authorized exclusive lease token
-        required: true
-        type: string
       resume_from:
         description: Optional R-authorized sealed checkpoint identity
         required: false
@@ -96,6 +92,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
+      - name: Initialize run-local fencing token
+        run: |
+          token="$(python3 -I -S -c 'import secrets; print(secrets.token_hex(32))')"
+          echo "::add-mask::$token"
+          printf 'C6_FENCING_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
       - name: Validate immutable inputs
         env:
           C6_SOURCE_REVISION: ${{ inputs.source_revision }}
@@ -105,7 +106,6 @@ jobs:
           C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
           C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
           C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
-          C6_FENCING_TOKEN: ${{ inputs.fencing_token }}
           C6_RESUME_FROM: ${{ inputs.resume_from }}
           C6_RESUME_WORKFLOW_RUN_ID: ${{ inputs.resume_workflow_run_id }}
           C6_D_COMMIT: ${{ inputs.d_commit }}
@@ -134,7 +134,6 @@ jobs:
           [[ "$C6_PYTHON_VERSION" =~ ^3\.12\.[0-9]+$ ]]
           [[ "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ ]]
           test "$GITHUB_RUN_ATTEMPT" = "1"
-          echo "::add-mask::$C6_FENCING_TOKEN"
           if [[ -n "$C6_RESUME_FROM" ]]; then
             test -n "$C6_RESUME_WORKFLOW_RUN_ID"
             (( C6_RESUME_WORKFLOW_RUN_ID < GITHUB_RUN_ID ))
@@ -145,6 +144,7 @@ jobs:
             c6-v4-*) C6_REF_VERSION=v4 ;;
             c6-v5-*) C6_REF_VERSION=v5 ;;
             c6-v6-*) C6_REF_VERSION=v6 ;;
+            c6-v7-*) C6_REF_VERSION=v7 ;;
             *) exit 1 ;;
           esac
           readonly C6_REF_VERSION
@@ -243,12 +243,14 @@ jobs:
           ref: ${{ inputs.source_revision }}
           path: source
           persist-credentials: false
+          fetch-depth: 0
       - name: Check out frozen bindings
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ inputs.run_bindings_revision }}
           path: bindings
           persist-credentials: false
+          fetch-depth: 0
       - name: Check out frozen decision
         if: ${{ inputs.d_commit != '' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -307,7 +309,6 @@ jobs:
           C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
           C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
           C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
-          C6_FENCING_TOKEN: ${{ inputs.fencing_token }}
           C6_RESUME_FROM: ${{ inputs.resume_from }}
           C6_RESUME_WORKFLOW_RUN_ID: ${{ inputs.resume_workflow_run_id }}
           C6_D_COMMIT: ${{ inputs.d_commit }}
@@ -353,7 +354,6 @@ jobs:
           C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
           C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
           C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
-          C6_FENCING_TOKEN: ${{ inputs.fencing_token }}
           C6_RESUME_FROM: ${{ inputs.resume_from }}
           C6_RESUME_WORKFLOW_RUN_ID: ${{ inputs.resume_workflow_run_id }}
           C6_D_COMMIT: ${{ inputs.d_commit }}
