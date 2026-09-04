@@ -462,6 +462,14 @@ jobs:
           files = manifest["files"]
           if not isinstance(files, dict) or not files:
               raise SystemExit("sealed export file hash map is empty")
+          if manifest["kind"] == "checkpoint":
+              expected_files = {"checkpoint.json", "child-checkpoint.bin"}
+          elif manifest["binding_id"] == "c6.selected.l4":
+              expected_files = {"official-artifact.json", "digest.json"}
+          else:
+              expected_files = {"payload.json", "digest.json"}
+          if set(files) != expected_files:
+              raise SystemExit("sealed export file set does not match binding stage")
 
           actual_files = {}
           for path in root.rglob("*"):
