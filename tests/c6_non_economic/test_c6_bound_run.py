@@ -71,6 +71,28 @@ def test_result_schema_rejects_nested_extra_keys() -> None:
     definitions = {"root": {"exact_keys": ["items"], "field_types": {"items": "child array"}}, "child": {"exact_keys": ["value"], "field_types": {"value": "integer"}}}
     with pytest.raises(BoundRunError, match="extra"):
         validate_result_payload({"items": [{"value": 1, "extra": 2}]}, {"canonical_payload_schema": {"name": "root"}}, {"schema_catalog": {"definitions": definitions}})
+
+
+def test_qualification_criteria_descriptor_is_validated_as_an_array() -> None:
+    definitions = {
+        "root": {
+            "exact_keys": ["results"],
+            "field_types": {"results": "per_residual array"},
+        },
+        "per_residual": {
+            "exact_keys": ["criteria"],
+            "field_types": {"criteria": "exact seven criterion_result objects"},
+        },
+        "criterion_result": {
+            "exact_keys": ["passed"],
+            "field_types": {"passed": "boolean"},
+        },
+    }
+    validate_result_payload(
+        {"results": [{"criteria": [{"passed": True}]}]},
+        {"canonical_payload_schema": {"name": "root"}},
+        {"schema_catalog": {"definitions": definitions}},
+    )
 def _attempt_identity() -> dict[str, object]:
     return {
         "candidate_id": "C6-Base",

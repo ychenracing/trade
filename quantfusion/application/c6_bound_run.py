@@ -833,7 +833,9 @@ def validate_result_payload(
                 nested = value[field]
                 if nested is None and "or null" in descriptor:
                     continue
-                if "array" in descriptor:
+                if "array" in descriptor or (
+                    definition_name == "per_residual" and field == "criteria"
+                ):
                     if not isinstance(nested, list):
                         _raise(f"{label}.{field} must be an array")
                     for index, item in enumerate(nested):
