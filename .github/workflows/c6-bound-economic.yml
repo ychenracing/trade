@@ -140,13 +140,11 @@ jobs:
           else
             test -z "$C6_RESUME_WORKFLOW_RUN_ID"
           fi
-          case "$C6_LOGICAL_RUN_ID" in
-            c6-v4-*) C6_REF_VERSION=v4 ;;
-            c6-v5-*) C6_REF_VERSION=v5 ;;
-            c6-v6-*) C6_REF_VERSION=v6 ;;
-            c6-v7-*) C6_REF_VERSION=v7 ;;
-            *) exit 1 ;;
-          esac
+          if [[ "$C6_LOGICAL_RUN_ID" =~ ^c6-(v[1-9][0-9]*)- ]]; then
+            C6_REF_VERSION="${BASH_REMATCH[1]}"
+          else
+            exit 1
+          fi
           readonly C6_REF_VERSION
           case "$C6_BINDING_ID:$C6_CANDIDATE_ID" in
             c6.base.l1:C6-Base)

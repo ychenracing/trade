@@ -324,6 +324,11 @@ class RepositoryHygieneTests(unittest.TestCase):
             "C6_FENCING_TOKEN: ${{ inputs.fencing_token }}",
             workflow,
         )
+        self.assertIn(
+            'if [[ "$C6_LOGICAL_RUN_ID" =~ ^c6-(v[1-9][0-9]*)- ]]; then',
+            workflow,
+        )
+        self.assertNotIn("c6-v7-*) C6_REF_VERSION=v7", workflow)
 
     def test_generated_directories_are_not_committed(self) -> None:
         forbidden_parts = {
