@@ -312,6 +312,19 @@ class RepositoryHygieneTests(unittest.TestCase):
         self.assertIn("pip install -r ${{ matrix.lock-file }}", workflow)
         self.assertIn("pytest -q ${{ matrix.pytest-args }}", workflow)
 
+    def test_c6_bound_workflow_keeps_history_and_fencing_token_out_of_inputs(self) -> None:
+        workflow = (
+            ROOT / ".github/workflows/c6-bound-economic.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn("      fencing_token:\n", workflow)
+        self.assertIn("      - name: Initialize run-local fencing token\n", workflow)
+        self.assertGreaterEqual(workflow.count("          fetch-depth: 0\n"), 2)
+        self.assertNotIn(
+            "C6_FENCING_TOKEN: ${{ inputs.fencing_token }}",
+            workflow,
+        )
+
     def test_generated_directories_are_not_committed(self) -> None:
         forbidden_parts = {
             "__pycache__",
