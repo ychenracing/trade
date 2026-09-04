@@ -198,7 +198,8 @@ class OverlayActionMixin:
 
     def _apply_concentration_guard(
         self, states: list, prices: dict[str, float], date_str: str,
-        scoring_fn, drawdown: float, assets: float,
+        scoring_fn, drawdown: float, assets: float, *,
+        early_s_evidence: bool = False,
     ) -> tuple[RiskAction, ...]:
         """Trim an over-concentrated sub-industry cluster (report 4.8 / P1-5).
 
@@ -224,7 +225,7 @@ class OverlayActionMixin:
             instead of trimming on a partial picture. The skip is audited.
         """
         actions: list[RiskAction] = []
-        if drawdown < CONCENTRATION_DRAWDOWN:
+        if drawdown < CONCENTRATION_DRAWDOWN and not early_s_evidence:
             return ()
         if self._portfolio_fast_return() >= 0:
             return ()
