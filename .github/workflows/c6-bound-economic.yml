@@ -141,21 +141,46 @@ jobs:
           else
             test -z "$C6_RESUME_WORKFLOW_RUN_ID"
           fi
+          case "$C6_LOGICAL_RUN_ID" in
+            c6-v4-*) C6_REF_VERSION=v4 ;;
+            c6-v5-*) C6_REF_VERSION=v5 ;;
+            *) exit 1 ;;
+          esac
+          readonly C6_REF_VERSION
           case "$C6_BINDING_ID:$C6_CANDIDATE_ID" in
             c6.base.l1:C6-Base)
               test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
+              C6_SOURCE_REF=codex/c6-base-$C6_REF_VERSION
               ;;
             c6.s.qualification:C6-Base+S)
               test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
+              C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
               ;;
             c6.base_plus_s.l1:C6-Base+S)
               test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
+              C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
               ;;
-            c6.selected.l2:C6-Base|c6.selected.l2:C6-Base+S|c6.selected.l4:C6-Base|c6.selected.l4:C6-Base+S)
+            c6.selected.l2:C6-Base|c6.selected.l4:C6-Base)
               test -n "$C6_D_COMMIT" && test -n "$C6_D_SELECTION_BLOB_OID" && test -n "$C6_D_SELECTION_FILE_SHA256"
+              C6_SOURCE_REF=codex/c6-base-$C6_REF_VERSION
+              ;;
+            c6.selected.l2:C6-Base+S|c6.selected.l4:C6-Base+S)
+              test -n "$C6_D_COMMIT" && test -n "$C6_D_SELECTION_BLOB_OID" && test -n "$C6_D_SELECTION_FILE_SHA256"
+              C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
               ;;
             *) exit 1 ;;
           esac
+          readonly C6_SOURCE_REF
+          readonly C6_EVIDENCE_REF=codex/c6-evidence-$C6_REF_VERSION
+          readonly C6_REMOTE_URL="https://github.com/${GITHUB_REPOSITORY}.git"
+          source_anchor="$(git ls-remote --refs "$C6_REMOTE_URL" "refs/heads/$C6_SOURCE_REF")"
+          test "$source_anchor" = "$C6_SOURCE_REVISION"$'\t'"refs/heads/$C6_SOURCE_REF"
+          evidence_anchor="$(git ls-remote --refs "$C6_REMOTE_URL" "refs/heads/$C6_EVIDENCE_REF")"
+          if [[ -n "$C6_D_COMMIT" ]]; then
+            test "$evidence_anchor" = "$C6_D_COMMIT"$'\t'"refs/heads/$C6_EVIDENCE_REF"
+          else
+            test "$evidence_anchor" = "$C6_RUN_BINDINGS_REVISION"$'\t'"refs/heads/$C6_EVIDENCE_REF"
+          fi
           python3 - <<'PY'
           import json
           import os
@@ -230,6 +255,7 @@ jobs:
           ref: ${{ inputs.d_commit }}
           path: decision
           persist-credentials: false
+          fetch-depth: 2
       - name: Verify checked-out identities
         env:
           C6_SOURCE_REVISION: ${{ inputs.source_revision }}
@@ -248,6 +274,8 @@ jobs:
           if [[ -n "$C6_D_COMMIT" ]]; then
             test "$(git -C decision rev-parse HEAD)" = "$C6_D_COMMIT"
             test -z "$(git -C decision status --porcelain -uall)"
+            test "$(git -C decision rev-list --parents -n 1 "$C6_D_COMMIT")" = "$C6_D_COMMIT $C6_RUN_BINDINGS_REVISION"
+            test "$(git -C decision diff --name-status "$C6_RUN_BINDINGS_REVISION" "$C6_D_COMMIT")" = $'A\tartifacts/diagnostics/c6-selection.json'
             test "$(git -C decision rev-parse "$C6_D_COMMIT:artifacts/diagnostics/c6-selection.json")" = "$C6_D_SELECTION_BLOB_OID"
             test "$(sha256sum decision/artifacts/diagnostics/c6-selection.json | cut -d' ' -f1)" = "$C6_D_SELECTION_FILE_SHA256"
             test "$(git -C decision ls-tree "$C6_D_COMMIT" -- artifacts/diagnostics/c6-selection.json | cut -d' ' -f1)" = "100644"
@@ -295,7 +323,6 @@ jobs:
             --candidate-id "$C6_CANDIDATE_ID" \
             --logical-run-id "$C6_LOGICAL_RUN_ID" \
             --attempt-id "$C6_ATTEMPT_ID" \
-            --fencing-token "$C6_FENCING_TOKEN" \
             --resume-from "$C6_RESUME_FROM" \
             --resume-workflow-run-id "$C6_RESUME_WORKFLOW_RUN_ID" \
             --d-commit "$C6_D_COMMIT" \
@@ -441,6 +468,14 @@ jobs:
           files = manifest["files"]
           if not isinstance(files, dict) or not files:
               raise SystemExit("sealed export file hash map is empty")
+          if manifest["kind"] == "checkpoint":
+              expected_files = {"checkpoint.json", "child-checkpoint.bin"}
+          elif manifest["binding_id"] == "c6.selected.l4":
+              expected_files = {"official-artifact.json", "digest.json"}
+          else:
+              expected_files = {"payload.json", "digest.json"}
+          if set(files) != expected_files:
+              raise SystemExit("sealed export file set does not match binding stage")
 
           actual_files = {}
           for path in root.rglob("*"):
