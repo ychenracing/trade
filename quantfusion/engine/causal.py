@@ -40,6 +40,8 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
 
     ENGINE_LABEL = "Quant Fusion"
     ALLOCATION_LOOKBACKS = (5, 10, 20)
+    policy: Any
+    _candidate_score_series: dict[str, dict[int, pd.Series]]
 
     def __init__(
         self, initial_capital: float = 2_000_000, cfg: dict | None = None
@@ -183,6 +185,45 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                     volatility > 0
                 )
         return raw
+
+    def _fixed_reference_scores(
+        self, date: pd.Timestamp, symbols: set[str] | list[str]
+    ) -> dict[str, float]:
+        """Score symbols at the latest prior close against the fixed basket."""
+        date = pd.Timestamp(date)
+        score_series = getattr(self, "_candidate_score_series", {})
+
+        def prior_value(code: str, window: int) -> float | None:
+            series = score_series.get(code, {}).get(window)
+            if series is None or series.empty:
+                return None
+            position = int(series.index.searchsorted(date, side="left")) - 1
+            if position < 0:
+                return None
+            value = float(series.iloc[position])
+            return value if math.isfinite(value) else None
+
+        result: dict[str, float] = {}
+        for code in sorted(symbols):
+            percentiles: list[float] = []
+            for window in self.policy.candidate_lookbacks:
+                candidate = prior_value(code, window)
+                references = [
+                    prior_value(reference, window)
+                    for reference in self.policy.regime_symbols
+                ]
+                valid_references = [
+                    value for value in references if value is not None
+                ]
+                if candidate is None or len(valid_references) != len(references):
+                    break
+                percentiles.append(
+                    sum(value <= candidate for value in valid_references)
+                    / len(self.policy.regime_symbols)
+                )
+            if len(percentiles) == len(self.policy.candidate_lookbacks):
+                result[code] = sum(percentiles) / len(percentiles)
+        return result
 
     def _record_order_event(
         self,
@@ -508,8 +549,11 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         date: pd.Timestamp,
         date_to_pos: dict[pd.Timestamp, int],
         directions: frozenset[str] | None = None,
+        buy_scores: dict[str, float] | None = None,
     ) -> list[tuple[Signal, BaseStrategy]]:
         """Execute selected sides, batching same-symbol buys before any fill."""
+        if buy_scores is None:
+            buy_scores = getattr(self, "_c6_buy_scores", None)
         date_str = date.strftime("%Y-%m-%d")
         strategy_rank = {"turtle_breakout": 0, "dual_ma": 1, "atr_channel": 2}
         allocation_scores = self._allocation_scores(data_map, date)
@@ -517,7 +561,11 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             pending,
             key=lambda item: (
                 0 if item[0].direction == "sell" else 1,
-                -allocation_scores.get(item[0].symbol, 0.0),
+                -(
+                    buy_scores
+                    if item[0].direction == "buy" and buy_scores is not None
+                    else allocation_scores
+                ).get(item[0].symbol, 0.0),
                 item[0].symbol,
                 strategy_rank.get(item[0].strategy_name, 99),
             ),
@@ -542,13 +590,24 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             elif executable_signal.direction == "sell":
                 sold = self._execute_sell(executable_signal, strategy, date_str)
                 remaining = max(executable_signal.target_shares - sold, 0)
-                # Only re-queue when the sell made real progress (a partial
-                # fill). A zero-fill sell is a sub-lot target that can never be
-                # executed (``_execute_sell`` floors partial sells to a board
-                # lot), so re-queuing it here would spin forever as a permanent
-                # pending order. Limit-blocked sells are already retained
-                # upstream via ``keep_pending``, so they never reach this path.
-                if remaining > 0 and (strategy is None or strategy.position is not None):
+                strat_name = (
+                    strategy.name if strategy is not None else signal.strategy_name
+                )
+                current = self.positions.get(signal.symbol, {}).get(strat_name)
+                current_shares = int(current.shares) if current is not None else 0
+                release_sublot = (
+                    0 < remaining < A_SHARE_LOT_SIZE
+                    and remaining < current_shares
+                )
+                if release_sublot:
+                    self._record_order_event(
+                        date=date_str,
+                        signal=signal,
+                        event="released_unexecutable_sublot_sell",
+                        remaining_shares=int(remaining),
+                        current_shares=current_shares,
+                    )
+                elif remaining > 0 and current_shares > 0:
                     unexecuted.append(
                         (replace(signal, target_shares=remaining), strategy)
                     )
