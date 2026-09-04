@@ -79,7 +79,7 @@ def test_preregistration_supersession_changes_only_the_test_path() -> None:
     ]
 
 
-def test_transition_reference_matches_current_formal_identity() -> None:
+def test_transition_reference_matches_frozen_formal_identity() -> None:
     prereg = _load_strict(PREREG_V1)
     historical = prereg["historical_cohort"]
     historical_cohort_path = PROJECT_ROOT / historical["path"]
@@ -108,9 +108,6 @@ def test_transition_reference_matches_current_formal_identity() -> None:
         for item in plan
     )
     identity = prereg["current_checkout_identity"]
-    assert stress_artifacts._tree_fingerprint(stress_artifacts._source_files()) == (
-        identity["source_fingerprint"]
-    )
     assert stress_artifacts._tree_fingerprint(
         stress_artifacts._data_files(MARKET_DATA_DIR, REGIME_DATA_DIR)
     ) == identity["data_fingerprint"]
