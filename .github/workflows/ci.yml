@@ -30,6 +30,8 @@ jobs:
             pytest-args: ""
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.C6_PREFREEZE == 'true' && '0' || '1' }}
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
