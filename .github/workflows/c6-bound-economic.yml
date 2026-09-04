@@ -193,8 +193,17 @@ jobs:
           def reject_constant(value: str) -> None:
               raise ValueError(f"non-finite JSON constant: {value}")
 
+          def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise ValueError(f"duplicate JSON key: {key}")
+                  result[key] = value
+              return result
+
           manifest = json.loads(
               manifest_path.read_text(encoding="utf-8"),
+              object_pairs_hook=unique_object,
               parse_constant=reject_constant,
           )
           required_keys = {
@@ -212,6 +221,8 @@ jobs:
           }
           if not isinstance(manifest, dict) or set(manifest) != required_keys:
               raise SystemExit("sealed export manifest has the wrong schema")
+          if type(manifest["schema_version"]) is not int:
+              raise SystemExit("sealed export schema_version must be an integer")
           expected = {
               "schema_version": 1,
               "source_revision": os.environ["C6_SOURCE_REVISION"],
@@ -242,6 +253,8 @@ jobs:
               if not path.is_file() or path == manifest_path:
                   continue
               relative = path.relative_to(root).as_posix()
+              if any(part.startswith(".") for part in PurePosixPath(relative).parts):
+                  raise SystemExit(f"sealed export contains hidden path: {relative}")
               actual_files[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
           if set(files) != set(actual_files):
               raise SystemExit("sealed export manifest file set is incomplete")
