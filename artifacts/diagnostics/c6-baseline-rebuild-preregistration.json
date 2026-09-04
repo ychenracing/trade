@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "kind": "c6_baseline_rebuild_preregistration",
+  "status": "frozen_before_rebuild_evidence",
+  "base_revision": "8bf800bd70170d2f1c8ca5d0043b84c54dd7c96c",
+  "base_tree": "040b8c0a30b7572d8d19c17ea0e0501ee52cba0a",
+  "bootstrap_revision": "cefa475ab94af8e09094fc78801586413f737d94",
+  "branch": "codex/c6-baseline-rebuild",
+  "pull_request": 29,
+  "stopped_c6_pull_request": 27,
+  "workflow_preflight_pull_request": 28,
+  "purpose": "Rebuild a current-contract high-risk cohort from the sole committed complete 17/958 transition reference without running a new backtest or changing economic behavior.",
+  "historical_cohort": {
+    "path": "artifacts/diagnostics/18pct-drawdown-cohort.txt",
+    "sha256": "ae7f45ef63eea103f1fc2c7ebcb19541d30d64c590518a2ceb2b0a4c4234f196",
+    "git_blob": "2f8e6e9e303efddfd246b6b0c852063eff94b993",
+    "scenario_count": 281,
+    "unique_scenario_count": 281,
+    "analysis_path": "artifacts/diagnostics/18pct-drawdown-root-cause-analysis.json",
+    "analysis_sha256": "bc1fb62303bead1788b03eb57865ce57390b9639477cec1f972c5c5b613fe81f",
+    "analysis_git_blob": "f2774031ae8d13c1e7b072eb3e013d2fea1934e1",
+    "source_revision": "f01b305df5f818fb10bc9033167a8207ffd10c54",
+    "source_fingerprint": "634df4a7f6716128adf1283b9156f759028c3b2cd417f233550469d6be34d59b",
+    "data_fingerprint": "8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40",
+    "scenario_signature": "1b1d6e46dbe2e37529621c989dd92a2583ec68be4a5e78f3d0c23a36f8ec893d",
+    "compatibility_with_current_formal_plan": {
+      "compatible": false,
+      "intersection_count": 208,
+      "missing_count": 73,
+      "missing_by_family": {
+        "add_one": 8,
+        "leave_one_out": 3,
+        "random_subset": 62
+      },
+      "missing_random_sample_size": 16,
+      "mutation_policy": "preserve_byte_for_byte"
+    }
+  },
+  "transition_reference": {
+    "path": "artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json",
+    "sha256": "63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c",
+    "git_blob": "8590e24a50f1086ab91fb39f7462342029dca809",
+    "artifact_status": "current_candidate",
+    "acceptance_status": "rejected",
+    "canonical": false,
+    "stress_contract_version": 2,
+    "trade_count_semantics": "trade_records",
+    "source_revision": "acf4cccf4117edb35e6beb57aa2f9004476c8b93",
+    "source_fingerprint": "bc999a432587fe52360608d2779482a245eacb84c148d69f0f2ff02d55605406",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+    "run_signature": "442d85e0b015da900a4501925e6380445d33766cb14886b77f7eb4cf437e2eca",
+    "scenario_count": 958,
+    "unique_scenario_count": 958,
+    "start_date": "2025-04-01",
+    "end_date": "2026-07-20",
+    "initial_capital": 2000000.0,
+    "engine": "ProductionReplayEngine",
+    "deployment_policy": "production_daily_replay",
+    "seeds": [
+      20260807,
+      20260817,
+      20260827
+    ],
+    "random_samples_per_size_per_seed": 50,
+    "permutation_samples_per_seed": 50,
+    "official_loader": "quantfusion.application.stress_artifacts._load_initial_baseline_reference",
+    "loader_preflight_expected": "pass",
+    "publication_policy": "transition_reference_only_never_accepted_or_canonical"
+  },
+  "current_checkout_identity": {
+    "revision": "8bf800bd70170d2f1c8ca5d0043b84c54dd7c96c",
+    "source_fingerprint": "bc999a432587fe52360608d2779482a245eacb84c148d69f0f2ff02d55605406",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+    "scenario_count": 958,
+    "ordered_scenario_ids_sha256": "29c5d626d4cbd176eb18f0c0390016f6f9adad24babbd368cf483d0bc99834e3",
+    "implementation_files": {
+      "quantfusion/application/stress_metrics.py": {
+        "sha256": "3af9b19994d7af13ee9abf2dd8845ed2a2c7f00ba476b55911c331d838dc7d92",
+        "git_blob": "1531e6aae35cf63728be8e3c062cbe3b9c192c57"
+      },
+      "quantfusion/application/stress_scenarios.py": {
+        "sha256": "d0ae025ec5d7ba767e56664c0623a4b0c88decf684f374660b3cd38a5f9f1fcc",
+        "git_blob": "e3319fea4adaf1682a3cf520c1fd1215630249f1"
+      },
+      "quantfusion/application/stress_artifacts.py": {
+        "sha256": "f7e70cb76a6c0eccf55bcea26361a9da246575585be04fc6fdff0e01f36a96ad",
+        "git_blob": "57c727977b6a83050ac60e1e6128bdad6c7a7428"
+      }
+    }
+  },
+  "cohort_derivation": {
+    "only_input_economic_field": "results[].max_drawdown from transition_reference",
+    "scenario_identity_source": "the exact canonical order returned by quantfusion.application.stress_scenarios._multi_seed_scenarios with frozen defaults",
+    "severity_formula": "abs(float(result.max_drawdown))",
+    "official_max_drawdown": 0.18,
+    "official_numeric_tolerance": 1e-15,
+    "boundary_floor": 0.17,
+    "failure_predicate": "severity > official_max_drawdown + official_numeric_tolerance",
+    "boundary_predicate": "boundary_floor <= severity <= official_max_drawdown + official_numeric_tolerance",
+    "control_eligibility_predicate": "severity < boundary_floor",
+    "control_selection": "Traverse the exact canonical formal-plan order and retain the first six control-eligible scenario IDs.",
+    "control_count": 6,
+    "control_ids_in_canonical_order": [
+      "prefix-03",
+      "prefix-15",
+      "leave-one-out-601869",
+      "add-one-05-002409",
+      "random-20260807-03-008",
+      "random-20260807-03-010"
+    ],
+    "partition_requirement": "failure, boundary, and control sets must be pairwise disjoint",
+    "output_order": "lexicographic scenario_id",
+    "forbidden": [
+      "manual scenario inclusion or exclusion",
+      "ID remapping",
+      "economic ranking inside an eligibility partition",
+      "new backtest execution",
+      "accepted or canonical publication"
+    ]
+  },
+  "expected_outputs": {
+    "cohort_path": "artifacts/diagnostics/c6-current-baseline-cohort.txt",
+    "evidence_path": "artifacts/diagnostics/c6-baseline-rebuild.json",
+    "failure_count": 649,
+    "failure_ids_text_sha256": "d616908f2831f3d92fc50a20c303b840cd0db273d8d7cb206bad64940821f9d7",
+    "boundary_count": 110,
+    "boundary_ids_text_sha256": "2881a47ee1c856e214f30b5ff232f7232614b97bc93fec8f20b55b3499c31c69",
+    "control_count": 6,
+    "control_ids_text_sha256": "61ba665ca0ecc31aa7aa0e5d6b93a5712ef40622b7cb05a41989cac9a34c5b8f",
+    "safe_eligible_count": 199,
+    "cohort_count": 765,
+    "cohort_text_sha256": "8a2bb25716cb94adc43c4bb4fd39ff868ba5223d788f62a580917c12cbe2c4d7",
+    "text_serialization": "UTF-8, one lexicographically sorted scenario ID per line, LF after every line including the last",
+    "json_serialization": "json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) followed by one LF"
+  },
+  "workflow_embargo": {
+    "ci_workflow_path": ".github/workflows/ci.yml",
+    "ci_workflow_sha256": "36b48a11948d5783b72755b4a2da34e53e828f6ab255afa9bad3925428a17893",
+    "ci_workflow_git_blob": "bdb6a66c70f57dc39c642a033b7f6700a44d24ab",
+    "bound_workflow_path": ".github/workflows/c6-bound-economic.yml",
+    "bound_workflow_sha256": "8de81925af0a4dafc9436b2c22456ad594892b9630aeb0f31bc985407a31ac89",
+    "bound_workflow_git_blob": "f8a440f69c646a28e926070c922d338fd96a550c",
+    "branch_push": "no_workflow",
+    "pull_request": "non_economic_c6_prefreeze_only",
+    "economic_workflow_dispatch": "forbidden_in_this_cycle",
+    "merge_group": "not_configured",
+    "merged_main": "ordinary_ci_and_existing_regression_only"
+  },
+  "dependency_identity": {
+    "path": "requirements-lock.txt",
+    "sha256": "22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434",
+    "git_blob": "103f5db04d4d2f31a40294cceab5dbbedfda553c"
+  },
+  "authorized_writes_after_this_commit": [
+    "artifacts/diagnostics/c6-current-baseline-cohort.txt",
+    "artifacts/diagnostics/c6-baseline-rebuild.json",
+    "tests/contract/test_c6_baseline_rebuild.py",
+    "README.md",
+    "docs/ARCHITECTURE.md",
+    "docs/VALIDATION.md"
+  ],
+  "stop_conditions": [
+    "official transition-reference loader rejects the reference",
+    "reference IDs or families differ from the exact canonical 958 plan",
+    "current source, data, or scenario fingerprint differs from the reference",
+    "derived counts, identities, or hashes differ from expected_outputs",
+    "historical cohort or analysis bytes change",
+    "any new real economic run is dispatched or inspected",
+    "any accepted or canonical status is asserted"
+  ]
+}
