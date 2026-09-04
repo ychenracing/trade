@@ -112,6 +112,9 @@ jobs:
               "tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_frozen_bull_single_symbol_golden_metric",
               "tests/regression/test_regime_adaptive.py::DynamicRouteStateMachineTests::test_route_sequence_is_emitted_and_current_day_route_is_consistent",
           }
+          source_sensitive_nodes = {
+              "tests/contract/test_formal_stress_documentation_consistency.py::test_recorded_958_summary_candidate_and_docs_are_one_contract",
+          }
           discovered_files = {
               path.as_posix() for path in Path("tests").rglob("test_*.py")
           }
@@ -167,20 +170,28 @@ jobs:
           ]
           collected_nodes = set(nodes)
           unmatched_embargoed = embargoed_nodes - collected_nodes
+          unmatched_source_sensitive = source_sensitive_nodes - collected_nodes
           unmatched_prefixes = {
               prefix
               for prefix in embargoed_prefixes
               if not any(node.startswith(prefix) for node in nodes)
           }
-          if unmatched_embargoed or unmatched_prefixes:
+          if unmatched_embargoed or unmatched_source_sensitive or unmatched_prefixes:
               raise SystemExit(
-                  "unmatched economic embargo selectors:\n"
-                  + "\n".join(sorted(unmatched_embargoed | unmatched_prefixes))
+                  "unmatched pre-freeze exclusion selectors:\n"
+                  + "\n".join(
+                      sorted(
+                          unmatched_embargoed
+                          | unmatched_source_sensitive
+                          | unmatched_prefixes
+                      )
+                  )
               )
           executable_nodes = [
               node
               for node in nodes
               if node not in embargoed_nodes
+              and node not in source_sensitive_nodes
               and not node.startswith(embargoed_prefixes)
           ]
           if not executable_nodes:
