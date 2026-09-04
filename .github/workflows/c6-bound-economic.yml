@@ -31,8 +31,17 @@ on:
         description: R-authorized exclusive lease token
         required: true
         type: string
+      fencing_sequence:
+        description: R-authorized monotonic logical-run fencing sequence
+        required: true
+        type: string
       resume_from:
         description: Optional R-authorized sealed checkpoint identity
+        required: false
+        default: ""
+        type: string
+      prior_artifact_id:
+        description: Exact prior sealed checkpoint artifact ID required for resume
         required: false
         default: ""
         type: string
@@ -72,7 +81,9 @@ jobs:
           C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
           C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
           C6_FENCING_TOKEN: ${{ inputs.fencing_token }}
+          C6_FENCING_SEQUENCE: ${{ inputs.fencing_sequence }}
           C6_RESUME_FROM: ${{ inputs.resume_from }}
+          C6_PRIOR_ARTIFACT_ID: ${{ inputs.prior_artifact_id }}
           C6_RUNNER_IMAGE_OS: ${{ inputs.runner_image_os }}
           C6_RUNNER_IMAGE_VERSION: ${{ inputs.runner_image_version }}
           C6_PYTHON_VERSION: ${{ inputs.python_version }}
@@ -84,7 +95,16 @@ jobs:
           [[ "$C6_LOGICAL_RUN_ID" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]]
           [[ "$C6_ATTEMPT_ID" =~ ^[a-z0-9][a-z0-9._-]{0,127}$ ]]
           [[ "$C6_FENCING_TOKEN" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{15,255}$ ]]
+          [[ "$C6_FENCING_SEQUENCE" =~ ^[1-9][0-9]*$ ]]
           [[ -z "$C6_RESUME_FROM" || "$C6_RESUME_FROM" =~ ^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$ ]]
+          [[ -z "$C6_PRIOR_ARTIFACT_ID" || "$C6_PRIOR_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          if [[ -z "$C6_RESUME_FROM" ]]; then
+            test "$C6_FENCING_SEQUENCE" = "1"
+            test -z "$C6_PRIOR_ARTIFACT_ID"
+          else
+            test "$C6_FENCING_SEQUENCE" -gt 1
+            test -n "$C6_PRIOR_ARTIFACT_ID"
+          fi
           [[ "$C6_RUNNER_IMAGE_OS" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]
           [[ "$C6_RUNNER_IMAGE_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]
           [[ "$C6_PYTHON_VERSION" =~ ^3\.12\.[0-9]+$ ]]
@@ -137,7 +157,9 @@ jobs:
           C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
           C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
           C6_FENCING_TOKEN: ${{ inputs.fencing_token }}
+          C6_FENCING_SEQUENCE: ${{ inputs.fencing_sequence }}
           C6_RESUME_FROM: ${{ inputs.resume_from }}
+          C6_PRIOR_ARTIFACT_ID: ${{ inputs.prior_artifact_id }}
           C6_RUNNER_IMAGE_OS: ${{ inputs.runner_image_os }}
           C6_RUNNER_IMAGE_VERSION: ${{ inputs.runner_image_version }}
           C6_PYTHON_VERSION: ${{ inputs.python_version }}
@@ -148,7 +170,9 @@ jobs:
             --logical-run-id "$C6_LOGICAL_RUN_ID" \
             --attempt-id "$C6_ATTEMPT_ID" \
             --fencing-token "$C6_FENCING_TOKEN" \
+            --fencing-sequence "$C6_FENCING_SEQUENCE" \
             --resume-from "$C6_RESUME_FROM" \
+            --prior-artifact-id "$C6_PRIOR_ARTIFACT_ID" \
             --source-revision "$C6_SOURCE_REVISION" \
             --run-bindings-revision "$C6_RUN_BINDINGS_REVISION" \
             --workflow-revision "$C6_WORKFLOW_REVISION" \
@@ -171,6 +195,8 @@ jobs:
           C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
           C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
           C6_FENCING_TOKEN: ${{ inputs.fencing_token }}
+          C6_FENCING_SEQUENCE: ${{ inputs.fencing_sequence }}
+          C6_PRIOR_ARTIFACT_ID: ${{ inputs.prior_artifact_id }}
         run: |
           python - <<'PY'
           import hashlib
@@ -217,6 +243,8 @@ jobs:
               "logical_run_id",
               "attempt_id",
               "fencing_token_sha256",
+              "fencing_sequence",
+              "prior_artifact_id",
               "files",
           }
           if not isinstance(manifest, dict) or set(manifest) != required_keys:
@@ -234,6 +262,8 @@ jobs:
               "fencing_token_sha256": hashlib.sha256(
                   os.environ["C6_FENCING_TOKEN"].encode("utf-8")
               ).hexdigest(),
+              "fencing_sequence": int(os.environ["C6_FENCING_SEQUENCE"]),
+              "prior_artifact_id": os.environ["C6_PRIOR_ARTIFACT_ID"] or None,
           }
           if any(manifest[key] != value for key, value in expected.items()):
               raise SystemExit("sealed export identity does not match this attempt")
@@ -271,7 +301,7 @@ jobs:
         if: ${{ always() && steps.validate_export.outputs.ready == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: c6-bound-${{ inputs.logical_run_id }}-${{ inputs.attempt_id }}
+          name: c6-bound-${{ inputs.logical_run_id }}-${{ inputs.attempt_id }}-${{ inputs.fencing_sequence }}
           path: source/artifacts/checkpoints/c6/sealed-export/
           if-no-files-found: error
           retention-days: 90
