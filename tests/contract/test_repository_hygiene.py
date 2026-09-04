@@ -331,24 +331,29 @@ class RepositoryHygieneTests(unittest.TestCase):
         self.assertNotIn("c6-v7-*) C6_REF_VERSION=v7", workflow)
 
     def test_c6_bound_workflow_accepts_only_frozen_push_dispatch_envelopes(self) -> None:
-        workflow = (
+        bound_workflow = (
             ROOT / ".github/workflows/c6-bound-economic.yml"
         ).read_text(encoding="utf-8")
+        dispatcher = (
+            ROOT / ".github/workflows/c6-dispatch.yml"
+        ).read_text(encoding="utf-8")
 
-        self.assertIn("      - codex/c6-dispatch/**\n", workflow)
-        self.assertIn("      - name: Check out dispatch envelope\n", workflow)
-        self.assertIn('test "$GITHUB_EVENT_NAME" = "push"', workflow)
-        self.assertIn('test "$trigger_parent" = "$C6_WORKFLOW_REVISION"', workflow)
+        self.assertNotIn("      - codex/c6-dispatch/**\n", bound_workflow)
+        self.assertIn("      - codex/c6-dispatch/**\n", dispatcher)
+        self.assertIn("  actions: write\n", dispatcher)
+        self.assertIn("  contents: read\n", dispatcher)
+        self.assertIn("      - name: Check out dispatch envelope\n", dispatcher)
+        self.assertIn('if os.environ["GITHUB_EVENT_NAME"] != "push":', dispatcher)
+        self.assertIn('if trigger_parent != inputs["workflow_revision"]:', dispatcher)
         self.assertIn(
-            'test "$trigger_diff" = $\'A\\t.github/c6-dispatch-request.json\'',
-            workflow,
+            'if trigger_diff != "A\\t.github/c6-dispatch-request.json":',
+            dispatcher,
         )
-        self.assertIn('test "$GITHUB_SHA" = "$trigger_commit"', workflow)
         self.assertIn(
-            "C6_SOURCE_REVISION: ${{ steps.resolve.outputs.source_revision }}",
-            workflow,
+            '"actions/workflows/c6-bound-economic.yml/dispatches"',
+            dispatcher,
         )
-        self.assertNotIn("ref: ${{ inputs.source_revision }}", workflow)
+        self.assertNotIn("workflow_dispatch:", dispatcher)
 
     def test_c6_prefreeze_branch_allowlist_has_one_source_of_truth(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
