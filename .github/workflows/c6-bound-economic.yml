@@ -317,7 +317,6 @@ jobs:
             --candidate-id "$C6_CANDIDATE_ID" \
             --logical-run-id "$C6_LOGICAL_RUN_ID" \
             --attempt-id "$C6_ATTEMPT_ID" \
-            --fencing-token "$C6_FENCING_TOKEN" \
             --resume-from "$C6_RESUME_FROM" \
             --resume-workflow-run-id "$C6_RESUME_WORKFLOW_RUN_ID" \
             --d-commit "$C6_D_COMMIT" \
