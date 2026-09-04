@@ -91,6 +91,11 @@
   "compatibility": {
     "official_loader": "pass",
     "exact_scenario_ids_and_families": true,
+    "historical_cohort_sha256": "match",
+    "historical_cohort_count_and_uniqueness": "281_of_281",
+    "historical_analysis_sha256": "match",
+    "historical_analysis_provenance": "match",
+    "transition_reference_sha256": "match",
     "source_fingerprint": "match",
     "data_fingerprint": "match",
     "scenario_signature": "match"

@@ -81,7 +81,23 @@ def test_preregistration_supersession_changes_only_the_test_path() -> None:
 
 def test_transition_reference_matches_current_formal_identity() -> None:
     prereg = _load_strict(PREREG_V1)
+    historical = prereg["historical_cohort"]
+    historical_cohort_path = PROJECT_ROOT / historical["path"]
+    historical_analysis_path = PROJECT_ROOT / historical["analysis_path"]
     reference_path = PROJECT_ROOT / prereg["transition_reference"]["path"]
+    assert _sha256(historical_cohort_path) == historical["sha256"]
+    assert _sha256(historical_analysis_path) == historical["analysis_sha256"]
+    historical_ids = historical_cohort_path.read_text(encoding="utf-8").splitlines()
+    assert len(historical_ids) == len(set(historical_ids)) == 281
+    historical_analysis = _load_strict(historical_analysis_path)
+    for field in (
+        "source_revision",
+        "source_fingerprint",
+        "data_fingerprint",
+        "scenario_signature",
+    ):
+        assert historical_analysis[field] == historical[field]
+    assert _sha256(reference_path) == prereg["transition_reference"]["sha256"]
     reference = stress_artifacts._load_initial_baseline_reference(reference_path)
     plan = _formal_plan()
     by_id = {str(item["scenario_id"]): item for item in reference["results"]}
@@ -167,6 +183,11 @@ def test_rebuilt_evidence_matches_the_frozen_derivation() -> None:
         "compatibility": {
             "official_loader": "pass",
             "exact_scenario_ids_and_families": True,
+            "historical_cohort_sha256": "match",
+            "historical_cohort_count_and_uniqueness": "281_of_281",
+            "historical_analysis_sha256": "match",
+            "historical_analysis_provenance": "match",
+            "transition_reference_sha256": "match",
             "source_fingerprint": "match",
             "data_fingerprint": "match",
             "scenario_signature": "match",
