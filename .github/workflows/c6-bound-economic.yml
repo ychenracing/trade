@@ -141,31 +141,37 @@ jobs:
           else
             test -z "$C6_RESUME_WORKFLOW_RUN_ID"
           fi
+          case "$C6_LOGICAL_RUN_ID" in
+            c6-v4-*) C6_REF_VERSION=v4 ;;
+            c6-v5-*) C6_REF_VERSION=v5 ;;
+            *) exit 1 ;;
+          esac
+          readonly C6_REF_VERSION
           case "$C6_BINDING_ID:$C6_CANDIDATE_ID" in
             c6.base.l1:C6-Base)
               test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
-              C6_SOURCE_REF=codex/c6-base-v4
+              C6_SOURCE_REF=codex/c6-base-$C6_REF_VERSION
               ;;
             c6.s.qualification:C6-Base+S)
               test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
-              C6_SOURCE_REF=codex/c6-s-v4
+              C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
               ;;
             c6.base_plus_s.l1:C6-Base+S)
               test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
-              C6_SOURCE_REF=codex/c6-s-v4
+              C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
               ;;
             c6.selected.l2:C6-Base|c6.selected.l4:C6-Base)
               test -n "$C6_D_COMMIT" && test -n "$C6_D_SELECTION_BLOB_OID" && test -n "$C6_D_SELECTION_FILE_SHA256"
-              C6_SOURCE_REF=codex/c6-base-v4
+              C6_SOURCE_REF=codex/c6-base-$C6_REF_VERSION
               ;;
             c6.selected.l2:C6-Base+S|c6.selected.l4:C6-Base+S)
               test -n "$C6_D_COMMIT" && test -n "$C6_D_SELECTION_BLOB_OID" && test -n "$C6_D_SELECTION_FILE_SHA256"
-              C6_SOURCE_REF=codex/c6-s-v4
+              C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
               ;;
             *) exit 1 ;;
           esac
           readonly C6_SOURCE_REF
-          readonly C6_EVIDENCE_REF=codex/c6-evidence-v4
+          readonly C6_EVIDENCE_REF=codex/c6-evidence-$C6_REF_VERSION
           readonly C6_REMOTE_URL="https://github.com/${GITHUB_REPOSITORY}.git"
           source_anchor="$(git ls-remote --refs "$C6_REMOTE_URL" "refs/heads/$C6_SOURCE_REF")"
           test "$source_anchor" = "$C6_SOURCE_REVISION"$'\t'"refs/heads/$C6_SOURCE_REF"
