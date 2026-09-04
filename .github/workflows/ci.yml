@@ -102,6 +102,14 @@ jobs:
               "tests/c6_non_economic/test_c6_early_concentration.py",
               "tests/c6_non_economic/test_c6_s_qualification.py",
           }
+          embargoed_prefixes = (
+              "tests/regression/test_quant_fusion.py::IntegrationTests::",
+          )
+          embargoed_nodes = {
+              "tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_weak_real_execution_matches_frozen_research_point",
+              "tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_frozen_bull_single_symbol_golden_metric",
+              "tests/regression/test_regime_adaptive.py::DynamicRouteStateMachineTests::test_route_sequence_is_emitted_and_current_day_route_is_consistent",
+          }
           discovered_files = {
               path.as_posix() for path in Path("tests").rglob("test_*.py")
           }
