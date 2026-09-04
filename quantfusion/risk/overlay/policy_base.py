@@ -204,7 +204,9 @@ class OverlayPolicyMixin:
             self._update_risk_level(states, date, date_pos, held, drawdown)
             self._risk_level_day = date_pos
 
-        if getattr(self, "_c6_diagnostic_evidence_enabled", False):
+        s_enabled = bool(getattr(self, "_c6_s_enabled", False))
+        observed = None
+        if getattr(self, "_c6_diagnostic_evidence_enabled", False) or s_enabled:
             observed = self.observe_c6_s_evidence(
                 states, date, date_pos, prices, assets, drawdown, scoring_fn
             )
@@ -330,7 +332,12 @@ class OverlayPolicyMixin:
         if self.enable_concentration_guard:
             actions.extend(
                 self._apply_concentration_guard(
-                    states, prices, date_str, scoring_fn, drawdown, assets
+                    states, prices, date_str, scoring_fn, drawdown, assets,
+                    early_s_evidence=bool(
+                        s_enabled
+                        and observed is not None
+                        and observed["early_sell_required"]
+                    ),
                 )
             )
 
