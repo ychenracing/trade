@@ -1,0 +1,4316 @@
+{
+  "schema_version": 2,
+  "kind": "c6_causal_risk_closure_preregistration",
+  "status": "frozen_before_implementation_or_economic_dispatch",
+  "experiment_id": "c6-causal-risk-closure-17x958-v4",
+  "authority": {
+    "repository": "ychenracing/trade",
+    "branch": "codex/c6-causal-risk-closure-v4",
+    "pull_request": null,
+    "prior_stopped_pull_requests": [
+      27,
+      30,
+      32,
+      33
+    ],
+    "baseline_repair_pull_requests": [
+      29,
+      31
+    ],
+    "workflow_preflight_pull_requests": [
+      26,
+      28,
+      34,
+      35
+    ],
+    "base_revision": "f84945982e11321733fb5772d9117cdb21080311",
+    "base_tree": "29cf7f46461b945ec9d10e8db2d605e365104210",
+    "history_bridge_revision": "23cd94998b08cc0cef288f91303cffa32fb16d93",
+    "restart_checkpoint_revision": "23cd94998b08cc0cef288f91303cffa32fb16d93",
+    "preregistration_path": "artifacts/diagnostics/c6-preregistration.json",
+    "preregistration_commit": null,
+    "preregistration_tree": null,
+    "preregistration_blob": null,
+    "preregistration_sha256": null,
+    "late_binding_rule": "The containing P commit, tree, blob OID and full-byte SHA-256 are verified after this file is committed and are recorded in R; the five nulls here prevent self-reference."
+  },
+  "purpose": "Evaluate whether the frozen C6-Base and, only if mechanically qualified, C6-Base+S candidate family can close current-contract causal drawdown risk without changing alpha, formal gates, account locks, data, scenarios, or documented capacity and confirmation semantics.",
+  "claims_not_authorized": [
+    "out_of_sample_generalization",
+    "complete_membership_or_superset_stability",
+    "all_daily_models_are_feasible_or_infeasible",
+    "profit_guarantee",
+    "automatic_broker_execution"
+  ],
+  "baseline_compatibility": {
+    "sealed_rebuild_revision": "92e8caa657120008b2b2c8db5e756228bd709540",
+    "baseline_integrity_test_repair": {
+      "revision": "cf933b84b2c2fc90b722a30a2c766596fbd06216",
+      "pull_request": 31,
+      "preregistration": {
+        "path": "artifacts/diagnostics/c6-baseline-rebuild-preregistration-v3.json",
+        "git_blob": "ec32d695a4f9c46dc89160d01c4e8c899aac020a",
+        "sha256": "7640fde1e7818cb5b1f682da3fc4548e9be5807aebce85db9b4bb227ecff5584"
+      },
+      "test": {
+        "path": "tests/c6_non_economic/test_baseline_rebuild.py",
+        "git_blob": "1f9eaae00c246d79f608c804e128b661f080cc80",
+        "sha256": "38b33051cfa09933ea74e5d16dbbec06f01a6d308120fbd36ec0b2402eca44be"
+      },
+      "scope": "Remove only the mutable-checkout source-fingerprint assertion while preserving all frozen artifact, provenance, data, scenario, rejection and derivation checks.",
+      "economic_contract_changed": false,
+      "new_backtest_performed": false
+    },
+    "evidence": {
+      "path": "artifacts/diagnostics/c6-baseline-rebuild.json",
+      "mode": "100644",
+      "git_blob": "a5f32b413e532aa1e52e62f79b2564e216e22677",
+      "sha256": "55c0cf9e0d6a4cc0a65adb44d9069a900845c5fbe3eee976b236c72a5f438ef7",
+      "status": "trusted_transition_reference_compatible"
+    },
+    "current_cohort": {
+      "path": "artifacts/diagnostics/c6-current-baseline-cohort.txt",
+      "mode": "100644",
+      "git_blob": "a6e8e51303d416222f41f8ae9cf32ffe2ba09ccb",
+      "sha256": "8a2bb25716cb94adc43c4bb4fd39ff868ba5223d788f62a580917c12cbe2c4d7",
+      "scenario_count": 765,
+      "unique_scenario_count": 765,
+      "composition": {
+        "failures": 649,
+        "boundaries_17_to_18_percent": 110,
+        "controls": 6
+      },
+      "use": "authoritative_current_contract_l1_economic_manifest"
+    },
+    "historical_281_cohort": {
+      "path": "artifacts/diagnostics/18pct-drawdown-cohort.txt",
+      "sha256": "ae7f45ef63eea103f1fc2c7ebcb19541d30d64c590518a2ceb2b0a4c4234f196",
+      "git_blob": "2f8e6e9e303efddfd246b6b0c852063eff94b993",
+      "scenario_count": 281,
+      "compatibility_with_current_17x958": false,
+      "intersection_count": 208,
+      "missing_count": 73,
+      "use": "immutable_historical_provenance_only",
+      "mutation_policy": "byte_for_byte_forbidden"
+    },
+    "supersession_rule": "The sealed 765-ID current cohort replaces the incompatible historical 281-ID cohort only as the runnable C6 manifest; historical files and conclusions remain immutable."
+  },
+  "formal_contract": {
+    "stress_contract_version": 2,
+    "engine": "ProductionReplayEngine",
+    "deployment_policy": "production_daily_replay",
+    "trade_count_semantics": "trade_records",
+    "start_date": "2025-04-01",
+    "end_date": "2026-07-20",
+    "initial_capital": 2000000,
+    "indicator_state": "warm",
+    "decision_time": "daily_close",
+    "execution_time": "next_tradable_open",
+    "t_plus_one": true,
+    "leverage": false,
+    "shorting": false,
+    "max_account_drawdown": 0.18,
+    "official_numeric_tolerance": 1e-15,
+    "ordered_symbols": [
+      "300308",
+      "300502",
+      "300394",
+      "688256",
+      "603986",
+      "688072",
+      "688300",
+      "300054",
+      "688361",
+      "002409",
+      "688498",
+      "688120",
+      "002384",
+      "688082",
+      "300604",
+      "601869",
+      "300408"
+    ],
+    "account_risk_policy_for_complete_17_symbol_reference": {
+      "drawdown_alert": 0.14,
+      "confirmed_drawdown": 0.175,
+      "emergency_drawdown": 0.18,
+      "terminal_drawdown": 0.22,
+      "rearm_trading_days": 252,
+      "mutation_policy": "forbidden"
+    },
+    "source_fingerprint_at_base": "bc999a432587fe52360608d2779482a245eacb84c148d69f0f2ff02d55605406",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880"
+  },
+  "transition_reference": {
+    "incumbent_available": false,
+    "route": "explicit_initial_baseline",
+    "path": "artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json",
+    "mode": "100644",
+    "git_blob": "8590e24a50f1086ab91fb39f7462342029dca809",
+    "sha256": "63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c",
+    "source_revision": "acf4cccf4117edb35e6beb57aa2f9004476c8b93",
+    "source_fingerprint": "bc999a432587fe52360608d2779482a245eacb84c148d69f0f2ff02d55605406",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+    "scenario_count": 958,
+    "unique_scenario_count": 958,
+    "artifact_status": "current_candidate",
+    "acceptance_status": "rejected",
+    "canonical": false,
+    "official_loader": "quantfusion.application.stress_artifacts._load_initial_baseline_reference",
+    "official_loader_preflight": "pass",
+    "selection_after_results": "forbidden"
+  },
+  "scenario_manifests": {
+    "serialization": "UTF-8; IDs in each manifest's explicitly documented order (lexicographic where stated, listed order otherwise); one ID per line; LF after every line including the last; SHA-256 over exact bytes",
+    "formal_plan": {
+      "generator": "quantfusion.application.stress_scenarios._multi_seed_scenarios",
+      "random_samples_per_size_per_seed": 50,
+      "permutation_samples_per_seed": 50,
+      "seeds": [
+        20260807,
+        20260817,
+        20260827
+      ],
+      "scenario_count": 958,
+      "unique_scenario_count": 958,
+      "family_counts": {
+        "prefix": 17,
+        "leave_one_out": 17,
+        "add_one": 24,
+        "random_subset": 750,
+        "permutation": 150
+      },
+      "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+      "lexicographically_sorted_ids_sha256": "0cfc0f8bcc3ec433104aaed7adb6d223b8398ae1835dd7eea0d334fe2193ac12",
+      "canonical_generator_order_ids_sha256": "26238e08cc2cd662a26c72f2fd2312af7fd3b8fae3c186fce88d26ae91dd1c27"
+    },
+    "L1_ECONOMIC_SCENARIO_IDS": {
+      "path": "artifacts/diagnostics/c6-current-baseline-cohort.txt",
+      "count": 765,
+      "unique_count": 765,
+      "sha256": "8a2bb25716cb94adc43c4bb4fd39ff868ba5223d788f62a580917c12cbe2c4d7",
+      "contains_official_mdd": true,
+      "diagnostic_noncanonical": true,
+      "residual_eligible": true,
+      "required_explicit_ids_present": [
+        "prefix-05",
+        "prefix-06",
+        "prefix-07",
+        "prefix-08",
+        "prefix-09",
+        "prefix-10",
+        "prefix-11",
+        "prefix-12",
+        "prefix-13",
+        "prefix-14",
+        "prefix-15",
+        "prefix-16",
+        "prefix-17",
+        "add-one-13-601869",
+        "random-20260807-03-004"
+      ],
+      "families": {
+        "prefix": {
+          "count": 17,
+          "sha256": "193db3a55ad30c4b604b8431ef552280fc91e76105745a9ee207b5fc3bebaaa0"
+        },
+        "leave_one_out": {
+          "count": 17,
+          "sha256": "ca42596e7ecc3475516811afc869befcdc74180b118e0bd090cd9163090a62b5"
+        },
+        "add_one": {
+          "count": 24,
+          "sha256": "b54c974b4269074ec918585d9bf5aa6cd27262c4dd3faaefd39ab1ac25916303"
+        },
+        "random_subset": {
+          "count": 557,
+          "sha256": "e84684c9f39f49543ac7ac78243514384bf3de1e94c17bc664db5c2afdbb397f"
+        },
+        "permutation": {
+          "count": 150,
+          "sha256": "7deff9ce95faf264be57ce46023433156976545bd2642d35aef03dee22953d1c"
+        }
+      }
+    },
+    "L2_EXACT_SCENARIO_IDS": {
+      "count": 77,
+      "unique_count": 77,
+      "sha256": "62f94c810c04b5a4d0447c580acaf0573cb3b81e584f45cf897a867e50fdef93",
+      "diagnostic_noncanonical": true,
+      "family_counts": {
+        "prefix": 17,
+        "add_one": 24,
+        "random_subset": 30,
+        "permutation": 6
+      },
+      "high_risk_cohort_replay": "not_applicable_because_l1_already_runs_the_complete_current_765_id_cohort",
+      "ids": [
+        "add-one-05-002384",
+        "add-one-05-002409",
+        "add-one-05-300054",
+        "add-one-05-300408",
+        "add-one-05-300604",
+        "add-one-05-601869",
+        "add-one-05-688072",
+        "add-one-05-688082",
+        "add-one-05-688120",
+        "add-one-05-688300",
+        "add-one-05-688361",
+        "add-one-05-688498",
+        "add-one-09-002384",
+        "add-one-09-002409",
+        "add-one-09-300408",
+        "add-one-09-300604",
+        "add-one-09-601869",
+        "add-one-09-688082",
+        "add-one-09-688120",
+        "add-one-09-688498",
+        "add-one-13-300408",
+        "add-one-13-300604",
+        "add-one-13-601869",
+        "add-one-13-688082",
+        "permutation-20260807-001",
+        "permutation-20260807-002",
+        "permutation-20260817-001",
+        "permutation-20260817-002",
+        "permutation-20260827-001",
+        "permutation-20260827-002",
+        "prefix-01",
+        "prefix-02",
+        "prefix-03",
+        "prefix-04",
+        "prefix-05",
+        "prefix-06",
+        "prefix-07",
+        "prefix-08",
+        "prefix-09",
+        "prefix-10",
+        "prefix-11",
+        "prefix-12",
+        "prefix-13",
+        "prefix-14",
+        "prefix-15",
+        "prefix-16",
+        "prefix-17",
+        "random-20260807-03-001",
+        "random-20260807-03-002",
+        "random-20260807-05-001",
+        "random-20260807-05-002",
+        "random-20260807-08-001",
+        "random-20260807-08-002",
+        "random-20260807-12-001",
+        "random-20260807-12-002",
+        "random-20260807-15-001",
+        "random-20260807-15-002",
+        "random-20260817-03-001",
+        "random-20260817-03-002",
+        "random-20260817-05-001",
+        "random-20260817-05-002",
+        "random-20260817-08-001",
+        "random-20260817-08-002",
+        "random-20260817-12-001",
+        "random-20260817-12-002",
+        "random-20260817-15-001",
+        "random-20260817-15-002",
+        "random-20260827-03-001",
+        "random-20260827-03-002",
+        "random-20260827-05-001",
+        "random-20260827-05-002",
+        "random-20260827-08-001",
+        "random-20260827-08-002",
+        "random-20260827-12-001",
+        "random-20260827-12-002",
+        "random-20260827-15-001",
+        "random-20260827-15-002"
+      ]
+    },
+    "L4_FORMAL_SCENARIO_IDS": {
+      "count": 958,
+      "unique_count": 958,
+      "lexicographically_sorted_ids_sha256": "0cfc0f8bcc3ec433104aaed7adb6d223b8398ae1835dd7eea0d334fe2193ac12",
+      "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+      "canonical": true
+    },
+    "L1_BASE_SYNTHETIC_CONTROL_IDS": {
+      "count": 29,
+      "unique_count": 29,
+      "sha256": "a76afd327fa7877af1d311be5537af5e8b20d053eb1fb77b775ed795784de2fe",
+      "contains_official_mdd": false,
+      "residual_eligible": false,
+      "fixture_data_only": true,
+      "ids": [
+        "book-identity/carried-winner",
+        "book-identity/same-book-priority",
+        "book-identity/sibling-three-state",
+        "book-identity/stable-order",
+        "book-identity/suppression-audit",
+        "fixed-reference/carried-new",
+        "fixed-reference/denominator-isolation",
+        "fixed-reference/differing-signal-date",
+        "fixed-reference/duplicate-strategy",
+        "fixed-reference/eligible-newcomer",
+        "fixed-reference/emitting-sleeves",
+        "fixed-reference/exact-14",
+        "fixed-reference/input-permutation",
+        "fixed-reference/missing-score",
+        "fixed-reference/route-migration",
+        "governance/opinion-no-order-effect",
+        "no-drift/healthy-bull",
+        "readiness/not-ready-fail-closed",
+        "retained-winner/adv-zero",
+        "retained-winner/call-order",
+        "retained-winner/limit-blocked",
+        "retained-winner/missing-open",
+        "retained-winner/next-batch-release",
+        "retained-winner/odd-lot-full-liquidation",
+        "retained-winner/ordinary-full-overlay-zero",
+        "retained-winner/partial-fill",
+        "retained-winner/partial-sublot",
+        "retained-winner/suspended",
+        "warm-boundary/causal-state-only"
+      ]
+    },
+    "L1_S_SYNTHETIC_CONTROL_IDS": {
+      "count": 4,
+      "unique_count": 4,
+      "sha256": "b98d291fa1180e33a7060cd7cf0ec43b674ae20957791b7bd2e9fa72d59a67a7",
+      "contains_official_mdd": false,
+      "residual_eligible": false,
+      "fixture_data_only": true,
+      "ids": [
+        "s/common-prefix",
+        "s/coverage-fail-closed",
+        "s/dominant-cluster-order",
+        "s/no-op-control"
+      ]
+    },
+    "L1_BASE_EVALUATION_MANIFEST": {
+      "count": 3831,
+      "unique_count": 3831,
+      "ordered_ids_sha256": "4c257ea7af335c1cfdc8b9057ad4074e4681551c76d6adc591474cf99d3c523d",
+      "generation": [
+        "For each variant in exact order [baseline,F0-only,F0+F1,U-only,C6-Base], emit `${variant}::${scenario_id}` for every L1_ECONOMIC_SCENARIO_IDS entry in its frozen lexicographic order.",
+        "Then emit W0-no-601869 through W5-full-base-production-pool-relative-no-lock, in numeric order, each paired only with add-one-13-601869."
+      ],
+      "core_variant_order": [
+        "baseline",
+        "F0-only",
+        "F0+F1",
+        "U-only",
+        "C6-Base"
+      ],
+      "core_variant_scenario_count_each": 765,
+      "causal_intervention_order": [
+        "W0-no-601869",
+        "W1-data-map-only",
+        "W2-pool-denominator-only",
+        "W3-real-intents-fixed-reference-U",
+        "W4-full-base-production-pool-relative",
+        "W5-full-base-production-pool-relative-no-lock"
+      ],
+      "causal_intervention_scenario_id": "add-one-13-601869",
+      "F2_increment": "not_applicable_because_F2_qualified_scopes_is_empty"
+    },
+    "L1_S_EVALUATION_MANIFEST": {
+      "count": 765,
+      "unique_count": 765,
+      "ordered_ids_sha256": "15322b649cd939c11d9ddea5d3c11b8cbd42e7ab622492efab4e56aa347e3164",
+      "generation": "Emit `C6-Base+S::${scenario_id}` for every L1_ECONOMIC_SCENARIO_IDS entry in frozen lexicographic order.",
+      "variant_order": [
+        "C6-Base+S"
+      ],
+      "ablations": [],
+      "causal_interventions": []
+    },
+    "L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS": {
+      "count": 15,
+      "unique_count": 15,
+      "ordered_ids_sha256": "a31749277aac12eed605b0229c99cc415854a65b7addfddd8113fa8ee34608aa",
+      "ids": [
+        "prefix-05",
+        "prefix-06",
+        "prefix-07",
+        "prefix-08",
+        "prefix-09",
+        "prefix-10",
+        "prefix-11",
+        "prefix-12",
+        "prefix-13",
+        "prefix-14",
+        "prefix-15",
+        "prefix-16",
+        "prefix-17",
+        "add-one-13-601869",
+        "random-20260807-03-004"
+      ],
+      "semantics": "Run the selected stage candidate once with factual recording disabled and once enabled; compare the five canonical path hashes exactly. These pairs are additional nonpromotable checks and are not residual candidates."
+    }
+  },
+  "candidate_family": {
+    "maximum_promotable_candidates": 2,
+    "candidates": [
+      {
+        "candidate_id": "C6-Base",
+        "composition": [
+          "F0",
+          "F1",
+          "U"
+        ],
+        "F2_scopes": [],
+        "always_built": true
+      },
+      {
+        "candidate_id": "C6-Base+S",
+        "composition": [
+          "F0",
+          "F1",
+          "U",
+          "S"
+        ],
+        "F2_scopes": [],
+        "always_built": true,
+        "economic_run_condition": "Every mechanically derived Base L1 residual passes S_QUALIFICATION_RUN."
+      }
+    ],
+    "third_candidate_forbidden": true,
+    "parameter_tuning_after_results_forbidden": true,
+    "C4_family_forbidden": true
+  },
+  "correctness_contracts": {
+    "F0": {
+      "status_at_base": "repair_required",
+      "evidence": "consolidate_risk_sells globally keys independent states by only symbol and strategy_name",
+      "old_key": [
+        "symbol",
+        "strategy_name"
+      ],
+      "new_key": [
+        "state_index",
+        "symbol",
+        "strategy_name"
+      ],
+      "winner_order": "higher priority; then larger target_shares; then lexicographically smaller reason",
+      "suppressed_loser_semantics": "audit_only_no_sell_no_target_no_scope_no_buy_constraint",
+      "required_audit_identity": [
+        "loser_state_index",
+        "loser_sleeve_name",
+        "winner_state_index",
+        "winner_sleeve_name",
+        "symbol",
+        "strategy_name",
+        "loser_reason",
+        "winner_reason",
+        "loser_target_shares",
+        "winner_target_shares",
+        "loser_priority",
+        "winner_priority"
+      ],
+      "no_op_predicate": "The base implementation already uses the exact new key in both passes and emits the complete audit identity."
+    },
+    "F1": {
+      "status_at_base": "repair_required",
+      "scope": "same execution batch and same state/book/symbol/strategy as one retained defensive sell winner",
+      "identity": [
+        "state_index",
+        "sleeve_name",
+        "symbol",
+        "strategy_name"
+      ],
+      "capture_time": "Capture the unique retained risk-sell winner set before any sell in the current execution batch.",
+      "effect": "The captured winner vetoes same-state/book/symbol buys through the end of that batch, even if an ordinary sell clears the position or the risk sell is blocked/partial.",
+      "lifetime": "Current-batch capture is immutable. At the next batch, retain only a still-live pending winner under the frozen position, expiry/cancel, odd-lot/full-liquidation and target-satisfied rules.",
+      "release": "Perform terminal cleanup only after all sells and buys in the current batch. A cleanup decision affects the next batch, never releases a veto inside the current batch.",
+      "carry": [
+        "limit or suspension blocked with live executable remainder",
+        "missing open or missing data defer with live executable remainder",
+        "ADV zero with live executable remainder",
+        "capacity partial fill with remainder at least one lot",
+        "remainder >= current_shares > 0 including odd-lot full liquidation"
+      ],
+      "forbidden": [
+        "cross_day veto registry",
+        "ordinary sell promotion to risk veto",
+        "suppressed loser revival",
+        "out_of_book mutation"
+      ],
+      "no_op_predicate": "The base implementation captures the exact retained overlay winner before sell execution and applies its same-book veto through the buy phase."
+    },
+    "F2": {
+      "status": "empty_set",
+      "qualified_scopes": [],
+      "static_reason": "Current authoritative docs and call graph define retained overlay winners as per-book sells or weakest-symbol trims, not immutable portfolio-symbol or portfolio-cluster net targets. Global liquidation remains account-manager owned.",
+      "reason_scope_table": [
+        {
+          "reasons": [
+            "catastrophe_stop",
+            "cost_stop",
+            "atr_stop",
+            "profit_tier_stop",
+            "layered_stop"
+          ],
+          "owner": "independent sleeve book",
+          "scope": "book_symbol_full_exit",
+          "F2_qualified": false
+        },
+        {
+          "reasons": [
+            "sector_risk_trim",
+            "concentration_trim",
+            "shock_trim"
+          ],
+          "owner": "overlay action allocated to independent book",
+          "scope": "retained_weak_symbol_sell_amount",
+          "F2_qualified": false
+        },
+        {
+          "reasons": [
+            "portfolio-level drawdown liquidation"
+          ],
+          "owner": "merged_account_manager",
+          "scope": "global_breaker",
+          "F2_qualified": false
+        }
+      ],
+      "economic_ablation": "not_applicable_no_run"
+    },
+    "U": {
+      "status_at_base": "repair_required",
+      "authoritative_semantics": "execution-date latest close strictly before execution; fixed policy.regime_symbols denominator; arithmetic mean over actual emitting sleeves",
+      "reference_horizons": "each sleeve policy.candidate_lookbacks",
+      "emitting_vote_key": [
+        "state_index",
+        "symbol",
+        "execution_batch"
+      ],
+      "missing_required_sample": "fail_new_symbol_admission_closed_with_audit",
+      "candidate_rank": [
+        "descending_admission_score",
+        "EXECUTION_PRIORITY",
+        "symbol"
+      ],
+      "preserved_rules": {
+        "fixed_base_core": "first five ORDERED_SYMBOLS for runtime size 6 through 12",
+        "size_6_to_8_confirmation_days": 2,
+        "size_9_to_12_confirmation_days": 4,
+        "exact_14_expansion_core": "first thirteen ORDERED_SYMBOLS",
+        "exact_14_confirmation_days": 2,
+        "exact_14_min_score": 0.8,
+        "held_and_route_migration_bypass": true,
+        "max_positions_capacity_churn": "unchanged",
+        "streak_reset": "unchanged"
+      },
+      "downstream_scope": "coordinator admission and candidate-strength new-buy order only",
+      "overlay_weakness_scalar": "unchanged_pool_relative_risk_scalar",
+      "no_op_predicate": "Coordinator and candidate-strength ordering already consume the exact fixed-reference execution-date prior-close scores and fail missing emitting samples closed."
+    }
+  },
+  "S": {
+    "candidate_name": "Evidence-Gated Early Existing Concentration Defense",
+    "production_tree": "I_S_only",
+    "prebuilt_before_economic_dispatch": true,
+    "evidence_active_formula": "worst_cluster in complete_causal_stressed_cluster_set AND risk_level >= 1 AND portfolio_fast_return < 0 AND observed_count_freshness_coverage_pass AND concentration_unmapped_limit_pass AND leave_held_components_out_witness_pass",
+    "concentration_condition_formula": "evidence_active AND existing_concentration_eligibility_and_min_cluster_pass AND cluster_weight > CONCENTRATION_CAP",
+    "legacy_gate_open_formula": "drawdown >= CONCENTRATION_DRAWDOWN",
+    "early_sell_required_formula": "concentration_condition AND NOT legacy_gate_open",
+    "S_effective_formula": "early_sell_required",
+    "frozen_constants": {
+      "CONCENTRATION_CAP": 0.8,
+      "CONCENTRATION_DRAWDOWN": 0.08,
+      "CONCENTRATION_MIN_CLUSTER": 2,
+      "CONCENTRATION_UNMAPPED_LIMIT": 0.05,
+      "CONCENTRATION_MAX_TRIM_RATIO": 0.25,
+      "RISK_MIN_OBSERVED": 4
+    },
+    "worst_cluster": "largest actual merged-account held notional among eligible mapped clusters; exact notional tie breaks by ascending cluster label",
+    "stressed_cluster_set": "all sub-baskets satisfying the existing fixed stress thresholds, deterministically sorted by label",
+    "leave_held_components_out": "Remove every risk/subindustry basket component whose mapped cluster equals the target held cluster, recompute the same existing return, breadth, observation, freshness and coverage predicates, and require the same target cluster's independent evidence family to remain active; no overlap is a disjoint-pass.",
+    "lead_batch_definition": "Count official calendar execution batches strictly after the first qualifying evidence decision close and no later than the first_official_mdd_breach valuation sample; the first scheduler-selected next-tradable-open batch is the only candidate action batch and may not be searched forward for a fill.",
+    "official_breach_formula": "first official equity sample with abs(drawdown_from_official_running_peak) > 0.18 + 1e-15",
+    "qualification_all_residuals_required": true,
+    "standalone_buy_ceiling": "excluded",
+    "action_size_priority_execution": "identical_to_existing_concentration_trim_and_C6_Base_F1",
+    "new_thresholds": "forbidden",
+    "new_persistent_state": "forbidden",
+    "pre_sell_crossing_buy_witness": "diagnostic_only_no_candidate_effect"
+  },
+  "causal_diagnostics": {
+    "scenario_scope": "every ID in L1_ECONOMIC_SCENARIO_IDS",
+    "required_event_definitions": {
+      "first_official_mdd_breach": "first official sampled equity point satisfying abs(drawdown) > 0.18 + 1e-15",
+      "first_account_alert_event": "first actual merged-account alert event under its own peak owner and threshold",
+      "first_confirmed_cycle_lock": "first actual confirmed cycle lock under the manager cycle peak",
+      "first_emergency_cycle_lock": "first actual emergency cycle lock under the manager cycle peak",
+      "first_terminal_lock": "first actual terminal lock under the manager-declared lifetime or cycle peak owner"
+    },
+    "multi_labels": [
+      "STATE_OR_DATA_INVALID",
+      "BOOK_IDENTITY_LOSS",
+      "ACTION_OFFSET",
+      "POLICY_LATENCY",
+      "EXECUTION_GAP",
+      "OPEN_MARK_GAP",
+      "NO_EARLY_EVIDENCE",
+      "ALPHA_OR_HOLDING_PATH",
+      "LOCK_MEDIATOR",
+      "OTHER_UNRESOLVED"
+    ],
+    "required_trace_order": [
+      "peak_close",
+      "earliest_causal_evidence",
+      "first_RiskAction_by_book",
+      "next_executable_open",
+      "planned_sells",
+      "retained_sells",
+      "suppressed_sells",
+      "fills_or_blocks",
+      "same_open_and_carried_buys",
+      "post_batch_exposure",
+      "residual_position_loss",
+      "first_official_mdd_breach"
+    ],
+    "earliest_unavoidable_breach_under_frozen_candidate_family_default": null,
+    "factual_instrumentation_no_drift": "Enabling or disabling factual recording must leave baseline orders, fills, cash, positions, and equity byte-equivalent after canonical serialization."
+  },
+  "warm_and_data_integrity": {
+    "warm_is_formal": true,
+    "cold_is_diagnostic_only": true,
+    "warm_allowed": [
+      "causal pre-start indicator history and cache",
+      "causal regime history and transition days",
+      "documented candidate sticky and confirmation streak",
+      "documented overlay evidence and cooldown state"
+    ],
+    "warm_forbidden": [
+      "pre-window holdings",
+      "pre-window cash mutation",
+      "pre-window realized or unrealized PnL",
+      "pre-window account or sleeve high-water mark",
+      "pre-window pending orders",
+      "pre-window cycle or terminal lock",
+      "future data or labels"
+    ],
+    "data_checks": [
+      "prefix-13 and prefix-17 exact ordered identity",
+      "difference symbols 688082,300604,601869,300408",
+      "row count and date bounds",
+      "adjustment duplicate missing suspension and price-limit facts",
+      "OHLC validity",
+      "old-symbol raw-frame equality after universe extension",
+      "old-symbol causal-indicator equality after universe extension"
+    ],
+    "failure_action": "stop_C6_and_open_independent_baseline_repair"
+  },
+  "interventions_601869": {
+    "scenario_id": "add-one-13-601869",
+    "value_function": "natural_log(terminal_wealth)",
+    "terminal_wealth_formula": "initial_capital * (1 + total_return)",
+    "telescoping_order": [
+      "W0_no_601869",
+      "W1_data_map_only",
+      "W2_pool_denominator_only",
+      "W3_real_intents_fixed_reference_U",
+      "W4_full_base_production_pool_relative",
+      "W5_full_base_production_pool_relative_no_lock"
+    ],
+    "definitions": {
+      "W0_no_601869": "601869 absent from data_map, pending intents, score queries, slots and trading",
+      "W1_data_map_only": "601869 in data_map but excluded from pending intents, every score query, slots and trading",
+      "W2_pool_denominator_only": "601869 participates in legacy pool-relative denominator but cannot be admitted, occupy a slot or trade",
+      "W3_real_intents_fixed_reference_U": "601869 may emit real sleeve intents and competes under U fixed-reference admission with all preserved confirmation and capacity rules",
+      "W4_full_base_production_pool_relative": "complete base-era production path using the legacy pool-relative coordinator score",
+      "W5_full_base_production_pool_relative_no_lock": "W4 with merged-account lock and rearm disabled only as a nested non-promotable diagnostic"
+    },
+    "delta_formula": "For the production-path chain W0..W4, delta_i = V(W_i)-V(W_(i-1)) and sum(delta_i for i=1..4) must equal V(W4)-V(W0). Report the nested lock effect separately as V(W5)-V(W4); the four production deltas plus that conditional effect must equal V(W5)-V(W0), exactly under deterministic float serialization.",
+    "reversed_order_sensitivity": "Use the one frozen alternate admissible production-path order [W0,W1,W3,W2,W4], report its four per-step deltas and named-edge interaction residual versus [W0,W1,W2,W3,W4]. W5 remains only the separate nested no-lock contrast V(W5)-V(W4). This sensitivity cannot select a candidate.",
+    "required_outputs": [
+      "601869_realized_pnl",
+      "601869_unrealized_pnl",
+      "old_symbol_fixed_reference_score_changes",
+      "coordinator_pool_relative_rank_changes",
+      "slot_displacements",
+      "first_path_divergence",
+      "pre_breach_wealth_gap",
+      "post_lock_missed_orders_trades_and_compounding",
+      "no_lock_terminal_wealth_ratio",
+      "conditional_lock_mediated_total_effect",
+      "interaction_residual"
+    ],
+    "promotable": false
+  },
+  "S_QUALIFICATION_RUN": {
+    "schema_version": 2,
+    "kind": "selection_critical_non_economic",
+    "binding_record_id": "c6.s.qualification",
+    "source": "I_S",
+    "producer_record_id": "c6.base.l1",
+    "entrypoint": "quantfusion.application.c6_s_qualification",
+    "forbidden_outputs": [
+      "return",
+      "max_drawdown counterfactual",
+      "terminal_wealth counterfactual",
+      "fills",
+      "equity mutation",
+      "accepted",
+      "canonical"
+    ],
+    "residual_formula": "R_L1 is the lexicographically ordered set of C6-Base evaluation scenario IDs whose unrounded official_metrics.max_drawdown has abs(value) > 0.18 + 1e-15.",
+    "criteria": [
+      {
+        "id": "q1_base_breach_exists",
+        "input_paths": [
+          "base.evaluation.official_metrics.max_drawdown",
+          "base.evaluation.causal_matrix.event_timeline.first_official_mdd_breach"
+        ],
+        "formula": "Residual metric breaches and the factual official breach event is non-null."
+      },
+      {
+        "id": "q2_causal_stress_evidence_precedes_breach",
+        "input_paths": [
+          "base.evaluation.causal_matrix.s_evidence.first_causal_stressed_cluster_close",
+          "base.evaluation.causal_matrix.event_timeline.first_official_mdd_breach"
+        ],
+        "formula": "Evidence close is non-null and strictly precedes the official breach timestamp."
+      },
+      {
+        "id": "q3_dominant_cluster_is_stressed_and_over_cap",
+        "input_paths": [
+          "base.evaluation.causal_matrix.s_evidence.worst_cluster",
+          "base.evaluation.causal_matrix.s_evidence.worst_cluster_weight",
+          "base.evaluation.causal_matrix.s_evidence.stressed_cluster_set"
+        ],
+        "formula": "worst_cluster is in the complete stressed set and worst_cluster_weight > frozen CONCENTRATION_CAP."
+      },
+      {
+        "id": "q4_complete_independent_evidence",
+        "input_paths": [
+          "base.evaluation.causal_matrix.s_evidence.coverage",
+          "base.evaluation.causal_matrix.s_evidence.leave_held_components_out"
+        ],
+        "formula": "Every observed-count/freshness/coverage/unmapped gate and the leave-held-components-out witness passes."
+      },
+      {
+        "id": "q5_scheduled_prebreach_nonzero_lot",
+        "input_paths": [
+          "base.evaluation.causal_matrix.s_evidence.first_early_sell_required_close",
+          "base.evaluation.causal_matrix.s_evidence.legacy_gate_open",
+          "base.evaluation.causal_matrix.s_evidence.scheduled_execution_batch",
+          "base.evaluation.causal_matrix.s_evidence.planned_shares",
+          "base.evaluation.causal_matrix.s_evidence.executable_lot_shares"
+        ],
+        "formula": "A frozen scheduler batch exists before breach, early_sell_required is true while legacy gate is false, and executable_lot_shares > 0."
+      },
+      {
+        "id": "q6_action_strictly_precedes_breach_sample",
+        "input_paths": [
+          "base.evaluation.causal_matrix.s_evidence.scheduled_execution_batch.execution_open",
+          "base.evaluation.causal_matrix.event_timeline.first_official_mdd_breach",
+          "base.evaluation.causal_matrix.s_evidence.lead_batch_count"
+        ],
+        "formula": "Execution ordering is strictly earlier than the official breach sample and lead_batch_count >= 1; no later fill search."
+      },
+      {
+        "id": "q7_official_sample_gap_not_proven_unavoidable",
+        "input_paths": [
+          "base.evaluation.causal_matrix.s_evidence.official_sample_relation",
+          "base.evaluation.causal_matrix.s_evidence.pre_trade_open_drawdown",
+          "base.evaluation.causal_matrix.s_evidence.identical_valuation_instant_proven"
+        ],
+        "formula": "official_sample_relation is not UNAVOIDABLE_AT_OFFICIAL_SAMPLE; OPEN_MARK_GAP_NOT_OFFICIAL_SAMPLE passes."
+      }
+    ],
+    "criterion_result_schema": {
+      "type": "object",
+      "additional_properties": false,
+      "exact_keys": [
+        "criterion_id",
+        "passed",
+        "input_paths",
+        "observed_values",
+        "failure_reason"
+      ],
+      "field_types": {
+        "criterion_id": "exact q1..q7 ID at the same ordinal",
+        "passed": "boolean",
+        "input_paths": "exact string array frozen by the criterion",
+        "observed_values": "strict JSON object keyed exactly by the final segment of every input path",
+        "failure_reason": "enum string or null; null iff passed"
+      },
+      "array_order": {
+        "input_paths": "frozen criterion order"
+      }
+    },
+    "per_residual_schema": {
+      "type": "object",
+      "additional_properties": false,
+      "exact_keys": [
+        "scenario_id",
+        "criteria",
+        "first_official_mdd_breach",
+        "first_causal_stressed_cluster_close",
+        "worst_cluster",
+        "worst_cluster_weight",
+        "stressed_cluster_set",
+        "coverage",
+        "leave_held_components_out",
+        "first_early_sell_required_close",
+        "legacy_gate_open",
+        "scheduled_execution_batch",
+        "lead_batch_count",
+        "pre_trade_open_drawdown",
+        "official_sample_relation",
+        "identical_valuation_instant_proven",
+        "planned_shares",
+        "executable_lot_shares",
+        "fillability",
+        "shortfall",
+        "passed",
+        "failure_reasons"
+      ],
+      "field_types": {
+        "scenario_id": "nonempty string equal to residual_ids at the same ordinal",
+        "criteria": "exact seven criterion_result objects in q1..q7 order",
+        "first_official_mdd_breach": "ISO-8601 string",
+        "first_causal_stressed_cluster_close": "ISO-8601 string or null",
+        "worst_cluster": "string or null",
+        "worst_cluster_weight": "finite number in [0,1] or null",
+        "stressed_cluster_set": "unique strings lexicographically sorted",
+        "coverage": "qualification_coverage",
+        "leave_held_components_out": "qualification_leave_held",
+        "first_early_sell_required_close": "ISO-8601 string or null",
+        "legacy_gate_open": "boolean",
+        "scheduled_execution_batch": "scheduled_batch or null",
+        "lead_batch_count": "integer >= 0",
+        "pre_trade_open_drawdown": "finite number or null",
+        "official_sample_relation": "enum NO_SCHEDULED_BATCH|PRECEDES_OFFICIAL_SAMPLE|OPEN_MARK_GAP_NOT_OFFICIAL_SAMPLE|UNAVOIDABLE_AT_OFFICIAL_SAMPLE",
+        "identical_valuation_instant_proven": "boolean",
+        "planned_shares": "integer >= 0",
+        "executable_lot_shares": "integer >= 0 and <= planned_shares",
+        "fillability": "qualification_fillability",
+        "shortfall": "qualification_shortfall",
+        "passed": "boolean equal to AND(criteria[].passed)",
+        "failure_reasons": "unique qualification failure enums sorted lexicographically; empty iff passed"
+      },
+      "array_order": {
+        "criteria": "q1..q7",
+        "stressed_cluster_set": "lexicographic",
+        "failure_reasons": "lexicographic"
+      }
+    },
+    "output_schema": {
+      "type": "object",
+      "additional_properties": false,
+      "exact_keys": [
+        "schema_version",
+        "kind",
+        "diagnostic_noncanonical",
+        "complete",
+        "base_producer_identity",
+        "P",
+        "R_revision",
+        "I_B",
+        "I_S",
+        "residual_ids",
+        "residual_ids_sha256",
+        "results",
+        "all_passed"
+      ],
+      "field_types": {
+        "schema_version": "literal integer 2",
+        "kind": "literal c6_s_qualification",
+        "diagnostic_noncanonical": "literal true",
+        "complete": "boolean",
+        "base_producer_identity": "producer_identity",
+        "P": "P_identity",
+        "R_revision": "40 lowercase hex",
+        "I_B": "implementation_identity",
+        "I_S": "implementation_identity",
+        "residual_ids": "unique strings lexicographically sorted",
+        "residual_ids_sha256": "64 lowercase hex of LF-delimited residual_ids",
+        "results": "per_residual array exactly aligned with residual_ids",
+        "all_passed": "boolean equal to complete AND every result passed; true for empty residual is forbidden because this run must not dispatch when residual is empty"
+      },
+      "array_order": {
+        "residual_ids": "lexicographic",
+        "results": "same ordinal as residual_ids"
+      }
+    },
+    "failure_semantics": "A complete qualification may validly return all_passed=false with process exit 0 and a sealed result; Base+S L1 then must not dispatch. Incomplete/malformed output is abnormal, not a qualification failure."
+  },
+  "diagnostic_predicate_manifests": {
+    "common": {
+      "diagnostic_noncanonical": true,
+      "may_set_accepted": false,
+      "may_set_canonical": false,
+      "input_metrics_must_be_finite": true,
+      "comparison_source": "unrounded values",
+      "failure_semantics": "candidate_or_stage_stops_without_formal_publication"
+    },
+    "L1_APPLICABLE_DIAGNOSTIC_PREDICATES": [
+      {
+        "id": "l1.identity.exact_manifests",
+        "formula": "Base: actual 3831 evaluation IDs, 29 Base control IDs and 15 no-drift IDs exactly equal their frozen manifests. Base+S: actual 765 evaluation IDs and 4 S control IDs exactly equal their frozen manifests.",
+        "tolerance": 0
+      },
+      {
+        "id": "l1.metrics.finite",
+        "formula": "Every numeric field required by the selected candidate slice and its factual trace schema is finite; ablation/control values are validated separately and never used as candidate gates.",
+        "tolerance": 0
+      },
+      {
+        "id": "l1.mdd.noncanonical_18pct_screen",
+        "formula": "For every selected-candidate L1 evaluation (C6-Base or C6-Base+S, never baseline/ablation/W), abs(unrounded official_metrics.max_drawdown) <= 0.18 + 1e-15.",
+        "tolerance": 1e-15,
+        "selection_defer_if_base_residual_exists": true
+      },
+      {
+        "id": "l1.prefix.09_to_10_wealth",
+        "formula": "(1+return(prefix-10))/(1+return(prefix-09))-1 > -0.10",
+        "tolerance": 0,
+        "selection_defer_if_base_residual_exists": true
+      },
+      {
+        "id": "l1.prefix.worst_adjacent_wealth",
+        "formula": "minimum over prefix-05..17 adjacent pairs of (wealth_right/wealth_left)-1 >= -0.30 - 1e-12",
+        "tolerance": 1e-12,
+        "selection_defer_if_base_residual_exists": true
+      },
+      {
+        "id": "l1.initial.prefix05_proxy",
+        "formula": "terminal_wealth(prefix-05)/reference_terminal_wealth(prefix-05) >= 0.99 - 1e-12",
+        "tolerance": 1e-12,
+        "reference_available": true,
+        "selection_defer_if_base_residual_exists": true
+      },
+      {
+        "id": "l1.initial.other_prefix_proxy",
+        "formula": "minimum terminal_wealth ratio over every formal prefix except prefix-05 (prefix-01..04 and prefix-06..17) versus exact reference >= 0.95 - 1e-12",
+        "tolerance": 1e-12,
+        "reference_available": true,
+        "selection_defer_if_base_residual_exists": true
+      },
+      {
+        "id": "l1.initial.add_one_601869_proxy",
+        "formula": "wealth_change(add-one-13-601869,prefix-13) - reference_wealth_change(add-one-13-601869,prefix-13) >= -0.03 - 1e-12",
+        "tolerance": 1e-12,
+        "reference_available": true,
+        "selection_defer_if_base_residual_exists": true
+      },
+      {
+        "id": "l1.permutation.invariant",
+        "formula": "Every frozen permutation sentinel in the selected-candidate slice has maximum numeric deviation <=1e-12 with identical reason attribution and terminal lock.",
+        "tolerance": 1e-12
+      },
+      {
+        "id": "l1.instrumentation.no_drift",
+        "formula": "All 15 recording-off/on pairs have identical canonical hashes for orders, fills, cash, positions and equity.",
+        "tolerance": 0
+      },
+      {
+        "id": "l1.correctness.synthetic_controls",
+        "formula": "Base requires all 29 exact Base controls; Base+S requires all 4 exact S controls plus all common-prefix and no-S-effect cross-producer comparisons.",
+        "tolerance": 0
+      },
+      {
+        "id": "l1.architecture.boundaries",
+        "formula": "three independent sleeves, distributed alpha, centralized veto, unchanged account lock, no allocator, no candidate runtime switch and no uquant runtime dependency",
+        "tolerance": 0
+      }
+    ],
+    "L2_APPLICABLE_DIAGNOSTIC_PREDICATES": [
+      {
+        "id": "l2.identity.exact_manifest",
+        "formula": "actual ordered scenario IDs exactly equal the frozen 77-ID L2 manifest including SHA-256",
+        "tolerance": 0
+      },
+      {
+        "id": "l2.metrics.finite",
+        "formula": "every required diagnostic result metric is finite",
+        "tolerance": 0
+      },
+      {
+        "id": "l2.mdd.noncanonical_18pct_screen",
+        "formula": "for every L2 result abs(max_drawdown) <= 0.18 + 1e-15",
+        "tolerance": 1e-15
+      },
+      {
+        "id": "l2.prefix.09_to_10_wealth",
+        "formula": "(1+return(prefix-10))/(1+return(prefix-09))-1 > -0.10",
+        "tolerance": 0
+      },
+      {
+        "id": "l2.prefix.worst_adjacent_wealth",
+        "formula": "minimum over all adjacent prefix pairs of (wealth_right/wealth_left)-1 >= -0.30 - 1e-12",
+        "tolerance": 1e-12
+      },
+      {
+        "id": "l2.initial.prefix05",
+        "formula": "terminal_wealth(prefix-05)/reference_terminal_wealth(prefix-05) >= 0.99 - 1e-12",
+        "tolerance": 1e-12
+      },
+      {
+        "id": "l2.initial.other_prefix",
+        "formula": "minimum other-prefix terminal wealth ratio versus exact reference >= 0.95 - 1e-12",
+        "tolerance": 1e-12
+      },
+      {
+        "id": "l2.initial.worst_add_one",
+        "formula": "minimum current add-one wealth change minus exact-reference minimum add-one wealth change >= -0.03 - 1e-12",
+        "tolerance": 1e-12
+      },
+      {
+        "id": "l2.permutation.invariant",
+        "formula": "maximum frozen-field deviation within each included seed permutation group <= 1e-12",
+        "tolerance": 1e-12
+      }
+    ]
+  },
+  "FORMAL_GATE_MANIFEST": {
+    "layer": "L4_only",
+    "authoritative_entrypoint": "quantfusion.application.stress.main",
+    "official_publication": "quantfusion.application.stress_artifacts._publish_formal_artifacts",
+    "exact_scenario_required": true,
+    "exact_reference_required": true,
+    "gate_source": {
+      "path": "quantfusion/application/stress_metrics.py",
+      "mode": "100644",
+      "git_blob": "1531e6aae35cf63728be8e3c062cbe3b9c192c57",
+      "sha256": "3af9b19994d7af13ee9abf2dd8845ed2a2c7f00ba476b55911c331d838dc7d92"
+    },
+    "absolute_hard_gates": [
+      {
+        "id": "all_scenarios_max_drawdown_at_most_18pct",
+        "implementation": "_absolute_hard_gates",
+        "comparator": "abs(min(max_drawdown)) <= 0.18 + 1e-15"
+      },
+      {
+        "id": "random_p90_date_symbol_side_buckets_at_most_160",
+        "implementation": "_absolute_hard_gates->_summary->_quantile",
+        "comparator": "linear_interpolated_P90 <= 160"
+      },
+      {
+        "id": "all_date_symbol_side_buckets_at_most_200",
+        "implementation": "_absolute_hard_gates->_summary",
+        "comparator": "maximum <= 200"
+      }
+    ],
+    "retained_robustness_hard_gates": [
+      {
+        "id": "prefix_9_to_10_wealth_above_minus_10pct",
+        "implementation": "_retained_robustness_hard_gates",
+        "comparator": "wealth_change > -0.10"
+      },
+      {
+        "id": "worst_adjacent_wealth_at_least_minus_30pct",
+        "implementation": "_retained_robustness_hard_gates",
+        "comparator": "minimum_adjacent_wealth_change >= -0.30 - 1e-12"
+      }
+    ],
+    "incumbent_branch_predicate": "An artifact at artifacts/validation/universe_stress.json passes _load_incumbent and _current_incumbent_by_id with contract v2, trade_records, accepted and canonical true.",
+    "incumbent_branch_selected": false,
+    "publication_route_preconditions": [
+      {
+        "id": "no_current_contract_incumbent",
+        "formula": "_load_incumbent(artifacts/validation/universe_stress.json) returns null"
+      },
+      {
+        "id": "explicit_establish_initial_baseline_action",
+        "formula": "--establish-initial-baseline and --initial-baseline-reference are both supplied"
+      },
+      {
+        "id": "exact_transition_reference",
+        "formula": "the reference path and SHA-256 equal transition_reference and its 958 IDs/families exactly match the current formal plan"
+      }
+    ],
+    "initial_baseline_gates": [
+      {
+        "id": "prefix_05_wealth_at_least_99pct",
+        "implementation": "_initial_baseline_gates",
+        "comparator": "ratio >= 0.99 - 1e-12"
+      },
+      {
+        "id": "other_prefix_wealth_at_least_95pct",
+        "implementation": "_initial_baseline_gates",
+        "comparator": "minimum ratio >= 0.95 - 1e-12"
+      },
+      {
+        "id": "worst_total_return_not_worse_by_0_02",
+        "implementation": "_initial_baseline_gates",
+        "comparator": "current_worst >= reference_worst - 0.02 - 1e-12"
+      },
+      {
+        "id": "worst_add_one_diagnostic_not_worse_by_0_03",
+        "implementation": "_initial_baseline_gates",
+        "comparator": "current_min_add_one >= reference_min_add_one - 0.03 - 1e-12"
+      }
+    ],
+    "permutation_invariance": {
+      "id": "permutation_invariant",
+      "implementation": "_permutation_invariance",
+      "comparator": "worst_deviation <= 1e-12",
+      "official_payload_location": "promotion_gates.permutation_invariance",
+      "required_for_both_initial_and_promotion_routes": true
+    },
+    "promotion_branch": {
+      "applicable": false,
+      "reason": "No accepted current-contract incumbent exists at P.",
+      "implementation": "_promotion_gates",
+      "frozen_tolerances": {
+        "prefix_wealth_ratio": 0.99,
+        "dd_p90": 0.005,
+        "dd_p95": 0.005,
+        "worst_dd": 0.01,
+        "worst_return": 0.02,
+        "add_one_wealth": 0.03,
+        "date_symbol_side_buckets_p90": 5,
+        "date_symbol_side_buckets_worst": 10,
+        "risk_action_median": 2
+      },
+      "gates": [
+        {
+          "id": "permutation_invariant",
+          "comparator": "worst_deviation <= 1e-12"
+        },
+        {
+          "id": "fixed_prefix_wealth_at_least_99pct",
+          "comparator": "minimum shared prefix terminal-wealth ratio >= 0.99 - 1e-12"
+        },
+        {
+          "id": "random_dd_p90_not_worse",
+          "comparator": "current random drawdown P90 severity <= incumbent + 0.005"
+        },
+        {
+          "id": "random_dd_p95_not_worse",
+          "comparator": "current random drawdown P95 severity <= incumbent + 0.005"
+        },
+        {
+          "id": "random_worst_return_not_worse",
+          "comparator": "current random worst return >= incumbent - 0.02"
+        },
+        {
+          "id": "random_date_symbol_side_buckets_p90_not_increased",
+          "comparator": "current random P90 <= incumbent + 5"
+        },
+        {
+          "id": "random_risk_actions_not_increased",
+          "comparator": "current random median risk actions <= incumbent + 2"
+        },
+        {
+          "id": "all_worst_dd_not_significantly_worse",
+          "comparator": "current shared-scenario worst drawdown >= incumbent - 0.01"
+        },
+        {
+          "id": "all_worst_date_symbol_side_buckets_not_increased",
+          "comparator": "current shared-scenario worst buckets <= incumbent + 10"
+        },
+        {
+          "id": "leave_one_out_worst_return_not_worse",
+          "comparator": "current leave-one-out worst return >= incumbent - 0.02"
+        },
+        {
+          "id": "add_one_discontinuity_not_worse",
+          "comparator": "current minimum add-one wealth change >= incumbent - 0.03"
+        }
+      ],
+      "runtime_switch_to_this_branch": "forbidden_if_incumbent_identity_differs_from_P"
+    },
+    "official_gate_family_separation": {
+      "publication_route_preconditions_are_gate_payload": false,
+      "initial_baseline_gates_exact_check_count": 4,
+      "permutation_is_nested_under_promotion_payload": true,
+      "promotion_branch_gate_count": 11
+    },
+    "acceptance_formula": "all publication_route_preconditions pass AND absolute_hard_gates.passed AND retained_robustness_hard_gates.passed AND initial_baseline_gates.passed AND promotion_gates.permutation_invariance.invariant",
+    "success_output": {
+      "exit_code": 0,
+      "acceptance_status": "accepted",
+      "canonical": true
+    },
+    "rejection_output": {
+      "exit_code": 2,
+      "acceptance_status": "rejected",
+      "canonical": false
+    },
+    "mutation_after_P": "forbidden"
+  },
+  "run_templates": {
+    "schema_version": 2,
+    "execution_owner": "GitHub Actions C6 Bound Economic Run only",
+    "workflow": {
+      "path": ".github/workflows/c6-bound-economic.yml",
+      "dispatch_ref": "codex/c6-v4-workflow-preflight",
+      "revision": "f03c49fc0d558562c158fe4864250e3056b1003f",
+      "file_mode": "100644",
+      "file_git_blob": "282715ec4c6dd13741357f73f43af91a17c82670",
+      "file_sha256": "fa5348664343df6917f52b59007c59ed50d69596e741fb3d19401e7d914b5145",
+      "permissions": {
+        "actions": "read",
+        "contents": "read"
+      },
+      "native_rerun": "forbidden_by_GITHUB_RUN_ATTEMPT_equal_1",
+      "concurrency": "c6-bound-${logical_run_id}; cancel-in-progress false",
+      "exact_dispatch_input_order": [
+        "source_revision",
+        "run_bindings_revision",
+        "workflow_revision",
+        "binding_id",
+        "candidate_id",
+        "logical_run_id",
+        "attempt_id",
+        "fencing_token",
+        "resume_from",
+        "resume_workflow_run_id",
+        "d_commit",
+        "d_selection_blob_oid",
+        "d_selection_file_sha256",
+        "producer_identity_json",
+        "runner_image_os",
+        "runner_image_version",
+        "python_version"
+      ]
+    },
+    "dependency_lock": {
+      "path": "requirements-lock.txt",
+      "mode": "100644",
+      "git_blob": "103f5db04d4d2f31a40294cceab5dbbedfda553c",
+      "sha256": "22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434",
+      "install": [
+        "python",
+        "-m",
+        "pip",
+        "install",
+        "--require-hashes",
+        "-r",
+        "source/requirements-lock.txt"
+      ]
+    },
+    "deterministic_runtime": {
+      "workers": 4,
+      "process_map_order": "input order",
+      "random_samples_per_size_per_seed": 50,
+      "permutation_samples_per_seed": 50,
+      "seeds": [
+        20260807,
+        20260817,
+        20260827
+      ],
+      "checkpoint_every": 10,
+      "python_minor": "3.12",
+      "python_patch": "resolved exactly in R from a successful non-economic runner probe",
+      "runner_image_os": "resolved exactly in R",
+      "runner_image_version": "resolved exactly in R"
+    },
+    "binding_record_order": [
+      "c6.base.l1",
+      "c6.s.qualification",
+      "c6.base_plus_s.l1",
+      "c6.base.selected.l2",
+      "c6.base_plus_s.selected.l2",
+      "c6.base.selected.l4",
+      "c6.base_plus_s.selected.l4"
+    ],
+    "binding_specs": [
+      {
+        "record_id": "c6.base.l1",
+        "workflow_binding_id": "c6.base.l1",
+        "candidate_id": "C6-Base",
+        "stage": "L1",
+        "source_alias": "I_B",
+        "producer_record_id": null,
+        "producer_policy": "exact_empty_producer_identity",
+        "decision_policy": "D_fields_all_empty",
+        "evaluation_manifest": "L1_BASE_EVALUATION_MANIFEST",
+        "synthetic_manifest": "L1_BASE_SYNTHETIC_CONTROL_IDS",
+        "payload_schema": "L1_base_payload",
+        "argv_template": [
+          "python",
+          "-m",
+          "quantfusion.application.c6_diagnostics",
+          "--preregistration",
+          "artifacts/diagnostics/c6-preregistration.json",
+          "--bindings-file",
+          "artifacts/diagnostics/c6-run-bindings.json",
+          "--binding-record-id",
+          "c6.base.l1",
+          "--source-revision",
+          "{SOURCE_REVISION}",
+          "--output",
+          "{OUTPUT_PATH}"
+        ],
+        "P_compile_time_slots": [
+          "SOURCE_REVISION",
+          "OUTPUT_PATH"
+        ],
+        "runtime_late_slots": []
+      },
+      {
+        "record_id": "c6.s.qualification",
+        "workflow_binding_id": "c6.s.qualification",
+        "candidate_id": "C6-Base+S",
+        "stage": "QUALIFICATION",
+        "source_alias": "I_S",
+        "producer_record_id": "c6.base.l1",
+        "producer_policy": "exact_successful_complete_sealed_result_from_record",
+        "decision_policy": "D_fields_all_empty",
+        "evaluation_manifest": null,
+        "synthetic_manifest": null,
+        "payload_schema": "S_QUALIFICATION_RUN.output_schema",
+        "argv_template": [
+          "python",
+          "-m",
+          "quantfusion.application.c6_s_qualification",
+          "--preregistration",
+          "artifacts/diagnostics/c6-preregistration.json",
+          "--bindings-file",
+          "artifacts/diagnostics/c6-run-bindings.json",
+          "--binding-record-id",
+          "c6.s.qualification",
+          "--source-revision",
+          "{SOURCE_REVISION}",
+          "--producer-export",
+          "{PRODUCER_EXPORT_PATH}",
+          "--producer-artifact-sha256",
+          "{PRODUCER_ARTIFACT_SHA256}",
+          "--output",
+          "{OUTPUT_PATH}"
+        ],
+        "P_compile_time_slots": [
+          "SOURCE_REVISION",
+          "OUTPUT_PATH"
+        ],
+        "runtime_late_slots": [
+          "PRODUCER_EXPORT_PATH",
+          "PRODUCER_ARTIFACT_SHA256"
+        ]
+      },
+      {
+        "record_id": "c6.base_plus_s.l1",
+        "workflow_binding_id": "c6.base_plus_s.l1",
+        "candidate_id": "C6-Base+S",
+        "stage": "L1",
+        "source_alias": "I_S",
+        "producer_record_id": "c6.s.qualification",
+        "producer_policy": "exact_successful_complete_sealed_result_from_record",
+        "decision_policy": "D_fields_all_empty",
+        "evaluation_manifest": "L1_S_EVALUATION_MANIFEST",
+        "synthetic_manifest": "L1_S_SYNTHETIC_CONTROL_IDS",
+        "payload_schema": "L1_s_payload",
+        "argv_template": [
+          "python",
+          "-m",
+          "quantfusion.application.c6_diagnostics",
+          "--preregistration",
+          "artifacts/diagnostics/c6-preregistration.json",
+          "--bindings-file",
+          "artifacts/diagnostics/c6-run-bindings.json",
+          "--binding-record-id",
+          "c6.base_plus_s.l1",
+          "--source-revision",
+          "{SOURCE_REVISION}",
+          "--producer-export",
+          "{PRODUCER_EXPORT_PATH}",
+          "--producer-artifact-sha256",
+          "{PRODUCER_ARTIFACT_SHA256}",
+          "--output",
+          "{OUTPUT_PATH}"
+        ],
+        "P_compile_time_slots": [
+          "SOURCE_REVISION",
+          "OUTPUT_PATH"
+        ],
+        "runtime_late_slots": [
+          "PRODUCER_EXPORT_PATH",
+          "PRODUCER_ARTIFACT_SHA256"
+        ]
+      },
+      {
+        "record_id": "c6.base.selected.l2",
+        "workflow_binding_id": "c6.selected.l2",
+        "candidate_id": "C6-Base",
+        "stage": "L2",
+        "source_alias": "I_B",
+        "producer_record_id": null,
+        "producer_policy": "exact_empty_producer_identity",
+        "decision_policy": "exact_D_triple_and_D_selected_candidate_C_match",
+        "evaluation_manifest": null,
+        "synthetic_manifest": null,
+        "payload_schema": "L2_payload",
+        "argv_template": [
+          "python",
+          "-m",
+          "quantfusion.application.c6_diagnostics",
+          "--preregistration",
+          "artifacts/diagnostics/c6-preregistration.json",
+          "--bindings-file",
+          "artifacts/diagnostics/c6-run-bindings.json",
+          "--binding-record-id",
+          "c6.base.selected.l2",
+          "--source-revision",
+          "{SOURCE_REVISION}",
+          "--output",
+          "{OUTPUT_PATH}"
+        ],
+        "P_compile_time_slots": [
+          "SOURCE_REVISION",
+          "OUTPUT_PATH"
+        ],
+        "runtime_late_slots": []
+      },
+      {
+        "record_id": "c6.base_plus_s.selected.l2",
+        "workflow_binding_id": "c6.selected.l2",
+        "candidate_id": "C6-Base+S",
+        "stage": "L2",
+        "source_alias": "I_S",
+        "producer_record_id": null,
+        "producer_policy": "exact_empty_producer_identity",
+        "decision_policy": "exact_D_triple_and_D_selected_candidate_C_match",
+        "evaluation_manifest": null,
+        "synthetic_manifest": null,
+        "payload_schema": "L2_payload",
+        "argv_template": [
+          "python",
+          "-m",
+          "quantfusion.application.c6_diagnostics",
+          "--preregistration",
+          "artifacts/diagnostics/c6-preregistration.json",
+          "--bindings-file",
+          "artifacts/diagnostics/c6-run-bindings.json",
+          "--binding-record-id",
+          "c6.base_plus_s.selected.l2",
+          "--source-revision",
+          "{SOURCE_REVISION}",
+          "--output",
+          "{OUTPUT_PATH}"
+        ],
+        "P_compile_time_slots": [
+          "SOURCE_REVISION",
+          "OUTPUT_PATH"
+        ],
+        "runtime_late_slots": []
+      },
+      {
+        "record_id": "c6.base.selected.l4",
+        "workflow_binding_id": "c6.selected.l4",
+        "candidate_id": "C6-Base",
+        "stage": "L4",
+        "source_alias": "I_B",
+        "producer_record_id": "c6.base.selected.l2",
+        "producer_policy": "exact_successful_complete_sealed_result_from_record",
+        "decision_policy": "exact_D_triple_and_D_selected_candidate_C_match",
+        "evaluation_manifest": null,
+        "synthetic_manifest": null,
+        "payload_schema": "official_L4_payload",
+        "argv_template": [
+          "python",
+          "-m",
+          "quantfusion.application.stress",
+          "--workers",
+          "4",
+          "--random-samples",
+          "50",
+          "--permutation-samples",
+          "50",
+          "--seeds",
+          "20260807,20260817,20260827",
+          "--checkpoint-every",
+          "10",
+          "--checkpoint",
+          "{CHILD_CHECKPOINT_PATH}",
+          "--source-revision",
+          "{SOURCE_REVISION}",
+          "--establish-initial-baseline",
+          "--initial-baseline-reference",
+          "artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json"
+        ],
+        "P_compile_time_slots": [
+          "CHILD_CHECKPOINT_PATH",
+          "SOURCE_REVISION"
+        ],
+        "runtime_late_slots": [
+          "PRODUCER_EXPORT_PATH",
+          "PRODUCER_ARTIFACT_SHA256"
+        ]
+      },
+      {
+        "record_id": "c6.base_plus_s.selected.l4",
+        "workflow_binding_id": "c6.selected.l4",
+        "candidate_id": "C6-Base+S",
+        "stage": "L4",
+        "source_alias": "I_S",
+        "producer_record_id": "c6.base_plus_s.selected.l2",
+        "producer_policy": "exact_successful_complete_sealed_result_from_record",
+        "decision_policy": "exact_D_triple_and_D_selected_candidate_C_match",
+        "evaluation_manifest": null,
+        "synthetic_manifest": null,
+        "payload_schema": "official_L4_payload",
+        "argv_template": [
+          "python",
+          "-m",
+          "quantfusion.application.stress",
+          "--workers",
+          "4",
+          "--random-samples",
+          "50",
+          "--permutation-samples",
+          "50",
+          "--seeds",
+          "20260807,20260817,20260827",
+          "--checkpoint-every",
+          "10",
+          "--checkpoint",
+          "{CHILD_CHECKPOINT_PATH}",
+          "--source-revision",
+          "{SOURCE_REVISION}",
+          "--establish-initial-baseline",
+          "--initial-baseline-reference",
+          "artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json"
+        ],
+        "P_compile_time_slots": [
+          "CHILD_CHECKPOINT_PATH",
+          "SOURCE_REVISION"
+        ],
+        "runtime_late_slots": [
+          "PRODUCER_EXPORT_PATH",
+          "PRODUCER_ARTIFACT_SHA256"
+        ]
+      }
+    ],
+    "binding_lookup": "The pair (workflow binding_id, candidate_id) must match exactly one R record; record_id is unique. No user-selected entrypoint, module, argv prefix, payload schema or source alias exists.",
+    "R_schema": {
+      "path": "artifacts/diagnostics/c6-run-bindings.json",
+      "root": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "schema_version",
+          "kind",
+          "status",
+          "P",
+          "workflow",
+          "implementations",
+          "binding_records",
+          "selection_validator",
+          "serialization"
+        ],
+        "field_types": {
+          "schema_version": "literal integer 2",
+          "kind": "literal c6_run_bindings",
+          "status": "literal frozen_before_economic_dispatch",
+          "P": "P_identity",
+          "workflow": "exact frozen workflow identity",
+          "implementations": "object with exact I_B and I_S implementation_identity",
+          "binding_records": "seven R_binding_record objects in binding_record_order",
+          "selection_validator": "exact frozen D validator identity",
+          "serialization": "literal canonical_json_v2"
+        },
+        "array_order": {
+          "binding_records": "binding_record_order"
+        }
+      },
+      "binding_record": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "record_id",
+          "workflow_binding_id",
+          "candidate_id",
+          "stage",
+          "source_revision",
+          "source_tree",
+          "source_blob_identities",
+          "P",
+          "workflow",
+          "entrypoint",
+          "argv",
+          "runtime_late_slots",
+          "resolved_inputs",
+          "scenario_manifest_identity",
+          "synthetic_control_manifest_identity",
+          "evaluation_manifest_identity",
+          "producer_policy",
+          "decision_policy",
+          "runtime",
+          "attempt_policy",
+          "paths",
+          "canonical_payload_schema",
+          "exit_semantics",
+          "signature"
+        ],
+        "field_types": {
+          "record_id": "exact binding_record_order member",
+          "workflow_binding_id": "workflow binding ID",
+          "candidate_id": "candidate enum",
+          "stage": "enum L1|QUALIFICATION|L2|L4",
+          "source_revision": "exact I_B or I_S commit",
+          "source_tree": "exact implementation tree",
+          "source_blob_identities": "exact allowlisted changed/imported source blobs",
+          "P": "P_identity",
+          "workflow": "exact workflow identity",
+          "entrypoint": "exact module frozen by binding spec",
+          "argv": "fully P-expanded string array; any remaining placeholder must be a declared runtime-late child-argv slot",
+          "runtime_late_slots": "exact array from binding spec; producer slots are always wrapper validation inputs and appear in child argv only where the frozen child consumes predecessor evidence",
+          "resolved_inputs": "strict exact identity object",
+          "scenario_manifest_identity": "manifest_identity or null",
+          "synthetic_control_manifest_identity": "manifest_identity or null",
+          "evaluation_manifest_identity": "manifest_identity or null",
+          "producer_policy": "exact producer contract",
+          "decision_policy": "exact D contract",
+          "runtime": "exact runner OS/version/python/dependency/workers/order",
+          "attempt_policy": "exact attempt policy",
+          "paths": "exact output/checkpoint/lease paths derived only from logical_run_id",
+          "canonical_payload_schema": "exact frozen schema name/version",
+          "exit_semantics": "exact stage exit semantics",
+          "signature": "64 lowercase hex over canonical record excluding signature"
+        },
+        "array_order": {}
+      },
+      "P_expansion_rule": "R replaces every argv occurrence of every P_compile_time_slot exactly once. Any remaining argv brace must name a declared runtime_late_slot. A declared producer runtime slot may be wrapper-only for L4 because the unchanged official stress child does not consume L2 evidence; the wrapper must still resolve and validate both producer slots before child import. Unknown/missing required slots, duplicate record IDs, non-allowlisted entrypoints or argv differences are invalid.",
+      "self_identity_rule": "R does not contain its own commit/blob/hash. The workflow's run_bindings_revision is the exact checked-out R commit; the checked-out R blob and full-byte hash are verified against D and every sealed envelope."
+    },
+    "attempt_policy": {
+      "logical_run_id_schema": "^[a-z0-9][a-z0-9._-]{0,62}$",
+      "attempt_id_schema": "^[a-z0-9][a-z0-9._-]{0,62}$",
+      "initial_attempt_id": "frozen exact value in R",
+      "resume_attempt_id_derivation": "`r${resume_sequence}-${12_lowercase_hex}` with resume_sequence starting at 1; <=63 chars; a fresh random suffix is required",
+      "resume_from_schema": "^$|^[0-9a-f]{64}$",
+      "resume_workflow_run_id_schema": "^$|^[1-9][0-9]*$ and strictly less than current GITHUB_RUN_ID",
+      "fencing_token_schema": "^[A-Za-z0-9][A-Za-z0-9._-]{15,255}$",
+      "fencing_sequence": "numeric GITHUB_RUN_ID; GITHUB_RUN_ATTEMPT is provenance only and must equal 1",
+      "duplicate_logical_completion": "forbidden"
+    },
+    "child_environment": {
+      "inherited_allowlist": [
+        "PATH",
+        "LANG",
+        "LC_ALL",
+        "TZ",
+        "PYTHONHASHSEED"
+      ],
+      "exact_C6_variables": [
+        "C6_BOUND_CHECKPOINT_PATH",
+        "C6_BOUND_SIGNATURE",
+        "C6_BOUND_LOGICAL_RUN_ID",
+        "C6_BOUND_ATTEMPT_ID",
+        "C6_BOUND_FENCING_TOKEN",
+        "C6_BOUND_RESUME_FROM"
+      ],
+      "rule": "No other C6_* variable reaches the child. Raw fencing token exists only in process memory/environment and is forbidden from logs, payloads, checkpoints, envelopes and sidecars; only SHA-256 persists."
+    },
+    "output_paths": "R derives normalized paths under artifacts/checkpoints/c6/{logical_run_id}/; no placeholder may select an importable package path.",
+    "no_runtime_candidate_switch": "I_B contains only Base production behavior and cannot execute S. I_S is I_B plus the one frozen S production behavior. Candidate selection occurs solely by exact source checkout and R record."
+  },
+  "canonical_result_payload_hashing": {
+    "version": 2,
+    "strict_json": "UTF-8 only; reject duplicate keys, non-string keys, NaN, Infinity and -Infinity",
+    "serialization": "json.dumps(payload, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False) encoded UTF-8 plus exactly one trailing LF",
+    "digest": "SHA-256 over exact canonical payload bytes",
+    "stage_payload_schemas": {
+      "L1_Base": "schema_catalog.definitions.L1_base_payload",
+      "L1_Base_plus_S": "schema_catalog.definitions.L1_s_payload",
+      "QUALIFICATION": "S_QUALIFICATION_RUN.output_schema",
+      "L2": "schema_catalog.definitions.L2_payload",
+      "L4": "schema_catalog.definitions.official_L4_payload"
+    },
+    "L4_extraction": {
+      "official_artifact_rule": "The official artifact bytes and schema are unchanged.",
+      "common_root_exact_keys": [
+        "scenario_count",
+        "trade_count_semantics",
+        "absolute_hard_gates",
+        "retained_robustness_hard_gates",
+        "robustness_diagnostics",
+        "promotion_gates",
+        "initial_baseline_gates",
+        "summary",
+        "results",
+        "artifact_status",
+        "acceptance_status",
+        "canonical"
+      ],
+      "accepted_initial_additional_exact_keys": [
+        "baseline_kind"
+      ],
+      "rejected_additional_exact_keys": [
+        "rejection_reasons"
+      ],
+      "result_validation": "Strict-parse the unchanged official artifact, validate each result's exact scenario/family keys with stress_artifacts._validated_checkpoint_results plus official_result_* exact-key validation, and reject any missing, duplicate or extra scenario ID; the extracted payload is then canonically serialized without mutating the official artifact bytes.",
+      "results_order": "lexicographic scenario_id exactly as sealed by the official runner",
+      "missing_semantics": "Any listed common field absent from the official artifact is invalid. Accepted initial L4 requires exactly baseline_kind as the listed variant field; rejected L4 requires exactly rejection_reasons as the listed variant field. The variant is selected only by the existing official publication status, never by the extractor."
+    },
+    "outer_envelope_schema": "schema_catalog.definitions.workflow_export_manifest_v2",
+    "digest_sidecar_schema": "schema_catalog.definitions.digest_sidecar",
+    "sealed_result_files": {
+      "L1": [
+        "payload.json",
+        "digest.json"
+      ],
+      "QUALIFICATION": [
+        "payload.json",
+        "digest.json"
+      ],
+      "L2": [
+        "payload.json",
+        "digest.json"
+      ],
+      "L4": [
+        "official-artifact.json",
+        "digest.json"
+      ]
+    },
+    "sealed_checkpoint_files": [
+      "checkpoint.json",
+      "child-checkpoint.bin"
+    ],
+    "raw_fencing_token_recursive_forbidden": true,
+    "D_and_C_semantics": {
+      "L1_Base": {
+        "D": "empty workflow D fields",
+        "C": null,
+        "selection_status": "unselected"
+      },
+      "QUALIFICATION": {
+        "D": "empty workflow D fields",
+        "C": null,
+        "selection_status": "unselected"
+      },
+      "L1_Base_plus_S": {
+        "D": "empty workflow D fields",
+        "C": null,
+        "selection_status": "unselected"
+      },
+      "L2": {
+        "D": "exact nonempty D triple",
+        "C": "D-selected exact implementation"
+      },
+      "L4": {
+        "D": "exact nonempty D triple",
+        "C": "D-selected exact implementation"
+      }
+    },
+    "hash_order": "Atomically seal the existing artifact first; compute canonical_result_payload_sha256 and artifact_full_byte_sha256; write digest sidecar; write manifest last with full-byte hashes of every non-manifest file. No digest is written into the artifact it hashes.",
+    "artifact_full_byte_sha256_definition": "Hash of payload.json for L1/qualification/L2 and official-artifact.json for L4; never the self-containing export directory.",
+    "manifest_sha256_use": "The manifest full-byte hash may be recorded only by the external consumer/producer identity after download; it is not self-embedded."
+  },
+  "workflow_trigger_matrix": [
+    {
+      "event": "push",
+      "ref": "codex/c6-causal-risk-closure-v4",
+      "stages": [
+        "bootstrap",
+        "P",
+        "I_B",
+        "C_or_A_PR_head"
+      ],
+      "workflows": [],
+      "economic_fields": false,
+      "full958": false,
+      "required": false,
+      "permissions": "none",
+      "output_boundary": "Git ref update only"
+    },
+    {
+      "event": "pull_request",
+      "ref": "codex/c6-causal-risk-closure-v4",
+      "stages": [
+        "P",
+        "I_B",
+        "C_or_A_PR_head"
+      ],
+      "workflows": [
+        "CI:C6_PREFREEZE"
+      ],
+      "economic_fields": false,
+      "full958": false,
+      "required_contexts": [
+        "Python 3.11 tests",
+        "Python 3.12 tests",
+        "Canonical package typecheck",
+        "Security and dependency audit",
+        "Exact backtest regression"
+      ],
+      "permissions": "contents:read",
+      "output_boundary": "Engineering logs only",
+      "regression_behavior": "Run complete test suite skipped; Exact backtest regression executes embargo identity only; five-universe replay skipped"
+    },
+    {
+      "event": "pull_request.edited",
+      "ref": "codex/c6-causal-risk-closure-v4",
+      "stages": [
+        "PR_metadata"
+      ],
+      "workflows": [],
+      "economic_fields": false,
+      "full958": false,
+      "required": false,
+      "permissions": "none",
+      "output_boundary": "PR metadata only"
+    },
+    {
+      "event": "push",
+      "ref": "codex/c6-s-frozen-v4",
+      "stages": [
+        "I_S"
+      ],
+      "workflows": [],
+      "economic_fields": false,
+      "full958": false,
+      "required": false,
+      "permissions": "none",
+      "output_boundary": "Frozen source ref only"
+    },
+    {
+      "event": "push",
+      "ref": "codex/c6-evidence-v4",
+      "stages": [
+        "R",
+        "D"
+      ],
+      "workflows": [],
+      "economic_fields": false,
+      "full958": false,
+      "required": false,
+      "permissions": "none",
+      "output_boundary": "Evidence ref only"
+    },
+    {
+      "event": "workflow_dispatch",
+      "workflow": "C6 Bound Economic Run",
+      "workflow_ref": "codex/c6-v4-workflow-preflight",
+      "workflow_revision": "f03c49fc0d558562c158fe4864250e3056b1003f",
+      "stages": [
+        "L1_Base",
+        "S_QUALIFICATION_if_residual",
+        "L1_Base_plus_S_if_qualified",
+        "L2_selected",
+        "L4_selected_once"
+      ],
+      "binding_pairs": [
+        [
+          "c6.base.l1",
+          "C6-Base"
+        ],
+        [
+          "c6.s.qualification",
+          "C6-Base+S"
+        ],
+        [
+          "c6.base_plus_s.l1",
+          "C6-Base+S"
+        ],
+        [
+          "c6.selected.l2",
+          "C6-Base"
+        ],
+        [
+          "c6.selected.l2",
+          "C6-Base+S"
+        ],
+        [
+          "c6.selected.l4",
+          "C6-Base"
+        ],
+        [
+          "c6.selected.l4",
+          "C6-Base+S"
+        ]
+      ],
+      "economic_fields": "all except qualification",
+      "full958": "only selected L4 pair",
+      "required": false,
+      "permissions": "actions:read, contents:read",
+      "precondition": "P,I_B,I_S,R exact remote identities frozen; predecessor and D rules by stage",
+      "duplicate_prevention": "concurrency, GITHUB_RUN_ATTEMPT=1, exhaustive run history, exact predecessor, one result per logical run",
+      "output_boundary": "One validated sealed 90-day artifact per logical run; repository checkouts read-only"
+    },
+    {
+      "event": "workflow_run.rerun",
+      "workflow": "C6 Bound Economic Run",
+      "stages": [
+        "all"
+      ],
+      "workflows": [
+        "C6 Bound Economic Run"
+      ],
+      "economic_fields": false,
+      "full958": false,
+      "required": false,
+      "status": "rejected_before_child",
+      "reason": "GITHUB_RUN_ATTEMPT must equal 1"
+    },
+    {
+      "event": "merge_group",
+      "stages": [
+        "merge"
+      ],
+      "workflows": [],
+      "economic_fields": false,
+      "full958": false,
+      "required": false,
+      "status": "not_configured",
+      "permissions": "none",
+      "output_boundary": "none"
+    },
+    {
+      "event": "push",
+      "ref": "main",
+      "stages": [
+        "post_merge"
+      ],
+      "workflows": [
+        "CI:ordinary"
+      ],
+      "economic_fields": "existing five-universe regression only",
+      "full958": false,
+      "required_contexts": [
+        "Python 3.11 tests",
+        "Python 3.12 tests",
+        "Canonical package typecheck",
+        "Security and dependency audit",
+        "Exact backtest regression"
+      ],
+      "permissions": "contents:read",
+      "output_boundary": "CI logs only; no C6 artifact"
+    }
+  ],
+  "implementation_freeze": {
+    "construction_order": [
+      "P",
+      "I_B",
+      "I_S",
+      "R",
+      "L1_Base",
+      "S_QUALIFICATION_if_residual",
+      "L1_Base_plus_S_if_qualified",
+      "D",
+      "C",
+      "L2",
+      "L4",
+      "A_optional"
+    ],
+    "I_B_allowed_paths": [
+      "quantfusion/risk/overlay/adapter.py",
+      "quantfusion/engine/causal.py",
+      "quantfusion/engine/replay.py",
+      "quantfusion/engine/ensemble_allocation.py",
+      "quantfusion/engine/ensemble_orchestration.py",
+      "quantfusion/engine/execution_flow.py",
+      "quantfusion/engine/results.py",
+      "quantfusion/application/c6_contract.py",
+      "quantfusion/application/c6_diagnostics.py",
+      "quantfusion/application/c6_bound_run.py",
+      "tests/c6_non_economic/test_c6_book_identity.py",
+      "tests/c6_non_economic/test_c6_fixed_reference_admission.py",
+      "tests/c6_non_economic/test_c6_retained_winner.py",
+      "tests/c6_non_economic/test_c6_contract.py",
+      "tests/c6_non_economic/test_c6_diagnostics.py",
+      "tests/c6_non_economic/test_c6_bound_run.py",
+      "README.md",
+      "docs/ARCHITECTURE.md",
+      "docs/VALIDATION.md"
+    ],
+    "I_B_diff_budget": {
+      "maximum_changed_paths": 19,
+      "maximum_added_lines": 5000,
+      "maximum_deleted_lines": 1000
+    },
+    "I_S_allowed_paths": [
+      "quantfusion/risk/overlay/actions.py",
+      "quantfusion/risk/overlay/policy_base.py",
+      "quantfusion/risk/overlay/policy.py",
+      "quantfusion/risk/overlay/evidence.py",
+      "quantfusion/application/c6_s_qualification.py",
+      "tests/c6_non_economic/test_c6_early_concentration.py",
+      "tests/c6_non_economic/test_c6_s_qualification.py",
+      "README.md",
+      "docs/ARCHITECTURE.md",
+      "docs/VALIDATION.md"
+    ],
+    "I_S_diff_budget": {
+      "maximum_changed_paths": 10,
+      "maximum_added_lines": 2000,
+      "maximum_deleted_lines": 500
+    },
+    "forbidden_paths_or_classes": [
+      ".github/workflows/**",
+      "requirements*.txt",
+      "data/**",
+      "quantfusion/application/stress.py",
+      "quantfusion/application/stress_metrics.py",
+      "quantfusion/application/stress_scenarios.py",
+      "quantfusion/application/stress_artifacts.py",
+      "quantfusion/config/**",
+      "artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json",
+      "artifacts/diagnostics/c6-current-baseline-cohort.txt",
+      "candidate_runtime_switch",
+      "second_allocator",
+      "target_gross",
+      "new_account_state_machine",
+      "environment_or_monkeypatch_diagnostic_switch"
+    ],
+    "engineering_suite_common_exact_argv": [
+      [
+        "python",
+        "-m",
+        "compileall",
+        "-q",
+        "quantfusion",
+        "tests/c6_non_economic"
+      ],
+      [
+        "ruff",
+        "check",
+        "--select=E,F,W",
+        "--ignore=E501,E402,E731,E741",
+        "quantfusion",
+        "tests/c6_non_economic"
+      ],
+      [
+        "pyright",
+        "quantfusion"
+      ],
+      [
+        "bandit",
+        "-r",
+        "quantfusion",
+        "scripts",
+        "-ll"
+      ],
+      [
+        "pip-audit",
+        "--strict",
+        "-r",
+        "requirements-lock.txt"
+      ],
+      [
+        "git",
+        "diff",
+        "--check"
+      ]
+    ],
+    "I_B_pytest_exact_argv": [
+      "python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/c6_non_economic/test_baseline_rebuild.py",
+      "tests/c6_non_economic/test_c6_book_identity.py",
+      "tests/c6_non_economic/test_c6_fixed_reference_admission.py",
+      "tests/c6_non_economic/test_c6_retained_winner.py",
+      "tests/c6_non_economic/test_c6_contract.py",
+      "tests/c6_non_economic/test_c6_diagnostics.py",
+      "tests/c6_non_economic/test_c6_bound_run.py",
+      "tests/unit/test_overlay_modules.py",
+      "tests/regression/test_cross_market_overlay.py",
+      "tests/unit/test_engine_modules.py",
+      "tests/unit/test_unified_universe.py",
+      "tests/regression/test_system_boundaries.py",
+      "tests/contract/test_architecture.py",
+      "tests/contract/test_fail_closed_boundaries.py",
+      "tests/contract/test_repository_hygiene.py"
+    ],
+    "I_S_pytest_exact_argv": [
+      "python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/c6_non_economic/test_baseline_rebuild.py",
+      "tests/c6_non_economic/test_c6_book_identity.py",
+      "tests/c6_non_economic/test_c6_fixed_reference_admission.py",
+      "tests/c6_non_economic/test_c6_retained_winner.py",
+      "tests/c6_non_economic/test_c6_contract.py",
+      "tests/c6_non_economic/test_c6_diagnostics.py",
+      "tests/c6_non_economic/test_c6_bound_run.py",
+      "tests/c6_non_economic/test_c6_early_concentration.py",
+      "tests/c6_non_economic/test_c6_s_qualification.py",
+      "tests/unit/test_overlay_modules.py",
+      "tests/regression/test_cross_market_overlay.py",
+      "tests/unit/test_engine_modules.py",
+      "tests/unit/test_unified_universe.py",
+      "tests/regression/test_system_boundaries.py",
+      "tests/contract/test_architecture.py",
+      "tests/contract/test_fail_closed_boundaries.py",
+      "tests/contract/test_repository_hygiene.py"
+    ],
+    "prefreeze_CI_branch": "codex/c6-causal-risk-closure-v4",
+    "required_review": "Focused correctness/security review on exact I_B and exact I_S, each with zero Critical or Important findings.",
+    "import_surface": "Exact checkout only; clean index/tracked/untracked state; PYTHONPATH contains only that checkout; outputs remain under non-importable artifacts/checkpoints/c6.",
+    "economic_run_before_I_B_I_S_R_frozen": "forbidden"
+  },
+  "selection_rule": {
+    "schema_version": 2,
+    "D_path": "artifacts/diagnostics/c6-selection.json",
+    "D_schema": "schema_catalog.definitions.D_selection",
+    "D_commit_rule": "D has exactly R as first parent, changes only D_path as a new regular mode-100644 blob, and has no other tree change.",
+    "step_1": "Run exactly c6.base.l1 and validate the entire 3831-evaluation/29-control/15-no-drift payload.",
+    "step_2": "If Base correctness, identity, architecture or applicable no-drift fails, write rejected D and stop; S cannot repair it.",
+    "step_3": "Derive complete R_L1 only from the 765 C6-Base evaluation records using the frozen unrounded MDD predicate.",
+    "step_4": "If R_L1 is empty, do not dispatch qualification or Base+S. Select I_B iff every Base L1 predicate passes; otherwise reject.",
+    "step_5": "If R_L1 is nonempty, dispatch exactly c6.s.qualification with the exact Base producer. Base+S is eligible only if the complete qualification result has all_passed=true.",
+    "step_6": "If qualified, dispatch exactly c6.base_plus_s.l1 with the exact qualification producer and its transitive Base identity. Select I_S iff every Base+S L1 predicate passes; otherwise reject.",
+    "step_7": "D binds P/R, every required sealed artifact hash, complete residual IDs, predicate arrays, qualification hash or null, selected candidate and exact C. Preselection artifacts remain unselected and are never rewritten.",
+    "step_8": "Only the D-selected candidate-specific L2 record may dispatch. L4 requires the exact successful complete L2 producer, every L2 predicate passed, and the same D/C.",
+    "no_profit_tie_break": true,
+    "no_third_candidate": true,
+    "D_validator": {
+      "implementation": "quantfusion.application.c6_contract.validate_selection_commit",
+      "input": "R checkout, D checkout and downloaded sealed artifacts",
+      "exact_parent": "R commit",
+      "allowed_diff": [
+        "artifacts/diagnostics/c6-selection.json"
+      ],
+      "selected_mapping": {
+        "C6-Base": "I_B",
+        "C6-Base+S": "I_S"
+      },
+      "qualification_required_iff": "R_L1 nonempty and selected_candidate is C6-Base+S",
+      "rejected_mapping": "selected_candidate and C are null; downstream L2/L4 forbidden"
+    }
+  },
+  "economic_tree_and_A": {
+    "A_optional": true,
+    "A_ALLOWLIST": [
+      "README.md",
+      "artifacts/diagnostics/c6-final-report.json",
+      "artifacts/diagnostics/c6-l4-provenance.json",
+      "artifacts/validation/formal_stress_958_acceptance_summary.json",
+      "artifacts/validation/prefix_stress.json",
+      "artifacts/validation/universe_stress.json",
+      "docs/ARCHITECTURE.md",
+      "docs/VALIDATION.md"
+    ],
+    "allowed_change": "only add or modify regular non-executable 100644 blobs at exact allowlisted paths; no delete, rename, symlink or gitlink",
+    "manifest_record_exact_keys": [
+      "path_b64",
+      "mode",
+      "object_type",
+      "object_oid"
+    ],
+    "manifest_record_value_contract": {
+      "path_b64": "standard RFC 4648 padded base64 of the exact raw repo-relative path bytes",
+      "mode": "six ASCII Git mode digits from ls-tree",
+      "object_type": "exact ASCII ls-tree object type",
+      "object_oid": "lowercase hexadecimal Git object OID emitted by ls-tree"
+    },
+    "manifest_algorithm": "Read the entire tracked tree using git-ls-tree -rz --full-tree semantics; remove only exact A_ALLOWLIST paths; construct each object with exactly manifest_record_exact_keys and no others; sort records by decoded raw path bytes; serialize the record array with json.dumps(records, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False) plus one LF encoded as UTF-8; SHA-256 the exact bytes.",
+    "base_manifest_entry_count": 210,
+    "base_economic_tree_sha256": "c7a5c9ded8a64cceef1463e36da01bf31d9b4dceb387a5837e8f5f2bb9614815",
+    "required_proof": "git diff --raw -z C A touches only allowed 100644 add/modify paths and economic_tree_hash(C) equals economic_tree_hash(A)",
+    "source_revision_in_artifact": "C_even_if_A_exists",
+    "fallback": "If source/head validation or required CI would rerun L4, keep A null and retain the sealed workflow artifact externally."
+  },
+  "frozen_file_identities": {
+    ".github/workflows/ci.yml": {
+      "mode": "100644",
+      "git_blob": "dbe6f0322d4dd43e623be6537f6fb0d6bb123b85",
+      "sha256": "4e6a5bd222512c66dd7969af0c475348071f0f4bc2113029b59087904aa5ca3c"
+    },
+    ".github/workflows/c6-bound-economic.yml": {
+      "mode": "100644",
+      "git_blob": "282715ec4c6dd13741357f73f43af91a17c82670",
+      "sha256": "fa5348664343df6917f52b59007c59ed50d69596e741fb3d19401e7d914b5145"
+    },
+    "quantfusion/application/stress.py": {
+      "mode": "100644",
+      "git_blob": "a5f0c8700a9c5a42e608d107002afae5e542d2e0",
+      "sha256": "1fcd98f23339a927248b3d1d56f2f00c856f0499bde69714c8a12fe2a6738342"
+    },
+    "quantfusion/application/stress_metrics.py": {
+      "mode": "100644",
+      "git_blob": "1531e6aae35cf63728be8e3c062cbe3b9c192c57",
+      "sha256": "3af9b19994d7af13ee9abf2dd8845ed2a2c7f00ba476b55911c331d838dc7d92"
+    },
+    "quantfusion/application/stress_scenarios.py": {
+      "mode": "100644",
+      "git_blob": "e3319fea4adaf1682a3cf520c1fd1215630249f1",
+      "sha256": "d0ae025ec5d7ba767e56664c0623a4b0c88decf684f374660b3cd38a5f9f1fcc"
+    },
+    "quantfusion/application/stress_artifacts.py": {
+      "mode": "100644",
+      "git_blob": "57c727977b6a83050ac60e1e6128bdad6c7a7428",
+      "sha256": "f7e70cb76a6c0eccf55bcea26361a9da246575585be04fc6fdff0e01f36a96ad"
+    },
+    "quantfusion/config/overlay.py": {
+      "mode": "100644",
+      "git_blob": "aa02338cfc9dddbe6ff2a5480f84b3e0689d1b40",
+      "sha256": "ecb6d068cca6e18cd64771e53dfc759628ccdfe0ce7228fcc706ee0a6de3b7d7"
+    },
+    "quantfusion/config/universe.py": {
+      "mode": "100644",
+      "git_blob": "0e4393a38862702d76719efadc67cf75f6f29e94",
+      "sha256": "cb071246c89858f836211a5d6dbcc4938dd5511441a7d35fa304f246336d7712"
+    },
+    "quantfusion/config/portfolio.py": {
+      "mode": "100644",
+      "git_blob": "0a097e3dc47e339396fa374aec5f939c7447dcb1",
+      "sha256": "aed02fb067e899e07d9f69bbb23024e050473b8b5ef8eb88bec17df18efb3565"
+    },
+    "quantfusion/engine/universe.py": {
+      "mode": "100644",
+      "git_blob": "998d0430b2672639db7063e949f6b1d8b42b0f07",
+      "sha256": "7746258739bffb85358e7d7e74cadf20edaf5cb82a24dbf4d5bec42dcb7ae59c"
+    },
+    "quantfusion/risk/overlay/adapter.py": {
+      "mode": "100644",
+      "git_blob": "40cd69f9b59dc7a28432cd294714d98ee7daa045",
+      "sha256": "cf67a37c1b7fc7b5ff2c060e56259b2edddad512ebdaa0892c1b00e33735dba7"
+    },
+    "quantfusion/risk/overlay/actions.py": {
+      "mode": "100644",
+      "git_blob": "47f74da7e32cb2c62d06392e7aa5eb1b631ed697",
+      "sha256": "1c497b271f76d804adeba6ec42dea50f33bc2b439a534bb0f50d7ad00ddd4365"
+    },
+    "quantfusion/risk/overlay/policy_base.py": {
+      "mode": "100644",
+      "git_blob": "42e2447c74a3682cde4ec78cb2964451d17d12d4",
+      "sha256": "fc09ca73ae82299395f161346e54ac54b9c35a3ba28417e88e23e9bfe1c8f897"
+    },
+    "quantfusion/risk/overlay/policy.py": {
+      "mode": "100644",
+      "git_blob": "05582c8874848b45d90b4a1426689a7757743808",
+      "sha256": "c6c440f4c12ce1090346515e8e2992a8447f003272708fb300b98005b209b480"
+    },
+    "quantfusion/risk/overlay/evidence.py": {
+      "mode": "100644",
+      "git_blob": "72e5958d31c873abb6701c18078789ad30e64cf4",
+      "sha256": "f993cdf8a6110672cee631b22743c3d92318162ad38c0df11acc9f32a674250f"
+    },
+    "quantfusion/engine/causal.py": {
+      "mode": "100644",
+      "git_blob": "12f11c3322f99999042b160ff5f1fb4bcb621b57",
+      "sha256": "3bf3e4277d982a78b313996af90011a1b7596baab3114c91e811b03fd77adaac"
+    },
+    "quantfusion/engine/ensemble_allocation.py": {
+      "mode": "100644",
+      "git_blob": "e86f182ddad28e6555d7135985f6810e6115dee3",
+      "sha256": "2914f4dbe4abe2a86dc85c7c96d6084c340b3680080e0548665cd567e0d03ddb"
+    },
+    "quantfusion/engine/universe_selection.py": {
+      "mode": "100644",
+      "git_blob": "97bf46c0ecd7ec81b9e48b21316f07b853f9a643",
+      "sha256": "40c487a1cc92b13ea5a6a469fac3c8779616793dc382210c9809f21ec3c9f3f6"
+    }
+  },
+  "stop_conditions": [
+    "Any real scenario or backtest economic field is dispatched, enqueued or inspected before P, I_B, I_S and R are all frozen and remotely verified.",
+    "Any frozen workflow, dependency, data, scenario, reference, gate, comparator, seed, parallel merge order or account-lock identity drifts.",
+    "Warm-state audit finds unauthorized holdings, cash, PnL, peaks, pending orders, locks or future information.",
+    "Data audit finds an invalid or universe-dependent old-symbol raw frame or causal indicator.",
+    "Base correctness, identity, architecture or no-drift fails.",
+    "Any Base residual fails S qualification, or the sole Base+S L1 fails an applicable predicate.",
+    "Selected C fails any L2 predicate or any L4 formal gate.",
+    "A third candidate, parameter search, threshold change, scenario change, reference change, gate change or second L4 logical run is proposed.",
+    "Main tracked tree drifts from the frozen base before economic completion.",
+    "Required review or CI has an unresolved Critical or Important result.",
+    "Atomic expected-base merge provenance or supported merge-queue equivalent is unavailable at final merge time.",
+    "Any ambiguity or incompleteness in the exact schema catalog, R expansion, producer chain, D validation, workflow history enumeration, checkpoint identity or exit classification before first dispatch requires a superseding P before any economic enqueue.",
+    "Any native GitHub rerun, missing/expired workflow history, prior matching run without a valid sealed checkpoint/result, duplicate result, or producer-chain mismatch permanently invalidates that logical run.",
+    "L4 exit 2 is a valid terminal rejection and stops without resume; it is not checkpoint failure.",
+    "Any need to modify the merged workflow/CI preflight, dependency lock, official stress/gate code, data, scenario/reference identity or P/I_B/I_S/R after first economic enqueue stops this experiment."
+  ],
+  "unknowns_before_implementation": [
+    "Exact I_B and I_S commit/tree/blob identities are unknown until their reviewed clean trees are frozen; P supplies only exact construction and R schemas.",
+    "Exact R commit/blob/full-byte identity is unknown until both implementations and runtime probe values are frozen.",
+    "Base residual IDs and S qualification outcome are intentionally unknown until the one bound Base L1 result; they cannot alter S code, formulas or schemas.",
+    "D, C and downstream producer artifact hashes are intentionally unknown until mechanical selection; only their exact late-binding schemas are open.",
+    "Economic effects, formal acceptance and practical live performance remain unknown; no new C6 economic run has been dispatched or inspected."
+  ],
+  "diagnostic_api_contract": {
+    "owner": "quantfusion.engine.replay.ProductionReplayEngine",
+    "implementation_path": "quantfusion/engine/replay.py",
+    "production_entrypoint": "ProductionReplayEngine.run",
+    "diagnostic_entrypoint": "ProductionReplayEngine.run_c6_diagnostic",
+    "production_signature_rule": "ProductionReplayEngine.run accepts neither an intervention nor a trace sink and cannot reach diagnostic intervention branches.",
+    "diagnostic_request": {
+      "type": "object",
+      "additional_properties": false,
+      "exact_keys": [
+        "schema_version",
+        "intervention_id",
+        "scenario_id",
+        "diagnostic_noncanonical",
+        "allow_publication"
+      ],
+      "field_types": {
+        "schema_version": "literal integer 1",
+        "intervention_id": "enum BASELINE|F0_ONLY|F0_F1|U_ONLY|C6_BASE|W0_NO_601869|W1_DATA_MAP_ONLY|W2_POOL_DENOMINATOR_ONLY|W3_REAL_INTENTS_FIXED_REFERENCE_U|W4_FULL_BASE_PRODUCTION_POOL_RELATIVE|W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK|RECORDING_OFF|RECORDING_ON",
+        "scenario_id": "string from the exact binding evaluation manifest",
+        "diagnostic_noncanonical": "literal true",
+        "allow_publication": "literal false"
+      },
+      "array_order": {}
+    },
+    "factual_trace_sink": {
+      "type": "object",
+      "additional_properties": false,
+      "exact_keys": [
+        "schema_version",
+        "events",
+        "path_hashes"
+      ],
+      "field_types": {
+        "schema_version": "literal integer 1",
+        "events": "array of trace_event in engine emission order",
+        "path_hashes": "path_hash_record"
+      },
+      "array_order": {
+        "events": "engine emission order; each item owns zero-based emission_ordinal"
+      }
+    },
+    "trace_event": {
+      "type": "object",
+      "additional_properties": false,
+      "exact_keys": [
+        "emission_ordinal",
+        "timestamp",
+        "phase",
+        "event_type",
+        "state_index",
+        "sleeve_name",
+        "strategy_name",
+        "symbol",
+        "payload"
+      ],
+      "field_types": {
+        "emission_ordinal": "integer >= 0",
+        "timestamp": "ISO-8601 string",
+        "phase": "enum decision_close|sell_plan|sell_consolidation|pre_open_mark|sell_fill|buy_authorization|buy_fill|official_sample|account_event",
+        "event_type": "nonempty string from frozen event enum in schema_catalog",
+        "state_index": "integer >= 0 or null",
+        "sleeve_name": "nonempty string or null",
+        "strategy_name": "nonempty string or null",
+        "symbol": "nonempty string or null",
+        "payload": "strict JSON object with event-type exact schema"
+      },
+      "array_order": {}
+    },
+    "forbidden_transport": [
+      "environment-variable intervention switch",
+      "monkeypatch",
+      "global mutable diagnostic mode",
+      "production config flag",
+      "candidate switch in I_B or I_S"
+    ],
+    "default_instrumentation_no_drift": "RECORDING_OFF and RECORDING_ON must have identical orders, fills, cash, positions and equity hashes; factual trace bytes are excluded from the equality."
+  },
+  "schema_catalog": {
+    "schema_version": 1,
+    "dialect": "C6 exact-key/type catalog; every object rejects missing, duplicate, or extra keys; bool is never an integer; every number must be finite; nullable fields require explicit null",
+    "strict_json": "UTF-8 only; reject duplicate keys, non-string keys, NaN, Infinity and -Infinity",
+    "schema_reference_rule": "Within field_types, every case-sensitive identifier equal to a definitions key is a local schema reference; implementations must resolve all such identifiers before validation and must reject unknown explicitly named schema references. Inline exact-object descriptions are closed schemas with precisely the listed keys.",
+    "definitions": {
+      "P_identity": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "commit",
+          "tree",
+          "blob",
+          "sha256"
+        ],
+        "field_types": {
+          "commit": "40 lowercase hex",
+          "tree": "40 lowercase hex",
+          "blob": "40 lowercase hex",
+          "sha256": "64 lowercase hex"
+        },
+        "array_order": {}
+      },
+      "implementation_identity": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "commit",
+          "tree",
+          "required_blobs"
+        ],
+        "field_types": {
+          "commit": "40 lowercase hex",
+          "tree": "40 lowercase hex",
+          "required_blobs": "object of repo path to git_file_identity"
+        },
+        "array_order": {}
+      },
+      "git_file_identity": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "mode",
+          "git_blob",
+          "sha256"
+        ],
+        "field_types": {
+          "mode": "literal 100644",
+          "git_blob": "40 lowercase hex",
+          "sha256": "64 lowercase hex"
+        },
+        "array_order": {}
+      },
+      "manifest_identity": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "name",
+          "count",
+          "unique_count",
+          "sha256"
+        ],
+        "field_types": {
+          "name": "nonempty string",
+          "count": "integer >= 0",
+          "unique_count": "integer equal count",
+          "sha256": "64 lowercase hex"
+        },
+        "array_order": {}
+      },
+      "producer_identity": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "artifact_full_byte_sha256",
+          "attempt_id",
+          "binding_id",
+          "logical_run_id",
+          "workflow_run_id"
+        ],
+        "field_types": {
+          "artifact_full_byte_sha256": "empty string or 64 lowercase hex",
+          "attempt_id": "empty string or ID matching ^[a-z0-9][a-z0-9._-]{0,62}$",
+          "binding_id": "empty string or workflow binding ID",
+          "logical_run_id": "empty string or ID matching ^[a-z0-9][a-z0-9._-]{0,62}$",
+          "workflow_run_id": "empty string or positive decimal string"
+        },
+        "array_order": {}
+      },
+      "scenario_definition": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "scenario_id",
+          "scenario_type",
+          "symbols",
+          "symbol_count",
+          "omitted_symbol",
+          "added_symbol",
+          "base_size",
+          "seed",
+          "sample_size"
+        ],
+        "field_types": {
+          "scenario_id": "nonempty string",
+          "scenario_type": "enum prefix|leave_one_out|add_one|random_subset|permutation",
+          "symbols": "unique symbol strings in scenario execution order",
+          "symbol_count": "integer equal symbols.length",
+          "omitted_symbol": "symbol string or null",
+          "added_symbol": "symbol string or null",
+          "base_size": "integer or null",
+          "seed": "integer or null",
+          "sample_size": "integer or null"
+        },
+        "array_order": {
+          "symbols": "scenario execution order"
+        }
+      },
+      "official_metrics": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "total_return",
+          "terminal_wealth",
+          "max_drawdown",
+          "sharpe",
+          "calmar",
+          "total_trades",
+          "sleeve_fill_count",
+          "date_symbol_side_count",
+          "cash_days",
+          "reason_attribution",
+          "max_concurrent_symbols",
+          "terminal_risk_lock",
+          "deployment_policy"
+        ],
+        "field_types": {
+          "total_return": "finite number",
+          "terminal_wealth": "finite number > 0",
+          "max_drawdown": "finite number",
+          "sharpe": "finite number",
+          "calmar": "finite number",
+          "total_trades": "integer >= 0",
+          "sleeve_fill_count": "integer >= 0",
+          "date_symbol_side_count": "integer >= 0",
+          "cash_days": "integer >= 0",
+          "reason_attribution": "official_reason_attribution with values summing to total_trades",
+          "max_concurrent_symbols": "integer >= 0",
+          "terminal_risk_lock": "boolean",
+          "deployment_policy": "literal production_daily_replay"
+        },
+        "array_order": {}
+      },
+      "order_record": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "order_ordinal",
+          "decision_timestamp",
+          "execution_timestamp",
+          "state_index",
+          "sleeve_name",
+          "strategy_name",
+          "symbol",
+          "side",
+          "requested_shares",
+          "authorized_shares",
+          "reason",
+          "priority",
+          "action_id",
+          "scope_kind",
+          "scope_key",
+          "status",
+          "suppression_winner_order_ordinal"
+        ],
+        "field_types": {
+          "order_ordinal": "integer >= 0",
+          "decision_timestamp": "ISO-8601 string",
+          "execution_timestamp": "ISO-8601 string",
+          "state_index": "integer >= 0",
+          "sleeve_name": "nonempty string",
+          "strategy_name": "nonempty string",
+          "symbol": "nonempty string",
+          "side": "enum BUY|SELL",
+          "requested_shares": "integer >= 0",
+          "authorized_shares": "integer >= 0",
+          "reason": "nonempty string",
+          "priority": "integer",
+          "action_id": "string or null",
+          "scope_kind": "enum book_symbol|portfolio_symbol|portfolio_cluster|null",
+          "scope_key": "string or null",
+          "status": "enum planned|retained|suppressed|submitted|filled|partial|blocked|cancelled|expired",
+          "suppression_winner_order_ordinal": "integer >= 0 or null"
+        },
+        "array_order": {}
+      },
+      "fill_record": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "fill_ordinal",
+          "order_ordinal",
+          "timestamp",
+          "state_index",
+          "sleeve_name",
+          "strategy_name",
+          "symbol",
+          "side",
+          "shares",
+          "price",
+          "notional",
+          "fee",
+          "slippage",
+          "status",
+          "blocked_reason"
+        ],
+        "field_types": {
+          "fill_ordinal": "integer >= 0",
+          "order_ordinal": "integer >= 0",
+          "timestamp": "ISO-8601 string",
+          "state_index": "integer >= 0",
+          "sleeve_name": "nonempty string",
+          "strategy_name": "nonempty string",
+          "symbol": "nonempty string",
+          "side": "enum BUY|SELL",
+          "shares": "integer > 0",
+          "price": "finite number > 0",
+          "notional": "finite number >= 0",
+          "fee": "finite number >= 0",
+          "slippage": "finite number >= 0",
+          "status": "enum filled|partial",
+          "blocked_reason": "literal null"
+        },
+        "array_order": {}
+      },
+      "cash_sample": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "sample_ordinal",
+          "timestamp",
+          "state_index",
+          "sleeve_name",
+          "cash"
+        ],
+        "field_types": {
+          "sample_ordinal": "integer >= 0",
+          "timestamp": "ISO-8601 string",
+          "state_index": "integer >= 0",
+          "sleeve_name": "nonempty string",
+          "cash": "finite number"
+        },
+        "array_order": {}
+      },
+      "position_sample": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "sample_ordinal",
+          "timestamp",
+          "state_index",
+          "sleeve_name",
+          "strategy_name",
+          "symbol",
+          "shares",
+          "mark",
+          "market_value"
+        ],
+        "field_types": {
+          "sample_ordinal": "integer >= 0",
+          "timestamp": "ISO-8601 string",
+          "state_index": "integer >= 0",
+          "sleeve_name": "nonempty string",
+          "strategy_name": "nonempty string",
+          "symbol": "nonempty string",
+          "shares": "integer >= 0",
+          "mark": "finite number >= 0",
+          "market_value": "finite number >= 0"
+        },
+        "array_order": {}
+      },
+      "equity_sample": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "sample_ordinal",
+          "timestamp",
+          "equity",
+          "official_sample"
+        ],
+        "field_types": {
+          "sample_ordinal": "integer >= 0",
+          "timestamp": "ISO-8601 string",
+          "equity": "finite number",
+          "official_sample": "boolean"
+        },
+        "array_order": {}
+      },
+      "drawdown_sample": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "sample_ordinal",
+          "timestamp",
+          "equity",
+          "running_peak",
+          "drawdown",
+          "official_sample"
+        ],
+        "field_types": {
+          "sample_ordinal": "integer >= 0",
+          "timestamp": "ISO-8601 string",
+          "equity": "finite number",
+          "running_peak": "finite number",
+          "drawdown": "finite number",
+          "official_sample": "boolean"
+        },
+        "array_order": {}
+      },
+      "risk_event": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "emission_ordinal",
+          "timestamp",
+          "phase_order",
+          "event_type",
+          "state_index",
+          "sleeve_name",
+          "strategy_name",
+          "symbol",
+          "peak_owner",
+          "peak_value",
+          "current_assets",
+          "drawdown",
+          "threshold",
+          "status_source",
+          "evidence_flags"
+        ],
+        "field_types": {
+          "emission_ordinal": "integer >= 0",
+          "timestamp": "ISO-8601 string",
+          "phase_order": "integer >= 0",
+          "event_type": "enum ACCOUNT_ALERT|CONFIRMED_LOCK|EMERGENCY_LOCK|TERMINAL_LOCK|CROSS_MARKET|SUBINDUSTRY|CONCENTRATION|LAYERED_STOP|OPEN_MARK_GAP",
+          "state_index": "integer >= 0 or null",
+          "sleeve_name": "string or null",
+          "strategy_name": "string or null",
+          "symbol": "string or null",
+          "peak_owner": "enum official_running_peak|manager_cycle_peak|manager_lifetime_peak|null",
+          "peak_value": "finite number or null",
+          "current_assets": "finite number or null",
+          "drawdown": "finite number or null",
+          "threshold": "finite number or null",
+          "status_source": "nonempty string",
+          "evidence_flags": "unique causal-label enums in frozen enum order"
+        },
+        "array_order": {}
+      },
+      "action_lifecycle": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "emission_ordinal",
+          "timestamp",
+          "action_id",
+          "winner_order_ordinal",
+          "loser_order_ordinals",
+          "state_index",
+          "sleeve_name",
+          "strategy_name",
+          "symbol",
+          "reason",
+          "priority",
+          "planned_shares",
+          "retained_shares",
+          "suppressed_shares",
+          "filled_shares",
+          "current_shares",
+          "remainder_shares",
+          "scope_kind",
+          "scope_key",
+          "post_action_target_shares",
+          "terminal_for_current_batch",
+          "carry_to_next_batch",
+          "release_reason"
+        ],
+        "field_types": {
+          "emission_ordinal": "integer >= 0",
+          "timestamp": "ISO-8601 string",
+          "action_id": "nonempty string",
+          "winner_order_ordinal": "integer >= 0",
+          "loser_order_ordinals": "unique integer array",
+          "state_index": "integer >= 0",
+          "sleeve_name": "nonempty string",
+          "strategy_name": "nonempty string",
+          "symbol": "nonempty string",
+          "reason": "nonempty string",
+          "priority": "integer",
+          "planned_shares": "integer >= 0",
+          "retained_shares": "integer >= 0",
+          "suppressed_shares": "integer >= 0",
+          "filled_shares": "integer >= 0",
+          "current_shares": "integer >= 0",
+          "remainder_shares": "integer >= 0",
+          "scope_kind": "enum book_symbol|portfolio_symbol|portfolio_cluster",
+          "scope_key": "nonempty string",
+          "post_action_target_shares": "integer >= 0 or null",
+          "terminal_for_current_batch": "boolean",
+          "carry_to_next_batch": "boolean",
+          "release_reason": "enum POSITION_GONE|TARGET_MET|EXPIRED|CANCELLED|SUB_LOT|FILLED|STILL_LIVE"
+        },
+        "array_order": {
+          "loser_order_ordinals": "ascending"
+        }
+      },
+      "exposure_sample": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "sample_ordinal",
+          "timestamp",
+          "phase",
+          "gross_notional",
+          "gross_ratio",
+          "symbol",
+          "symbol_notional",
+          "cluster",
+          "cluster_notional",
+          "cluster_weight"
+        ],
+        "field_types": {
+          "sample_ordinal": "integer >= 0",
+          "timestamp": "ISO-8601 string",
+          "phase": "enum batch_start|after_sells|after_buys|official_sample",
+          "gross_notional": "finite number >= 0",
+          "gross_ratio": "finite number >= 0",
+          "symbol": "string or null",
+          "symbol_notional": "finite number >= 0 or null",
+          "cluster": "string or null",
+          "cluster_notional": "finite number >= 0 or null",
+          "cluster_weight": "finite number in [0,1] or null"
+        },
+        "array_order": {}
+      },
+      "manager_event": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "timestamp",
+          "peak_owner",
+          "peak_timestamp",
+          "peak_value",
+          "current_assets",
+          "drawdown",
+          "threshold",
+          "status_source"
+        ],
+        "field_types": {
+          "timestamp": "ISO-8601 string or null",
+          "peak_owner": "enum manager_cycle_peak|manager_lifetime_peak or null",
+          "peak_timestamp": "ISO-8601 string or null",
+          "peak_value": "finite number or null",
+          "current_assets": "finite number or null",
+          "drawdown": "finite number or null",
+          "threshold": "finite number or null",
+          "status_source": "string or null"
+        },
+        "array_order": {}
+      },
+      "official_breach_event": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "timestamp",
+          "sample_ordinal",
+          "peak_timestamp",
+          "peak_value",
+          "equity",
+          "drawdown",
+          "threshold",
+          "tolerance"
+        ],
+        "field_types": {
+          "timestamp": "ISO-8601 string or null",
+          "sample_ordinal": "integer >= 0 or null",
+          "peak_timestamp": "ISO-8601 string or null",
+          "peak_value": "finite number or null",
+          "equity": "finite number or null",
+          "drawdown": "finite number or null",
+          "threshold": "literal 0.18",
+          "tolerance": "literal 1e-15"
+        },
+        "array_order": {}
+      },
+      "event_timeline": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "first_official_mdd_breach",
+          "first_account_alert_event",
+          "first_confirmed_cycle_lock",
+          "first_emergency_cycle_lock",
+          "first_terminal_lock"
+        ],
+        "field_types": {
+          "first_official_mdd_breach": "official_breach_event",
+          "first_account_alert_event": "manager_event",
+          "first_confirmed_cycle_lock": "manager_event",
+          "first_emergency_cycle_lock": "manager_event",
+          "first_terminal_lock": "manager_event"
+        },
+        "array_order": {}
+      },
+      "qualification_coverage": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "observed_count",
+          "minimum_observed",
+          "freshness_passed",
+          "coverage_passed",
+          "unmapped_weight",
+          "unmapped_limit",
+          "unmapped_passed"
+        ],
+        "field_types": {
+          "observed_count": "integer >= 0",
+          "minimum_observed": "integer >= 0",
+          "freshness_passed": "boolean",
+          "coverage_passed": "boolean",
+          "unmapped_weight": "finite number in [0,1]",
+          "unmapped_limit": "finite number in [0,1]",
+          "unmapped_passed": "boolean"
+        },
+        "array_order": {}
+      },
+      "qualification_leave_held": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "mode",
+          "removed_components",
+          "observed_count",
+          "freshness_passed",
+          "coverage_passed",
+          "same_evidence_preserved",
+          "passed"
+        ],
+        "field_types": {
+          "mode": "enum disjoint_pass|recomputed",
+          "removed_components": "unique strings lexicographically sorted",
+          "observed_count": "integer >= 0",
+          "freshness_passed": "boolean",
+          "coverage_passed": "boolean",
+          "same_evidence_preserved": "boolean",
+          "passed": "boolean"
+        },
+        "array_order": {
+          "removed_components": "lexicographic"
+        }
+      },
+      "scheduled_batch": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "decision_close",
+          "execution_open",
+          "calendar_ordinal"
+        ],
+        "field_types": {
+          "decision_close": "ISO-8601 string",
+          "execution_open": "ISO-8601 string",
+          "calendar_ordinal": "integer >= 0"
+        },
+        "array_order": {}
+      },
+      "qualification_fillability": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "t_plus_one_passed",
+          "open_available",
+          "not_suspended",
+          "not_limit_blocked",
+          "adv_capacity_shares",
+          "lot_size",
+          "nonzero_executable_lot"
+        ],
+        "field_types": {
+          "t_plus_one_passed": "boolean",
+          "open_available": "boolean",
+          "not_suspended": "boolean",
+          "not_limit_blocked": "boolean",
+          "adv_capacity_shares": "integer >= 0",
+          "lot_size": "integer > 0",
+          "nonzero_executable_lot": "boolean"
+        },
+        "array_order": {}
+      },
+      "qualification_shortfall": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "shares",
+          "reason"
+        ],
+        "field_types": {
+          "shares": "integer >= 0",
+          "reason": "enum NONE|T_PLUS_ONE|MISSING_OPEN|SUSPENDED|LIMIT_BLOCKED|ADV_ZERO|CAPACITY|SUB_LOT"
+        },
+        "array_order": {}
+      },
+      "s_evidence": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "first_causal_stressed_cluster_close",
+          "worst_cluster",
+          "worst_cluster_weight",
+          "stressed_cluster_set",
+          "coverage",
+          "leave_held_components_out",
+          "first_early_sell_required_close",
+          "legacy_gate_open",
+          "scheduled_execution_batch",
+          "lead_batch_count",
+          "pre_trade_open_drawdown",
+          "official_sample_relation",
+          "identical_valuation_instant_proven",
+          "planned_shares",
+          "executable_lot_shares",
+          "fillability",
+          "shortfall",
+          "pre_sell_crossing_buy_witness"
+        ],
+        "field_types": {
+          "first_causal_stressed_cluster_close": "ISO-8601 string or null",
+          "worst_cluster": "string or null",
+          "worst_cluster_weight": "finite number in [0,1] or null",
+          "stressed_cluster_set": "unique strings lexicographically sorted",
+          "coverage": "qualification_coverage",
+          "leave_held_components_out": "qualification_leave_held",
+          "first_early_sell_required_close": "ISO-8601 string or null",
+          "legacy_gate_open": "boolean",
+          "scheduled_execution_batch": "scheduled_batch or null",
+          "lead_batch_count": "integer >= 0",
+          "pre_trade_open_drawdown": "finite number or null",
+          "official_sample_relation": "enum NO_SCHEDULED_BATCH|PRECEDES_OFFICIAL_SAMPLE|OPEN_MARK_GAP_NOT_OFFICIAL_SAMPLE|UNAVOIDABLE_AT_OFFICIAL_SAMPLE",
+          "identical_valuation_instant_proven": "boolean",
+          "planned_shares": "integer >= 0",
+          "executable_lot_shares": "integer >= 0",
+          "fillability": "qualification_fillability",
+          "shortfall": "qualification_shortfall",
+          "pre_sell_crossing_buy_witness": "boolean"
+        },
+        "array_order": {
+          "stressed_cluster_set": "lexicographic"
+        }
+      },
+      "observed_mechanism": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "label",
+          "first_observed_timestamp",
+          "first_path_divergence_timestamp",
+          "state_indices",
+          "symbols",
+          "notional"
+        ],
+        "field_types": {
+          "label": "enum STATE_OR_DATA_INVALID|BOOK_IDENTITY_LOSS|ACTION_OFFSET|POLICY_LATENCY|EXECUTION_GAP|OPEN_MARK_GAP|NO_EARLY_EVIDENCE|ALPHA_OR_HOLDING_PATH|LOCK_MEDIATOR|OTHER_UNRESOLVED",
+          "first_observed_timestamp": "ISO-8601 string or null",
+          "first_path_divergence_timestamp": "ISO-8601 string or null",
+          "state_indices": "unique integers ascending",
+          "symbols": "unique strings lexicographically sorted",
+          "notional": "finite number >= 0 or null"
+        },
+        "array_order": {
+          "state_indices": "ascending",
+          "symbols": "lexicographic"
+        }
+      },
+      "causal_matrix": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "event_timeline",
+          "required_trace_order_complete",
+          "executable_lead_batch_count",
+          "multi_labels",
+          "observed_mechanisms",
+          "s_evidence",
+          "earliest_unavoidable_breach_under_frozen_candidate_family",
+          "unavoidable_field_justification"
+        ],
+        "field_types": {
+          "event_timeline": "event_timeline",
+          "required_trace_order_complete": "boolean",
+          "executable_lead_batch_count": "integer >= 0",
+          "multi_labels": "unique causal-label enums in frozen enum order",
+          "observed_mechanisms": "observed_mechanism array in causal-label enum order",
+          "s_evidence": "s_evidence",
+          "earliest_unavoidable_breach_under_frozen_candidate_family": "ISO-8601 string or null",
+          "unavoidable_field_justification": "string; must explain null unless pathwise exhaustive proof exists"
+        },
+        "array_order": {
+          "multi_labels": "frozen label order",
+          "observed_mechanisms": "frozen label order"
+        }
+      },
+      "warm_boundary": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "indicator_history",
+          "regime_and_transitions",
+          "candidate_sticky_confirmation",
+          "overlay_state",
+          "sleeve_positions",
+          "sleeve_cash",
+          "pending_orders",
+          "sleeve_peaks",
+          "account_peaks",
+          "locks",
+          "first_decision_timestamp",
+          "first_execution_timestamp",
+          "unauthorized_economic_state_empty",
+          "future_information_absent"
+        ],
+        "field_types": {
+          "indicator_history": "strict JSON object",
+          "regime_and_transitions": "strict JSON object",
+          "candidate_sticky_confirmation": "strict JSON object",
+          "overlay_state": "strict JSON object",
+          "sleeve_positions": "strict JSON array",
+          "sleeve_cash": "strict JSON array",
+          "pending_orders": "strict JSON array",
+          "sleeve_peaks": "strict JSON array",
+          "account_peaks": "strict JSON object",
+          "locks": "strict JSON object",
+          "first_decision_timestamp": "ISO-8601 string",
+          "first_execution_timestamp": "ISO-8601 string",
+          "unauthorized_economic_state_empty": "boolean",
+          "future_information_absent": "boolean"
+        },
+        "array_order": {}
+      },
+      "data_identity": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "data_fingerprint",
+          "scenario_signature",
+          "ordered_symbols",
+          "raw_frame_hashes",
+          "indicator_hashes",
+          "old_symbol_frames_unchanged",
+          "old_symbol_indicators_unchanged",
+          "calendar_hash"
+        ],
+        "field_types": {
+          "data_fingerprint": "64 lowercase hex",
+          "scenario_signature": "64 lowercase hex",
+          "ordered_symbols": "exact formal ordered symbol array",
+          "raw_frame_hashes": "object symbol to 64 lowercase hex",
+          "indicator_hashes": "object symbol to 64 lowercase hex",
+          "old_symbol_frames_unchanged": "boolean",
+          "old_symbol_indicators_unchanged": "boolean",
+          "calendar_hash": "64 lowercase hex"
+        },
+        "array_order": {
+          "ordered_symbols": "formal contract order"
+        }
+      },
+      "intervention_result": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "intervention_id",
+          "scenario_id",
+          "terminal_wealth",
+          "total_return",
+          "max_drawdown",
+          "total_trades",
+          "pre_breach_wealth",
+          "own_601869_realized_pnl",
+          "own_601869_unrealized_pnl",
+          "old_symbol_fixed_reference_score_hash",
+          "pool_relative_rank_hash",
+          "displaced_slots",
+          "first_divergence_timestamp",
+          "post_lock_missed_orders",
+          "post_lock_missed_trades"
+        ],
+        "field_types": {
+          "intervention_id": "exact W0..W5 ID",
+          "scenario_id": "literal add-one-13-601869",
+          "terminal_wealth": "finite number > 0",
+          "total_return": "finite number",
+          "max_drawdown": "finite number",
+          "total_trades": "integer >= 0",
+          "pre_breach_wealth": "finite number > 0",
+          "own_601869_realized_pnl": "finite number",
+          "own_601869_unrealized_pnl": "finite number",
+          "old_symbol_fixed_reference_score_hash": "64 lowercase hex",
+          "pool_relative_rank_hash": "64 lowercase hex",
+          "displaced_slots": "strict JSON array",
+          "first_divergence_timestamp": "ISO-8601 string or null",
+          "post_lock_missed_orders": "integer >= 0",
+          "post_lock_missed_trades": "integer >= 0"
+        },
+        "array_order": {}
+      },
+      "attribution_sensitivity": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "value_function",
+          "forward_state_order",
+          "forward_deltas",
+          "alternate_state_order",
+          "alternate_deltas",
+          "forward_sum",
+          "alternate_sum",
+          "interaction_residual",
+          "conditional_lock_mediated_total_effect"
+        ],
+        "field_types": {
+          "value_function": "literal log(terminal_wealth)",
+          "forward_state_order": "literal [W0,W1,W2,W3,W4]",
+          "forward_deltas": "four attribution_edge_delta objects joining adjacent forward_state_order members",
+          "alternate_state_order": "literal [W0,W1,W3,W2,W4]",
+          "alternate_deltas": "four attribution_edge_delta objects joining adjacent alternate_state_order members",
+          "forward_sum": "finite number exactly log(W4.wealth)-log(W0.wealth)",
+          "alternate_sum": "finite number exactly log(W4.wealth)-log(W0.wealth)",
+          "interaction_residual": "attribution_interaction_residual",
+          "conditional_lock_mediated_total_effect": "finite number exactly log(W5.wealth)-log(W4.wealth)"
+        },
+        "array_order": {
+          "forward_state_order": "literal",
+          "forward_deltas": "forward_state_order adjacency",
+          "alternate_state_order": "literal",
+          "alternate_deltas": "alternate_state_order adjacency"
+        }
+      },
+      "attribution_edge_delta": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "from_state",
+          "to_state",
+          "delta_log_terminal_wealth"
+        ],
+        "field_types": {
+          "from_state": "exact W0..W4 state ID",
+          "to_state": "exact W0..W4 state ID",
+          "delta_log_terminal_wealth": "finite number equal V(to_state)-V(from_state)"
+        },
+        "array_order": {}
+      },
+      "attribution_interaction_residual": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "forward_total",
+          "alternate_total",
+          "common_endpoint_residual",
+          "maximum_absolute_ordinal_delta_difference",
+          "telescoping_tolerance_passed"
+        ],
+        "field_types": {
+          "forward_total": "finite number equal sum(forward_deltas)",
+          "alternate_total": "finite number equal sum(alternate_deltas)",
+          "common_endpoint_residual": "finite number equal alternate_total-forward_total",
+          "maximum_absolute_ordinal_delta_difference": "finite number >= 0 over the four ordered delta positions",
+          "telescoping_tolerance_passed": "boolean equal abs(common_endpoint_residual)<=1e-12"
+        },
+        "array_order": {}
+      },
+      "no_drift_pair": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "scenario_id",
+          "recording_off_path_hashes",
+          "recording_on_path_hashes",
+          "equal"
+        ],
+        "field_types": {
+          "scenario_id": "exact frozen no-drift ID",
+          "recording_off_path_hashes": "path_hash_record",
+          "recording_on_path_hashes": "path_hash_record",
+          "equal": "literal true"
+        },
+        "array_order": {}
+      },
+      "path_hash_record": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "orders_sha256",
+          "fills_sha256",
+          "cash_sha256",
+          "positions_sha256",
+          "equity_sha256"
+        ],
+        "field_types": {
+          "orders_sha256": "64 lowercase hex",
+          "fills_sha256": "64 lowercase hex",
+          "cash_sha256": "64 lowercase hex",
+          "positions_sha256": "64 lowercase hex",
+          "equity_sha256": "64 lowercase hex"
+        },
+        "array_order": {}
+      },
+      "evaluation_record": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "evaluation_id",
+          "variant_id",
+          "scenario_id",
+          "scenario_definition",
+          "official_metrics",
+          "orders",
+          "fills",
+          "cash_series",
+          "position_series",
+          "equity_series",
+          "drawdown_series",
+          "risk_events",
+          "action_lifecycle",
+          "exposure_series",
+          "causal_matrix",
+          "warm_boundary",
+          "data_identity",
+          "intervention_601869"
+        ],
+        "field_types": {
+          "evaluation_id": "exact evaluation-manifest ID",
+          "variant_id": "frozen variant or W intervention ID",
+          "scenario_id": "exact L1 scenario ID",
+          "scenario_definition": "scenario_definition",
+          "official_metrics": "official_metrics",
+          "orders": "order_record array",
+          "fills": "fill_record array",
+          "cash_series": "cash_sample array",
+          "position_series": "position_sample array",
+          "equity_series": "equity_sample array",
+          "drawdown_series": "drawdown_sample array",
+          "risk_events": "risk_event array",
+          "action_lifecycle": "action_lifecycle array",
+          "exposure_series": "exposure_sample array",
+          "causal_matrix": "causal_matrix",
+          "warm_boundary": "warm_boundary",
+          "data_identity": "data_identity",
+          "intervention_601869": "intervention_result or null"
+        },
+        "array_order": {
+          "orders": "order_ordinal",
+          "fills": "fill_ordinal",
+          "cash_series": "sample_ordinal",
+          "position_series": "sample_ordinal then state/symbol/strategy",
+          "equity_series": "sample_ordinal",
+          "drawdown_series": "sample_ordinal",
+          "risk_events": "timestamp/phase_order/emission_ordinal",
+          "action_lifecycle": "timestamp/emission_ordinal",
+          "exposure_series": "sample_ordinal"
+        }
+      },
+      "synthetic_control": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "control_id",
+          "passed",
+          "assertions",
+          "economic_fields"
+        ],
+        "field_types": {
+          "control_id": "exact stage synthetic manifest ID",
+          "passed": "boolean",
+          "assertions": "array of objects {id:string,passed:boolean,observed:strict JSON}",
+          "economic_fields": "literal null"
+        },
+        "array_order": {
+          "assertions": "frozen test assertion order"
+        }
+      },
+      "predicate_result": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "predicate_id",
+          "passed",
+          "observed",
+          "comparator",
+          "tolerance",
+          "failure_reason"
+        ],
+        "field_types": {
+          "predicate_id": "exact applicable manifest ID",
+          "passed": "boolean",
+          "observed": "strict JSON object",
+          "comparator": "exact frozen comparator string",
+          "tolerance": "finite number",
+          "failure_reason": "string or null"
+        },
+        "array_order": {}
+      },
+      "L1_base_payload": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "schema_version",
+          "kind",
+          "diagnostic_noncanonical",
+          "evaluation_manifest",
+          "evaluations",
+          "synthetic_control_manifest",
+          "synthetic_controls",
+          "no_drift_manifest",
+          "no_drift_pairs",
+          "attribution_sensitivity",
+          "diagnostic_predicates"
+        ],
+        "field_types": {
+          "schema_version": "literal integer 2",
+          "kind": "literal c6_l1_base",
+          "diagnostic_noncanonical": "literal true",
+          "evaluation_manifest": "exact L1_BASE_EVALUATION_MANIFEST identity",
+          "evaluations": "3831 evaluation_record objects exactly aligned with manifest",
+          "synthetic_control_manifest": "exact L1_BASE_SYNTHETIC_CONTROL_IDS identity",
+          "synthetic_controls": "29 synthetic_control objects exactly aligned with manifest",
+          "no_drift_manifest": "exact L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS identity",
+          "no_drift_pairs": "15 no_drift_pair objects exactly aligned with manifest",
+          "attribution_sensitivity": "attribution_sensitivity",
+          "diagnostic_predicates": "L1 predicate_result array evaluated only on the C6-Base slice"
+        },
+        "array_order": {
+          "evaluations": "evaluation manifest order",
+          "synthetic_controls": "control manifest order",
+          "no_drift_pairs": "no-drift manifest order",
+          "diagnostic_predicates": "predicate manifest order"
+        }
+      },
+      "L1_s_payload": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "schema_version",
+          "kind",
+          "diagnostic_noncanonical",
+          "evaluation_manifest",
+          "evaluations",
+          "synthetic_control_manifest",
+          "synthetic_controls",
+          "base_producer_identity",
+          "qualification_producer_identity",
+          "common_prefix_comparisons",
+          "no_effect_comparisons",
+          "diagnostic_predicates"
+        ],
+        "field_types": {
+          "schema_version": "literal integer 2",
+          "kind": "literal c6_l1_base_plus_s",
+          "diagnostic_noncanonical": "literal true",
+          "evaluation_manifest": "exact L1_S_EVALUATION_MANIFEST identity",
+          "evaluations": "765 evaluation_record objects exactly aligned with manifest",
+          "synthetic_control_manifest": "exact L1_S_SYNTHETIC_CONTROL_IDS identity",
+          "synthetic_controls": "4 synthetic_control objects exactly aligned with manifest",
+          "base_producer_identity": "producer_identity copied through the qualification chain",
+          "qualification_producer_identity": "producer_identity",
+          "common_prefix_comparisons": "array of per-scenario {scenario_id,first_s_effective_timestamp,base_prefix_hash,s_prefix_hash,equal}",
+          "no_effect_comparisons": "array covering every scenario/control with no S_effective; exact orders/fills/cash/positions/equity hashes equal",
+          "diagnostic_predicates": "L1 predicate_result array evaluated only on C6-Base+S"
+        },
+        "array_order": {
+          "evaluations": "evaluation manifest order",
+          "synthetic_controls": "control manifest order",
+          "common_prefix_comparisons": "L1 economic scenario order",
+          "no_effect_comparisons": "scenario then control manifest order",
+          "diagnostic_predicates": "predicate manifest order"
+        }
+      },
+      "L2_summary": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "scenario_count",
+          "return_median",
+          "return_p10",
+          "return_p05",
+          "return_worst",
+          "drawdown_median",
+          "drawdown_p10",
+          "drawdown_p50_severity",
+          "drawdown_p90_severity",
+          "drawdown_p95_severity",
+          "drawdown_worst",
+          "trades_median",
+          "trades_p90",
+          "trades_worst",
+          "date_symbol_side_buckets_median",
+          "date_symbol_side_buckets_p90",
+          "date_symbol_side_buckets_worst",
+          "sleeve_fills_p90",
+          "sleeve_fills_worst",
+          "risk_action_orders_median"
+        ],
+        "field_types": {
+          "scenario_count": "literal 77",
+          "return_median": "finite number",
+          "return_p10": "finite number",
+          "return_p05": "finite number",
+          "return_worst": "finite number",
+          "drawdown_median": "finite number",
+          "drawdown_p10": "finite number",
+          "drawdown_p50_severity": "finite number",
+          "drawdown_p90_severity": "finite number",
+          "drawdown_p95_severity": "finite number",
+          "drawdown_worst": "finite number",
+          "trades_median": "finite number",
+          "trades_p90": "finite number",
+          "trades_worst": "integer >= 0",
+          "date_symbol_side_buckets_median": "finite number",
+          "date_symbol_side_buckets_p90": "finite number",
+          "date_symbol_side_buckets_worst": "integer >= 0",
+          "sleeve_fills_p90": "finite number",
+          "sleeve_fills_worst": "integer >= 0",
+          "risk_action_orders_median": "finite number"
+        },
+        "array_order": {}
+      },
+      "L2_diagnostic_telemetry": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "cash_days",
+          "max_gross_ratio",
+          "max_cluster_weight",
+          "planned_risk_sell_shares",
+          "retained_risk_sell_shares",
+          "suppressed_risk_sell_shares",
+          "filled_risk_sell_shares",
+          "first_evidence_timestamp",
+          "first_executable_open",
+          "first_official_mdd_breach",
+          "first_account_alert_event",
+          "first_confirmed_cycle_lock",
+          "first_emergency_cycle_lock",
+          "first_terminal_lock",
+          "same_open_offset_shares",
+          "carried_conflict_count",
+          "cluster_substitution_count",
+          "cycle_lock_count",
+          "terminal_lock_count",
+          "mdd_slack",
+          "near_18pct"
+        ],
+        "field_types": {
+          "cash_days": "integer >= 0",
+          "max_gross_ratio": "finite number >= 0",
+          "max_cluster_weight": "finite number in [0,1]",
+          "planned_risk_sell_shares": "integer >= 0",
+          "retained_risk_sell_shares": "integer >= 0",
+          "suppressed_risk_sell_shares": "integer >= 0",
+          "filled_risk_sell_shares": "integer >= 0",
+          "first_evidence_timestamp": "ISO-8601 string or null",
+          "first_executable_open": "ISO-8601 string or null",
+          "first_official_mdd_breach": "official_breach_event",
+          "first_account_alert_event": "manager_event",
+          "first_confirmed_cycle_lock": "manager_event",
+          "first_emergency_cycle_lock": "manager_event",
+          "first_terminal_lock": "manager_event",
+          "same_open_offset_shares": "integer >= 0",
+          "carried_conflict_count": "integer >= 0",
+          "cluster_substitution_count": "integer >= 0",
+          "cycle_lock_count": "integer >= 0",
+          "terminal_lock_count": "integer >= 0",
+          "mdd_slack": "finite number defined as 0.18-abs(max_drawdown)",
+          "near_18pct": "boolean defined as abs(mdd_slack)<=1e-12"
+        },
+        "array_order": {}
+      },
+      "L2_result": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "scenario_id",
+          "scenario_type",
+          "symbols",
+          "symbol_count",
+          "total_return",
+          "max_drawdown",
+          "sharpe",
+          "calmar",
+          "total_trades",
+          "sleeve_fill_count",
+          "date_symbol_side_count",
+          "reason_attribution",
+          "max_concurrent_symbols",
+          "terminal_risk_lock",
+          "deployment_policy",
+          "base_size",
+          "added_symbol",
+          "seed",
+          "sample_size",
+          "diagnostic_telemetry"
+        ],
+        "field_types": {
+          "scenario_id": "exact L2 ID",
+          "scenario_type": "enum prefix|add_one|random_subset|permutation",
+          "symbols": "unique symbol array in execution order",
+          "symbol_count": "integer equal symbols.length",
+          "total_return": "finite number",
+          "max_drawdown": "finite number",
+          "sharpe": "finite number",
+          "calmar": "finite number",
+          "total_trades": "integer >= 0",
+          "sleeve_fill_count": "integer >= 0",
+          "date_symbol_side_count": "integer >= 0",
+          "reason_attribution": "official_reason_attribution with values summing to total_trades",
+          "max_concurrent_symbols": "integer >= 0",
+          "terminal_risk_lock": "boolean",
+          "deployment_policy": "literal production_daily_replay",
+          "base_size": "integer or null",
+          "added_symbol": "string or null",
+          "seed": "integer or null",
+          "sample_size": "integer or null",
+          "diagnostic_telemetry": "L2_diagnostic_telemetry"
+        },
+        "array_order": {
+          "symbols": "scenario execution order"
+        }
+      },
+      "L2_payload": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "schema_version",
+          "kind",
+          "diagnostic_noncanonical",
+          "scenario_manifest",
+          "summary",
+          "results",
+          "diagnostic_predicates"
+        ],
+        "field_types": {
+          "schema_version": "literal integer 2",
+          "kind": "literal c6_l2",
+          "diagnostic_noncanonical": "literal true",
+          "scenario_manifest": "exact L2_EXACT_SCENARIO_IDS identity",
+          "summary": "L2_summary",
+          "results": "77 L2_result objects",
+          "diagnostic_predicates": "L2 predicate_result array"
+        },
+        "array_order": {
+          "results": "L2 manifest order",
+          "diagnostic_predicates": "L2 predicate manifest order"
+        }
+      },
+      "official_reason_attribution": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "add",
+          "initial_entry",
+          "re_entry",
+          "risk_reduction",
+          "route_migration",
+          "sector_liquidation",
+          "sticky_replacement",
+          "strategy_exit"
+        ],
+        "field_types": {
+          "add": "integer >= 0",
+          "initial_entry": "integer >= 0",
+          "re_entry": "integer >= 0",
+          "risk_reduction": "integer >= 0",
+          "route_migration": "integer >= 0",
+          "sector_liquidation": "integer >= 0",
+          "sticky_replacement": "integer >= 0",
+          "strategy_exit": "integer >= 0"
+        },
+        "array_order": {}
+      },
+      "official_result_common": {
+        "type": "object variant base",
+        "additional_properties": false,
+        "exact_keys": [
+          "scenario_id",
+          "scenario_type",
+          "symbols",
+          "symbol_count",
+          "total_return",
+          "max_drawdown",
+          "sharpe",
+          "calmar",
+          "total_trades",
+          "sleeve_fill_count",
+          "date_symbol_side_count",
+          "reason_attribution",
+          "max_concurrent_symbols",
+          "terminal_risk_lock",
+          "deployment_policy"
+        ],
+        "field_types": {
+          "scenario_id": "exact L4 scenario ID",
+          "scenario_type": "enum prefix|leave_one_out|add_one|random_subset|permutation",
+          "symbols": "unique symbol array in exact scenario order",
+          "symbol_count": "integer equal symbols.length",
+          "total_return": "finite number",
+          "max_drawdown": "finite number",
+          "sharpe": "finite number",
+          "calmar": "finite number",
+          "total_trades": "integer >= 0",
+          "sleeve_fill_count": "integer >= 0",
+          "date_symbol_side_count": "integer >= 0",
+          "reason_attribution": "official_reason_attribution with values summing to total_trades",
+          "max_concurrent_symbols": "integer >= 0",
+          "terminal_risk_lock": "boolean",
+          "deployment_policy": "literal production_daily_replay"
+        },
+        "array_order": {
+          "symbols": "exact scenario execution order"
+        }
+      },
+      "official_result_prefix": {
+        "type": "official_result_common exact variant",
+        "additional_properties": false,
+        "additional_exact_keys": [],
+        "field_types": {},
+        "array_order": {}
+      },
+      "official_result_leave_one_out": {
+        "type": "official_result_common exact variant",
+        "additional_properties": false,
+        "additional_exact_keys": [
+          "omitted_symbol"
+        ],
+        "field_types": {
+          "omitted_symbol": "exact omitted symbol"
+        },
+        "array_order": {}
+      },
+      "official_result_add_one": {
+        "type": "official_result_common exact variant",
+        "additional_properties": false,
+        "additional_exact_keys": [
+          "base_size",
+          "added_symbol"
+        ],
+        "field_types": {
+          "base_size": "integer in enum 5|9|13",
+          "added_symbol": "exact added symbol"
+        },
+        "array_order": {}
+      },
+      "official_result_random_subset": {
+        "type": "official_result_common exact variant",
+        "additional_properties": false,
+        "additional_exact_keys": [
+          "sample_size",
+          "seed"
+        ],
+        "field_types": {
+          "sample_size": "integer in enum 3|5|8|12|15",
+          "seed": "integer in frozen L4 seed set"
+        },
+        "array_order": {}
+      },
+      "official_result_permutation": {
+        "type": "official_result_common exact variant",
+        "additional_properties": false,
+        "additional_exact_keys": [
+          "seed"
+        ],
+        "field_types": {
+          "seed": "integer in frozen L4 seed set"
+        },
+        "array_order": {}
+      },
+      "official_metric_summary": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "scenario_count",
+          "return_median",
+          "return_p10",
+          "return_p05",
+          "return_worst",
+          "drawdown_median",
+          "drawdown_p10",
+          "drawdown_p50_severity",
+          "drawdown_p90_severity",
+          "drawdown_p95_severity",
+          "drawdown_worst",
+          "trades_median",
+          "trades_p90",
+          "trades_worst",
+          "date_symbol_side_buckets_median",
+          "date_symbol_side_buckets_p90",
+          "date_symbol_side_buckets_worst",
+          "sleeve_fills_p90",
+          "sleeve_fills_worst",
+          "risk_action_orders_median"
+        ],
+        "field_types": {
+          "scenario_count": "integer >= 0",
+          "return_median": "finite number",
+          "return_p10": "finite number",
+          "return_p05": "finite number",
+          "return_worst": "finite number",
+          "drawdown_median": "finite number",
+          "drawdown_p10": "finite number",
+          "drawdown_p50_severity": "finite number",
+          "drawdown_p90_severity": "finite number",
+          "drawdown_p95_severity": "finite number",
+          "drawdown_worst": "finite number",
+          "trades_median": "finite number",
+          "trades_p90": "finite number",
+          "trades_worst": "finite number",
+          "date_symbol_side_buckets_median": "finite number",
+          "date_symbol_side_buckets_p90": "finite number",
+          "date_symbol_side_buckets_worst": "finite number",
+          "sleeve_fills_p90": "finite number",
+          "sleeve_fills_worst": "finite number",
+          "risk_action_orders_median": "finite number"
+        },
+        "array_order": {}
+      },
+      "official_absolute_hard_gates": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "passed",
+          "checks",
+          "observed"
+        ],
+        "field_types": {
+          "passed": "boolean equal all checks",
+          "checks": "exact object of the three FORMAL_GATE_MANIFEST absolute_hard_gates booleans",
+          "observed": "exact object {worst_scenario_id:string|null,all_worst_drawdown:finite number|null,random_p90_date_symbol_side_buckets:finite number,all_worst_date_symbol_side_buckets:finite number}"
+        },
+        "array_order": {}
+      },
+      "official_retained_robustness_hard_gates": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "passed",
+          "checks",
+          "observed"
+        ],
+        "field_types": {
+          "passed": "boolean equal all checks",
+          "checks": "exact object of the two FORMAL_GATE_MANIFEST retained_robustness_hard_gates booleans",
+          "observed": "exact object {prefix_9_to_10_wealth_change:finite number,worst_adjacent_wealth_change:finite number}"
+        },
+        "array_order": {}
+      },
+      "official_robustness_case": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "scenario_id",
+          "base_scenario_id",
+          "wealth_change",
+          "drawdown_severity_change",
+          "trade_record_delta",
+          "date_symbol_side_bucket_delta",
+          "terminal_risk_lock_transition",
+          "reason_attribution"
+        ],
+        "field_types": {
+          "scenario_id": "exact add-one scenario ID",
+          "base_scenario_id": "matching exact prefix scenario ID",
+          "wealth_change": "finite number",
+          "drawdown_severity_change": "finite number",
+          "trade_record_delta": "integer",
+          "date_symbol_side_bucket_delta": "integer",
+          "terminal_risk_lock_transition": "enum false_to_false|false_to_true|true_to_false|true_to_true",
+          "reason_attribution": "official_reason_attribution"
+        },
+        "array_order": {}
+      },
+      "official_robustness_diagnostics": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "scenario_count",
+          "wealth_change",
+          "worst_case",
+          "cases"
+        ],
+        "field_types": {
+          "scenario_count": "literal 24",
+          "wealth_change": "exact object {minimum:finite number,p05:finite number,p10:finite number,median:finite number}",
+          "worst_case": "official_robustness_case",
+          "cases": "24 official_robustness_case objects"
+        },
+        "array_order": {
+          "cases": "official results order filtered to add_one"
+        }
+      },
+      "official_permutation_invariance": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "checked_groups",
+          "worst_deviation",
+          "invariant"
+        ],
+        "field_types": {
+          "checked_groups": "literal 3",
+          "worst_deviation": "finite number",
+          "invariant": "boolean equal worst_deviation<=1e-12"
+        },
+        "array_order": {}
+      },
+      "official_promotion_no_incumbent": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "baseline",
+          "permutation_invariance",
+          "status",
+          "applicable",
+          "passed",
+          "note"
+        ],
+        "field_types": {
+          "baseline": "literal incumbent_universe_stress",
+          "permutation_invariance": "official_permutation_invariance",
+          "status": "literal no_incumbent_baseline",
+          "applicable": "literal false",
+          "passed": "literal false",
+          "note": "exact frozen official string"
+        },
+        "array_order": {}
+      },
+      "official_initial_baseline_compared": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "status",
+          "applicable",
+          "passed",
+          "checks",
+          "observed"
+        ],
+        "field_types": {
+          "status": "literal compared",
+          "applicable": "literal true",
+          "passed": "boolean equal all checks",
+          "checks": "exact object of the four FORMAL_GATE_MANIFEST initial_baseline_gates booleans",
+          "observed": "exact object {prefix_05_wealth_ratio:finite number,other_prefix_wealth_ratio_min:finite number,worst_total_return:finite number,reference_worst_total_return:finite number,worst_add_one_wealth_change:finite number,reference_worst_add_one_wealth_change:finite number}"
+        },
+        "array_order": {}
+      },
+      "official_summary": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "all",
+          "by_type"
+        ],
+        "field_types": {
+          "all": "official_metric_summary with scenario_count 958",
+          "by_type": "exact object with keys add_one,leave_one_out,permutation,prefix,random_subset and official_metric_summary values"
+        },
+        "array_order": {}
+      },
+      "official_rejection_reason": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "gate_family",
+          "gate"
+        ],
+        "field_types": {
+          "gate_family": "enum absolute_hard_gates|retained_robustness_hard_gates|promotion_gates|initial_baseline|initial_baseline_gates",
+          "gate": "exact failing official gate name"
+        },
+        "array_order": {}
+      },
+      "official_L4_payload": {
+        "type": "exact tagged union of accepted_initial and rejected extracted payloads",
+        "additional_properties": false,
+        "common_exact_keys": [
+          "scenario_count",
+          "trade_count_semantics",
+          "absolute_hard_gates",
+          "retained_robustness_hard_gates",
+          "robustness_diagnostics",
+          "promotion_gates",
+          "initial_baseline_gates",
+          "summary",
+          "results",
+          "artifact_status",
+          "acceptance_status",
+          "canonical"
+        ],
+        "accepted_initial_additional_exact_keys": [
+          "baseline_kind"
+        ],
+        "rejected_additional_exact_keys": [
+          "rejection_reasons"
+        ],
+        "field_types": {
+          "scenario_count": "literal 958",
+          "trade_count_semantics": "literal trade_records",
+          "absolute_hard_gates": "official_absolute_hard_gates",
+          "retained_robustness_hard_gates": "official_retained_robustness_hard_gates",
+          "robustness_diagnostics": "official_robustness_diagnostics",
+          "promotion_gates": "official_promotion_no_incumbent",
+          "initial_baseline_gates": "official_initial_baseline_compared",
+          "summary": "official_summary",
+          "results": "958 objects, each exactly one official_result_* family variant",
+          "artifact_status": "literal current for accepted_initial; literal current_candidate for rejected",
+          "acceptance_status": "literal accepted for accepted_initial; literal rejected for rejected",
+          "canonical": "literal true for accepted_initial; literal false for rejected",
+          "baseline_kind": "accepted_initial only; literal initial_current_contract",
+          "rejection_reasons": "rejected only; nonempty official_rejection_reason array in official generation order"
+        },
+        "array_order": {
+          "results": "lexicographic scenario_id exactly as official runner emits",
+          "rejection_reasons": "official generation order"
+        }
+      },
+      "workflow_export_manifest_v2": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "schema_version",
+          "kind",
+          "sealed",
+          "source_revision",
+          "run_bindings_revision",
+          "workflow_revision",
+          "binding_id",
+          "candidate_id",
+          "logical_run_id",
+          "attempt_id",
+          "repository",
+          "workflow_run_id",
+          "workflow_run_attempt",
+          "resume_from",
+          "resume_workflow_run_id",
+          "d_commit",
+          "d_selection_blob_oid",
+          "d_selection_file_sha256",
+          "producer_identity",
+          "runner_image_os",
+          "runner_image_version",
+          "python_version",
+          "fencing_token_sha256",
+          "files"
+        ],
+        "field_types": {
+          "schema_version": "literal integer 2",
+          "kind": "enum checkpoint|result",
+          "sealed": "literal true",
+          "source_revision": "40 lowercase hex",
+          "run_bindings_revision": "40 lowercase hex",
+          "workflow_revision": "40 lowercase hex",
+          "binding_id": "workflow binding ID",
+          "candidate_id": "enum C6-Base|C6-Base+S",
+          "logical_run_id": "ID <=63 chars",
+          "attempt_id": "ID <=63 chars",
+          "repository": "literal ychenracing/trade",
+          "workflow_run_id": "positive decimal string",
+          "workflow_run_attempt": "literal string 1",
+          "resume_from": "empty or 64 lowercase hex",
+          "resume_workflow_run_id": "empty or earlier positive decimal string",
+          "d_commit": "empty or 40 lowercase hex",
+          "d_selection_blob_oid": "empty or 40 lowercase hex",
+          "d_selection_file_sha256": "empty or 64 lowercase hex",
+          "producer_identity": "producer_identity",
+          "runner_image_os": "exact R value",
+          "runner_image_version": "exact R value",
+          "python_version": "exact R value",
+          "fencing_token_sha256": "64 lowercase hex; raw token is forbidden recursively",
+          "files": "nonempty object normalized relative path to full-byte SHA-256; exact file set"
+        },
+        "array_order": {}
+      },
+      "digest_sidecar": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "schema_version",
+          "kind",
+          "stage",
+          "record_id",
+          "binding_signature",
+          "artifact_path",
+          "artifact_byte_size",
+          "artifact_full_byte_sha256",
+          "canonical_result_payload_schema",
+          "canonical_result_payload_sha256",
+          "envelope_path",
+          "official_artifact_unchanged",
+          "exit_code"
+        ],
+        "field_types": {
+          "schema_version": "literal integer 2",
+          "kind": "literal c6_artifact_digest",
+          "stage": "enum L1|QUALIFICATION|L2|L4",
+          "record_id": "exact R record ID",
+          "binding_signature": "64 lowercase hex",
+          "artifact_path": "normalized repo-relative path within sealed export",
+          "artifact_byte_size": "integer >= 0",
+          "artifact_full_byte_sha256": "64 lowercase hex",
+          "canonical_result_payload_schema": "exact schema name/version",
+          "canonical_result_payload_sha256": "64 lowercase hex",
+          "envelope_path": "literal manifest.json",
+          "official_artifact_unchanged": "boolean; must be true for L4",
+          "exit_code": "integer 0 or 2 under stage exit contract"
+        },
+        "array_order": {}
+      },
+      "checkpoint_wrapper": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "schema_version",
+          "kind",
+          "status",
+          "record_id",
+          "binding_signature",
+          "source_revision",
+          "logical_run_id",
+          "attempt_id",
+          "workflow_run_id",
+          "fencing_sequence",
+          "fencing_token_sha256",
+          "resume_from",
+          "resume_workflow_run_id",
+          "child_checkpoint_kind",
+          "child_checkpoint_path",
+          "child_checkpoint_byte_size",
+          "child_checkpoint_full_byte_sha256",
+          "completed_item_ids",
+          "completed_item_ids_sha256",
+          "next_item_ordinal",
+          "created_at"
+        ],
+        "field_types": {
+          "schema_version": "literal integer 2",
+          "kind": "literal c6_bound_checkpoint",
+          "status": "literal checkpointed_incomplete",
+          "record_id": "exact R record ID",
+          "binding_signature": "64 lowercase hex",
+          "source_revision": "40 lowercase hex",
+          "logical_run_id": "exact R logical ID",
+          "attempt_id": "actual attempt ID",
+          "workflow_run_id": "positive decimal string",
+          "fencing_sequence": "integer equal numeric GITHUB_RUN_ID",
+          "fencing_token_sha256": "64 lowercase hex",
+          "resume_from": "empty or prior checkpoint wrapper SHA-256",
+          "resume_workflow_run_id": "empty or prior workflow run ID",
+          "child_checkpoint_kind": "enum c6_diagnostic_shard_v2|official_stress_v2",
+          "child_checkpoint_path": "normalized path",
+          "child_checkpoint_byte_size": "integer >= 0",
+          "child_checkpoint_full_byte_sha256": "64 lowercase hex",
+          "completed_item_ids": "unique exact-prefix item IDs",
+          "completed_item_ids_sha256": "64 lowercase hex over LF-delimited IDs",
+          "next_item_ordinal": "integer in [0,item_count]",
+          "created_at": "UTC ISO-8601 string"
+        },
+        "array_order": {
+          "completed_item_ids": "exact prefix of binding item manifest"
+        }
+      },
+      "D_selection": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "schema_version",
+          "kind",
+          "status",
+          "P",
+          "R",
+          "base_l1",
+          "residual_ids",
+          "residual_ids_sha256",
+          "base_l1_predicates",
+          "s_qualification",
+          "base_plus_s_l1",
+          "base_plus_s_l1_predicates",
+          "selected_candidate",
+          "C",
+          "rejection_reasons"
+        ],
+        "field_types": {
+          "schema_version": "literal integer 2",
+          "kind": "literal c6_selection",
+          "status": "enum selected|rejected",
+          "P": "P_identity",
+          "R": "R_identity",
+          "base_l1": "sealed_artifact_identity",
+          "residual_ids": "unique L1 IDs lexicographically sorted",
+          "residual_ids_sha256": "64 lowercase hex",
+          "base_l1_predicates": "predicate_result array",
+          "s_qualification": "sealed_artifact_identity or null",
+          "base_plus_s_l1": "sealed_artifact_identity or null",
+          "base_plus_s_l1_predicates": "predicate_result array or null",
+          "selected_candidate": "enum C6-Base|C6-Base+S|null",
+          "C": "implementation_identity or null",
+          "rejection_reasons": "unique frozen enum strings lexicographically sorted"
+        },
+        "array_order": {
+          "residual_ids": "lexicographic",
+          "base_l1_predicates": "L1 manifest order",
+          "base_plus_s_l1_predicates": "L1 manifest order",
+          "rejection_reasons": "lexicographic"
+        }
+      },
+      "R_identity": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "commit",
+          "tree",
+          "blob",
+          "sha256"
+        ],
+        "field_types": {
+          "commit": "40 lowercase hex",
+          "tree": "40 lowercase hex",
+          "blob": "40 lowercase hex",
+          "sha256": "64 lowercase hex"
+        },
+        "array_order": {}
+      },
+      "sealed_artifact_identity": {
+        "type": "object",
+        "additional_properties": false,
+        "exact_keys": [
+          "record_id",
+          "candidate_id",
+          "workflow_run_id",
+          "logical_run_id",
+          "attempt_id",
+          "artifact_path",
+          "artifact_byte_size",
+          "artifact_full_byte_sha256",
+          "canonical_result_payload_sha256",
+          "manifest_full_byte_sha256"
+        ],
+        "field_types": {
+          "record_id": "R record ID",
+          "candidate_id": "candidate enum",
+          "workflow_run_id": "positive decimal string",
+          "logical_run_id": "exact R value",
+          "attempt_id": "actual attempt ID",
+          "artifact_path": "normalized path",
+          "artifact_byte_size": "integer >= 0",
+          "artifact_full_byte_sha256": "64 lowercase hex",
+          "canonical_result_payload_sha256": "64 lowercase hex",
+          "manifest_full_byte_sha256": "64 lowercase hex"
+        },
+        "array_order": {}
+      }
+    }
+  },
+  "checkpoint_and_lease_protocol": {
+    "schema_version": 2,
+    "graceful_checkpoint_exit_code": 75,
+    "valid_terminal_result_exit_codes": {
+      "L1": [
+        0
+      ],
+      "QUALIFICATION": [
+        0
+      ],
+      "L2": [
+        0
+      ],
+      "L4": [
+        0,
+        2
+      ]
+    },
+    "abnormal_exit_rule": "Any other child/bound-run exit is failure. It may upload a sealed checkpoint only if checkpoint validation completed; it may never be converted to a rejected or passed result.",
+    "l4_exit_2": "A valid, sealed, terminal rejected official result; never classified as checkpointed-incomplete and never rerun in this experiment.",
+    "wrapper_checkpoint_schema": "schema_catalog.definitions.checkpoint_wrapper",
+    "generic_vs_official": "The wrapper validates identity/progress and hashes the child checkpoint. L4 child_checkpoint_kind=official_stress_v2 must additionally pass the frozen official stress checkpoint loader/validator byte-for-byte; the wrapper never rewrites or canonicalizes those bytes.",
+    "resume_from": "Exact SHA-256 of the prior sealed checkpoint_wrapper canonical bytes, never a path or opaque token.",
+    "result_prevents_takeover": true,
+    "current_run_attempt_must_equal_one": true,
+    "history_query": {
+      "API": "GitHub Actions list workflow runs plus list artifacts, actions:read",
+      "repository": "ychenracing/trade",
+      "workflow_path": ".github/workflows/c6-bound-economic.yml",
+      "workflow_revision": "f03c49fc0d558562c158fe4864250e3056b1003f",
+      "event": "workflow_dispatch",
+      "run_name_prefix": "c6-bound-{workflow_binding_id}-{logical_run_id}-",
+      "pagination": "exhaust every page until no result; failure, truncation, rate-limit ambiguity or inaccessible history is STOP",
+      "retention_days": 90,
+      "max_dispatch_age_days": 80,
+      "current_exclusion": "exclude only exact current GITHUB_RUN_ID after validating it has the same workflow/event/head SHA",
+      "artifact_name": "c6-bound-{logical_run_id}-{attempt_id}"
+    },
+    "state_machine": {
+      "NEW": "No prior matching run exists; resume inputs empty.",
+      "RESUME_ALLOWED": "Exactly one latest sealed checkpoint chain exists, no result exists, prior workflow run is terminal/inactive, resume_workflow_run_id equals that run and resume_from equals its wrapper hash.",
+      "TERMINAL_RESULT": "Any valid prior result exists; current run exits before importing or executing economic code.",
+      "INVALID_HISTORY": "Any prior matching run has neither a valid sealed result nor valid sealed checkpoint, has conflicting artifacts, broken predecessor chain, unavailable/expired evidence, or ambiguous pagination; STOP permanently for this logical run."
+    },
+    "takeover": "A new workflow_dispatch with a new run ID, derived resume attempt ID and new fencing token is required. GitHub rerun is forbidden. Concurrency plus history preflight must complete before the child imports.",
+    "writer_rule": "Only the current highest valid GITHUB_RUN_ID fencing sequence may atomically publish into its local attempt path. A stale writer cannot update pointers or seal. Each attempt writes a versioned path and atomically renames only after hashes validate.",
+    "completion_once": "Exactly one valid result for a logical_run_id. Discovery of two results is INVALID_HISTORY, not a tie-break.",
+    "checkpoint_progress": "completed_item_ids must be an exact prefix of the binding item manifest; resume starts at next_item_ordinal and never recomputes a completed shard.",
+    "platform_rule": "If a run cannot continue and cannot atomically seal a valid checkpoint, emit incomplete_no_checkpoint and stop the experiment; do not dispatch a replacement."
+  }
+}
