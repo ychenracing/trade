@@ -1,0 +1,30 @@
+name: Stop conversation C6 tasks
+on:
+  push:
+    branches: [codex/c6-stop-handoff-20260905]
+permissions:
+  actions: write
+  contents: read
+jobs:
+  stop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Pause C6 dispatch and cancel conversation runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ychenracing/trade
+        run: |
+          set -eu
+          for workflow in c6-auto-resume.yml c6-bound-economic.yml c6-dispatch.yml; do
+            gh api --method PUT "repos/$GH_REPO/actions/workflows/$workflow/disable"
+            gh api "repos/$GH_REPO/actions/workflows/$workflow" --jq '{id,path,state}'
+          done
+          for workflow in c6-auto-resume.yml c6-bound-economic.yml c6-dispatch.yml; do
+            gh api --paginate "repos/$GH_REPO/actions/workflows/$workflow/runs?per_page=100" --jq '.workflow_runs[] | select(.status != "completed") | .id' > /tmp/c6-stop-ids
+            while read -r run_id; do
+              test -n "$run_id" || continue
+              gh api --method POST "repos/$GH_REPO/actions/runs/$run_id/cancel"
+              echo "Cancellation requested for $run_id"
+            done < /tmp/c6-stop-ids
+          done
