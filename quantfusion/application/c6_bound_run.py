@@ -1294,6 +1294,21 @@ def validate_wire_value(value: Any, schema: Mapping[str, Any], definitions: Mapp
                 seen.add(digest)
 
 
+def result_payload(artifact: Mapping[str, Any], stage: str, prereg: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Keep official economics complete while separating native provenance."""
+    if stage != "L4":
+        return artifact
+    spec = prereg["canonical_result_payload_hashing"]["L4_extraction"]
+    status = artifact.get("acceptance_status")
+    if status not in {"accepted", "rejected"}:
+        _raise("official payload status is invalid")
+    variant = "accepted_initial_additional_exact_keys" if status == "accepted" else "rejected_additional_exact_keys"
+    keys = spec["common_root_exact_keys"] + spec[variant]
+    if len(set(keys)) != len(keys) or set(keys) - set(artifact):
+        _raise("official payload projection has duplicate or missing fields")
+    return {key: artifact[key] for key in keys}
+
+
 def validate_result_payload(
     artifact: Mapping[str, Any], binding: Mapping[str, Any], prereg: Mapping[str, Any]
 ) -> None:
@@ -1309,11 +1324,16 @@ def validate_result_payload(
     if not isinstance(name, str) or name not in definitions:
         _raise("R canonical payload schema is unknown")
     if prereg["schema_catalog"].get("schema_version") == 2:
+        if name == "official_L4_payload":
+            name = "official_L4_artifact"
         machine = definitions[name].get("wire_schema")
         if not isinstance(machine, Mapping):
             _raise("P machine-readable payload schema is missing")
         validate_wire_schema(machine, definitions)
         validate_wire_value(artifact, machine, definitions, name)
+        if name == "official_L4_artifact":
+            validate_wire_value(result_payload(artifact, "L4", prereg),
+                                definitions["official_L4_payload"]["wire_schema"], definitions)
         if isinstance(artifact, Mapping) and artifact.get("kind") in {"c6_l1_base", "c6_l1_base_plus_s", "c6_l2"}:
             from quantfusion.application.c6_predicates import validate_predicate_results
             reference_spec = prereg["transition_reference"]
@@ -1897,7 +1917,7 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
     if not isinstance(artifact, dict):
         _raise("bound output root must be an object")
     validate_result_payload(artifact, binding, prereg)
-    payload = artifact
+    payload = result_payload(artifact, binding["stage"], prereg)
     artifact_bytes = output_path
     artifact_name = output_path.name
     sidecar = build_digest(

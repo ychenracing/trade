@@ -18,6 +18,27 @@ TOKEN_1 = "0000000000000001"
 TOKEN_2 = "0000000000000002"
 
 
+def test_official_payload_projection_preserves_economics_and_excludes_provenance():
+    from quantfusion.application.c6_bound_run import result_payload
+    artifact = {'results': [{'total_return': 0.2}], 'acceptance_status': 'rejected',
+                'rejection_reasons': [{'gate': 'drawdown'}], 'source_revision': 'a' * 40}
+    prereg = {'canonical_result_payload_hashing': {'L4_extraction': {
+        'common_root_exact_keys': ['results', 'acceptance_status'],
+        'accepted_initial_additional_exact_keys': ['baseline_kind'],
+        'rejected_additional_exact_keys': ['rejection_reasons']}}}
+    payload = result_payload(artifact, 'L4', prereg)
+    original = canonical_payload_hash(payload)
+    artifact['source_revision'] = 'b' * 40
+    assert canonical_payload_hash(result_payload(artifact, 'L4', prereg)) == original
+    artifact['results'][0]['total_return'] = 0.1
+    assert canonical_payload_hash(result_payload(artifact, 'L4', prereg)) != original
+    assert result_payload(artifact, 'L1', prereg) is artifact
+    assert 'source_revision' in artifact
+    del artifact['rejection_reasons']
+    with pytest.raises(BoundRunError, match='missing'):
+        result_payload(artifact, 'L4', prereg)
+
+
 def test_streamed_json_preserves_canonical_bytes_and_indexes_records(tmp_path):
     from quantfusion.io.c6_stream import FileArray, canonical_chunks, load_object, write_json
     from quantfusion.application.c6_contract import canonical_json_bytes
