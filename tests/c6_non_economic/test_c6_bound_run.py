@@ -389,6 +389,36 @@ def test_result_schema_rejects_nested_extra_keys() -> None:
         validate_result_payload({"items": [{"value": 1, "extra": 2}]}, {"canonical_payload_schema": {"name": "root"}}, {"schema_catalog": {"definitions": definitions}})
 
 
+@pytest.mark.parametrize('invalid', [True, -1, float('nan'), '2'])
+def test_machine_payload_schema_rejects_invalid_nested_numbers(invalid):
+    definition = {'exact_keys': ['items'], 'field_types': {'items': 'two child objects'},
+                  'wire_schema': {'type': 'object', 'properties': {'items': {'type': 'array', 'minItems': 2, 'maxItems': 2, 'items': {'type': 'integer', 'minimum': 0}}},
+                                  'required': ['items'], 'additionalProperties': False}}
+    prereg = {'schema_catalog': {'schema_version': 2, 'definitions': {'root': definition}}}
+    binding = {'canonical_payload_schema': {'name': 'root'}}
+    validate_result_payload({'items': [0, 2]}, binding, prereg)
+    with pytest.raises(BoundRunError):
+        validate_result_payload({'items': [0, invalid]}, binding, prereg)
+    with pytest.raises(BoundRunError):
+        validate_result_payload({'items': [0]}, binding, prereg)
+
+
+def test_machine_payload_schema_is_closed_and_unknown_rules_fail():
+    definition = {'wire_schema': {'type': 'string', 'pattern': '^[a-f0-9]{4}$'}}
+    prereg = {'schema_catalog': {'schema_version': 2, 'definitions': {'root': definition}}}
+    binding = {'canonical_payload_schema': {'name': 'root'}}
+    with pytest.raises(BoundRunError):
+        validate_result_payload('INVALID', binding, prereg)
+    definition['wire_schema']['uncheckedRule'] = True
+    with pytest.raises(BoundRunError, match='unsupported'):
+        validate_result_payload('abcd', binding, prereg)
+    definition['wire_schema'] = {'anyOf': [{'type': 'string'}, {'type': 'integer', 'uncheckedRule': True}]}
+    with pytest.raises(BoundRunError, match='unsupported'):
+        validate_result_payload('abcd', binding, prereg)
+    definition['wire_schema'] = {'anyOf': [{'type': 'string'}, {'type': 'integer'}]}
+    validate_result_payload('abcd', binding, prereg)
+
+
 def test_qualification_criteria_descriptor_is_validated_as_an_array() -> None:
     definitions = {
         "root": {

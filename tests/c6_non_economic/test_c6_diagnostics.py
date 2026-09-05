@@ -166,6 +166,33 @@ def test_w_attribution_uses_actual_divergence_scores_and_post_lock_paths():
     rows[5]['fills'] = [{'timestamp': '2026-01-07', 'symbol': 'B'}]
     post = c6_diagnostics._post_lock_effect(rows[4], rows[5])
     assert post['missed_order_count'] == post['missed_trade_count'] == 1
+
+
+def test_risk_execution_summary_uses_real_book_attempts_and_fills():
+    def order(ordinal, side, symbol='A', state=0, strategy='turtle', **values):
+        return {'order_ordinal': ordinal, 'side': side, 'symbol': symbol, 'state_index': state,
+                'strategy_name': strategy, 'execution_timestamp': '2026-01-06',
+                'defensive': side == 'SELL', 'status': 'partial', 'requested_shares': 500,
+                'authorized_shares': 200, 'carried_from_order_ordinal': None, **values}
+    orders = [order(0, 'SELL', carried_from_order_ordinal=10),
+              order(1, 'SELL', status='suppressed', requested_shares=100, authorized_shares=0),
+              order(2, 'BUY'), order(3, 'BUY', state=1), order(4, 'BUY', symbol='B')]
+    fills = [{**row, 'timestamp': row['execution_timestamp'], 'shares': qty} for row, qty in zip([orders[0], orders[2], orders[3], orders[4]], [200, 100, 300, 100])]
+    result = c6_diagnostics.risk_execution_telemetry({'_c6_orders': orders, '_c6_fills': fills}, {'A': 'optical', 'B': 'optical'})
+    assert result['planned_risk_sell_shares'] == 600
+    assert result['retained_risk_sell_shares'] == 500
+    assert result['suppressed_risk_sell_shares'] == 100
+    assert result['filled_risk_sell_shares'] == 200
+    assert result['same_open_offset_shares'] == 100  # The independent state is not an offset.
+    assert result['carried_conflict_count'] == result['cluster_substitution_count'] == 1
+    assert result['first_executable_open'] == '2026-01-06'
+
+
+def test_unknown_risk_metadata_is_not_invented_cross_market_evidence():
+    rows = c6_diagnostics._risk_records({'risk_events': [{'date': '2026-01-05', 'event': 'risk_execution_owner_changed'}]})
+    assert rows[0]['event_type'] == 'UNCLASSIFIED'
+    assert rows[0]['phase_order'] is None
+    assert rows[0]['raw_event']['event'] == 'risk_execution_owner_changed'
 def test_cli_matches_the_exact_r_bound_shape() -> None:
     parser = c6_diagnostics.build_parser()
     args = parser.parse_args(

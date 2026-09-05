@@ -378,8 +378,8 @@ class EnsembleOrchestrationMixin:
             held = self._held_portfolio_symbols(states)
             self._record_c6_exposure(states, date, "official_sample")
             for state in states:
-                for signal, _ in state.pending:
-                    order_receipt(state.sleeve, signal, date.strftime("%Y-%m-%d"), queued=True)
+                for signal, strategy in state.pending:
+                    order_receipt(state.sleeve, signal, date.strftime("%Y-%m-%d"), queued=True, defensive=strategy is None)
             symbol_count_curve.append(
                 {"date": date.strftime("%Y-%m-%d"), "symbol_count": len(held)}
             )

@@ -426,7 +426,7 @@ def _validate_preregistration_v2(payload: Mapping[str, Any]) -> None:
         },
         label="schema_catalog",
     )
-    if catalog["schema_version"] != 1 or not isinstance(catalog["definitions"], dict):
+    if catalog["schema_version"] not in {1, 2} or not isinstance(catalog["definitions"], dict):
         raise ContractError("unsupported schema_catalog")
     definitions = catalog["definitions"]
     if not definitions:
@@ -434,6 +434,8 @@ def _validate_preregistration_v2(payload: Mapping[str, Any]) -> None:
     for name, definition in definitions.items():
         if not isinstance(name, str) or not name or not isinstance(definition, dict):
             raise ContractError("schema_catalog definition is malformed")
+        if catalog["schema_version"] == 2 and not isinstance(definition.get("wire_schema"), dict):
+            raise ContractError(f"schema {name} lacks its machine-readable wire schema")
         required = {"type", "additional_properties", "field_types", "array_order"}
         if not required.issubset(definition):
             raise ContractError(f"schema {name} is missing closed-schema fields")

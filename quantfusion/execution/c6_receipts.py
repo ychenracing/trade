@@ -20,7 +20,8 @@ def link_action(sleeve: Any, original: Any, replacement: Any) -> None:
         sleeve._c6_action_by_signal[id(replacement)] = (replacement, record)
 
 
-def order_receipt(sleeve: Any, signal: Any, date: str, *, queued: bool = False) -> dict[str, Any] | None:
+def order_receipt(sleeve: Any, signal: Any, date: str, *, queued: bool = False,
+                  defensive: bool = False) -> dict[str, Any] | None:
     records = getattr(sleeve, "_c6_orders", None)
     if records is None:
         return None
@@ -44,6 +45,8 @@ def order_receipt(sleeve: Any, signal: Any, date: str, *, queued: bool = False) 
         "status": "pending", "suppression_winner_order_ordinal": None,
         "carried_from_order_ordinal": previous["order_ordinal"] if previous else None,
         "blocked_reason": None, "events": [],
+        "defensive": defensive or action is not None,
+        "reference_price": float(signal.price),
     }
     record.update(queued_timestamp=date, queued_state=deepcopy(record))
     records.append(record)
@@ -69,9 +72,10 @@ def link_order(sleeve: Any, original: Any, replacement: Any) -> None:
 
 
 def begin_order(sleeve: Any, signal: Any, date: str, *, defensive: bool) -> dict[str, Any] | None:
-    record = order_receipt(sleeve, signal, date)
+    record = order_receipt(sleeve, signal, date, defensive=defensive)
     if record is not None:
         record["execution_timestamp"] = date
+        record["defensive"] = defensive
         if defensive and record["priority"] is None:
             record["priority"] = RISK_ACTION_PRIORITY.get(signal.reason.split(":")[0], RISK_ACTION_DEFAULT_PRIORITY)
     return record
@@ -124,8 +128,8 @@ def reconcile_close_queue(sleeve: Any, before: Any, after: Any,
         record["events"].append({"timestamp": date, "event": reason})
         action = action_receipt(sleeve, signal)
         finish_action_batch(action, release="CANCELLED")
-    for signal, _ in after:
-        order_receipt(sleeve, signal, date, queued=True)
+    for signal, strategy in after:
+        order_receipt(sleeve, signal, date, queued=True, defensive=strategy is None)
 
 
 def next_action_ordinal(sleeve: Any) -> int:

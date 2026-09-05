@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import math
 import errno
 import os
 import platform
@@ -1038,6 +1039,137 @@ def build_digest(
     }
 
 
+_WIRE_SCHEMA_KEYWORDS = {"$ref", "type", "properties", "required", "additionalProperties", "items", "minItems", "maxItems",
+                 "uniqueItems", "minLength", "maxLength", "pattern", "format", "enum", "const", "minimum", "maximum",
+                 "exclusiveMinimum", "exclusiveMaximum", "anyOf", "oneOf"}
+
+
+def validate_wire_schema(schema: Mapping[str, Any], definitions: Mapping[str, Any],
+                         visited: set[str] | None = None) -> None:
+    """Inspect every schema branch, including alternatives the value won't use."""
+    if not isinstance(schema, Mapping) or not schema or set(schema) - _WIRE_SCHEMA_KEYWORDS:
+        _raise("unsupported wire schema rule")
+    visited = set() if visited is None else visited
+    if "$ref" in schema:
+        reference = schema["$ref"]
+        if set(schema) != {"$ref"} or not isinstance(reference, str) or not reference.startswith("#/$defs/"):
+            _raise("unsupported wire schema reference")
+        name = reference.removeprefix("#/$defs/")
+        if name in visited:
+            return
+        target = definitions.get(name, {}).get("wire_schema")
+        if not isinstance(target, Mapping):
+            _raise("wire schema reference is missing")
+        visited.add(name)
+        validate_wire_schema(target, definitions, visited)
+    for union in ("anyOf", "oneOf"):
+        if union in schema:
+            if not isinstance(schema[union], list) or not schema[union]:
+                _raise("unsupported empty wire schema union")
+            for item in schema[union]:
+                validate_wire_schema(item, definitions, visited)
+    for item in schema.get("properties", {}).values():
+        validate_wire_schema(item, definitions, visited)
+    for key in ("items", "additionalProperties"):
+        if key in schema and schema[key] is not False:
+            validate_wire_schema(schema[key], definitions, visited)
+
+
+def validate_wire_value(value: Any, schema: Mapping[str, Any], definitions: Mapping[str, Any],
+                        label: str = "$", depth: int = 0) -> None:
+    """Validate P's explicit JSON Schema subset, including streamed arrays."""
+    if depth > 128 or not isinstance(schema, Mapping) or set(schema) - _WIRE_SCHEMA_KEYWORDS:
+        _raise(f"{label}: unsupported wire schema rule or excessive nesting")
+    if "$ref" in schema:
+        prefix = "#/$defs/"
+        reference = schema["$ref"]
+        if set(schema) != {"$ref"} or not isinstance(reference, str) or not reference.startswith(prefix):
+            _raise(f"{label}: unsupported wire schema reference")
+        target = definitions.get(reference[len(prefix):], {}).get("wire_schema")
+        if not isinstance(target, Mapping):
+            _raise(f"{label}: wire schema reference is missing")
+        validate_wire_value(value, target, definitions, label, depth + 1)
+        return
+    for union in ("anyOf", "oneOf"):
+        if union in schema:
+            successes = 0
+            for alternative in schema[union]:
+                try:
+                    validate_wire_value(value, alternative, definitions, label, depth + 1)
+                    successes += 1
+                except BoundRunError:
+                    pass
+            if successes == 0 or (union == "oneOf" and successes != 1):
+                _raise(f"{label}: no unique permitted wire schema variant")
+            if set(schema) == {union}:
+                return
+    kinds = schema.get("type")
+    if kinds is not None:
+        if isinstance(kinds, str):
+            kinds = [kinds]
+        valid = {"null": value is None, "boolean": type(value) is bool,
+                 "integer": type(value) is int,
+                 "number": type(value) in {int, float} and math.isfinite(value),
+                 "string": isinstance(value, str), "object": isinstance(value, Mapping),
+                 "array": isinstance(value, (list, FileArray))}
+        if any(kind not in valid for kind in kinds) or not any(valid[kind] for kind in kinds):
+            _raise(f"{label}: invalid wire value type")
+    if "const" in schema and (type(value) is not type(schema["const"]) or value != schema["const"]):
+        _raise(f"{label}: wire constant mismatch")
+    if "enum" in schema and not any(type(value) is type(item) and value == item for item in schema["enum"]):
+        _raise(f"{label}: unknown wire enum value")
+    if type(value) in {int, float}:
+        if not math.isfinite(value):
+            _raise(f"{label}: nonfinite wire number")
+        for name, invalid in (("minimum", value < schema.get("minimum", -math.inf)),
+                              ("maximum", value > schema.get("maximum", math.inf)),
+                              ("exclusiveMinimum", value <= schema.get("exclusiveMinimum", -math.inf)),
+                              ("exclusiveMaximum", value >= schema.get("exclusiveMaximum", math.inf))):
+            if invalid:
+                _raise(f"{label}: wire {name} violated")
+    if isinstance(value, str):
+        if len(value) < schema.get("minLength", 0) or len(value) > schema.get("maxLength", math.inf):
+            _raise(f"{label}: wire string length violated")
+        if "pattern" in schema and re.search(schema["pattern"], value) is None:
+            _raise(f"{label}: wire string pattern violated")
+        if "format" in schema:
+            if schema["format"] not in {"date", "date-time"}:
+                _raise(f"{label}: unsupported wire format")
+            try:
+                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError as exc:
+                _raise(f"{label}: invalid ISO date", exc)
+            if schema["format"] == "date" and value != parsed.date().isoformat():
+                _raise(f"{label}: invalid ISO date")
+            if schema["format"] == "date-time" and parsed.tzinfo is None:
+                _raise(f"{label}: timestamp lacks timezone")
+    if isinstance(value, Mapping):
+        properties = schema.get("properties", {})
+        if set(schema.get("required", [])) - set(value):
+            _raise(f"{label}: missing wire object properties")
+        extra = schema.get("additionalProperties", False)
+        if extra is True:
+            _raise(f"{label}: unvalidated additional wire properties are forbidden")
+        for key, nested in value.items():
+            child = properties.get(key, extra)
+            if child is False:
+                _raise(f"{label}: extra wire object property {key}")
+            validate_wire_value(nested, child, definitions, f"{label}.{key}", depth + 1)
+    if isinstance(value, (list, FileArray)):
+        if len(value) < schema.get("minItems", 0) or len(value) > schema.get("maxItems", math.inf):
+            _raise(f"{label}: wire array count violated")
+        if "items" not in schema:
+            _raise(f"{label}: wire array items are not defined")
+        seen = set()
+        for index, nested in enumerate(value):
+            validate_wire_value(nested, schema["items"], definitions, f"{label}[{index}]", depth + 1)
+            if schema.get("uniqueItems"):
+                digest = canonical_payload_hash(nested)
+                if digest in seen:
+                    _raise(f"{label}: duplicate wire array item")
+                seen.add(digest)
+
+
 def validate_result_payload(
     artifact: Mapping[str, Any], binding: Mapping[str, Any], prereg: Mapping[str, Any]
 ) -> None:
@@ -1052,6 +1184,13 @@ def validate_result_payload(
         definitions["criterion_result"] = qualification["criterion_result_schema"]
     if not isinstance(name, str) or name not in definitions:
         _raise("R canonical payload schema is unknown")
+    if prereg["schema_catalog"].get("schema_version") == 2:
+        machine = definitions[name].get("wire_schema")
+        if not isinstance(machine, Mapping):
+            _raise("P machine-readable payload schema is missing")
+        validate_wire_schema(machine, definitions)
+        validate_wire_value(artifact, machine, definitions, name)
+        return
     try:
         def validate_named(value: object, definition_name: str, label: str) -> None:
             definition = definitions[definition_name]

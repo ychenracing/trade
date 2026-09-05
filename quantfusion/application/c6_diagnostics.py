@@ -146,6 +146,38 @@ def maximum_cluster_weight(positions: Sequence[Mapping[str, Any]], assets: Mappi
     return max((value / assets[date] for (date, _), value in totals.items()), default=0.0)
 
 
+def risk_execution_telemetry(result: Mapping[str, Any], groups: Mapping[str, str]) -> dict[str, Any]:
+    """Summarize actual defensive instruction attempts and same-batch buys."""
+    orders, fills = result["_c6_orders"], result["_c6_fills"]
+    risk = [row for row in orders if row["side"] == "SELL" and row["defensive"]]
+    retained = [row for row in risk if row["status"] not in {"suppressed", "cancelled"}]
+    def book(row: Mapping[str, Any]) -> tuple[Any, ...]:
+        return row["state_index"], row["strategy_name"], row["symbol"]
+    by_batch: dict[str, list[Mapping[str, Any]]] = {}
+    for row in retained:
+        if row["execution_timestamp"] is not None:
+            by_batch.setdefault(row["execution_timestamp"], []).append(row)
+    offsets = [fill for fill in fills if fill["side"] == "BUY"
+               and any(book(fill) == book(sell) for sell in by_batch.get(fill["timestamp"], []))]
+    conflicts = [row for row in retained if row["carried_from_order_ordinal"] is not None
+                 and row["execution_timestamp"] is not None
+                 and any(buy["side"] == "BUY" and buy["execution_timestamp"] == row["execution_timestamp"]
+                         and book(buy) == book(row) for buy in orders)]
+    substitutions = {fill["order_ordinal"] for fill in fills if fill["side"] == "BUY"
+                     and any(sell["symbol"] != fill["symbol"] and groups.get(fill["symbol"]) is not None
+                             and groups.get(sell["symbol"]) == groups[fill["symbol"]]
+                             for sell in by_batch.get(fill["timestamp"], []))}
+    risk_ids = {row["order_ordinal"] for row in risk}
+    return {"planned_risk_sell_shares": sum(row["requested_shares"] for row in risk),
+            "retained_risk_sell_shares": sum(row["requested_shares"] for row in retained),
+            "suppressed_risk_sell_shares": sum(row["requested_shares"] for row in risk if row["status"] == "suppressed"),
+            "filled_risk_sell_shares": sum(fill["shares"] for fill in fills if fill["order_ordinal"] in risk_ids),
+            "first_executable_open": min((row["execution_timestamp"] for row in risk
+                                           if row["execution_timestamp"] is not None and row["authorized_shares"] > 0), default=None),
+            "same_open_offset_shares": sum(fill["shares"] for fill in offsets),
+            "carried_conflict_count": len(conflicts), "cluster_substitution_count": len(substitutions)}
+
+
 def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
     """Run one selected-candidate scenario and retain the frozen L2 fields."""
     from quantfusion.application import stress, stress_metrics
@@ -183,8 +215,6 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
         "threshold": 0.18, "tolerance": 1e-15,
     }
     events = list(result.get("risk_events", []))
-    orders = list(result.get("order_events", []))
-    risk_orders = [item for item in orders if "sell" in str(item.get("direction", ""))]
     _, positions = _sleeve_paths(result)
     max_cluster = maximum_cluster_weight(
         positions, {str(date.date()): float(row.assets) for date, row in equity.iterrows()}, SYMBOL_SUB_INDUSTRY
@@ -193,20 +223,14 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
         "cash_days": int((equity["position_value"] == 0).sum()),
         "max_gross_ratio": float((equity["position_value"] / equity["assets"]).max()),
         "max_cluster_weight": max_cluster,
-        "planned_risk_sell_shares": sum(int(x.get("target_shares", 0)) for x in risk_orders),
-        "retained_risk_sell_shares": sum(int(x.get("target_shares", 0)) for x in risk_orders if "retain" in str(x.get("event", ""))),
-        "suppressed_risk_sell_shares": sum(int(x.get("target_shares", 0)) for x in risk_orders if "suppress" in str(x.get("event", ""))),
-        "filled_risk_sell_shares": sum(t.shares for t in result["trades"] if t.direction == "sell" and stress._reason_category(t) in {"risk_reduction", "sector_liquidation"}),
-        "first_evidence_timestamp": min((str(x.get("date")) for x in events), default=None),
-        "first_executable_open": min((str(t.date) for t in result["trades"]), default=None),
+        **risk_execution_telemetry(result, SYMBOL_SUB_INDUSTRY),
+        "first_evidence_timestamp": min((row["timestamp"] for row in _risk_records(result)
+                                           if row["event_type"] in {"ACCOUNT_ALERT", "CONFIRMED_LOCK", "EMERGENCY_LOCK", "TERMINAL_LOCK", "CROSS_MARKET", "SUBINDUSTRY", "CONCENTRATION", "LAYERED_STOP"}), default=None),
         "first_official_mdd_breach": breach,
         "first_account_alert_event": _manager_event(events, "portfolio_drawdown_alert_on"),
         "first_confirmed_cycle_lock": _manager_event(events, "confirmed_cycle_drawdown_lock"),
         "first_emergency_cycle_lock": _manager_event(events, "emergency_cycle_drawdown_lock"),
         "first_terminal_lock": _manager_event(events, "terminal_portfolio_drawdown_lock"),
-        "same_open_offset_shares": 0,
-        "carried_conflict_count": sum("retained" in str(x.get("event", "")) for x in orders),
-        "cluster_substitution_count": sum("substitution" in str(x.get("event", "")) for x in events),
         "cycle_lock_count": int(result.get("cycle_lock_count", 0)),
         "terminal_lock_count": int(bool(result.get("terminal_risk_lock", False))),
         "mdd_slack": 0.18 - abs(float(result["max_drawdown"])),
@@ -224,6 +248,8 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
         "max_concurrent_symbols": int(result["max_concurrent_symbols"]),
         "terminal_risk_lock": bool(result["terminal_risk_lock"]),
         "deployment_policy": "production_daily_replay", "diagnostic_telemetry": telemetry,
+        "execution_receipts": {"orders": result["_c6_orders"], "fills": result["_c6_fills"],
+                               "action_lifecycle": _action_records(result), "exposure_series": _exposure_records(result)},
     }
 
 
@@ -399,14 +425,18 @@ def _action_records(result: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 
 def _risk_records(result: Mapping[str, Any]) -> list[dict[str, Any]]:
-    names = {"portfolio_drawdown_alert_on": "ACCOUNT_ALERT", "confirmed_cycle_drawdown_lock": "CONFIRMED_LOCK", "emergency_cycle_drawdown_lock": "EMERGENCY_LOCK", "terminal_portfolio_drawdown_lock": "TERMINAL_LOCK"}
+    names = {"portfolio_drawdown_alert_on": "ACCOUNT_ALERT", "confirmed_cycle_drawdown_lock": "CONFIRMED_LOCK", "emergency_cycle_drawdown_lock": "EMERGENCY_LOCK", "terminal_portfolio_drawdown_lock": "TERMINAL_LOCK",
+             "sector_risk_level": "SUBINDUSTRY", "sector_risk_trim": "SUBINDUSTRY",
+             "transition_risk_trim": "CROSS_MARKET", "shock_trim": "CROSS_MARKET",
+             "concentration_trim": "CONCENTRATION", "concentration_guard_fail_closed": "CONCENTRATION",
+             "layered_stop": "LAYERED_STOP"}
     records = []
     for ordinal, event in enumerate(item for item in result.get("risk_events", []) if item.get("date")):
-        source = str(event.get("event", "cross_market"))
-        kind = names.get(source, "SUBINDUSTRY" if "sector" in source or "subindustr" in source else "CONCENTRATION" if "concentration" in source else "LAYERED_STOP" if "stop" in source or "catastrophe" in source else "OPEN_MARK_GAP" if "gap" in source else "CROSS_MARKET")
+        source = str(event.get("event", "unclassified"))
+        kind = names.get(source, "UNCLASSIFIED")
         sleeve = event.get("sleeve")
         state = {"fast": 0, "base": 1, "slow": 2}.get(sleeve)
-        records.append({"emission_ordinal": ordinal, "timestamp": str(event["date"]), "phase_order": 0, "event_type": kind, "state_index": state, "sleeve_name": sleeve if state is not None else None, "strategy_name": event.get("strategy") or event.get("strategy_name"), "symbol": event.get("symbol"), "peak_owner": event.get("peak_owner"), "peak_value": event.get("peak_assets"), "current_assets": event.get("current_assets"), "drawdown": event.get("drawdown"), "threshold": event.get("threshold"), "status_source": source, "evidence_flags": []})
+        records.append({"emission_ordinal": ordinal, "timestamp": str(event["date"]), "phase_order": None, "event_type": kind, "state_index": state, "sleeve_name": sleeve if state is not None else None, "strategy_name": event.get("strategy") or event.get("strategy_name"), "symbol": event.get("symbol"), "peak_owner": event.get("peak_owner"), "peak_value": event.get("peak_assets"), "current_assets": event.get("current_assets"), "drawdown": event.get("drawdown"), "threshold": event.get("threshold"), "status_source": source, "evidence_flags": [], "raw_event": dict(event)})
     return records
 
 
@@ -550,8 +580,15 @@ def build_causal_matrix(result: Mapping[str, Any], timeline: Mapping[str, Any],
     if offsets:
         observe("ACTION_OFFSET", min(row["timestamp"] for row in offsets), offsets,
                 math.fsum(row["notional"] for row in offsets))
+    early = evidence["first_early_sell_required_close"]
     if evidence["early_sell_required"] and evidence["lead_batch_count"] > 0 and evidence["executable_lot_shares"] > 0:
-        observe("POLICY_LATENCY", evidence["first_early_sell_required_close"])
+        from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
+        timely = [row for row in orders if row["side"] == "SELL" and row["action_id"] is not None
+                  and row["decision_timestamp"] <= early
+                  and SYMBOL_SUB_INDUSTRY.get(row["symbol"]) == evidence["worst_cluster"]
+                  and row["status"] not in {"suppressed", "cancelled"}]
+        if sum(row["requested_shares"] for row in timely) < evidence["planned_shares"]:
+            observe("POLICY_LATENCY", early)
     for snapshot in snapshots:
         prior = [row["equity"] for row in equity if row["timestamp"] < snapshot["timestamp"]]
         if snapshot["phase"] == "batch_start" and prior and snapshot["assets"] / max(prior) < 1 - 0.18 - 1e-15:
@@ -571,7 +608,9 @@ def build_causal_matrix(result: Mapping[str, Any], timeline: Mapping[str, Any],
                    "EXECUTION_GAP", "OPEN_MARK_GAP", "NO_EARLY_EVIDENCE", "ALPHA_OR_HOLDING_PATH",
                    "LOCK_MEDIATOR", "OTHER_UNRESOLVED")
     labels = [label for label in label_order if label in findings]
-    return {"event_timeline": dict(timeline), "required_trace_order_complete": complete,
+    parallel = sorted(({"event_type": name, **row} for name, row in timeline.items() if row.get("timestamp") is not None),
+                      key=lambda row: (row["timestamp"], row["event_type"]))
+    return {"event_timeline": dict(timeline), "parallel_event_timeline": parallel, "required_trace_order_complete": complete,
             "executable_lead_batch_count": evidence["lead_batch_count"], "multi_labels": labels,
             "observed_mechanisms": [findings[label] for label in labels], "s_evidence": dict(evidence),
             "earliest_unavoidable_breach_under_frozen_candidate_family": None,
@@ -876,7 +915,9 @@ def _score_comparison(before: Sequence[Mapping[str, Any]], after: Sequence[Mappi
     scores, ranks = [], []
     for key in sorted(set(a) | set(b)):
         old, new = a.get(key), b.get(key)
-        identity = {k: (new or old)[k] for k in ("decision_timestamp", "state_index", "sleeve_name", "symbol")}
+        witness = new if new is not None else old
+        assert witness is not None
+        identity = {k: witness[k] for k in ("decision_timestamp", "state_index", "sleeve_name", "symbol")}
         for field, rows, fingerprint in (("score", scores, "reference_fingerprint"), ("rank", ranks, "pool_members_sha256")):
             left, right = old.get(field) if old else None, new.get(field) if new else None
             if left == right:
