@@ -26,7 +26,7 @@ from c6_auto_resume import (
 
 def emit(root, inputs, run_id, bindings, github):
     """Use explicit synthetic identities; never import a candidate or market data."""
-    require(inputs["binding_id"] == "c6.synthetic.resume" and inputs["logical_run_id"].startswith("c6-v13-resume-probe-"), "not an isolated probe")
+    require(inputs["binding_id"] == "c6.synthetic.resume" and inputs["logical_run_id"].startswith("c6-v18-resume-probe-"), "not an isolated probe")
     require(inputs["source_revision"] == inputs["workflow_revision"] and bindings["kind"] == "c6_synthetic_resume_probe", "invalid synthetic source contract")
     require(len(bindings["binding_records"]) == 1, "probe has ambiguous binding")
     record = bindings["binding_records"][0]

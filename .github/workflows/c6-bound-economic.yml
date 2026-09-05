@@ -90,7 +90,7 @@ concurrency:
 jobs:
   probe:
     name: Synthetic checkpoint route probe
-    if: inputs.binding_id == 'c6.synthetic.resume' && github.ref_name == 'codex/c6-v13-workflow-anchor' && inputs.workflow_revision == github.sha
+    if: inputs.binding_id == 'c6.synthetic.resume' && github.ref_name == 'codex/c6-v17-workflow-anchor' && inputs.workflow_revision == github.sha
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -547,7 +547,7 @@ jobs:
   handoff:
     name: Request authenticated continuation
     needs: [probe, run]
-    if: always() && github.event_name == 'workflow_dispatch' && github.ref_name == 'codex/c6-v13-workflow-anchor' && inputs.workflow_revision == github.sha && (needs.probe.result == 'success' || needs.run.result == 'success')
+    if: always() && github.event_name == 'workflow_dispatch' && github.ref_name == 'codex/c6-v17-workflow-anchor' && inputs.workflow_revision == github.sha && (needs.probe.result == 'success' || needs.run.result == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
