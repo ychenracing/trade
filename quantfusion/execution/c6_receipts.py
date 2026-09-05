@@ -93,6 +93,9 @@ def note_order(sleeve: Any, signal: Any, date: str, event: str, **details: Any) 
 
 
 def record_fill(sleeve: Any, signal: Any, trade: Any) -> None:
+    action = action_receipt(sleeve, signal)
+    if action is not None:
+        action["filled_notional"] = action.get("filled_notional", 0.0) + abs(float(trade.gross_value))
     record = order_receipt(sleeve, signal, trade.date)
     if record is None:
         return
@@ -158,6 +161,7 @@ def begin_action_batch(sleeve: Any, signal: Any, date: str) -> dict[str, Any] | 
         retained_shares=int(signal.target_shares),
         suppressed_shares=0,
         filled_shares=0,
+        filled_notional=0.0,
         current_shares=current,
         remainder_shares=int(signal.target_shares),
         post_action_target_shares=max(current - int(signal.target_shares), 0),

@@ -235,6 +235,8 @@ def test_action_receipts_preserve_each_actual_batch_and_exact_book() -> None:
     receipt = first[-1]
     assert 0 < receipt["filled_shares"] < 500
     assert receipt["carry_to_next_batch"] is True
+    assert receipt["filled_notional"] == pytest.approx(sleeve.trades[-1].gross_value)
+    assert receipt["planned_notional"] == 500 * 10
     assert receipt["execution_timestamp"] == "2026-01-06"
     assert state.pending[0][0].target_shares == receipt["remainder_shares"]
     next_date = dates[1] + pd.offsets.BDay(1)
@@ -371,3 +373,17 @@ def test_adv_zero_keeps_odd_lot_full_liquidation_executable() -> None:
     )
     assert remaining == [(sell, None)]
     assert sleeve.positions["300308"]["fast"].shares == 50
+
+
+def test_pending_remainder_deduplication_preserves_actual_partial_fill_status():
+    sleeve, data_map, dates = _real_sleeve_with_position(500, 40000.)
+    sleeve._c6_orders, sleeve._c6_fills, sleeve._c6_order_by_signal = [], [], {}
+    sleeve._c6_state_index = 0
+    first = Signal('300308', 'fast', 'sell', target_shares=500, price=10., reason='ordinary_exit', signal_date='2026-01-05')
+    second = Signal('300308', 'fast', 'sell', target_shares=500, price=10., reason='sector_risk_trim', signal_date='2026-01-05')
+    pending = sleeve._execute_pending_signals([(first, _Strategy('fast')), (second, None)], data_map, dates[1], {d: i for i, d in enumerate(dates)})
+    assert len(pending) == 1 and pending[0][0].reason == 'sector_risk_trim'
+    actual = sleeve._c6_orders[0]
+    assert actual['filled_shares'] == 200
+    assert actual['status'] == 'partial'
+    assert any(event['event'] == 'pending_remainder_suppressed' and event['shares'] == 300 for event in actual['events'])

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from quantfusion.execution.c6_receipts import (
     begin_action_batch, finish_action_batch, begin_order,
-    link_order, note_order, order_receipt,
+    link_order, note_order, order_receipt, action_receipt,
 )
 
 import math
@@ -656,7 +656,14 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             if id(signal) not in retained_ids:
                 record = order_receipt(self, signal, date_str)
                 if record is not None:
-                    record.update(status="suppressed", blocked_reason="pending_deduplication_or_sell_conflict")
+                    note_order(self, signal, date_str, "pending_remainder_suppressed",
+                               shares=int(signal.target_shares))
+                    if record["filled_shares"] == 0:
+                        record.update(status="suppressed", blocked_reason="pending_deduplication_or_sell_conflict")
+                    action = action_receipt(self, signal)
+                    if action is not None:
+                        action.update(remainder_shares=0, terminal_for_current_batch=True,
+                                      carry_to_next_batch=False, release_reason="CANCELLED")
         return retained
 
     def _opening_limit_state(

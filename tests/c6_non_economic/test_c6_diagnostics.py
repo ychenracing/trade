@@ -153,7 +153,10 @@ def test_w_attribution_uses_actual_divergence_scores_and_post_lock_paths():
     c6_diagnostics._attach_interventions(rows)
     facts = rows[2]['intervention_601869']
     assert facts['pre_breach_anchor_timestamp'] == '2026-01-07'
-    assert facts['first_path_divergence']['timestamp'] == '2026-01-07'
+    assert facts['first_path_divergence']['timestamp'] == '2026-01-06'
+    assert facts['first_path_divergence']['reason'] == 'SCORE'
+    assert facts['first_path_divergence']['before_path_sha256'] != facts['first_path_divergence']['after_path_sha256']
+    assert facts['score_trace']
     assert facts['old_symbol_fixed_reference_score_changes'][0]['score_delta'] == pytest.approx(.05)
     assert facts['old_symbol_fixed_reference_score_hash'] != facts['pool_relative_rank_hash']
     assert facts['coordinator_pool_relative_rank_changes'][0]['rank_delta'] == 1
@@ -566,6 +569,22 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
             equity = [{'timestamp': str(date.date()), 'equity': float(row.assets)} for date, row in result['equity_curve'].iterrows()]
             matrix = c6_diagnostics.build_causal_matrix(result, {'first_official_mdd_breach': {'timestamp': None}}, c6_diagnostics._empty_s_evidence(), equity)
             assert matrix['required_trace_order_complete'] is True
+            from quantfusion.application.c6_bound_run import validate_execution_facts
+            cash_samples, position_samples = c6_diagnostics._sleeve_paths(result)
+            peak = float('-inf')
+            drawdowns = []
+            for row in equity:
+                peak = max(peak, row['equity'])
+                drawdowns.append({**row, 'running_peak': peak, 'drawdown': row['equity']/peak-1.})
+            validate_execution_facts({
+                'orders': result['_c6_orders'], 'fills': result['_c6_fills'],
+                'action_lifecycle': c6_diagnostics._action_records(result),
+                'warm_boundary': c6_diagnostics._warm_snapshot(result, 2000000.),
+                'cash_series': cash_samples, 'position_series': position_samples,
+                'equity_series': equity, 'drawdown_series': drawdowns,
+                'official_metrics': {'terminal_wealth': result['final_assets'],
+                    **{key: result[key] for key in ('total_return','max_drawdown','total_trades','sleeve_fill_count','date_symbol_side_count')},
+                    'reason_attribution': {'all': len(result['trades'])}}}, complete_path=True)
         if intervention == 'BASELINE':
             from quantfusion.application import stress_metrics
             from quantfusion.config import paths as config_paths

@@ -671,3 +671,45 @@ def test_l4_gate_requires_complete_passing_l2_for_identical_d_and_c():
             new_rows[0]['passed'] = 1 if mutation == 'truthy' else False
         with pytest.raises(BoundRunError, match='L4 requires'):
             runner.validate_l2_gate(exported(new_digest, new_rows), d, c, prereg)
+
+
+def _factual_ledger():
+    rows = []
+    fills = []
+    for ordinal, (date, side, shares, price) in enumerate((('2026-01-05', 'BUY', 200, 10.), ('2026-01-06', 'SELL', 100, 11.))):
+        identity = dict(state_index=0, sleeve_name='fast', strategy_name='trend', symbol='A', side=side)
+        rows.append(dict(order_ordinal=ordinal, execution_timestamp=date, requested_shares=shares,
+                         authorized_shares=shares, filled_shares=shares, **identity))
+        fills.append(dict(fill_ordinal=ordinal, order_ordinal=ordinal, timestamp=date, shares=shares,
+                          price=price, notional=shares*price, fee=1., **identity))
+    return dict(orders=rows, fills=fills, action_lifecycle=[],
+                warm_boundary={'sleeve_cash':[{'cash':4000.}]},
+                cash_series=[{'timestamp':'2026-01-05','state_index':0,'cash':1999.}, {'timestamp':'2026-01-06','state_index':0,'cash':3098.}],
+                position_series=[dict(timestamp=date,state_index=0,strategy_name='trend',symbol='A',shares=shares,mark=mark,market_value=shares*mark)
+                                 for date,shares,mark in [('2026-01-05',200,10.),('2026-01-06',100,11.)]],
+                equity_series=[{'timestamp':date,'equity':value} for date,value in [('2026-01-05',3999.),('2026-01-06',4198.)]],
+                drawdown_series=[{'timestamp':date,'equity':value,'running_peak':value,'drawdown':0.} for date,value in [('2026-01-05',3999.),('2026-01-06',4198.)]],
+                official_metrics={'terminal_wealth':4198.,'total_return':4198./4000.-1.,'max_drawdown':0.,'total_trades':2,'sleeve_fill_count':2,'date_symbol_side_count':2,'reason_attribution':{'initial_entry':1,'strategy_exit':1}})
+
+
+@pytest.mark.parametrize('mutation', ['none','fill_book','fill_shares','fill_notional','duplicate_fill','order_fill','position_shares','position_value','cash','equity','running_peak','drawdown','terminal','return','mdd'])
+def test_factual_evidence_reconciles_primitive_ledgers(mutation):
+    from quantfusion.application.c6_bound_run import validate_execution_facts
+    payload = _factual_ledger()
+    if mutation == 'none':
+        validate_execution_facts(payload, complete_path=True)
+        return
+    targets = {'fill_book':('fills','state_index',1),'fill_shares':('fills','shares',300),
+               'fill_notional':('fills','notional',2001.),'order_fill':('orders','filled_shares',100),
+               'position_shares':('position_series','shares',100),'position_value':('position_series','market_value',2001.),
+               'cash':('cash_series','cash',2000.),'equity':('equity_series','equity',4000.),
+               'running_peak':('drawdown_series','running_peak',4000.),'drawdown':('drawdown_series','drawdown',-.01)}
+    if mutation in targets:
+        path,key,value=targets[mutation]
+        payload[path][0][key]=value
+    elif mutation == 'duplicate_fill':
+        payload['fills'].append(dict(payload['fills'][0]))
+    else:
+        payload['official_metrics'][{'terminal':'terminal_wealth','return':'total_return','mdd':'max_drawdown'}[mutation]] += .1
+    with pytest.raises(BoundRunError):
+        validate_execution_facts(payload, complete_path=True)

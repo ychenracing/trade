@@ -421,6 +421,9 @@ def _sleeve_paths(result: Mapping[str, Any]) -> tuple[list[dict[str, Any]], list
 def _action_records(result: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Export receipts recorded at the boundary; never infer them from future fills."""
     records = [dict(item) for state in result["_c6_states"] for item in getattr(state.sleeve, "_c6_action_lifecycle", [])]
+    for record in records:
+        for kind in ("planned", "retained", "suppressed"):
+            record[kind + "_notional"] = record[kind + "_shares"] * record["reference_price"]
     return sorted(records, key=lambda item: item["emission_ordinal"])
 
 
@@ -856,9 +859,11 @@ def _symbol_pnl(record: Mapping[str, Any], symbol: str) -> tuple[float, float]:
 
 
 def _first_path_divergence(before: Mapping[str, Any], after: Mapping[str, Any],
-                           before_name: str, after_name: str) -> dict[str, Any] | None:
+                           before_name: str, after_name: str,
+                           before_scores: Sequence[Mapping[str, Any]] = (),
+                           after_scores: Sequence[Mapping[str, Any]] = ()) -> dict[str, Any] | None:
     """Locate the first different observed phase, retaining the actual date."""
-    def batches(record: Mapping[str, Any]) -> dict[tuple[str, int, str], list[Any]]:
+    def batches(record: Mapping[str, Any], scores: Sequence[Mapping[str, Any]]) -> dict[tuple[str, int, str], list[Any]]:
         result: dict[tuple[str, int, str], list[Any]] = {}
         for key, phase, reason in (("orders", 0, "ORDER"), ("fills", 0, "FILL"),
                                    ("cash_series", 3, "VALUATION"), ("position_series", 3, "VALUATION"),
@@ -879,8 +884,15 @@ def _first_path_divergence(before: Mapping[str, Any], after: Mapping[str, Any],
                 else:
                     timestamp, item_phase, value = item["timestamp"], phase, item
                 result.setdefault((timestamp, item_phase, reason), []).append((key, value))
+        for row in scores:
+            result.setdefault((row["decision_timestamp"], 0, "SCORE"), []).append(("score", row))
+        for name, row in record.get("causal_matrix", {}).get("event_timeline", {}).items():
+            if name != "first_official_mdd_breach" and row.get("timestamp"):
+                result.setdefault((row["timestamp"], 1, "LOCK_STATE"), []).append((name, row))
         return result
-    a, b = batches(before), batches(after)
+    a, b = batches(before, before_scores), batches(after, after_scores)
+    def observed_hash(path, boundary):
+        return hashlib.sha256(_canonical_bytes([[list(key), [list(item) for item in path[key]]] for key in sorted(path) if key <= boundary])).hexdigest()
     for key in sorted(set(a) | set(b)):
         if a.get(key, []) == b.get(key, []):
             continue
@@ -889,8 +901,8 @@ def _first_path_divergence(before: Mapping[str, Any], after: Mapping[str, Any],
         return {"compared_from_intervention_id": before_name, "compared_to_intervention_id": after_name,
                 "timestamp": timestamp, "phase": {0: "EXECUTION_OPEN", 1: "DECISION_CLOSE", 3: "VALUATION_CLOSE"}[phase],
                 "reason": reason, "state_index": different.get("state_index"), "sleeve_name": different.get("sleeve_name"),
-                "symbol": different.get("symbol"), "before_path_sha256": _prefix_hash(before, timestamp + "~"),
-                "after_path_sha256": _prefix_hash(after, timestamp + "~")}
+                "symbol": different.get("symbol"), "before_path_sha256": observed_hash(a, key),
+                "after_path_sha256": observed_hash(b, key)}
     return None
 
 
@@ -995,11 +1007,11 @@ def _attach_interventions(evaluations: list[dict[str, Any]]) -> None:
                 continue
             gaps.append({"comparison": label, "from_intervention_id": names[origin], "to_intervention_id": name, "anchor_timestamp": anchor, "from_wealth": wealth[origin], "to_wealth": wealth[index], "wealth_gap": wealth[index] - wealth[origin], "log_wealth_gap": math.log(wealth[index]) - math.log(wealth[origin])})
         previous = rows[index - 1] if index else None
-        divergence = _first_path_divergence(previous, row, names[index - 1], name) if previous is not None else None
+        divergence = _first_path_divergence(previous, row, names[index - 1], name, traces[index - 1], traces[index]) if previous is not None else None
         post = _post_lock_effect(rows[4], row) if index == 5 else None
         realized, unrealized = _symbol_pnl(row, "601869")
         score_facts = _score_comparison(traces[index - 1] if index else traces[index], traces[index])
-        row["intervention_601869"] = {"intervention_id": name, "scenario_id": row["scenario_id"], "terminal_wealth": row["official_metrics"]["terminal_wealth"], "total_return": row["official_metrics"]["total_return"], "max_drawdown": row["official_metrics"]["max_drawdown"], "total_trades": row["official_metrics"]["total_trades"], "pre_breach_anchor_timestamp": anchor, "pre_breach_wealth": wealth[index], "pre_breach_wealth_gaps": gaps, "own_601869_realized_pnl": realized, "own_601869_unrealized_pnl": unrealized, **score_facts, "first_path_divergence": divergence, "post_lock_effect": post, "no_lock_terminal_wealth_ratio": None if index != 5 else row["official_metrics"]["terminal_wealth"] / rows[4]["official_metrics"]["terminal_wealth"]}
+        row["intervention_601869"] = {"intervention_id": name, "scenario_id": row["scenario_id"], "terminal_wealth": row["official_metrics"]["terminal_wealth"], "total_return": row["official_metrics"]["total_return"], "max_drawdown": row["official_metrics"]["max_drawdown"], "total_trades": row["official_metrics"]["total_trades"], "pre_breach_anchor_timestamp": anchor, "pre_breach_wealth": wealth[index], "pre_breach_wealth_gaps": gaps, "own_601869_realized_pnl": realized, "own_601869_unrealized_pnl": unrealized, **score_facts, "score_trace": traces[index], "first_path_divergence": divergence, "post_lock_effect": post, "no_lock_terminal_wealth_ratio": None if index != 5 else row["official_metrics"]["terminal_wealth"] / rows[4]["official_metrics"]["terminal_wealth"]}
 
 
 def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:

@@ -1044,6 +1044,107 @@ _WIRE_SCHEMA_KEYWORDS = {"$ref", "type", "properties", "required", "additionalPr
                  "exclusiveMinimum", "exclusiveMaximum", "anyOf", "oneOf"}
 
 
+def validate_execution_facts(record: Mapping[str, Any], *, complete_path: bool = False) -> None:
+    """Reconcile recorded quantities and valuations; never replay a strategy."""
+    from collections import defaultdict
+
+    def same(actual, expected, label):
+        if not math.isclose(actual, expected, rel_tol=1e-12, abs_tol=1e-8):
+            _raise(f"factual evidence {label} does not reconcile")
+    orders = {row["order_ordinal"]: row for row in record["orders"]}
+    if len(orders) != len(record["orders"]):
+        _raise("duplicate factual order identity")
+    fills_by_order, fills_by_date = defaultdict(list), defaultdict(list)
+    fill_ids = set()
+    identity = ("state_index", "sleeve_name", "strategy_name", "symbol", "side")
+    for fill in record["fills"]:
+        order = orders.get(fill["order_ordinal"])
+        if fill["fill_ordinal"] in fill_ids or order is None:
+            _raise("duplicate or orphan factual fill")
+        fill_ids.add(fill["fill_ordinal"])
+        if any(fill[key] != order[key] for key in identity) or fill["timestamp"] != order["execution_timestamp"]:
+            _raise("factual fill book or batch identity mismatch")
+        same(fill["notional"], fill["shares"] * fill["price"], "fill notional")
+        fills_by_order[fill["order_ordinal"]].append(fill)
+        fills_by_date[fill["timestamp"]].append(fill)
+    for ordinal, order in orders.items():
+        if sum(fill["shares"] for fill in fills_by_order[ordinal]) != order["filled_shares"]:
+            _raise("factual order filled shares mismatch")
+        if not 0 <= order["filled_shares"] <= order["authorized_shares"] <= order["requested_shares"]:
+            _raise("factual order authorization bounds mismatch")
+    action_ids = set()
+    for action in record["action_lifecycle"]:
+        if action["emission_ordinal"] in action_ids:
+            _raise("duplicate factual action emission")
+        action_ids.add(action["emission_ordinal"])
+        if (action["planned_shares"] != action["retained_shares"] + action["suppressed_shares"]
+                or not 0 <= action["filled_shares"] <= action["retained_shares"]):
+            _raise("factual action quantities mismatch")
+        for kind in ("planned", "retained", "suppressed"):
+            same(action[kind + "_notional"], action[kind + "_shares"] * action["reference_price"], "action " + kind)
+        actual = [fill for fill in fills_by_order[action["winner_order_ordinal"]]
+                  if action["execution_timestamp"] == fill["timestamp"]
+                  and all(action[key] == fill[key] for key in identity[:-1])]
+        if action["filled_shares"] > 0:
+            if sum(fill["shares"] for fill in actual) != action["filled_shares"]:
+                _raise("factual action fill attribution mismatch")
+            same(action["filled_notional"], math.fsum(fill["notional"] for fill in actual), "action fill notional")
+        elif action["filled_notional"] != 0:
+            _raise("unfilled action contains filled notional")
+    if not complete_path:
+        return
+    equities = record["equity_series"]
+    dates = [row["timestamp"] for row in equities]
+    if not dates or dates != sorted(set(dates)) or set(fills_by_date) - set(dates):
+        _raise("factual valuation calendar mismatch")
+    cash_by_date, positions_by_date = defaultdict(list), defaultdict(list)
+    for row in record["cash_series"]:
+        cash_by_date[row["timestamp"]].append(row)
+    for row in record["position_series"]:
+        same(row["market_value"], row["shares"] * row["mark"], "position mark")
+        positions_by_date[row["timestamp"]].append(row)
+    if set(cash_by_date) != set(dates) or set(positions_by_date) - set(dates):
+        _raise("factual cash/position calendar mismatch")
+    initial = math.fsum(row["cash"] for row in record["warm_boundary"]["sleeve_cash"])
+    cash, peak, drawdowns, inventory = initial, -math.inf, [], defaultdict(int)
+    if len(record["drawdown_series"]) != len(equities):
+        _raise("factual drawdown coverage mismatch")
+    for sample, drawdown in zip(equities, record["drawdown_series"], strict=True):
+        date = sample["timestamp"]
+        if drawdown["timestamp"] != date:
+            _raise("factual drawdown calendar mismatch")
+        for fill in fills_by_date[date]:
+            direction = 1 if fill["side"] == "BUY" else -1
+            book = (fill["state_index"], fill["symbol"], fill["strategy_name"])
+            inventory[book] += direction * fill["shares"]
+            if inventory[book] < 0:
+                _raise("factual sell exceeds book inventory")
+            cash += -direction * fill["notional"] - fill["fee"]
+        observed = {(row["state_index"], row["symbol"], row["strategy_name"]): row["shares"] for row in positions_by_date[date]}
+        if len(observed) != len(positions_by_date[date]) or observed != {key: shares for key, shares in inventory.items() if shares > 0}:
+            _raise("factual holdings do not reconcile with fills")
+        if len({row["state_index"] for row in cash_by_date[date]}) != len(cash_by_date[date]):
+            _raise("duplicate factual cash sample")
+        same(math.fsum(row["cash"] for row in cash_by_date[date]), cash, "account cash")
+        value = cash + math.fsum(row["market_value"] for row in positions_by_date[date])
+        same(sample["equity"], value, "account equity")
+        peak = max(peak, sample["equity"])
+        same(drawdown["equity"], sample["equity"], "drawdown equity")
+        same(drawdown["running_peak"], peak, "running peak")
+        severity = sample["equity"] / peak - 1.0
+        same(drawdown["drawdown"], severity, "drawdown")
+        drawdowns.append(severity)
+    metrics = record["official_metrics"]
+    same(metrics["terminal_wealth"], equities[-1]["equity"], "terminal wealth")
+    same(metrics["total_return"], equities[-1]["equity"] / initial - 1., "total return")
+    same(metrics["max_drawdown"], min(drawdowns), "maximum drawdown")
+    count = len(record["fills"])
+    buckets = len({(fill["timestamp"], fill["symbol"], fill["side"]) for fill in record["fills"]})
+    if (metrics["total_trades"] != count or metrics["sleeve_fill_count"] != count
+            or metrics["date_symbol_side_count"] != buckets or sum(metrics["reason_attribution"].values()) != count):
+        _raise("factual trade metrics mismatch")
+
+
 def validate_wire_schema(schema: Mapping[str, Any], definitions: Mapping[str, Any],
                          visited: set[str] | None = None) -> None:
     """Inspect every schema branch, including alternatives the value won't use."""
@@ -1089,6 +1190,8 @@ def validate_wire_value(value: Any, schema: Mapping[str, Any], definitions: Mapp
         if not isinstance(target, Mapping):
             _raise(f"{label}: wire schema reference is missing")
         validate_wire_value(value, target, definitions, label, depth + 1)
+        if reference[len(prefix):] in {"evaluation_record", "l2_execution_receipts"}:
+            validate_execution_facts(value, complete_path=reference[len(prefix):] == "evaluation_record")
         return
     for union in ("anyOf", "oneOf"):
         if union in schema:

@@ -203,6 +203,7 @@ def apply_risk_actions(
             record["observation_timestamp"] = action.signal_date
             record["observation_phase"] = "decision_close"
             record["reference_price"] = float(action.price)
+            record["filled_notional"] = 0.0
             records.append(record)
             sleeve._c6_action_by_signal[id(signal)] = (signal, record)
             order = order_receipt(sleeve, signal, action.signal_date)

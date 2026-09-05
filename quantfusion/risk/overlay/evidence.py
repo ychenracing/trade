@@ -555,9 +555,9 @@ class OverlayEvidenceMixin:
                 before = inventory.get(name, 0)
                 open_price = frame.loc[next_date, "open"] if frame is not None and next_date in frame.index else None
                 opened = open_price is not None and not pd.isna(open_price) and float(open_price) > 0
-                volume = frame.loc[next_date, "volume"] if opened and "volume" in frame else None
+                volume = frame.loc[next_date, "volume"] if opened and frame is not None and "volume" in frame else None
                 active = volume is not None and not pd.isna(volume) and float(volume) > 0
-                limit_ok = opened and state.sleeve._opening_limit_state(signal, frame, next_date, float(open_price)) != "sell_blocked"
+                limit_ok = opened and frame is not None and open_price is not None and state.sleeve._opening_limit_state(signal, frame, next_date, float(open_price)) != "sell_blocked"
                 t_plus_one = next_date > pd.Timestamp(signal.signal_date)
                 available = min(int(signal.target_shares), before, remaining)
                 capacity = available if available == before else floor_to_lot(available)
