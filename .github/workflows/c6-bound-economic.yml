@@ -90,13 +90,13 @@ concurrency:
 jobs:
   probe:
     name: Synthetic checkpoint route probe
-    if: inputs.binding_id == 'c6.synthetic.resume'
+    if: inputs.binding_id == 'c6.synthetic.resume' && github.ref_name == 'codex/c6-v13-workflow-anchor' && inputs.workflow_revision == github.sha
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ inputs.workflow_revision }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
@@ -544,3 +544,21 @@ jobs:
           path: source/artifacts/checkpoints/c6/sealed-export/
           if-no-files-found: error
           retention-days: 90
+  handoff:
+    name: Request authenticated continuation
+    needs: [probe, run]
+    if: always() && github.event_name == 'workflow_dispatch' && github.ref_name == 'codex/c6-v13-workflow-anchor' && inputs.workflow_revision == github.sha && (needs.probe.result == 'success' || needs.run.result == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Request validation after this workflow completes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 -I -S .github/scripts/c6_request_resume.py

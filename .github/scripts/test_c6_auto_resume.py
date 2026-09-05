@@ -19,12 +19,27 @@ spec.loader.exec_module(resume)
 
 
 class ResumeTest(unittest.TestCase):
+    def test_explicit_dispatch_waits_for_terminal_predecessor_with_bound(self):
+        from unittest.mock import Mock
+        github = Mock()
+        github.read.side_effect = [{"status": "in_progress"}, {"status": "completed", "id": 123}]
+        with patch.object(resume.time, "sleep") as pause:
+            self.assertEqual(resume.terminal_predecessor(github, "123")["id"], 123)
+        pause.assert_called_once_with(2)
+        github.read.side_effect = None
+        github.read.return_value = {"status": "in_progress"}
+        with patch.object(resume.time, "sleep"), self.assertRaisesRegex(ValueError, "has not completed"):
+            resume.terminal_predecessor(github, "123")
+        for invalid in ("0", "../other", 123):
+            with self.assertRaises(ValueError):
+                resume.terminal_predecessor(github, invalid)
+
     def test_workflow_identity_uses_id_path_and_trusted_ref_not_display_name(self):
         run = {"repository": {"full_name": resume.REPOSITORY},
                "head_repository": {"full_name": resume.REPOSITORY},
                "workflow_id": 42, "path": ".github/workflows/" + resume.WORKFLOW,
                "name": "c6-bound-dynamic-attempt-name", "event": "workflow_dispatch",
-               "head_branch": "codex/c6-v12-workflow-anchor", "run_attempt": 1,
+               "head_branch": "codex/c6-v13-workflow-anchor", "run_attempt": 1,
                "status": "completed", "conclusion": "success"}
         workflow = {"id": 42, "path": run["path"]}
         resume.validate_run_identity(run, workflow)

@@ -6,6 +6,7 @@ import json
 import os
 import re
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -14,7 +15,7 @@ from pathlib import Path
 
 REPOSITORY = "ychenracing/trade"
 WORKFLOW = "c6-bound-economic.yml"
-AUTO_ANCHOR = "codex/c6-v12-workflow-anchor"
+AUTO_ANCHOR = "codex/c6-v13-workflow-anchor"
 ARCHIVE_LIMIT = 4 * 1024 ** 3
 
 INPUT_NAMES = {
@@ -197,12 +198,26 @@ def validate_run_identity(run, workflow):
     require(run["status"] == "completed" and run["conclusion"] == "success", "run has no successful sealed handoff")
 
 
+def terminal_predecessor(github, run_id):
+    require(isinstance(run_id, str) and re.fullmatch(r"[1-9][0-9]*", run_id), "invalid explicit predecessor")
+    for _ in range(15):
+        run = github.read("actions/runs/" + run_id)
+        if run["status"] == "completed":
+            return run
+        time.sleep(2)
+    raise ValueError("predecessor has not completed; retain checkpoint for scheduled recovery")
+
+
 def main():
-    require(os.environ["GITHUB_REPOSITORY"] == REPOSITORY and os.environ["GITHUB_EVENT_NAME"] in {"workflow_run", "schedule"}, "unsupported trigger")
+    require(os.environ["GITHUB_REPOSITORY"] == REPOSITORY and os.environ["GITHUB_EVENT_NAME"] in {"workflow_run", "schedule", "workflow_dispatch"}, "unsupported trigger")
     require(os.environ["GITHUB_RUN_ATTEMPT"] == "1", "native dispatcher reruns are forbidden")
     event = decode(Path(os.environ["GITHUB_EVENT_PATH"]).read_bytes())
     github = GitHub()
-    if os.environ["GITHUB_EVENT_NAME"] == "workflow_run":
+    if os.environ["GITHUB_EVENT_NAME"] == "workflow_dispatch":
+        run = terminal_predecessor(github, event["inputs"]["predecessor_run_id"])
+        require(os.environ["GITHUB_SHA"] == run["head_sha"]
+                and os.environ["GITHUB_REF_NAME"] == AUTO_ANCHOR, "explicit dispatcher revision drift")
+    elif os.environ["GITHUB_EVENT_NAME"] == "workflow_run":
         require(event["action"] == "completed", "nonterminal event")
         run = github.read(f'actions/runs/{event["workflow_run"]["id"]}')
     else:
