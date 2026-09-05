@@ -2,7 +2,7 @@
   "schema_version": 2,
   "kind": "c6_causal_risk_closure_preregistration",
   "status": "frozen_before_implementation_or_economic_dispatch",
-  "experiment_id": "c6-causal-risk-closure-17x958-v16",
+  "experiment_id": "c6-causal-risk-closure-17x958-v18",
   "frozen_at": "2026-09-05T14:42:04Z",
   "authority": {
     "repository": "ychenracing/trade",
@@ -46,11 +46,12 @@
       61,
       62,
       65,
-      66
+      66,
+      67
     ],
-    "base_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
-    "base_tree": "7fbda57f4ff3512afa13fee8a7c2c8702285af7c",
-    "history_bridge_revision": "158e514a1054a999c44252f7b4c003cb1ee83b36",
+    "base_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
+    "base_tree": "f7ce66f6eae35f178259ebd83e2ef14e05359b9f",
+    "history_bridge_revision": "3475cf3ac625e5375715fe1c522657cd882fafb2",
     "restart_checkpoint_revision": "159c6c70c7b3114779c4102aec9aab4529eacbac",
     "preregistration_path": "artifacts/diagnostics/c6-preregistration.json",
     "preregistration_commit": null,
@@ -129,6 +130,35 @@
             "tests_passed": 725,
             "subtests_passed": 81
           }
+        }
+      },
+      "cross_version_dispatch_repair": {
+        "class": "A_dispatch_identity",
+        "superseded_P": "ed3ba866994db669cf8e2224b2d2f57ea12718db",
+        "superseded_I_B": "369187d368a2a7d594fb97736dd48f0a3ef10235",
+        "superseded_I_S": "718da10260d8cfab8f996cf17f0adeaac56b3104",
+        "superseded_R": "f3610ce90c342065494002b0f49c32500bb0eabb",
+        "failed_envelope_run": 33974811317,
+        "economic_evaluations_on_superseded_revision": 0,
+        "root_cause": "Envelope derived workflow version from logical execution version. Same-version synthetic preflight did not cover independent source/workflow revisions.",
+        "fix": "Exact fixed workflow v17 anchor remains bound to parent/revision/remote SHA independently of execution v18. Preserve original created-branch-only envelope, canonical input, source/evidence authentication and sole-successor checks.",
+        "production_economic_code_and_inputs_unchanged": true,
+        "main_instruction_sync": "PR64 changed AGENTS.md only; normal merge preserves it. No economic dependency changed.",
+        "cloud_preflight": {
+          "workflow_ref": "codex/c6-v17-workflow-anchor",
+          "logical_run_id": "c6-v18-resume-probe-cross-20260905",
+          "dispatch_run_id": 33975567461,
+          "initial_run_id": 33975572812,
+          "authentication_run_id": 33975586420,
+          "sole_successor_run_id": 33975594255,
+          "successor_attempt": "r1-2f2c92ef9d9d",
+          "terminal_authentication_run_id": 33975609082,
+          "artifact_id": 9972209195,
+          "archive_sha256": "6311cc47c5a37f0796091739839729370078a1d1c409a31ca4e164799262bf87",
+          "payload_sha256": "568d41e1b04c04331eba754d1d4045b484df5ba7e287a00fee1672d99c7b7d80",
+          "terminal_items": 2,
+          "economic_evaluations": 0,
+          "evidence": "Actual production envelope accepts different execution/workflow versions; sealed checkpoint authenticated; sole successor terminal; terminal authentication explicitly declines a third attempt; independent archive/source/file hash verification."
         }
       }
     }
@@ -2887,11 +2917,11 @@
     "execution_owner": "GitHub Actions C6 Bound Economic Run only",
     "workflow": {
       "path": ".github/workflows/c6-bound-economic.yml",
-      "dispatch_ref": "codex/c6-v13-workflow-anchor",
-      "revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+      "dispatch_ref": "codex/c6-v17-workflow-anchor",
+      "revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
       "file_mode": "100644",
-      "file_git_blob": "8995817891eac8a9fd3aab8fc436536ee81c823b",
-      "file_sha256": "c202653296fd917de115d06602706a8ae3971561e602bffa8be8990341d71b47",
+      "file_git_blob": "28b649fd23f40648bfd3333fb5fd2d60d883d38c",
+      "file_sha256": "801b2872983b7fbc03f4dbbcdb1a2aae4b21292c9755a6123a87779bc14a3a71",
       "permissions": {
         "actions": "read",
         "contents": "read"
@@ -2918,10 +2948,10 @@
       ],
       "fencing_token_generation": "The pinned workflow generates a fresh 64-lowercase-hex run-local nonce with Python secrets before input validation, masks it immediately, and passes it only through GITHUB_ENV and the wrapper/child process environments.",
       "trusted_source_refs": {
-        "I_B": "codex/c6-base-v16",
-        "I_S": "codex/c6-s-v16"
+        "I_B": "codex/c6-base-v18",
+        "I_S": "codex/c6-s-v18"
       },
-      "trusted_evidence_ref": "codex/c6-evidence-v16",
+      "trusted_evidence_ref": "codex/c6-evidence-v18",
       "pre_import_anchor": "Before checkout or import, git ls-remote --refs on the public repository must return exactly source_revision at the candidate's trusted source ref. With empty D, evidence-ref head must equal run_bindings_revision. With nonempty D, evidence-ref head must equal d_commit.",
       "post_D_anchor": "For L2/L4 the checked-out D commit has exactly one parent equal run_bindings_revision and its only diff is A artifacts/diagnostics/c6-selection.json; any other parent/path/status is invalid."
     },
@@ -2970,7 +3000,7 @@
         "record_id": "c6.base.l1",
         "workflow_binding_id": "c6.base.l1",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v16-base-l1",
+        "logical_run_id": "c6-v18-base-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_B",
@@ -3008,7 +3038,7 @@
         "record_id": "c6.s.qualification",
         "workflow_binding_id": "c6.s.qualification",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v16-s-qualification",
+        "logical_run_id": "c6-v18-s-qualification",
         "initial_attempt_id": "a0",
         "stage": "QUALIFICATION",
         "source_alias": "I_S",
@@ -3052,7 +3082,7 @@
         "record_id": "c6.base_plus_s.l1",
         "workflow_binding_id": "c6.base_plus_s.l1",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v16-base-plus-s-l1",
+        "logical_run_id": "c6-v18-base-plus-s-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_S",
@@ -3102,7 +3132,7 @@
         "record_id": "c6.base.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v16-base-l2",
+        "logical_run_id": "c6-v18-base-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_B",
@@ -3140,7 +3170,7 @@
         "record_id": "c6.base_plus_s.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v16-base-plus-s-l2",
+        "logical_run_id": "c6-v18-base-plus-s-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_S",
@@ -3178,7 +3208,7 @@
         "record_id": "c6.base.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v16-base-l4",
+        "logical_run_id": "c6-v18-base-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_B",
@@ -3224,7 +3254,7 @@
         "record_id": "c6.base_plus_s.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v16-base-plus-s-l4",
+        "logical_run_id": "c6-v18-base-plus-s-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_S",
@@ -3322,11 +3352,11 @@
         ],
         "field_types": {
           "path": "literal .github/workflows/c6-bound-economic.yml",
-          "dispatch_ref": "literal codex/c6-v13-workflow-anchor",
-          "revision": "literal e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+          "dispatch_ref": "literal codex/c6-v17-workflow-anchor",
+          "revision": "literal d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
           "mode": "literal 100644",
-          "git_blob": "literal 8995817891eac8a9fd3aab8fc436536ee81c823b",
-          "sha256": "literal c202653296fd917de115d06602706a8ae3971561e602bffa8be8990341d71b47"
+          "git_blob": "literal 28b649fd23f40648bfd3333fb5fd2d60d883d38c",
+          "sha256": "literal 801b2872983b7fbc03f4dbbcdb1a2aae4b21292c9755a6123a87779bc14a3a71"
         },
         "array_order": {}
       },
@@ -3494,8 +3524,8 @@
           "equal_across_all_records": "literal ordered array [P,workflow,resolved_inputs,runtime.runner_image_os,runtime.runner_image_version,runtime.python_version,runtime.dependency_lock,runtime.workers,runtime.process_map_order,runtime.checkpoint_every] whose named values must be deeply equal across all seven records",
           "equal_within_source_alias": "literal ordered array [source_revision,source_tree,source_blob_identities] whose named values must be deeply equal among every I_B record and separately among every I_S record",
           "permitted_record_differences": "literal ordered array [record_id,workflow_binding_id,candidate_id,logical_run_id,initial_attempt_id,stage,source_alias,source_revision,source_tree,source_blob_identities,entrypoint,argv,runtime_late_slots,scenario_manifest_identity,synthetic_control_manifest_identity,evaluation_manifest_identity,item_manifest_contract,producer_policy,decision_policy,attempt_policy,paths,canonical_payload_schema,exit_semantics,record_signature] and no others",
-          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v16,I_S:codex/c6-s-v16}",
-          "trusted_evidence_ref": "literal codex/c6-evidence-v16",
+          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v18,I_S:codex/c6-s-v18}",
+          "trusted_evidence_ref": "literal codex/c6-evidence-v18",
           "validation_policy": "literal deep_compare_before_any_dispatch; unknown path or unlisted difference invalid"
         },
         "array_order": {
@@ -3533,7 +3563,7 @@
           "dispatch_deadline_utc": "literal 2026-11-23T15:55:00Z; every initial or resume workflow created_at must be <= this instant"
         },
         "array_order": {},
-        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v13-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
+        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v17-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
       },
       "R_paths": {
         "type": "object",
@@ -3860,7 +3890,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-base-v16",
+      "ref": "codex/c6-base-v18",
       "stages": [
         "I_B_frozen"
       ],
@@ -3873,7 +3903,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-s-v16",
+      "ref": "codex/c6-s-v18",
       "stages": [
         "I_S"
       ],
@@ -3886,7 +3916,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-evidence-v16",
+      "ref": "codex/c6-evidence-v18",
       "stages": [
         "R",
         "D"
@@ -3917,8 +3947,8 @@
     {
       "event": "workflow_dispatch",
       "workflow": "C6 Bound Economic Run",
-      "workflow_ref": "codex/c6-v13-workflow-anchor",
-      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+      "workflow_ref": "codex/c6-v17-workflow-anchor",
+      "workflow_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
       "stages": [
         "L1_Base",
         "S_QUALIFICATION_if_residual",
@@ -4015,7 +4045,7 @@
     },
     {
       "event": "workflow_run",
-      "ref": "codex/c6-v13-workflow-anchor",
+      "ref": "codex/c6-v17-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
@@ -4027,13 +4057,13 @@
       "full958": false,
       "required": false,
       "permissions": "actions:write, contents:read",
-      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+      "workflow_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
       "precondition": "successful terminal predecessor with exact sealed incomplete checkpoint, unchanged workflow anchor, no later attempt",
       "output_boundary": "single successor workflow_dispatch; no candidate imports or economic computation"
     },
     {
       "event": "schedule",
-      "ref": "codex/c6-v13-workflow-anchor",
+      "ref": "codex/c6-v17-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
@@ -4045,13 +4075,13 @@
       "full958": false,
       "required": false,
       "permissions": "actions:write, contents:read",
-      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+      "workflow_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
       "precondition": "successful terminal predecessor with exact sealed incomplete checkpoint, unchanged workflow anchor, no later attempt",
       "output_boundary": "single successor workflow_dispatch; no candidate imports or economic computation"
     },
     {
       "event": "workflow_dispatch",
-      "ref": "codex/c6-v13-workflow-anchor",
+      "ref": "codex/c6-v17-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
@@ -4063,7 +4093,7 @@
       "full958": false,
       "required": false,
       "permissions": "actions:write, contents:read",
-      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+      "workflow_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
       "precondition": "trusted completion request names exact predecessor; wait for successful terminal state then authenticate all existing evidence and no later attempt",
       "output_boundary": "single successor workflow_dispatch; no candidate imports or economic computation"
     }
@@ -4315,25 +4345,25 @@
     },
     "manifest_algorithm": "Read the entire tracked tree using git-ls-tree -rz --full-tree semantics; remove only exact A_ALLOWLIST paths; construct each object with exactly manifest_record_exact_keys and no others; sort records by decoded raw path bytes; serialize the record array with json.dumps(records, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False) plus one LF encoded as UTF-8; SHA-256 the exact bytes.",
     "base_manifest_entry_count": 217,
-    "base_economic_tree_sha256": "fe87622af857a3670c34c016676ed8e12c0e9152daf840ff5a68f6418dad4469",
+    "base_economic_tree_sha256": "1811a4822ad621e5020531112fff397deaba26edd7ddde9e151ea448d8f63c29",
     "required_proof": "git diff --raw -z C A touches only allowed 100644 add/modify paths and economic_tree_hash(C) equals economic_tree_hash(A)",
     "source_revision_in_artifact": "C_even_if_A_exists",
     "fallback": "If source/head validation or required CI would rerun L4, keep A null and retain the sealed workflow artifact externally."
   },
   "frozen_file_identity_origin": {
-    "revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+    "revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
     "rule": "Every entry in frozen_file_identities is resolved and byte-verified at exactly authority.base_revision. The economic dispatch workflow independently binds run_templates.workflow.revision; at P both origins intentionally have identical workflow bytes."
   },
   "frozen_file_identities": {
     ".github/workflows/ci.yml": {
       "mode": "100644",
-      "git_blob": "a732aaf3f02daeb406a78c7df429342bced5724d",
-      "sha256": "dafc66b340b6de2d8a25e39acbf1a577e555735be87b908b0e129ca960645c71"
+      "git_blob": "a69b659c59f7ab2c0bb6fb238003548cbc36dc51",
+      "sha256": "ebadbe3bd14c93e533d0dce3fcfc9abcb929558e0505b8548e65410e0ddec849"
     },
     ".github/workflows/c6-bound-economic.yml": {
       "mode": "100644",
-      "git_blob": "8995817891eac8a9fd3aab8fc436536ee81c823b",
-      "sha256": "c202653296fd917de115d06602706a8ae3971561e602bffa8be8990341d71b47"
+      "git_blob": "28b649fd23f40648bfd3333fb5fd2d60d883d38c",
+      "sha256": "801b2872983b7fbc03f4dbbcdb1a2aae4b21292c9755a6123a87779bc14a3a71"
     },
     "quantfusion/application/stress.py": {
       "mode": "100644",
@@ -4417,33 +4447,33 @@
     },
     ".github/workflows/c6-dispatch.yml": {
       "mode": "100644",
-      "git_blob": "82cb5266a6607c6ddf9859cea9fae1a91059c3b9",
-      "sha256": "1946dbeaf3e812c5a9c3097b485eba1314977bd9bf89fdf3c95b133b98e216d1"
+      "git_blob": "7ed339648c9692dfd99100d9f134bf9914d9cd2e",
+      "sha256": "2e38cb40f9230a9338d4d8a322854825d026d79dafdf5e43724c93537f631396"
     },
     ".github/workflows/c6-auto-resume.yml": {
       "mode": "100644",
-      "git_blob": "f79e4ecf0b507b6bf4878b82a51ae6e8af3867bc",
-      "sha256": "536f1058b76f8a5c9eb4ee4dc0ec7e56d05451a7f035a0d8e92fe6681cbe9512"
+      "git_blob": "c8346bb15b15ba845dbad88216000a55f8d7192c",
+      "sha256": "06073195261eb08dfe38ea58631f50214a1ddcfda6c4cf5ca63a1eefdb6f57aa"
     },
     ".github/scripts/c6_auto_resume.py": {
       "mode": "100644",
-      "git_blob": "d688ca00894752d14e50c7423867fca7545dada9",
-      "sha256": "ffea994bcdd557d04e10ca553b32a74029120596f3e0b0bcc2aceff6d722f18d"
+      "git_blob": "004ab892168fde5ecd0305993846eff2e796bf9d",
+      "sha256": "4ae676b3fe01f507cf0ca3c2f2ab82a1e02f2fd8596e1b8a2a4a9ad42773547e"
     },
     ".github/scripts/test_c6_auto_resume.py": {
       "mode": "100644",
-      "git_blob": "a89c0d3de99c0ee3446f9a272be0d7db542446e4",
-      "sha256": "ef81685aceb923dd3fdb94b9250a8639b17343f8a8d7d514c02eac3e31569060"
+      "git_blob": "ed693a36e63b1393de93aa42eebf344aab036f47",
+      "sha256": "e68e8ab8eacb6210df2936823c3d1feafa95254227417fca44315b2b1b5cf8bb"
     },
     ".github/scripts/c6_resume_probe.py": {
       "mode": "100644",
-      "git_blob": "b2b9bdbc5a1d67bc6cd9c4e9d44a0f5c2406e755",
-      "sha256": "ef235af9dbf1235688de9010298cc8239448e48e733eb1bfe727692684bc5ea2"
+      "git_blob": "be7ae4381a9ca1ecd0a17abc22ecce95eca97c47",
+      "sha256": "4d00e9adabc6464c5cd30a16ab5b3e96c814d65b64f7bb0bfdac4013cfa6faf8"
     },
     ".github/scripts/test_c6_resume_probe.py": {
       "mode": "100644",
-      "git_blob": "8fc0329f2027a4878a8c53d035797e73c37812a6",
-      "sha256": "ac73ab273cbbaba41836c7d5841e001e9a14dbc6353b4946c4064e987d2584cb"
+      "git_blob": "e410523f440fcae265feb3bc16116b67aed5e84c",
+      "sha256": "35017684098f11bffc2b0efc3ac036c710c7144804f3f0c65332b981d430618b"
     },
     ".github/scripts/c6_request_resume.py": {
       "mode": "100644",
@@ -18002,7 +18032,7 @@
       "API": "GitHub Actions list workflow runs plus list artifacts, actions:read",
       "repository": "ychenracing/trade",
       "workflow_path": ".github/workflows/c6-bound-economic.yml",
-      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+      "workflow_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
       "event": "workflow_dispatch",
       "run_name_prefix": "c6-bound-{workflow_binding_id}-{logical_run_id}-",
       "pagination": "exhaust every page until no result; failure, truncation, rate-limit ambiguity or inaccessible history is STOP",
@@ -18028,15 +18058,15 @@
     "automatic_resume": {
       "workflow_path": ".github/workflows/c6-auto-resume.yml",
       "script_path": ".github/scripts/c6_auto_resume.py",
-      "trusted_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
-      "trigger": "explicit native workflow_dispatch completion validation, workflow_run completed success or serialized scheduled recovery; exact v13 workflow anchor, repository/workflow ID/path and immutable binding; never v11",
+      "trusted_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
+      "trigger": "explicit native workflow_dispatch completion validation, workflow_run completed success or serialized scheduled recovery; exact v17 workflow anchor, repository/workflow ID/path and immutable binding; never v11",
       "dispatch": "workflow_dispatch at the frozen workflow ref, exact 16 inputs reconstructed from the prior sealed manifest; next attempt r{sequence}-{first12(wrapper_sha256)}",
       "no_dispatch": "terminal result, already-visible later attempt, invalid identity/hash/progress/deadline, or native rerun; no native economic reruns",
       "validation_boundary": "Privileged trusted orchestration imports no candidate code. Full child schemas, exact manifest prefix, complete predecessor chain and fenced lease takeover are revalidated by the frozen bound runner before economic execution.",
       "completion_request": {
         "workflow_job": "handoff",
         "permissions": "actions:write, contents:read",
-        "checkout": "actual github.sha at exact v13 anchor; input workflow_revision must match",
+        "checkout": "actual github.sha at exact v17 anchor; input workflow_revision must match",
         "event": "native workflow_dispatch to c6-auto-resume.yml with only exact predecessor_run_id",
         "authentication": "wait at most30 seconds for terminal predecessor, then existing repository/workflow/binding/artifact/hash/history checks; terminal result produces no successor"
       }

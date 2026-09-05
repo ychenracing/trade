@@ -182,9 +182,10 @@ jobs:
           version = re.fullmatch(r"c6-(v[1-9][0-9]*)-.+", inputs["logical_run_id"])
           if version is None:
               raise SystemExit("logical run ID has no valid version")
-          expected_workflow_ref = f"codex/c6-{version.group(1)}-workflow-anchor"
+          # Workflow identity is independent of the source/execution revision.
+          expected_workflow_ref = "codex/c6-v17-workflow-anchor"
           if request["workflow_ref"] != expected_workflow_ref:
-              raise SystemExit("dispatch workflow ref does not match its version")
+              raise SystemExit("dispatch workflow ref is not the trusted anchor")
           expected_ref = (
               "refs/heads/codex/c6-dispatch/"
               f'{inputs["logical_run_id"]}/{inputs["binding_id"]}/'
