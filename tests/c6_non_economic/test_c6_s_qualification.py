@@ -76,11 +76,16 @@ def _base_payload() -> dict:
                     "open_available": True,
                     "not_suspended": True,
                     "not_limit_blocked": True,
-                    "adv_capacity_shares": 10_000,
+                    "adv_capacity_shares": 2_000,
                     "nonzero_executable_lot": True,
                 }
             )
             evidence["shortfall"] = {"shares": 0, "reason": "NONE"}
+            evidence["book_fillability"] = [{
+                "state_index": 0, "sleeve_name": "fast", "strategy_name": "trend", "symbol": "601869",
+                "current_shares": 9000, "planned_shares": 2000, "raw_adv_capacity_shares": 10000,
+                "capacity_shares": 2000, "executable_shares": 2000, "t_plus_one_passed": True,
+                "open_available": True, "not_suspended": True, "not_limit_blocked": True}]
         records.append(
             {
                 "variant_id": "C6-Base",

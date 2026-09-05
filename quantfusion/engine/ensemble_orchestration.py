@@ -250,12 +250,13 @@ class EnsembleOrchestrationMixin:
                 cm_overlay,
                 "_c6_s_enabled",
                 self._c6_feature_enabled("S")
-                or bool(getattr(cm_overlay, "C6_S_PRODUCTION", False)),
+                if diagnostic is not None
+                else bool(getattr(cm_overlay, "C6_S_PRODUCTION", False)),
             )
             setattr(
                 cm_overlay,
                 "_c6_diagnostic_evidence_enabled",
-                self._c6_intervention_id() in {"C6_BASE", "C6_BASE_PLUS_S"},
+                diagnostic is not None and diagnostic["recording_mode"] != "OFF",
             )
             cm_overlay.events.append(
                 {

@@ -362,11 +362,23 @@ class OverlayEvidenceMixin:
         open_available = not_suspended = not_limit_blocked = False
         t_plus_one = next_date is not None and next_date > date
         capacity = 0
+        executable = 0
+        book_receipts = []
+        shared_remaining = {}
         if planned > 0 and weak is not None and next_date is not None:
             remaining_plan = planned
             for state, strategy, position in books[weak]:
                 if remaining_plan <= 0:
                     break
+                take = min(int(position.shares), remaining_plan)
+                remaining_plan -= take  # The existing action never reallocates a blocked book's target.
+                receipt = {"state_index": next(i for i, item in enumerate(states) if item is state),
+                           "sleeve_name": state.sleeve.sleeve_name, "strategy_name": strategy, "symbol": weak,
+                           "current_shares": int(position.shares), "planned_shares": take,
+                           "raw_adv_capacity_shares": 0, "capacity_shares": 0, "executable_shares": 0,
+                           "t_plus_one_passed": t_plus_one, "open_available": False,
+                           "not_suspended": False, "not_limit_blocked": False}
+                book_receipts.append(receipt)
                 frame = state.data_map.get(weak)
                 if frame is None or next_date not in frame.index:
                     continue
@@ -375,30 +387,35 @@ class OverlayEvidenceMixin:
                     continue
                 open_available = True
                 volume = frame.loc[next_date, "volume"] if "volume" in frame else 1
-                not_suspended = not pd.isna(volume) and float(volume) > 0
+                book_not_suspended = not pd.isna(volume) and float(volume) > 0
                 signal = Signal(
                     symbol=weak, strategy_name=strategy, direction="sell",
-                    target_shares=min(position.shares, remaining_plan),
+                    target_shares=take,
                     price=float(open_price), reason="concentration_trim",
                     signal_date=str(date.date()),
                 )
-                not_limit_blocked = (
+                book_not_limit_blocked = (
                     state.sleeve._opening_limit_state(
                         signal, frame, next_date, float(open_price)
                     ) != "sell_blocked"
                 )
-                cap = state.sleeve._remaining_adv_capacity(
-                    weak, "sell", state.data_map, next_date
-                )
-                capacity += max(int(cap or 0), 0)
-                remaining_plan -= min(position.shares, remaining_plan)
-        executable = (
-            min(planned, capacity)
-            if t_plus_one and open_available and not_suspended and not_limit_blocked
-            else 0
-        )
-        executable = floor_to_lot(executable)
-        nonzero = executable >= 100 and executable <= planned
+                key = (receipt["state_index"], weak)
+                if key not in shared_remaining:
+                    cap = state.sleeve._remaining_adv_capacity(weak, "sell", state.data_map, next_date)
+                    shared_remaining[key] = max(int(cap or 0), 0)
+                raw_cap = shared_remaining[key]
+                available = min(take, raw_cap)
+                lot_shares = available if available >= position.shares else floor_to_lot(available)
+                filled = lot_shares if t_plus_one and book_not_suspended and book_not_limit_blocked else 0
+                shared_remaining[key] -= lot_shares
+                capacity += lot_shares
+                executable += filled
+                not_suspended = not_suspended or book_not_suspended
+                not_limit_blocked = not_limit_blocked or book_not_limit_blocked
+                receipt.update(raw_adv_capacity_shares=raw_cap, capacity_shares=lot_shares,
+                               executable_shares=filled, open_available=True,
+                               not_suspended=book_not_suspended, not_limit_blocked=book_not_limit_blocked)
+        nonzero = executable > 0 and executable <= planned
         fillability = {
             "t_plus_one_passed": t_plus_one,
             "open_available": open_available,
@@ -417,7 +434,7 @@ class OverlayEvidenceMixin:
             (not_limit_blocked, "LIMIT_BLOCKED"),
             (capacity > 0, "ADV_ZERO"),
             (capacity >= planned, "CAPACITY"),
-            (executable >= 100, "SUB_LOT"),
+            (executable > 0, "SUB_LOT"),
         ):
             if not passed:
                 reason = failure
@@ -470,6 +487,7 @@ class OverlayEvidenceMixin:
             "planned_shares": planned,
             "executable_lot_shares": executable,
             "fillability": fillability,
+            "book_fillability": book_receipts,
             "shortfall": {"shares": shortfall, "reason": reason},
             "pre_sell_crossing_buy_witness": False,
         }

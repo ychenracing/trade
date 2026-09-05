@@ -310,7 +310,8 @@ def test_base_observes_complete_s_evidence_without_s_action() -> None:
     definitions = json.loads(
         Path("artifacts/diagnostics/c6-preregistration.json").read_text()
     )["schema_catalog"]["definitions"]
-    assert set(evidence) == set(definitions["s_evidence"]["exact_keys"])
+    # The historical P stays immutable; the fresh schema must add book witnesses.
+    assert set(evidence) == set(definitions["s_evidence"]["exact_keys"]) | {"book_fillability"}
     assert set(evidence["coverage"]) == set(
         definitions["qualification_coverage"]["exact_keys"]
     )
@@ -506,8 +507,14 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
     opening_states = []
     replay_states = []
     tail_peaks = []
+    s_flags = []
     original_open = BacktestEngine._execute_ensemble_open
     original_tail = BacktestEngine._update_tail_sleeve_guard
+    original_overlay = CrossMarketOverlay.evaluate
+    def capture_overlay(overlay, *args, **kwargs):
+        s_flags.append(overlay._c6_s_enabled)
+        return original_overlay(overlay, *args, **kwargs)
+    monkeypatch.setattr(CrossMarketOverlay, 'evaluate', capture_overlay)
     def capture_tail(engine, states, date, assets, peak, events):
         tail_peaks.append((assets, peak))
         return original_tail(engine, states, date, assets, peak, events)
@@ -525,6 +532,7 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
     for intervention in ('BASELINE', 'C6_BASE', 'C6_BASE_PLUS_S', 'PRODUCTION', 'W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK'):
         opening_states = []
         tail_peaks = []
+        s_flags = []
         engine = ProductionReplayEngine(2000000.)
         kwargs = {'data_dir': str(tmp_path), 'regime_data_dir': str(tmp_path)}
         runner = engine.run
@@ -535,6 +543,7 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
                                            'diagnostic_noncanonical': True, 'allow_publication': False}
         result = runner({symbol: symbol for symbol in symbols}, '2026-01-05', '2026-01-09', **kwargs)
         states = replay_states
+        assert s_flags and all(flag == (intervention in {'C6_BASE_PLUS_S', 'PRODUCTION'}) for flag in s_flags)
 
         # Direct engine ledgers, without the diagnostic serializer's reconstructions.
         path = {

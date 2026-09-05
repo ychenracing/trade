@@ -67,6 +67,7 @@ _CRITERIA = (
             "base.evaluation.causal_matrix.s_evidence.scheduled_execution_batch",
             "base.evaluation.causal_matrix.s_evidence.planned_shares",
             "base.evaluation.causal_matrix.s_evidence.executable_lot_shares",
+            "base.evaluation.causal_matrix.s_evidence.book_fillability",
         ),
         "Q5_NO_PREBREACH_EXECUTABLE_ACTION",
     ),
@@ -189,13 +190,38 @@ def _fill_valid(evidence: Mapping[str, Any]) -> bool:
     try:
         planned = evidence["planned_shares"]
         executable = evidence["executable_lot_shares"]
+        books = evidence.get("book_fillability")
+        if books is not None:
+            if not isinstance(books, list) or not books:
+                return False
+            shared = {}
+            for row in books:
+                integers = ("state_index", "current_shares", "planned_shares", "raw_adv_capacity_shares", "capacity_shares", "executable_shares")
+                if any(type(row[key]) is not int or row[key] < 0 for key in integers):
+                    return False
+                key = (row["state_index"], row["symbol"])
+                if key in shared and row["raw_adv_capacity_shares"] > shared[key]:
+                    return False
+                shared[key] = row["raw_adv_capacity_shares"] - row["capacity_shares"]
+                if not 0 <= row["executable_shares"] <= row["capacity_shares"] <= min(row["planned_shares"], row["current_shares"], row["raw_adv_capacity_shares"]):
+                    return False
+                if row["executable_shares"] % 100 and row["executable_shares"] != row["current_shares"]:
+                    return False
+                permitted = all(row[key] is True for key in ("t_plus_one_passed", "open_available", "not_suspended", "not_limit_blocked"))
+                if row["executable_shares"] != (row["capacity_shares"] if permitted else 0):
+                    return False
+            if (sum(row["planned_shares"] for row in books) != planned
+                    or sum(row["executable_shares"] for row in books) != executable
+                    or sum(row["capacity_shares"] for row in books) != fill["adv_capacity_shares"]):
+                return False
+        minimum = 1 if books is not None else fill["lot_size"]
         nonzero = (
             fill["t_plus_one_passed"] is True
             and fill["open_available"] is True
             and fill["not_suspended"] is True
             and fill["not_limit_blocked"] is True
-            and fill["adv_capacity_shares"] >= fill["lot_size"]
-            and executable >= fill["lot_size"]
+            and fill["adv_capacity_shares"] >= minimum
+            and executable >= minimum
             and executable <= planned
         )
         shares = max(planned - executable, 0)
@@ -206,7 +232,7 @@ def _fill_valid(evidence: Mapping[str, Any]) -> bool:
             (fill["not_limit_blocked"], "LIMIT_BLOCKED"),
             (fill["adv_capacity_shares"] > 0, "ADV_ZERO"),
             (fill["adv_capacity_shares"] >= planned, "CAPACITY"),
-            (executable >= fill["lot_size"], "SUB_LOT"),
+            (executable >= minimum, "SUB_LOT"),
         )
         reason = next((name for passed, name in checks if not passed), "NONE")
         return (
