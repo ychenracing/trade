@@ -58,5 +58,20 @@
     ],
     "additional_proof": "Bind each synthetic control to actually executed assertions; missing, skipped or unobserved assertions must fail closed.",
     "until_approved": "No fresh P freeze, economic dispatch, candidate merge or modification of protected warm-state/account-lock contract."
+  },
+  "control_evidence_fix": {
+    "status": "fail_closed_with_explicit_remaining_gaps",
+    "method": "Each supported Base control is bound to exact executed pytest node IDs and JUnit assertion outcomes; missing or skipped receipts cannot pass. L1 checks coverage before any economic evaluation. Unsupported assertion types raise instead of copying expected values.",
+    "base_verified": 25,
+    "base_total": 29,
+    "base_unverified": [
+      "governance/opinion-no-order-effect",
+      "no-drift/healthy-bull",
+      "readiness/not-ready-fail-closed",
+      "warm-boundary/causal-state-only"
+    ],
+    "S_status": "Not claimed verified: per-assertion receipts still required for all four S controls, including the non-boolean no-op assertions.",
+    "verification": "22 targeted contract/diagnostic tests pass. An actual isolated subprocess executed all 25 mapped Base controls successfully; the four unmapped controls remained false.",
+    "no_acceptance_claim": "Incomplete control coverage blocks fresh economics; expected constants are no longer copied into observed results."
   }
 }

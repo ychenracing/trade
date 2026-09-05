@@ -12,6 +12,16 @@ from quantfusion.application import c6_diagnostics
 from quantfusion.engine.replay import ProductionReplayEngine
 from quantfusion.engine.universe import BacktestEngine
 from quantfusion.risk.overlay.policy import CrossMarketOverlay
+
+
+def test_control_without_executed_assertion_cannot_inherit_suite_success(monkeypatch):
+    monkeypatch.setattr(c6_diagnostics.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0))
+    control = "warm-boundary/causal-state-only"
+    p = {"scenario_manifests": {"L1_BASE_SYNTHETIC_CONTROL_IDS": {"ids": [control], "assertions_by_control": {control: [{"id": control + "/contract", "expected": True, "comparator": "equal"}]}}}}
+    rows = c6_diagnostics._controls(p, "L1_BASE_SYNTHETIC_CONTROL_IDS")
+    assert rows[0]["passed"] is False
+    assert rows[0]["assertions"][0]["actual"] is False
+
 def _manifest(ids: list[str]) -> dict[str, object]:
     encoded = "".join(f"{item}\n" for item in ids).encode()
     return {

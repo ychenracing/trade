@@ -634,16 +634,68 @@ def _prefix_hash(record: Mapping[str, Any], boundary: str | None) -> str:
     return hashlib.sha256(_canonical_bytes(paths)).hexdigest()
 
 
+def _control_nodes() -> dict[str, list[str]]:
+    """Only explicitly covered contracts may inherit an executed test result."""
+    groups = {
+        ("book-identity", "book_identity"): {
+            "carried-winner": "carried_higher_priority_sell_remains_the_winner",
+            "same-book-priority": "same_book_preserves_priority_target_and_reason_winner_order",
+            "sibling-three-state": "same_real_book_in_three_states_keeps_one_sell_per_state",
+            "stable-order": "suppression_audit_has_complete_book_identity_and_stable_order",
+            "suppression-audit": "suppression_audit_has_complete_book_identity_and_stable_order"},
+        ("fixed-reference", "fixed_reference_admission"): {
+            "carried-new": "noncore_candidate_keeps_two_day_confirmation_at_size_six",
+            "denominator-isolation": "fixed_reference_denominator_ignores_unrelated_tradable_symbols",
+            "differing-signal-date": "emitting_sleeve_contributes_one_vote_per_symbol_and_batch",
+            "duplicate-strategy": "emitting_sleeve_contributes_one_vote_per_symbol_and_batch",
+            "eligible-newcomer": "fully_sold_symbol_without_buy_does_not_reserve_candidate_capacity",
+            "emitting-sleeves": "emitting_sleeve_contributes_one_vote_per_symbol_and_batch",
+            "exact-14": "exact_fourteen_keeps_expansion_score_and_confirmation_rules",
+            "input-permutation": "equal_score_capacity_tie_break_is_input_permutation_invariant",
+            "missing-score": "missing_emitting_sample_rejects_new_symbol_with_audit",
+            "route-migration": "route_migration_bypasses_missing_fixed_reference_score"},
+        ("retained-winner", "retained_winner"): {
+            "call-order": "veto_is_exact_book_identity_and_sell_precedes_authorization",
+            "next-batch-release": "veto_is_released_for_the_next_execution_batch",
+            "ordinary-full-overlay-zero": "ordinary_full_sell_cannot_revive_buy_after_overlay_zero_fill",
+            **{case: f"retained_winner_vetoes_same_batch_buy[{case}-{carry}]" for case, carry in (
+                ("adv-zero", True), ("limit-blocked", True), ("missing-open", True), ("partial-fill", True),
+                ("suspended", True), ("partial-sublot", False), ("odd-lot-full-liquidation", False))}},
+    }
+    return {f"{prefix}/{control}": [f"tests/c6_non_economic/test_c6_{module}.py::test_{test}"]
+            for (prefix, module), controls in groups.items() for control, test in controls.items()}
+
+
 def _controls(prereg: Mapping[str, Any], name: str) -> list[dict[str, Any]]:
-    files = ["tests/c6_non_economic/test_c6_book_identity.py", "tests/c6_non_economic/test_c6_fixed_reference_admission.py", "tests/c6_non_economic/test_c6_retained_winner.py"]
-    if name == "L1_S_SYNTHETIC_CONTROL_IDS":
-        files += ["tests/c6_non_economic/test_c6_early_concentration.py", "tests/c6_non_economic/test_c6_s_qualification.py"]
-    suite = subprocess.run(["python", "-m", "pytest", "-q", *files], check=False, capture_output=True)
-    if suite.returncode:
-        raise RuntimeError("frozen synthetic control suite failed")
+    import tempfile
+    import xml.etree.ElementTree as ET
     spec = prereg["scenario_manifests"][name]
-    empty = hashlib.sha256(_canonical_bytes({})).hexdigest()
-    return [{"control_id": control, "passed": True, "assertions": [{"id": item["id"], "expected": item["expected"], "comparator": item["comparator"], "actual": item["expected"], "passed": True, "detail_sha256": empty} for item in spec["assertions_by_control"][control]], "economic_fields": None} for control in spec["ids"]]
+    mapping = _control_nodes()
+    nodes = sorted({node for control in spec["ids"] for node in mapping.get(control, [])})
+    observed: dict[str, bool] = {}
+    with tempfile.TemporaryDirectory(prefix="c6-control-receipts-") as directory:
+        report = Path(directory) / "tests.xml"
+        if nodes:
+            suite = subprocess.run(["python", "-m", "pytest", "-q", f"--junitxml={report}", *nodes], check=False, capture_output=True)
+            if suite.returncode not in {0, 1} or not report.is_file():
+                raise RuntimeError("synthetic control execution produced no valid receipt")
+            for case in ET.parse(report).iter("testcase"):
+                node = case.attrib["classname"].replace(".", "/") + ".py::" + case.attrib["name"]
+                if node in observed:
+                    raise RuntimeError("duplicate synthetic control test receipt")
+                observed[node] = not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))
+    rows = []
+    for control in spec["ids"]:
+        required = mapping.get(control, [])
+        receipt = {"control_id": control, "tests": [{"nodeid": node, "passed": observed.get(node)} for node in required], "coverage_complete": bool(required) and all(node in observed for node in required)}
+        passed = receipt["coverage_complete"] and all(observed[node] for node in required)
+        assertions = []
+        for item in spec["assertions_by_control"][control]:
+            if item["comparator"] != "equal" or item["expected"] is not True:
+                raise ValueError("unsupported synthetic assertion contract")
+            assertions.append({**item, "actual": passed, "passed": passed, "detail_sha256": hashlib.sha256(_canonical_bytes(receipt)).hexdigest()})
+        rows.append({"control_id": control, "passed": passed, "assertions": assertions, "economic_fields": None})
+    return rows
 
 
 def _attribution(evaluations: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -719,6 +771,11 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
     plan = stress_scenarios._multi_seed_scenarios(random_samples=50, permutation_samples=50, seeds=(20260807, 20260817, 20260827))
     by_id = {item["scenario_id"]: item for item in plan}
     base = binding["candidate_id"] == "C6-Base"
+    control_name = "L1_BASE_SYNTHETIC_CONTROL_IDS" if base else "L1_S_SYNTHETIC_CONTROL_IDS"
+    control_rows = _controls(prereg, control_name)
+    unverified = [row["control_id"] for row in control_rows if not row["passed"]]
+    if unverified:
+        raise ValueError(f"synthetic controls lack passing execution evidence: {unverified}")
     variants = manifests["L1_BASE_EVALUATION_MANIFEST"]["core_variant_order"] if base else ["C6-Base+S"]
     tasks = [(variant, by_id[scenario], "DEFAULT") for variant in variants for scenario in scenario_ids]
     checkpoint = DiagnosticCheckpoint.from_environment(execution_item_ids(binding, prereg), chunk_size=binding["runtime"]["checkpoint_every"])
@@ -730,8 +787,7 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError("checkpoint chunk must hold all causal interventions")
         evaluations += checkpoint.map(_l1_evaluate, interventions, [f"evaluation/{variant}::{scenario['scenario_id']}" for variant, scenario, _ in interventions], finalize=_attach_interventions)
     chosen = "C6-Base" if base else "C6-Base+S"
-    control_name = "L1_BASE_SYNTHETIC_CONTROL_IDS" if base else "L1_S_SYNTHETIC_CONTROL_IDS"
-    controls = checkpoint.map(_identity, _controls(prereg, control_name), [f"control/{item}" for item in manifests[control_name]["ids"]], workers=1)
+    controls = checkpoint.map(_identity, control_rows, [f"control/{item}" for item in manifests[control_name]["ids"]], workers=1)
     drift_tasks = [(chosen, by_id[item]) for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]]
     pairs = checkpoint.map(_no_drift_pair, drift_tasks, [f"no-drift/{item}" for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]])
     specs = prereg["diagnostic_predicate_manifests"]["L1_APPLICABLE_DIAGNOSTIC_PREDICATES"]
