@@ -658,7 +658,7 @@ class GitHubActionsLeaseStore:
             target.parent.mkdir(parents=True, exist_ok=True)
             _atomic_bytes(target, data, replace=False)
             target.chmod(0o400)
-        materialized = {name: destination / name for name in export.files}
+        materialized: dict[str, bytes | Path] = {name: destination / name for name in export.files}
         export.close()
         return RemoteExport(export.run_id, export.manifest, export.manifest_bytes, materialized)
 

@@ -5,7 +5,11 @@ import importlib.util
 import json
 import pathlib
 import tempfile
+import os
+import tracemalloc
+import zipfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("resume", pathlib.Path(__file__).with_name("c6_auto_resume.py"))
 resume = importlib.util.module_from_spec(spec)
@@ -69,6 +73,56 @@ class ResumeTest(unittest.TestCase):
             files["child-checkpoint.bin"].write_bytes(b"[]")
             with self.assertRaisesRegex(ValueError, "hash mismatch"):
                 resume.build_request(self.manifest, files, self.run, {"binding_records": [self.record]}, [], now="2026-09-05T00:00:00Z")
+
+    def test_strict_metadata_file_decoding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "metadata.json"
+            for bad in (b'{"x":1,"x":2}', b'{"x":[1,]}', b'{"x":1} trailing'):
+                path.write_bytes(bad)
+                with self.assertRaises(ValueError):
+                    resume.decode(path)
+            path.write_bytes(b"x" * (1024 * 1024 + 1))
+            with self.assertRaisesRegex(ValueError, "size limit"):
+                resume.decode(path)
+
+    @unittest.skipUnless(os.environ.get("C6_STREAM_LARGE_PROBE") == "1", "explicit non-economic capacity probe")
+    def test_archive_larger_than_one_gib_remains_bounded(self):
+        # Fixed synthetic bytes only: no data/scenario/candidate imports or replay.
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            archive_path = root / "synthetic.zip"
+            record = b'{"text":"' + b'x' * (1024 * 1024) + b'"}'
+            expected = hashlib.sha256()
+            with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
+                with archive.open("payload.json", "w", force_zip64=True) as stream:
+                    for chunk in (b'{"evaluations":[',):
+                        stream.write(chunk)
+                        expected.update(chunk)
+                    for index in range(1025):
+                        chunk = (b',' if index else b'') + record
+                        stream.write(chunk)
+                        expected.update(chunk)
+                    stream.write(b']}\n')
+                    expected.update(b']}\n')
+                archive.writestr("manifest.json", json.dumps({"files": {"payload.json": expected.hexdigest()}}))
+            tracemalloc.start()
+            try:
+                with patch.dict(os.environ, {"GITHUB_TOKEN": "synthetic"}):
+                    github = resume.GitHub()
+                with patch.object(resume.urllib.request, "build_opener") as factory:
+                    factory.return_value.open.side_effect = lambda *args, **kwargs: archive_path.open("rb")
+                    manifest, files = github.artifact(1)
+                actual = resume.digest(files["payload.json"])
+                self.assertEqual(manifest["files"]["payload.json"], actual)
+                _, peak = tracemalloc.get_traced_memory()
+            finally:
+                tracemalloc.stop()
+            size = files["payload.json"].stat().st_size
+            self.assertGreater(size, 1024 ** 3)
+            self.assertLess(peak, 32 * 1024 * 1024)
+            self.assertEqual(actual, expected.hexdigest())
+            print(json.dumps({"synthetic_only": True, "expanded_bytes": size, "peak_python_allocations_bytes": peak, "download_extract_sha256_match": True}))
+            github._workspace.cleanup()
 
 
 if __name__ == "__main__":

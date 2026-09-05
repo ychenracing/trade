@@ -1,7 +1,7 @@
 """Resume a sealed C6 attempt without importing or executing candidate code."""
 import base64
 import datetime
-import importlib.util
+import hashlib
 import json
 import os
 import re
@@ -9,15 +9,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import tempfile
+import zipfile
 from pathlib import Path
 
 REPOSITORY = "ychenracing/trade"
 WORKFLOW = "c6-bound-economic.yml"
-# Load only the reviewed IO leaf from this trusted checkout. Never add the
-# candidate checkout or artifact paths to sys.path, and never import the engine.
-_io_spec = importlib.util.spec_from_file_location("c6_trusted_io", Path(__file__).resolve().parents[2] / "quantfusion/io/c6_stream.py")
-_io = importlib.util.module_from_spec(_io_spec)
-_io_spec.loader.exec_module(_io)
+ARCHIVE_LIMIT = 4 * 1024 ** 3
 
 INPUT_NAMES = {
     "source_revision", "run_bindings_revision", "workflow_revision", "binding_id",
@@ -35,7 +32,8 @@ def require(condition, message):
 
 def decode(raw):
     if isinstance(raw, Path):
-        return _io.load_object(raw)
+        require(raw.stat().st_size <= 1024 * 1024, "metadata exceeds size limit")
+        raw = raw.read_bytes()
     def unique(pairs):
         result = {}
         for key, value in pairs:
@@ -50,7 +48,10 @@ def decode(raw):
 
 
 def digest(raw):
-    return _io.content_hash(raw)
+    if isinstance(raw, Path):
+        with raw.open("rb") as stream:
+            return hashlib.file_digest(stream, "sha256").hexdigest()
+    return hashlib.sha256(raw).hexdigest()
 
 
 def build_request(manifest, files, run, bindings, history, *, now):
@@ -84,7 +85,7 @@ def build_request(manifest, files, run, bindings, history, *, now):
         require(wrapper[key] == manifest[key], "checkpoint attempt mismatch")
     require(wrapper["fencing_sequence"] == run["id"], "checkpoint fence mismatch")
     child = files["child-checkpoint.bin"]
-    require(wrapper["child_checkpoint_path"] == "child-checkpoint.bin" and wrapper["child_checkpoint_byte_size"] == _io.content_size(child) and wrapper["child_checkpoint_full_byte_sha256"] == digest(child), "child checkpoint mismatch")
+    require(wrapper["child_checkpoint_path"] == "child-checkpoint.bin" and wrapper["child_checkpoint_byte_size"] == (child.stat().st_size if isinstance(child, Path) else len(child)) and wrapper["child_checkpoint_full_byte_sha256"] == digest(child), "child checkpoint mismatch")
     completed = wrapper["completed_item_ids"]
     require(isinstance(completed, list) and all(isinstance(x, str) for x in completed) and len(set(completed)) == len(completed), "invalid completed IDs")
     require(type(wrapper["next_item_ordinal"]) is int and wrapper["next_item_ordinal"] == len(completed) and 0 < len(completed) < wrapper["item_manifest_count"], "invalid incomplete progress")
@@ -106,6 +107,32 @@ def build_request(manifest, files, run, bindings, history, *, now):
     inputs.update(attempt_id=f'r{sequence}-{digest(files["checkpoint.json"])[:12]}', resume_from=digest(files["checkpoint.json"]), resume_workflow_run_id=str(run["id"]))
     require(all(type(x) is str and "\n" not in x and "\r" not in x for x in inputs.values()), "invalid dispatch input")
     return {"ref": record["workflow"]["dispatch_ref"], "inputs": inputs}
+
+
+def copy_stream(source, target, *, limit=ARCHIVE_LIMIT):
+    count = 0
+    while chunk := source.read(min(1024 * 1024, limit - count + 1)):
+        count += len(chunk)
+        require(count <= limit, "artifact exceeds byte limit")
+        target.write(chunk)
+
+
+def extract_archive(path, destination):
+    require(path.stat().st_size <= ARCHIVE_LIMIT, "compressed artifact exceeds byte limit")
+    with zipfile.ZipFile(path) as archive:
+        infos = archive.infolist()
+        require(1 <= len(infos) <= 8 and sum(item.file_size for item in infos) <= ARCHIVE_LIMIT, "expanded artifact exceeds byte/member limit")
+        files = {}
+        for item in infos:
+            name, mode = item.filename, item.external_attr >> 16
+            require(name and name not in files and not name.startswith(".") and "/" not in name and "\\" not in name and item.orig_filename == name and not item.is_dir() and not item.flag_bits & 1 and (mode & 0o170000) in {0, 0o100000} and not mode & 0o111, "unsafe artifact ZIP member")
+            files[name] = destination / name
+        destination.mkdir(mode=0o700)
+        for item in infos:
+            with archive.open(item) as source, files[item.filename].open("xb") as target:
+                copy_stream(source, target, limit=item.file_size)
+            require(files[item.filename].stat().st_size == item.file_size, "truncated artifact member")
+        return files
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -152,8 +179,8 @@ class GitHub:
             require(parsed.scheme == "https" and not parsed.username and not parsed.password and parsed.port in {None, 443} and parsed.hostname and (parsed.hostname.endswith(".blob.core.windows.net") or parsed.hostname.endswith(".actions.githubusercontent.com") or parsed.hostname == "objects.githubusercontent.com"), "untrusted artifact redirect")
             response = opener.open(location, timeout=60)
         with response, archive_path.open("xb") as target:
-            _io.copy_stream(response, target)
-        files = _io.extract_archive(archive_path, root / "files")
+            copy_stream(response, target)
+        files = extract_archive(archive_path, root / "files")
         archive_path.unlink()
         manifest = files.pop("manifest.json", None)
         require(manifest is not None and manifest.stat().st_size <= 1024 * 1024, "missing or oversized manifest")
