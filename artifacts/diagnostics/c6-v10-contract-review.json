@@ -79,7 +79,8 @@
     "capture": "Immediately before first ensemble execution/decision iteration; deep copies causal input prefixes and actual ledgers. Contaminated ledgers, risk/lock, sticky/regime or overlay state fail before replay.",
     "raw_peak_semantics": "Account peak/daily/lifetime are uninitialized zero; ConfirmedDrawdown sleeve manager has no independent lifetime_peak_assets, serialized null rather than invented value.",
     "verification": "32 targeted contract/diagnostics tests passed, including nine warm capture/contamination regressions; repository CI Ruff selection passed.",
-    "remaining": "Fresh P schema amendment is not frozen; other control and full trace evidence remain incomplete. No economic dispatch authorized by this repair alone."
+    "remaining": "Fresh P schema amendment is not frozen; other control and full trace evidence remain incomplete. No economic dispatch authorized by this repair alone.",
+    "followup": "Constructor regime has no causal observation timestamp; serialize asof_timestamp=null rather than inventing first_date-minus-one. Reject pre-window safe mode and external risk level. Eleven warm-boundary cases passed. Healthy fixture now uses a synthetic diagnostic ID and a literal symbol fixture, with no import of the formal scenario manifest."
   },
   "S_comparison_repair": {
     "coverage": "Require exact ordered Base and S IDs against P scenario list before comparison; missing, duplicate, extra members fail closed.",
@@ -106,6 +107,20 @@
     "proof": "Fetch exact Base/qualification/S exports using trusted frozen workflow identity. Check actual raw bytes, canonical payload hash, byte size, manifest hash, R/P/source revision/tree, candidate and record against D and R. Compare Base predicates and recomputed residual IDs, qualification completeness/booleans, S predicates, and transitive producer identities.",
     "L4_gate": "Require complete ordered L2 predicate set, literal passing booleans, and identical D/C in the sealed L2 digest.",
     "R_identity": "Compare D R commit/tree/blob/SHA-256 with actual frozen binding checkout and file. The pinned workflow already verifies D single parent R, sole added selection path, mode and bytes.",
-    "verification": "34 targeted bound-run/contract tests passed; Ruff and Bandit medium/high passed. New tests reject forged D predicates/residuals, failed nested qualification, wrong transitive producer links, wrong artifact size/path/manifest/source, wrong logical identity before network, and missing/failed/truthy L2 predicates or different D/C."
+    "verification": "34 targeted bound-run/contract tests passed; Ruff and Bandit medium/high passed. New tests reject forged D predicates/residuals, failed nested qualification, wrong transitive producer links, wrong artifact size/path/manifest/source, wrong logical identity before network, and missing/failed/truthy L2 predicates or different D/C.",
+    "architecture_fix": "CI found bound_run -> diagnostics -> bound_run import cycle. Removed upward dependency; reused bottom-layer contract.manifest_identity with explicit order and frozen hash checks."
+  },
+  "streaming_capacity_review": {
+    "kind": "synthetic_schema_size_estimate_not_economic_result",
+    "sample_count": 316,
+    "evaluation_count": 3831,
+    "mandatory_four_series_per_evaluation_bytes": 239824,
+    "one_book_per_sleeve_position_series_bytes": 174104,
+    "four_series_all_evaluations_bytes": 918765744,
+    "with_one_book_per_sleeve_all_evaluations_bytes": 1585758168,
+    "auto_resume_uncompressed_limit_bytes": 1073741824,
+    "limits": "Estimate excludes orders, fills, risk events, warm/data state and any additional required intra-batch exposure samples. It is not a real scenario result or lower-bound claim about actual holdings.",
+    "repair_required": "Stream canonical checkpoint/result reading, hashing and writing with bounded memory; preserve scientific JSON payload and complete authenticated prefix. Freeze resource caps and graceful-yield budget in fresh P/R before economics. Raising the byte cap alone is insufficient.",
+    "budget_authority": "Original user contract requires preregistered I_B/I_S budgets but does not impose numeric 6000/2000 caps; those are historical P choices. A fresh cycle can preregister a justified engineering budget after full static review. Do not modify old frozen P or any scientific gate."
   }
 }

@@ -43,7 +43,7 @@ def capture_c6_warm_state(states: list, account_risk: Any, overlay: Any) -> dict
         sleeve = state.sleeve
         if (sleeve.cash != sleeve.initial_capital or sleeve.positions or state.pending
                 or sleeve.pending_signals or sleeve.trades or sleeve.equity_curve
-                or sleeve.sector_guard_active):
+                or sleeve.sector_guard_active or sleeve._safe_mode_active or sleeve._external_risk_level):
             raise ValueError("warm boundary contains pre-window economic state")
         sleeves.append({
             "name": sleeve.sleeve_name, "cash": sleeve.cash,

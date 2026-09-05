@@ -35,6 +35,7 @@ from quantfusion.application.c6_contract import (
     file_sha256,
     load_preregistration,
     load_run_bindings,
+    manifest_identity,
     require_exact_keys,
     render_bound_argv,
     select_binding,
@@ -1368,9 +1369,10 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
         if selection["R"] != expected_r:
             _raise("D R identity differs from the actual frozen bindings commit and file")
         scenario_manifest = prereg["scenario_manifests"]["L1_ECONOMIC_SCENARIO_IDS"]
-        from quantfusion.application.c6_diagnostics import validate_manifest_identity
         scenario_ids = Path(scenario_manifest["path"]).read_text().splitlines()
-        validate_manifest_identity(scenario_ids, scenario_manifest)
+        actual_manifest = manifest_identity(scenario_ids)
+        if scenario_ids != sorted(scenario_ids) or any(scenario_manifest[key] != value for key, value in actual_manifest.items()):
+            _raise("D Base scenario manifest differs from frozen P")
         authenticate_selection_producers(selection, store, run_bindings, args.run_bindings_revision,
                                          binding["workflow"], prereg, scenario_ids,
                                          Path(os.environ["RUNNER_TEMP"]) / "c6-selection-producers")

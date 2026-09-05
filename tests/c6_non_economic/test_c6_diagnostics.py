@@ -273,6 +273,7 @@ def test_warm_boundary_captures_raw_state_before_replay_without_aliases():
     risk.peak_assets = 5000000
     warm = c6_diagnostics._warm_snapshot({'_c6_warm_state': captured}, 2000000)
     assert warm['phase'] == 'before_first_valuation'
+    assert warm['regime_and_transitions']['asof_timestamp'] is None
     assert warm['account_peaks']['cycle_peak_assets'] == 0
     assert warm['sleeve_peaks'][0]['lifetime_peak_assets'] is None
     assert warm['sleeve_cash'][0]['cash'] == 2000000 / 3
@@ -281,7 +282,7 @@ def test_warm_boundary_captures_raw_state_before_replay_without_aliases():
     assert warm['unauthorized_economic_state_empty'] is True
 
 
-@pytest.mark.parametrize('contamination', ['cash', 'positions', 'pending', 'trades', 'lock', 'peak', 'sticky'])
+@pytest.mark.parametrize('contamination', ['cash', 'positions', 'pending', 'trades', 'lock', 'peak', 'sticky', 'safe_mode', 'external_risk'])
 def test_warm_boundary_rejects_pre_window_economic_contamination(contamination):
     from quantfusion.engine.ensemble_orchestration import capture_c6_warm_state
     states, risk = _warm_fixture()
@@ -300,6 +301,10 @@ def test_warm_boundary_rejects_pre_window_economic_contamination(contamination):
         risk.peak_assets = 1
     elif contamination == 'sticky':
         sleeve._sticky_beat_days['a'] = 1
+    elif contamination == 'safe_mode':
+        sleeve._safe_mode_active = True
+    elif contamination == 'external_risk':
+        sleeve._external_risk_level = 2
     with pytest.raises(ValueError, match='warm boundary'):
         capture_c6_warm_state(states, risk, None)
 
@@ -353,13 +358,12 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
     from quantfusion.config.portfolio import PortfolioPolicy
     from quantfusion.config.overlay import RISK_BASKET
     from quantfusion.config.regime import REGIME_INDEX_FILES
-    from quantfusion.application.stress_scenarios import ORDERED_CODES
     dates = pd.bdate_range('2024-01-01', '2026-01-09')
     close = pd.Series([10. + i * .02 for i in range(len(dates))], index=dates)
     frame = pd.DataFrame({'open': close, 'high': close, 'low': close * .999,
                           'close': close, 'volume': 10000000.})
     frame.index.name = 'date'
-    symbols = list(ORDERED_CODES[:5])
+    symbols = ['300308', '300502', '300394', '688256', '603986']
     for symbol in set(symbols) | set(PortfolioPolicy().regime_symbols) | set(RISK_BASKET) | set(REGIME_INDEX_FILES.values()):
         frame.to_csv(tmp_path / f'{symbol}.csv')
     paths = []
@@ -385,7 +389,7 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
         if intervention != 'PRODUCTION':
             runner = engine.run_c6_diagnostic
             kwargs['diagnostic_request'] = {'schema_version': 1, 'intervention_id': intervention,
-                                           'recording_mode': 'DEFAULT', 'scenario_id': 'prefix-05',
+                                           'recording_mode': 'DEFAULT', 'scenario_id': 'synthetic-healthy-bull',
                                            'diagnostic_noncanonical': True, 'allow_publication': False}
         result = runner({symbol: symbol for symbol in symbols}, '2026-01-05', '2026-01-09', **kwargs)
         states = replay_states

@@ -445,7 +445,7 @@ def _warm_snapshot(result: Mapping[str, Any], initial: float) -> dict[str, Any]:
     for index, risk in enumerate([s["risk"] for s in sleeves] + [captured["account_risk"]]):
         # These constructor states were checked before replay by the capture hook.
         locks.append({"owner_kind": "sleeve" if index < 3 else "account", "state_index": index if index < 3 else None, "sleeve_name": sleeves[index]["name"] if index < 3 else None, "cycle_lock": risk["persistent_lock"], "emergency_lock": False, "terminal_lock": risk.get("terminal_lock", False), "rearm_remaining_trading_days": 0})
-    return {"phase": captured["phase"], "indicator_history": history, "regime_and_transitions": {"current_regime": sleeves[0]["regime"]["_regime_state"].lower(), "asof_timestamp": str((first - __import__("datetime").timedelta(days=1)).date()), "transitions": sleeves[0]["regime"]["_regime_state_series"]}, "candidate_sticky_confirmation": [], "overlay_state": [], "sleeve_positions": [], "sleeve_cash": cash, "pending_orders": [], "sleeve_peaks": sleeve_peaks, "account_peaks": peaks(captured["account_risk"]), "locks": locks, "first_decision_timestamp": str(first.date()), "first_execution_timestamp": str(execution.date()), "unauthorized_economic_state_empty": True, "future_information_absent": True}
+    return {"phase": captured["phase"], "indicator_history": history, "regime_and_transitions": {"current_regime": sleeves[0]["regime"]["_regime_state"].lower(), "asof_timestamp": None, "transitions": sleeves[0]["regime"]["_regime_state_series"]}, "candidate_sticky_confirmation": [], "overlay_state": [], "sleeve_positions": [], "sleeve_cash": cash, "pending_orders": [], "sleeve_peaks": sleeve_peaks, "account_peaks": peaks(captured["account_risk"]), "locks": locks, "first_decision_timestamp": str(first.date()), "first_execution_timestamp": str(execution.date()), "unauthorized_economic_state_empty": True, "future_information_absent": True}
 
 
 def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
@@ -578,7 +578,7 @@ def _control_nodes() -> dict[str, list[str]]:
         module + "captures_raw_state_before_replay_without_aliases",
         module + "missing_capture_cannot_reconstruct_end_state",
         *(module + f"rejects_pre_window_economic_contamination[{case}]"
-          for case in ("cash", "positions", "pending", "trades", "lock", "peak", "sticky")),
+          for case in ("cash", "positions", "pending", "trades", "lock", "peak", "sticky", "safe_mode", "external_risk")),
     ]
     mapping.update({
         "governance/opinion-no-order-effect": ["tests/c6_non_economic/test_c6_diagnostics.py::test_governance_opinion_cannot_change_executable_signals"],
