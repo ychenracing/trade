@@ -10,6 +10,7 @@ import contextlib
 import io
 import json
 import os
+import time
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from pathlib import Path
@@ -337,9 +338,14 @@ def build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _bound_budget_expired(start: float, now: float, *, completed: int, total: int) -> bool:
+    return bool(os.environ.get("C6_BOUND_CHECKPOINT_PATH")) and completed < total and now - start >= 900
+
+
 def main() -> int:
     """Run, checkpoint, gate, and atomically publish the formal audit."""
     args = build_argument_parser().parse_args()
+    started = time.monotonic()
     seeds = tuple(
         int(value.strip()) for value in args.seeds.split(",") if value.strip()
     )
@@ -517,6 +523,8 @@ def main() -> int:
                 )
             stress_artifacts._atomic_json(checkpoint, checkpoint_payload)
             print(f"checkpoint {len(completed)}/{len(scenarios)}", flush=True)
+            if _bound_budget_expired(started, time.monotonic(), completed=len(completed), total=len(scenarios)):
+                return 75
     results = (
         sorted(completed.values(), key=lambda item: item["scenario_id"])
         if formal_plan_complete
