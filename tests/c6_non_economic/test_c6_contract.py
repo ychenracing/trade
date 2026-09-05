@@ -161,9 +161,21 @@ def test_frozen_preregistration_version_matches_authority_branch() -> None:
     version = experiment_id.removeprefix(prefix)
     assert version.startswith("v") and version[1:].isdigit()
     assert not version.startswith("v0")
-    assert preregistration["authority"]["branch"] == (
-        f"codex/c6-causal-risk-closure-{version}"
-    )
+    authority = preregistration["authority"]
+    recovery = authority.get("recovery_continuation")
+    if recovery is None:
+        assert authority["branch"] == f"codex/c6-causal-risk-closure-{version}"
+    else:
+        # Recovery keeps PR 63 while immutable execution identities advance.
+        assert authority["branch"] == "codex/c6-causal-risk-closure-v11"
+        assert recovery["continuing_pull_request"] == 63
+        assert recovery["old_P"] == "d3181f504de319daa9efa366e1f1faf727eab011"
+        assert recovery["economic_hypotheses_changed"] is False
+        assert recovery["governing_contract_path"] == "docs/C6_RECOVERY_CONTRACT.md"
+        contract = REPOSITORY / recovery["governing_contract_path"]
+        assert hashlib.sha256(contract.read_bytes()).hexdigest() == (
+            recovery["governing_contract_sha256"]
+        )
     assert len(preregistration["run_templates"]["binding_specs"]) == 7
     assert preregistration["checkpoint_and_lease_protocol"]["schema_version"] == 2
     definitions = preregistration["schema_catalog"]["definitions"]

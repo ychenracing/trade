@@ -2,7 +2,7 @@
   "schema_version": 2,
   "kind": "c6_causal_risk_closure_preregistration",
   "status": "frozen_before_implementation_or_economic_dispatch",
-  "experiment_id": "c6-causal-risk-closure-17x958-v14",
+  "experiment_id": "c6-causal-risk-closure-17x958-v15",
   "frozen_at": "2026-09-05T14:42:04Z",
   "authority": {
     "repository": "ychenracing/trade",
@@ -95,7 +95,19 @@
         "fix": "Reference the original immutable Git blob directly; verify all frozen input file hashes before publication.",
         "economic_evaluations": 0,
         "code_unchanged": true,
-        "workflow_unchanged": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67; retain proven v13 workflow anchor while logical/source refs advance to v14"
+        "workflow_unchanged": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67; proven v13 workflow retained independently of source/execution version"
+      },
+      "prefreeze_ci_repair": {
+        "invalid_P": "1c1a0dd1b443c7a67070c1916541657c63e6e061",
+        "invalid_I_B": "a4142da81a9292fc0a88a6b8669a3b33fa93c025",
+        "invalid_I_S": "6a576f0163aa129a396dff8eb50363a3b14ecc6a",
+        "class": "A_test_authority",
+        "run_id": 33973343553,
+        "root_cause": "Legacy test coupled execution version to PR branch suffix despite explicit continuing-PR recovery authority.",
+        "fix": "Keep original coupling for ordinary registrations; recovery must validate exact continuing PR, original P, unchanged economic hypotheses and governing contract full-byte hash.",
+        "economic_evaluations": 0,
+        "production_code_unchanged": true,
+        "prior_check_results": "706 tests and 81 subtests passed; typecheck and security passed. One authority-branch test failed."
       }
     }
   },
@@ -2884,10 +2896,10 @@
       ],
       "fencing_token_generation": "The pinned workflow generates a fresh 64-lowercase-hex run-local nonce with Python secrets before input validation, masks it immediately, and passes it only through GITHUB_ENV and the wrapper/child process environments.",
       "trusted_source_refs": {
-        "I_B": "codex/c6-base-v14",
-        "I_S": "codex/c6-s-v14"
+        "I_B": "codex/c6-base-v15",
+        "I_S": "codex/c6-s-v15"
       },
-      "trusted_evidence_ref": "codex/c6-evidence-v14",
+      "trusted_evidence_ref": "codex/c6-evidence-v15",
       "pre_import_anchor": "Before checkout or import, git ls-remote --refs on the public repository must return exactly source_revision at the candidate's trusted source ref. With empty D, evidence-ref head must equal run_bindings_revision. With nonempty D, evidence-ref head must equal d_commit.",
       "post_D_anchor": "For L2/L4 the checked-out D commit has exactly one parent equal run_bindings_revision and its only diff is A artifacts/diagnostics/c6-selection.json; any other parent/path/status is invalid."
     },
@@ -2936,7 +2948,7 @@
         "record_id": "c6.base.l1",
         "workflow_binding_id": "c6.base.l1",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v14-base-l1",
+        "logical_run_id": "c6-v15-base-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_B",
@@ -2974,7 +2986,7 @@
         "record_id": "c6.s.qualification",
         "workflow_binding_id": "c6.s.qualification",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v14-s-qualification",
+        "logical_run_id": "c6-v15-s-qualification",
         "initial_attempt_id": "a0",
         "stage": "QUALIFICATION",
         "source_alias": "I_S",
@@ -3018,7 +3030,7 @@
         "record_id": "c6.base_plus_s.l1",
         "workflow_binding_id": "c6.base_plus_s.l1",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v14-base-plus-s-l1",
+        "logical_run_id": "c6-v15-base-plus-s-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_S",
@@ -3068,7 +3080,7 @@
         "record_id": "c6.base.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v14-base-l2",
+        "logical_run_id": "c6-v15-base-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_B",
@@ -3106,7 +3118,7 @@
         "record_id": "c6.base_plus_s.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v14-base-plus-s-l2",
+        "logical_run_id": "c6-v15-base-plus-s-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_S",
@@ -3144,7 +3156,7 @@
         "record_id": "c6.base.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v14-base-l4",
+        "logical_run_id": "c6-v15-base-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_B",
@@ -3190,7 +3202,7 @@
         "record_id": "c6.base_plus_s.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v14-base-plus-s-l4",
+        "logical_run_id": "c6-v15-base-plus-s-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_S",
@@ -3288,7 +3300,7 @@
         ],
         "field_types": {
           "path": "literal .github/workflows/c6-bound-economic.yml",
-          "dispatch_ref": "literal codex/c6-v14-workflow-anchor",
+          "dispatch_ref": "literal codex/c6-v15-workflow-anchor",
           "revision": "literal e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
           "mode": "literal 100644",
           "git_blob": "literal 8995817891eac8a9fd3aab8fc436536ee81c823b",
@@ -3460,8 +3472,8 @@
           "equal_across_all_records": "literal ordered array [P,workflow,resolved_inputs,runtime.runner_image_os,runtime.runner_image_version,runtime.python_version,runtime.dependency_lock,runtime.workers,runtime.process_map_order,runtime.checkpoint_every] whose named values must be deeply equal across all seven records",
           "equal_within_source_alias": "literal ordered array [source_revision,source_tree,source_blob_identities] whose named values must be deeply equal among every I_B record and separately among every I_S record",
           "permitted_record_differences": "literal ordered array [record_id,workflow_binding_id,candidate_id,logical_run_id,initial_attempt_id,stage,source_alias,source_revision,source_tree,source_blob_identities,entrypoint,argv,runtime_late_slots,scenario_manifest_identity,synthetic_control_manifest_identity,evaluation_manifest_identity,item_manifest_contract,producer_policy,decision_policy,attempt_policy,paths,canonical_payload_schema,exit_semantics,record_signature] and no others",
-          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v14,I_S:codex/c6-s-v14}",
-          "trusted_evidence_ref": "literal codex/c6-evidence-v14",
+          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v15,I_S:codex/c6-s-v15}",
+          "trusted_evidence_ref": "literal codex/c6-evidence-v15",
           "validation_policy": "literal deep_compare_before_any_dispatch; unknown path or unlisted difference invalid"
         },
         "array_order": {
@@ -3499,7 +3511,7 @@
           "dispatch_deadline_utc": "literal 2026-11-23T15:55:00Z; every initial or resume workflow created_at must be <= this instant"
         },
         "array_order": {},
-        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v14-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
+        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v15-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
       },
       "R_paths": {
         "type": "object",
@@ -3826,7 +3838,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-base-v14",
+      "ref": "codex/c6-base-v15",
       "stages": [
         "I_B_frozen"
       ],
@@ -3839,7 +3851,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-s-v14",
+      "ref": "codex/c6-s-v15",
       "stages": [
         "I_S"
       ],
@@ -3852,7 +3864,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-evidence-v14",
+      "ref": "codex/c6-evidence-v15",
       "stages": [
         "R",
         "D"
