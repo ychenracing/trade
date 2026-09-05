@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  C6_PREFREEZE: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'codex/c6-evidence-repair' || github.head_ref == 'codex/c6-recovery-embargo-preflight' || github.head_ref == 'codex/c6-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure' || github.head_ref == 'codex/c6-causal-risk-closure-v4' || github.head_ref == 'codex/c6-v4-ci-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v5' || github.head_ref == 'codex/c6-v5-ci-preflight' || github.head_ref == 'codex/c6-v6-ci-execution' || github.head_ref == 'codex/c6-causal-risk-closure-v6' || github.head_ref == 'codex/c6-v7-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v7' || github.head_ref == 'codex/c6-v8-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v8' || github.head_ref == 'codex/c6-push-dispatch-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v9' || github.head_ref == 'codex/c6-checkpoint-recovery' || github.head_ref == 'codex/c6-causal-risk-closure-v10' || github.head_ref == 'codex/c6-auto-resume-preflight' || github.head_ref == 'codex/c6-streaming-preflight' || github.head_ref == 'codex/c6-compressed-evidence-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v11' || github.head_ref == 'codex/c6-checkpoint-budget-preflight' || github.head_ref == 'codex/c6-baseline-rebuild') }}
+  C6_PREFREEZE: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'codex/c6-recovery-preflight' || github.head_ref == 'codex/c6-evidence-repair' || github.head_ref == 'codex/c6-recovery-embargo-preflight' || github.head_ref == 'codex/c6-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure' || github.head_ref == 'codex/c6-causal-risk-closure-v4' || github.head_ref == 'codex/c6-v4-ci-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v5' || github.head_ref == 'codex/c6-v5-ci-preflight' || github.head_ref == 'codex/c6-v6-ci-execution' || github.head_ref == 'codex/c6-causal-risk-closure-v6' || github.head_ref == 'codex/c6-v7-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v7' || github.head_ref == 'codex/c6-v8-workflow-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v8' || github.head_ref == 'codex/c6-push-dispatch-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v9' || github.head_ref == 'codex/c6-checkpoint-recovery' || github.head_ref == 'codex/c6-causal-risk-closure-v10' || github.head_ref == 'codex/c6-auto-resume-preflight' || github.head_ref == 'codex/c6-streaming-preflight' || github.head_ref == 'codex/c6-compressed-evidence-preflight' || github.head_ref == 'codex/c6-causal-risk-closure-v11' || github.head_ref == 'codex/c6-checkpoint-budget-preflight' || github.head_ref == 'codex/c6-baseline-rebuild') }}
 
 jobs:
   test:
@@ -31,12 +31,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: ${{ env.C6_PREFREEZE == 'true' && '0' || '1' }}
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: ${{ matrix.lock-file }}
+      - name: Fetch retained formal artifact source
+        run: |
+          python - <<'PYCODE'
+          import json
+          import re
+          import subprocess
+          from pathlib import Path
+          revision = json.loads(Path("artifacts/validation/formal_stress_958_acceptance_summary.json").read_text())["source_revision"]
+          if re.fullmatch(r"[0-9a-f]{40}", revision) is None:
+              raise SystemExit("invalid retained source revision")
+          if subprocess.run(["git", "cat-file", "-e", revision + "^{commit}"], capture_output=True).returncode:
+              subprocess.run(["git", "fetch", "--no-tags", "origin", revision], check=True)
+          PYCODE
       - name: Install locked dependencies
         run: python -m pip install -r ${{ matrix.lock-file }}
       - name: Compile every Python file
@@ -50,7 +63,9 @@ jobs:
         if: env.C6_PREFREEZE == 'true'
         env:
           C6_STREAM_LARGE_PROBE: ${{ github.head_ref == 'codex/c6-streaming-preflight' && matrix.python-version == '3.12' && '1' || '0' }}
-        run: python -I -S .github/scripts/test_c6_auto_resume.py
+        run: |
+          python -I -S .github/scripts/test_c6_auto_resume.py
+          python -I -S .github/scripts/test_c6_resume_probe.py
       - name: Run C6 pre-freeze engineering tests
         if: env.C6_PREFREEZE == 'true'
         run: |
@@ -105,6 +120,7 @@ jobs:
               "tests/c6_non_economic/test_c6_retained_winner.py",
               "tests/c6_non_economic/test_c6_contract.py",
               "tests/c6_non_economic/test_c6_diagnostics.py",
+              "tests/c6_non_economic/test_c6_recovery_boundaries.py",
               "tests/c6_non_economic/test_c6_bound_run.py",
               "tests/c6_non_economic/test_c6_early_concentration.py",
               "tests/c6_non_economic/test_c6_s_qualification.py",
@@ -117,9 +133,7 @@ jobs:
               "tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_frozen_bull_single_symbol_golden_metric",
               "tests/regression/test_regime_adaptive.py::DynamicRouteStateMachineTests::test_route_sequence_is_emitted_and_current_day_route_is_consistent",
           }
-          source_sensitive_nodes = {
-              "tests/contract/test_formal_stress_documentation_consistency.py::test_recorded_958_summary_candidate_and_docs_are_one_contract",
-          }
+          source_sensitive_nodes = set()
           discovered_files = {
               path.as_posix() for path in Path("tests").rglob("test_*.py")
           }
@@ -151,6 +165,8 @@ jobs:
               required_c6_files |= ib_required
           if any(Path(path).is_file() for path in is_markers):
               required_c6_files |= ib_required | is_required
+          if Path("tests/c6_non_economic/test_c6_recovery_boundaries.py").is_file():
+              required_c6_files.add("tests/c6_non_economic/test_c6_recovery_boundaries.py")
           unknown_files = discovered_files - safe_files - planned_c6_files
           unplanned_c6_python = discovered_c6_python - planned_c6_files
           missing_files = (safe_files | required_c6_files) - discovered_files
