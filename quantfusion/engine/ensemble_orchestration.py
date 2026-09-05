@@ -7,6 +7,7 @@ from __future__ import annotations
 # ruff: noqa: F401
 
 import contextlib
+import copy
 import io
 import math
 from dataclasses import replace
@@ -32,6 +33,63 @@ from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
 from quantfusion.risk.overlay.adapter import apply_risk_actions
 from quantfusion.strategy.trend import BaseStrategy
+
+
+def capture_c6_warm_state(states: list, account_risk: Any, overlay: Any) -> dict:
+    """Copy causal inputs and actual ledgers before the first replay iteration."""
+    first, execution = states[0].all_dates[:2]
+    sleeves = []
+    for state in states:
+        sleeve = state.sleeve
+        if (sleeve.cash != sleeve.initial_capital or sleeve.positions or state.pending
+                or sleeve.pending_signals or sleeve.trades or sleeve.equity_curve
+                or sleeve.sector_guard_active):
+            raise ValueError("warm boundary contains pre-window economic state")
+        sleeves.append({
+            "name": sleeve.sleeve_name, "cash": sleeve.cash,
+            "positions": sleeve.positions, "pending": state.pending,
+            "pending_signals": sleeve.pending_signals,
+            "trades": sleeve.trades, "equity_curve": sleeve.equity_curve,
+            "risk": {k: v for k, v in vars(sleeve.risk).items()
+                     if k not in {"cfg", "policy", "symbol_groups", "group_weight_limits"}},
+            "regime": {k: v for k, v in vars(sleeve).items()
+                       if k.startswith("_regime_") and k != "_regime_indicator_series"},
+            "sticky": {k: v for k, v in vars(sleeve).items() if k.startswith("_sticky_")},
+            "sector_guard_active": sleeve.sector_guard_active,
+        })
+    state = states[0]
+    captured = copy.deepcopy({
+        "phase": "before_first_valuation", "first": first, "execution": execution,
+        "sleeves": sleeves,
+        "account_risk": {k: v for k, v in vars(account_risk).items()
+                         if k not in {"cfg", "policy", "symbol_groups", "group_weight_limits"}},
+        "overlay": None if overlay is None else {
+            "state": overlay.state_snapshot(), "assets_history": overlay._assets_history,
+            "last_metrics": overlay._last_metrics, "last_metrics_date": overlay._last_metrics_date,
+        },
+        "data": {symbol: frame.loc[frame.index < first] for symbol, frame in state.data_map.items()},
+        "indicators": {symbol: {name: series.loc[series.index < first]
+                                for name, series in fields.items()}
+                       for symbol, fields in state.indicator_map.items()},
+    })
+    for risk in [captured["account_risk"], *(s["risk"] for s in sleeves)]:
+        if any(risk.values()):
+            raise ValueError("warm boundary contains initialized risk or lock state")
+    for sleeve_state in sleeves:
+        for key, value in sleeve_state["regime"].items():
+            expected = "TREND" if key in {"_regime_state", "_regime_prev_state", "_regime_effective_state"} else None
+            if (expected is not None and value != expected) or (expected is None and value):
+                raise ValueError("warm boundary contains advanced regime state")
+        for key, value in sleeve_state["sticky"].items():
+            if (key == "_sticky_last_rotation_pos" and value != -1_000_000) or (key != "_sticky_last_rotation_pos" and value):
+                raise ValueError("warm boundary contains advanced sticky state")
+    if overlay is not None:
+        neutral = {"last_warning_position": -10**9, "execution_owner": "overlay"}
+        if (any(value != neutral[key] if key in neutral else bool(value)
+                for key, value in captured["overlay"]["state"].items())
+                or any(captured["overlay"][key] for key in ("assets_history", "last_metrics", "last_metrics_date"))):
+            raise ValueError("warm boundary contains advanced overlay state")
+    return captured
 
 _CoreBacktestEngine = CoreBacktestEngine
 _ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
@@ -196,6 +254,7 @@ class EnsembleOrchestrationMixin:
         last_agreement: rg.SleeveAgreementSnapshot | None = None
         prev_consensus: float | None = None
         prev_decline_streak = 0
+        warm_state = capture_c6_warm_state(states, portfolio_risk, cm_overlay) if diagnostic is not None else None
         for idx, date in enumerate(reference_dates):
             # P0-4: pass the overlay so it can hard-block re-entry buys
             # for any symbol still in catastrophe cooldown (report P0-4).
@@ -442,6 +501,7 @@ class EnsembleOrchestrationMixin:
         if request_data is not None:
             combined["_c6_sleeve_results"] = results
             combined["_c6_states"] = states
+            combined["_c6_warm_state"] = warm_state
             combined["_c6_score_trace"] = self._c6_score_trace
         self.last_result = combined
         return combined

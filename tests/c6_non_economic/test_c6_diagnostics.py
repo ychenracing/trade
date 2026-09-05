@@ -16,7 +16,7 @@ from quantfusion.risk.overlay.policy import CrossMarketOverlay
 
 def test_control_without_executed_assertion_cannot_inherit_suite_success(monkeypatch):
     monkeypatch.setattr(c6_diagnostics.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0))
-    control = "warm-boundary/causal-state-only"
+    control = "unmapped/contract"
     p = {"scenario_manifests": {"L1_BASE_SYNTHETIC_CONTROL_IDS": {"ids": [control], "assertions_by_control": {control: [{"id": control + "/contract", "expected": True, "comparator": "equal"}]}}}}
     rows = c6_diagnostics._controls(p, "L1_BASE_SYNTHETIC_CONTROL_IDS")
     assert rows[0]["passed"] is False
@@ -244,3 +244,67 @@ def test_s_evidence_is_finalized_against_the_official_breach_sample() -> None:
     assert finalized["lead_batch_count"] == 1
     assert finalized["official_sample_relation"] == "OPEN_MARK_GAP_NOT_OFFICIAL_SAMPLE"
     assert finalized["identical_valuation_instant_proven"] is False
+
+
+def _warm_fixture():
+    from quantfusion.config.portfolio import PortfolioPolicy
+    from quantfusion.engine.universe import SleeveBacktestEngine
+    from quantfusion.risk.managers import ConfirmedDrawdownRiskManager, RecoverableDrawdownRiskManager
+    policy = PortfolioPolicy()
+    dates = list(pd.to_datetime(['2026-01-05', '2026-01-06']))
+    states = []
+    for index, name in enumerate(('fast', 'base', 'slow')):
+        cash = 2000000 / 3 if index < 2 else 2000000 - 2 * (2000000 / 3)
+        sleeve = SleeveBacktestEngine(cash, cfg={}, policy=policy, allocation_lookbacks=(10,), sleeve_name=name)
+        sleeve._reset_run_state({'a': 'A'})
+        sleeve.risk = ConfirmedDrawdownRiskManager(sleeve.cfg, policy)
+        frame = pd.DataFrame({'close': [1., 2., 999.]}, index=pd.to_datetime(['2026-01-01', '2026-01-02', '2026-01-05']))
+        states.append(SimpleNamespace(sleeve=sleeve, pending=[], all_dates=dates, data_map={'a': frame}, indicator_map={'a': {'value': frame.close.copy()}}))
+    return states, RecoverableDrawdownRiskManager({}, policy)
+
+
+def test_warm_boundary_captures_raw_state_before_replay_without_aliases():
+    from quantfusion.engine.ensemble_orchestration import capture_c6_warm_state
+    states, risk = _warm_fixture()
+    captured = capture_c6_warm_state(states, risk, None)
+    states[0].sleeve.cash = 123
+    states[0].sleeve.positions['contaminated'] = {}
+    states[0].data_map['a'].iloc[0, 0] = -999
+    risk.peak_assets = 5000000
+    warm = c6_diagnostics._warm_snapshot({'_c6_warm_state': captured}, 2000000)
+    assert warm['phase'] == 'before_first_valuation'
+    assert warm['account_peaks']['cycle_peak_assets'] == 0
+    assert warm['sleeve_peaks'][0]['lifetime_peak_assets'] is None
+    assert warm['sleeve_cash'][0]['cash'] == 2000000 / 3
+    assert warm['indicator_history'][0]['source_row_count'] == 2
+    assert warm['indicator_history'][0]['history_end'] == '2026-01-02'
+    assert warm['unauthorized_economic_state_empty'] is True
+
+
+@pytest.mark.parametrize('contamination', ['cash', 'positions', 'pending', 'trades', 'lock', 'peak', 'sticky'])
+def test_warm_boundary_rejects_pre_window_economic_contamination(contamination):
+    from quantfusion.engine.ensemble_orchestration import capture_c6_warm_state
+    states, risk = _warm_fixture()
+    sleeve = states[0].sleeve
+    if contamination == 'cash':
+        sleeve.cash = 123
+    elif contamination == 'positions':
+        sleeve.positions['a'] = {'strategy': object()}
+    elif contamination == 'pending':
+        states[0].pending.append(object())
+    elif contamination == 'trades':
+        sleeve.trades.append(object())
+    elif contamination == 'lock':
+        risk.persistent_lock = True
+    elif contamination == 'peak':
+        risk.peak_assets = 1
+    elif contamination == 'sticky':
+        sleeve._sticky_beat_days['a'] = 1
+    with pytest.raises(ValueError, match='warm boundary'):
+        capture_c6_warm_state(states, risk, None)
+
+
+def test_warm_boundary_missing_capture_cannot_reconstruct_end_state():
+    states, _ = _warm_fixture()
+    with pytest.raises(ValueError, match='warm boundary'):
+        c6_diagnostics._warm_snapshot({'_c6_states': states}, 2000000)

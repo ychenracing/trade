@@ -9,6 +9,7 @@ import io
 import json
 import math
 import subprocess
+import sys
 from pathlib import Path
 from collections.abc import Mapping, Sequence
 from typing import Any
@@ -549,18 +550,35 @@ def _risk_records(result: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 
 def _warm_snapshot(result: Mapping[str, Any], initial: float) -> dict[str, Any]:
-    state = result["_c6_states"][0]
-    first, execution = state.all_dates[:2]
+    captured = result.get("_c6_warm_state")
+    if not captured or captured["phase"] != "before_first_valuation":
+        raise ValueError("warm boundary capture is missing")
+    first, execution = captured["first"], captured["execution"]
+    sleeves = captured["sleeves"]
+    expected_cash = [initial / 3, initial / 3, initial - 2 * (initial / 3)]
+    if len(sleeves) != 3 or [s["cash"] for s in sleeves] != expected_cash:
+        raise ValueError("warm boundary cash allocation differs from initial capital")
     history = []
-    for symbol in sorted(state.data_map):
-        frame = state.data_map[symbol].loc[state.data_map[symbol].index < first]
-        if frame.empty or symbol not in state.indicator_map:
+    for symbol, frame in sorted(captured["data"].items()):
+        if frame.empty or symbol not in captured["indicators"]:
             continue
-        indicators = {name: series.loc[series.index < first].to_json(date_format="iso") for name, series in sorted(state.indicator_map[symbol].items())}
+        fields = captured["indicators"][symbol]
+        if any(timestamp >= first for timestamp in frame.index) or any(
+                timestamp >= first for series in fields.values() for timestamp in series.index):
+            raise ValueError("warm boundary contains future information")
+        indicators = {name: series.to_json(date_format="iso") for name, series in sorted(fields.items())}
         history.append({"symbol": symbol, "history_start": str(frame.index[0].date()), "history_end": str(frame.index[-1].date()), "causal_cutoff": str(frame.index[-1].date()), "source_row_count": len(frame), "source_sha256": hashlib.sha256(frame.to_json(date_format="iso").encode()).hexdigest(), "indicator_sha256": hashlib.sha256(_canonical_bytes(indicators)).hexdigest()})
-    cash = [initial / 3, initial / 3, initial - 2 * (initial / 3)]
-    names = ("fast", "base", "slow")
-    return {"indicator_history": history, "regime_and_transitions": {"current_regime": "trend", "asof_timestamp": str((first - __import__("datetime").timedelta(days=1)).date()), "transitions": []}, "candidate_sticky_confirmation": [], "overlay_state": [], "sleeve_positions": [], "sleeve_cash": [{"state_index": i, "sleeve_name": name, "cash": cash[i]} for i, name in enumerate(names)], "pending_orders": [], "sleeve_peaks": [{"state_index": i, "sleeve_name": name, "cycle_peak_assets": cash[i], "lifetime_peak_assets": cash[i], "daily_start_assets": cash[i]} for i, name in enumerate(names)], "account_peaks": {"cycle_peak_assets": initial, "lifetime_peak_assets": initial, "daily_start_assets": initial}, "locks": [{"owner_kind": "sleeve", "state_index": i, "sleeve_name": name, "cycle_lock": False, "emergency_lock": False, "terminal_lock": False, "rearm_remaining_trading_days": 0} for i, name in enumerate(names)] + [{"owner_kind": "account", "state_index": None, "sleeve_name": None, "cycle_lock": False, "emergency_lock": False, "terminal_lock": False, "rearm_remaining_trading_days": 0}], "first_decision_timestamp": str(first.date()), "first_execution_timestamp": str(execution.date()), "unauthorized_economic_state_empty": True, "future_information_absent": True}
+    def peaks(risk: Mapping[str, Any]) -> dict[str, Any]:
+        return {"cycle_peak_assets": risk["peak_assets"], "lifetime_peak_assets": risk.get("lifetime_peak_assets"), "daily_start_assets": risk["daily_start_assets"]}
+    cash, sleeve_peaks, locks = [], [], []
+    for index, sleeve in enumerate(sleeves):
+        identity = {"state_index": index, "sleeve_name": sleeve["name"]}
+        cash.append({**identity, "cash": sleeve["cash"]})
+        sleeve_peaks.append({**identity, **peaks(sleeve["risk"])})
+    for index, risk in enumerate([s["risk"] for s in sleeves] + [captured["account_risk"]]):
+        # These constructor states were checked before replay by the capture hook.
+        locks.append({"owner_kind": "sleeve" if index < 3 else "account", "state_index": index if index < 3 else None, "sleeve_name": sleeves[index]["name"] if index < 3 else None, "cycle_lock": risk["persistent_lock"], "emergency_lock": False, "terminal_lock": risk.get("terminal_lock", False), "rearm_remaining_trading_days": 0})
+    return {"phase": captured["phase"], "indicator_history": history, "regime_and_transitions": {"current_regime": sleeves[0]["regime"]["_regime_state"].lower(), "asof_timestamp": str((first - __import__("datetime").timedelta(days=1)).date()), "transitions": sleeves[0]["regime"]["_regime_state_series"]}, "candidate_sticky_confirmation": [], "overlay_state": [], "sleeve_positions": [], "sleeve_cash": cash, "pending_orders": [], "sleeve_peaks": sleeve_peaks, "account_peaks": peaks(captured["account_risk"]), "locks": locks, "first_decision_timestamp": str(first.date()), "first_execution_timestamp": str(execution.date()), "unauthorized_economic_state_empty": True, "future_information_absent": True}
 
 
 def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
@@ -662,8 +680,16 @@ def _control_nodes() -> dict[str, list[str]]:
                 ("adv-zero", True), ("limit-blocked", True), ("missing-open", True), ("partial-fill", True),
                 ("suspended", True), ("partial-sublot", False), ("odd-lot-full-liquidation", False))}},
     }
-    return {f"{prefix}/{control}": [f"tests/c6_non_economic/test_c6_{module}.py::test_{test}"]
+    mapping = {f"{prefix}/{control}": [f"tests/c6_non_economic/test_c6_{module}.py::test_{test}"]
             for (prefix, module), controls in groups.items() for control, test in controls.items()}
+    module = "tests/c6_non_economic/test_c6_diagnostics.py::test_warm_boundary_"
+    mapping["warm-boundary/causal-state-only"] = [
+        module + "captures_raw_state_before_replay_without_aliases",
+        module + "missing_capture_cannot_reconstruct_end_state",
+        *(module + f"rejects_pre_window_economic_contamination[{case}]"
+          for case in ("cash", "positions", "pending", "trades", "lock", "peak", "sticky")),
+    ]
+    return mapping
 
 
 def _controls(prereg: Mapping[str, Any], name: str) -> list[dict[str, Any]]:
@@ -676,7 +702,7 @@ def _controls(prereg: Mapping[str, Any], name: str) -> list[dict[str, Any]]:
     with tempfile.TemporaryDirectory(prefix="c6-control-receipts-") as directory:
         report = Path(directory) / "tests.xml"
         if nodes:
-            suite = subprocess.run(["python", "-m", "pytest", "-q", f"--junitxml={report}", *nodes], check=False, capture_output=True)
+            suite = subprocess.run([sys.executable, "-m", "pytest", "-q", f"--junitxml={report}", *nodes], check=False, capture_output=True)
             if suite.returncode not in {0, 1} or not report.is_file():
                 raise RuntimeError("synthetic control execution produced no valid receipt")
             xml = report.read_text(encoding="utf-8")
