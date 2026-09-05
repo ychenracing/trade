@@ -1,10 +1,16 @@
 name: C6 Automatic Checkpoint Resume
 
 on:
+  workflow_dispatch:
+    inputs:
+      predecessor_run_id:
+        description: Exact bound run to authenticate after it finishes
+        required: true
+        type: string
   workflow_run:
     workflows: [C6 Bound Economic Run]
     types: [completed]
-    branches: [codex/c6-v12-workflow-anchor]
+    branches: [codex/c6-v13-workflow-anchor]
   schedule:
     - cron: '7,17,27,37,47,57 * * * *'
   push:
@@ -14,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: c6-auto-resume-v12
+  group: c6-auto-resume-v13
   cancel-in-progress: false
 
 jobs:
@@ -28,7 +34,7 @@ jobs:
           persist-credentials: false
       - run: python3 -I -S .github/scripts/test_c6_auto_resume.py
   resume:
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

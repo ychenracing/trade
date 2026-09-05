@@ -854,9 +854,47 @@ def validate_checkpoint_item(item: Mapping[str, Any], prereg: Mapping[str, Any])
             or item["item_id"] != "evaluation/" + result["evaluation_id"]):
             _raise("checkpoint evaluation identity mismatch")
     elif name == "L2_result":
+        from quantfusion.application.c6_predicates import validate_l2_telemetry
+        try:
+            validate_l2_telemetry(result)
+        except ValueError as exc:
+            _raise("checkpoint L2 formulas do not recompute", exc)
         metadata = result
         if item["item_id"] != "scenario/" + result["scenario_id"]:
             _raise("checkpoint scenario identity mismatch")
+    elif name == "per_residual":
+        from quantfusion.application.c6_predicates import _CRITERIA, _qualify
+        if item["item_id"] != "qualification/" + result["scenario_id"]:
+            _raise("checkpoint qualification identity mismatch")
+        excluded = {"scenario_id", "criteria", "first_official_mdd_breach", "passed", "failure_reasons"}
+        evaluation: dict[str, Any] = {"scenario_id": result["scenario_id"], "official_metrics": {},
+            "causal_matrix": {"s_evidence": {key: value for key, value in result.items() if key not in excluded},
+                              "event_timeline": {"first_official_mdd_breach": {"timestamp": result["first_official_mdd_breach"]}}}}
+        if len(result["criteria"]) != len(_CRITERIA):
+            _raise("checkpoint qualification criteria are incomplete")
+        for observed, (criterion, paths, _) in zip(result["criteria"], _CRITERIA, strict=True):
+            if observed["criterion_id"] != criterion or observed["input_paths"] != list(paths):
+                _raise("checkpoint qualification criterion identity mismatch")
+            for path in paths:
+                keys = path.removeprefix("base.evaluation.").split(".")
+                value = observed["observed_values"][keys[-1]]
+                target = evaluation
+                absent_parent = False
+                for key in keys[:-1]:
+                    if key in target and target[key] is None:
+                        if value is not None:
+                            _raise("checkpoint qualification null observation mismatch")
+                        absent_parent = True
+                        break
+                    target = target.setdefault(key, {})
+                if absent_parent:
+                    continue
+                if keys[-1] in target and target[keys[-1]] != value:
+                    _raise("checkpoint qualification observations disagree")
+                target[keys[-1]] = value
+        if canonical_payload_hash(_qualify(evaluation)) != canonical_payload_hash(result):
+            _raise("checkpoint qualification formulas do not recompute")
+        return
     else:
         return
     symbols = metadata["symbols"]

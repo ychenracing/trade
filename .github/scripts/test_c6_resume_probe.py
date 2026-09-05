@@ -4,7 +4,7 @@ import json
 import pathlib
 import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 spec = importlib.util.spec_from_file_location("probe", pathlib.Path(__file__).with_name("c6_resume_probe.py"))
 probe = importlib.util.module_from_spec(spec)
@@ -12,11 +12,32 @@ spec.loader.exec_module(probe)
 
 
 class ProbeTest(unittest.TestCase):
+    def test_completion_requests_only_native_dispatch_at_exact_workflow_anchor(self):
+        spec = importlib.util.spec_from_file_location("request", pathlib.Path(__file__).with_name("c6_request_resume.py"))
+        request = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(request)
+        github = Mock()
+        github.read.return_value = {"object": {"sha": "1" * 40}}
+        with tempfile.TemporaryDirectory() as folder:
+            event = pathlib.Path(folder) / "event.json"
+            event.write_text(json.dumps({"inputs": {"workflow_revision": "1" * 40}}))
+            env = {"GITHUB_REPOSITORY": probe.REPOSITORY, "GITHUB_EVENT_NAME": "workflow_dispatch",
+                   "GITHUB_RUN_ATTEMPT": "1", "GITHUB_EVENT_PATH": str(event), "GITHUB_SHA": "1" * 40,
+                   "GITHUB_REF_NAME": probe.AUTO_ANCHOR, "GITHUB_RUN_ID": "123"}
+            with patch.dict(request.os.environ, env), patch.object(request, "GitHub", return_value=github):
+                request.main()
+                github.read.assert_called_with("actions/workflows/c6-auto-resume.yml/dispatches", payload={
+                    "ref": probe.AUTO_ANCHOR, "inputs": {"predecessor_run_id": "123"}})
+                with patch.dict(request.os.environ, {"GITHUB_RUN_ATTEMPT": "2"}), self.assertRaises(ValueError):
+                    request.main()
+                with patch.dict(request.os.environ, {"GITHUB_SHA": "2" * 40}), self.assertRaises(ValueError):
+                    request.main()
+
     def test_sealed_checkpoint_authenticated_successor_and_terminal_no_dispatch(self):
         inputs = {key: "" for key in probe.INPUT_NAMES}
         inputs.update(source_revision="1" * 40, workflow_revision="1" * 40,
                       run_bindings_revision="2" * 40, binding_id="c6.synthetic.resume",
-                      logical_run_id="c6-v12-resume-probe-test", candidate_id="synthetic-only",
+                      logical_run_id="c6-v13-resume-probe-test", candidate_id="synthetic-only",
                       attempt_id="a0", producer_identity_json="{}", python_version="3.12.14",
                       runner_image_os="ubuntu24", runner_image_version="synthetic")
         record = {"record_id": inputs["binding_id"], "workflow_binding_id": inputs["binding_id"],
@@ -29,7 +50,7 @@ class ProbeTest(unittest.TestCase):
         bindings = {"kind": "c6_synthetic_resume_probe", "binding_records": [record]}
         run = {"id": 123, "run_attempt": 1, "event": "workflow_dispatch", "status": "completed",
                "conclusion": "success", "head_sha": inputs["workflow_revision"], "head_branch": probe.AUTO_ANCHOR,
-               "display_title": "c6-bound-c6.synthetic.resume-c6-v12-resume-probe-test-a0",
+               "display_title": "c6-bound-c6.synthetic.resume-c6-v13-resume-probe-test-a0",
                "repository": {"full_name": probe.REPOSITORY}, "head_repository": {"full_name": probe.REPOSITORY},
                "path": ".github/workflows/c6-bound-economic.yml", "workflow_id": 42}
         github = Mock()

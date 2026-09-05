@@ -105,6 +105,11 @@ def test_real_producer_compressed_checkpoint_and_consumer(prereg, synthetic_mark
     assert restored_rows == rows
     l2 = diagnostic._l2_evaluate(scenario)
     bound.validate_wire_value(l2, {"$ref": "#/$defs/L2_result"}, definitions)
+    l2_item = {"item_id": "scenario/" + l2["scenario_id"], "result_schema": "L2_result", "result": l2}
+    bound.validate_checkpoint_item(l2_item, prereg)
+    l2["diagnostic_telemetry"]["mdd_slack"] += 1
+    with pytest.raises(bound.BoundRunError, match="L2 formulas"):
+        bound.validate_checkpoint_item(l2_item, prereg)
     invalid = deepcopy(rows[0])
     invalid["scenario_definition"]["symbol_count"] = None
     bad = bound.DiagnosticCheckpoint(synthetic_market / "bad.json.gz", ids[:1], "synthetic-bad", prereg=prereg)
@@ -165,3 +170,24 @@ def test_retained_rows_native_publication_crosses_l4_consumer(prereg, tmp_path, 
     bound.validate_result_payload(restored, binding, prereg)
     assert bound.canonical_payload_hash(bound.result_payload(restored, "L4", prereg)) == projected_hash
     assert hashlib.sha256(source.read_bytes()).hexdigest() == before
+
+
+def test_qualification_checkpoint_validates_formulas_before_completed_prefix(prereg, tmp_path):
+    from quantfusion.application.c6_predicates import _qualify
+    base = {"scenario_id": "synthetic-residual", "official_metrics": {"max_drawdown": -.19},
+            "causal_matrix": {"s_evidence": diagnostic._empty_s_evidence(),
+                              "event_timeline": {"first_official_mdd_breach": {"timestamp": "2026-01-05"}}}}
+    row = _qualify(base)
+    ids = ["qualification/synthetic-residual"]
+    path = tmp_path / "qualification.json.gz"
+    checkpoint = bound.DiagnosticCheckpoint(path, ids, "synthetic-qualification", prereg=prereg)
+    checkpoint.map(diagnostic._identity, [row], ids, workers=1)
+    restored = bound.DiagnosticCheckpoint(path, ids, "synthetic-resume", resume_signature="synthetic-qualification", prereg=prereg)
+    assert restored.map(diagnostic._identity, [row], ids, workers=1)[0] == row
+    for mutation in ("passed", "scenario_id"):
+        invalid = deepcopy(row)
+        invalid[mutation] = not row[mutation] if mutation == "passed" else "wrong-residual"
+        bad = bound.DiagnosticCheckpoint(tmp_path / (mutation + ".gz"), ids, "synthetic-invalid", prereg=prereg)
+        with pytest.raises(bound.BoundRunError, match="qualification"):
+            bad.map(diagnostic._identity, [invalid], ids, workers=1)
+        assert not bad.items and not bad.path.exists()
