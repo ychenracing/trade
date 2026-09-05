@@ -13,7 +13,7 @@ import tempfile
 import zipfile
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
-from typing import Any, BinaryIO, TextIO, overload
+from typing import Any, BinaryIO, IO, TextIO, overload
 
 RECORD_LIMIT = 64 * 1024 * 1024
 CHUNK_SIZE = 64 * 1024
@@ -161,7 +161,7 @@ def content_size(content: bytes | Path) -> int:
     return len(content) if isinstance(content, bytes) else content.stat().st_size
 
 
-def copy_stream(source: BinaryIO, target: BinaryIO, *, limit: int = ARCHIVE_LIMIT) -> None:
+def copy_stream(source: IO[bytes], target: IO[bytes], *, limit: int = ARCHIVE_LIMIT) -> None:
     count = 0
     while chunk := source.read(min(CHUNK_SIZE, limit - count + 1)):
         count += len(chunk)

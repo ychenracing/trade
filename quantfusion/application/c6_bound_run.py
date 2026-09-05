@@ -658,9 +658,9 @@ class GitHubActionsLeaseStore:
             target.parent.mkdir(parents=True, exist_ok=True)
             _atomic_bytes(target, data, replace=False)
             target.chmod(0o400)
-        export.files = {name: destination / name for name in export.files}
+        materialized = {name: destination / name for name in export.files}
         export.close()
-        return export
+        return RemoteExport(export.run_id, export.manifest, export.manifest_bytes, materialized)
 
 
 def resolve_attempt_paths(
