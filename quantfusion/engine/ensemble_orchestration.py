@@ -376,6 +376,8 @@ class EnsembleOrchestrationMixin:
                     events=cm_overlay.events,
                     state_local_books=self._c6_feature_enabled("F0"),
                 )
+                if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
+                    cm_overlay.finalize_c6_s_queue(states, date, state_local_books=self._c6_feature_enabled("F0"))
             held = self._held_portfolio_symbols(states)
             self._record_c6_exposure(states, date, "official_sample")
             for state in states:

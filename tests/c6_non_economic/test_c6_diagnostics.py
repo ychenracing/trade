@@ -311,7 +311,7 @@ def test_base_observes_complete_s_evidence_without_s_action() -> None:
         Path("artifacts/diagnostics/c6-preregistration.json").read_text()
     )["schema_catalog"]["definitions"]
     # The historical P stays immutable; the fresh schema must add book witnesses.
-    assert set(evidence) == set(definitions["s_evidence"]["exact_keys"]) | {"book_fillability"}
+    assert set(evidence) == set(definitions["s_evidence"]["exact_keys"]) | {"book_fillability", "queue_fillability"}
     assert set(evidence["coverage"]) == set(
         definitions["qualification_coverage"]["exact_keys"]
     )

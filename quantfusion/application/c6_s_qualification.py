@@ -68,6 +68,7 @@ _CRITERIA = (
             "base.evaluation.causal_matrix.s_evidence.planned_shares",
             "base.evaluation.causal_matrix.s_evidence.executable_lot_shares",
             "base.evaluation.causal_matrix.s_evidence.book_fillability",
+            "base.evaluation.causal_matrix.s_evidence.queue_fillability",
         ),
         "Q5_NO_PREBREACH_EXECUTABLE_ACTION",
     ),
@@ -182,6 +183,59 @@ def _leave_valid(value: object) -> bool:
         return False
 
 
+def _queue_valid(evidence: Mapping[str, Any]) -> bool:
+    """Reconcile the ordered share-only feasibility receipts independently."""
+    queue = evidence["queue_fillability"]
+    if not isinstance(queue, list):
+        return False
+    books = {(row["state_index"], row["symbol"], row["strategy_name"]): row for row in evidence["book_fillability"]}
+    if len(books) != len(evidence["book_fillability"]):
+        return False
+    remaining, inventory, observed = {}, {}, set()
+    previous_order = (-1, -1)
+    ranks = {"turtle_breakout": 0, "dual_ma": 1, "atr_channel": 2}
+    for row in queue:
+        for key in ("state_index", "requested_shares", "inventory_before_shares", "raw_adv_capacity_shares", "capacity_shares", "executable_shares"):
+            if type(row[key]) is not int or row[key] < 0:
+                return False
+        state_symbol = (row["state_index"], row["symbol"])
+        book = (*state_symbol, row["strategy_name"])
+        order = (row["state_index"], ranks.get(row["strategy_name"], 99))
+        if order < previous_order:
+            return False
+        previous_order = order
+        before, capacity, filled = row["inventory_before_shares"], row["capacity_shares"], row["executable_shares"]
+        if state_symbol in remaining and row["raw_adv_capacity_shares"] != remaining[state_symbol]:
+            return False
+        if book in inventory and before != inventory[book]:
+            return False
+        if book not in inventory and book in books and before != books[book]["current_shares"]:
+            return False
+        available = min(before, row["requested_shares"], row["raw_adv_capacity_shares"])
+        expected_capacity = available if available == before else available // 100 * 100
+        permitted = all(row[key] is True for key in ("t_plus_one_passed", "open_available", "not_suspended", "not_limit_blocked"))
+        if capacity != expected_capacity or filled != (capacity if permitted else 0):
+            return False
+        remaining[state_symbol] = row["raw_adv_capacity_shares"] - filled
+        inventory[book] = before - filled
+        if type(row["is_s_proposal"]) is not bool:
+            return False
+        if row["is_s_proposal"]:
+            if book not in books or book in observed:
+                return False
+            observed.add(book)
+            target = books[book]
+            if target["suppression_winner_reason"] is not None or row["requested_shares"] != target["planned_shares"]:
+                return False
+            for key in ("inventory_before_shares", "raw_adv_capacity_shares", "capacity_shares", "executable_shares",
+                        "t_plus_one_passed", "open_available", "not_suspended", "not_limit_blocked"):
+                if row[key] != target[key]:
+                    return False
+    return all(book in observed or (isinstance(row["suppression_winner_reason"], str)
+                                   and row["capacity_shares"] == row["executable_shares"] == 0)
+               for book, row in books.items())
+
+
 def _fill_valid(evidence: Mapping[str, Any]) -> bool:
     fill = evidence.get("fillability")
     shortfall = evidence.get("shortfall")
@@ -194,18 +248,21 @@ def _fill_valid(evidence: Mapping[str, Any]) -> bool:
         if books is not None:
             if not isinstance(books, list) or not books:
                 return False
+            queue = evidence.get("queue_fillability")
+            if queue is not None and not _queue_valid(evidence):
+                return False
             shared = {}
             for row in books:
                 integers = ("state_index", "current_shares", "planned_shares", "raw_adv_capacity_shares", "capacity_shares", "executable_shares")
                 if any(type(row[key]) is not int or row[key] < 0 for key in integers):
                     return False
                 key = (row["state_index"], row["symbol"])
-                if key in shared and row["raw_adv_capacity_shares"] > shared[key]:
+                if queue is None and key in shared and row["raw_adv_capacity_shares"] > shared[key]:
                     return False
                 shared[key] = row["raw_adv_capacity_shares"] - row["capacity_shares"]
-                if not 0 <= row["executable_shares"] <= row["capacity_shares"] <= min(row["planned_shares"], row["current_shares"], row["raw_adv_capacity_shares"]):
+                if not 0 <= row["executable_shares"] <= row["capacity_shares"] <= min(row["planned_shares"], row.get("inventory_before_shares", row["current_shares"]), row["raw_adv_capacity_shares"]):
                     return False
-                if row["executable_shares"] % 100 and row["executable_shares"] != row["current_shares"]:
+                if row["executable_shares"] % 100 and row["executable_shares"] != row.get("inventory_before_shares", row["current_shares"]):
                     return False
                 permitted = all(row[key] is True for key in ("t_plus_one_passed", "open_available", "not_suspended", "not_limit_blocked"))
                 if row["executable_shares"] != (row["capacity_shares"] if permitted else 0):

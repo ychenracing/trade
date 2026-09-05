@@ -488,9 +488,109 @@ class OverlayEvidenceMixin:
             "executable_lot_shares": executable,
             "fillability": fillability,
             "book_fillability": book_receipts,
+            "queue_fillability": None,
             "shortfall": {"shares": shortfall, "reason": reason},
             "pre_sell_crossing_buy_witness": False,
         }
+
+    def finalize_c6_s_queue(self, states: list, date: pd.Timestamp, *, state_local_books: bool = True) -> None:
+        """Measure one scheduled S sell against the final queue, without trading.
+
+        Only integer inventories and ADV balances are copied. No account, price
+        path, return or drawdown is evolved. Other symbols cannot consume this
+        symbol's side-specific sell ADV; native strategy order is sufficient.
+        """
+        from types import SimpleNamespace
+        from quantfusion.risk.overlay.adapter import consolidate_risk_sells, make_sell_signal
+
+        evidence = getattr(self, "c6_s_evidence", None)
+        if not evidence or evidence["first_early_sell_required_close"] != str(date.date()):
+            return
+        schedule = evidence["scheduled_execution_batch"]
+        books = evidence["book_fillability"]
+        if schedule is None or not books:
+            return
+        next_date = pd.Timestamp(schedule["execution_open"])
+        symbol = books[0]["symbol"]
+        copies = [SimpleNamespace(sleeve=SimpleNamespace(sleeve_name=state.sleeve.sleeve_name),
+                                  pending=list(state.pending)) for state in states]
+        proposed = {}
+        for row in books:
+            state_index = row["state_index"]
+            pending = copies[state_index].pending
+            signal = next((signal for signal, strategy in pending
+                           if strategy is None and signal.direction == "sell" and signal.symbol == symbol
+                           and signal.strategy_name == row["strategy_name"]
+                           and signal.signal_date == str(date.date())
+                           and signal.reason == f"concentration_trim:cluster={evidence['worst_cluster']}"
+                           and signal.target_shares == row["planned_shares"]), None)
+            if signal is None:
+                frame = states[state_index].data_map[symbol]
+                signal = make_sell_signal(symbol, row["strategy_name"], row["planned_shares"],
+                                          float(frame.loc[date, "close"]), str(date.date()),
+                                          "concentration_trim", f"cluster={evidence['worst_cluster']}")
+                pending.append((signal, None))
+            proposed[id(signal)] = row
+            row.update(capacity_shares=0, executable_shares=0, raw_adv_capacity_shares=0,
+                       inventory_before_shares=row["current_shares"], suppression_winner_reason=None)
+        suppressed = []
+        consolidate_risk_sells(copies, str(date.date()), suppressed, state_local_books=state_local_books)
+        for event in suppressed:
+            for row in books:
+                if (row["state_index"] == event["loser_state_index"] and row["strategy_name"] == event["strategy_name"]
+                        and row["symbol"] == event["symbol"] and event["loser_reason"].startswith("concentration_trim:")):
+                    row["suppression_winner_reason"] = event["winner_reason"]
+        queue = []
+        ranks = {"turtle_breakout": 0, "dual_ma": 1, "atr_channel": 2}
+        for state_index, state in enumerate(states):
+            pending = sorted((item for item in copies[state_index].pending
+                              if item[0].symbol == symbol and item[0].direction == "sell"),
+                             key=lambda item: ranks.get(item[0].strategy_name, 99))
+            inventory = {name: int(pos.shares) for name, pos in state.sleeve.positions.get(symbol, {}).items()}
+            cap = state.sleeve._remaining_adv_capacity(symbol, "sell", state.data_map, next_date)
+            remaining = max(int(cap), 0) if cap is not None else sum(inventory.values())
+            frame = state.data_map.get(symbol)
+            for signal, strategy in pending:
+                name = strategy.name if strategy is not None else signal.strategy_name
+                before = inventory.get(name, 0)
+                open_price = frame.loc[next_date, "open"] if frame is not None and next_date in frame.index else None
+                opened = open_price is not None and not pd.isna(open_price) and float(open_price) > 0
+                volume = frame.loc[next_date, "volume"] if opened and "volume" in frame else None
+                active = volume is not None and not pd.isna(volume) and float(volume) > 0
+                limit_ok = opened and state.sleeve._opening_limit_state(signal, frame, next_date, float(open_price)) != "sell_blocked"
+                t_plus_one = next_date > pd.Timestamp(signal.signal_date)
+                available = min(int(signal.target_shares), before, remaining)
+                capacity = available if available == before else floor_to_lot(available)
+                filled = capacity if opened and active and limit_ok and t_plus_one else 0
+                row = {"state_index": state_index, "sleeve_name": state.sleeve.sleeve_name,
+                       "strategy_name": name, "symbol": symbol, "reason": signal.reason,
+                       "signal_date": signal.signal_date, "is_s_proposal": id(signal) in proposed,
+                       "requested_shares": int(signal.target_shares), "inventory_before_shares": before,
+                       "raw_adv_capacity_shares": remaining, "capacity_shares": capacity,
+                       "executable_shares": filled, "t_plus_one_passed": t_plus_one,
+                       "open_available": opened, "not_suspended": active, "not_limit_blocked": limit_ok}
+                queue.append(row)
+                if id(signal) in proposed:
+                    proposed[id(signal)].update({key: row[key] for key in (
+                        "inventory_before_shares", "raw_adv_capacity_shares", "capacity_shares", "executable_shares",
+                        "t_plus_one_passed", "open_available", "not_suspended", "not_limit_blocked")})
+                inventory[name] = before - filled
+                remaining -= filled
+        evidence["queue_fillability"] = queue
+        capacity = sum(row["capacity_shares"] for row in books)
+        executable = sum(row["executable_shares"] for row in books)
+        fill = evidence["fillability"]
+        for key in ("t_plus_one_passed", "open_available", "not_suspended", "not_limit_blocked"):
+            fill[key] = any(row[key] for row in books)
+        fill.update(adv_capacity_shares=capacity, nonzero_executable_lot=executable > 0)
+        evidence["executable_lot_shares"] = executable
+        checks = [(fill[key], reason) for key, reason in (
+            ("t_plus_one_passed", "T_PLUS_ONE"), ("open_available", "MISSING_OPEN"),
+            ("not_suspended", "SUSPENDED"), ("not_limit_blocked", "LIMIT_BLOCKED"))]
+        checks.extend(((capacity > 0, "ADV_ZERO"), (capacity >= evidence["planned_shares"], "CAPACITY"),
+                       (executable > 0, "SUB_LOT")))
+        evidence["shortfall"] = {"shares": max(evidence["planned_shares"] - executable, 0),
+                                 "reason": next((reason for passed, reason in checks if not passed), "NONE")}
 
     def _layered_protection(
         self, state, symbol: str, pos, date: pd.Timestamp, drawdown: float
