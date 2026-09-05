@@ -62,6 +62,60 @@ def test_strict_json_rejects_duplicate_keys_and_nonfinite_numbers() -> None:
         canonical_json_bytes({"x": float("inf")})
     with pytest.raises(ContractError, match="object keys must be strings"):
         canonical_json_bytes({1: "x"})
+
+
+def test_implementation_proofs_are_checked_against_real_git_objects(tmp_path):
+    from copy import deepcopy
+    from quantfusion.application.c6_contract import validate_implementation_git_proofs
+    def git(*args):
+        return subprocess.check_output(['git', *args], cwd=tmp_path).decode().strip()
+    git('init', '-q')
+    git('config', 'user.name', 'Synthetic Test')
+    git('config', 'user.email', 'test@example.invalid')
+    git('commit', '--allow-empty', '-qm', 'baseline')
+    baseline = git('rev-parse', 'HEAD')
+    def commit(path, text):
+        (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / path).write_text(text)
+        git('add', path)
+        git('commit', '-qm', 'synthetic fixture')
+        return {'commit': git('rev-parse', 'HEAD'), 'tree': git('rev-parse', 'HEAD^{tree}')}
+    p = commit('P.json', '{}\n')
+    base = commit('base.py', 'x = 1\n')
+    selected = commit('s.py', 'y = 2\n')
+    for value, parent, path in [(base,p,'base.py'), (selected,base,'s.py')]:
+        value.update(comparison_base_commit=parent['commit'],comparison_base_tree=parent['tree'],
+            first_parent_ancestor=True,merge_commit_count=0,changed_paths=[path],added_lines=1,deleted_lines=0,
+            required_blobs={path:{'mode':'100644','git_blob':git('rev-parse',value['commit']+':'+path),
+                'sha256':hashlib.sha256((tmp_path/path).read_bytes()).hexdigest()}})
+    bindings = {'P':p,'implementations':{'I_B':base,'I_S':selected}}
+    prereg = {'implementation_freeze':{key:value for alias,path in [('I_B','base.py'),('I_S','s.py')] for key,value in
+        [(alias+'_allowed_paths',[path]),(alias+'_diff_budget',{'maximum_changed_paths':1,'maximum_added_lines':1,'maximum_deleted_lines':0})]}}
+    validate_implementation_git_proofs(prereg,bindings,repository=tmp_path)
+    for key,value in [('added_lines',0),('changed_paths',[]),('first_parent_ancestor',False),('tree',p['tree'])]:
+        forged=deepcopy(bindings)
+        forged['implementations']['I_B'][key]=value
+        with pytest.raises(ContractError):
+            validate_implementation_git_proofs(prereg,forged,repository=tmp_path)
+    forged=deepcopy(bindings)
+    forged['implementations']['I_S']['required_blobs']['s.py']['sha256']='0'*64
+    with pytest.raises(ContractError,match='SHA-256'):
+        validate_implementation_git_proofs(prereg,forged,repository=tmp_path)
+    prereg['implementation_freeze']['I_B_diff_budget']['maximum_added_lines']=0
+    with pytest.raises(ContractError,match='budget'):
+        validate_implementation_git_proofs(prereg,bindings,repository=tmp_path)
+    prereg['implementation_freeze']['I_B_diff_budget']['maximum_added_lines']=1
+    prereg['implementation_freeze']['P_allowed_paths']=['P.json']
+    prereg['authority']={'base_revision':baseline}
+    git('switch', '--detach', p['commit'])
+    r=commit('artifacts/diagnostics/c6-run-bindings.json','{}\n')
+    validate_implementation_git_proofs(prereg,bindings,repository=tmp_path,bindings_revision=r['commit'])
+    invalid=commit('extra.py','z=3\n')
+    with pytest.raises(ContractError,match='evidence-only'):
+        validate_implementation_git_proofs(prereg,bindings,repository=tmp_path,bindings_revision=invalid['commit'])
+    prereg['implementation_freeze']['P_allowed_paths']=[]
+    with pytest.raises(ContractError,match='P tree'):
+        validate_implementation_git_proofs(prereg,bindings,repository=tmp_path,bindings_revision=r['commit'])
 def test_canonical_payload_hash_uses_the_frozen_serialization() -> None:
     payload = {"z": [2, 1], "é": "值", "a": {"ok": True}}
     expected = (
@@ -115,9 +169,10 @@ def test_frozen_preregistration_version_matches_authority_branch() -> None:
     definitions = preregistration["schema_catalog"]["definitions"]
     assert "base_evaluation_id" in definitions["common_prefix_comparison"]["exact_keys"]
     assert "base_evaluation_id" in definitions["no_effect_comparison"]["exact_keys"]
-    assert definitions["no_effect_comparison"]["field_types"]["item_kind"] == (
-        "literal evaluation"
-    )
+    if preregistration['schema_catalog']['schema_version'] == 2:
+        assert definitions['no_effect_comparison']['wire_schema']['properties']['item_kind'] == {'const': 'evaluation'}
+    else:
+        assert definitions["no_effect_comparison"]["field_types"]["item_kind"] == "literal evaluation"
 def test_bound_argv_accepts_only_declared_late_slots() -> None:
     template = ["python", "-m", "fixture", "--source", "{source_revision}"]
     assert render_bound_argv(

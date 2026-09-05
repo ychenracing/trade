@@ -472,7 +472,20 @@ jobs:
           elif manifest["binding_id"] == "c6.selected.l4":
               expected_files = {"official-artifact.json", "digest.json"}
           else:
-              expected_files = {"payload.json", "digest.json"}
+              bindings = json.loads(
+                  Path("bindings/artifacts/diagnostics/c6-run-bindings.json").read_text(encoding="utf-8"),
+                  object_pairs_hook=unique_object, parse_constant=reject_constant,
+              )
+              records = [record for record in bindings["binding_records"]
+                         if record["workflow_binding_id"] == manifest["binding_id"]
+                         and record["logical_run_id"] == manifest["logical_run_id"]
+                         and record["candidate_id"] == manifest["candidate_id"]]
+              if len(records) != 1:
+                  raise SystemExit("sealed export has no unique frozen binding")
+              payload_name = records[0]["paths"]["producer_payload_relative_path"]
+              if payload_name not in {"payload.json", "payload.json.gz"}:
+                  raise SystemExit("unsupported frozen diagnostic payload transport")
+              expected_files = {payload_name, "digest.json"}
           if set(files) != expected_files:
               raise SystemExit("sealed export file set does not match binding stage")
 
@@ -485,7 +498,8 @@ jobs:
               relative = path.relative_to(root).as_posix()
               if any(part.startswith(".") for part in PurePosixPath(relative).parts):
                   raise SystemExit(f"sealed export contains hidden path: {relative}")
-              actual_files[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+              with path.open("rb") as stream:
+                  actual_files[relative] = hashlib.file_digest(stream, "sha256").hexdigest()
           if set(files) != set(actual_files):
               raise SystemExit("sealed export manifest file set is incomplete")
           for relative, digest in files.items():

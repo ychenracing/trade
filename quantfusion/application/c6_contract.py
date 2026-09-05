@@ -632,6 +632,65 @@ def _validate_git_file_identity(
         raise ContractError(f"embedded frozen path mismatch: {relative}")
 
 
+def validate_implementation_git_proofs(prereg: Mapping[str, Any], bindings: Mapping[str, Any], *, repository: Path,
+                                       bindings_revision: str | None = None) -> None:
+    """Reconcile the frozen implementation proofs against actual Git objects."""
+    freeze = prereg['implementation_freeze']
+    if bindings_revision is not None:
+        p_commit = bindings['P']['commit']
+        parents = _git_output(repository, ['rev-list', '--parents', '-n', '1', bindings_revision]).decode().split()
+        r_changes = _git_output(repository, ['diff', '--name-status', '--no-renames', p_commit, bindings_revision]).decode().splitlines()
+        if parents != [bindings_revision, p_commit] or r_changes != ['A\tartifacts/diagnostics/c6-run-bindings.json']:
+            raise ContractError('R must be evidence-only and fork directly from P')
+        changes = _git_output(repository, ['diff', '--name-status', '--no-renames', prereg['authority']['base_revision'], p_commit]).decode().splitlines()
+        if (not changes or any(line.split('\t', 1)[0] != 'A' or line.split('\t', 1)[1] not in freeze['P_allowed_paths'] for line in changes)):
+            raise ContractError('P tree contains changes beyond the preregistration artifacts')
+    for alias in ('I_B', 'I_S'):
+        identity = bindings['implementations'][alias]
+        base = bindings['P'] if alias == 'I_B' else bindings['implementations']['I_B']
+        start, end = base['commit'], identity['commit']
+        if not all(isinstance(value, str) and _is_sha(value, 40) for value in (start, end)):
+            raise ContractError('implementation requires exact commit OIDs')
+        if (identity['comparison_base_commit'] != start or identity['comparison_base_tree'] != base['tree']
+                or _git_output(repository, ['rev-parse', start+'^{tree}']).decode().strip() != base['tree']
+                or _git_output(repository, ['rev-parse', end+'^{tree}']).decode().strip() != identity['tree']):
+            raise ContractError('implementation comparison base or tree differs from Git')
+        _git_output(repository, ['merge-base', '--is-ancestor', start, end])
+        ancestry = _git_output(repository, ['rev-list', '--parents', '--first-parent', start+'..'+end]).decode().splitlines()
+        if (not ancestry or any(len(line.split()) != 2 for line in ancestry)
+                or ancestry[-1].split()[-1] != start or identity['first_parent_ancestor'] is not True
+                or identity['merge_commit_count'] != 0):
+            raise ContractError('implementation requires an exact single-parent history')
+        entries = _git_output(repository, ['diff', '--raw', '-z', '--no-renames', start, end]).split(b'\0')
+        paths = []
+        for offset in range(0, len(entries)-1, 2):
+            modes = entries[offset].split()
+            path = entries[offset+1].decode('utf-8')
+            if (len(modes) != 5 or modes[-1] not in {b'A', b'M'} or modes[1] != b'100644'
+                    or modes[0] not in {b':000000', b':100644'} or path not in freeze[alias+'_allowed_paths']):
+                raise ContractError('implementation contains a forbidden path or change kind')
+            paths.append(path)
+        paths.sort(key=lambda path: path.encode('utf-8'))
+        if paths != identity['changed_paths'] or set(identity['required_blobs']) != set(paths):
+            raise ContractError('implementation changed-path or blob coverage differs from Git')
+        added = deleted = 0
+        for line in _git_output(repository, ['diff', '--numstat', '-z', '--no-renames', start, end]).split(b'\0'):
+            if not line:
+                continue
+            plus, minus, _ = line.split(b'\t', 2)
+            if not plus.isdigit() or not minus.isdigit():
+                raise ContractError('binary implementation diff is forbidden')
+            added += int(plus)
+            deleted += int(minus)
+        budget = freeze[alias+'_diff_budget']
+        if (added != identity['added_lines'] or deleted != identity['deleted_lines']
+                or len(paths) > budget['maximum_changed_paths']
+                or added > budget['maximum_added_lines'] or deleted > budget['maximum_deleted_lines']):
+            raise ContractError('implementation diff proof or budget differs from Git')
+        for path in paths:
+            _validate_git_file_identity(repository, end, path, identity['required_blobs'][path])
+
+
 def economic_tree_manifest(
     revision: str,
     allowlist: Collection[str],

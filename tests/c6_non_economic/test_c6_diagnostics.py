@@ -557,7 +557,9 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
                                            'diagnostic_noncanonical': True, 'allow_publication': False}
         result = runner({symbol: symbol for symbol in symbols}, '2026-01-05', '2026-01-09', **kwargs)
         states = replay_states
-        assert s_flags and all(flag == (intervention in {'C6_BASE_PLUS_S', 'PRODUCTION'}) for flag in s_flags)
+        expected_s = intervention == 'C6_BASE_PLUS_S' or (
+            intervention == 'PRODUCTION' and getattr(CrossMarketOverlay, 'C6_S_PRODUCTION', False))
+        assert s_flags and all(flag == expected_s for flag in s_flags)
 
         # Direct engine ledgers, without the diagnostic serializer's reconstructions.
         path = {

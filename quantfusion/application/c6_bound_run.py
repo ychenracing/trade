@@ -1556,6 +1556,12 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
         _raise("P commit does not bind the expected preregistration blob")
     if _git_text(["hash-object", str(prereg_path)], cwd=Path.cwd()) != p_identity["blob"]:
         _raise("source P blob does not match R")
+    if prereg.get('schema_catalog', {}).get('schema_version') == 2:
+        from quantfusion.application.c6_contract import validate_implementation_git_proofs
+        try:
+            validate_implementation_git_proofs(prereg, run_bindings, repository=Path.cwd(), bindings_revision=args.run_bindings_revision)
+        except (ContractError, KeyError, TypeError, ValueError) as exc:
+            _raise('frozen implementation proof does not match Git', exc)
 
     validate_runtime_identity(
         binding,

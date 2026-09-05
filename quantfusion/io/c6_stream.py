@@ -25,7 +25,7 @@ DECODED_LIMIT = 64 * 1024 ** 3
 
 
 @contextmanager
-def open_json_bytes(path: Path) -> Iterator[BinaryIO]:
+def open_json_bytes(path: Path) -> Iterator[BinaryIO | gzip.GzipFile]:
     """Read plain JSON or its lossless gzip transport without materializing it."""
     with path.open('rb') as raw:
         compressed = raw.read(2) == b'\x1f\x8b'
@@ -85,7 +85,7 @@ class FileArray(Sequence[Any]):
         with open_json_bytes(self.path) as stream:
             return self._read(stream, self.spans[key])
 
-    def _read(self, stream: BinaryIO, span: tuple[int, int]) -> Any:
+    def _read(self, stream: BinaryIO | gzip.GzipFile, span: tuple[int, int]) -> Any:
         offset, size = span
         stream.seek(offset)
         raw = stream.read(size)
