@@ -6,18 +6,42 @@ The wire format stays ordinary canonical JSON, including its final newline.
 from __future__ import annotations
 
 import hashlib
+import gzip
+import io
 import json
 import math
 import os
 import tempfile
 import zipfile
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, BinaryIO, IO, TextIO, overload
 
 RECORD_LIMIT = 64 * 1024 * 1024
 CHUNK_SIZE = 64 * 1024
 ARCHIVE_LIMIT = 4 * 1024 ** 3
+DECODED_LIMIT = 64 * 1024 ** 3
+
+
+@contextmanager
+def open_json_bytes(path: Path) -> Iterator[BinaryIO]:
+    """Read plain JSON or its lossless gzip transport without materializing it."""
+    with path.open('rb') as raw:
+        compressed = raw.read(2) == b'\x1f\x8b'
+        raw.seek(0)
+        if compressed:
+            with gzip.GzipFile(fileobj=raw, mode='rb') as stream:
+                yield stream
+        else:
+            yield raw
+
+
+def producer_payload_path(root: Path) -> Path:
+    paths = [root / name for name in ('payload.json', 'payload.json.gz') if (root / name).is_file()]
+    if len(paths) != 1:
+        raise ValueError('producer requires one unambiguous diagnostic payload')
+    return paths[0]
 
 
 def _unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -58,7 +82,7 @@ class FileArray(Sequence[Any]):
     def __getitem__(self, key: int | slice) -> Any:
         if isinstance(key, slice):
             return FileArray(self.path, self.spans[key], field=self.field, owner=self.owner)
-        with self.path.open("rb") as stream:
+        with open_json_bytes(self.path) as stream:
             return self._read(stream, self.spans[key])
 
     def _read(self, stream: BinaryIO, span: tuple[int, int]) -> Any:
@@ -71,7 +95,7 @@ class FileArray(Sequence[Any]):
         return value if self.field is None else value[self.field]
 
     def __iter__(self) -> Iterator[Any]:
-        with self.path.open("rb") as stream:
+        with open_json_bytes(self.path) as stream:
             for span in self.spans:
                 yield self._read(stream, span)
 
@@ -134,8 +158,14 @@ def write_json(path: Path, value: Any, *, replace: bool = False) -> None:
     with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".c6-json-", delete=False) as stream:
         temporary = Path(stream.name)
         try:
-            for chunk in canonical_chunks(value):
-                stream.write(chunk)
+            if path.suffix == '.gz':
+                # Empty filename and zero mtime make physical bytes reproducible.
+                with gzip.GzipFile(filename='', fileobj=stream, mode='wb', compresslevel=1, mtime=0) as compressed:
+                    for chunk in canonical_chunks(value):
+                        compressed.write(chunk)
+            else:
+                for chunk in canonical_chunks(value):
+                    stream.write(chunk)
             stream.flush()
             os.fsync(stream.fileno())
             if replace:
@@ -201,13 +231,15 @@ class _Reader:
         self.stream, self.chunk_size, self.limit = stream, chunk_size, record_limit
         self.buffer, self.offset, self.eof = "", 0, False
 
-    def more(self) -> None:
-        text = self.stream.read(self.chunk_size)
+    def more(self, size: int | None = None) -> None:
+        text = self.stream.read(self.chunk_size if size is None else size)
         self.eof = not text
         self.buffer += text
 
     def consume(self, count: int) -> None:
         self.offset += len(self.buffer[:count].encode("utf-8"))
+        if self.offset > DECODED_LIMIT:
+            raise ValueError('decoded JSON exceeds size limit')
         self.buffer = self.buffer[count:]
 
     def peek(self) -> str:
@@ -243,7 +275,7 @@ class _Reader:
                     raise ValueError("truncated JSON value") from exc
             if len(self.buffer.encode("utf-8")) > self.limit + self.chunk_size * 4:
                 raise ValueError("JSON record limit exceeded")
-            self.more()
+            self.more(max(self.chunk_size, min(len(self.buffer), 4 * 1024 ** 2)))
 
 
 def load_object(path: Path, *, array_fields: frozenset[str] = frozenset({"evaluations", "completed_items", "results"}),
@@ -252,7 +284,7 @@ def load_object(path: Path, *, array_fields: frozenset[str] = frozenset({"evalua
     if chunk_size < 1 or record_limit < 1:
         raise ValueError("invalid JSON buffer limits")
     result: dict[str, Any] = {}
-    with path.open("r", encoding="utf-8", newline="") as stream:
+    with open_json_bytes(path) as binary, io.TextIOWrapper(binary, encoding='utf-8', newline='') as stream:
         reader = _Reader(stream, chunk_size, record_limit)
         reader.expect("{")
         if reader.peek() != "}":

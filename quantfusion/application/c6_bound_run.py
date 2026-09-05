@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import gzip
 import math
 import errno
 import os
@@ -173,6 +174,13 @@ def _json_content(content: bytes | Path) -> Any:
         return load_object(content) if isinstance(content, Path) else strict_json_loads(content)
     except (ValueError, OSError) as exc:
         _raise("invalid sealed JSON content", exc)
+
+
+def diagnostic_payload(export: RemoteExport) -> bytes | Path:
+    names = set(export.files) & {'payload.json', 'payload.json.gz'}
+    if len(names) != 1:
+        _raise('producer requires one unambiguous diagnostic payload')
+    return export.files[names.pop()]
 
 
 def _load_object(path: Path, keys: set[str] | frozenset[str], label: str) -> dict[str, Any]:
@@ -679,10 +687,11 @@ def resolve_attempt_paths(
     root = Path("artifacts/checkpoints/c6") / logical_run_id / "attempts" / attempt_id
     return {
         "root": root,
-        "payload": root / ("official-artifact.json" if stage == "L4" else "payload.json"),
+        "payload": root / ("official-artifact.json" if stage == "L4" else
+                           "payload.json.gz" if binding.get('paths', {}).get('payload_path_template') == '{attempt_root}/payload.json.gz' else "payload.json"),
         "digest": root / "digest.json",
         "checkpoint": root / "checkpoint.json",
-        "child_checkpoint": root / "child-checkpoint.bin",
+        "child_checkpoint": root / ("child-checkpoint.bin.gz" if stage != 'L4' and binding.get('paths', {}).get('child_checkpoint_path_template') == '{attempt_root}/child-checkpoint.bin.gz' else "child-checkpoint.bin"),
         "lease": root.parent.parent / "lease.json",
     }
 
@@ -731,8 +740,7 @@ def execution_item_ids(
 
 def qualification_item_ids(export: RemoteExport) -> list[str]:
     """Derive the frozen residual set only from a validated Base producer."""
-    raw = export.files.get("payload.json")
-    payload = _json_content(raw) if raw is not None else None
+    payload = _json_content(diagnostic_payload(export))
     if not isinstance(payload, dict) or not isinstance(payload.get("evaluations"), (list, FileArray)):
         _raise("Base producer has no valid evaluation array")
     selected = [
@@ -836,7 +844,8 @@ class DiagnosticCheckpoint:
         self.deadline = time.monotonic() + budget_seconds
         self.chunk_size, self.cursor, self.new_count = chunk_size, 0, 0
         self._spool = tempfile.TemporaryDirectory(prefix="c6-records-")
-        self.items = FileArray(Path(self._spool.name) / "records.jsonl", [], owner=self._spool)
+        self.compressed = path.suffix == '.gz'
+        self.items = FileArray(Path(self._spool.name) / ("records.jsonl.gz" if self.compressed else "records.jsonl"), [], owner=self._spool)
         self.items.path.touch(mode=0o600)
         if path.is_symlink():
             _raise("checkpoint cannot be a symlink")
@@ -894,8 +903,12 @@ class DiagnosticCheckpoint:
         if len(raw) > RECORD_LIMIT:
             _raise("checkpoint item exceeds JSON record limit")
         with self.items.path.open("ab") as stream:
-            offset = stream.tell()
-            stream.write(raw)
+            offset = sum(self.items.spans[-1]) if self.items.spans else 0
+            if self.compressed:
+                with gzip.GzipFile(filename='', fileobj=stream, mode='wb', compresslevel=1, mtime=0) as compressed:
+                    compressed.write(raw)
+            else:
+                stream.write(raw)
         self.items.spans.append((offset, len(raw)))
 
     def save(self) -> None:
@@ -940,7 +953,7 @@ def authenticate_selection_producers(
         export = store.producer(identity, expected_record=record["workflow_binding_id"],
                                 expected_logical_run=record["logical_run_id"], workflow=workflow,
                                 run_bindings_revision=revision, destination=destination / field)
-        raw = export.files["payload.json"]
+        raw = diagnostic_payload(export)
         payload = _json_content(raw)
         digest = _json_content(export.files["digest.json"])
         paths = resolve_attempt_paths(record, claim["attempt_id"])
@@ -976,7 +989,7 @@ def authenticate_selection_producers(
 def validate_l2_gate(export: RemoteExport, d_identity: Mapping[str, Any], implementation: Mapping[str, Any], prereg: Mapping[str, Any]) -> None:
     """A selected L4 run consumes only all-passing L2 under the identical D/C."""
     digest = _json_content(export.files["digest.json"])
-    payload = _json_content(export.files["payload.json"])
+    payload = _json_content(diagnostic_payload(export))
     expected_ids = [spec["id"] for spec in prereg["diagnostic_predicate_manifests"]["L2_APPLICABLE_DIAGNOSTIC_PREDICATES"]]
     rows = payload["diagnostic_predicates"]
     if (digest["D"] != d_identity or digest["C"] != implementation
@@ -1619,13 +1632,13 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
         producer_record = next(record for record in run_bindings["binding_records"]
                                if record["workflow_binding_id"] == expected_producer[0]
                                and record["logical_run_id"] == expected_producer[1])
-        validate_result_payload(_json_content(direct_export.files["payload.json"]), producer_record, prereg)
+        validate_result_payload(_json_content(diagnostic_payload(direct_export)), producer_record, prereg)
     transitive_identity: Mapping[str, Any] = empty_producer
     base_root = None
     if binding["record_id"] == "c6.base_plus_s.l1":
         if direct_export is None or store is None:
             _raise("Base+S binding requires its qualification producer")
-        qualification = _json_content(direct_export.files["payload.json"])
+        qualification = _json_content(diagnostic_payload(direct_export))
         if not isinstance(qualification, dict) or not isinstance(
             qualification.get("base_producer_identity"), dict
         ):
@@ -1645,7 +1658,7 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
         if prereg["schema_catalog"].get("schema_version") == 2:
             from quantfusion.application.c6_predicates import validate_qualification_results
             base_record = next(record for record in run_bindings["binding_records"] if record["record_id"] == "c6.base.l1")
-            base_payload = _json_content(base_export.files["payload.json"])
+            base_payload = _json_content(diagnostic_payload(base_export))
             validate_result_payload(base_payload, base_record, prereg)
             try:
                 validate_qualification_results(qualification, base_payload)
@@ -1880,13 +1893,13 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
     validate_result_payload(artifact, binding, prereg)
     payload = artifact
     artifact_bytes = output_path
-    artifact_name = "official-artifact.json" if binding["stage"] == "L4" else "payload.json"
+    artifact_name = output_path.name
     sidecar = build_digest(
         stage=binding["stage"], record_id=binding["record_id"],
         binding_signature=binding_signature, p_identity=p_identity,
         r_revision=args.run_bindings_revision, source_revision=args.source_revision,
         source_tree=binding["source_tree"], d_identity=d_identity,
-        implementation=implementation, artifact_path=artifact_name,
+        implementation=implementation, artifact_path=output_path.as_posix(),
         artifact_bytes=artifact_bytes, payload_schema=binding["canonical_payload_schema"],
         payload=payload, exit_code=completed.returncode,
     )

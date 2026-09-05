@@ -16,7 +16,7 @@ from quantfusion.application.c6_contract import (
     strict_json_load,
 )
 
-from quantfusion.io.c6_stream import FileArray, load_object, write_json
+from quantfusion.io.c6_stream import FileArray, load_object, producer_payload_path, write_json
 
 
 from quantfusion.application.c6_predicates import _CRITERIA, _qualify, _fill_valid as _fill_valid
@@ -115,7 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         raise ValueError("CLI identity does not select S qualification")
     producer = Path(args.producer_export)
-    if file_sha256(producer / "payload.json") != args.producer_artifact_sha256:
+    if file_sha256(producer_payload_path(producer)) != args.producer_artifact_sha256:
         raise ValueError("Base producer artifact SHA-256 mismatch")
     manifest = strict_json_load(producer / "manifest.json")
     base_identity = {
@@ -134,7 +134,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         raise ValueError("Base producer identity does not match qualification")
     result = qualify_base_payload(
-        load_object(producer / "payload.json"),
+        load_object(producer_payload_path(producer)),
         base_producer_identity=base_identity,
         P=bindings["P"],
         R_revision=manifest["run_bindings_revision"],

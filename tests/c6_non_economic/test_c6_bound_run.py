@@ -36,6 +36,52 @@ def test_streamed_json_preserves_canonical_bytes_and_indexes_records(tmp_path):
         write_json(output, loaded)
 
 
+def test_compressed_json_preserves_every_byte_hash_and_bounded_record_access(tmp_path, monkeypatch):
+    import gzip
+    from quantfusion.io import c6_stream as io
+    from quantfusion.application.c6_contract import canonical_json_bytes
+    payload = {'evaluations': [{'id': i, 'text': '中文' * 1000} for i in range(12)], 'done': True}
+    path = tmp_path / 'payload.json.gz'
+    io.write_json(path, payload)
+    original = canonical_json_bytes(payload)
+    assert gzip.decompress(path.read_bytes()) == original
+    assert path.stat().st_size < len(original) / 10
+    loaded = io.load_object(path, chunk_size=31)
+    assert isinstance(loaded['evaluations'], io.FileArray)
+    assert loaded['evaluations'][-1] == payload['evaluations'][-1]
+    assert list(loaded['evaluations'].select(lambda row: row['id'] % 2 == 0)) == payload['evaluations'][::2]
+    assert canonical_payload_hash(loaded) == canonical_payload_hash(payload)
+    copy = tmp_path / 'copy.json.gz'
+    io.write_json(copy, loaded)
+    assert copy.read_bytes() == path.read_bytes()
+    assert io.producer_payload_path(tmp_path) == path
+    monkeypatch.setattr(io, 'DECODED_LIMIT', 100)
+    with pytest.raises(ValueError, match='decoded JSON'):
+        io.load_object(path)
+    monkeypatch.setattr(io, 'DECODED_LIMIT', 64 * 1024 ** 3)
+    damaged = bytearray(path.read_bytes())
+    damaged[-8] ^= 1
+    path.write_bytes(damaged)
+    with pytest.raises((ValueError, OSError)):
+        io.load_object(path)
+
+
+def test_compressed_checkpoint_resume_keeps_exact_logical_results(tmp_path):
+    from quantfusion.application.c6_bound_run import DiagnosticCheckpoint
+    from quantfusion.io.c6_stream import load_object
+    ids = ['control/a', 'control/b']
+    path = tmp_path / 'child-checkpoint.bin.gz'
+    checkpoint = DiagnosticCheckpoint(path, ids, 'a' * 64, chunk_size=1, budget_seconds=0)
+    with pytest.raises(SystemExit) as stopped:
+        checkpoint.map(dict, [{'value': 1}, {'value': 2}], ids, workers=1)
+    assert stopped.value.code == 75
+    assert path.read_bytes().startswith(b'\x1f\x8b')
+    resumed = DiagnosticCheckpoint(path, ids, 'b' * 64, resume_signature='a' * 64)
+    assert list(resumed.map(dict, [None, {'value': 2}], ids, workers=1)) == [{'value': 1}, {'value': 2}]
+    complete = load_object(path)
+    assert [row['item_id'] for row in complete['completed_items']] == ids
+
+
 @pytest.mark.parametrize("raw", [
     b'{"evaluations":[{"a":1,"a":2}]}', b'{"a":1,"a":2}',
     b'{"evaluations":[NaN]}', b'{"evaluations":[1e999]}',

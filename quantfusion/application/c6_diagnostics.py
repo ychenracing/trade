@@ -15,7 +15,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from quantfusion.application.c6_contract import canonical_json_bytes as _canonical_bytes
-from quantfusion.io.c6_stream import load_object, select_records, write_json
+from quantfusion.io.c6_stream import load_object, producer_payload_path, select_records, write_json
 from quantfusion.application.c6_predicates import (
     _l1_predicate_rows, _predicate_rows,
     _attach_interventions as _attach_interventions,
@@ -785,9 +785,9 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
     if base:
         payload["attribution_sensitivity"] = _attribution(evaluations)
     if not base:
-        qualification = strict_json_load(Path(args.producer_export) / "payload.json")
+        qualification = load_object(producer_payload_path(Path(args.producer_export)))
         manifest = strict_json_load(Path(args.producer_export) / "manifest.json")
-        base_payload = load_object(Path(args.base_producer_export) / "payload.json")
+        base_payload = load_object(producer_payload_path(Path(args.base_producer_export)))
         identity = {"artifact_full_byte_sha256": args.producer_artifact_sha256, "attempt_id": manifest["attempt_id"], "binding_id": manifest["binding_id"], "logical_run_id": manifest["logical_run_id"], "workflow_run_id": manifest["workflow_run_id"]}
         common, no_effect = compare_s_paths(base_payload["evaluations"], evaluations, scenario_ids)
         payload.update({"base_producer_identity": qualification["base_producer_identity"], "qualification_producer_identity": identity, "common_prefix_comparisons": common, "no_effect_comparisons": no_effect})
