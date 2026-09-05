@@ -445,3 +445,81 @@ def test_wrapper_parser_matches_the_frozen_workflow_without_token_argv() -> None
     )
     assert args.binding_id == "c6.base.l1"
     assert not hasattr(args, "fencing_token")
+
+
+def test_d_authentication_binds_producer_bytes_digest_manifest_and_claims(tmp_path):
+    from copy import deepcopy
+    import hashlib
+    from quantfusion.application import c6_bound_run as runner
+    from quantfusion.application.c6_contract import canonical_json_bytes
+    record = {'record_id': 'c6.base.l1', 'workflow_binding_id': 'c6.base.l1', 'candidate_id': 'C6-Base',
+              'logical_run_id': 'base', 'stage': 'L1', 'source_revision': 'a' * 40, 'source_tree': 'b' * 40,
+              'canonical_payload_schema': {'name': 'fixture'}}
+    bindings = {'P': {'commit': 'c' * 40}, 'binding_records': [record]}
+    rows = [{'predicate_id': 'gate', 'passed': True}]
+    payload = {'evaluations': [{'variant_id': 'C6-Base', 'scenario_id': 'a', 'official_metrics': {'max_drawdown': -.1}}],
+               'diagnostic_predicates': rows}
+    raw = canonical_json_bytes(payload)
+    digest = {'record_id': 'c6.base.l1', 'P': bindings['P'], 'R_revision': 'r' * 40,
+              'source_revision': record['source_revision'], 'source_tree': record['source_tree'],
+              'artifact_path': runner.resolve_attempt_paths(record, 'a0')['payload'].as_posix(),
+              'artifact_byte_size': len(raw), 'artifact_full_byte_sha256': hashlib.sha256(raw).hexdigest(),
+              'canonical_result_payload_sha256': canonical_payload_hash(payload), 'exit_code': 0}
+    manifest = {'source_revision': record['source_revision']}
+    manifest_bytes = canonical_json_bytes(manifest)
+    claim = {key: digest[key] for key in ('record_id', 'artifact_path', 'artifact_byte_size', 'artifact_full_byte_sha256', 'canonical_result_payload_sha256')}
+    claim.update(candidate_id='C6-Base', logical_run_id='base', attempt_id='a0', workflow_run_id='123',
+                 manifest_full_byte_sha256=hashlib.sha256(manifest_bytes).hexdigest())
+    selection = {'base_l1': claim, 'base_l1_predicates': rows, 'residual_ids': [], 's_qualification': None,
+                 'base_plus_s_l1': None, 'base_plus_s_l1_predicates': None}
+    prereg = {'schema_catalog': {'definitions': {'fixture': {'exact_keys': ['evaluations', 'diagnostic_predicates']}}}}
+    class Store:
+        def producer(self, identity, **kwargs):
+            assert kwargs['expected_record'] == identity['binding_id'] == 'c6.base.l1'
+            assert kwargs['expected_logical_run'] == 'base'
+            assert kwargs['run_bindings_revision'] == 'r' * 40
+            return runner.RemoteExport(123, manifest, manifest_bytes, {'payload.json': raw, 'digest.json': canonical_json_bytes(digest)})
+    store = Store()
+    runner.authenticate_selection_producers(selection, store, bindings, 'r' * 40, {}, prereg, ['a'], tmp_path)
+    for field, value in [('artifact_byte_size', len(raw) + 1), ('manifest_full_byte_sha256', '0' * 64), ('artifact_path', 'wrong.json')]:
+        altered = deepcopy(selection)
+        altered['base_l1'][field] = value
+        with pytest.raises(BoundRunError, match='sealed producer'):
+            runner.authenticate_selection_producers(altered, store, bindings, 'r' * 40, {}, prereg, ['a'], tmp_path)
+    digest['source_revision'] = '0' * 40
+    with pytest.raises(BoundRunError, match='sealed producer'):
+        runner.authenticate_selection_producers(selection, store, bindings, 'r' * 40, {}, prereg, ['a'], tmp_path)
+
+
+def test_producer_logical_identity_is_rejected_before_network():
+    from quantfusion.application import c6_bound_run as runner
+    store = runner.GitHubActionsLeaseStore('owner/repo', 'synthetic-token')
+    identity = {'artifact_full_byte_sha256': 'a' * 64, 'attempt_id': 'a0', 'binding_id': 'c6.base.l1',
+                'logical_run_id': 'wrong', 'workflow_run_id': '123'}
+    with pytest.raises(BoundRunError, match='logical identity'):
+        store.producer(identity, expected_record='c6.base.l1', expected_logical_run='base',
+                       workflow={}, run_bindings_revision='r' * 40, destination=Path('/nonexistent'))
+
+
+def test_l4_gate_requires_complete_passing_l2_for_identical_d_and_c():
+    from copy import deepcopy
+    from quantfusion.application import c6_bound_run as runner
+    from quantfusion.application.c6_contract import canonical_json_bytes
+    d, c = {'commit': 'd' * 40}, {'commit': 'c' * 40}
+    prereg = {'diagnostic_predicate_manifests': {'L2_APPLICABLE_DIAGNOSTIC_PREDICATES': [{'id': 'one'}, {'id': 'two'}]}}
+    digest = {'D': d, 'C': c}
+    rows = [{'predicate_id': 'one', 'passed': True}, {'predicate_id': 'two', 'passed': True}]
+    def exported(changed_digest, changed_rows):
+        return runner.RemoteExport(123, {}, b'{}', {'digest.json': canonical_json_bytes(changed_digest),
+            'payload.json': canonical_json_bytes({'diagnostic_predicates': changed_rows})})
+    runner.validate_l2_gate(exported(digest, rows), d, c, prereg)
+    for mutation in ('missing', 'failed', 'truthy', 'D', 'C'):
+        new_digest, new_rows = deepcopy(digest), deepcopy(rows)
+        if mutation == 'missing':
+            new_rows.pop()
+        elif mutation in {'D', 'C'}:
+            new_digest[mutation] = {'commit': '0' * 40}
+        else:
+            new_rows[0]['passed'] = 1 if mutation == 'truthy' else False
+        with pytest.raises(BoundRunError, match='L4 requires'):
+            runner.validate_l2_gate(exported(new_digest, new_rows), d, c, prereg)

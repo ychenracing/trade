@@ -251,3 +251,56 @@ def test_economic_tree_hash_uses_exact_git_records_and_allowlist(tmp_path: Path)
     assert economic_tree_hash("HEAD", ["report.txt"], repository=tmp_path) != first
     with pytest.raises(ContractError, match="repo-relative"):
         economic_tree_hash("HEAD", ["../report.txt"], repository=tmp_path)
+
+
+def test_selection_producer_payloads_cannot_inherit_forged_predicates_or_residuals():
+    from copy import deepcopy
+    from quantfusion.application import c6_contract as contract
+    rows = [{'predicate_id': 'gate', 'passed': True}]
+    selection = {'base_l1_predicates': rows, 'residual_ids': [], 's_qualification': None,
+                 'base_plus_s_l1': None, 'base_plus_s_l1_predicates': None}
+    payload = {'evaluations': [{'variant_id': 'C6-Base', 'scenario_id': 'a',
+                               'official_metrics': {'max_drawdown': -.1}}],
+               'diagnostic_predicates': rows}
+    contract.validate_selection_producer_payloads(selection, payload, None, None, ['a'])
+    for key, value in [('base_l1_predicates', [{'predicate_id': 'gate', 'passed': False}]), ('residual_ids', ['a'])]:
+        altered = {**selection, key: value}
+        with pytest.raises(ContractError, match='sealed Base'):
+            contract.validate_selection_producer_payloads(altered, payload, None, None, ['a'])
+    altered = deepcopy(payload)
+    altered['evaluations'][0]['scenario_id'] = 'unknown'
+    with pytest.raises(ContractError, match='sealed Base'):
+        contract.validate_selection_producer_payloads(selection, altered, None, None, ['a'])
+
+
+def test_selection_requires_actual_qualified_s_chain():
+    from copy import deepcopy
+    from quantfusion.application import c6_contract as contract
+    identity = {'artifact_full_byte_sha256': 'a' * 64, 'attempt_id': 'a0', 'record_id': 'c6.base.l1',
+                'logical_run_id': 'base', 'workflow_run_id': '123'}
+    producer = {k: v for k, v in identity.items() if k != 'record_id'} | {'binding_id': 'c6.base.l1'}
+    q_identity = {**identity, 'record_id': 'c6.s.qualification', 'logical_run_id': 'qualification', 'workflow_run_id': '124'}
+    q_producer = {k: v for k, v in q_identity.items() if k != 'record_id'} | {'binding_id': 'c6.s.qualification'}
+    base_rows = [{'predicate_id': 'mdd', 'passed': False}]
+    s_rows = [{'predicate_id': 'mdd', 'passed': True}]
+    selection = {'branch': 'BASE_PLUS_S_SELECTED', 'base_l1': identity, 'base_l1_predicates': base_rows,
+                 'residual_ids': ['a'], 's_qualification': q_identity,
+                 'base_plus_s_l1': {}, 'base_plus_s_l1_predicates': s_rows}
+    base = {'evaluations': [{'variant_id': 'C6-Base', 'scenario_id': 'a', 'official_metrics': {'max_drawdown': -.19}}],
+            'diagnostic_predicates': base_rows}
+    qualification = {'base_producer_identity': producer, 'residual_ids': ['a'], 'all_passed': True,
+                     'results': [{'scenario_id': 'a', 'passed': True, 'criteria': [{'passed': True} for _ in range(7)]}]}
+    selected = {'diagnostic_predicates': s_rows, 'base_producer_identity': producer, 'qualification_producer_identity': q_producer}
+    contract.validate_selection_producer_payloads(selection, base, qualification, selected, ['a'])
+    for mutation in ('qualification', 'nested', 'link', 's_predicates'):
+        q, s = deepcopy(qualification), deepcopy(selected)
+        if mutation == 'qualification':
+            q['all_passed'] = False
+        elif mutation == 'nested':
+            q['results'][0]['criteria'][0]['passed'] = False
+        elif mutation == 'link':
+            s['base_producer_identity']['workflow_run_id'] = '999'
+        else:
+            s['diagnostic_predicates'][0]['passed'] = False
+        with pytest.raises(ContractError, match='sealed'):
+            contract.validate_selection_producer_payloads(selection, base, q, s, ['a'])

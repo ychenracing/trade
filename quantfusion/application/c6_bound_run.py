@@ -41,6 +41,7 @@ from quantfusion.application.c6_contract import (
     strict_json_load,
     strict_json_loads,
     validate_selection_commit,
+    validate_selection_producer_payloads,
 )
 
 
@@ -551,6 +552,8 @@ class GitHubActionsLeaseStore:
             require_exact_keys(identity, keys, label="producer identity")
         except ContractError as exc:
             _raise(str(exc), exc)
+        if identity["logical_run_id"] != expected_logical_run or identity["binding_id"] != expected_record:
+            _raise("producer logical identity differs from R")
         run_text = identity["workflow_run_id"]
         if not isinstance(run_text, str) or not run_text.isdigit():
             _raise("producer workflow_run_id is invalid")
@@ -849,6 +852,64 @@ def producer_dependency(record_id: str, records: Sequence[Mapping[str, Any]]) ->
     if len(matches) != 1:
         _raise("R must contain exactly one producer record")
     return str(matches[0]["workflow_binding_id"]), str(matches[0]["logical_run_id"])
+
+
+def authenticate_selection_producers(
+    selection: Mapping[str, Any], store: GitHubActionsLeaseStore,
+    run_bindings: Mapping[str, Any], revision: str, workflow: Mapping[str, Any],
+    prereg: Mapping[str, Any], scenario_ids: Sequence[str], destination: Path,
+) -> None:
+    """Authenticate every D producer and compare its contents before execution."""
+    payloads: dict[str, Any] = {}
+    for field, record_id in (("base_l1", "c6.base.l1"), ("s_qualification", "c6.s.qualification"),
+                             ("base_plus_s_l1", "c6.base_plus_s.l1")):
+        claim = selection[field]
+        if claim is None:
+            payloads[field] = None
+            continue
+        record = next(item for item in run_bindings["binding_records"] if item["record_id"] == record_id)
+        if claim["record_id"] != record_id or claim["candidate_id"] != record["candidate_id"]:
+            _raise("D sealed producer candidate or record differs from R")
+        identity = {key: claim[key] for key in ("artifact_full_byte_sha256", "attempt_id", "logical_run_id", "workflow_run_id")}
+        identity["binding_id"] = record["workflow_binding_id"]
+        export = store.producer(identity, expected_record=record["workflow_binding_id"],
+                                expected_logical_run=record["logical_run_id"], workflow=workflow,
+                                run_bindings_revision=revision, destination=destination / field)
+        raw = export.files["payload.json"]
+        payload = strict_json_loads(raw)
+        digest = strict_json_loads(export.files["digest.json"])
+        paths = resolve_attempt_paths(record, claim["attempt_id"])
+        expected = {
+            "record_id": record_id, "P": run_bindings["P"], "R_revision": revision,
+            "source_revision": record["source_revision"], "source_tree": record["source_tree"],
+            "artifact_path": paths["payload"].as_posix(), "artifact_byte_size": len(raw),
+            "artifact_full_byte_sha256": hashlib.sha256(raw).hexdigest(),
+            "canonical_result_payload_sha256": canonical_payload_hash(payload), "exit_code": 0,
+        }
+        if (any(digest.get(key) != value for key, value in expected.items())
+                or any(claim[key] != expected[key] for key in ("artifact_path", "artifact_byte_size", "artifact_full_byte_sha256", "canonical_result_payload_sha256"))
+                or claim["manifest_full_byte_sha256"] != hashlib.sha256(export.manifest_bytes).hexdigest()
+                or export.manifest["source_revision"] != record["source_revision"]):
+            _raise("D sealed producer digest or manifest identity differs")
+        validate_result_payload(payload, record, prereg)
+        payloads[field] = payload
+    try:
+        validate_selection_producer_payloads(selection, payloads["base_l1"], payloads["s_qualification"],
+                                            payloads["base_plus_s_l1"], scenario_ids)
+    except (ContractError, KeyError, TypeError, ValueError) as exc:
+        _raise("D differs from authenticated sealed producer contents", exc)
+
+
+def validate_l2_gate(export: RemoteExport, d_identity: Mapping[str, Any], implementation: Mapping[str, Any], prereg: Mapping[str, Any]) -> None:
+    """A selected L4 run consumes only all-passing L2 under the identical D/C."""
+    digest = strict_json_loads(export.files["digest.json"])
+    payload = strict_json_loads(export.files["payload.json"])
+    expected_ids = [spec["id"] for spec in prereg["diagnostic_predicate_manifests"]["L2_APPLICABLE_DIAGNOSTIC_PREDICATES"]]
+    rows = payload["diagnostic_predicates"]
+    if (digest["D"] != d_identity or digest["C"] != implementation
+            or [row["predicate_id"] for row in rows] != expected_ids
+            or any(row["passed"] is not True for row in rows)):
+        _raise("L4 requires all passing L2 predicates under the identical D and C")
 
 
 def runtime_binding_signature(payload: Mapping[str, Any]) -> str:
@@ -1296,6 +1357,27 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
         )
         if file_sha256(selection_path) != args.d_selection_file_sha256:
             _raise("D selection file SHA-256 mismatch")
+        if store is None:
+            _raise("selected execution requires authenticated D producers")
+        selection = strict_json_load(selection_path)
+        r_path = "artifacts/diagnostics/c6-run-bindings.json"
+        expected_r = {"commit": args.run_bindings_revision,
+                      "tree": _git_text(["rev-parse", args.run_bindings_revision + "^{tree}"], cwd=args.bindings_file.parent),
+                      "blob": _git_text(["rev-parse", args.run_bindings_revision + ":" + r_path], cwd=args.bindings_file.parent),
+                      "sha256": file_sha256(args.bindings_file)}
+        if selection["R"] != expected_r:
+            _raise("D R identity differs from the actual frozen bindings commit and file")
+        scenario_manifest = prereg["scenario_manifests"]["L1_ECONOMIC_SCENARIO_IDS"]
+        from quantfusion.application.c6_diagnostics import validate_manifest_identity
+        scenario_ids = Path(scenario_manifest["path"]).read_text().splitlines()
+        validate_manifest_identity(scenario_ids, scenario_manifest)
+        authenticate_selection_producers(selection, store, run_bindings, args.run_bindings_revision,
+                                         binding["workflow"], prereg, scenario_ids,
+                                         Path(os.environ["RUNNER_TEMP"]) / "c6-selection-producers")
+        if binding["stage"] == "L4":
+            if direct_export is None:
+                _raise("L4 requires its sealed L2 producer")
+            validate_l2_gate(direct_export, d_identity, implementation, prereg)
     elif any((args.d_commit, args.d_selection_blob_oid, args.d_selection_file_sha256)):
         _raise("pre-selection binding forbids D")
     signature_payload = {

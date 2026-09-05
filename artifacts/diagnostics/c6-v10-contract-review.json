@@ -15,7 +15,7 @@
     "problem": "D incorrectly rejected P-authorized deferred Base predicate failures on qualified S selection.",
     "repair": "Five-branch structural validator reads exact deferred IDs from P; complete ordered predicate arrays required; non-deferred failures never excused.",
     "verification": "13 targeted contract tests pass, including all five branches and cross-branch mutations.",
-    "limits": "Structural validation alone does not authenticate external producer artifacts; full evidence authentication remains required before acceptance."
+    "limits": "D now authenticates referenced producer exports and compares actual payload claims before selected execution; full factual trace and primitive/semantic payload validation remain part of freeze-readiness review."
   },
   "warm_boundary_conflict": {
     "P_rule": "cycle_peak_assets, lifetime_peak_assets and daily_start_assets each equal initial_capital",
@@ -100,5 +100,12 @@
       "private duplicate exact-key/finite/canonical serialization helpers"
     ],
     "evidence": "Repository Python/Markdown/workflow search found no callers of the removed public-shaped helpers; execution uses _attribution. Canonical bytes now use the existing shared contract implementation."
+  },
+  "D_producer_authentication": {
+    "status": "implemented_before_selected_execution",
+    "proof": "Fetch exact Base/qualification/S exports using trusted frozen workflow identity. Check actual raw bytes, canonical payload hash, byte size, manifest hash, R/P/source revision/tree, candidate and record against D and R. Compare Base predicates and recomputed residual IDs, qualification completeness/booleans, S predicates, and transitive producer identities.",
+    "L4_gate": "Require complete ordered L2 predicate set, literal passing booleans, and identical D/C in the sealed L2 digest.",
+    "R_identity": "Compare D R commit/tree/blob/SHA-256 with actual frozen binding checkout and file. The pinned workflow already verifies D single parent R, sole added selection path, mode and bytes.",
+    "verification": "34 targeted bound-run/contract tests passed; Ruff and Bandit medium/high passed. New tests reject forged D predicates/residuals, failed nested qualification, wrong transitive producer links, wrong artifact size/path/manifest/source, wrong logical identity before network, and missing/failed/truthy L2 predicates or different D/C."
   }
 }

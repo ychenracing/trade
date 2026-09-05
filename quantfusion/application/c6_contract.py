@@ -961,6 +961,41 @@ def validate_selection_shape(selection: Mapping[str, Any], preregistration: Mapp
         raise ContractError("D branch is internally inconsistent")
 
 
+def validate_selection_producer_payloads(
+    selection: Mapping[str, Any], base: Mapping[str, Any], qualification: Mapping[str, Any] | None,
+    selected_s: Mapping[str, Any] | None, scenario_ids: Sequence[str],
+) -> None:
+    """Compare D claims with already authenticated, sealed producer contents."""
+    selected_base = [row for row in base["evaluations"] if row["variant_id"] == "C6-Base"]
+    residuals = sorted(row["scenario_id"] for row in selected_base
+                       if abs(float(row["official_metrics"]["max_drawdown"])) > 0.18 + 1e-15)
+    if ([row["scenario_id"] for row in selected_base] != list(scenario_ids)
+            or len(set(scenario_ids)) != len(scenario_ids)
+            or selection["residual_ids"] != residuals
+            or selection["base_l1_predicates"] != base["diagnostic_predicates"]):
+        raise ContractError("D differs from sealed Base predicates or residual identity")
+    if ((qualification is not None) != (selection["s_qualification"] is not None)
+            or (selected_s is not None) != (selection["base_plus_s_l1"] is not None)):
+        raise ContractError("D has missing or extra sealed producers")
+    def producer(identity: Mapping[str, Any]) -> dict[str, Any]:
+        return {key: identity[key] for key in ("artifact_full_byte_sha256", "attempt_id", "logical_run_id", "workflow_run_id")} | {"binding_id": identity["record_id"]}
+    if qualification is not None:
+        rows = qualification["results"]
+        recomputed = [len(row["criteria"]) == 7 and all(item["passed"] is True for item in row["criteria"]) for row in rows]
+        if (qualification["base_producer_identity"] != producer(selection["base_l1"])
+                or qualification["residual_ids"] != residuals
+                or [row["scenario_id"] for row in rows] != residuals
+                or any(row["passed"] is not passed for row, passed in zip(rows, recomputed))
+                or qualification["all_passed"] is not all(recomputed)
+                or qualification["all_passed"] is not (selection["branch"] != "QUALIFICATION_REJECTED")):
+            raise ContractError("D differs from sealed qualification evidence")
+    if selected_s is not None:
+        if (selected_s["diagnostic_predicates"] != selection["base_plus_s_l1_predicates"]
+                or selected_s["base_producer_identity"] != producer(selection["base_l1"])
+                or selected_s["qualification_producer_identity"] != producer(selection["s_qualification"])):
+            raise ContractError("D differs from sealed S predicates or producer chain")
+
+
 def validate_selection_commit(
     path: str | Path,
     *,
