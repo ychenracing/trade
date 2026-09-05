@@ -5,15 +5,17 @@ import hashlib
 import json
 import os
 import re
+import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import tempfile
 import zipfile
 from pathlib import Path
 
 REPOSITORY = "ychenracing/trade"
 WORKFLOW = "c6-bound-economic.yml"
+AUTO_ANCHOR = "codex/c6-v13-workflow-anchor"
 ARCHIVE_LIMIT = 4 * 1024 ** 3
 
 INPUT_NAMES = {
@@ -187,18 +189,48 @@ class GitHub:
         return decode(manifest), files
 
 
+def validate_run_identity(run, workflow):
+    require(run["repository"]["full_name"] == REPOSITORY and run["head_repository"]["full_name"] == REPOSITORY, "foreign repository")
+    require(run["path"] == ".github/workflows/" + WORKFLOW
+            and workflow["path"] == run["path"] and run["workflow_id"] == workflow["id"], "unexpected workflow identity")
+    require(run["event"] == "workflow_dispatch" and run["run_attempt"] == 1, "unexpected producer event or rerun")
+    require(run["head_branch"] == AUTO_ANCHOR, "inactive recovery revision")
+    require(run["status"] == "completed" and run["conclusion"] == "success", "run has no successful sealed handoff")
+
+
+def terminal_predecessor(github, run_id):
+    require(isinstance(run_id, str) and re.fullmatch(r"[1-9][0-9]*", run_id), "invalid explicit predecessor")
+    for _ in range(15):
+        run = github.read("actions/runs/" + run_id)
+        if run["status"] == "completed":
+            return run
+        time.sleep(2)
+    raise ValueError("predecessor has not completed; retain checkpoint for scheduled recovery")
+
+
 def main():
-    require(os.environ["GITHUB_REPOSITORY"] == REPOSITORY and os.environ["GITHUB_EVENT_NAME"] == "workflow_run", "unsupported trigger")
+    require(os.environ["GITHUB_REPOSITORY"] == REPOSITORY and os.environ["GITHUB_EVENT_NAME"] in {"workflow_run", "schedule", "workflow_dispatch"}, "unsupported trigger")
     require(os.environ["GITHUB_RUN_ATTEMPT"] == "1", "native dispatcher reruns are forbidden")
     event = decode(Path(os.environ["GITHUB_EVENT_PATH"]).read_bytes())
-    require(event["action"] == "completed", "nonterminal event")
     github = GitHub()
-    run = github.read(f'actions/runs/{event["workflow_run"]["id"]}')
-    require(run["repository"]["full_name"] == REPOSITORY and run["head_repository"]["full_name"] == REPOSITORY, "foreign repository")
-    require(run["path"] == ".github/workflows/" + WORKFLOW and run["name"] == "C6 Bound Economic Run", "unexpected workflow")
-    require(run["status"] == "completed" and run["conclusion"] == "success", "run has no successful sealed handoff")
-    # Restrict automatic execution to the fresh experiment family; old failures stay sealed.
-    require(re.fullmatch(r"codex/c6-v(?:1[0-9]|[2-9][0-9]+)-workflow-anchor", run["head_branch"]), "pre-recovery experiment")
+    if os.environ["GITHUB_EVENT_NAME"] == "workflow_dispatch":
+        run = terminal_predecessor(github, event["inputs"]["predecessor_run_id"])
+        require(os.environ["GITHUB_SHA"] == run["head_sha"]
+                and os.environ["GITHUB_REF_NAME"] == AUTO_ANCHOR, "explicit dispatcher revision drift")
+    elif os.environ["GITHUB_EVENT_NAME"] == "workflow_run":
+        require(event["action"] == "completed", "nonterminal event")
+        run = github.read(f'actions/runs/{event["workflow_run"]["id"]}')
+    else:
+        runs = github.pages(f"actions/workflows/{WORKFLOW}/runs?event=workflow_dispatch&branch=" + urllib.parse.quote(AUTO_ANCHOR, safe=""), "workflow_runs")
+        if not runs:
+            print("No active recovery producer; no dispatch.")
+            return
+        run = max(runs, key=lambda item: item["id"])
+        if run["status"] != "completed" or run["conclusion"] != "success":
+            print("Latest producer is active or failed; no dispatch.")
+            return
+        run = github.read(f'actions/runs/{run["id"]}')
+    validate_run_identity(run, github.read(f"actions/workflows/{WORKFLOW}"))
     artifacts = github.pages(f'actions/runs/{run["id"]}/artifacts', "artifacts")
     require(len(artifacts) == 1 and not artifacts[0]["expired"], "missing or ambiguous sealed artifact")
     manifest, files = github.artifact(artifacts[0]["id"])
