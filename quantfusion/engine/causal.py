@@ -136,6 +136,8 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         self, data_map: dict[str, pd.DataFrame], date: pd.Timestamp
     ) -> dict[str, float]:
         """Average cached cross-sectional ranks of causal momentum signals."""
+        if getattr(self, "_c6_intervention", None) == "W1_DATA_MAP_ONLY":
+            data_map = {code: frame for code, frame in data_map.items() if code != "601869"}
         date = pd.Timestamp(date)
         cached = self._allocation_score_cache.get(date)
         if cached is not None:
@@ -593,6 +595,8 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                 continue
             receipt = begin_action_batch(self, signal, date_str)
             order = begin_order(self, signal, date_str, defensive=strategy is None)
+            if receipt is not None and order is not None:
+                receipt["winner_order_ordinal"] = order["order_ordinal"]
             executable_signal, keep_pending = self._prepare_open_signal(
                 signal, data_map, date, date_to_pos
             )

@@ -60,6 +60,112 @@ def test_official_breach_uses_the_official_running_peak() -> None:
     assert breach["sample_ordinal"] == 2
     assert breach["peak_owner"] == "official_running_peak"
     assert breach["drawdown"] == pytest.approx(98.39 / 120.0 - 1.0)
+
+
+def test_indicator_provenance_checks_values_and_hashes_untraded_members() -> None:
+    dates = pd.bdate_range('2026-01-05', periods=3)
+    data = {code: pd.DataFrame({'close': [1., 2., 3.]}, index=dates) for code in ('A', 'B')}
+    indicators = {code: {'mean': frame['close'].rolling(2).mean()} for code, frame in data.items()}
+    state = SimpleNamespace(data_map={'A': data['A'].copy()}, indicator_map={'A': {'mean': indicators['A']['mean'].copy()}}, all_dates=list(dates))
+    result = c6_diagnostics.validate_indicator_provenance(data, indicators, [state], ['A', 'B'])
+    assert set(result['indicator_hashes']) == {'A', 'B'}
+    assert result['indicator_hashes']['B'] != result['prepared_frame_hashes']['B']
+    assert result['old_symbol_frames_unchanged'] is True
+    assert result['old_symbol_indicators_unchanged'] is True
+    state.indicator_map['A']['mean'].iloc[-1] += 1e-10
+    with pytest.raises(ValueError, match='indicator'):
+        c6_diagnostics.validate_indicator_provenance(data, indicators, [state], ['A', 'B'])
+
+
+def test_causal_trace_missing_batches_is_not_certified_complete() -> None:
+    timeline = {'first_official_mdd_breach': {'timestamp': '2026-01-06'}}
+    result = {'_c6_orders': [], '_c6_fills': [], '_c6_states': [], '_c6_exposure_trace': []}
+    record = c6_diagnostics.build_causal_matrix(result, timeline, c6_diagnostics._empty_s_evidence(),
+                                                [{'timestamp': '2026-01-06', 'equity': 80.}])
+    assert record['required_trace_order_complete'] is False
+    assert 'OTHER_UNRESOLVED' in record['multi_labels']
+    assert record['earliest_unavoidable_breach_under_frozen_candidate_family'] is None
+
+
+def test_order_prefix_excludes_future_execution_and_cancellation_state():
+    from copy import deepcopy
+    order = {'decision_timestamp': '2026-01-05', 'execution_timestamp': None,
+             'status': 'pending', 'filled_shares': 0, 'events': []}
+    order.update(queued_timestamp='2026-01-05', queued_state=deepcopy(order))
+    before = {key: [] for key in ('orders', 'fills', 'cash_series', 'position_series', 'equity_series')}
+    before['orders'] = [order]
+    after = deepcopy(before)
+    after['orders'][0].update(execution_timestamp='2026-01-07', status='filled', filled_shares=100)
+    assert c6_diagnostics._prefix_hash(before, '2026-01-06') == c6_diagnostics._prefix_hash(after, '2026-01-06')
+    assert c6_diagnostics._prefix_hash(before, '2026-01-08') != c6_diagnostics._prefix_hash(after, '2026-01-08')
+    after['orders'][0].update(execution_timestamp=None, status='cancelled', events=[{'timestamp': '2026-01-07', 'event': 'lock'}])
+    assert c6_diagnostics._prefix_hash(before, '2026-01-06') == c6_diagnostics._prefix_hash(after, '2026-01-06')
+
+
+def test_w1_excludes_601869_from_the_first_native_score_query():
+    from quantfusion.config.portfolio import PortfolioPolicy
+    from quantfusion.engine.universe import SleeveBacktestEngine
+    dates = pd.bdate_range('2025-01-01', periods=100)
+    data = {code: pd.DataFrame({'close': [10 + .01 * i + .1 * (i % 3) + slope * i * i for i in range(100)]}, index=dates)
+            for code, slope in [('300308', .0001), ('300502', .0002), ('601869', .0003)]}
+    def sleeve():
+        return SleeveBacktestEngine(2000000., cfg={}, policy=PortfolioPolicy(), allocation_lookbacks=(10,), sleeve_name='fast')
+    control, diagnostic = sleeve(), sleeve()
+    diagnostic._c6_intervention = 'W1_DATA_MAP_ONLY'
+    expected = control._allocation_scores({k: v for k, v in data.items() if k != '601869'}, dates[-1])
+    actual = diagnostic._allocation_scores(data, dates[-1])
+    assert actual == expected
+    assert '601869' not in diagnostic._allocation_raw_series
+
+
+def test_symbol_pnl_does_not_pool_independent_book_costs_or_stale_marks() -> None:
+    record = {'fills': [
+        {'state_index': 0, 'strategy_name': 'a', 'symbol': 'X', 'side': 'BUY', 'shares': 100, 'notional': 1000., 'fee': 0.},
+        {'state_index': 1, 'strategy_name': 'a', 'symbol': 'X', 'side': 'BUY', 'shares': 100, 'notional': 2000., 'fee': 0.},
+        {'state_index': 0, 'strategy_name': 'a', 'symbol': 'X', 'side': 'SELL', 'shares': 100, 'notional': 1200., 'fee': 0.},
+        {'state_index': 1, 'strategy_name': 'a', 'symbol': 'X', 'side': 'SELL', 'shares': 100, 'notional': 2100., 'fee': 0.}],
+        'position_series': [{'timestamp': '2026-01-05', 'symbol': 'X', 'market_value': 3000.}],
+        'equity_series': [{'timestamp': '2026-01-05'}, {'timestamp': '2026-01-06'}]}
+    assert c6_diagnostics._symbol_pnl(record, 'X') == pytest.approx((300., 0.))
+    # Before the second book exits, its own cost basis is still 2,000.
+    record['fills'].pop()
+    record['position_series'].append({'timestamp': '2026-01-06', 'symbol': 'X', 'market_value': 2100.})
+    assert c6_diagnostics._symbol_pnl(record, 'X') == pytest.approx((200., 100.))
+
+
+def test_w_attribution_uses_actual_divergence_scores_and_post_lock_paths():
+    rows = []
+    for index in range(6):
+        row = {key: [] for key in ('orders', 'fills', 'cash_series', 'position_series')}
+        row.update(variant_id=f'W{index}-synthetic', scenario_id='synthetic',
+                   official_metrics={'terminal_wealth': 90. + index, 'total_return': -.1, 'max_drawdown': -.2, 'total_trades': 0},
+                   equity_series=[{'timestamp': date, 'equity': value} for date, value in
+                                  [('2026-01-05', 100.), ('2026-01-06', 110.), ('2026-01-07', 100. + index), ('2026-01-08', 85.)]],
+                   causal_matrix={'event_timeline': {'first_official_mdd_breach': {'timestamp': '2026-01-08'},
+                                                      'first_confirmed_cycle_lock': {'timestamp': '2026-01-06'}}},
+                   _c6_score_trace=[{'decision_timestamp': '2026-01-06', 'state_index': 0, 'sleeve_name': 'fast',
+                                     'fixed_reference_scores': {'A': .5 + index / 20, 'B': .5},
+                                     'pool_relative_scores': {'A': .8 if index < 2 else .3, 'B': .6},
+                                     'reference_inputs': [{'value': 1.}], 'pool_members': ['A', 'B'],
+                                     'candidate_symbols': ['A', 'B'], 'allowed_symbols': ['A' if index < 2 else 'B'],
+                                     'candidate_capacity': 1}])
+        rows.append(row)
+    c6_diagnostics._attach_interventions(rows)
+    facts = rows[2]['intervention_601869']
+    assert facts['pre_breach_anchor_timestamp'] == '2026-01-07'
+    assert facts['first_path_divergence']['timestamp'] == '2026-01-07'
+    assert facts['old_symbol_fixed_reference_score_changes'][0]['score_delta'] == pytest.approx(.05)
+    assert facts['old_symbol_fixed_reference_score_hash'] != facts['pool_relative_rank_hash']
+    assert facts['coordinator_pool_relative_rank_changes'][0]['rank_delta'] == 1
+    assert facts['displaced_slots'][0]['admitted_symbols'] == ['B']
+    assert rows[5]['intervention_601869']['post_lock_effect']['first_lock_timestamp'] == '2026-01-06'
+    # Equal full-path counts do not imply no lock-conditioned missed executions.
+    rows[4]['orders'] = [{'execution_timestamp': '2026-01-05', 'authorized_shares': 100, 'symbol': 'A'}]
+    rows[5]['orders'] = [{'execution_timestamp': '2026-01-07', 'authorized_shares': 100, 'symbol': 'B'}]
+    rows[4]['fills'] = [{'timestamp': '2026-01-05', 'symbol': 'A'}]
+    rows[5]['fills'] = [{'timestamp': '2026-01-07', 'symbol': 'B'}]
+    post = c6_diagnostics._post_lock_effect(rows[4], rows[5])
+    assert post['missed_order_count'] == post['missed_trade_count'] == 1
 def test_cli_matches_the_exact_r_bound_shape() -> None:
     parser = c6_diagnostics.build_parser()
     args = parser.parse_args(
@@ -364,13 +470,20 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
                           'close': close, 'volume': 10000000.})
     frame.index.name = 'date'
     symbols = ['300308', '300502', '300394', '688256', '603986']
-    for symbol in set(symbols) | set(PortfolioPolicy().regime_symbols) | set(RISK_BASKET) | set(REGIME_INDEX_FILES.values()):
+    provenance_symbols = symbols + ['688072', '688300', '300054', '688361', '002409', '688498', '688120', '002384', '688082', '300604', '601869', '300408']
+    for symbol in set(provenance_symbols) | set(PortfolioPolicy().regime_symbols) | set(RISK_BASKET) | set(REGIME_INDEX_FILES.values()):
         frame.to_csv(tmp_path / f'{symbol}.csv')
     paths = []
     effective = None
     opening_states = []
     replay_states = []
+    tail_peaks = []
     original_open = BacktestEngine._execute_ensemble_open
+    original_tail = BacktestEngine._update_tail_sleeve_guard
+    def capture_tail(engine, states, date, assets, peak, events):
+        tail_peaks.append((assets, peak))
+        return original_tail(engine, states, date, assets, peak, events)
+    monkeypatch.setattr(BacktestEngine, '_update_tail_sleeve_guard', capture_tail)
     def capture_open(engine, states, date, *args, **kwargs):
         replay_states[:] = states
         opening_states.append({
@@ -381,8 +494,9 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
         })
         return original_open(engine, states, date, *args, **kwargs)
     monkeypatch.setattr(BacktestEngine, '_execute_ensemble_open', capture_open)
-    for intervention in ('BASELINE', 'C6_BASE', 'C6_BASE_PLUS_S', 'PRODUCTION'):
+    for intervention in ('BASELINE', 'C6_BASE', 'C6_BASE_PLUS_S', 'PRODUCTION', 'W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK'):
         opening_states = []
+        tail_peaks = []
         engine = ProductionReplayEngine(2000000.)
         kwargs = {'data_dir': str(tmp_path), 'regime_data_dir': str(tmp_path)}
         runner = engine.run
@@ -412,7 +526,24 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
             assert len(result['_c6_fills']) == len(result['trades'])
             assert sum(x['filled_shares'] for x in result['_c6_orders']) == sum(x.shares for x in result['trades'])
             assert all(x['requested_shares'] >= x['filled_shares'] for x in result['_c6_orders'])
-    assert paths[0] == paths[1] == paths[2] == paths[3]
+            equity = [{'timestamp': str(date.date()), 'equity': float(row.assets)} for date, row in result['equity_curve'].iterrows()]
+            matrix = c6_diagnostics.build_causal_matrix(result, {'first_official_mdd_breach': {'timestamp': None}}, c6_diagnostics._empty_s_evidence(), equity)
+            assert matrix['required_trace_order_complete'] is True
+        if intervention == 'BASELINE':
+            from quantfusion.application import stress_metrics
+            from quantfusion.config import paths as config_paths
+            with monkeypatch.context() as context:
+                context.setattr(stress_metrics, 'START_DATE', '2026-01-05')
+                context.setattr(stress_metrics, 'END_DATE', '2026-01-09')
+                context.setattr(config_paths, 'MARKET_DATA_DIR', tmp_path)
+                context.setattr(config_paths, 'REGIME_DATA_DIR', tmp_path)
+                original_risks = [state.sleeve.risk for state in states]
+                identity = c6_diagnostics._data_identity(result)
+                assert set(identity['indicator_hashes']) == set(provenance_symbols)
+                assert all(state.sleeve.risk is risk for state, risk in zip(states, original_risks))
+        if intervention.startswith('W5'):
+            assert [peak for _, peak in tail_peaks] == [max(assets for assets, _ in tail_peaks[:i+1]) for i in range(len(tail_peaks))]
+    assert all(path == paths[0] for path in paths)
     assert effective == 0
     record_property('c6.assertion.s/no-op-control/fixture-identity', json.dumps('s/no-op-control/v1'))
     record_property('c6.assertion.s/no-op-control/s-effective-count', json.dumps(effective))

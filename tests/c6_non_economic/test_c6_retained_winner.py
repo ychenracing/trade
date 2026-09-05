@@ -300,6 +300,37 @@ def test_later_consolidation_does_not_rewrite_executed_receipts() -> None:
     winner = sleeve._c6_orders[suppressed[0]['suppression_winner_order_ordinal']]
     assert winner['reason'] == 'catastrophe_stop'
     assert winner['requested_shares'] == 300
+
+
+def test_global_lock_records_cancelled_buy_before_next_open() -> None:
+    sleeve, _, _ = _real_sleeve_with_position(500, 40_000.)
+    sleeve._c6_orders, sleeve._c6_fills, sleeve._c6_order_by_signal = [], [], {}
+    sleeve._c6_state_index = 0
+    state = _state(sleeve, [(_signal('buy', symbol='300308'), _Strategy('fast'))])
+    BacktestEngine._apply_global_risk_lock([state], pd.Timestamp('2026-01-06'))
+    assert state.pending == []
+    assert len(sleeve._c6_orders) == 1
+    receipt = sleeve._c6_orders[0]
+    assert receipt['status'] == 'cancelled'
+    assert receipt['execution_timestamp'] is None
+    assert receipt['blocked_reason'] == 'merged_account_lock'
+    assert receipt['authorized_shares'] == receipt['filled_shares'] == 0
+
+
+def test_exposure_receipt_uses_side_neutral_marks_and_real_book_inventory() -> None:
+    sleeve, data_map, dates = _real_sleeve_with_position(500, 40_000.)
+    state = _state(sleeve, [])
+    state.data_map = data_map
+    coordinator = BacktestEngine()
+    coordinator._c6_exposure_trace = []
+    coordinator._record_c6_exposure([state], dates[1], 'batch_start')
+    snapshot = coordinator._c6_exposure_trace[0]
+    assert snapshot['gross_notional'] == 5000.
+    assert snapshot['assets'] == sleeve.cash + 5000.
+    assert snapshot['positions'][0]['shares'] == 500
+    assert snapshot['positions'][0]['mark_price'] == 10.
+    assert snapshot['symbol_notionals'] == {'300308': 5000.}
+    assert sum(snapshot['cluster_notionals'].values()) == 5000.
 def test_partial_sublot_remainder_is_released_in_real_execution() -> None:
     sleeve, data_map, dates = _real_sleeve_with_position(250, 1_000_000.0)
     pending = [

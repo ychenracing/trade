@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from quantfusion.execution.c6_receipts import order_receipt
+from quantfusion.execution.c6_receipts import order_receipt, reconcile_close_queue
 
 # pyright: reportAttributeAccessIssue=false
 
@@ -187,6 +187,7 @@ class EnsembleOrchestrationMixin:
         self._tail_guard_policies = {}
         diagnostic = getattr(self, "_c6_diagnostic_request", None)
         self._c6_score_trace = [] if diagnostic is not None and diagnostic["recording_mode"] != "OFF" else None
+        self._c6_exposure_trace = [] if diagnostic is not None and diagnostic["recording_mode"] != "OFF" else None
         effective_policy = self._effective_policy(tradable_count)
         states = self._prepare_ensemble_sleeves(request, effective_policy)
         if not self._reference_evidence_complete(
@@ -309,11 +310,18 @@ class EnsembleOrchestrationMixin:
                         item for item in state.pending if item[0].symbol != "601869"
                     ]
             if request.route_controller is not None:
+                previous_queues = [list(state.pending) for state in states]
+                route_symbols = request.symbols_dict
+                if self._c6_intervention_id() in {"W1_DATA_MAP_ONLY", "W2_POOL_DENOMINATOR_ONLY"}:
+                    route_symbols = {code: name for code, name in route_symbols.items() if code != "601869"}
                 request.route_controller.after_close(
                     states,
                     date,
-                    request.symbols_dict,
+                    route_symbols,
                 )
+                for state, previous in zip(states, previous_queues):
+                    reconcile_close_queue(state.sleeve, previous, state.pending,
+                                          date.strftime("%Y-%m-%d"), "outer_route_transition")
                 if cm_overlay is not None and hasattr(
                     request.route_controller, "current_route"
                 ):
@@ -340,6 +348,11 @@ class EnsembleOrchestrationMixin:
                 ))
                 if status:
                     self._apply_global_risk_lock(states, date)
+            else:
+                # W5 disables merged lock/rearm only. The existing tail guard
+                # still consumes the actual lifetime high-water mark.
+                portfolio_risk.lifetime_peak_assets = max(portfolio_risk.lifetime_peak_assets, assets)
+                portfolio_risk.peak_assets = max(portfolio_risk.peak_assets, assets)
             self._update_tail_sleeve_guard(
                 states,
                 date,
@@ -363,6 +376,7 @@ class EnsembleOrchestrationMixin:
                     state_local_books=self._c6_feature_enabled("F0"),
                 )
             held = self._held_portfolio_symbols(states)
+            self._record_c6_exposure(states, date, "official_sample")
             for state in states:
                 for signal, _ in state.pending:
                     order_receipt(state.sleeve, signal, date.strftime("%Y-%m-%d"), queued=True)
@@ -543,5 +557,6 @@ class EnsembleOrchestrationMixin:
             combined["_c6_orders"] = getattr(states[0].sleeve, "_c6_orders", [])
             combined["_c6_fills"] = getattr(states[0].sleeve, "_c6_fills", [])
             combined["_c6_pending_path"] = pending_path
+            combined["_c6_exposure_trace"] = self._c6_exposure_trace
         self.last_result = combined
         return combined

@@ -442,6 +442,142 @@ def _warm_snapshot(result: Mapping[str, Any], initial: float) -> dict[str, Any]:
     return {"phase": captured["phase"], "indicator_history": history, "regime_and_transitions": {"current_regime": sleeves[0]["regime"]["_regime_state"].lower(), "asof_timestamp": None, "transitions": sleeves[0]["regime"]["_regime_state_series"]}, "candidate_sticky_confirmation": [], "overlay_state": [], "sleeve_positions": [], "sleeve_cash": cash, "pending_orders": [], "sleeve_peaks": sleeve_peaks, "account_peaks": peaks(captured["account_risk"]), "locks": locks, "first_decision_timestamp": str(first.date()), "first_execution_timestamp": str(execution.date()), "unauthorized_economic_state_empty": True, "future_information_absent": True}
 
 
+def validate_indicator_provenance(data: Mapping[str, Any], indicators: Mapping[str, Any],
+                                  states: Sequence[Any], ordered_codes: Sequence[str]) -> dict[str, Any]:
+    """Compare prepared values, including NaNs, against independently computed inputs."""
+    if set(data) != set(ordered_codes) or set(indicators) != set(ordered_codes):
+        raise ValueError("full-universe indicator provenance coverage mismatch")
+    def frame_hash(frame: Any) -> str:
+        return hashlib.sha256(frame.to_csv(float_format="%.17g", lineterminator="\n").encode()).hexdigest()
+    frames = {code: frame_hash(data[code]) for code in ordered_codes}
+    hashes = {code: frame_hash(__import__('pandas').DataFrame(indicators[code]).sort_index(axis=1)) for code in ordered_codes}
+    for state in states:
+        for code in set(state.data_map) & set(ordered_codes):
+            if not state.data_map[code].equals(data[code]):
+                raise ValueError(f"prepared raw frame changed for {code}")
+            actual, expected = state.indicator_map[code], indicators[code]
+            if set(actual) != set(expected) or any(not actual[key].equals(expected[key]) for key in expected):
+                raise ValueError(f"prepared indicator values changed for {code}")
+    calendars = [[str(date.date()) for date in state.all_dates] for state in states]
+    if not calendars or any(item != calendars[0] for item in calendars):
+        raise ValueError("sleeve execution calendars differ")
+    return {"prepared_frame_hashes": frames, "indicator_hashes": hashes,
+            "old_symbol_frames_unchanged": True, "old_symbol_indicators_unchanged": True,
+            "calendar_hash": hashlib.sha256(_canonical_bytes(calendars[0])).hexdigest()}
+
+
+def _data_identity(result: Mapping[str, Any]) -> dict[str, Any]:
+    from quantfusion.application import stress, stress_artifacts, stress_metrics, stress_scenarios
+    from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
+    from quantfusion.data.providers import DataFetcher
+    from quantfusion.indicators.technical import Indicators
+    import pandas as pd
+
+    codes = list(stress_scenarios.ORDERED_CODES)
+    states = result["_c6_states"]
+    # Resolve on a separate unfunded object: the resolver installs a risk manager.
+    sleeve = states[0].sleeve
+    resolver = type(sleeve)(sleeve.initial_capital, cfg=sleeve._user_cfg,
+                           policy=sleeve.policy, allocation_lookbacks=sleeve.ALLOCATION_LOOKBACKS,
+                           sleeve_name=sleeve.sleeve_name)
+    resolver._profile_strategy_overrides = dict(sleeve._profile_strategy_overrides)
+    configs = resolver._resolve_symbol_configs({code: stress.NAMES[code] for code in codes}, None, "auto")
+    for state in states:
+        if any(state.sleeve.symbol_configs[code] != configs[code]
+               for code in set(state.sleeve.symbol_configs) & set(codes)):
+            raise ValueError("prepared symbol configuration differs from independent full-universe resolver")
+    start = pd.Timestamp(stress_metrics.START_DATE) - pd.Timedelta(days=states[0].sleeve._warmup_calendar_days)
+    data, indicators = {}, {}
+    with contextlib.redirect_stdout(io.StringIO()):
+        for code in codes:
+            frame = DataFetcher.load_stock_data(code, str(start.date()), stress_metrics.END_DATE,
+                                               data_dir=str(MARKET_DATA_DIR), cache_dir=None)
+            frame = frame.loc[(frame.index >= start) & (frame.index <= pd.Timestamp(stress_metrics.END_DATE))].copy()
+            data[code] = frame
+            indicators[code] = Indicators.compute_all(frame, configs[code])
+    facts = validate_indicator_provenance(data, indicators, states, codes)
+    scenarios = stress_scenarios._multi_seed_scenarios(random_samples=50, permutation_samples=50, seeds=(20260807, 20260817, 20260827))
+    return {**facts, "ordered_symbols": codes,
+            "raw_frame_hashes": {code: hashlib.sha256((MARKET_DATA_DIR / f"{code}.csv").read_bytes()).hexdigest() for code in codes},
+            "data_fingerprint": stress_artifacts._tree_fingerprint(stress_artifacts._data_files(MARKET_DATA_DIR, REGIME_DATA_DIR)),
+            "scenario_signature": stress_scenarios._scenario_signature(scenarios)}
+
+
+def _exposure_records(result: Mapping[str, Any]) -> list[dict[str, Any]]:
+    rows = []
+    for snapshot in result["_c6_exposure_trace"]:
+        base = {"timestamp": snapshot["timestamp"], "phase": snapshot["phase"],
+                "gross_notional": snapshot["gross_notional"], "gross_ratio": snapshot["gross_ratio"],
+                "symbol": None, "symbol_notional": None, "cluster": None,
+                "cluster_notional": None, "cluster_weight": None}
+        rows.append({"sample_ordinal": len(rows), **base})
+        for symbol, value in sorted(snapshot["symbol_notionals"].items()):
+            rows.append({"sample_ordinal": len(rows), **base, "symbol": symbol, "symbol_notional": value})
+        for cluster, value in sorted(snapshot["cluster_notionals"].items()):
+            rows.append({"sample_ordinal": len(rows), **base, "cluster": cluster,
+                         "cluster_notional": value, "cluster_weight": value / snapshot["assets"]})
+    return rows
+
+
+def build_causal_matrix(result: Mapping[str, Any], timeline: Mapping[str, Any],
+                        evidence: Mapping[str, Any], equity: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    orders, fills = result["_c6_orders"], result["_c6_fills"]
+    snapshots = result["_c6_exposure_trace"]
+    by_order = {order["order_ordinal"]: order for order in orders}
+    expected = [(row["timestamp"], phase) for row in equity
+                for phase in ("batch_start", "after_sells", "after_buys", "official_sample")]
+    complete = ([(row["timestamp"], row["phase"]) for row in snapshots] == expected
+                and len(by_order) == len(orders)
+                and all(fill["order_ordinal"] in by_order for fill in fills)
+                and sum(order["filled_shares"] for order in orders) == sum(fill["shares"] for fill in fills)
+                and len(fills) == sum(len(state.sleeve.trades) for state in result["_c6_states"]))
+    findings = {}
+    def observe(label: str, date: Any, items: Sequence[Mapping[str, Any]] = (), notional: Any = None) -> None:
+        findings[label] = {"label": label, "first_observed_timestamp": date,
+                           "first_path_divergence_timestamp": None,
+                           "state_indices": sorted({row["state_index"] for row in items if row.get("state_index") is not None}),
+                           "symbols": sorted({row["symbol"] for row in items if row.get("symbol")}), "notional": notional}
+    for order in orders:
+        winner = by_order.get(order["suppression_winner_order_ordinal"])
+        if winner is not None and winner["state_index"] != order["state_index"]:
+            if "BOOK_IDENTITY_LOSS" not in findings:
+                observe("BOOK_IDENTITY_LOSS", order["decision_timestamp"], [order, winner])
+    defensive = {(order["execution_timestamp"], order["state_index"], order["symbol"], order["strategy_name"])
+                 for order in orders if order["side"] == "SELL" and order["action_id"] is not None
+                 and order["execution_timestamp"] is not None and order["status"] != "suppressed"}
+    offsets = [fill for fill in fills if fill["side"] == "BUY"
+               and (fill["timestamp"], fill["state_index"], fill["symbol"], fill["strategy_name"]) in defensive]
+    if offsets:
+        observe("ACTION_OFFSET", min(row["timestamp"] for row in offsets), offsets,
+                math.fsum(row["notional"] for row in offsets))
+    if evidence["early_sell_required"] and evidence["lead_batch_count"] > 0 and evidence["executable_lot_shares"] > 0:
+        observe("POLICY_LATENCY", evidence["first_early_sell_required_close"])
+    for snapshot in snapshots:
+        prior = [row["equity"] for row in equity if row["timestamp"] < snapshot["timestamp"]]
+        if snapshot["phase"] == "batch_start" and prior and snapshot["assets"] / max(prior) < 1 - 0.18 - 1e-15:
+            observe("OPEN_MARK_GAP", snapshot["timestamp"], snapshot["positions"], snapshot["gross_notional"])
+            break
+    locks = [item["timestamp"] for key, item in timeline.items() if "lock" in key and item.get("timestamp")]
+    if locks:
+        lock = min(locks)
+        blocked = [order for order in orders if order["blocked_reason"] == "merged_account_lock"
+                   and any(event["timestamp"] >= lock for event in order["events"])]
+        if blocked:
+            observe("LOCK_MEDIATOR", lock, blocked)
+    # No exhaustive pathwise proof is available from one factual replay.
+    # This remains explicit even when some overlapping mechanisms are observed.
+    observe("OTHER_UNRESOLVED", timeline["first_official_mdd_breach"]["timestamp"])
+    label_order = ("STATE_OR_DATA_INVALID", "BOOK_IDENTITY_LOSS", "ACTION_OFFSET", "POLICY_LATENCY",
+                   "EXECUTION_GAP", "OPEN_MARK_GAP", "NO_EARLY_EVIDENCE", "ALPHA_OR_HOLDING_PATH",
+                   "LOCK_MEDIATOR", "OTHER_UNRESOLVED")
+    labels = [label for label in label_order if label in findings]
+    return {"event_timeline": dict(timeline), "required_trace_order_complete": complete,
+            "executable_lead_batch_count": evidence["lead_batch_count"], "multi_labels": labels,
+            "observed_mechanisms": [findings[label] for label in labels], "s_evidence": dict(evidence),
+            "earliest_unavoidable_breach_under_frozen_candidate_family": None,
+            "unavoidable_field_justification": "A factual path is not an exhaustive proof over the frozen candidate family."}
+
+
 def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
     """Capture a deterministic factual replay record for one frozen evaluation."""
     variant, scenario, recording = task
@@ -476,7 +612,7 @@ def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
     equity_series = [{"sample_ordinal": i, "timestamp": str(date.date()), "equity": float(row.assets), "official_sample": True} for i, (date, row) in enumerate(equity.iterrows())]
     drawdown = equity["assets"] / equity["assets"].cummax() - 1.0
     drawdown_series = [{"sample_ordinal": i, "timestamp": str(date.date()), "equity": float(equity.loc[date, "assets"]), "running_peak": float(equity.loc[:date, "assets"].max()), "drawdown": float(value), "official_sample": True} for i, (date, value) in enumerate(drawdown.items())]
-    exposure = [{"sample_ordinal": i, "timestamp": item["timestamp"], "phase": "official_sample", "gross_notional": float(equity.iloc[i]["position_value"]), "gross_ratio": float(equity.iloc[i]["position_value"] / equity.iloc[i]["assets"]), "symbol": None, "symbol_notional": None, "cluster": None, "cluster_notional": None, "cluster_weight": None} for i, item in enumerate(equity_series)]
+    exposure = _exposure_records(result)
     metrics = {"total_return": float(result["total_return"]), "terminal_wealth": float(result["final_assets"]), "max_drawdown": float(result["max_drawdown"]), "sharpe": float(result["sharpe"]), "calmar": float(result["calmar"]), "total_trades": int(result["total_trades"]), "sleeve_fill_count": int(result["sleeve_fill_count"]), "date_symbol_side_count": int(result["date_symbol_side_count"]), "cash_days": int((equity["position_value"] == 0).sum()), "reason_attribution": attribution, "max_concurrent_symbols": int(result["max_concurrent_symbols"]), "terminal_risk_lock": bool(result["terminal_risk_lock"]), "deployment_policy": "production_daily_replay"}
     raw_breach = first_official_mdd_breach(equity_series)
     breach = {"timestamp": None, "sample_ordinal": None, "peak_timestamp": None, "peak_value": None, "equity": None, "drawdown": None, "threshold": 0.18, "tolerance": 1e-15} if raw_breach is None else {"timestamp": raw_breach["timestamp"], "sample_ordinal": raw_breach["sample_ordinal"], "peak_timestamp": raw_breach["peak_timestamp"], "peak_value": raw_breach["peak_value"], "equity": raw_breach["current_assets"], "drawdown": raw_breach["drawdown"], "threshold": 0.18, "tolerance": 1e-15}
@@ -489,12 +625,8 @@ def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
         equity_series,
         [str(item.date()) for item in result["_c6_states"][0].all_dates],
     )
-    causal = {"event_timeline": timeline, "required_trace_order_complete": True, "executable_lead_batch_count": s_evidence["lead_batch_count"], "multi_labels": [], "observed_mechanisms": [], "s_evidence": s_evidence, "earliest_unavoidable_breach_under_frozen_candidate_family": None, "unavoidable_field_justification": "No pathwise exhaustive proof was claimed."}
-    formal_codes = list(__import__("quantfusion.application.stress_scenarios", fromlist=["ORDERED_CODES"]).ORDERED_CODES)
-    raw_hashes = {code: hashlib.sha256((MARKET_DATA_DIR / f"{code}.csv").read_bytes()).hexdigest() for code in formal_codes}
-    indicator_hashes = {item["symbol"]: item["indicator_sha256"] for item in warm["indicator_history"]}
-    indicator_hashes.update({code: raw_hashes[code] for code in formal_codes if code not in indicator_hashes})
-    data_identity = {"data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975", "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880", "ordered_symbols": formal_codes, "raw_frame_hashes": raw_hashes, "indicator_hashes": indicator_hashes, "old_symbol_frames_unchanged": True, "old_symbol_indicators_unchanged": True, "calendar_hash": "cadb6a8739efd6303de49f5458c9be510756b42b8ae3c79c2da363c45259d736"}
+    causal = build_causal_matrix(result, timeline, s_evidence, equity_series)
+    data_identity = _data_identity(result)
     record = {"evaluation_id": f"{variant}::{scenario['scenario_id']}", "variant_id": variant, "scenario_id": scenario["scenario_id"], "scenario_definition": definition, "official_metrics": metrics, "orders": orders, "fills": fills, "cash_series": cash_series, "position_series": position_series, "equity_series": equity_series, "drawdown_series": drawdown_series, "risk_events": _risk_records(result), "action_lifecycle": _action_records(result), "exposure_series": exposure, "causal_matrix": causal, "warm_boundary": warm, "data_identity": data_identity, "intervention_601869": None}
     if variant.startswith("W"):
         record["_c6_score_trace"] = result["_c6_score_trace"]
@@ -512,7 +644,20 @@ def _path_hashes(record: Mapping[str, Any]) -> dict[str, str]:
 def _prefix_hash(record: Mapping[str, Any], boundary: str | None) -> str:
     paths = []
     for key, timestamp in (("orders", "execution_timestamp"), ("fills", "timestamp"), ("cash_series", "timestamp"), ("position_series", "timestamp"), ("equity_series", "timestamp")):
-        paths.append(record[key] if boundary is None else [item for item in record[key] if (item[timestamp] or item.get("decision_timestamp")) < boundary])
+        selected = []
+        for item in record[key]:
+            if key == "orders" and "queued_state" in item:
+                if boundary is not None and item["queued_timestamp"] >= boundary:
+                    continue
+                last = max([item["queued_timestamp"], item["execution_timestamp"] or ""]
+                           + [event["timestamp"] for event in item["events"]])
+                if boundary is not None and last >= boundary:
+                    selected.append(item["queued_state"])
+                else:
+                    selected.append({k: v for k, v in item.items() if k not in {"queued_state", "queued_timestamp"}})
+            elif boundary is None or (item[timestamp] or item.get("decision_timestamp")) < boundary:
+                selected.append(item)
+        paths.append(selected)
     return hashlib.sha256(_canonical_bytes(paths)).hexdigest()
 
 
@@ -649,11 +794,13 @@ def _attribution(evaluations: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 
 
 def _symbol_pnl(record: Mapping[str, Any], symbol: str) -> tuple[float, float]:
-    shares = 0
-    cost = realized = 0.0
+    books: dict[tuple[int, str], tuple[int, float]] = {}
+    realized = 0.0
     for fill in record["fills"]:
         if fill["symbol"] != symbol:
             continue
+        key = (fill["state_index"], fill["strategy_name"])
+        shares, cost = books.get(key, (0, 0.))
         if fill["side"] == "BUY":
             shares += fill["shares"]
             cost += fill["notional"] + fill["fee"]
@@ -662,35 +809,156 @@ def _symbol_pnl(record: Mapping[str, Any], symbol: str) -> tuple[float, float]:
             shares -= fill["shares"]
             cost -= basis
             realized += fill["notional"] - fill["fee"] - basis
+        books[key] = (shares, cost)
     marks = [item for item in record["position_series"] if item["symbol"] == symbol]
-    market_value = sum(item["market_value"] for item in marks if item["timestamp"] == max((x["timestamp"] for x in marks), default=""))
-    return realized, market_value - cost
+    final_timestamp = record["equity_series"][-1]["timestamp"]
+    market_value = sum(item["market_value"] for item in marks if item["timestamp"] == final_timestamp)
+    return realized, market_value - sum(cost for _, cost in books.values())
+
+
+def _first_path_divergence(before: Mapping[str, Any], after: Mapping[str, Any],
+                           before_name: str, after_name: str) -> dict[str, Any] | None:
+    """Locate the first different observed phase, retaining the actual date."""
+    def batches(record: Mapping[str, Any]) -> dict[tuple[str, int, str], list[Any]]:
+        result: dict[tuple[str, int, str], list[Any]] = {}
+        for key, phase, reason in (("orders", 0, "ORDER"), ("fills", 0, "FILL"),
+                                   ("cash_series", 3, "VALUATION"), ("position_series", 3, "VALUATION"),
+                                   ("equity_series", 3, "VALUATION")):
+            for item in record[key]:
+                if key == "orders":
+                    queued = item.get("queued_state")
+                    if queued is not None:
+                        result.setdefault((item["queued_timestamp"], 1, "ORDER"), []).append(("queued", queued))
+                    timestamp = item["execution_timestamp"]
+                    item_phase = phase
+                    if timestamp is None:
+                        timestamp = max((event["timestamp"] for event in item.get("events", [])), default=None)
+                        item_phase = 1
+                    if timestamp is None:
+                        continue
+                    value = {k: v for k, v in item.items() if k not in {"queued_state", "queued_timestamp"}}
+                else:
+                    timestamp, item_phase, value = item["timestamp"], phase, item
+                result.setdefault((timestamp, item_phase, reason), []).append((key, value))
+        return result
+    a, b = batches(before), batches(after)
+    for key in sorted(set(a) | set(b)):
+        if a.get(key, []) == b.get(key, []):
+            continue
+        timestamp, phase, reason = key
+        different = next((value for _, value in b.get(key, []) + a.get(key, []) if isinstance(value, Mapping)), {})
+        return {"compared_from_intervention_id": before_name, "compared_to_intervention_id": after_name,
+                "timestamp": timestamp, "phase": {0: "EXECUTION_OPEN", 1: "DECISION_CLOSE", 3: "VALUATION_CLOSE"}[phase],
+                "reason": reason, "state_index": different.get("state_index"), "sleeve_name": different.get("sleeve_name"),
+                "symbol": different.get("symbol"), "before_path_sha256": _prefix_hash(before, timestamp + "~"),
+                "after_path_sha256": _prefix_hash(after, timestamp + "~")}
+    return None
+
+
+def _score_comparison(before: Sequence[Mapping[str, Any]], after: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    def expand(trace: Sequence[Mapping[str, Any]]) -> dict[tuple[str, int, str], dict[str, Any]]:
+        result = {}
+        for row in trace:
+            ranks = {symbol: rank for rank, symbol in enumerate(sorted(row["pool_relative_scores"], key=lambda symbol: (-row["pool_relative_scores"][symbol], symbol)), 1)}
+            ref = hashlib.sha256(_canonical_bytes(row["reference_inputs"])).hexdigest()
+            pool = hashlib.sha256("".join(symbol + "\n" for symbol in row["pool_members"]).encode()).hexdigest()
+            for symbol in sorted(set(row["fixed_reference_scores"]) | set(ranks)):
+                if symbol == "601869":
+                    continue
+                key = (row["decision_timestamp"], row["state_index"], symbol)
+                if key in result:
+                    raise ValueError("duplicate coordinator score observation")
+                result[key] = {"decision_timestamp": key[0], "state_index": key[1], "sleeve_name": row["sleeve_name"],
+                               "symbol": symbol, "score": row["fixed_reference_scores"].get(symbol), "rank": ranks.get(symbol),
+                               "reference_fingerprint": ref, "pool_members_sha256": pool}
+        return result
+    a, b = expand(before), expand(after)
+    scores, ranks = [], []
+    for key in sorted(set(a) | set(b)):
+        old, new = a.get(key), b.get(key)
+        identity = {k: (new or old)[k] for k in ("decision_timestamp", "state_index", "sleeve_name", "symbol")}
+        for field, rows, fingerprint in (("score", scores, "reference_fingerprint"), ("rank", ranks, "pool_members_sha256")):
+            left, right = old.get(field) if old else None, new.get(field) if new else None
+            if left == right:
+                continue
+            rows.append({**identity, f"{field}_before": left, f"{field}_after": right,
+                         f"{field}_delta": right - left if left is not None and right is not None else None,
+                         f"{fingerprint}_before": old.get(fingerprint) if old else None,
+                         f"{fingerprint}_after": new.get(fingerprint) if new else None})
+    score_path = [{k: row[k] for k in ("decision_timestamp", "state_index", "sleeve_name", "symbol", "score", "reference_fingerprint")} for row in b.values()]
+    rank_path = [{k: row[k] for k in ("decision_timestamp", "state_index", "sleeve_name", "symbol", "rank", "pool_members_sha256")} for row in b.values()]
+    # A changed admitted set is a batch-level observation. Do not invent a
+    # unique admitted/displaced pairing when multiple slots changed together.
+    old_batches = {(row["decision_timestamp"], row["state_index"]): row for row in before}
+    slots = []
+    for row in after:
+        old = old_batches.get((row["decision_timestamp"], row["state_index"]))
+        if old is None:
+            continue
+        admitted = set(row["allowed_symbols"]) & set(row["candidate_symbols"])
+        prior = set(old["allowed_symbols"]) & set(old["candidate_symbols"])
+        if admitted - prior and prior - admitted:
+            slots.append({"execution_timestamp": row["decision_timestamp"], "state_index": row["state_index"],
+                          "sleeve_name": row["sleeve_name"], "admitted_symbols": sorted(admitted - prior),
+                          "displaced_symbols": sorted(prior - admitted), "capacity_before": old["candidate_capacity"],
+                          "capacity_after": row["candidate_capacity"], "unique_causal_pairing_claimed": False})
+    return {"old_symbol_fixed_reference_score_hash": hashlib.sha256(_canonical_bytes(score_path)).hexdigest(),
+            "old_symbol_fixed_reference_score_changes": scores,
+            "pool_relative_rank_hash": hashlib.sha256(_canonical_bytes(rank_path)).hexdigest(),
+            "coordinator_pool_relative_rank_changes": ranks, "displaced_slots": slots}
+
+
+def _post_lock_effect(locked: Mapping[str, Any], unlocked: Mapping[str, Any]) -> dict[str, Any]:
+    from collections import Counter
+    timeline = locked["causal_matrix"]["event_timeline"]
+    first = min((row["timestamp"] for name, row in timeline.items() if "lock" in name and row["timestamp"]), default=None)
+    def unmatched(key: str) -> int:
+        if first is None:
+            return 0
+        def counts(record: Mapping[str, Any]) -> Counter:
+            rows = []
+            for item in record[key]:
+                timestamp = item.get("execution_timestamp") if key == "orders" else item["timestamp"]
+                if timestamp is None or timestamp <= first or (key == "orders" and item["authorized_shares"] <= 0):
+                    continue
+                rows.append(_canonical_bytes({k: v for k, v in item.items() if k not in {"order_ordinal", "fill_ordinal", "carried_from_order_ordinal", "suppression_winner_order_ordinal", "queued_state", "queued_timestamp"}}))
+            return Counter(rows)
+        return sum((counts(unlocked) - counts(locked)).values())
+    a, b = locked["official_metrics"]["terminal_wealth"], unlocked["official_metrics"]["terminal_wealth"]
+    return {"first_lock_timestamp": first, "missed_order_count": unmatched("orders"), "missed_trade_count": unmatched("fills"),
+            "locked_terminal_wealth": a, "no_lock_terminal_wealth": b, "delta_log_wealth": math.log(b) - math.log(a), "compounding_ratio": b / a}
 
 
 def _attach_interventions(evaluations: list[dict[str, Any]]) -> None:
     rows = [item for item in evaluations if str(item["variant_id"]).startswith("W")]
     names = ["W0_no_601869", "W1_data_map_only", "W2_pool_denominator_only", "W3_real_intents_fixed_reference_U", "W4_full_base_production_pool_relative", "W5_full_base_production_pool_relative_no_lock"]
-    anchor = rows[4]["causal_matrix"]["event_timeline"]["first_official_mdd_breach"]["timestamp"]
+    if len(rows) != 6 or [row["variant_id"].split("-", 1)[0] for row in rows] != [f"W{i}" for i in range(6)]:
+        raise ValueError("intervention attribution requires exact ordered W0..W5 coverage")
+    breach = rows[4]["causal_matrix"]["event_timeline"]["first_official_mdd_breach"]["timestamp"]
+    prior = [item["timestamp"] for item in rows[4]["equity_series"] if breach is None or item["timestamp"] < breach]
+    anchor = prior[-1] if prior else None
+    traces = [row.pop("_c6_score_trace") for row in rows]
     wealth = []
     for row in rows:
-        sample = next((item for item in row["equity_series"] if item["timestamp"] == anchor), row["equity_series"][-1])
-        wealth.append(float(sample["equity"]))
+        sample = next((item for item in row["equity_series"] if item["timestamp"] == anchor), None)
+        if anchor is not None and sample is None:
+            raise ValueError("intervention lacks the common pre-breach valuation")
+        wealth.append(float(sample["equity"]) if sample is not None else None)
     for index, (row, name) in enumerate(zip(rows, names)):
-        score_trace = row.pop("_c6_score_trace")
         gaps = []
         comparisons = [] if index == 0 else [("VS_W0", 0)]
         if index > 1:
             comparisons.append(("VS_PREVIOUS_FORWARD", index - 1))
         for label, origin in comparisons:
+            if anchor is None:
+                continue
             gaps.append({"comparison": label, "from_intervention_id": names[origin], "to_intervention_id": name, "anchor_timestamp": anchor, "from_wealth": wealth[origin], "to_wealth": wealth[index], "wealth_gap": wealth[index] - wealth[origin], "log_wealth_gap": math.log(wealth[index]) - math.log(wealth[origin])})
         previous = rows[index - 1] if index else None
-        divergence = None
-        if previous is not None and _path_hashes(previous) != _path_hashes(row):
-            divergence = {"compared_from_intervention_id": names[index - 1], "compared_to_intervention_id": name, "timestamp": row["equity_series"][0]["timestamp"], "phase": "VALUATION_CLOSE", "reason": "VALUATION", "state_index": None, "sleeve_name": None, "symbol": None, "before_path_sha256": hashlib.sha256(_canonical_bytes(previous["equity_series"])).hexdigest(), "after_path_sha256": hashlib.sha256(_canonical_bytes(row["equity_series"])).hexdigest()}
-        post = None if index != 5 else {"first_lock_timestamp": anchor, "missed_order_count": max(len(row["orders"]) - len(rows[4]["orders"]), 0), "missed_trade_count": max(len(row["fills"]) - len(rows[4]["fills"]), 0), "locked_terminal_wealth": rows[4]["official_metrics"]["terminal_wealth"], "no_lock_terminal_wealth": row["official_metrics"]["terminal_wealth"], "delta_log_wealth": math.log(row["official_metrics"]["terminal_wealth"]) - math.log(rows[4]["official_metrics"]["terminal_wealth"]), "compounding_ratio": row["official_metrics"]["terminal_wealth"] / rows[4]["official_metrics"]["terminal_wealth"]}
+        divergence = _first_path_divergence(previous, row, names[index - 1], name) if previous is not None else None
+        post = _post_lock_effect(rows[4], row) if index == 5 else None
         realized, unrealized = _symbol_pnl(row, "601869")
-        trace_hash = hashlib.sha256(_canonical_bytes(score_trace)).hexdigest()
-        row["intervention_601869"] = {"intervention_id": name, "scenario_id": row["scenario_id"], "terminal_wealth": row["official_metrics"]["terminal_wealth"], "total_return": row["official_metrics"]["total_return"], "max_drawdown": row["official_metrics"]["max_drawdown"], "total_trades": row["official_metrics"]["total_trades"], "pre_breach_anchor_timestamp": anchor, "pre_breach_wealth": wealth[index], "pre_breach_wealth_gaps": gaps, "own_601869_realized_pnl": realized, "own_601869_unrealized_pnl": unrealized, "old_symbol_fixed_reference_score_hash": trace_hash, "old_symbol_fixed_reference_score_changes": [], "pool_relative_rank_hash": trace_hash, "coordinator_pool_relative_rank_changes": [], "displaced_slots": [], "first_path_divergence": divergence, "post_lock_effect": post, "no_lock_terminal_wealth_ratio": None if index != 5 else row["official_metrics"]["terminal_wealth"] / rows[4]["official_metrics"]["terminal_wealth"]}
+        score_facts = _score_comparison(traces[index - 1] if index else traces[index], traces[index])
+        row["intervention_601869"] = {"intervention_id": name, "scenario_id": row["scenario_id"], "terminal_wealth": row["official_metrics"]["terminal_wealth"], "total_return": row["official_metrics"]["total_return"], "max_drawdown": row["official_metrics"]["max_drawdown"], "total_trades": row["official_metrics"]["total_trades"], "pre_breach_anchor_timestamp": anchor, "pre_breach_wealth": wealth[index], "pre_breach_wealth_gaps": gaps, "own_601869_realized_pnl": realized, "own_601869_unrealized_pnl": unrealized, **score_facts, "first_path_divergence": divergence, "post_lock_effect": post, "no_lock_terminal_wealth_ratio": None if index != 5 else row["official_metrics"]["terminal_wealth"] / rows[4]["official_metrics"]["terminal_wealth"]}
 
 
 def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:

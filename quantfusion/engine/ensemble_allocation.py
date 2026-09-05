@@ -30,7 +30,7 @@ from quantfusion.engine.ensemble import (
     RunRequest,
 )
 from quantfusion.execution.priorities import EXECUTION_PRIORITY
-from quantfusion.execution.c6_receipts import begin_order, order_receipt
+from quantfusion.execution.c6_receipts import begin_order, reconcile_close_queue
 from quantfusion.indicators.technical import Indicators
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
@@ -53,6 +53,38 @@ _require_int = require_int
 
 class EnsembleAllocationMixin:
     """Sleeve preparation, buy authorization, execution, and finalization."""
+
+    def _record_c6_exposure(self, states: list[_PreparedSleeveRun], date: pd.Timestamp,
+                            phase: str) -> None:
+        trace = getattr(self, "_c6_exposure_trace", None)
+        if trace is None:
+            return
+        from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
+        symbols: dict[str, float] = {}
+        clusters: dict[str, float] = {}
+        positions, assets = [], []
+        for index, state in enumerate(states):
+            sleeve = state.sleeve
+            marks = sleeve._execution_mark_prices(state.data_map, date)
+            if phase == "official_sample":
+                marks = {code: sleeve._latest_close_on_or_before(frame, date) for code, frame in state.data_map.items()}
+            assets.append(sleeve._total_assets_at_prices(marks))
+            for code in sorted(sleeve.positions):
+                for name, position in sorted(sleeve.positions[code].items()):
+                    mark = marks.get(code, 0.) or position.entry_price
+                    value = float(position.market_value_at(mark))
+                    cluster = SYMBOL_SUB_INDUSTRY.get(code, "unmapped")
+                    symbols[code] = symbols.get(code, 0.) + value
+                    clusters[cluster] = clusters.get(cluster, 0.) + value
+                    positions.append({"state_index": index, "sleeve_name": sleeve.sleeve_name,
+                                      "strategy_name": name, "symbol": code, "cluster": cluster,
+                                      "shares": int(position.shares), "mark_price": float(mark),
+                                      "market_value": value})
+        nav, gross = sum(assets), sum(symbols.values())
+        trace.append({"timestamp": date.strftime("%Y-%m-%d"), "phase": phase,
+                      "assets": nav, "gross_notional": gross, "gross_ratio": gross / nav,
+                      "symbol_notionals": symbols, "cluster_notionals": clusters,
+                      "positions": positions})
 
     def _c6_feature_enabled(self, feature: str) -> bool:
         """Return the explicit diagnostic ablation state; production is full-on."""
@@ -213,6 +245,7 @@ class EnsembleAllocationMixin:
                 sleeve_name=name,
             )
             diagnostic = getattr(self, "_c6_diagnostic_request", None)
+            sleeve._c6_intervention = self._c6_intervention_id()
             if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
                 sleeve._c6_action_lifecycle = []
                 sleeve._c6_action_by_signal = {}
@@ -397,6 +430,7 @@ class EnsembleAllocationMixin:
             candidate_symbols.update(candidates)
         score_samples = {symbol: [] for symbol in candidate_symbols}
         missing_scores: set[str] = set()
+        score_receipts = []
         for state_index, state in enumerate(states):
             candidates = {
                 signal.symbol
@@ -419,7 +453,25 @@ class EnsembleAllocationMixin:
                 else state.sleeve._allocation_scores(score_data_map, date)
             )
             if getattr(self, "_c6_score_trace", None) is not None:
-                self._c6_score_trace.append({"decision_timestamp": date.strftime("%Y-%m-%d"), "state_index": state_index, "sleeve_name": state.sleeve.sleeve_name, "fixed_reference": self._c6_feature_enabled("U"), "pool_members": sorted(score_data_map), "scores": {symbol: float(scores[symbol]) for symbol in sorted(scores)}})
+                receipt = {"decision_timestamp": date.strftime("%Y-%m-%d"), "state_index": state_index, "sleeve_name": state.sleeve.sleeve_name, "fixed_reference": self._c6_feature_enabled("U"), "pool_members": sorted(score_data_map), "scores": {symbol: float(scores[symbol]) for symbol in sorted(scores)}}
+                if (self._c6_intervention_id() or "").startswith("W"):
+                    # These read-only queries use the same prior-close inputs,
+                    # independently of which score family authorizes this path.
+                    receipt["fixed_reference_scores"] = state.sleeve._fixed_reference_scores(date, set(score_data_map))
+                    receipt["pool_relative_scores"] = state.sleeve._allocation_scores(score_data_map, date)
+                    reference_inputs = []
+                    for code in state.sleeve.policy.regime_symbols:
+                        for window in state.sleeve.policy.candidate_lookbacks:
+                            series = state.sleeve._candidate_score_series.get(code, {}).get(window)
+                            prior = series.loc[series.index < date] if series is not None else pd.Series(dtype=float)
+                            value = float(prior.iloc[-1]) if not prior.empty else None
+                            reference_inputs.append({"symbol": code, "window": window,
+                                                     "timestamp": str(prior.index[-1]) if not prior.empty else None,
+                                                     "value": value if value is not None and math.isfinite(value) else None})
+                    receipt["reference_inputs"] = reference_inputs
+                    receipt["candidate_symbols"] = sorted(candidates)
+                self._c6_score_trace.append(receipt)
+                score_receipts.append(receipt)
             for symbol in candidates:
                 if symbol in scores:
                     score_samples[symbol].append(scores[symbol])
@@ -533,6 +585,9 @@ class EnsembleAllocationMixin:
             maximum - len(existing) - len(admitted_migrations), 0
         )
         allowed = existing | admitted_migrations | set(ranked[:candidate_capacity])
+        for receipt in score_receipts:
+            receipt.update(allowed_symbols=sorted(allowed), existing_symbols=sorted(existing),
+                           candidate_capacity=candidate_capacity, maximum_positions=maximum)
         for state in states:
             retained: list[tuple[Signal, BaseStrategy]] = []
             for signal, strategy in state.pending:
@@ -671,6 +726,7 @@ class EnsembleAllocationMixin:
         # have. Opposite same-day fills therefore execute on both sides and pay
         # their respective modeled costs; sells still execute before buys.
         carried_symbols = self._held_portfolio_symbols(states)
+        self._record_c6_exposure(states, date, "batch_start")
         for state in states:
             for signal, strategy in state.pending:
                 begin_order(state.sleeve, signal, date.strftime("%Y-%m-%d"),
@@ -695,6 +751,7 @@ class EnsembleAllocationMixin:
                 state.date_to_pos,
                 frozenset({"sell"}),
             )
+        self._record_c6_exposure(states, date, "after_sells")
         if self._c6_feature_enabled("F1"):
             date_str = date.strftime("%Y-%m-%d")
             for state_index, state in enumerate(states):
@@ -743,6 +800,7 @@ class EnsembleAllocationMixin:
                 frozenset({"buy"}),
             )
             delattr(state.sleeve, "_c6_buy_scores")
+        self._record_c6_exposure(states, date, "after_buys")
         if len(self._held_portfolio_symbols(states)) > int(self.cfg["max_positions"]):
             raise RuntimeError("portfolio symbol limit exceeded after buy execution")
 
@@ -753,6 +811,7 @@ class EnsembleAllocationMixin:
         """Cancel buys and queue T+1 liquidations in every funded sleeve."""
         date_str = date.strftime("%Y-%m-%d")
         for state in states:
+            previous_pending = list(state.pending)
             pending_sells = {
                 state.sleeve._signal_key(signal): signal
                 for signal, _ in state.pending
@@ -777,6 +836,8 @@ class EnsembleAllocationMixin:
                 [item for item in state.pending if item[0].direction == "sell"]
                 + liquidations
             )
+            reconcile_close_queue(state.sleeve, previous_pending, state.pending,
+                                  date_str, "merged_account_lock")
 
     @staticmethod
     def _finalize_ensemble_sleeves(

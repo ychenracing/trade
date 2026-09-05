@@ -45,6 +45,7 @@ def order_receipt(sleeve: Any, signal: Any, date: str, *, queued: bool = False) 
         "carried_from_order_ordinal": previous["order_ordinal"] if previous else None,
         "blocked_reason": None, "events": [],
     }
+    record.update(queued_timestamp=date, queued_state=deepcopy(record))
     records.append(record)
     sleeve._c6_order_by_signal[id(signal)] = (signal, record)
     return record
@@ -105,6 +106,26 @@ def record_fill(sleeve: Any, signal: Any, trade: Any) -> None:
         "slippage": abs(float(trade.price) - float(signal.price)) * int(trade.shares),
         "status": "filled", "blocked_reason": None,
     })
+
+
+def reconcile_close_queue(sleeve: Any, before: Any, after: Any,
+                          date: str, reason: str) -> None:
+    """Observe a concrete close-stage replacement without inferring future fills."""
+    if getattr(sleeve, "_c6_orders", None) is None:
+        return
+    retained = {id(signal) for signal, _ in after}
+    for signal, _ in before:
+        if id(signal) in retained:
+            continue
+        prepare_action_consolidation(sleeve, signal, date)
+        record = order_receipt(sleeve, signal, date)
+        assert record is not None
+        record.update(status="cancelled", blocked_reason=reason)
+        record["events"].append({"timestamp": date, "event": reason})
+        action = action_receipt(sleeve, signal)
+        finish_action_batch(action, release="CANCELLED")
+    for signal, _ in after:
+        order_receipt(sleeve, signal, date, queued=True)
 
 
 def next_action_ordinal(sleeve: Any) -> int:
