@@ -713,3 +713,43 @@ def test_factual_evidence_reconciles_primitive_ledgers(mutation):
         payload['official_metrics'][{'terminal':'terminal_wealth','return':'total_return','mdd':'max_drawdown'}[mutation]] += .1
     with pytest.raises(BoundRunError):
         validate_execution_facts(payload, complete_path=True)
+
+
+def test_l2_predicate_receipts_are_recomputed_and_respect_frozen_numeric_tolerance():
+    from copy import deepcopy
+    from quantfusion.application.c6_predicates import _predicate_rows, validate_predicate_results
+    prereg = strict_json_load('artifacts/diagnostics/c6-preregistration.json')
+    rows = [dict(scenario_id=f'prefix-{i:02d}',scenario_type='prefix',total_return=0.,max_drawdown=-.1,seed=None) for i in range(1,18)]
+    rows += [dict(rows[4],scenario_id='add-one-05-synthetic',scenario_type='add_one',base_size=5)]
+    common = dict(total_return=0.,max_drawdown=-.1,sharpe=0.,calmar=0.,total_trades=0,sleeve_fill_count=0,
+                  date_symbol_side_count=0,reason_attribution={},max_concurrent_symbols=0,terminal_risk_lock=False)
+    rows += [dict(common,scenario_id=f'permutation-synthetic-{i}',scenario_type='permutation',seed=1,sharpe=i*5e-13) for i in range(2)]
+    for row in rows:
+        for key, value in common.items():
+            row.setdefault(key, value)
+        row['execution_receipts'] = {'orders': [], 'fills': [], 'exposure_series': []}
+        row['diagnostic_telemetry'] = dict(planned_risk_sell_shares=0, retained_risk_sell_shares=0,
+            suppressed_risk_sell_shares=0, filled_risk_sell_shares=0, first_executable_open=None,
+            same_open_offset_shares=0, carried_conflict_count=0, cluster_substitution_count=0,
+            cash_days=0, max_gross_ratio=0., max_cluster_weight=0., mdd_slack=.18-.1,
+            near_18pct=False, terminal_lock_count=0)
+    reference = {'results': deepcopy(rows)}
+    ids = [row['scenario_id'] for row in rows]
+    prereg['scenario_manifests']['L2_EXACT_SCENARIO_IDS']['ids'] = ids
+    specs = prereg['diagnostic_predicate_manifests']['L2_APPLICABLE_DIAGNOSTIC_PREDICATES']
+    predicates = _predicate_rows(specs,rows,reference,ids)
+    assert predicates[-1]['passed'] is True
+    payload = {'kind':'c6_l2','results':rows,'diagnostic_predicates':predicates}
+    validate_predicate_results(payload,prereg,reference)
+    for mutation in ('passed','detail_hash','metric','missing'):
+        forged = deepcopy(payload)
+        if mutation == 'passed':
+            forged['diagnostic_predicates'][0]['passed'] = False
+        elif mutation == 'detail_hash':
+            forged['diagnostic_predicates'][0]['observed']['detail_sha256'] = '0'*64
+        elif mutation == 'metric':
+            forged['results'][0]['max_drawdown'] = -.25
+        else:
+            forged['diagnostic_predicates'].pop()
+        with pytest.raises(ValueError):
+            validate_predicate_results(forged,prereg,reference)

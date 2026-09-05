@@ -958,6 +958,14 @@ def authenticate_selection_producers(
             _raise("D sealed producer digest or manifest identity differs")
         validate_result_payload(payload, record, prereg)
         payloads[field] = payload
+    if prereg["schema_catalog"].get("schema_version") == 2 and payloads["s_qualification"] is not None:
+        from quantfusion.application.c6_predicates import validate_qualification_results, validate_s_comparison_results
+        try:
+            validate_qualification_results(payloads["s_qualification"], payloads["base_l1"])
+            if payloads["base_plus_s_l1"] is not None:
+                validate_s_comparison_results(payloads["base_plus_s_l1"], payloads["base_l1"], scenario_ids)
+        except (ValueError, KeyError, TypeError) as exc:
+            _raise("D qualification does not recompute from authenticated Base", exc)
     try:
         validate_selection_producer_payloads(selection, payloads["base_l1"], payloads["s_qualification"],
                                             payloads["base_plus_s_l1"], scenario_ids)
@@ -1293,6 +1301,16 @@ def validate_result_payload(
             _raise("P machine-readable payload schema is missing")
         validate_wire_schema(machine, definitions)
         validate_wire_value(artifact, machine, definitions, name)
+        if isinstance(artifact, Mapping) and artifact.get("kind") in {"c6_l1_base", "c6_l1_base_plus_s", "c6_l2"}:
+            from quantfusion.application.c6_predicates import validate_predicate_results
+            reference_spec = prereg["transition_reference"]
+            reference_path = Path(reference_spec["path"])
+            if file_sha256(reference_path) != reference_spec["sha256"]:
+                _raise("predicate reference bytes differ from P")
+            try:
+                validate_predicate_results(artifact, prereg, load_object(reference_path))
+            except (ValueError, KeyError, TypeError) as exc:
+                _raise("diagnostic predicate evidence does not recompute", exc)
         return
     try:
         def validate_named(value: object, definition_name: str, label: str) -> None:
@@ -1596,6 +1614,12 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
             run_bindings_revision=args.run_bindings_revision,
             destination=direct_root,
         )
+    if direct_export is not None and prereg["schema_catalog"].get("schema_version") == 2:
+        assert expected_producer is not None
+        producer_record = next(record for record in run_bindings["binding_records"]
+                               if record["workflow_binding_id"] == expected_producer[0]
+                               and record["logical_run_id"] == expected_producer[1])
+        validate_result_payload(_json_content(direct_export.files["payload.json"]), producer_record, prereg)
     transitive_identity: Mapping[str, Any] = empty_producer
     base_root = None
     if binding["record_id"] == "c6.base_plus_s.l1":
@@ -1610,7 +1634,7 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
         base_root = Path(os.environ["RUNNER_TEMP"]) / "c6-producers" / "c6.base.l1" / str(
             transitive_identity["workflow_run_id"]
         ) / str(transitive_identity["attempt_id"])
-        store.producer(
+        base_export = store.producer(
             transitive_identity,
             expected_record="c6.base.l1",
             expected_logical_run=next(record["logical_run_id"] for record in run_bindings["binding_records"] if record["record_id"] == "c6.base.l1"),
@@ -1618,6 +1642,15 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
             run_bindings_revision=args.run_bindings_revision,
             destination=base_root,
         )
+        if prereg["schema_catalog"].get("schema_version") == 2:
+            from quantfusion.application.c6_predicates import validate_qualification_results
+            base_record = next(record for record in run_bindings["binding_records"] if record["record_id"] == "c6.base.l1")
+            base_payload = _json_content(base_export.files["payload.json"])
+            validate_result_payload(base_payload, base_record, prereg)
+            try:
+                validate_qualification_results(qualification, base_payload)
+            except (ValueError, KeyError, TypeError) as exc:
+                _raise("S qualification does not recompute from authenticated Base", exc)
     item_ids = (
         qualification_item_ids(direct_export)
         if binding["record_id"] == "c6.s.qualification" and direct_export is not None

@@ -162,6 +162,17 @@ def test_w_attribution_uses_actual_divergence_scores_and_post_lock_paths():
     assert facts['coordinator_pool_relative_rank_changes'][0]['rank_delta'] == 1
     assert facts['displaced_slots'][0]['admitted_symbols'] == ['B']
     assert rows[5]['intervention_601869']['post_lock_effect']['first_lock_timestamp'] == '2026-01-06'
+    from quantfusion.application.c6_predicates import validate_intervention_results
+    payload = {'evaluations': rows, 'attribution_sensitivity': c6_diagnostics._attribution(rows)}
+    validate_intervention_results(payload)
+    original = facts['pre_breach_wealth']
+    facts['pre_breach_wealth'] += 1
+    with pytest.raises(ValueError, match='recorded paths'):
+        validate_intervention_results(payload)
+    facts['pre_breach_wealth'] = original
+    payload['attribution_sensitivity']['forward_sum'] += 1
+    with pytest.raises(ValueError, match='recorded wealth'):
+        validate_intervention_results(payload)
     # Equal full-path counts do not imply no lock-conditioned missed executions.
     rows[4]['orders'] = [{'execution_timestamp': '2026-01-05', 'authorized_shares': 100, 'symbol': 'A'}]
     rows[5]['orders'] = [{'execution_timestamp': '2026-01-07', 'authorized_shares': 100, 'symbol': 'B'}]
@@ -631,8 +642,13 @@ def test_s_common_prefix_uses_one_strict_boundary_and_full_noop_paths():
     assert common[0]['first_s_effective_timestamp'] == '2026-01-06'
     assert len(no_effect) == 1 and no_effect[0]['item_id'] == 'C6-Base+S::b'
     assert no_effect[0]['equal']
+    from quantfusion.application.c6_predicates import validate_s_comparison_results
+    payload = {'evaluations': selected, 'common_prefix_comparisons': common, 'no_effect_comparisons': no_effect}
+    validate_s_comparison_results(payload, {'evaluations': base}, ['a', 'b'])
     selected[0]['cash_series'][0]['cash'] = 999
     selected[1]['orders'][0]['shares'] = 1
+    with pytest.raises(ValueError, match='authenticated recorded paths'):
+        validate_s_comparison_results(payload, {'evaluations': base}, ['a', 'b'])
     common, no_effect = c6_diagnostics.compare_s_paths(base, selected, ['a', 'b'])
     assert not common[0]['equal'] and not common[1]['equal']
     assert not no_effect[0]['equal']
@@ -745,3 +761,32 @@ def test_cluster_weight_uses_marked_value_over_account_assets():
     assets = {'2026-01-01': 2000., '2026-01-02': 1000.}
     assert c6_diagnostics.maximum_cluster_weight(positions, assets, {'a': 'optical', 'b': 'equipment'}) == .45
     assert c6_diagnostics.maximum_cluster_weight([], assets, {}) == 0.
+
+
+def test_causal_chain_records_buy_crossing_and_actual_retained_mark_loss():
+    snapshots = []
+    for date, phase, shares, mark, assets in (
+        ('2026-01-05','after_sells',800,1.,1000.),
+        ('2026-01-05','after_buys',850,1.,1000.),
+        ('2026-01-05','official_sample',850,.9,915.),
+        ('2026-01-06','batch_start',850,.8,830.)):
+        value = shares*mark
+        snapshots.append({'timestamp':date,'phase':phase,'assets':assets,'gross_notional':value,
+                          'gross_ratio':value/assets,'cluster_notionals':{'optical':value},
+                          'positions':[{'state_index':0,'sleeve_name':'fast','strategy_name':'trend',
+                                        'symbol':'601869','cluster':'optical','shares':shares,'mark_price':mark,'market_value':value}]})
+    orders = [{'order_ordinal':0,'side':'BUY','symbol':'601869','state_index':0,'strategy_name':'trend',
+               'execution_timestamp':'2026-01-05','carried_from_order_ordinal':None}]
+    fills = [{'order_ordinal':0,'fill_ordinal':0,'side':'BUY','symbol':'601869','state_index':0,'strategy_name':'trend',
+              'timestamp':'2026-01-05','shares':50,'notional':50.}]
+    chain = c6_diagnostics.causal_execution_chain(snapshots,orders,fills,[],[],
+                                                 [{'timestamp':'2026-01-02','equity':1000.},{'timestamp':'2026-01-05','equity':915.},{'timestamp':'2026-01-06','equity':830.}],
+                                                 '2026-01-06')
+    crossing = chain['buy_crossing_witnesses'][0]
+    assert crossing['before_weight'] == .8 and crossing['after_weight'] == .85
+    assert crossing['buy_fill_ordinals'] == [0]
+    loss = chain['retained_mark_pnl'][0]
+    assert loss['mark_loss_notional'] == pytest.approx(170.)
+    assert loss['mark_gain_notional'] == 0.
+    assert loss['observed_interval_count'] == 2
+    assert chain['price_pnl_excludes_fees_and_execution_changes'] is True

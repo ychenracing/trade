@@ -14,26 +14,28 @@ from pathlib import Path
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from quantfusion.application.c6_contract import canonical_json_bytes as _canonical_bytes, canonical_payload_hash
+from quantfusion.application.c6_contract import canonical_json_bytes as _canonical_bytes
 from quantfusion.io.c6_stream import load_object, select_records, write_json
+from quantfusion.application.c6_predicates import (
+    _l1_predicate_rows, _predicate_rows,
+    _attach_interventions as _attach_interventions,
+    _attribution as _attribution,
+    _first_path_divergence as _first_path_divergence,
+    _path_hashes as _path_hashes,
+    _post_lock_effect as _post_lock_effect,
+    _prefix_hash as _prefix_hash,
+    _score_comparison as _score_comparison,
+    _symbol_pnl as _symbol_pnl,
+    base_counterpart_id as base_counterpart_id,
+    compare_s_paths as compare_s_paths,
+    risk_execution_telemetry as risk_execution_telemetry,
+)
 
 
 def _as_mapping(value: object, where: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping) or any(not isinstance(key, str) for key in value):
         raise ValueError(f"{where} must be an object with string keys")
     return value
-
-
-def _numbers(value: object) -> list[float]:
-    if isinstance(value, bool) or value is None or isinstance(value, str):
-        return []
-    if isinstance(value, (int, float)):
-        return [float(value)]
-    if isinstance(value, Mapping):
-        return [number for nested in value.values() for number in _numbers(nested)]
-    if isinstance(value, list):
-        return [number for nested in value for number in _numbers(nested)]
-    return []
 
 
 def validate_manifest_identity(
@@ -111,17 +113,6 @@ def first_official_mdd_breach(
     return None
 
 
-def base_counterpart_id(s_evaluation_id: str) -> str:
-    """Derive the sole authorized Base record for a Base+S evaluation."""
-    prefix = "C6-Base+S::"
-    if not isinstance(s_evaluation_id, str) or not s_evaluation_id.startswith(prefix):
-        raise ValueError("S evaluation_id must start with exact C6-Base+S:: prefix")
-    scenario_id = s_evaluation_id[len(prefix) :]
-    if not scenario_id:
-        raise ValueError("S evaluation_id must contain a scenario ID")
-    return f"C6-Base::{scenario_id}"
-
-
 def _manager_event(events: Sequence[Mapping[str, Any]], name: str) -> dict[str, Any]:
     event = next((item for item in events if item.get("event") == name and item.get("sleeve") == "portfolio"), None)
     return {
@@ -144,38 +135,6 @@ def maximum_cluster_weight(positions: Sequence[Mapping[str, Any]], assets: Mappi
         key = (date, groups.get(position["symbol"], "unmapped"))
         totals[key] = totals.get(key, 0.0) + position["market_value"]
     return max((value / assets[date] for (date, _), value in totals.items()), default=0.0)
-
-
-def risk_execution_telemetry(result: Mapping[str, Any], groups: Mapping[str, str]) -> dict[str, Any]:
-    """Summarize actual defensive instruction attempts and same-batch buys."""
-    orders, fills = result["_c6_orders"], result["_c6_fills"]
-    risk = [row for row in orders if row["side"] == "SELL" and row["defensive"]]
-    retained = [row for row in risk if row["status"] not in {"suppressed", "cancelled"}]
-    def book(row: Mapping[str, Any]) -> tuple[Any, ...]:
-        return row["state_index"], row["strategy_name"], row["symbol"]
-    by_batch: dict[str, list[Mapping[str, Any]]] = {}
-    for row in retained:
-        if row["execution_timestamp"] is not None:
-            by_batch.setdefault(row["execution_timestamp"], []).append(row)
-    offsets = [fill for fill in fills if fill["side"] == "BUY"
-               and any(book(fill) == book(sell) for sell in by_batch.get(fill["timestamp"], []))]
-    conflicts = [row for row in retained if row["carried_from_order_ordinal"] is not None
-                 and row["execution_timestamp"] is not None
-                 and any(buy["side"] == "BUY" and buy["execution_timestamp"] == row["execution_timestamp"]
-                         and book(buy) == book(row) for buy in orders)]
-    substitutions = {fill["order_ordinal"] for fill in fills if fill["side"] == "BUY"
-                     and any(sell["symbol"] != fill["symbol"] and groups.get(fill["symbol"]) is not None
-                             and groups.get(sell["symbol"]) == groups[fill["symbol"]]
-                             for sell in by_batch.get(fill["timestamp"], []))}
-    risk_ids = {row["order_ordinal"] for row in risk}
-    return {"planned_risk_sell_shares": sum(row["requested_shares"] for row in risk),
-            "retained_risk_sell_shares": sum(row["requested_shares"] for row in retained),
-            "suppressed_risk_sell_shares": sum(row["requested_shares"] for row in risk if row["status"] == "suppressed"),
-            "filled_risk_sell_shares": sum(fill["shares"] for fill in fills if fill["order_ordinal"] in risk_ids),
-            "first_executable_open": min((row["execution_timestamp"] for row in risk
-                                           if row["execution_timestamp"] is not None and row["authorized_shares"] > 0), default=None),
-            "same_open_offset_shares": sum(fill["shares"] for fill in offsets),
-            "carried_conflict_count": len(conflicts), "cluster_substitution_count": len(substitutions)}
 
 
 def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
@@ -251,95 +210,6 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
         "execution_receipts": {"orders": result["_c6_orders"], "fills": result["_c6_fills"],
                                "action_lifecycle": _action_records(result), "exposure_series": _exposure_records(result)},
     }
-
-
-def _predicate_result(spec: Mapping[str, Any], ids: list[str], values: object, references: object, failed: list[str], value: object) -> dict[str, Any]:
-    failed = sorted(set(failed))
-    detail = {"predicate_id": spec["id"], "input_item_ids": ids, "input_values_sha256": canonical_payload_hash(values), "reference_values_sha256": canonical_payload_hash(references if spec["reference_available"] else [])}
-    return {"predicate_id": spec["id"], "passed": not failed, "observed": {"value": value, "reference_value": None, "threshold": spec["comparator"], "failure_count": len(failed), "failed_item_ids": failed, "detail_sha256": hashlib.sha256(_canonical_bytes(detail)).hexdigest()}, "comparator": spec["comparator"], "tolerance": spec["tolerance"], "failure_reason": None if not failed else spec["failure_reason_enum"]}
-
-
-def _predicate_rows(specs: Sequence[Mapping[str, Any]], results: list[dict[str, Any]], reference: Mapping[str, Any], expected_ids: Sequence[str]) -> list[dict[str, Any]]:
-    """Evaluate L2 gates and bind each result to its exact factual inputs."""
-    by_id = {item["scenario_id"]: item for item in results}
-    ref = {item["scenario_id"]: item for item in reference["results"]}
-    all_ids = [item["scenario_id"] for item in results]
-    prefixes = [f"prefix-{index:02d}" for index in range(1, 18)]
-    add_ids = [item for item in all_ids if by_id[item]["scenario_type"] == "add_one"]
-    perm_ids = [item for item in all_ids if by_id[item]["scenario_type"] == "permutation"]
-    finite_bad = [item for item in all_ids if not all(math.isfinite(float(value)) for value in _numbers(by_id[item]))]
-    mdd_bad = [item for item in all_ids if abs(by_id[item]["max_drawdown"]) > 0.18 + 1e-15]
-    p0910 = (1 + by_id["prefix-10"]["total_return"]) / (1 + by_id["prefix-09"]["total_return"]) - 1
-    adjacent = [(1 + by_id[b]["total_return"]) / (1 + by_id[a]["total_return"]) - 1 for a, b in zip(prefixes, prefixes[1:])]
-    ratios = {item: (1 + by_id[item]["total_return"]) / (1 + ref[item]["total_return"]) for item in prefixes}
-    deltas = [(1 + by_id[item]["total_return"]) / (1 + by_id[f"prefix-{by_id[item]['base_size']:02d}"]["total_return"]) - (1 + ref[item]["total_return"]) / (1 + ref[f"prefix-{ref[item]['base_size']:02d}"]["total_return"]) for item in add_ids]
-    perm_bad = []
-    for seed in sorted({by_id[item]["seed"] for item in perm_ids}):
-        group = [item for item in perm_ids if by_id[item]["seed"] == seed]
-        fields = [{key: by_id[item][key] for key in ("total_return", "max_drawdown", "sharpe", "calmar", "total_trades", "sleeve_fill_count", "date_symbol_side_count", "reason_attribution", "max_concurrent_symbols", "terminal_risk_lock")} for item in group]
-        if any(_canonical_bytes(item) != _canonical_bytes(fields[0]) for item in fields[1:]):
-            perm_bad.extend(group)
-    facts = {
-        "l2.identity.exact_manifest": (all_ids, all_ids, [], [] if all_ids == list(expected_ids) else all_ids, all_ids == list(expected_ids)),
-        "l2.metrics.finite": (all_ids, results, [], finite_bad, not finite_bad),
-        "l2.mdd.noncanonical_18pct_screen": (all_ids, [by_id[x]["max_drawdown"] for x in all_ids], [], mdd_bad, max(abs(by_id[x]["max_drawdown"]) for x in all_ids)),
-        "l2.prefix.09_to_10_wealth": (["prefix-09", "prefix-10"], [by_id[x]["total_return"] for x in ("prefix-09", "prefix-10")], [], [] if p0910 > -0.10 else ["prefix-09", "prefix-10"], p0910),
-        "l2.prefix.worst_adjacent_wealth": (prefixes, [by_id[x]["total_return"] for x in prefixes], [], [] if min(adjacent) >= -0.30 - 1e-12 else prefixes, min(adjacent)),
-        "l2.initial.prefix05": (["prefix-05"], [by_id["prefix-05"]["total_return"]], [ref["prefix-05"]["total_return"]], [] if ratios["prefix-05"] >= 0.99 - 1e-12 else ["prefix-05"], ratios["prefix-05"]),
-        "l2.initial.other_prefix": ([x for x in prefixes if x != "prefix-05"], [by_id[x]["total_return"] for x in prefixes if x != "prefix-05"], [ref[x]["total_return"] for x in prefixes if x != "prefix-05"], [x for x in prefixes if x != "prefix-05" and ratios[x] < 0.95 - 1e-12], min(ratios[x] for x in prefixes if x != "prefix-05")),
-        "l2.initial.worst_add_one": (add_ids + sorted({f"prefix-{by_id[x]['base_size']:02d}" for x in add_ids}), [by_id[x]["total_return"] for x in add_ids], [ref[x]["total_return"] for x in add_ids], [] if min(deltas) >= -0.03 - 1e-12 else add_ids, min(deltas)),
-        "l2.permutation.invariant": (perm_ids, [by_id[x] for x in perm_ids], [], perm_bad, not perm_bad),
-    }
-    return [_predicate_result(spec, *facts[spec["id"]]) for spec in specs]
-
-
-def _manifest_ok(ids: list[str], manifest: Mapping[str, Any]) -> bool:
-    digest = hashlib.sha256("".join(f"{item}\n" for item in ids).encode()).hexdigest()
-    return len(ids) == manifest["count"] == len(set(ids)) and digest == manifest.get("sha256", manifest.get("ordered_ids_sha256"))
-
-
-def _l1_predicate_rows(specs: Sequence[Mapping[str, Any]], selected: Sequence[dict[str, Any]], evaluations: Sequence[dict[str, Any]], controls: list[dict[str, Any]], pairs: list[dict[str, Any]], reference: Mapping[str, Any], manifests: Mapping[str, Any], base: bool, common: list[dict[str, Any]], no_effect: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    chosen = "C6-Base" if base else "C6-Base+S"
-    by_id = {item["scenario_id"]: {key: item[key] for key in ("scenario_definition", "official_metrics")} for item in selected}
-    ref = {item["scenario_id"]: item for item in reference["results"]}
-    selected_ids = [item["evaluation_id"] for item in selected]
-    prefixes = [f"prefix-{index:02d}" for index in range(5, 18)]
-    returns = lambda ids: [by_id[item]["official_metrics"]["total_return"] for item in ids]
-    ratios = {item: (1 + by_id[item]["official_metrics"]["total_return"]) / (1 + ref[item]["total_return"]) for item in prefixes}
-    p0910 = (1 + by_id["prefix-10"]["official_metrics"]["total_return"]) / (1 + by_id["prefix-09"]["official_metrics"]["total_return"]) - 1
-    adjacent = [(1 + by_id[b]["official_metrics"]["total_return"]) / (1 + by_id[a]["official_metrics"]["total_return"]) - 1 for a, b in zip(prefixes, prefixes[1:])]
-    add_ids = ["prefix-13", "add-one-13-601869"]
-    add_delta = (1 + by_id[add_ids[1]]["official_metrics"]["total_return"]) / (1 + by_id[add_ids[0]]["official_metrics"]["total_return"]) - (1 + ref[add_ids[1]]["total_return"]) / (1 + ref[add_ids[0]]["total_return"])
-    perm_ids = [item["scenario_id"] for item in selected if item["scenario_definition"]["scenario_type"] == "permutation"]
-    perm_bad = []
-    for seed in sorted({by_id[item]["scenario_definition"]["seed"] for item in perm_ids}):
-        group = [item for item in perm_ids if by_id[item]["scenario_definition"]["seed"] == seed]
-        metrics = [by_id[item]["official_metrics"] for item in group]
-        if any(_canonical_bytes(item) != _canonical_bytes(metrics[0]) for item in metrics[1:]):
-            perm_bad.extend(f"{chosen}::{item}" for item in group)
-    warm_bad = [item["evaluation_id"] for item in selected if item["warm_boundary"]["indicator_history"] == [] or item["data_identity"]["ordered_symbols"] != list(__import__("quantfusion.application.stress_scenarios", fromlist=["ORDERED_CODES"]).ORDERED_CODES)]
-    finite_bad = [item["evaluation_id"] for item in selected if not all(math.isfinite(number) for number in _numbers(item))]
-    eval_name, control_name = (("L1_BASE_EVALUATION_MANIFEST", "L1_BASE_SYNTHETIC_CONTROL_IDS") if base else ("L1_S_EVALUATION_MANIFEST", "L1_S_SYNTHETIC_CONTROL_IDS"))
-    identity_bad = [] if _manifest_ok([x["evaluation_id"] for x in evaluations], manifests[eval_name]) and _manifest_ok([x["control_id"] for x in controls], manifests[control_name]) and _manifest_ok([x["scenario_id"] for x in pairs], manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]) else [chosen]
-    correctness_bad = [x["control_id"] for x in controls if not x["passed"]] + [x["scenario_id"] for x in common if not x["equal"]] + [x["item_id"] for x in no_effect if not x["equal"]]
-    arch_names = {"governance/opinion-no-order-effect", "readiness/not-ready-fail-closed", "warm-boundary/causal-state-only"} if base else {"s/common-prefix", "s/coverage-fail-closed", "s/no-op-control"}
-    architecture_bad = [x["control_id"] for x in controls if x["control_id"] in arch_names and not x["passed"]]
-    facts = {
-        "l1.identity.exact_manifests": ([x["evaluation_id"] for x in evaluations] + [x["control_id"] for x in controls] + [x["scenario_id"] for x in pairs], [manifests[eval_name], manifests[control_name], manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]], [], identity_bad, not identity_bad),
-        "l1.identity.warm_and_data": (selected_ids, [{"warm_boundary": x["warm_boundary"], "data_identity": x["data_identity"]} for x in selected], [], warm_bad, not warm_bad),
-        "l1.metrics.finite": (selected_ids, selected, [], finite_bad, not finite_bad),
-        "l1.mdd.noncanonical_18pct_screen": (selected_ids, [x["official_metrics"]["max_drawdown"] for x in selected], [], [x["evaluation_id"] for x in selected if abs(x["official_metrics"]["max_drawdown"]) > 0.18 + 1e-15], max(abs(x["official_metrics"]["max_drawdown"]) for x in selected)),
-        "l1.prefix.09_to_10_wealth": ([f"{chosen}::{x}" for x in ("prefix-09", "prefix-10")], returns(["prefix-09", "prefix-10"]), [], [] if p0910 > -0.10 else [f"{chosen}::prefix-09", f"{chosen}::prefix-10"], p0910),
-        "l1.prefix.worst_adjacent_wealth": ([f"{chosen}::{x}" for x in prefixes], returns(prefixes), [], [] if min(adjacent) >= -0.30 - 1e-12 else [f"{chosen}::{x}" for x in prefixes], min(adjacent)),
-        "l1.initial.prefix05_proxy": ([f"{chosen}::prefix-05"], returns(["prefix-05"]), [ref["prefix-05"]["total_return"]], [] if ratios["prefix-05"] >= 0.99 - 1e-12 else [f"{chosen}::prefix-05"], ratios["prefix-05"]),
-        "l1.initial.other_prefix_proxy": ([f"{chosen}::{x}" for x in prefixes if x != "prefix-05"], returns([x for x in prefixes if x != "prefix-05"]), [ref[x]["total_return"] for x in prefixes if x != "prefix-05"], [f"{chosen}::{x}" for x in prefixes if x != "prefix-05" and ratios[x] < 0.95 - 1e-12], min(ratios[x] for x in prefixes if x != "prefix-05")),
-        "l1.initial.add_one_601869_proxy": ([f"{chosen}::{x}" for x in add_ids], returns(add_ids), [ref[x]["total_return"] for x in add_ids], [] if add_delta >= -0.03 - 1e-12 else [f"{chosen}::{x}" for x in add_ids], add_delta),
-        "l1.permutation.invariant": ([f"{chosen}::{x}" for x in perm_ids], [by_id[x]["official_metrics"] for x in perm_ids], [], perm_bad, not perm_bad),
-        "l1.instrumentation.no_drift": ([x["scenario_id"] for x in pairs], pairs, [], [x["scenario_id"] for x in pairs if not x["equal"]], all(x["equal"] for x in pairs)),
-        "l1.correctness.synthetic_controls": ([x["control_id"] for x in controls] + [x["scenario_id"] for x in common] + [x["item_id"] for x in no_effect], controls + common + no_effect, [], correctness_bad, not correctness_bad),
-        "l1.architecture.boundaries": (sorted(arch_names), [x for x in controls if x["control_id"] in arch_names], [], architecture_bad, not architecture_bad),
-    }
-    return [_predicate_result(spec, *facts[spec["id"]]) for spec in specs]
 
 
 _VARIANTS = {
@@ -552,10 +422,100 @@ def _exposure_records(result: Mapping[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def causal_execution_chain(snapshots, orders, fills, actions, events, equity, breach):
+    """Join factual receipts and unchanged-inventory mark intervals."""
+    from collections import defaultdict
+    from quantfusion.config.overlay import CONCENTRATION_CAP, SYMBOL_SUB_INDUSTRY
+
+    end = breach or (equity[-1]["timestamp"] if equity else None)
+    prefix = [row for row in equity if end is None or row["timestamp"] <= end]
+    peak = max(prefix, key=lambda row: row["equity"]) if prefix else None
+    first_actions = {}
+    for action in actions:
+        if end is not None and action["timestamp"] > end:
+            continue
+        key = (action["state_index"], action["symbol"], action["strategy_name"])
+        if key not in first_actions:
+            first_actions[key] = action
+    eligible_events = [event for event in events if event["event_type"] in {
+        "CROSS_MARKET", "SUBINDUSTRY", "CONCENTRATION", "LAYERED_STOP"}
+        and (end is None or event["timestamp"] <= end)]
+    fills_by_date = defaultdict(list)
+    for fill in fills:
+        fills_by_date[fill["timestamp"]].append(fill)
+    batches = []
+    for date in sorted({row["execution_timestamp"] for row in orders if row.get("execution_timestamp")
+                        and (end is None or row["execution_timestamp"] <= end)}):
+        sells = [row for row in orders if row.get("execution_timestamp") == date and row["side"] == "SELL"
+                 and row.get("defensive") and row.get("status") != "suppressed"]
+        if not sells:
+            continue
+        buys = [row for row in orders if row.get("execution_timestamp") == date and row["side"] == "BUY"]
+        batches.append({"execution_timestamp": date,
+                        "retained_sell_order_ordinals": [row["order_ordinal"] for row in sells],
+                        "sell_fill_ordinals": [row["fill_ordinal"] for row in fills_by_date[date] if row["side"] == "SELL"],
+                        "buy_order_ordinals": [row["order_ordinal"] for row in buys],
+                        "carried_buy_order_ordinals": [row["order_ordinal"] for row in buys if row.get("carried_from_order_ordinal") is not None],
+                        "post_sell_and_buy_exposure": [{key: row[key] for key in ("phase","assets","gross_notional","gross_ratio","cluster_notionals","symbol_notionals")}
+                                                        for row in snapshots if row["timestamp"] == date and row["phase"] in {"after_sells","after_buys"}]})
+    crossings, losses = [], {}
+    for before, after in zip(snapshots, snapshots[1:]):
+        if end is not None and after["timestamp"] > end:
+            continue
+        if before["phase"] == "after_sells" and after["phase"] == "after_buys" and before["timestamp"] == after["timestamp"]:
+            for cluster, value in after["cluster_notionals"].items():
+                old_weight = before["cluster_notionals"].get(cluster, 0.) / before["assets"]
+                new_weight = value / after["assets"]
+                buys = [row for row in fills_by_date[after["timestamp"]] if row["side"] == "BUY" and SYMBOL_SUB_INDUSTRY.get(row["symbol"]) == cluster]
+                if old_weight <= CONCENTRATION_CAP < new_weight and buys:
+                    crossings.append({"timestamp":after["timestamp"],"cluster":cluster,"before_weight":old_weight,
+                                      "after_weight":new_weight,"existing_cap":CONCENTRATION_CAP,
+                                      "buy_fill_ordinals":[row["fill_ordinal"] for row in buys]})
+        mark_interval = ((before["phase"] == "after_buys" and after["phase"] == "official_sample" and before["timestamp"] == after["timestamp"])
+                         or (before["phase"] == "official_sample" and after["phase"] == "batch_start" and before["timestamp"] < after["timestamp"]))
+        if not mark_interval or (peak is not None and (before["timestamp"] < peak["timestamp"]
+                or (before["timestamp"] == peak["timestamp"] and before["phase"] != "official_sample"))):
+            continue
+        def book(row):
+            return row["state_index"], row["symbol"], row["strategy_name"]
+        left, right = {book(row):row for row in before["positions"]}, {book(row):row for row in after["positions"]}
+        for key in sorted(set(left) & set(right)):
+            a, b = left[key], right[key]
+            if a["shares"] != b["shares"]:
+                raise ValueError("holdings changed inside a non-execution mark interval")
+            pnl = a["shares"] * (b["mark_price"] - a["mark_price"])
+            if key not in losses:
+                losses[key] = {"state_index":key[0],"sleeve_name":a["sleeve_name"],"symbol":key[1],"strategy_name":key[2],
+                               "first_timestamp":before["timestamp"],"last_timestamp":after["timestamp"],
+                               "mark_loss_notional":0.,"mark_gain_notional":0.,"observed_interval_count":0}
+            row = losses[key]
+            row["last_timestamp"] = after["timestamp"]
+            row["mark_loss_notional"] += max(-pnl,0.)
+            row["mark_gain_notional"] += max(pnl,0.)
+            row["observed_interval_count"] += 1
+    return {"analysis_end_timestamp":end,"peak_close_timestamp":peak["timestamp"] if peak else None,
+            "peak_close_equity":peak["equity"] if peak else None,
+            "first_causal_evidence_timestamp":min((row["timestamp"] for row in eligible_events),default=None),
+            "first_causal_evidence_emission_ordinals":[row["emission_ordinal"] for row in eligible_events
+                                                     if row["timestamp"] == min((event["timestamp"] for event in eligible_events),default=None)],
+            "first_action_emission_ordinals_by_book":[row["emission_ordinal"] for _,row in sorted(first_actions.items())],
+            "execution_batches":batches,"buy_crossing_witnesses":crossings,
+            "retained_mark_pnl":[row for _,row in sorted(losses.items())],
+            "price_pnl_excludes_fees_and_execution_changes":True}
+
+
 def build_causal_matrix(result: Mapping[str, Any], timeline: Mapping[str, Any],
                         evidence: Mapping[str, Any], equity: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     orders, fills = result["_c6_orders"], result["_c6_fills"]
     snapshots = result["_c6_exposure_trace"]
+    chain = causal_execution_chain(snapshots, orders, fills, _action_records(result), _risk_records(result),
+                                   equity, timeline["first_official_mdd_breach"]["timestamp"])
+    evidence = dict(evidence)
+    evidence["pre_sell_crossing_buy_witness"] = any(
+        row["cluster"] == evidence["worst_cluster"]
+        and (evidence["first_early_sell_required_close"] is None or row["timestamp"] <= evidence["first_early_sell_required_close"])
+        for row in chain["buy_crossing_witnesses"])
+
     by_order = {order["order_ordinal"]: order for order in orders}
     expected = [(row["timestamp"], phase) for row in equity
                 for phase in ("batch_start", "after_sells", "after_buys", "official_sample")]
@@ -613,7 +573,7 @@ def build_causal_matrix(result: Mapping[str, Any], timeline: Mapping[str, Any],
     labels = [label for label in label_order if label in findings]
     parallel = sorted(({"event_type": name, **row} for name, row in timeline.items() if row.get("timestamp") is not None),
                       key=lambda row: (row["timestamp"], row["event_type"]))
-    return {"event_timeline": dict(timeline), "parallel_event_timeline": parallel, "required_trace_order_complete": complete,
+    return {"event_timeline": dict(timeline), "parallel_event_timeline": parallel, "execution_chain": chain, "required_trace_order_complete": complete,
             "executable_lead_batch_count": evidence["lead_batch_count"], "multi_labels": labels,
             "observed_mechanisms": [findings[label] for label in labels], "s_evidence": dict(evidence),
             "earliest_unavoidable_breach_under_frozen_candidate_family": None,
@@ -677,52 +637,6 @@ def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
 
 def _manifest(name: str, spec: Mapping[str, Any]) -> dict[str, Any]:
     return {"name": name, "count": spec["count"], "unique_count": spec["unique_count"], "sha256": spec.get("sha256", spec.get("ordered_ids_sha256"))}
-
-
-def _path_hashes(record: Mapping[str, Any]) -> dict[str, str]:
-    return {name: hashlib.sha256(_canonical_bytes(record[key])).hexdigest() for name, key in (("orders_sha256", "orders"), ("fills_sha256", "fills"), ("cash_sha256", "cash_series"), ("positions_sha256", "position_series"), ("equity_sha256", "equity_series"))}
-
-
-def _prefix_hash(record: Mapping[str, Any], boundary: str | None) -> str:
-    paths = []
-    for key, timestamp in (("orders", "execution_timestamp"), ("fills", "timestamp"), ("cash_series", "timestamp"), ("position_series", "timestamp"), ("equity_series", "timestamp")):
-        selected = []
-        for item in record[key]:
-            if key == "orders" and "queued_state" in item:
-                if boundary is not None and item["queued_timestamp"] >= boundary:
-                    continue
-                last = max([item["queued_timestamp"], item["execution_timestamp"] or ""]
-                           + [event["timestamp"] for event in item["events"]])
-                if boundary is not None and last >= boundary:
-                    selected.append(item["queued_state"])
-                else:
-                    selected.append({k: v for k, v in item.items() if k not in {"queued_state", "queued_timestamp"}})
-            elif boundary is None or (item[timestamp] or item.get("decision_timestamp")) < boundary:
-                selected.append(item)
-        paths.append(selected)
-    return hashlib.sha256(_canonical_bytes(paths)).hexdigest()
-
-
-def compare_s_paths(base_evaluations: Sequence[Mapping[str, Any]], s_evaluations: Sequence[Mapping[str, Any]], scenario_ids: Sequence[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Require exact counterpart coverage before comparing any producer path."""
-    base_selected = select_records(base_evaluations, lambda item: item["variant_id"] == "C6-Base")
-    for records, variant in ((base_selected, "C6-Base"), (s_evaluations, "C6-Base+S")):
-        expected = [f"{variant}::{item}" for item in scenario_ids]
-        if (len(set(scenario_ids)) != len(scenario_ids)
-                or [item["evaluation_id"] for item in records] != expected
-                or [item["scenario_id"] for item in records] != list(scenario_ids)
-                or any(item["variant_id"] != variant for item in records)):
-            raise ValueError("S comparison requires exact ordered Base and S coverage")
-    common, no_effect = [], []
-    for counterpart, row in zip(base_selected, s_evaluations):
-        base_id = base_counterpart_id(row["evaluation_id"])
-        timestamp = row["causal_matrix"]["s_evidence"]["first_early_sell_required_close"]
-        left, right = _prefix_hash(counterpart, timestamp), _prefix_hash(row, timestamp)
-        common.append({"scenario_id": row["evaluation_id"], "base_evaluation_id": base_id, "first_s_effective_timestamp": timestamp, "base_prefix_sha256": left, "s_prefix_sha256": right, "equal": left == right})
-        if timestamp is None:
-            a, b = _path_hashes(counterpart), _path_hashes(row)
-            no_effect.append({"item_kind": "evaluation", "item_id": row["evaluation_id"], "base_evaluation_id": base_id, "s_effective_count": 0, **{f"base_{key}": value for key, value in a.items()}, **{f"s_{key}": value for key, value in b.items()}, "equal": a == b})
-    return common, no_effect
 
 
 def _control_nodes() -> dict[str, list[str]]:
@@ -822,196 +736,6 @@ def _controls(prereg: Mapping[str, Any], name: str) -> list[dict[str, Any]]:
         passed = passed and all(item["passed"] for item in assertions)
         rows.append({"control_id": control, "passed": passed, "assertions": assertions, "economic_fields": None})
     return rows
-
-
-def _attribution(evaluations: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    wealth = {item["variant_id"].split("-", 1)[0]: item["official_metrics"]["terminal_wealth"] for item in evaluations if str(item["variant_id"]).startswith("W")}
-    forward, alternate = [f"W{i}" for i in range(5)], ["W0", "W1", "W3", "W2", "W4"]
-    def edges(order: list[str]) -> list[dict[str, Any]]:
-        return [{"from_state": a, "to_state": b, "delta_log_terminal_wealth": math.log(wealth[b]) - math.log(wealth[a])} for a, b in zip(order, order[1:])]
-    f, a = edges(forward), edges(alternate)
-    fs, ass = math.fsum(item["delta_log_terminal_wealth"] for item in f), math.fsum(item["delta_log_terminal_wealth"] for item in a)
-    residual = ass - fs
-    return {"value_function": "log(terminal_wealth)", "forward_state_order": forward, "forward_deltas": f, "alternate_state_order": alternate, "alternate_deltas": a, "forward_sum": fs, "alternate_sum": ass, "interaction_residual": {"forward_total": fs, "alternate_total": ass, "common_endpoint_residual": residual, "maximum_absolute_ordinal_delta_difference": max(abs(x["delta_log_terminal_wealth"] - y["delta_log_terminal_wealth"]) for x, y in zip(f, a)), "telescoping_tolerance_passed": abs(residual) <= 1e-12}, "conditional_lock_mediated_total_effect": math.log(wealth["W5"]) - math.log(wealth["W4"])}
-
-
-def _symbol_pnl(record: Mapping[str, Any], symbol: str) -> tuple[float, float]:
-    books: dict[tuple[int, str], tuple[int, float]] = {}
-    realized = 0.0
-    for fill in record["fills"]:
-        if fill["symbol"] != symbol:
-            continue
-        key = (fill["state_index"], fill["strategy_name"])
-        shares, cost = books.get(key, (0, 0.))
-        if fill["side"] == "BUY":
-            shares += fill["shares"]
-            cost += fill["notional"] + fill["fee"]
-        elif shares:
-            basis = cost / shares * fill["shares"]
-            shares -= fill["shares"]
-            cost -= basis
-            realized += fill["notional"] - fill["fee"] - basis
-        books[key] = (shares, cost)
-    marks = [item for item in record["position_series"] if item["symbol"] == symbol]
-    final_timestamp = record["equity_series"][-1]["timestamp"]
-    market_value = sum(item["market_value"] for item in marks if item["timestamp"] == final_timestamp)
-    return realized, market_value - sum(cost for _, cost in books.values())
-
-
-def _first_path_divergence(before: Mapping[str, Any], after: Mapping[str, Any],
-                           before_name: str, after_name: str,
-                           before_scores: Sequence[Mapping[str, Any]] = (),
-                           after_scores: Sequence[Mapping[str, Any]] = ()) -> dict[str, Any] | None:
-    """Locate the first different observed phase, retaining the actual date."""
-    def batches(record: Mapping[str, Any], scores: Sequence[Mapping[str, Any]]) -> dict[tuple[str, int, str], list[Any]]:
-        result: dict[tuple[str, int, str], list[Any]] = {}
-        for key, phase, reason in (("orders", 0, "ORDER"), ("fills", 0, "FILL"),
-                                   ("cash_series", 3, "VALUATION"), ("position_series", 3, "VALUATION"),
-                                   ("equity_series", 3, "VALUATION")):
-            for item in record[key]:
-                if key == "orders":
-                    queued = item.get("queued_state")
-                    if queued is not None:
-                        result.setdefault((item["queued_timestamp"], 1, "ORDER"), []).append(("queued", queued))
-                    timestamp = item["execution_timestamp"]
-                    item_phase = phase
-                    if timestamp is None:
-                        timestamp = max((event["timestamp"] for event in item.get("events", [])), default=None)
-                        item_phase = 1
-                    if timestamp is None:
-                        continue
-                    value = {k: v for k, v in item.items() if k not in {"queued_state", "queued_timestamp"}}
-                else:
-                    timestamp, item_phase, value = item["timestamp"], phase, item
-                result.setdefault((timestamp, item_phase, reason), []).append((key, value))
-        for row in scores:
-            result.setdefault((row["decision_timestamp"], 0, "SCORE"), []).append(("score", row))
-        for name, row in record.get("causal_matrix", {}).get("event_timeline", {}).items():
-            if name != "first_official_mdd_breach" and row.get("timestamp"):
-                result.setdefault((row["timestamp"], 1, "LOCK_STATE"), []).append((name, row))
-        return result
-    a, b = batches(before, before_scores), batches(after, after_scores)
-    def observed_hash(path, boundary):
-        return hashlib.sha256(_canonical_bytes([[list(key), [list(item) for item in path[key]]] for key in sorted(path) if key <= boundary])).hexdigest()
-    for key in sorted(set(a) | set(b)):
-        if a.get(key, []) == b.get(key, []):
-            continue
-        timestamp, phase, reason = key
-        different = next((value for _, value in b.get(key, []) + a.get(key, []) if isinstance(value, Mapping)), {})
-        return {"compared_from_intervention_id": before_name, "compared_to_intervention_id": after_name,
-                "timestamp": timestamp, "phase": {0: "EXECUTION_OPEN", 1: "DECISION_CLOSE", 3: "VALUATION_CLOSE"}[phase],
-                "reason": reason, "state_index": different.get("state_index"), "sleeve_name": different.get("sleeve_name"),
-                "symbol": different.get("symbol"), "before_path_sha256": observed_hash(a, key),
-                "after_path_sha256": observed_hash(b, key)}
-    return None
-
-
-def _score_comparison(before: Sequence[Mapping[str, Any]], after: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    def expand(trace: Sequence[Mapping[str, Any]]) -> dict[tuple[str, int, str], dict[str, Any]]:
-        result = {}
-        for row in trace:
-            ranks = {symbol: rank for rank, symbol in enumerate(sorted(row["pool_relative_scores"], key=lambda symbol: (-row["pool_relative_scores"][symbol], symbol)), 1)}
-            ref = hashlib.sha256(_canonical_bytes(row["reference_inputs"])).hexdigest()
-            pool = hashlib.sha256("".join(symbol + "\n" for symbol in row["pool_members"]).encode()).hexdigest()
-            for symbol in sorted(set(row["fixed_reference_scores"]) | set(ranks)):
-                if symbol == "601869":
-                    continue
-                key = (row["decision_timestamp"], row["state_index"], symbol)
-                if key in result:
-                    raise ValueError("duplicate coordinator score observation")
-                result[key] = {"decision_timestamp": key[0], "state_index": key[1], "sleeve_name": row["sleeve_name"],
-                               "symbol": symbol, "score": row["fixed_reference_scores"].get(symbol), "rank": ranks.get(symbol),
-                               "reference_fingerprint": ref, "pool_members_sha256": pool}
-        return result
-    a, b = expand(before), expand(after)
-    scores, ranks = [], []
-    for key in sorted(set(a) | set(b)):
-        old, new = a.get(key), b.get(key)
-        witness = new if new is not None else old
-        assert witness is not None
-        identity = {k: witness[k] for k in ("decision_timestamp", "state_index", "sleeve_name", "symbol")}
-        for field, rows, fingerprint in (("score", scores, "reference_fingerprint"), ("rank", ranks, "pool_members_sha256")):
-            left, right = old.get(field) if old else None, new.get(field) if new else None
-            if left == right:
-                continue
-            rows.append({**identity, f"{field}_before": left, f"{field}_after": right,
-                         f"{field}_delta": right - left if left is not None and right is not None else None,
-                         f"{fingerprint}_before": old.get(fingerprint) if old else None,
-                         f"{fingerprint}_after": new.get(fingerprint) if new else None})
-    score_path = [{k: row[k] for k in ("decision_timestamp", "state_index", "sleeve_name", "symbol", "score", "reference_fingerprint")} for row in b.values()]
-    rank_path = [{k: row[k] for k in ("decision_timestamp", "state_index", "sleeve_name", "symbol", "rank", "pool_members_sha256")} for row in b.values()]
-    # A changed admitted set is a batch-level observation. Do not invent a
-    # unique admitted/displaced pairing when multiple slots changed together.
-    old_batches = {(row["decision_timestamp"], row["state_index"]): row for row in before}
-    slots = []
-    for row in after:
-        old = old_batches.get((row["decision_timestamp"], row["state_index"]))
-        if old is None:
-            continue
-        admitted = set(row["allowed_symbols"]) & set(row["candidate_symbols"])
-        prior = set(old["allowed_symbols"]) & set(old["candidate_symbols"])
-        if admitted - prior and prior - admitted:
-            slots.append({"execution_timestamp": row["decision_timestamp"], "state_index": row["state_index"],
-                          "sleeve_name": row["sleeve_name"], "admitted_symbols": sorted(admitted - prior),
-                          "displaced_symbols": sorted(prior - admitted), "capacity_before": old["candidate_capacity"],
-                          "capacity_after": row["candidate_capacity"], "unique_causal_pairing_claimed": False})
-    return {"old_symbol_fixed_reference_score_hash": hashlib.sha256(_canonical_bytes(score_path)).hexdigest(),
-            "old_symbol_fixed_reference_score_changes": scores,
-            "pool_relative_rank_hash": hashlib.sha256(_canonical_bytes(rank_path)).hexdigest(),
-            "coordinator_pool_relative_rank_changes": ranks, "displaced_slots": slots}
-
-
-def _post_lock_effect(locked: Mapping[str, Any], unlocked: Mapping[str, Any]) -> dict[str, Any]:
-    from collections import Counter
-    timeline = locked["causal_matrix"]["event_timeline"]
-    first = min((row["timestamp"] for name, row in timeline.items() if "lock" in name and row["timestamp"]), default=None)
-    def unmatched(key: str) -> int:
-        if first is None:
-            return 0
-        def counts(record: Mapping[str, Any]) -> Counter:
-            rows = []
-            for item in record[key]:
-                timestamp = item.get("execution_timestamp") if key == "orders" else item["timestamp"]
-                if timestamp is None or timestamp <= first or (key == "orders" and item["authorized_shares"] <= 0):
-                    continue
-                rows.append(_canonical_bytes({k: v for k, v in item.items() if k not in {"order_ordinal", "fill_ordinal", "carried_from_order_ordinal", "suppression_winner_order_ordinal", "queued_state", "queued_timestamp"}}))
-            return Counter(rows)
-        return sum((counts(unlocked) - counts(locked)).values())
-    a, b = locked["official_metrics"]["terminal_wealth"], unlocked["official_metrics"]["terminal_wealth"]
-    return {"first_lock_timestamp": first, "missed_order_count": unmatched("orders"), "missed_trade_count": unmatched("fills"),
-            "locked_terminal_wealth": a, "no_lock_terminal_wealth": b, "delta_log_wealth": math.log(b) - math.log(a), "compounding_ratio": b / a}
-
-
-def _attach_interventions(evaluations: list[dict[str, Any]]) -> None:
-    rows = [item for item in evaluations if str(item["variant_id"]).startswith("W")]
-    names = ["W0_no_601869", "W1_data_map_only", "W2_pool_denominator_only", "W3_real_intents_fixed_reference_U", "W4_full_base_production_pool_relative", "W5_full_base_production_pool_relative_no_lock"]
-    if len(rows) != 6 or [row["variant_id"].split("-", 1)[0] for row in rows] != [f"W{i}" for i in range(6)]:
-        raise ValueError("intervention attribution requires exact ordered W0..W5 coverage")
-    breach = rows[4]["causal_matrix"]["event_timeline"]["first_official_mdd_breach"]["timestamp"]
-    prior = [item["timestamp"] for item in rows[4]["equity_series"] if breach is None or item["timestamp"] < breach]
-    anchor = prior[-1] if prior else None
-    traces = [row.pop("_c6_score_trace") for row in rows]
-    wealth = []
-    for row in rows:
-        sample = next((item for item in row["equity_series"] if item["timestamp"] == anchor), None)
-        if anchor is not None and sample is None:
-            raise ValueError("intervention lacks the common pre-breach valuation")
-        wealth.append(float(sample["equity"]) if sample is not None else None)
-    for index, (row, name) in enumerate(zip(rows, names)):
-        gaps = []
-        comparisons = [] if index == 0 else [("VS_W0", 0)]
-        if index > 1:
-            comparisons.append(("VS_PREVIOUS_FORWARD", index - 1))
-        for label, origin in comparisons:
-            if anchor is None:
-                continue
-            gaps.append({"comparison": label, "from_intervention_id": names[origin], "to_intervention_id": name, "anchor_timestamp": anchor, "from_wealth": wealth[origin], "to_wealth": wealth[index], "wealth_gap": wealth[index] - wealth[origin], "log_wealth_gap": math.log(wealth[index]) - math.log(wealth[origin])})
-        previous = rows[index - 1] if index else None
-        divergence = _first_path_divergence(previous, row, names[index - 1], name, traces[index - 1], traces[index]) if previous is not None else None
-        post = _post_lock_effect(rows[4], row) if index == 5 else None
-        realized, unrealized = _symbol_pnl(row, "601869")
-        score_facts = _score_comparison(traces[index - 1] if index else traces[index], traces[index])
-        row["intervention_601869"] = {"intervention_id": name, "scenario_id": row["scenario_id"], "terminal_wealth": row["official_metrics"]["terminal_wealth"], "total_return": row["official_metrics"]["total_return"], "max_drawdown": row["official_metrics"]["max_drawdown"], "total_trades": row["official_metrics"]["total_trades"], "pre_breach_anchor_timestamp": anchor, "pre_breach_wealth": wealth[index], "pre_breach_wealth_gaps": gaps, "own_601869_realized_pnl": realized, "own_601869_unrealized_pnl": unrealized, **score_facts, "score_trace": traces[index], "first_path_divergence": divergence, "post_lock_effect": post, "no_lock_terminal_wealth_ratio": None if index != 5 else row["official_metrics"]["terminal_wealth"] / rows[4]["official_metrics"]["terminal_wealth"]}
 
 
 def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:

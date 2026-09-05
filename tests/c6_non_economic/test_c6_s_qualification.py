@@ -5,8 +5,11 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
+import pytest
+
 from quantfusion.application import c6_diagnostics, c6_s_qualification
 from quantfusion.application.c6_bound_run import validate_result_payload
+from quantfusion.application.c6_predicates import validate_qualification_results
 
 
 def _base_payload() -> dict:
@@ -83,9 +86,15 @@ def _base_payload() -> dict:
             evidence["shortfall"] = {"shares": 0, "reason": "NONE"}
             evidence["book_fillability"] = [{
                 "state_index": 0, "sleeve_name": "fast", "strategy_name": "trend", "symbol": "601869",
-                "current_shares": 9000, "planned_shares": 2000, "raw_adv_capacity_shares": 10000,
+                "current_shares": 9000, "inventory_before_shares": 9000, "suppression_winner_reason": None,
+                "planned_shares": 2000, "raw_adv_capacity_shares": 10000,
                 "capacity_shares": 2000, "executable_shares": 2000, "t_plus_one_passed": True,
                 "open_available": True, "not_suspended": True, "not_limit_blocked": True}]
+            row = evidence["book_fillability"][0]
+            evidence["queue_fillability"] = [{**{key: value for key, value in row.items()
+                                                if key not in {"current_shares", "planned_shares", "suppression_winner_reason"}},
+                                               "requested_shares": 2000, "is_s_proposal": True,
+                                               "signal_date": "2026-01-04", "reason": "concentration_trim:cluster=optical"}]
         records.append(
             {
                 "variant_id": "C6-Base",
@@ -207,3 +216,36 @@ def test_base_slice_must_be_exact_unique_and_complete() -> None:
         assert "765 unique" in str(exc)
     else:
         raise AssertionError("duplicate Base scenario was accepted")
+
+
+def test_provisional_s_fillability_cannot_qualify_before_final_queue():
+    payload = _base_payload()
+    payload['evaluations'][0]['causal_matrix']['s_evidence']['queue_fillability'] = None
+    result = c6_s_qualification.qualify_base_payload(payload, **_identities())
+    assert result['all_passed'] is False
+    assert result['results'][0]['criteria'][4]['passed'] is False
+
+
+def test_consumer_recomputes_qualification_from_authenticated_base():
+    base = _base_payload()
+    qualification = c6_s_qualification.qualify_base_payload(base, **_identities())
+    validate_qualification_results(qualification, base)
+    mutations = [
+        lambda result: result.update(all_passed=False),
+        lambda result: result['residual_ids'].clear(),
+        lambda result: result['results'][0]['criteria'][4]['observed_values'].update(planned_shares=1),
+        lambda result: result['results'][0].update(passed=False),
+    ]
+    for mutate in mutations:
+        forged = deepcopy(qualification)
+        mutate(forged)
+        with pytest.raises(ValueError, match='qualification'):
+            validate_qualification_results(forged, base)
+    changed = deepcopy(base)
+    changed['evaluations'][1]['official_metrics']['max_drawdown'] = -.20
+    with pytest.raises(ValueError, match='coverage'):
+        validate_qualification_results(qualification, changed)
+    changed = deepcopy(base)
+    changed['evaluations'][0]['causal_matrix']['s_evidence']['coverage']['observed_count'] = 1
+    with pytest.raises(ValueError, match='recomputed'):
+        validate_qualification_results(qualification, changed)
