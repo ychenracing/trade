@@ -493,7 +493,7 @@ def validate_indicator_provenance(data: Mapping[str, Any], indicators: Mapping[s
         raise ValueError("sleeve execution calendars differ")
     return {"prepared_frame_hashes": frames, "indicator_hashes": hashes,
             "old_symbol_frames_unchanged": True, "old_symbol_indicators_unchanged": True,
-            "calendar_hash": hashlib.sha256(_canonical_bytes(calendars[0])).hexdigest()}
+            "calendar_hash": hashlib.sha256("".join(date + "\n" for date in calendars[0]).encode()).hexdigest()}
 
 
 def _data_identity(result: Mapping[str, Any]) -> dict[str, Any]:
@@ -1042,7 +1042,7 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
     specs = prereg["diagnostic_predicate_manifests"]["L1_APPLICABLE_DIAGNOSTIC_PREDICATES"]
     selected = select_records(evaluations, lambda item: item["variant_id"] == chosen)
     eval_name = "L1_BASE_EVALUATION_MANIFEST" if base else "L1_S_EVALUATION_MANIFEST"
-    kind = "c6_l1_base" if base else "c6_l1_s"
+    kind = "c6_l1_base" if base else "c6_l1_base_plus_s"
     payload = {"schema_version": 2, "kind": kind, "diagnostic_noncanonical": True, "evaluation_manifest": _manifest(eval_name, manifests[eval_name]), "evaluations": evaluations, "synthetic_control_manifest": _manifest(control_name, manifests[control_name]), "synthetic_controls": controls, "no_drift_manifest": _manifest("L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS", manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]), "no_drift_pairs": pairs, "diagnostic_predicates": []}
     common: list[dict[str, Any]] = []
     no_effect: list[dict[str, Any]] = []

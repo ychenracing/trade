@@ -175,6 +175,17 @@ def test_held_symbol_bypasses_missing_fixed_reference_score() -> None:
         [state], pd.Timestamp("2026-01-05")
     )
     assert len(state.pending) == 1
+def test_candidate_order_score_does_not_zero_ordinary_held_buy_ordering(monkeypatch):
+    state = _emitting_state(3.0, [_signal('held', 'dual_ma', '2026-01-02'),
+                                  _signal('candidate', 'dual_ma', '2026-01-02')])
+    sleeve = state.sleeve
+    seen = []
+    monkeypatch.setattr(sleeve, '_allocation_scores', lambda data, date: {'held': .9, 'candidate': .2})
+    monkeypatch.setattr(sleeve, '_prepare_open_signal', lambda signal, *args: (seen.append(signal.symbol) or None, False))
+    sleeve._execute_pending_signals(state.pending, {}, pd.Timestamp('2026-01-05'), {}, buy_scores={'candidate': .6})
+    assert seen == ['held', 'candidate']
+
+
 def test_base_core_keeps_its_existing_six_to_twelve_name_bypass() -> None:
     """Catch U imposing the new score gate on the established five-name core."""
     symbol = sorted(ESTABLISHED_BASE_CORE)[0]

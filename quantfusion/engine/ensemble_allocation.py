@@ -101,9 +101,9 @@ class EnsembleAllocationMixin:
             "W0_NO_601869": set(),
             "W1_DATA_MAP_ONLY": set(),
             "W2_POOL_DENOMINATOR_ONLY": set(),
-            "W3_REAL_INTENTS_FIXED_REFERENCE_U": {"F0", "F1", "U"},
-            "W4_FULL_BASE_PRODUCTION_POOL_RELATIVE": {"F0", "F1"},
-            "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK": {"F0", "F1"},
+            "W3_REAL_INTENTS_FIXED_REFERENCE_U": {"U"},
+            "W4_FULL_BASE_PRODUCTION_POOL_RELATIVE": set(),
+            "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK": set(),
         }
         return feature in enabled[str(request["intervention_id"])]
 
@@ -788,10 +788,10 @@ class EnsembleAllocationMixin:
             states,
             date,
             cm_overlay.risk_level if cm_overlay is not None else 0,
-            carried_symbols,
+            carried_symbols if self._c6_feature_enabled("U") else None,
         )
         for state in states:
-            setattr(state.sleeve, "_c6_buy_scores", admission_scores)
+            setattr(state.sleeve, "_c6_buy_scores", admission_scores if self._c6_feature_enabled("U") else None)
             state.pending = state.sleeve._execute_pending_signals(
                 state.pending,
                 state.data_map,

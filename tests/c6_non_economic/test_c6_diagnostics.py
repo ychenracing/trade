@@ -234,8 +234,9 @@ def test_ablation_map_is_exact_and_production_defaults_full_on() -> None:
     expected = {
         "BASELINE": set(), "F0_ONLY": {"F0"}, "F0_F1": {"F0", "F1"},
         "U_ONLY": {"U"}, "C6_BASE": {"F0", "F1", "U"},
-        "W3_REAL_INTENTS_FIXED_REFERENCE_U": {"F0", "F1", "U"},
-        "W4_FULL_BASE_PRODUCTION_POOL_RELATIVE": {"F0", "F1"},
+        "W3_REAL_INTENTS_FIXED_REFERENCE_U": {"U"},
+        "W4_FULL_BASE_PRODUCTION_POOL_RELATIVE": set(),
+        "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK": set(),
     }
     for intervention, enabled in expected.items():
         engine._c6_diagnostic_request = {"intervention_id": intervention}

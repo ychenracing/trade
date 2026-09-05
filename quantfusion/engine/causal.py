@@ -579,7 +579,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                 0 if item[0].direction == "sell" else 1,
                 -(
                     buy_scores
-                    if item[0].direction == "buy" and buy_scores is not None
+                    if item[0].direction == "buy" and buy_scores is not None and item[0].symbol in buy_scores
                     else allocation_scores
                 ).get(item[0].symbol, 0.0),
                 item[0].symbol,
