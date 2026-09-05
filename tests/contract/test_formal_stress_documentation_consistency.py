@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import ast
-from collections import Counter
 import hashlib
 import io
 import json
 import math
-from pathlib import Path
 import re
 import subprocess
 import tokenize
+from collections import Counter
+from pathlib import Path
 from typing import Any
 
 from quantfusion import config as qf
@@ -19,7 +19,6 @@ from quantfusion.application import stress_artifacts, stress_metrics, stress_sce
 from quantfusion.config import daily
 from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
 from quantfusion.config.universe import SYMBOL_NAMES
-
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_SYMBOLS = (
@@ -408,6 +407,21 @@ def test_all_python_comments_and_docstrings_mark_983_as_historical_22() -> None:
                 )
 
 
+def _recorded_source_fingerprint(revision: str) -> str:
+    """Authenticate retained evidence against its actual Git source, not HEAD."""
+    listing = subprocess.check_output(
+        ["git", "ls-tree", "-r", "--name-only", revision], cwd=ROOT, text=True)
+    paths = sorted(path for path in listing.splitlines() if path.endswith(".py")
+                   and ("/" not in path or path.startswith("quantfusion/")))
+    assert paths, "recorded source revision is unavailable or empty"
+    digest = hashlib.sha256()
+    for path in paths:
+        blob = subprocess.check_output(["git", "show", f"{revision}:{path}"], cwd=ROOT)
+        digest.update(path.encode("utf-8"))
+        digest.update(hashlib.sha256(blob).digest())
+    return digest.hexdigest()
+
+
 def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
     summary_path = (
         ROOT / "artifacts/validation/formal_stress_958_acceptance_summary.json"
@@ -448,6 +462,12 @@ def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
         REGIME_DATA_DIR.resolve(),
         source_revision=summary["source_revision"],
     )
+    expected_provenance["source_fingerprint"] = _recorded_source_fingerprint(summary["source_revision"])
+    signature_fields = ("stress_contract_version", "source_revision", "source_fingerprint",
+                        "data_fingerprint", "scenario_signature")
+    expected_provenance["run_signature"] = hashlib.sha256(json.dumps(
+        {key: expected_provenance[key] for key in signature_fields},
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     assert summary["provenance"] == {
         field: expected_provenance[field]
         for field in stress_artifacts.PROVENANCE_FIELDS
