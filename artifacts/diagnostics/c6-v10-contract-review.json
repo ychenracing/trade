@@ -1,0 +1,261 @@
+{
+  "D_fix": {
+    "limits": "D now authenticates referenced producer exports and compares actual payload claims before selected execution; full factual trace and primitive/semantic payload validation remain part of freeze-readiness review.",
+    "problem": "D incorrectly rejected P-authorized deferred Base predicate failures on qualified S selection.",
+    "repair": "Five-branch structural validator reads exact deferred IDs from P; complete ordered predicate arrays required; non-deferred failures never excused.",
+    "verification": "13 targeted contract tests pass, including all five branches and cross-branch mutations."
+  },
+  "D_producer_authentication": {
+    "L4_gate": "Require complete ordered L2 predicate set, literal passing booleans, and identical D/C in the sealed L2 digest.",
+    "R_identity": "Compare D R commit/tree/blob/SHA-256 with actual frozen binding checkout and file. The pinned workflow already verifies D single parent R, sole added selection path, mode and bytes.",
+    "architecture_fix": "CI found bound_run -> diagnostics -> bound_run import cycle. Removed upward dependency; reused bottom-layer contract.manifest_identity with explicit order and frozen hash checks.",
+    "proof": "Fetch exact Base/qualification/S exports using trusted frozen workflow identity. Check actual raw bytes, canonical payload hash, byte size, manifest hash, R/P/source revision/tree, candidate and record against D and R. Compare Base predicates and recomputed residual IDs, qualification completeness/booleans, S predicates, and transitive producer identities.",
+    "status": "implemented_before_selected_execution",
+    "verification": "34 targeted bound-run/contract tests passed; Ruff and Bandit medium/high passed. New tests reject forged D predicates/residuals, failed nested qualification, wrong transitive producer links, wrong artifact size/path/manifest/source, wrong logical identity before network, and missing/failed/truthy L2 predicates or different D/C."
+  },
+  "S_comparison_repair": {
+    "coverage": "Require exact ordered Base and S IDs against P scenario list before comparison; missing, duplicate, extra members fail closed.",
+    "predicates": "No-effect comparisons use item_id, correcting prior scenario_id KeyError.",
+    "verification": "Four new common-prefix/full-no-op and coverage mutation cases passed."
+  },
+  "S_fillability_and_variant_isolation": {
+    "remaining": [
+      "Reconcile S feasibility against finalized close pending sells, native consolidation priorities and execution strategy order before freeze.",
+      "Complete fresh typed wire schemas and cross-record formula validation.",
+      "Complete causal/data-quality evidence audit and clean P/I_B/I_S/R freeze."
+    ],
+    "repairs": [
+      "Per-book planned targets remain fixed when next opening is missing; no transfer to another book.",
+      "Shared per-state symbol ADV capacity is counted once and bounded by each book inventory; legal full odd-lot liquidation is preserved.",
+      "Qualification retains and validates per-book fillability witnesses.",
+      "Diagnostic S activation follows the exact intervention; ordinary production follows only C6_S_PRODUCTION. Diagnostic evidence collection is independent of S activation."
+    ],
+    "status": "implemented_before_fresh_freeze",
+    "validation": {
+      "bandit_medium_high": "passed",
+      "economic_runs": 0,
+      "ruff_ci_selection": "passed",
+      "targeted_and_architecture_tests_passed": 64
+    }
+  },
+  "S_final_queue_feasibility": {
+    "method": "After final close actions, copy only queues and integer inventory/ADV balances. Reuse native consolidation, retain native same-symbol strategy order, include competing ordinary/defensive sells, count only the same proposed S targets. No real account mutation, counterfactual PnL/MDD, stronger target or extra execution batch.",
+    "remaining": [
+      "Fresh schema must require finalized queue for early S qualification; provisional observer values alone are insufficient.",
+      "Audit frozen raw data for zero-volume/suspension representation: qualification conservatively blocks zero volume, while native opening preparation has no explicit volume-zero gate. Do not alter production policy silently.",
+      "Full causal/wire/formula/data-quality audit and fresh freeze remain incomplete."
+    ],
+    "status": "implemented_before_fresh_freeze",
+    "validation": {
+      "bandit_medium_high": "passed",
+      "economic_runs": 0,
+      "native_execution_differential_cases_passed": 4,
+      "native_execution_differential_test_passed": true,
+      "ruff_ci_selection": "passed",
+      "targeted_and_architecture_tests_passed": 68
+    },
+    "witnesses": [
+      "per-book suppression winner reason and inventory at execution turn",
+      "ordered same-symbol pending sell feasibility with ADV and inventory conservation",
+      "q5 observed queue and book witnesses with independent reconciliation"
+    ]
+  },
+  "bounded_io_repair": {
+    "candidate_limits": {
+      "compressed_archive_bytes": 4294967296,
+      "expanded_archive_bytes": 4294967296,
+      "members": 8,
+      "record_bytes": 67108864
+    },
+    "ci_efa27de": {
+      "failure": "new markdown paths outside repository exact allowlist; moved design/plan into this existing diagnostic report",
+      "subtests_passed": 81,
+      "tests_passed": 653,
+      "type_fixes": [
+        "preserve frozen RemoteExport with a new materialized instance",
+        "accept standard IO[bytes] returned by ZipFile.open"
+      ]
+    },
+    "design": "# C6 bounded evidence IO\n\nStatus: implementation authorized as necessary fresh-cycle execution repair. No\nnew economic run is permitted until factual evidence repair and P/I_B/I_S/R\nfreeze are complete. Historical freezes remain immutable.\n\n## Problem and boundary\n\nThe 3,831-row Base L1 payload contains full paths. Synthetic format sizing exceeds\nthe trusted resume reader's 1 GiB expanded ZIP limit before many required fields\nare included. Whole-file reads, JSON decoding, deepcopy and cumulative producer\nlists multiply memory. Increasing the ZIP cap alone is insufficient.\n\nGitHub documents public ubuntu-24.04 runners as 4 CPUs, 16 GB RAM and 14 GB SSD:\nhttps://docs.github.com/en/actions/reference/runners/github-hosted-runners\nThese are planning constraints, not proof of available disk space on a run.\n\n## Design\n\nUse a small standard-library IO leaf for canonical chunk writing, strict JSON\nobject loading with indexed on-disk top-level record arrays, bounded file copy\nand hash. Preserve sorted keys, compact separators, UTF-8, finite values, unique\nkeys and final LF exactly. Index entries retain file byte offsets; each record\nis decoded independently. Slicing/filtering keeps offsets, not decoded paths.\n\nCheckpoint computation appends completed records to a private local spool and\natomically publishes the existing v2 canonical checkpoint shape. Resume verifies\nthe exact ordered prefix and every record hash before importing it. Returned\nresults are immutable file-backed views. Six interdependent W rows remain one\nbatch. There is no parallelism/order or economic calculation change.\n\nLarge arrays stay file-backed through predicates, S counterpart comparison,\nqualification, schema validation and sealed producer authentication. Small\nmetadata and controls remain ordinary objects. Official L4 bytes remain exact.\n\nZIP download/extraction uses private temporary files, streaming hashes, bounded\ncompressed/expanded bytes, strict member/path/type validation and no credential\nforwarding. Prior-attempt verification must release older extracted data before\ndownloading another cumulative checkpoint; retain only exact chain metadata and\nthe latest child. Do not discard immutable remote evidence.\n\nTrusted automatic resume imports only the trusted checkout's IO helper. Changes\nto trusted orchestration require a separate result-independent preflight PR;\nunaccepted candidate changes from #59 cannot enter main by that route. Fresh P\nwill explicitly freeze resource limits and dispatch branch. Numeric engineering\nbudgets are chosen before fresh P, not inherited as scientific thresholds.\n\n## Verification and limits\n\nCompare canonical bytes and SHA against the existing serializer using nested,\nUnicode, floating-point and empty records. Reject duplicates, nonfinite values,\ntruncation, trailing data, oversize records and unsafe ZIP members. Poison completed\ninputs on resume to prove no recomputation; test deterministic order and exact\nprefix fencing. Synthetic large-file subprocess checks demonstrate bounded RSS\nand disk use. Test streamed producer authentication against forged bytes/hash.\n\nThis work does not certify remaining order lifecycle, causal/W attribution,\nindicator provenance or L2 semantics. Those remain blocking before fresh freeze.\n",
+    "execution_plan": "# C6 streaming execution plan\n\nExecute inline, root only, under existing continuation/redo authorization.\n\n1. Add strict bounded IO leaf with canonical compatibility and malformed-input\n   tests in the existing non-economic bound-run test module.\n2. Integrate checkpoint spool/views and streaming payload/digest publication;\n   validate interrupted/resumed computation with poisoned completed inputs.\n3. Remove full record accumulation in L1 predicates, S comparison, qualification\n   and D authentication; validate existing contracts on file-backed inputs.\n4. Stream remote ZIP exports and sequential history restore. Verify size/path/\n   hash guards and synthetic resource use. No real scenario replay.\n5. Checkpoint exact tree remotely and update #59. Prepare separate trusted resume\n   preflight from main after shared helper stabilizes; retain exact branch filter.\n6. Complete outstanding factual evidence repairs before fresh P/I_B/I_S/R.\n\nAt each coherent change use targeted tests. At subsystem integration include the\narchitecture contract and remote required checks. Do not repeat economic runs or\nclaim completion while a factual contract gap remains.\n",
+    "large_arrays": "FileArray byte-offset index; private append spool; record-by-record checkpoint validation and producer consumption",
+    "remaining": [
+      "trusted orchestration preflight PR separate from unaccepted candidate",
+      "fresh-P resource caps and realistic cloud disk sizing",
+      "actual order/causal/W/indicator/L2 evidence repair"
+    ],
+    "status": "implemented_candidate_not_frozen",
+    "transport": "chunked download and hash; private ZIP extraction; sequential prior-checkpoint release; immutable hardlinks where supported",
+    "trusted_transport_preflight": {
+      "cloud_probe": "pending exact-head CI",
+      "design_amendment": "Trusted resume needs byte transport and bounded metadata only; keep that script self-contained, while candidate IO leaf handles large JSON arrays. This supersedes the earlier shared trusted-leaf import proposal.",
+      "download_extract_sha256_match": true,
+      "head": "e548eea06f072ea9c5757e15b101b39be3140bc9",
+      "peak_python_allocations_bytes": 5399496,
+      "pr": 60,
+      "scope": "four .github files only; no baseline economic source/fingerprint change",
+      "standalone_tests_passed": 7,
+      "synthetic_expanded_bytes": 1074802718
+    },
+    "validation": {
+      "actual_economic_inputs_used": false,
+      "affected_and_architecture_tests_passed": 98,
+      "auto_resume_tests_passed": 5,
+      "python_live_allocation_peak_bytes_upper_bound": 8388608,
+      "synthetic_file_bytes_min": 83886080
+    },
+    "wire_format": "unchanged sorted compact UTF-8 canonical JSON with final LF"
+  },
+  "causal_and_consumer_recomputation": {
+    "economic_execution": false,
+    "generated_evidence": {
+      "c6_generated_L2_record.json": {
+        "bytes": 38671,
+        "sha256": "3ff7321f56a5d6b5dd91c11533f9a05a5aacf7a9c386d349fdf83d6018c64fd7"
+      },
+      "c6_generated_W_records.json": {
+        "bytes": 885266,
+        "sha256": "f24fef9ded48716b4740aa99b6a949a6bb7c98ccf2371a27cb4f07e21bfbf9db"
+      },
+      "c6_generated_wire_record.json": {
+        "bytes": 61242,
+        "sha256": "bdf8f67655bacb9f18778ff204cc62f9327ed8187e8ec7e1eabb91fce428d0df"
+      }
+    },
+    "probe_sources": {
+      "check_c6_generated_variants.py": "# Reuse only generated fixture configuration; do not rerun the Base replay.\nfrom pathlib import Path\nsource=Path('/workspace/scratch/4138bd535364/check_c6_generated_wire.py').read_text()\nexec(source[:source.index('with contextlib.redirect_stdout')])\nfrom quantfusion.application.c6_bound_run import validate_wire_value\nrecords=[]\nscenario=dict(scenario_id='synthetic-wire-W',scenario_type='add_one',symbols=codes[:13]+['601869'],symbol_count=14,base_size=13,added_symbol='601869')\nfor variant in diag._VARIANTS:\n    if not variant.startswith('W'):\n        continue\n    with contextlib.redirect_stdout(io.StringIO()):\n        records.append(diag._l1_evaluate((variant,scenario,'DEFAULT')))\ndiag._attach_interventions(records)\nPath('/workspace/scratch/4138bd535364/c6_generated_W_records.json').write_text(json.dumps(records,sort_keys=True,separators=(',',':'))+'\\n')\nerrors=[]\nfor r in records:\n    for field in ('data_fingerprint','calendar_hash','scenario_signature'):\n        defs['data_identity']['wire_schema']['properties'][field]={'const':r['data_identity'][field]}\n    defs['intervention_result']['wire_schema']['properties']['scenario_id']={'const':'synthetic-wire-W'}\n    try: validate_wire_value(r,{'$ref':'#/$defs/evaluation_record'},defs)\n    except Exception as e: errors.append((r['variant_id'],str(e)))\nwith contextlib.redirect_stdout(io.StringIO()):\n    l2=diag._l2_evaluate(dict(scenario_id='synthetic-wire-L2',scenario_type='prefix',symbols=codes[:5],symbol_count=5))\nPath('/workspace/scratch/4138bd535364/c6_generated_L2_record.json').write_text(json.dumps(l2,sort_keys=True,separators=(',',':'))+'\\n')\ntry: validate_wire_value(l2,{'$ref':'#/$defs/L2_result'},defs)\nexcept Exception as e: errors.append(('L2',str(e)))\nprint(json.dumps({'generated_W_count':len(records),'errors':errors}))\n",
+      "check_c6_generated_wire.py": "import contextlib\nimport io\nimport json\nfrom pathlib import Path\n\nimport pandas as pd\nfrom quantfusion.application import c6_diagnostics as diag, stress_metrics\nfrom quantfusion.application.c6_bound_run import validate_wire_schema, validate_wire_value\nfrom quantfusion.config import paths\nfrom quantfusion.config.overlay import RISK_BASKET\nfrom quantfusion.config.portfolio import PortfolioPolicy\nfrom quantfusion.config.regime import REGIME_INDEX_FILES\n\nfolder=Path('/workspace/scratch/4138bd535364/c6-generated-wire-inputs')\nfolder.mkdir(exist_ok=True)\ncodes=['300308','300502','300394','688256','603986','688072','688300','300054','688361','002409','688498','688120','002384','688082','300604','601869','300408']\ndates=pd.bdate_range('2024-01-01','2026-01-09')\nfor ordinal, symbol in enumerate(sorted(set(codes)|set(RISK_BASKET)|set(PortfolioPolicy().regime_symbols)|set(REGIME_INDEX_FILES.values()))):\n    close=pd.Series([10.+i*(.01+ordinal*.0006)+.03*(i%4) for i in range(len(dates))],index=dates)\n    frame=pd.DataFrame({'open':close,'high':close*1.001,'low':close*.999,'close':close,'volume':10000000.})\n    frame.index.name='date'\n    frame.to_csv(folder/(symbol+'.csv'))\npaths.MARKET_DATA_DIR=folder\npaths.REGIME_DATA_DIR=folder\nstress_metrics.START_DATE='2026-01-05'\nstress_metrics.END_DATE='2026-01-09'\np=json.loads(Path('/workspace/scratch/4138bd535364/c6_wire_draft.json').read_text())\ndefs=p['schema_catalog']['definitions']\nscenario=dict(scenario_id='synthetic-wire',scenario_type='prefix',symbols=codes[:5],symbol_count=5)\nwith contextlib.redirect_stdout(io.StringIO()):\n    record=diag._l1_evaluate(('C6-Base',scenario,'DEFAULT'))\nPath('/workspace/scratch/4138bd535364/c6_generated_wire_record.json').write_text(json.dumps(record,sort_keys=True,separators=(',',':'))+'\\n')\n# Generated input identity is deliberately distinct from the frozen market\n# identity. All other schema rules remain the candidate draft's exact rules.\nfor field in ('data_fingerprint','calendar_hash','scenario_signature'):\n    defs['data_identity']['wire_schema']['properties'][field]={'const':record['data_identity'][field]}\nvalidate_wire_schema(defs['evaluation_record']['wire_schema'],defs)\nvalidate_wire_value(record,{'$ref':'#/$defs/evaluation_record'},defs)\nprint('Generated actual L1 evaluation: all typed fields and primitive ledger formulas passed.')\n"
+    },
+    "proof_limits": [
+      "mark loss excludes executions/fees and is not a full drawdown decomposition",
+      "unproven causal roots remain OTHER_UNRESOLVED; no exhaustive unavoidability claim",
+      "schema draft has generated input identity substitutions only; no real market outcomes consumed"
+    ],
+    "remaining": "Fresh P semantic amendments/engineering allowlists and budgets, exact clean I_B/I_S/R sequence, required final gates, then bound economic execution. No new P/I_B/I_S/R has been frozen.",
+    "scope": [
+      "actual peak-to-breach action/fill/buy/exposure chain and retained-position mark losses",
+      "pure L1/L2 predicate recomputation with frozen 1e-12 permutation comparison",
+      "exact all-residual S qualification recomputation from authenticated Base",
+      "W path/score/wealth attribution recomputation",
+      "S common-prefix and no-effect comparisons from both authenticated producer paths",
+      "L2 actual order/fill/exposure telemetry recomputation"
+    ],
+    "verification": [
+      "68 affected bound/qualification/architecture tests passed; one generic scalar schema test exposed Mapping guard and passed after repair",
+      "7 targeted scalar/qualification tests passed",
+      "44 diagnostics tests passed; healthy replay deselected because its inputs and behavior unchanged",
+      "10 predicate/architecture tests passed",
+      "cached generated L1, six W, and L2 wire schemas passed",
+      "cached generated L2/W recomputation passed; L2 tamper rejected",
+      "Ruff E/F/W and Bandit -ll passed"
+    ]
+  },
+  "control_evidence_fix": {
+    "S_status": "4/4 verified; no-op assertions read typed observed JUnit properties, including fixture ID, effective count, and all-five-path hash equality.",
+    "base_total": 29,
+    "base_unverified": [],
+    "base_verified": 29,
+    "method": "Each supported Base control is bound to exact executed pytest node IDs and JUnit assertion outcomes; missing or skipped receipts cannot pass. L1 checks coverage before any economic evaluation. Unsupported assertion types raise instead of copying expected values.",
+    "no_acceptance_claim": "Synthetic controls are verified; complete factual economic trace, warm schema amendment, fresh freeze, and producer/D authentication still require review.",
+    "status": "all_frozen_synthetic_controls_verified",
+    "verification": "39 targeted contract/diagnostic tests passed before three additional receipt integrity cases; those three cases also passed. Actual isolated control subprocesses passed Base 29/29 and S 4/4. Healthy generated bars execute actual fills through all three replay variants; full observed path hashes match."
+  },
+  "control_evidence_gap": {
+    "acceptance_blocked": true,
+    "finding": "The child runs three Base test files then copies every frozen expected value into actual and marks every control passed; no executed-test-to-control mapping or assertion receipt is retained. This includes governance, readiness, warm-boundary and healthy-bull controls outside those three dedicated Base modules.",
+    "source": "quantfusion/application/c6_diagnostics.py::_controls"
+  },
+  "dead_code_removal": {
+    "evidence": "Repository Python/Markdown/workflow search found no callers of the removed public-shaped helpers; execution uses _attribution. Canonical bytes now use the existing shared contract implementation.",
+    "removed": [
+      "build_causal_matrix (unused incompatible output shape)",
+      "decompose_601869 (unused duplicate arithmetic)",
+      "private duplicate exact-key/finite/canonical serialization helpers"
+    ]
+  },
+  "economic_execution": false,
+  "execution_receipt_repair": {
+    "implemented": [
+      "exact-book action inventory",
+      "immutable per-execution action receipts including partial, blocked, carry, sublot and position-absent release",
+      "signal replacement lineage with strong references",
+      "actual requested/authorized/filled order shares, fees and slippage",
+      "suppression links and immutable prior execution receipts across close consolidation",
+      "native-ledger no-drift comparator independent of receipt serialization"
+    ],
+    "remaining": [
+      "audit close-stage cancellation and terminal pending completeness",
+      "full causal event/exposure sequence and labels",
+      "W attribution and 17-indicator factual provenance",
+      "L2 factual summaries and strict schemas",
+      "fresh P schemas must include actual receipt fields; historical P remains immutable",
+      "fresh freeze and exact conditional economic experiment"
+    ],
+    "status": "partial_factual_repair_before_fresh_freeze",
+    "verification": {
+      "bandit_medium_high": "passed before latest consolidation metadata edit",
+      "command": "python -m pytest -q tests/c6_non_economic/test_c6_retained_winner.py tests/c6_non_economic/test_c6_book_identity.py tests/c6_non_economic/test_c6_diagnostics.py tests/contract/test_architecture.py",
+      "economic_execution": false,
+      "passed": 66,
+      "ruff": "passed"
+    }
+  },
+  "factual_ledger_formula_review": {
+    "CI_efb8458": {
+      "exact_backtest_context": "skipped due typecheck dependency; no economic replay",
+      "python_311_and_312": "passed",
+      "security": "passed",
+      "type_failure": "four optional frame/open member/type errors in S share-only queue witness; added explicit guards before reading volume and passing open price"
+    },
+    "remaining": [
+      "Causal chain completeness and actual buy-crossing/refill/retained-loss witnesses.",
+      "Fresh wire catalog representative payload checks and remaining selection/qualification/attribution/predicate semantics.",
+      "Fresh P/I_B/I_S/R freeze; no acceptance claimed."
+    ],
+    "repairs": [
+      "Do not overwrite actual partial fill status when only its remainder is deduplicated; record exact discarded remainder shares and finish action carry state.",
+      "Capture actual action fill notional at fill boundary; derive planned/retained/suppressed notionals using the recorded decision reference price.",
+      "W first observed divergence includes actual score and manager lock observations; retain raw score traces and hash both observed prefixes under the same boundary.",
+      "Wire v2 evaluation/L2 receipt references validate order/fill identity and quantity bounds, action notional attribution, and for full L1 paths share/cash/equity/drawdown/terminal and trade-count conservation."
+    ],
+    "status": "implemented_before_fresh_freeze",
+    "validation": {
+      "W_score_divergence_test": "passed",
+      "affected_receipt_book_diagnostic_tests_passed": 67,
+      "bandit_medium_high": "passed",
+      "economic_runs": 0,
+      "factual_formula_mutation_cases_passed": 15,
+      "healthy_generated_real_replay_four_diagnostic_variants_factual_ledger_checks": "passed",
+      "ruff_ci_selection": "passed"
+    }
+  },
+  "factual_trace_checkpoint": {
+    "economic_execution": false,
+    "implemented": [
+      "actual close queue cancellations and four-phase account/book exposure observations",
+      "trace completeness derived from phase coverage and native fill reconciliation",
+      "independent full17 input and indicator recomputation plus exact prepared-value/config/calendar comparisons",
+      "independent-book 601869 cost basis and exact final-date marks",
+      "W1 native first-query denominator and intent/slot/route exclusions",
+      "W5 preserves account peaks consumed by existing tail guard while disabling merged lock/rearm",
+      "immutable queued order state for causal prefix hashes without future execution leakage",
+      "actual W score/rank traces, conditional batch slot set changes, ledger divergence date, strictly pre-breach valuation, and post-actual-lock unmatched execution counts"
+    ],
+    "remaining": [
+      "complete multi-label causal evidence and primitive/enum/formula validation",
+      "L2 actual risk-order/carry/offset/substitution summaries",
+      "fresh P must freeze revised factual schemas and null/phase/conditional attribution definitions; old frozen P remains immutable",
+      "fresh budgets and clean P/I_B/I_S/R then exact conditional experiment"
+    ],
+    "status": "implemented_before_fresh_freeze",
+    "validation": {
+      "affected_execution_diagnostics_architecture_tests_passed": 74,
+      "bandit_medium_high": "passed",
+      "generated_data_five_path_equality": true,
+      "git_diff_check": "passed",
+      "independent_full17_indicator_recompute": true,
+      "ruff": "passed"
+    }
+  },
+  "freeze_git_proof_repair": {
+    "P_draft_builder_source": "\"\"\"Construct the reviewed fresh P draft; never run an economic evaluation.\"\"\"\nimport copy,hashlib,json,math,subprocess,sys\nfrom datetime import datetime,timezone\nfrom pathlib import Path\nSOURCE=Path('/workspace/scratch/525b6875e9b5/trade-c6-evidence-repair')\nROOT=Path('/workspace/scratch/4138bd535364/trade-c6-v11-p')\nBASE,CHECKPOINT=sys.argv[1:3]\ndef git(*args):\n    return subprocess.check_output(['git',*args],cwd=SOURCE)\ndef identity(path):\n    mode,kind,blob=git('ls-tree',BASE,'--',path).decode().split()[:3]\n    assert mode=='100644' and kind=='blob'\n    return {'mode':mode,'git_blob':blob,'sha256':hashlib.sha256(git('show',BASE+':'+path)).hexdigest()}\ndef replace(value):\n    if isinstance(value,dict): return {k:replace(v) for k,v in value.items()}\n    if isinstance(value,list): return [replace(v) for v in value]\n    if isinstance(value,str): return value.replace('c6-v10-','c6-v11-').replace('closure-v10','closure-v11').replace('base-v10','base-v11').replace('s-v10','s-v11').replace('evidence-v10','evidence-v11')\n    return value\np=replace(json.loads(Path('/workspace/scratch/4138bd535364/c6_wire_draft.json').read_text()))\np['experiment_id']='c6-causal-risk-closure-17x958-v11'\np['frozen_at']=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')\na=p['authority'];a.update(base_revision=BASE,base_tree=git('rev-parse',BASE+'^{tree}').decode().strip(),history_bridge_revision=CHECKPOINT,restart_checkpoint_revision=CHECKPOINT)\na['workflow_preflight_pull_requests']=sorted(set(a['workflow_preflight_pull_requests']+[60,61,62]))\np['purpose']='Fresh result-independent reconstruction of the original uploaded C6 causal risk closure contract after review of unsealed v10. Historical v10 run 33933010157 was cancelled with zero artifacts and remains invalid evidence. Preserve the exact 765/958 scenarios, data, economic thresholds, candidate family and official gates. Restore native immutable pre-loop warm state (explicitly authorized), genuine W0..W5 scopes, U candidate-only score propagation, final native S queue feasibility, actual causal/execution evidence, independent consumer recomputation and lossless bounded diagnostic transport. All code prototypes and probes before this freeze used synthetic inputs only; no fresh candidate market outcomes were used to design this P. Original user instructions govern this fresh cycle; historical P constraints invented beyond that contract are not carried forward.'\np['claims_not_authorized'] += ['reuse_of_cancelled_v10_as_evidence','claim_that_generated_capacity_probe_bounds_all_possible_market_traces']\np['S'].pop('v10_change_constraint',None)\np['S']['original_contract_scope']='Only the original evidence-gated early existing concentration sell. Same sizing, weakest-first selection, book priority, T+1/open/limit/ADV/lot constraints and F1 winner semantics. No extra ceiling, allocator, threshold, state machine, scenario or tuned response to results.'\np['S']['qualification_queue']='At the first scheduler-selected batch, finalize the full same-symbol native sell queue without mutating real holdings/cash. Apply exact consolidation, strategy order, inventory and shared ADV before S contribution. Stronger sells cannot be credited to S. Zero/provisional/mismatched witnesses fail q5; legal full odd-lot liquidation can qualify.'\np['warm_and_data_integrity']['native_boundary_amendment']='Explicitly authorized: capture the actual immutable state before the first valuation loop. Raw sleeve/cycle peaks may be zero, uncreated lifetime peak may be null, and peak timestamps remain null. No initial-capital normalization, risk-manager initialization change, pre-window economic state, or future information is allowed.'\np['warm_and_data_integrity']['raw_quality_facts']='All 17 raw inputs were statically checked for duplicate/null numeric/nonpositive OHLC/negative or zero volume/invalid high-low rows. Frozen source files remain unchanged. Twelve source-manifest row/date summaries are stale relative to actual files; record actual rows/dates/hashes, do not mutate data or invent exchange suspension/adjustment facts.'\np['interventions_601869']['definitions']['W4_full_base_production_pool_relative']='Exact current-main production economic path, with no F0/F1/U/S diagnostic repair enabled. Five native path hashes matched an independent main checkout under heterogeneous generated inputs.'\np['interventions_601869']['definitions']['W5_full_base_production_pool_relative_no_lock']='W4 with merged-account lock and rearm disabled only; preserve ordinary manager peak updates and all other production decisions.'\np['interventions_601869']['delta_formula']='Natural-log wealth contrasts on frozen W0..W4 and alternate order; independent conditional W5-W4 lock contrast. Compare telesco
