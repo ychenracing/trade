@@ -679,7 +679,11 @@ def _controls(prereg: Mapping[str, Any], name: str) -> list[dict[str, Any]]:
             suite = subprocess.run(["python", "-m", "pytest", "-q", f"--junitxml={report}", *nodes], check=False, capture_output=True)
             if suite.returncode not in {0, 1} or not report.is_file():
                 raise RuntimeError("synthetic control execution produced no valid receipt")
-            for case in ET.parse(report).iter("testcase"):
+            xml = report.read_text(encoding="utf-8")
+            if "<!DOCTYPE" in xml.upper() or "<!ENTITY" in xml.upper():
+                raise ValueError("control receipt cannot contain DTD or entity declarations")
+            # Private pytest output, UTF-8 only; DTD/entity declarations rejected.
+            for case in ET.fromstring(xml).iter("testcase"):  # nosec B314
                 node = case.attrib["classname"].replace(".", "/") + ".py::" + case.attrib["name"]
                 if node in observed:
                     raise RuntimeError("duplicate synthetic control test receipt")

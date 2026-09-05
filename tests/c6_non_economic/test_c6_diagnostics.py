@@ -22,6 +22,18 @@ def test_control_without_executed_assertion_cannot_inherit_suite_success(monkeyp
     assert rows[0]["passed"] is False
     assert rows[0]["assertions"][0]["actual"] is False
 
+
+def test_control_receipt_rejects_entity_declarations(monkeypatch):
+    def process(argv, **kwargs):
+        report = Path(next(x.split("=", 1)[1] for x in argv if x.startswith("--junitxml=")))
+        report.write_text('<!DOCTYPE testsuites [<!ENTITY x "unsafe">]><testsuites/>')
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(c6_diagnostics.subprocess, "run", process)
+    control = "book-identity/carried-winner"
+    p = {"scenario_manifests": {"L1_BASE_SYNTHETIC_CONTROL_IDS": {"ids": [control], "assertions_by_control": {control: [{"id": control + "/contract", "expected": True, "comparator": "equal"}]}}}}
+    with pytest.raises(ValueError, match="DTD or entity"):
+        c6_diagnostics._controls(p, "L1_BASE_SYNTHETIC_CONTROL_IDS")
+
 def _manifest(ids: list[str]) -> dict[str, object]:
     encoded = "".join(f"{item}\n" for item in ids).encode()
     return {
