@@ -9,6 +9,8 @@ import os
 import tracemalloc
 import zipfile
 import unittest
+import re
+import textwrap
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("resume", pathlib.Path(__file__).with_name("c6_auto_resume.py"))
@@ -123,6 +125,53 @@ class ResumeTest(unittest.TestCase):
             self.assertEqual(actual, expected.hexdigest())
             print(json.dumps({"synthetic_only": True, "expanded_bytes": size, "peak_python_allocations_bytes": peak, "download_extract_sha256_match": True}))
             github._workspace.cleanup()
+
+
+class ExportWorkflowTest(unittest.TestCase):
+    def test_frozen_gzip_transport_stream_hashes_and_plain_l4(self):
+        workflow = pathlib.Path(__file__).parents[1] / 'workflows/c6-bound-economic.yml'
+        section = workflow.read_text().split('- name: Validate sealed run export', 1)[1]
+        source = re.search(r"python - <<'PY'\n(.*?)\n          PY", section, re.S).group(1)
+        code = compile(textwrap.dedent(source), str(workflow), 'exec')
+        fields = ['source_revision', 'run_bindings_revision', 'workflow_revision', 'binding_id',
+                  'candidate_id', 'logical_run_id', 'attempt_id', 'resume_from', 'resume_workflow_run_id',
+                  'd_commit', 'd_selection_blob_oid', 'd_selection_file_sha256', 'runner_image_os',
+                  'runner_image_version', 'python_version']
+        for stage, compressed, matches in [('L1', True, True), ('L1', False, True), ('L1', True, False), ('L4', False, True), ('L4', True, True)]:
+            with self.subTest(stage=stage, compressed=compressed, matches=matches), tempfile.TemporaryDirectory() as folder:
+                prior = os.getcwd()
+                try:
+                    os.chdir(folder)
+                    root = pathlib.Path('source/artifacts/checkpoints/c6/sealed-export')
+                    root.mkdir(parents=True)
+                    name = 'payload.json.gz' if compressed else 'official-artifact.json' if stage == 'L4' else 'payload.json'
+                    content = b'lossless transport bytes'
+                    (root / name).write_bytes(content)
+                    (root / 'digest.json').write_text('{}')
+                    manifest = {field: '' for field in fields}
+                    manifest.update(schema_version=2, kind='result', sealed=True, repository='ychenracing/trade',
+                        workflow_run_id='123', workflow_run_attempt='1', binding_id='c6.selected.l4' if stage == 'L4' else 'c6.base.l1',
+                        candidate_id='C6-Base', logical_run_id='c6-v11-synthetic', producer_identity={},
+                        fencing_token_sha256=hashlib.sha256(b'synthetic-token').hexdigest(),
+                        files={name:hashlib.sha256(content).hexdigest(),'digest.json':hashlib.sha256(b'{}').hexdigest()})
+                    (root / 'manifest.json').write_text(json.dumps(manifest))
+                    bindings = pathlib.Path('bindings/artifacts/diagnostics/c6-run-bindings.json')
+                    bindings.parent.mkdir(parents=True)
+                    bindings.write_text(json.dumps({'binding_records':[{'workflow_binding_id':manifest['binding_id'],
+                        'logical_run_id':manifest['logical_run_id'],'candidate_id':'C6-Base',
+                        'paths':{'producer_payload_relative_path':name if matches else 'payload.json'}}]}))
+                    env = {'C6_'+field.upper():manifest[field] for field in fields}
+                    env.update(C6_EXECUTE_OUTCOME='success',C6_PRODUCER_IDENTITY_JSON='{}',C6_FENCING_TOKEN='synthetic-token',
+                        GITHUB_REPOSITORY=manifest['repository'],GITHUB_RUN_ID='123',GITHUB_RUN_ATTEMPT='1',GITHUB_OUTPUT=str(pathlib.Path(folder)/'output'))
+                    with patch.dict(os.environ,env), patch.object(pathlib.Path,'read_bytes',side_effect=AssertionError('whole-file read')):
+                        if not matches or (stage == 'L4' and compressed):
+                            with self.assertRaises(SystemExit):
+                                exec(code, {})
+                        else:
+                            exec(code, {})
+                            self.assertEqual(pathlib.Path(env['GITHUB_OUTPUT']).read_text(),'ready=true\n')
+                finally:
+                    os.chdir(prior)
 
 
 if __name__ == "__main__":
