@@ -463,6 +463,7 @@ class GitHubActionsLeaseStore:
         self, *, binding: Mapping[str, Any], current_run_id: int,
         resume_from: str, resume_workflow_run_id: str, checkpoint_path: Path,
         lease_path: Path, run_bindings_revision: str, item_ids: Sequence[str],
+        prereg: Mapping[str, Any] | None = None,
     ) -> None:
         """Restore the exact latest checkpoint, or reject any ambiguous history."""
         workflow = binding["workflow"]
@@ -547,7 +548,7 @@ class GitHubActionsLeaseStore:
             except ContractError as exc:
                 _raise(str(exc), exc)
             completed_ids = wrapper_payload["completed_item_ids"]
-            child_completed = checkpoint_progress(child, stage=binding["stage"], binding_signature=wrapper_payload["binding_signature"], item_ids=item_ids)
+            child_completed = checkpoint_progress(child, stage=binding["stage"], binding_signature=wrapper_payload["binding_signature"], item_ids=item_ids, prereg=prereg)
             if (
                 wrapper_payload["schema_version"] != 2
                 or wrapper_payload["kind"] != "c6_bound_checkpoint"
@@ -765,6 +766,7 @@ def checkpoint_progress(
     stage: str,
     binding_signature: str,
     item_ids: Sequence[str],
+    prereg: Mapping[str, Any] | None = None,
 ) -> list[str]:
     """Validate a child checkpoint and return its exact completed item prefix."""
     try:
@@ -817,6 +819,8 @@ def checkpoint_progress(
                 or (item["item_kind"], item["result_schema"]) != _ITEM_SCHEMAS.get(str(item["item_id"]).split("/", 1)[0])
                 or item["result_sha256"] != canonical_payload_hash(item["result"])):
                 _raise("diagnostic checkpoint item hash/schema is invalid")
+            if prereg is not None:
+                validate_checkpoint_item(item, prereg)
         completed = [str(item.get("item_id", "")) for item in items if isinstance(item, dict)]
     if not completed or completed != list(item_ids[: len(completed)]):
         _raise("child checkpoint does not contain an exact nonempty prefix")
@@ -832,15 +836,44 @@ _ITEM_SCHEMAS = {
 }
 
 
+def validate_checkpoint_item(item: Mapping[str, Any], prereg: Mapping[str, Any]) -> None:
+    """Validate one completed record; whole-group predicates run after completion."""
+    name = item["result_schema"]
+    definitions = dict(prereg["schema_catalog"]["definitions"])
+    if name == "S_QUALIFICATION_RUN.per_residual_schema":
+        qualification = prereg["S_QUALIFICATION_RUN"]
+        definitions["per_residual"] = qualification["per_residual_schema"]
+        definitions["criterion_result"] = qualification["criterion_result_schema"]
+        name = "per_residual"
+    validate_wire_value(item["result"], {"$ref": "#/$defs/" + name}, definitions)
+    result = item["result"]
+    if name == "evaluation_record":
+        metadata = result["scenario_definition"]
+        if (result["scenario_id"] != metadata["scenario_id"]
+            or result["evaluation_id"] != result["variant_id"] + "::" + result["scenario_id"]
+            or item["item_id"] != "evaluation/" + result["evaluation_id"]):
+            _raise("checkpoint evaluation identity mismatch")
+    elif name == "L2_result":
+        metadata = result
+        if item["item_id"] != "scenario/" + result["scenario_id"]:
+            _raise("checkpoint scenario identity mismatch")
+    else:
+        return
+    symbols = metadata["symbols"]
+    if metadata["symbol_count"] != len(symbols) or len(set(symbols)) != len(symbols):
+        _raise("checkpoint symbol_count or membership mismatch")
+
+
 class DiagnosticCheckpoint:
     """Run bounded ordered chunks; persist completed results before exiting 75."""
 
     def __init__(self, path: Path, item_ids: Sequence[str], signature: str, *,
                  resume_signature: str = "", budget_seconds: float = 900,
-                 chunk_size: int = 10) -> None:
+                 chunk_size: int = 10, prereg: Mapping[str, Any] | None = None) -> None:
         if len(set(item_ids)) != len(item_ids) or not item_ids or chunk_size < 1 or budget_seconds < 0:
             _raise("invalid checkpoint execution manifest or budget")
         self.path, self.ids, self.signature = path, list(item_ids), signature
+        self.prereg = prereg
         self.deadline = time.monotonic() + budget_seconds
         self.chunk_size, self.cursor, self.new_count = chunk_size, 0, 0
         self._spool = tempfile.TemporaryDirectory(prefix="c6-records-")
@@ -852,6 +885,7 @@ class DiagnosticCheckpoint:
         if path.exists():
             if not resume_signature:
                 _raise("checkpoint exists without authorized resume")
+            # Authenticate transport once; _append validates each restored record.
             checkpoint_progress(path, stage="L1", binding_signature=resume_signature, item_ids=self.ids)
             for item in load_object(path)["completed_items"]:
                 self._append(item)
@@ -864,8 +898,11 @@ class DiagnosticCheckpoint:
         signature = os.environ.get("C6_BOUND_SIGNATURE")
         if not path or not signature:
             _raise("diagnostic execution requires a bound checkpoint identity")
+        prereg = strict_json_load(Path("artifacts/diagnostics/c6-preregistration.json"))
         return cls(Path(path), item_ids, signature, chunk_size=chunk_size,
-                   resume_signature=os.environ.get("C6_BOUND_RESUME_SIGNATURE", ""))
+                   resume_signature=os.environ.get("C6_BOUND_RESUME_SIGNATURE", ""),
+                   prereg=prereg,
+                   budget_seconds=prereg["checkpoint_and_lease_protocol"]["graceful_budget_seconds"])
 
     def map(self, worker: Callable[..., Any], tasks: Sequence[Any], ids: Sequence[str], *,
             workers: int = 4, finalize: Callable[[list[Any]], None] | None = None) -> FileArray:
@@ -898,6 +935,8 @@ class DiagnosticCheckpoint:
         return self.items[start:end].project("result")
 
     def _append(self, item: Mapping[str, Any]) -> None:
+        if self.prereg is not None:
+            validate_checkpoint_item(item, self.prereg)
         raw = b"".join(canonical_chunks(item))
         from quantfusion.io.c6_stream import RECORD_LIMIT
         if len(raw) > RECORD_LIMIT:
@@ -1714,6 +1753,7 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
             resume_workflow_run_id=args.resume_workflow_run_id,
             checkpoint_path=checkpoint_path, lease_path=lease_path,
             run_bindings_revision=args.run_bindings_revision, item_ids=item_ids,
+            prereg=prereg,
         )
     selected = binding["stage"] in {"L2", "L4"}
     d_identity = None
@@ -1854,6 +1894,7 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
                 stage=binding["stage"],
                 binding_signature=binding_signature,
                 item_ids=item_ids,
+                prereg=prereg,
             )
             wrapper = {
                 "schema_version": 2, "kind": "c6_bound_checkpoint",

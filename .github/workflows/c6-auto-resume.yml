@@ -4,7 +4,9 @@ on:
   workflow_run:
     workflows: [C6 Bound Economic Run]
     types: [completed]
-    branches: [codex/c6-v11-workflow-anchor]
+    branches: [codex/c6-v12-workflow-anchor]
+  schedule:
+    - cron: '7,17,27,37,47,57 * * * *'
   push:
     branches: [codex/c6-auto-resume-preflight]
 
@@ -12,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: c6-auto-resume-${{ github.event.workflow_run.id || github.ref }}
+  group: c6-auto-resume-v12
   cancel-in-progress: false
 
 jobs:
@@ -26,7 +28,7 @@ jobs:
           persist-credentials: false
       - run: python3 -I -S .github/scripts/test_c6_auto_resume.py
   resume:
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

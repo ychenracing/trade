@@ -3,14 +3,14 @@ import copy
 import hashlib
 import importlib.util
 import json
-import pathlib
-import tempfile
 import os
-import tracemalloc
-import zipfile
-import unittest
+import pathlib
 import re
+import tempfile
 import textwrap
+import tracemalloc
+import unittest
+import zipfile
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("resume", pathlib.Path(__file__).with_name("c6_auto_resume.py"))
@@ -19,6 +19,21 @@ spec.loader.exec_module(resume)
 
 
 class ResumeTest(unittest.TestCase):
+    def test_workflow_identity_uses_id_path_and_trusted_ref_not_display_name(self):
+        run = {"repository": {"full_name": resume.REPOSITORY},
+               "head_repository": {"full_name": resume.REPOSITORY},
+               "workflow_id": 42, "path": ".github/workflows/" + resume.WORKFLOW,
+               "name": "c6-bound-dynamic-attempt-name", "event": "workflow_dispatch",
+               "head_branch": "codex/c6-v12-workflow-anchor", "run_attempt": 1,
+               "status": "completed", "conclusion": "success"}
+        workflow = {"id": 42, "path": run["path"]}
+        resume.validate_run_identity(run, workflow)
+        for key, value in (("workflow_id", 43), ("path", ".github/workflows/ci.yml"),
+                           ("head_branch", "codex/c6-v11-workflow-anchor"),
+                           ("event", "pull_request"), ("run_attempt", 2)):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                resume.validate_run_identity({**run, key: value}, workflow)
+
     def setUp(self):
         self.run = {"id": 123, "run_attempt": 1, "event": "workflow_dispatch", "status": "completed", "conclusion": "success", "head_sha": "1" * 40, "head_branch": "codex/c6-v10-workflow-anchor", "display_title": "c6-bound-c6.base.l1-c6-v10-base-l1-a0"}
         self.record = {"record_id": "c6.base.l1", "workflow_binding_id": "c6.base.l1", "logical_run_id": "c6-v10-base-l1", "source_revision": "2" * 40, "candidate_id": "C6-Base", "workflow": {"revision": "1" * 40, "dispatch_ref": self.run["head_branch"]}, "runtime": {"python_version": "3.12.14", "runner_image_os": "ubuntu24", "runner_image_version": "20260831.293.1"}, "attempt_policy": {"dispatch_deadline_utc": "2099-01-01T00:00:00Z"}, "item_manifest_contract": {"count": 3, "sha256": "4" * 64}}
@@ -131,7 +146,7 @@ class ExportWorkflowTest(unittest.TestCase):
     def test_frozen_gzip_transport_stream_hashes_and_plain_l4(self):
         workflow = pathlib.Path(__file__).parents[1] / 'workflows/c6-bound-economic.yml'
         section = workflow.read_text().split('- name: Validate sealed run export', 1)[1]
-        source = re.search(r"python - <<'PY'\n(.*?)\n          PY", section, re.S).group(1)
+        source = re.search(r"python - <<'PY'\n(.*?)\n          PY", section, re.DOTALL).group(1)
         code = compile(textwrap.dedent(source), str(workflow), 'exec')
         fields = ['source_revision', 'run_bindings_revision', 'workflow_revision', 'binding_id',
                   'candidate_id', 'logical_run_id', 'attempt_id', 'resume_from', 'resume_workflow_run_id',

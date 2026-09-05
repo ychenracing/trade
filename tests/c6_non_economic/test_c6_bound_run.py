@@ -247,11 +247,11 @@ def test_bound_exit_75_is_success_only_after_valid_checkpoint_handoff(tmp_path, 
     from quantfusion.application import c6_bound_run as runner
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("C6_FENCING_TOKEN", TOKEN_1)
-    ids = ["scenario/one", "scenario/two"]
+    ids = ["control/one", "control/two"]
     identity = {"commit": "a" * 40, "tree": "b" * 40, "blob": "c" * 40, "sha256": "d" * 64}
     binding = {"record_id": "c6.base.l1", "logical_run_id": "fixture", "stage": "L1", "source_tree": "e" * 40,
                "candidate_id": "C6-Base", "record_signature": "f" * 64,
-               "item_manifest_contract": {"count": 2, "sha256": hashlib.sha256(b"scenario/one\nscenario/two\n").hexdigest()},
+               "item_manifest_contract": {"count": 2, "sha256": hashlib.sha256(b"control/one\ncontrol/two\n").hexdigest()},
                "runtime_late_slots": [], "argv": ["python", "-m", "quantfusion.application.c6_diagnostics"],
                "exit_semantics": {"checkpoint_incomplete_exit_code": 75, "terminal_success_exit_codes": [0], "terminal_rejected_exit_codes": []}}
     args = SimpleNamespace(producer_identity_json=json.dumps(_attempt_identity()["producer_identity"]), candidate_id="C6-Base",
@@ -262,7 +262,10 @@ def test_bound_exit_75_is_success_only_after_valid_checkpoint_handoff(tmp_path, 
                            logical_run_id="fixture", attempt_id="a0", require_durable_lease=False)
     # Substitute immutable-input/API setup and the child process only. Exercise
     # production lease acquisition, checkpoint validation, sealing and exit status.
-    monkeypatch.setattr(runner, "load_preregistration", lambda *a, **k: {})
+    synthetic_contract = {"schema_catalog": {"schema_version": 1, "definitions": {
+        "synthetic_control": {"wire_schema": {"type": "object", "required": ["square"],
+            "properties": {"square": {"type": "integer"}}, "additionalProperties": False}}}}}
+    monkeypatch.setattr(runner, "load_preregistration", lambda *a, **k: synthetic_contract)
     monkeypatch.setattr(runner, "load_run_bindings", lambda *a: {"P": identity, "binding_records": [binding]})
     monkeypatch.setattr(runner, "select_binding", lambda *a, **k: binding)
     monkeypatch.setattr(runner, "file_sha256", lambda *a: identity["sha256"])

@@ -1,0 +1,36 @@
+{
+  "kind": "c6_recovery_engineering_checkpoint",
+  "economic_acceptance": "not_run",
+  "old_execution": "v11_invalid_terminal",
+  "scope_class": "A_metadata_checkpoint_orchestration_and_CI",
+  "economic_contract_changed": false,
+  "changed_production_boundaries": [
+    "native scenario metadata projection shared by L1/W/S variant evaluation and L2",
+    "real per-record wire/formula validation before completed-prefix append and at remote checkpoint sealing/restore",
+    "diagnostic runtime budget read from the immutable P; no mutable environment budget",
+    "restore transport validation followed by exactly one in-child semantic append validation"
+  ],
+  "verified": {
+    "native_scenarios": 765,
+    "new_boundary_module": {
+      "passed": 17,
+      "seconds": 60.72,
+      "synthetic_market": true,
+      "native_official_publication": "retained rows; original reference unchanged; no backtest"
+    },
+    "bound_runner_module": {
+      "passed": 58,
+      "seconds": 1.19
+    },
+    "affected_production_pyright": "0 errors 0 warnings",
+    "ruff": "changed files E/F/W passed"
+  },
+  "remaining": [
+    "required infrastructure PR65 checks/merge",
+    "real cloud short probe",
+    "separate exact Base/S engineering freeze and qualification output precheck",
+    "new P/I_B/I_S/R",
+    "Base L1 -> residual qualification -> optional S -> mechanical D -> L2 -> formal17/958 as eligible"
+  ],
+  "provenance": "Test-only retained native publication uses the real initial-baseline gate and native publisher into tmp_path. The historical no-reference report is not claimed as a new C6 run."
+}

@@ -38,6 +38,25 @@ def _as_mapping(value: object, where: str) -> Mapping[str, Any]:
     return value
 
 
+def _scenario_metadata(scenario: Mapping[str, Any]) -> dict[str, Any]:
+    """Project native metadata without changing ordered economic membership."""
+    symbols = scenario.get("symbols")
+    if (not isinstance(symbols, list) or not symbols
+        or any(not isinstance(code, str) or len(code) != 6
+               or not code.isascii() or not code.isdigit() for code in symbols)
+        or len(set(symbols)) != len(symbols)):
+        raise ValueError("scenario symbols must be unique ordered six-digit IDs")
+    identity = scenario.get("scenario_id")
+    if not isinstance(identity, str) or not identity or any(c.isspace() for c in identity):
+        raise ValueError("scenario_id must be a nonempty token")
+    if "symbol_count" in scenario and (type(scenario["symbol_count"]) is not int
+                                      or scenario["symbol_count"] != len(symbols)):
+        raise ValueError("declared symbol_count differs from actual symbols")
+    keys = ("scenario_id", "scenario_type", "symbols", "symbol_count", "omitted_symbol",
+            "added_symbol", "base_size", "seed", "sample_size")
+    return {**{key: scenario.get(key) for key in keys}, "symbol_count": len(symbols)}
+
+
 def validate_manifest_identity(
     actual_ids: Sequence[str], frozen_manifest: Mapping[str, Any]
 ) -> list[str]:
@@ -139,6 +158,7 @@ def maximum_cluster_weight(positions: Sequence[Mapping[str, Any]], assets: Mappi
 
 def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
     """Run one selected-candidate scenario and retain the frozen L2 fields."""
+    metadata = _scenario_metadata(scenario)
     from quantfusion.application import stress, stress_metrics
     from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
     from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
@@ -197,7 +217,7 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
     }
     keys = ("scenario_id", "scenario_type", "symbols", "symbol_count", "base_size", "added_symbol", "seed", "sample_size")
     return {
-        **{key: scenario.get(key) for key in keys},
+        **{key: metadata[key] for key in keys},
         "total_return": float(result["total_return"]),
         "max_drawdown": float(result["max_drawdown"]), "sharpe": float(result["sharpe"]),
         "calmar": float(result["calmar"]), "total_trades": int(result["total_trades"]),
@@ -583,6 +603,7 @@ def build_causal_matrix(result: Mapping[str, Any], timeline: Mapping[str, Any],
 def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
     """Capture a deterministic factual replay record for one frozen evaluation."""
     variant, scenario, recording = task
+    definition = _scenario_metadata(scenario)
     from quantfusion.application import stress, stress_metrics
     from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
     from quantfusion.engine.replay import ProductionReplayEngine
@@ -621,7 +642,6 @@ def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
     timeline = {"first_official_mdd_breach": breach, "first_account_alert_event": _manager_event(result.get("risk_events", []), "portfolio_drawdown_alert_on"), "first_confirmed_cycle_lock": _manager_event(result.get("risk_events", []), "confirmed_cycle_drawdown_lock"), "first_emergency_cycle_lock": _manager_event(result.get("risk_events", []), "emergency_cycle_drawdown_lock"), "first_terminal_lock": _manager_event(result.get("risk_events", []), "terminal_portfolio_drawdown_lock")}
     initial = stress_metrics.INITIAL_CAPITAL
     warm = _warm_snapshot(result, initial)
-    definition = {key: scenario.get(key) for key in ("scenario_id", "scenario_type", "symbols", "symbol_count", "omitted_symbol", "added_symbol", "base_size", "seed", "sample_size")}
     s_evidence = finalize_s_evidence(
         result.get("c6_s_evidence") or _empty_s_evidence(),
         equity_series,
