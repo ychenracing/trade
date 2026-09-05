@@ -3,6 +3,7 @@ import importlib.util
 import json
 import pathlib
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import Mock, patch
 
@@ -12,6 +13,53 @@ spec.loader.exec_module(probe)
 
 
 class ProbeTest(unittest.TestCase):
+    def test_actual_dispatch_envelope_accepts_independent_execution_version(self):
+        workflow = pathlib.Path(__file__).parents[1] / "workflows/c6-dispatch.yml"
+        source = workflow.read_text().split("python3 -I -S - <<'PY'\n", 1)[1].split("\n          PY", 1)[0]
+        code = compile(textwrap.dedent(source), str(workflow), "exec")
+        inputs = {key: "" for key in probe.INPUT_NAMES}
+        inputs.update(source_revision="1" * 40, run_bindings_revision="2" * 40,
+                      workflow_revision="3" * 40, binding_id="c6.synthetic.resume",
+                      candidate_id="C6-Base", logical_run_id="c6-v18-resume-probe-cross",
+                      attempt_id="a0", runner_image_os="ubuntu24",
+                      runner_image_version="synthetic", python_version="3.12.14",
+                      producer_identity_json=json.dumps({key: "" for key in (
+                          "artifact_full_byte_sha256", "attempt_id", "binding_id",
+                          "logical_run_id", "workflow_run_id")}, sort_keys=True, separators=(",", ":")))
+        request = {"schema_version": 1, "workflow_ref": "codex/c6-v17-workflow-anchor", "inputs": inputs}
+        with tempfile.TemporaryDirectory() as folder:
+            root = pathlib.Path(folder)
+            (root / ".github").mkdir()
+            event = root / "event.json"
+            event.write_text(json.dumps({"created": True, "deleted": False, "before": "0" * 40}))
+            env = {"GITHUB_EVENT_NAME": "push", "GITHUB_EVENT_PATH": str(event),
+                   "GITHUB_SHA": "4" * 40, "GITHUB_REPOSITORY": probe.REPOSITORY,
+                   "GITHUB_REF": "refs/heads/codex/c6-dispatch/c6-v18-resume-probe-cross/c6.synthetic.resume/a0",
+                   "RUNNER_TEMP": str(root)}
+            replies = {
+                "rev-parse": "4" * 40 + "\n",
+                "rev-list": "4" * 40 + " " + "3" * 40 + "\n",
+                "diff": "A\t.github/c6-dispatch-request.json\n",
+                "ls-tree": "100644 blob " + "5" * 40 + "\t.github/c6-dispatch-request.json\n",
+                "ls-remote": "3" * 40 + "\trefs/heads/codex/c6-v17-workflow-anchor\n",
+            }
+            original = pathlib.Path.cwd()
+            try:
+                probe.os.chdir(root)
+                with patch.dict(probe.os.environ, env), patch("subprocess.check_output", side_effect=lambda args, **kw: replies[args[1]]):
+                    for ref in ("codex/c6-v17-workflow-anchor", "codex/c6-v18-workflow-anchor"):
+                        request["workflow_ref"] = ref
+                        (root / ".github/c6-dispatch-request.json").write_text(
+                            json.dumps(request, sort_keys=True, separators=(",", ":")) + "\n")
+                        if ref.endswith("v17-workflow-anchor"):
+                            exec(code, {})
+                            self.assertEqual(json.loads((root / "c6-dispatch-payload.json").read_text())["ref"], ref)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                exec(code, {})
+            finally:
+                probe.os.chdir(original)
+
     def test_completion_requests_only_native_dispatch_at_exact_workflow_anchor(self):
         spec = importlib.util.spec_from_file_location("request", pathlib.Path(__file__).with_name("c6_request_resume.py"))
         request = importlib.util.module_from_spec(spec)
@@ -37,7 +85,7 @@ class ProbeTest(unittest.TestCase):
         inputs = {key: "" for key in probe.INPUT_NAMES}
         inputs.update(source_revision="1" * 40, workflow_revision="1" * 40,
                       run_bindings_revision="2" * 40, binding_id="c6.synthetic.resume",
-                      logical_run_id="c6-v13-resume-probe-test", candidate_id="synthetic-only",
+                      logical_run_id="c6-v18-resume-probe-test", candidate_id="synthetic-only",
                       attempt_id="a0", producer_identity_json="{}", python_version="3.12.14",
                       runner_image_os="ubuntu24", runner_image_version="synthetic")
         record = {"record_id": inputs["binding_id"], "workflow_binding_id": inputs["binding_id"],
@@ -50,7 +98,7 @@ class ProbeTest(unittest.TestCase):
         bindings = {"kind": "c6_synthetic_resume_probe", "binding_records": [record]}
         run = {"id": 123, "run_attempt": 1, "event": "workflow_dispatch", "status": "completed",
                "conclusion": "success", "head_sha": inputs["workflow_revision"], "head_branch": probe.AUTO_ANCHOR,
-               "display_title": "c6-bound-c6.synthetic.resume-c6-v13-resume-probe-test-a0",
+               "display_title": "c6-bound-c6.synthetic.resume-c6-v18-resume-probe-test-a0",
                "repository": {"full_name": probe.REPOSITORY}, "head_repository": {"full_name": probe.REPOSITORY},
                "path": ".github/workflows/c6-bound-economic.yml", "workflow_id": 42}
         github = Mock()

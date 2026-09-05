@@ -15,7 +15,7 @@ from pathlib import Path
 
 REPOSITORY = "ychenracing/trade"
 WORKFLOW = "c6-bound-economic.yml"
-AUTO_ANCHOR = "codex/c6-v13-workflow-anchor"
+AUTO_ANCHOR = "codex/c6-v17-workflow-anchor"
 ARCHIVE_LIMIT = 4 * 1024 ** 3
 
 INPUT_NAMES = {

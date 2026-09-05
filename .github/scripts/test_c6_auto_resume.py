@@ -39,7 +39,7 @@ class ResumeTest(unittest.TestCase):
                "head_repository": {"full_name": resume.REPOSITORY},
                "workflow_id": 42, "path": ".github/workflows/" + resume.WORKFLOW,
                "name": "c6-bound-dynamic-attempt-name", "event": "workflow_dispatch",
-               "head_branch": "codex/c6-v13-workflow-anchor", "run_attempt": 1,
+               "head_branch": resume.AUTO_ANCHOR, "run_attempt": 1,
                "status": "completed", "conclusion": "success"}
         workflow = {"id": 42, "path": run["path"]}
         resume.validate_run_identity(run, workflow)
