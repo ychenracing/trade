@@ -228,12 +228,20 @@ def canonical_json_bytes(payload: Any) -> bytes:
 
 
 def canonical_payload_hash(payload: Any) -> str:
-    return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
+    from quantfusion.io.c6_stream import canonical_chunks
+    result = hashlib.sha256()
+    try:
+        for chunk in canonical_chunks(payload):
+            result.update(chunk)
+    except (TypeError, ValueError) as exc:
+        raise ContractError(f"payload is not canonical JSON: {exc}") from exc
+    return result.hexdigest()
 
 
 def file_sha256(path: str | Path) -> str:
     try:
-        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        from quantfusion.io.c6_stream import content_hash
+        return content_hash(Path(path))
     except OSError as exc:
         raise ContractError(f"cannot hash file {path}: {exc}") from exc
 
@@ -966,7 +974,7 @@ def validate_selection_producer_payloads(
     selected_s: Mapping[str, Any] | None, scenario_ids: Sequence[str],
 ) -> None:
     """Compare D claims with already authenticated, sealed producer contents."""
-    selected_base = [row for row in base["evaluations"] if row["variant_id"] == "C6-Base"]
+    selected_base = [{"scenario_id": row["scenario_id"], "official_metrics": row["official_metrics"]} for row in base["evaluations"] if row["variant_id"] == "C6-Base"]
     residuals = sorted(row["scenario_id"] for row in selected_base
                        if abs(float(row["official_metrics"]["max_drawdown"])) > 0.18 + 1e-15)
     if ([row["scenario_id"] for row in selected_base] != list(scenario_ids)

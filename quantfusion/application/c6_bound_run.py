@@ -7,9 +7,8 @@ actual command; this module only protects identity, ownership, and publication.
 from __future__ import annotations
 
 import argparse
-import copy
 import hashlib
-import io
+import errno
 import os
 import platform
 import re
@@ -21,12 +20,16 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import zipfile
+from contextlib import contextmanager
+from collections.abc import Iterator
 from dataclasses import dataclass
 from concurrent.futures import ProcessPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Mapping, Never, Sequence
+
+from quantfusion.io.c6_stream import (FileArray, canonical_chunks, content_hash, content_size,
+                                    copy_stream, extract_archive, load_object, write_json)
 
 from quantfusion.application.c6_contract import (
     ContractError,
@@ -121,20 +124,39 @@ def _raise(message: str, exc: Exception | None = None) -> Never:
     raise error from exc
 
 
-def _atomic_bytes(path: Path, content: bytes, *, replace: bool) -> None:
+def _atomic_bytes(path: Path, content: bytes | Path, *, replace: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(content, Path) and not replace:
+        if content.is_symlink() or not content.is_file():
+            _raise("export source must be a regular file")
+        try:
+            os.link(content, path)
+            return
+        except FileExistsError as exc:
+            _raise(f"immutable path already exists: {path}", exc)
+        except OSError as exc:
+            if exc.errno != errno.EXDEV:
+                raise
     descriptor, temporary_name = tempfile.mkstemp(
         dir=path.parent, prefix=f".{path.name}-", suffix=".tmp"
     )
     temporary = Path(temporary_name)
     try:
         with os.fdopen(descriptor, "wb") as handle:
-            handle.write(content)
+            if isinstance(content, Path):
+                with content.open("rb") as source:
+                    copy_stream(source, handle)
+            else:
+                handle.write(content)
             handle.flush()
             os.fsync(handle.fileno())
-        if not replace and path.exists():
-            _raise(f"immutable path already exists: {path}")
-        temporary.replace(path)
+        if replace:
+            temporary.replace(path)
+        else:
+            try:
+                os.link(temporary, path)
+            except FileExistsError as exc:
+                _raise(f"immutable path already exists: {path}", exc)
         directory_fd = os.open(path.parent, os.O_RDONLY)
         try:
             os.fsync(directory_fd)
@@ -143,6 +165,13 @@ def _atomic_bytes(path: Path, content: bytes, *, replace: bool) -> None:
     finally:
         if temporary.exists():
             temporary.unlink()
+
+
+def _json_content(content: bytes | Path) -> Any:
+    try:
+        return load_object(content) if isinstance(content, Path) else strict_json_loads(content)
+    except (ValueError, OSError) as exc:
+        _raise("invalid sealed JSON content", exc)
 
 
 def _load_object(path: Path, keys: set[str] | frozenset[str], label: str) -> dict[str, Any]:
@@ -280,7 +309,12 @@ class RemoteExport:
     run_id: int
     manifest: dict[str, Any]
     manifest_bytes: bytes
-    files: dict[str, bytes]
+    files: dict[str, bytes | Path]
+    workspace: Any = None
+
+    def close(self) -> None:
+        if self.workspace is not None:
+            self.workspace.cleanup()
 
 
 class GitHubActionsLeaseStore:
@@ -304,7 +338,8 @@ class GitHubActionsLeaseStore:
         self.repository, self.token, self.api_url = repository, token, api_url.rstrip("/")
         self.host, self.opener = parsed.netloc, opener
 
-    def _read(self, url: str, *, artifact: bool = False) -> bytes:
+    @contextmanager
+    def _response(self, url: str, *, artifact: bool = False) -> Iterator[Any]:
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme != "https" or parsed.netloc != self.host:
             _raise("GitHub returned an untrusted URL")
@@ -314,26 +349,38 @@ class GitHubActionsLeaseStore:
                      "Accept": "application/vnd.github+json",
                      "X-GitHub-Api-Version": "2022-11-28"},
         )
-        try:
-            if artifact and self.opener is urllib.request.urlopen:
-                try:
-                    with urllib.request.build_opener(_NoRedirect).open(request, timeout=60) as response:
-                        return response.read()
-                except urllib.error.HTTPError as redirect:
-                    if redirect.code != 302 or not redirect.headers.get("Location"):
-                        raise
-                    location = str(redirect.headers["Location"])
+        if artifact and self.opener is urllib.request.urlopen:
+            opener = urllib.request.build_opener(_NoRedirect)
+            try:
+                response = opener.open(request, timeout=60)
+            except urllib.error.HTTPError as redirect:
+                if redirect.code != 302 or not redirect.headers.get("Location"):
+                    raise
+                location = str(redirect.headers["Location"])
                 target = urllib.parse.urlparse(location)
-                trusted = target.scheme == "https" and (target.netloc.endswith(".blob.core.windows.net") or target.netloc.endswith(".actions.githubusercontent.com") or target.netloc == "objects.githubusercontent.com")
+                host = target.hostname or ""
+                trusted = target.scheme == "https" and not target.username and not target.password and target.port in {None, 443} and (host.endswith(".blob.core.windows.net") or host.endswith(".actions.githubusercontent.com") or host == "objects.githubusercontent.com")
                 if not trusted:
                     _raise("GitHub artifact redirected to an untrusted host")
-                with urllib.request.urlopen(urllib.request.Request(location, headers={"Accept": "application/zip"}), timeout=60) as response:  # nosec B310
-                    return response.read()
-            with self.opener(request, timeout=60) as response:
-                final = urllib.parse.urlparse(response.geturl())
-                if final.scheme != "https" or final.netloc != self.host:
-                    _raise("GitHub request redirected to an untrusted host")
-                return response.read()
+                # A fresh unauthenticated request; additional redirects remain disabled.
+                response = opener.open(urllib.request.Request(location, headers={"Accept": "application/zip"}), timeout=60)
+        else:
+            opener = urllib.request.build_opener(_NoRedirect).open if self.opener is urllib.request.urlopen else self.opener
+            response = opener(request, timeout=60)
+            final = urllib.parse.urlparse(response.geturl())
+            if final.scheme != "https" or final.netloc != self.host:
+                response.close()
+                _raise("GitHub request redirected to an untrusted host")
+        with response:
+            yield response
+
+    def _read(self, url: str, *, artifact: bool = False) -> bytes:
+        try:
+            with self._response(url, artifact=artifact) as response:
+                raw = response.read(16 * 1024 * 1024 + 1)
+                if len(raw) > 16 * 1024 * 1024:
+                    _raise("GitHub metadata exceeds size limit")
+                return raw
         except Exception as exc:
             _raise("GitHub Actions history request failed", exc)
 
@@ -368,26 +415,22 @@ class GitHubActionsLeaseStore:
         url = artifact.get("archive_download_url")
         if not isinstance(url, str):
             _raise("GitHub artifact download URL is invalid")
-        files: dict[str, bytes] = {}
+        workspace = tempfile.TemporaryDirectory(prefix="c6-export-")
+        root = Path(workspace.name)
         try:
-            with zipfile.ZipFile(io.BytesIO(self._read(url, artifact=True))) as archive:
-                for info in archive.infolist():
-                    pure = PurePosixPath(info.filename)
-                    mode = (info.external_attr >> 16) & 0o177777
-                    if (
-                        info.is_dir() or pure.is_absolute() or ".." in pure.parts
-                        or pure.as_posix() != info.filename
-                        or any(part.startswith(".") for part in pure.parts)
-                        or (mode & 0o170000) not in {0, 0o100000}
-                        or mode & 0o111 or info.filename in files
-                    ):
-                        _raise("GitHub artifact ZIP contains an unsafe path")
-                    files[info.filename] = archive.read(info)
-        except (zipfile.BadZipFile, RuntimeError) as exc:
-            _raise("GitHub artifact is not a valid ZIP", exc)
-        manifest_bytes = files.pop("manifest.json", None)
-        if manifest_bytes is None:
-            _raise("GitHub artifact has no manifest.json")
+            archive_path = root / "archive.zip"
+            with self._response(url, artifact=True) as response, archive_path.open("xb") as target:
+                copy_stream(response, target)
+            extracted = extract_archive(archive_path, root / "files")
+            archive_path.unlink()
+            manifest_path = extracted.pop("manifest.json", None)
+            if manifest_path is None or manifest_path.stat().st_size > 1024 * 1024:
+                _raise("GitHub artifact has no bounded manifest.json")
+            manifest_bytes = manifest_path.read_bytes()
+            files: dict[str, bytes | Path] = dict(extracted)
+        except Exception:
+            workspace.cleanup()
+            raise
         try:
             manifest = strict_json_loads(manifest_bytes)
         except ContractError as exc:
@@ -403,9 +446,9 @@ class GitHubActionsLeaseStore:
             _raise("remote manifest is not sealed v2")
         if not isinstance(hashes, dict) or set(hashes) != set(files):
             _raise("remote artifact file map is incomplete")
-        if any(hashes[name] != hashlib.sha256(data).hexdigest() for name, data in files.items()):
+        if any(hashes[name] != content_hash(data) for name, data in files.items()):
             _raise("remote artifact file hash mismatch")
-        return RemoteExport(run_id, manifest, manifest_bytes, files)
+        return RemoteExport(run_id, manifest, manifest_bytes, files, workspace)
 
     def restore(
         self, *, binding: Mapping[str, Any], current_run_id: int,
@@ -428,7 +471,7 @@ class GitHubActionsLeaseStore:
             or current.get("run_attempt") != 1
         ):
             _raise("current workflow identity is invalid")
-        prior: list[tuple[dict[str, Any], RemoteExport]] = []
+        prior: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for summary in runs:
             run_id = summary.get("id")
             if type(run_id) is not int or run_id == current_run_id:
@@ -453,14 +496,19 @@ class GitHubActionsLeaseStore:
                 f"c6-bound-{binding['logical_run_id']}-")]
             if len(named) != 1:
                 _raise("prior logical run lacks one exact sealed artifact")
-            prior.append((detail, self._export(run_id, named[0])))
-        prior.sort(key=lambda item: item[1].run_id)
+            prior.append((detail, named[0]))
+        prior.sort(key=lambda item: item[0]["id"])
         if not prior:
             if resume_from or resume_workflow_run_id:
                 _raise("resume inputs supplied without prior history")
             return
         previous = ""
-        for _, export in prior:
+        latest: RemoteExport | None = None
+        for detail, artifact in prior:
+            if latest is not None:
+                latest.close()
+            export = self._export(detail["id"], artifact)
+            latest = export
             manifest = export.manifest
             expected = {
                 "logical_run_id": binding["logical_run_id"],
@@ -480,7 +528,7 @@ class GitHubActionsLeaseStore:
             child = export.files.get("child-checkpoint.bin")
             if set(export.files) != {"checkpoint.json", "child-checkpoint.bin"} or wrapper is None or child is None:
                 _raise("prior checkpoint file set is invalid")
-            wrapper_payload = strict_json_loads(wrapper)
+            wrapper_payload = _json_content(wrapper)
             if not isinstance(wrapper_payload, dict):
                 _raise("prior checkpoint wrapper must be an object")
             try:
@@ -505,9 +553,9 @@ class GitHubActionsLeaseStore:
                 or wrapper_payload["resume_from"] != manifest["resume_from"]
                 or wrapper_payload["child_checkpoint_kind"] != ("official_stress_v2" if binding["stage"] == "L4" else "c6_diagnostic_shard_v2")
                 or wrapper_payload["child_checkpoint_path"] != "child-checkpoint.bin"
-                or wrapper_payload["child_checkpoint_byte_size"] != len(child)
+                or wrapper_payload["child_checkpoint_byte_size"] != content_size(child)
                 or wrapper_payload["child_checkpoint_full_byte_sha256"]
-                != hashlib.sha256(child).hexdigest()
+                != content_hash(child)
                 or wrapper_payload["item_manifest_count"] != len(item_ids)
                 or wrapper_payload["item_manifest_sha256"] != hashlib.sha256("".join(f"{item}\n" for item in item_ids).encode()).hexdigest()
                 or not isinstance(completed_ids, list)
@@ -518,8 +566,9 @@ class GitHubActionsLeaseStore:
                 != hashlib.sha256("".join(f"{item}\n" for item in completed_ids).encode()).hexdigest()
             ):
                 _raise("prior checkpoint wrapper identity/progress is invalid")
-            previous = hashlib.sha256(wrapper).hexdigest()
-        latest = prior[-1][1]
+            previous = content_hash(wrapper)
+        if latest is None:
+            _raise("prior history unexpectedly empty")
         if resume_from != previous or resume_workflow_run_id != str(latest.run_id):
             _raise("resume does not name the latest checkpoint")
         if checkpoint_path.exists() or lease_path.exists():
@@ -593,7 +642,7 @@ class GitHubActionsLeaseStore:
         if len(payload_names) != 1:
             _raise("producer result file set is invalid")
         payload_name = payload_names.pop()
-        if hashlib.sha256(export.files[payload_name]).hexdigest() != identity[
+        if content_hash(export.files[payload_name]) != identity[
             "artifact_full_byte_sha256"
         ]:
             _raise("producer artifact full-byte SHA-256 mismatch")
@@ -609,6 +658,8 @@ class GitHubActionsLeaseStore:
             target.parent.mkdir(parents=True, exist_ok=True)
             _atomic_bytes(target, data, replace=False)
             target.chmod(0o400)
+        export.files = {name: destination / name for name in export.files}
+        export.close()
         return export
 
 
@@ -680,11 +731,11 @@ def execution_item_ids(
 def qualification_item_ids(export: RemoteExport) -> list[str]:
     """Derive the frozen residual set only from a validated Base producer."""
     raw = export.files.get("payload.json")
-    payload = strict_json_loads(raw) if raw is not None else None
-    if not isinstance(payload, dict) or not isinstance(payload.get("evaluations"), list):
+    payload = _json_content(raw) if raw is not None else None
+    if not isinstance(payload, dict) or not isinstance(payload.get("evaluations"), (list, FileArray)):
         _raise("Base producer has no valid evaluation array")
     selected = [
-        item for item in payload["evaluations"]
+        {key: item[key] for key in ("scenario_id", "official_metrics")} for item in payload["evaluations"]
         if isinstance(item, dict) and item.get("variant_id") == "C6-Base"
     ]
     scenario_ids = [str(item.get("scenario_id", "")) for item in selected]
@@ -700,7 +751,7 @@ def qualification_item_ids(export: RemoteExport) -> list[str]:
 
 
 def checkpoint_progress(
-    child_bytes: bytes,
+    child_bytes: bytes | Path,
     *,
     stage: str,
     binding_signature: str,
@@ -708,8 +759,8 @@ def checkpoint_progress(
 ) -> list[str]:
     """Validate a child checkpoint and return its exact completed item prefix."""
     try:
-        payload = strict_json_loads(child_bytes)
-    except ContractError as exc:
+        payload = load_object(child_bytes) if isinstance(child_bytes, Path) else strict_json_loads(child_bytes)
+    except (ContractError, ValueError) as exc:
         _raise("child checkpoint is invalid JSON", exc)
     if not isinstance(payload, dict):
         _raise("child checkpoint must be an object")
@@ -717,7 +768,7 @@ def checkpoint_progress(
         results = payload.get("results")
         if set(payload) != {"signature", "provenance", "completed", "scenario_count", "results"}:
             _raise("official child checkpoint has the wrong schema")
-        if not isinstance(results, list) or payload["completed"] != len(results):
+        if not isinstance(results, (list, FileArray)) or payload["completed"] != len(results):
             _raise("official child checkpoint progress is invalid")
         completed = [f"scenario/{item.get('scenario_id')}" for item in results if isinstance(item, dict)]
         prefix = list(item_ids[:len(completed)])
@@ -740,7 +791,7 @@ def checkpoint_progress(
             or payload["schema_version"] != 2
             or payload["kind"] != "c6_diagnostic_shard_v2"
             or payload["binding_signature"] != binding_signature
-            or not isinstance(items, list)
+            or not isinstance(items, (list, FileArray))
             or payload["completed_count"] != len(items)
         ):
             _raise("diagnostic child checkpoint identity/progress is invalid")
@@ -783,15 +834,17 @@ class DiagnosticCheckpoint:
         self.path, self.ids, self.signature = path, list(item_ids), signature
         self.deadline = time.monotonic() + budget_seconds
         self.chunk_size, self.cursor, self.new_count = chunk_size, 0, 0
-        self.items: list[dict[str, Any]] = []
+        self._spool = tempfile.TemporaryDirectory(prefix="c6-records-")
+        self.items = FileArray(Path(self._spool.name) / "records.jsonl", [], owner=self._spool)
+        self.items.path.touch(mode=0o600)
         if path.is_symlink():
             _raise("checkpoint cannot be a symlink")
         if path.exists():
             if not resume_signature:
                 _raise("checkpoint exists without authorized resume")
-            raw = path.read_bytes()
-            checkpoint_progress(raw, stage="L1", binding_signature=resume_signature, item_ids=self.ids)
-            self.items = strict_json_loads(raw)["completed_items"]
+            checkpoint_progress(path, stage="L1", binding_signature=resume_signature, item_ids=self.ids)
+            for item in load_object(path)["completed_items"]:
+                self._append(item)
         elif resume_signature:
             _raise("authorized resume checkpoint is missing")
 
@@ -805,7 +858,7 @@ class DiagnosticCheckpoint:
                    resume_signature=os.environ.get("C6_BOUND_RESUME_SIGNATURE", ""))
 
     def map(self, worker: Callable[..., Any], tasks: Sequence[Any], ids: Sequence[str], *,
-            workers: int = 4, finalize: Callable[[list[Any]], None] | None = None) -> list[Any]:
+            workers: int = 4, finalize: Callable[[list[Any]], None] | None = None) -> FileArray:
         start, end = self.cursor, self.cursor + len(ids)
         if len(tasks) != len(ids) or list(ids) != self.ids[start:end]:
             _raise("checkpoint work is not the next exact manifest segment")
@@ -825,21 +878,31 @@ class DiagnosticCheckpoint:
                 finalize(results)
             for item_id, result in zip(self.ids[offset:stop], results):
                 kind, schema = _ITEM_SCHEMAS[item_id.split("/", 1)[0]]
-                self.items.append({"item_id": item_id, "item_kind": kind, "result_schema": schema,
+                self._append({"item_id": item_id, "item_kind": kind, "result_schema": schema,
                                    "result_sha256": canonical_payload_hash(result), "result": result})
             self.new_count += stop - offset
             offset = stop
             self.save()
         if self.new_count and end < len(self.ids) and time.monotonic() >= self.deadline:
             raise SystemExit(75)
-        return copy.deepcopy([item["result"] for item in self.items[start:end]])
+        return self.items[start:end].project("result")
+
+    def _append(self, item: Mapping[str, Any]) -> None:
+        raw = b"".join(canonical_chunks(item))
+        from quantfusion.io.c6_stream import RECORD_LIMIT
+        if len(raw) > RECORD_LIMIT:
+            _raise("checkpoint item exceeds JSON record limit")
+        with self.items.path.open("ab") as stream:
+            offset = stream.tell()
+            stream.write(raw)
+        self.items.spans.append((offset, len(raw)))
 
     def save(self) -> None:
         payload = {"schema_version": 2, "kind": "c6_diagnostic_shard_v2",
                    "binding_signature": self.signature, "item_manifest_count": len(self.ids),
                    "item_manifest_sha256": hashlib.sha256("".join(f"{item}\n" for item in self.ids).encode()).hexdigest(),
                    "completed_count": len(self.items), "completed_items": self.items}
-        _atomic_bytes(self.path, canonical_json_bytes(payload), replace=True)
+        write_json(self.path, payload, replace=True)
 
 
 def producer_dependency(record_id: str, records: Sequence[Mapping[str, Any]]) -> tuple[str, str] | None:
@@ -877,14 +940,14 @@ def authenticate_selection_producers(
                                 expected_logical_run=record["logical_run_id"], workflow=workflow,
                                 run_bindings_revision=revision, destination=destination / field)
         raw = export.files["payload.json"]
-        payload = strict_json_loads(raw)
-        digest = strict_json_loads(export.files["digest.json"])
+        payload = _json_content(raw)
+        digest = _json_content(export.files["digest.json"])
         paths = resolve_attempt_paths(record, claim["attempt_id"])
         expected = {
             "record_id": record_id, "P": run_bindings["P"], "R_revision": revision,
             "source_revision": record["source_revision"], "source_tree": record["source_tree"],
-            "artifact_path": paths["payload"].as_posix(), "artifact_byte_size": len(raw),
-            "artifact_full_byte_sha256": hashlib.sha256(raw).hexdigest(),
+            "artifact_path": paths["payload"].as_posix(), "artifact_byte_size": content_size(raw),
+            "artifact_full_byte_sha256": content_hash(raw),
             "canonical_result_payload_sha256": canonical_payload_hash(payload), "exit_code": 0,
         }
         if (any(digest.get(key) != value for key, value in expected.items())
@@ -903,8 +966,8 @@ def authenticate_selection_producers(
 
 def validate_l2_gate(export: RemoteExport, d_identity: Mapping[str, Any], implementation: Mapping[str, Any], prereg: Mapping[str, Any]) -> None:
     """A selected L4 run consumes only all-passing L2 under the identical D/C."""
-    digest = strict_json_loads(export.files["digest.json"])
-    payload = strict_json_loads(export.files["payload.json"])
+    digest = _json_content(export.files["digest.json"])
+    payload = _json_content(export.files["payload.json"])
     expected_ids = [spec["id"] for spec in prereg["diagnostic_predicate_manifests"]["L2_APPLICABLE_DIAGNOSTIC_PREDICATES"]]
     rows = payload["diagnostic_predicates"]
     if (digest["D"] != d_identity or digest["C"] != implementation
@@ -941,7 +1004,7 @@ def build_digest(
     d_identity: Mapping[str, Any] | None,
     implementation: Mapping[str, Any] | None,
     artifact_path: str,
-    artifact_bytes: bytes,
+    artifact_bytes: bytes | Path,
     payload_schema: Mapping[str, Any],
     payload: Mapping[str, Any],
     exit_code: int,
@@ -965,8 +1028,8 @@ def build_digest(
         "C": None if implementation is None else dict(implementation),
         "selection_status": "unselected" if d_identity is None else "selected",
         "artifact_path": artifact_path,
-        "artifact_byte_size": len(artifact_bytes),
-        "artifact_full_byte_sha256": hashlib.sha256(artifact_bytes).hexdigest(),
+        "artifact_byte_size": content_size(artifact_bytes),
+        "artifact_full_byte_sha256": content_hash(artifact_bytes),
         "canonical_result_payload_schema": dict(payload_schema),
         "canonical_result_payload_sha256": canonical_payload_hash(payload),
         "envelope_path": "manifest.json",
@@ -1011,7 +1074,7 @@ def validate_result_payload(
                 if "array" in descriptor or (
                     definition_name == "per_residual" and field == "criteria"
                 ):
-                    if not isinstance(nested, list):
+                    if not isinstance(nested, (list, FileArray)):
                         _raise(f"{label}.{field} must be an array")
                     for index, item in enumerate(nested):
                         validate_named(item, child, f"{label}.{field}[{index}]")
@@ -1296,7 +1359,7 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
     if binding["record_id"] == "c6.base_plus_s.l1":
         if direct_export is None or store is None:
             _raise("Base+S binding requires its qualification producer")
-        qualification = strict_json_loads(direct_export.files["payload.json"])
+        qualification = _json_content(direct_export.files["payload.json"])
         if not isinstance(qualification, dict) or not isinstance(
             qualification.get("base_producer_identity"), dict
         ):
@@ -1462,7 +1525,7 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
     )
     if args.resume_from and binding["stage"] != "L4":
         # restore() authenticated these exact bytes against the prior sealed wrapper.
-        environment["C6_BOUND_RESUME_SIGNATURE"] = strict_json_load(checkpoint_path)["binding_signature"]
+        environment["C6_BOUND_RESUME_SIGNATURE"] = load_object(checkpoint_path)["binding_signature"]
     completed = subprocess.run(argv, check=False, env=environment)
     export_root = Path("artifacts/checkpoints/c6/sealed-export")
     valid_result_codes = set(binding["exit_semantics"]["terminal_success_exit_codes"])
@@ -1471,7 +1534,7 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
     if completed.returncode == checkpoint_code:
         checkpoint_id = None
         if checkpoint_path.is_file() and not checkpoint_path.is_symlink():
-            child_bytes = checkpoint_path.read_bytes()
+            child_bytes = checkpoint_path
             completed_ids = checkpoint_progress(
                 child_bytes,
                 stage=binding["stage"],
@@ -1494,8 +1557,8 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
                     else "c6_diagnostic_shard_v2"
                 ),
                 "child_checkpoint_path": "child-checkpoint.bin",
-                "child_checkpoint_byte_size": len(child_bytes),
-                "child_checkpoint_full_byte_sha256": hashlib.sha256(child_bytes).hexdigest(),
+                "child_checkpoint_byte_size": content_size(child_bytes),
+                "child_checkpoint_full_byte_sha256": content_hash(child_bytes),
                 "item_manifest_count": item_count,
                 "item_manifest_sha256": item_hash,
                 "completed_item_ids": completed_ids,
@@ -1534,14 +1597,14 @@ def execute_bound_binding(args: argparse.Namespace) -> int:
     if not output_path.is_file() or output_path.is_symlink():
         _raise("successful bound command did not produce a regular output file")
     try:
-        artifact = strict_json_load(output_path)
+        artifact = load_object(output_path)
     except ContractError as exc:
         _raise(f"bound output is not strict JSON: {exc}", exc)
     if not isinstance(artifact, dict):
         _raise("bound output root must be an object")
     validate_result_payload(artifact, binding, prereg)
     payload = artifact
-    artifact_bytes = output_path.read_bytes()
+    artifact_bytes = output_path
     artifact_name = "official-artifact.json" if binding["stage"] == "L4" else "payload.json"
     sidecar = build_digest(
         stage=binding["stage"], record_id=binding["record_id"],
@@ -1607,7 +1670,7 @@ def seal_export(
     attempt_id: str,
     fencing_token: str,
     attempt_identity: Mapping[str, Any],
-    files: Mapping[str, bytes],
+    files: Mapping[str, bytes | Path],
 ) -> dict[str, Any]:
     """Publish one immutable directory matching the workflow's exact schema."""
     root = Path(export_root)
@@ -1635,12 +1698,12 @@ def seal_export(
         hashes: dict[str, str] = {}
         for relative, content in files.items():
             pure = _export_relative_path(relative)
-            if not isinstance(content, bytes):
-                _raise(f"export content must be bytes: {relative}")
+            if not isinstance(content, (bytes, Path)):
+                _raise(f"export content must be bytes or a file: {relative}")
             target = staging.joinpath(*pure.parts)
             target.parent.mkdir(parents=True, exist_ok=True)
             _atomic_bytes(target, content, replace=False)
-            hashes[relative] = hashlib.sha256(content).hexdigest()
+            hashes[relative] = content_hash(content)
         manifest: dict[str, Any] = {
             "schema_version": 2,
             "kind": kind,

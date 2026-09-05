@@ -14,7 +14,8 @@ from pathlib import Path
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from quantfusion.application.c6_contract import canonical_json_bytes as _canonical_bytes
+from quantfusion.application.c6_contract import canonical_json_bytes as _canonical_bytes, canonical_payload_hash
+from quantfusion.io.c6_stream import load_object, select_records, write_json
 
 
 def _as_mapping(value: object, where: str) -> Mapping[str, Any]:
@@ -228,7 +229,7 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
 
 def _predicate_result(spec: Mapping[str, Any], ids: list[str], values: object, references: object, failed: list[str], value: object) -> dict[str, Any]:
     failed = sorted(set(failed))
-    detail = {"predicate_id": spec["id"], "input_item_ids": ids, "input_values_sha256": hashlib.sha256(_canonical_bytes(values)).hexdigest(), "reference_values_sha256": hashlib.sha256(_canonical_bytes(references if spec["reference_available"] else [])).hexdigest()}
+    detail = {"predicate_id": spec["id"], "input_item_ids": ids, "input_values_sha256": canonical_payload_hash(values), "reference_values_sha256": canonical_payload_hash(references if spec["reference_available"] else [])}
     return {"predicate_id": spec["id"], "passed": not failed, "observed": {"value": value, "reference_value": None, "threshold": spec["comparator"], "failure_count": len(failed), "failed_item_ids": failed, "detail_sha256": hashlib.sha256(_canonical_bytes(detail)).hexdigest()}, "comparator": spec["comparator"], "tolerance": spec["tolerance"], "failure_reason": None if not failed else spec["failure_reason_enum"]}
 
 
@@ -271,9 +272,9 @@ def _manifest_ok(ids: list[str], manifest: Mapping[str, Any]) -> bool:
     return len(ids) == manifest["count"] == len(set(ids)) and digest == manifest.get("sha256", manifest.get("ordered_ids_sha256"))
 
 
-def _l1_predicate_rows(specs: Sequence[Mapping[str, Any]], selected: list[dict[str, Any]], evaluations: list[dict[str, Any]], controls: list[dict[str, Any]], pairs: list[dict[str, Any]], reference: Mapping[str, Any], manifests: Mapping[str, Any], base: bool, common: list[dict[str, Any]], no_effect: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _l1_predicate_rows(specs: Sequence[Mapping[str, Any]], selected: Sequence[dict[str, Any]], evaluations: Sequence[dict[str, Any]], controls: list[dict[str, Any]], pairs: list[dict[str, Any]], reference: Mapping[str, Any], manifests: Mapping[str, Any], base: bool, common: list[dict[str, Any]], no_effect: list[dict[str, Any]]) -> list[dict[str, Any]]:
     chosen = "C6-Base" if base else "C6-Base+S"
-    by_id = {item["scenario_id"]: item for item in selected}
+    by_id = {item["scenario_id"]: {key: item[key] for key in ("scenario_definition", "official_metrics")} for item in selected}
     ref = {item["scenario_id"]: item for item in reference["results"]}
     selected_ids = [item["evaluation_id"] for item in selected]
     prefixes = [f"prefix-{index:02d}" for index in range(5, 18)]
@@ -521,7 +522,7 @@ def _prefix_hash(record: Mapping[str, Any], boundary: str | None) -> str:
 
 def compare_s_paths(base_evaluations: Sequence[Mapping[str, Any]], s_evaluations: Sequence[Mapping[str, Any]], scenario_ids: Sequence[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Require exact counterpart coverage before comparing any producer path."""
-    base_selected = [item for item in base_evaluations if item["variant_id"] == "C6-Base"]
+    base_selected = select_records(base_evaluations, lambda item: item["variant_id"] == "C6-Base")
     for records, variant in ((base_selected, "C6-Base"), (s_evaluations, "C6-Base+S")):
         expected = [f"{variant}::{item}" for item in scenario_ids]
         if (len(set(scenario_ids)) != len(scenario_ids)
@@ -529,11 +530,9 @@ def compare_s_paths(base_evaluations: Sequence[Mapping[str, Any]], s_evaluations
                 or [item["scenario_id"] for item in records] != list(scenario_ids)
                 or any(item["variant_id"] != variant for item in records)):
             raise ValueError("S comparison requires exact ordered Base and S coverage")
-    base_by_id = {item["evaluation_id"]: item for item in base_evaluations}
     common, no_effect = [], []
-    for row in s_evaluations:
+    for counterpart, row in zip(base_selected, s_evaluations):
         base_id = base_counterpart_id(row["evaluation_id"])
-        counterpart = base_by_id[base_id]
         timestamp = row["causal_matrix"]["s_evidence"]["first_early_sell_required_close"]
         left, right = _prefix_hash(counterpart, timestamp), _prefix_hash(row, timestamp)
         common.append({"scenario_id": row["evaluation_id"], "base_evaluation_id": base_id, "first_s_effective_timestamp": timestamp, "base_prefix_sha256": left, "s_prefix_sha256": right, "equal": left == right})
@@ -729,13 +728,14 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
         # Six interdependent intervention rows are finalized and committed together.
         if checkpoint.chunk_size < len(interventions):
             raise ValueError("checkpoint chunk must hold all causal interventions")
-        evaluations += checkpoint.map(_l1_evaluate, interventions, [f"evaluation/{variant}::{scenario['scenario_id']}" for variant, scenario, _ in interventions], finalize=_attach_interventions)
+        checkpoint.map(_l1_evaluate, interventions, [f"evaluation/{variant}::{scenario['scenario_id']}" for variant, scenario, _ in interventions], finalize=_attach_interventions)
+    evaluations = checkpoint.items[:checkpoint.cursor].project("result")
     chosen = "C6-Base" if base else "C6-Base+S"
-    controls = checkpoint.map(_identity, control_rows, [f"control/{item}" for item in manifests[control_name]["ids"]], workers=1)
+    controls = list(checkpoint.map(_identity, control_rows, [f"control/{item}" for item in manifests[control_name]["ids"]], workers=1))
     drift_tasks = [(chosen, by_id[item]) for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]]
-    pairs = checkpoint.map(_no_drift_pair, drift_tasks, [f"no-drift/{item}" for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]])
+    pairs = list(checkpoint.map(_no_drift_pair, drift_tasks, [f"no-drift/{item}" for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]]))
     specs = prereg["diagnostic_predicate_manifests"]["L1_APPLICABLE_DIAGNOSTIC_PREDICATES"]
-    selected = [item for item in evaluations if item["variant_id"] == chosen]
+    selected = select_records(evaluations, lambda item: item["variant_id"] == chosen)
     eval_name = "L1_BASE_EVALUATION_MANIFEST" if base else "L1_S_EVALUATION_MANIFEST"
     kind = "c6_l1_base" if base else "c6_l1_s"
     payload = {"schema_version": 2, "kind": kind, "diagnostic_noncanonical": True, "evaluation_manifest": _manifest(eval_name, manifests[eval_name]), "evaluations": evaluations, "synthetic_control_manifest": _manifest(control_name, manifests[control_name]), "synthetic_controls": controls, "no_drift_manifest": _manifest("L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS", manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]), "no_drift_pairs": pairs, "diagnostic_predicates": []}
@@ -746,7 +746,7 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
     if not base:
         qualification = strict_json_load(Path(args.producer_export) / "payload.json")
         manifest = strict_json_load(Path(args.producer_export) / "manifest.json")
-        base_payload = strict_json_load(Path(args.base_producer_export) / "payload.json")
+        base_payload = load_object(Path(args.base_producer_export) / "payload.json")
         identity = {"artifact_full_byte_sha256": args.producer_artifact_sha256, "attempt_id": manifest["attempt_id"], "binding_id": manifest["binding_id"], "logical_run_id": manifest["logical_run_id"], "workflow_run_id": manifest["workflow_run_id"]}
         common, no_effect = compare_s_paths(base_payload["evaluations"], evaluations, scenario_ids)
         payload.update({"base_producer_identity": qualification["base_producer_identity"], "qualification_producer_identity": identity, "common_prefix_comparisons": common, "no_effect_comparisons": no_effect})
@@ -807,7 +807,7 @@ def _produce_l2(args: argparse.Namespace) -> dict[str, Any]:
     by_id = {item["scenario_id"]: item for item in plan}
     item_ids = execution_item_ids(binding, prereg)
     checkpoint = DiagnosticCheckpoint.from_environment(item_ids, chunk_size=binding["runtime"]["checkpoint_every"])
-    results = checkpoint.map(_l2_evaluate, [by_id[item] for item in ids], item_ids)
+    results = list(checkpoint.map(_l2_evaluate, [by_id[item] for item in ids], item_ids))
     summary = stress_metrics._summary(results)
     for key in ("trades_worst", "date_symbol_side_buckets_worst", "sleeve_fills_worst"):
         summary[key] = int(summary[key])
@@ -839,10 +839,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     output = Path(args.output)
     if output.exists():
         raise ValueError("diagnostic output path already exists")
-    from quantfusion.application.c6_contract import canonical_json_bytes
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(canonical_json_bytes(payload))
+    write_json(output, payload)
     return 0
 
 

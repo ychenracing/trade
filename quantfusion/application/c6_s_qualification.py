@@ -9,12 +9,14 @@ from pathlib import Path
 from typing import Any
 
 from quantfusion.application.c6_contract import (
-    canonical_json_bytes,
+    file_sha256,
     load_preregistration,
     load_run_bindings,
     select_binding,
     strict_json_load,
 )
+
+from quantfusion.io.c6_stream import FileArray, load_object, write_json
 
 
 _CRITERIA = (
@@ -340,10 +342,11 @@ def qualify_base_payload(
     checkpointed: bool = False,
 ) -> dict[str, Any]:
     evaluations = base_payload.get("evaluations")
-    if not isinstance(evaluations, list):
+    if not isinstance(evaluations, (list, FileArray)):
         raise ValueError("Base producer evaluations must be an array")
     selected = [
-        item for item in evaluations
+        {"scenario_id": item["scenario_id"], "official_metrics": item["official_metrics"],
+         "causal_matrix": {key: item["causal_matrix"][key] for key in ("event_timeline", "s_evidence")}} for item in evaluations
         if isinstance(item, Mapping) and item.get("variant_id") == "C6-Base"
     ]
     scenario_ids = [item.get("scenario_id") for item in selected]
@@ -368,7 +371,7 @@ def qualify_base_payload(
         from quantfusion.application.c6_bound_run import DiagnosticCheckpoint
         item_ids = [f"qualification/{item}" for item in ids]
         checkpoint = DiagnosticCheckpoint.from_environment(item_ids)
-        results = checkpoint.map(_qualify, residual, item_ids, workers=1)
+        results = list(checkpoint.map(_qualify, residual, item_ids, workers=1))
     else:
         results = [_qualify(item) for item in residual]
     return {
@@ -421,8 +424,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         raise ValueError("CLI identity does not select S qualification")
     producer = Path(args.producer_export)
-    payload_bytes = (producer / "payload.json").read_bytes()
-    if hashlib.sha256(payload_bytes).hexdigest() != args.producer_artifact_sha256:
+    if file_sha256(producer / "payload.json") != args.producer_artifact_sha256:
         raise ValueError("Base producer artifact SHA-256 mismatch")
     manifest = strict_json_load(producer / "manifest.json")
     base_identity = {
@@ -441,7 +443,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         raise ValueError("Base producer identity does not match qualification")
     result = qualify_base_payload(
-        strict_json_load(producer / "payload.json"),
+        load_object(producer / "payload.json"),
         base_producer_identity=base_identity,
         P=bindings["P"],
         R_revision=manifest["run_bindings_revision"],
@@ -470,7 +472,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if output.exists():
         raise ValueError("qualification output path already exists")
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(canonical_json_bytes(result))
+    write_json(output, result)
     return 0
 
 

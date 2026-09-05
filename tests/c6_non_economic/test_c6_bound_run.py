@@ -17,6 +17,124 @@ from quantfusion.application.c6_contract import canonical_payload_hash, strict_j
 TOKEN_1 = "0000000000000001"
 TOKEN_2 = "0000000000000002"
 
+
+def test_streamed_json_preserves_canonical_bytes_and_indexes_records(tmp_path):
+    from quantfusion.io.c6_stream import FileArray, canonical_chunks, load_object, write_json
+    from quantfusion.application.c6_contract import canonical_json_bytes
+    payload = {"evaluations": [{"text": "中文\\\"\n", "number": -0.0, "nested": [1, True, None]}, {}], "complete": True}
+    path = tmp_path / "payload.json"
+    path.write_bytes(canonical_json_bytes(payload))
+    loaded = load_object(path, chunk_size=1)
+    assert isinstance(loaded["evaluations"], FileArray)
+    assert loaded["evaluations"][0] == payload["evaluations"][0]
+    assert list(loaded["evaluations"][1:]) == [{}]
+    assert b"".join(canonical_chunks(loaded)) == canonical_json_bytes(payload)
+    output = tmp_path / "copy.json"
+    write_json(output, loaded)
+    assert output.read_bytes() == path.read_bytes()
+    with pytest.raises(FileExistsError):
+        write_json(output, loaded)
+
+
+@pytest.mark.parametrize("raw", [
+    b'{"evaluations":[{"a":1,"a":2}]}', b'{"a":1,"a":2}',
+    b'{"evaluations":[NaN]}', b'{"evaluations":[1e999]}',
+    b'{"evaluations":[1,]}', b'{"evaluations":[', b'{"a":1} extra',
+    b'{"a":12x}', b'{"a":1,}', b'{"evaluations":["\xff"]}',
+])
+def test_streamed_json_rejects_corruption(tmp_path, raw):
+    from quantfusion.io.c6_stream import load_object
+    path = tmp_path / "bad.json"
+    path.write_bytes(raw)
+    with pytest.raises(ValueError):
+        load_object(path, chunk_size=2)
+
+
+def test_streamed_json_bounds_each_record_and_does_not_cache_values(tmp_path):
+    from quantfusion.io.c6_stream import FileArray, load_object
+    path = tmp_path / "payload.json"
+    path.write_text('{"evaluations":[{"text":"' + 'x' * 200 + '"}]}')
+    with pytest.raises(ValueError, match="record limit"):
+        load_object(path, record_limit=100, chunk_size=7)
+    records = load_object(path)["evaluations"]
+    assert isinstance(records, FileArray)
+    first = records[0]
+    first["text"] = "mutated"
+    assert records[0]["text"] == "x" * 200
+
+
+def test_streamed_json_large_array_has_bounded_live_memory(tmp_path):
+    import hashlib
+    import tracemalloc
+    from quantfusion.io.c6_stream import canonical_chunks, content_hash, load_object
+    path = tmp_path / "large.json"
+    record = b'{"text":"' + b'x' * (256 * 1024) + b'"}'
+    with path.open("wb") as stream:
+        stream.write(b'{"evaluations":[')
+        for index in range(320):
+            stream.write((b',' if index else b'') + record)
+        stream.write(b']}\n')
+    tracemalloc.start()
+    try:
+        payload = load_object(path)
+        digest = hashlib.sha256()
+        for chunk in canonical_chunks(payload):
+            digest.update(chunk)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert len(payload["evaluations"]) == 320
+    assert digest.hexdigest() == content_hash(path)
+    assert path.stat().st_size > 80 * 1024 * 1024
+    assert peak < 8 * 1024 * 1024
+
+
+def test_streamed_archive_rejects_unsafe_members_and_size_before_extraction(tmp_path):
+    import zipfile
+    from quantfusion.io.c6_stream import extract_archive
+    for index, name in enumerate(("../payload.json", "/payload.json", "a/b", "a\\b", ".hidden")):
+        archive = tmp_path / f"unsafe-{index}.zip"
+        with zipfile.ZipFile(archive, "w") as stream:
+            stream.writestr(name, b'{}')
+        with pytest.raises(ValueError, match="unsafe"):
+            extract_archive(archive, tmp_path / f"out-{index}")
+    archive = tmp_path / "bomb.zip"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as stream:
+        stream.writestr("payload.json", b'x' * 10000)
+    with pytest.raises(ValueError, match="expanded"):
+        extract_archive(archive, tmp_path / "bomb-out", limit=1000)
+    assert not (tmp_path / "bomb-out").exists()
+
+
+def test_sealed_disk_payload_roundtrips_through_actual_archive_reader(tmp_path, monkeypatch):
+    import io
+    import zipfile
+    from contextlib import contextmanager
+    from quantfusion.application import c6_bound_run as runner
+    source = tmp_path / "payload.json"
+    source.write_bytes(b'{"evaluations":[{"value":1}]}\n')
+    root = tmp_path / "sealed"
+    seal_export(root, kind="result", source_revision="a" * 40, run_bindings_revision="b" * 40,
+                workflow_revision="c" * 40, binding_id="c6.fixture", logical_run_id="fixture",
+                attempt_id="a0", fencing_token=TOKEN_1, attempt_identity=_attempt_identity(),
+                files={"payload.json": source, "digest.json": b'{}\n'})
+    zipped = io.BytesIO()
+    with zipfile.ZipFile(zipped, "w") as archive:
+        for path in root.iterdir():
+            archive.write(path, path.name)
+    @contextmanager
+    def response(*args, **kwargs):
+        yield io.BytesIO(zipped.getvalue())
+    store = runner.GitHubActionsLeaseStore("owner/repo", "fixture")
+    monkeypatch.setattr(store, "_response", response)
+    export = store._export(123, {"id": 1, "expired": False, "archive_download_url": "https://api.github.com/fixture"})
+    try:
+        assert isinstance(export.files["payload.json"], Path)
+        assert export.files["payload.json"].read_bytes() == source.read_bytes()
+        assert runner._json_content(export.files["payload.json"])["evaluations"][0] == {"value": 1}
+    finally:
+        export.close()
+
 def _checkpoint_square(value: int) -> dict:
     return {"square": value * value}
 
@@ -36,7 +154,7 @@ def test_child_checkpoint_resumes_exact_prefix_without_recomputation(tmp_path) -
     second = runner.DiagnosticCheckpoint(path, ids, "b" * 64, resume_signature="a" * 64)
     # Poison completed inputs: resumed work must never evaluate these again.
     resumed = second.map(_checkpoint_square, [None, None, 2, 3, 4], ids, workers=1)
-    assert resumed == [_checkpoint_square(i) for i in range(5)]
+    assert list(resumed) == [_checkpoint_square(i) for i in range(5)]
     assert strict_json_load(path)["binding_signature"] == "b" * 64
     with pytest.raises(runner.BoundRunError):
         runner.DiagnosticCheckpoint(path, ids[::-1], "c" * 64, resume_signature="b" * 64)
@@ -153,7 +271,7 @@ def test_durable_history_restores_sealed_child_and_hands_off_lease(tmp_path, mon
                                    fencing_token=TOKEN_2, fencing_sequence=124, resume_from=checkpoint_id)
     lease.assert_current()
     resumed = runner.DiagnosticCheckpoint(restored, ids, "b" * 64, resume_signature="a" * 64)
-    assert resumed.map(_checkpoint_square, [None, 1, 2], ids, workers=1) == [_checkpoint_square(i) for i in range(3)]
+    assert list(resumed.map(_checkpoint_square, [None, 1, 2], ids, workers=1)) == [_checkpoint_square(i) for i in range(3)]
     prior["status"] = "in_progress"
     with pytest.raises(BoundRunError, match="prior logical-run workflow identity"):
         history.restore(binding=binding, current_run_id=124, resume_from=checkpoint_id, resume_workflow_run_id="123",
@@ -210,7 +328,7 @@ def _cloud_checkpoint_smoke(stage: str, directory: Path) -> None:
         checkpoint = DiagnosticCheckpoint(path, ids, "b" * 64, resume_signature="a" * 64)
         actual = checkpoint.map(dict, [None, None, *({"ordinal": i} for i in range(2, 5))], ids, workers=2)
         expected = [{"ordinal": i} for i in range(5)]
-        assert actual == expected
+        assert list(actual) == expected
         (directory / "verified.json").write_text(json.dumps({"passed": True, "completed": len(actual), "resumed_without_recompute": True}))
     else:
         raise ValueError("unknown fixture stage")

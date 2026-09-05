@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import pathlib
+import tempfile
 import unittest
 
 spec = importlib.util.spec_from_file_location("resume", pathlib.Path(__file__).with_name("c6_auto_resume.py"))
@@ -55,6 +56,19 @@ class ResumeTest(unittest.TestCase):
     def test_duplicate_json_keys_rejected(self):
         with self.assertRaises(ValueError):
             resume.decode(b'{"id":1,"id":2}')
+
+    def test_disk_checkpoint_uses_same_dispatch_identity_and_rejects_corruption(self):
+        expected = self.build()
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            files = {"checkpoint.json": root / "checkpoint.json", "child-checkpoint.bin": root / "child-checkpoint.bin"}
+            files["checkpoint.json"].write_bytes(json.dumps(self.wrapper).encode())
+            files["child-checkpoint.bin"].write_bytes(b"{}")
+            request = resume.build_request(self.manifest, files, self.run, {"binding_records": [self.record]}, [], now="2026-09-05T00:00:00Z")
+            self.assertEqual(request, expected)
+            files["child-checkpoint.bin"].write_bytes(b"[]")
+            with self.assertRaisesRegex(ValueError, "hash mismatch"):
+                resume.build_request(self.manifest, files, self.run, {"binding_records": [self.record]}, [], now="2026-09-05T00:00:00Z")
 
 
 if __name__ == "__main__":

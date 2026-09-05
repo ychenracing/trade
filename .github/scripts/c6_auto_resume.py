@@ -1,19 +1,24 @@
 """Resume a sealed C6 attempt without importing or executing candidate code."""
 import base64
 import datetime
-import hashlib
-import io
+import importlib.util
 import json
 import os
 import re
 import urllib.error
 import urllib.parse
 import urllib.request
-import zipfile
+import tempfile
 from pathlib import Path
 
 REPOSITORY = "ychenracing/trade"
 WORKFLOW = "c6-bound-economic.yml"
+# Load only the reviewed IO leaf from this trusted checkout. Never add the
+# candidate checkout or artifact paths to sys.path, and never import the engine.
+_io_spec = importlib.util.spec_from_file_location("c6_trusted_io", Path(__file__).resolve().parents[2] / "quantfusion/io/c6_stream.py")
+_io = importlib.util.module_from_spec(_io_spec)
+_io_spec.loader.exec_module(_io)
+
 INPUT_NAMES = {
     "source_revision", "run_bindings_revision", "workflow_revision", "binding_id",
     "candidate_id", "logical_run_id", "attempt_id", "resume_from",
@@ -29,6 +34,8 @@ def require(condition, message):
 
 
 def decode(raw):
+    if isinstance(raw, Path):
+        return _io.load_object(raw)
     def unique(pairs):
         result = {}
         for key, value in pairs:
@@ -43,7 +50,7 @@ def decode(raw):
 
 
 def digest(raw):
-    return hashlib.sha256(raw).hexdigest()
+    return _io.content_hash(raw)
 
 
 def build_request(manifest, files, run, bindings, history, *, now):
@@ -77,7 +84,7 @@ def build_request(manifest, files, run, bindings, history, *, now):
         require(wrapper[key] == manifest[key], "checkpoint attempt mismatch")
     require(wrapper["fencing_sequence"] == run["id"], "checkpoint fence mismatch")
     child = files["child-checkpoint.bin"]
-    require(wrapper["child_checkpoint_path"] == "child-checkpoint.bin" and wrapper["child_checkpoint_byte_size"] == len(child) and wrapper["child_checkpoint_full_byte_sha256"] == digest(child), "child checkpoint mismatch")
+    require(wrapper["child_checkpoint_path"] == "child-checkpoint.bin" and wrapper["child_checkpoint_byte_size"] == _io.content_size(child) and wrapper["child_checkpoint_full_byte_sha256"] == digest(child), "child checkpoint mismatch")
     completed = wrapper["completed_item_ids"]
     require(isinstance(completed, list) and all(isinstance(x, str) for x in completed) and len(set(completed)) == len(completed), "invalid completed IDs")
     require(type(wrapper["next_item_ordinal"]) is int and wrapper["next_item_ordinal"] == len(completed) and 0 < len(completed) < wrapper["item_manifest_count"], "invalid incomplete progress")
@@ -108,6 +115,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 class GitHub:
     def __init__(self):
+        self._workspace = tempfile.TemporaryDirectory(prefix="c6-auto-resume-")
         self.root = f"https://api.github.com/repos/{REPOSITORY}/"
         self.headers = {"Authorization": "Bearer " + os.environ["GITHUB_TOKEN"], "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
 
@@ -115,7 +123,8 @@ class GitHub:
         request = urllib.request.Request(self.root + path, headers=self.headers, data=None if payload is None else json.dumps(payload).encode(), method="GET" if payload is None else "POST")
         # Never forward the token across a redirect (artifact URLs use a separate request).
         with urllib.request.build_opener(NoRedirect).open(request, timeout=60) as response:
-            raw = response.read()
+            raw = response.read(16 * 1024 * 1024 + 1)
+            require(len(raw) <= 16 * 1024 * 1024, "metadata exceeds size limit")
             return decode(raw) if raw else None
 
     def pages(self, path, key):
@@ -129,25 +138,26 @@ class GitHub:
         raise ValueError("incomplete paginated history")
 
     def artifact(self, artifact_id):
+        root = Path(self._workspace.name) / str(artifact_id)
+        root.mkdir(mode=0o700)
+        archive_path = root / "archive.zip"
         request = urllib.request.Request(self.root + f"actions/artifacts/{artifact_id}/zip", headers=self.headers)
+        opener = urllib.request.build_opener(NoRedirect)
         try:
-            with urllib.request.build_opener(NoRedirect).open(request, timeout=60) as response:
-                raw = response.read(1024 ** 3 + 1)
+            response = opener.open(request, timeout=60)
         except urllib.error.HTTPError as exc:
             require(exc.code == 302, "artifact download failed")
             location = exc.headers["Location"]
             parsed = urllib.parse.urlparse(location)
-            require(parsed.scheme == "https" and parsed.hostname and (parsed.hostname.endswith(".blob.core.windows.net") or parsed.hostname.endswith(".actions.githubusercontent.com") or parsed.hostname == "objects.githubusercontent.com"), "untrusted artifact redirect")
-            with urllib.request.build_opener(NoRedirect).open(location, timeout=60) as response:
-                raw = response.read(1024 ** 3 + 1)
-        require(len(raw) <= 1024 ** 3, "artifact too large")
-        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-            names = archive.namelist()
-            require(len(names) == len(set(names)) and len(names) <= 8, "invalid artifact archive")
-            require(all("/" not in n and "\\" not in n and n not in {".", ".."} for n in names), "unsafe artifact path")
-            require(sum(i.file_size for i in archive.infolist()) <= 1024 ** 3, "expanded artifact too large")
-            files = {n: archive.read(n) for n in names}
-        return decode(files.pop("manifest.json")), files
+            require(parsed.scheme == "https" and not parsed.username and not parsed.password and parsed.port in {None, 443} and parsed.hostname and (parsed.hostname.endswith(".blob.core.windows.net") or parsed.hostname.endswith(".actions.githubusercontent.com") or parsed.hostname == "objects.githubusercontent.com"), "untrusted artifact redirect")
+            response = opener.open(location, timeout=60)
+        with response, archive_path.open("xb") as target:
+            _io.copy_stream(response, target)
+        files = _io.extract_archive(archive_path, root / "files")
+        archive_path.unlink()
+        manifest = files.pop("manifest.json", None)
+        require(manifest is not None and manifest.stat().st_size <= 1024 * 1024, "missing or oversized manifest")
+        return decode(manifest), files
 
 
 def main():
