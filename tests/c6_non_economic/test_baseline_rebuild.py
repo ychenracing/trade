@@ -234,3 +234,13 @@ def test_rebuilt_baseline_identity_is_documented_consistently() -> None:
         text = (PROJECT_ROOT / relative).read_text(encoding="utf-8")
         assert marker in text
         assert statement in text
+
+
+def test_bound_official_runner_yields_only_after_incomplete_checkpoint(monkeypatch):
+    from quantfusion.application import stress
+    monkeypatch.setenv("C6_BOUND_CHECKPOINT_PATH", "checkpoint.json")
+    assert stress._bound_budget_expired(0, 901, completed=10, total=100)
+    assert not stress._bound_budget_expired(0, 899, completed=10, total=100)
+    assert not stress._bound_budget_expired(0, 901, completed=100, total=100)
+    monkeypatch.delenv("C6_BOUND_CHECKPOINT_PATH")
+    assert not stress._bound_budget_expired(0, 901, completed=10, total=100)
