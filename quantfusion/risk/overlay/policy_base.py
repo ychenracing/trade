@@ -204,6 +204,33 @@ class OverlayPolicyMixin:
             self._update_risk_level(states, date, date_pos, held, drawdown)
             self._risk_level_day = date_pos
 
+        if getattr(self, "_c6_diagnostic_evidence_enabled", False):
+            observed = self.observe_c6_s_evidence(
+                states, date, date_pos, prices, assets, drawdown, scoring_fn
+            )
+            previous = getattr(self, "c6_s_evidence", None)
+            if previous is None:
+                self.c6_s_evidence = observed
+            elif (
+                previous["first_early_sell_required_close"] is None
+                and observed["first_early_sell_required_close"] is not None
+            ):
+                first_causal = (
+                    previous["first_causal_stressed_cluster_close"]
+                    or observed["first_causal_stressed_cluster_close"]
+                )
+                self.c6_s_evidence = observed
+                self.c6_s_evidence[
+                    "first_causal_stressed_cluster_close"
+                ] = first_causal
+            elif (
+                previous["first_causal_stressed_cluster_close"] is None
+                and observed["first_causal_stressed_cluster_close"] is not None
+            ):
+                previous["first_causal_stressed_cluster_close"] = observed[
+                    "first_causal_stressed_cluster_close"
+                ]
+
         # In a dedicated weak/cash route the same persistent account is already
         # being managed by the outer defensive strategy. Keep the cross-market
         # state hot for recovery and re-shock decisions, but do not duplicate

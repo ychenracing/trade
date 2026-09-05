@@ -68,6 +68,7 @@ def consolidate_risk_sells(
     events: list[dict[str, Any]],
     *,
     action_priorities: dict[int, int] | None = None,
+    state_local_books: bool = True,
 ) -> None:
     """Consolidate new and carried overlay sells across the full queue.
 
@@ -77,12 +78,17 @@ def consolidate_risk_sells(
     """
     explicit = action_priorities or {}
     suppressed: list[dict[str, Any]] = []
-    winner_by_book: dict[tuple[str, str], tuple[Any, int]] = {}
-    for state in states:
+    winner_by_book: dict[tuple[object, ...], tuple[Any, int, int, str]] = {}
+    for state_index, state in enumerate(states):
+        sleeve_name = str(getattr(getattr(state, "sleeve", None), "sleeve_name", ""))
         for signal, strategy in state.pending:
             if strategy is not None or signal.direction != "sell":
                 continue
-            book = (str(signal.symbol), str(signal.strategy_name))
+            book = (
+                (state_index, str(signal.symbol), str(signal.strategy_name))
+                if state_local_books
+                else (str(signal.symbol), str(signal.strategy_name))
+            )
             priority = explicit.get(
                 id(signal),
                 RISK_ACTION_PRIORITY.get(
@@ -93,19 +99,38 @@ def consolidate_risk_sells(
             if current is None or _risk_action_beats(
                 signal, priority, current[0], current[1]
             ):
-                winner_by_book[book] = (signal, priority)
+                winner_by_book[book] = (signal, priority, state_index, sleeve_name)
 
-    for state in states:
+    for state_index, state in enumerate(states):
+        sleeve_name = str(getattr(getattr(state, "sleeve", None), "sleeve_name", ""))
         retained: list[tuple[Any, Any]] = []
         for signal, strategy in state.pending:
             if strategy is not None or signal.direction != "sell":
                 retained.append((signal, strategy))
                 continue
-            book = (str(signal.symbol), str(signal.strategy_name))
-            winner, _ = winner_by_book[book]
+            book = (
+                (state_index, str(signal.symbol), str(signal.strategy_name))
+                if state_local_books
+                else (str(signal.symbol), str(signal.strategy_name))
+            )
+            loser_priority = explicit.get(
+                id(signal),
+                RISK_ACTION_PRIORITY.get(
+                    signal.reason.split(":")[0], RISK_ACTION_DEFAULT_PRIORITY
+                ),
+            )
+            winner, winner_priority, winner_state_index, winner_sleeve_name = (
+                winner_by_book[book]
+            )
             if signal is winner:
                 retained.append((signal, strategy))
             else:
+                record = getattr(getattr(state, "sleeve", None), "_c6_action_by_signal", {}).get(id(signal))
+                winner_record = getattr(getattr(states[winner_state_index], "sleeve", None), "_c6_action_by_signal", {}).get(id(winner))
+                if record is not None:
+                    record.update({"winner_order_ordinal": winner_record["winner_order_ordinal"] if winner_record else record["winner_order_ordinal"], "retained_shares": 0, "suppressed_shares": record["planned_shares"], "remainder_shares": 0, "terminal_for_current_batch": True, "carry_to_next_batch": False, "release_reason": "CANCELLED"})
+                    if winner_record is not None:
+                        winner_record["loser_order_ordinals"].append(record["emission_ordinal"])
                 suppressed.append(
                     {
                         "date": date_str,
@@ -114,7 +139,17 @@ def consolidate_risk_sells(
                         "strategy": str(signal.strategy_name),
                         "reason": signal.reason,
                         "target_shares": int(signal.target_shares),
+                        "loser_state_index": state_index,
+                        "loser_sleeve_name": sleeve_name,
+                        "winner_state_index": winner_state_index,
+                        "winner_sleeve_name": winner_sleeve_name,
+                        "strategy_name": str(signal.strategy_name),
+                        "loser_reason": signal.reason,
                         "winner_reason": winner.reason,
+                        "loser_target_shares": int(signal.target_shares),
+                        "winner_target_shares": int(winner.target_shares),
+                        "loser_priority": loser_priority,
+                        "winner_priority": winner_priority,
                     }
                 )
         state.pending = retained
@@ -128,6 +163,7 @@ def apply_risk_actions(
     *,
     date_str: str | None = None,
     events: list[dict[str, Any]] | None = None,
+    state_local_books: bool = True,
 ) -> None:
     """Apply ordered actions, then consolidate against every pending risk sell."""
     states = _state_sequence(state_or_states)
@@ -146,12 +182,21 @@ def apply_risk_actions(
         )
         states[action.state_index].pending.append((signal, None))
         priorities[id(signal)] = action.priority
+        sleeve = getattr(states[action.state_index], "sleeve", None)
+        records = getattr(sleeve, "_c6_action_lifecycle", None)
+        if records is not None and sleeve is not None:
+            ordinal = sum(len(getattr(state.sleeve, "_c6_action_lifecycle", [])) for state in states)
+            current = sum(position.shares for position in sleeve.positions.get(action.symbol, {}).values())
+            record = {"emission_ordinal": ordinal, "timestamp": action.signal_date, "action_id": f"risk:{action.signal_date}:{ordinal}:{action.state_index}:{action.symbol}:{action.strategy_name}", "winner_order_ordinal": ordinal, "loser_order_ordinals": [], "state_index": action.state_index, "sleeve_name": sleeve.sleeve_name, "strategy_name": action.strategy_name, "symbol": action.symbol, "reason": action.reason, "priority": action.priority, "planned_shares": action.shares, "retained_shares": action.shares, "suppressed_shares": 0, "filled_shares": 0, "current_shares": current, "remainder_shares": action.shares, "scope_kind": "book_symbol", "scope_key": f"{action.state_index}:{action.symbol}:{action.strategy_name}", "post_action_target_shares": max(current - action.shares, 0), "terminal_for_current_batch": False, "carry_to_next_batch": True, "release_reason": "STILL_LIVE"}
+            records.append(record)
+            sleeve._c6_action_by_signal[id(signal)] = record
     if date_str is not None:
         consolidate_risk_sells(
             states,
             date_str,
             events if events is not None else [],
             action_priorities=priorities,
+            state_local_books=state_local_books,
         )
 
 

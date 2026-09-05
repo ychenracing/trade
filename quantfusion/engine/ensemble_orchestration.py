@@ -100,6 +100,8 @@ class EnsembleOrchestrationMixin:
         self._new_candidate_intent_streak = {}
         self._tail_guard_active = False
         self._tail_guard_policies = {}
+        diagnostic = getattr(self, "_c6_diagnostic_request", None)
+        self._c6_score_trace = [] if diagnostic is not None and diagnostic["recording_mode"] != "OFF" else None
         effective_policy = self._effective_policy(tradable_count)
         states = self._prepare_ensemble_sleeves(request, effective_policy)
         if not self._reference_evidence_complete(
@@ -157,6 +159,17 @@ class EnsembleOrchestrationMixin:
             ),
         ) if self.cfg.get("enable_cm_overlay", True) else None
         if cm_overlay is not None:
+            setattr(
+                cm_overlay,
+                "_c6_s_enabled",
+                self._c6_feature_enabled("S")
+                or bool(getattr(cm_overlay, "C6_S_PRODUCTION", False)),
+            )
+            setattr(
+                cm_overlay,
+                "_c6_diagnostic_evidence_enabled",
+                self._c6_intervention_id() in {"C6_BASE", "C6_BASE_PLUS_S"},
+            )
             cm_overlay.events.append(
                 {
                     "date": request.start_date,
@@ -197,6 +210,13 @@ class EnsembleOrchestrationMixin:
                     date,
                     state.pending,
                 )
+                if self._c6_intervention_id() in {
+                    "W1_DATA_MAP_ONLY",
+                    "W2_POOL_DENOMINATOR_ONLY",
+                }:
+                    state.pending = [
+                        item for item in state.pending if item[0].symbol != "601869"
+                    ]
             if request.route_controller is not None:
                 request.route_controller.after_close(
                     states,
@@ -214,15 +234,19 @@ class EnsembleOrchestrationMixin:
                 state.sleeve._total_assets(state.data_map, date) for state in states
             ]
             assets = sum(state_assets)
-            status = portfolio_risk.check_portfolio_risk(
-                assets,
-                date.strftime("%Y-%m-%d"),
-                trading_dates=reference_dates,
-                date_to_pos=states[0].date_to_pos,
-            )
-            portfolio_risk_events.extend(portfolio_risk.drain_audit_events())
-            if status:
-                self._apply_global_risk_lock(states, date)
+            if (
+                self._c6_intervention_id()
+                != "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK"
+            ):
+                status = portfolio_risk.check_portfolio_risk(
+                    assets,
+                    date.strftime("%Y-%m-%d"),
+                    trading_dates=reference_dates,
+                    date_to_pos=states[0].date_to_pos,
+                )
+                portfolio_risk_events.extend(portfolio_risk.drain_audit_events())
+                if status:
+                    self._apply_global_risk_lock(states, date)
             self._update_tail_sleeve_guard(
                 states,
                 date,
@@ -243,6 +267,7 @@ class EnsembleOrchestrationMixin:
                     states,
                     date_str=date.strftime("%Y-%m-%d"),
                     events=cm_overlay.events,
+                    state_local_books=self._c6_feature_enabled("F0"),
                 )
             held = self._held_portfolio_symbols(states)
             symbol_count_curve.append(
@@ -396,6 +421,7 @@ class EnsembleOrchestrationMixin:
                     else None
                 ),
                 "tail_sleeve_guard_active": self._tail_guard_active,
+                "c6_s_evidence": getattr(cm_overlay, "c6_s_evidence", None) if cm_overlay is not None else None,
             }
         )
         # ── 风险治理输出（2026-08-16 报告 P0-1/P0-2/P0-3/P1-1/P1-2）──────
@@ -412,5 +438,10 @@ class EnsembleOrchestrationMixin:
         combined["risk_event_calibration"] = self._calibrate_run_risk_events(
             combined, risk_level_curve, overlay_risk_frames
         )
+        request_data = getattr(self, "_c6_diagnostic_request", None)
+        if request_data is not None:
+            combined["_c6_sleeve_results"] = results
+            combined["_c6_states"] = states
+            combined["_c6_score_trace"] = self._c6_score_trace
         self.last_result = combined
         return combined
