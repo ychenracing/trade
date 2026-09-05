@@ -393,15 +393,8 @@ def _sleeve_paths(result: Mapping[str, Any]) -> tuple[list[dict[str, Any]], list
 
 
 def _action_records(result: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Export receipts recorded at the boundary; never infer them from future fills."""
     records = [dict(item) for state in result["_c6_states"] for item in getattr(state.sleeve, "_c6_action_lifecycle", [])]
-    trades = list(result["trades"])
-    for record in records:
-        if record["release_reason"] == "CANCELLED":
-            continue
-        prefix = f"{record['sleeve_name']}:{record['strategy_name']}"
-        fills = [trade for trade in trades if trade.direction == "sell" and trade.symbol == record["symbol"] and trade.strategy_name == prefix and trade.signal_date == record["timestamp"] and str(trade.reason).startswith(record["reason"])]
-        filled = min(sum(int(trade.shares) for trade in fills), record["planned_shares"])
-        record.update({"filled_shares": filled, "remainder_shares": record["planned_shares"] - filled, "terminal_for_current_batch": filled == record["planned_shares"], "carry_to_next_batch": filled != record["planned_shares"], "release_reason": "FILLED" if filled == record["planned_shares"] else "STILL_LIVE"})
     return sorted(records, key=lambda item: item["emission_ordinal"])
 
 
@@ -468,18 +461,21 @@ def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
     attribution = {name: 0 for name in stress_metrics.ATTRIBUTION_CATEGORIES}
     for trade in result["trades"]:
         attribution[stress._reason_category(trade)] += 1
-    sleeves = {"fast": 0, "base": 1, "slow": 2}
-    fills, orders = [], []
-    for ordinal, trade in enumerate(result["trades"]):
-        sleeve, _, strategy = trade.strategy_name.partition(":")
-        state = sleeves.get(sleeve, 0)
-        orders.append({"order_ordinal": ordinal, "decision_timestamp": trade.signal_date or trade.date, "execution_timestamp": trade.date, "state_index": state, "sleeve_name": sleeve or "portfolio", "strategy_name": strategy or trade.strategy_name, "symbol": trade.symbol, "side": trade.direction.upper(), "requested_shares": trade.shares, "authorized_shares": trade.shares, "reason": trade.reason or "executed", "priority": 0, "action_id": None, "scope_kind": None, "scope_key": None, "status": "filled", "suppression_winner_order_ordinal": None})
-        fills.append({"fill_ordinal": ordinal, "order_ordinal": ordinal, "timestamp": trade.date, "state_index": state, "sleeve_name": sleeve or "portfolio", "strategy_name": strategy or trade.strategy_name, "symbol": trade.symbol, "side": trade.direction.upper(), "shares": trade.shares, "price": float(trade.price), "notional": abs(float(trade.gross_value)), "fee": float(trade.commission + trade.stamp_duty_cost), "slippage": 0.0, "status": "filled", "blocked_reason": None})
+    cash_series, position_series = _sleeve_paths(result)
+    if recording in {"OFF", "ON"}:
+        # Compare native engine ledgers, independently of the receipt serializer.
+        from dataclasses import asdict
+        native = {"orders": {"batches": result["_c6_pending_path"], "events": result["order_events"],
+                             "pending": [[asdict(signal) for signal, _ in state.pending] for state in result["_c6_states"]]},
+                  "fills": [asdict(trade) for trade in result["trades"]],
+                  "cash_series": cash_series, "position_series": position_series,
+                  "equity_series": result["equity_curve"].to_json(date_format="iso")}
+        return {"native_path_hashes": _path_hashes(native)}
+    orders, fills = result["_c6_orders"], result["_c6_fills"]
     equity = result["equity_curve"]
     equity_series = [{"sample_ordinal": i, "timestamp": str(date.date()), "equity": float(row.assets), "official_sample": True} for i, (date, row) in enumerate(equity.iterrows())]
     drawdown = equity["assets"] / equity["assets"].cummax() - 1.0
     drawdown_series = [{"sample_ordinal": i, "timestamp": str(date.date()), "equity": float(equity.loc[date, "assets"]), "running_peak": float(equity.loc[:date, "assets"].max()), "drawdown": float(value), "official_sample": True} for i, (date, value) in enumerate(drawdown.items())]
-    cash_series, position_series = _sleeve_paths(result)
     exposure = [{"sample_ordinal": i, "timestamp": item["timestamp"], "phase": "official_sample", "gross_notional": float(equity.iloc[i]["position_value"]), "gross_ratio": float(equity.iloc[i]["position_value"] / equity.iloc[i]["assets"]), "symbol": None, "symbol_notional": None, "cluster": None, "cluster_notional": None, "cluster_weight": None} for i, item in enumerate(equity_series)]
     metrics = {"total_return": float(result["total_return"]), "terminal_wealth": float(result["final_assets"]), "max_drawdown": float(result["max_drawdown"]), "sharpe": float(result["sharpe"]), "calmar": float(result["calmar"]), "total_trades": int(result["total_trades"]), "sleeve_fill_count": int(result["sleeve_fill_count"]), "date_symbol_side_count": int(result["date_symbol_side_count"]), "cash_days": int((equity["position_value"] == 0).sum()), "reason_attribution": attribution, "max_concurrent_symbols": int(result["max_concurrent_symbols"]), "terminal_risk_lock": bool(result["terminal_risk_lock"]), "deployment_policy": "production_daily_replay"}
     raw_breach = first_official_mdd_breach(equity_series)
@@ -516,7 +512,7 @@ def _path_hashes(record: Mapping[str, Any]) -> dict[str, str]:
 def _prefix_hash(record: Mapping[str, Any], boundary: str | None) -> str:
     paths = []
     for key, timestamp in (("orders", "execution_timestamp"), ("fills", "timestamp"), ("cash_series", "timestamp"), ("position_series", "timestamp"), ("equity_series", "timestamp")):
-        paths.append(record[key] if boundary is None else [item for item in record[key] if item[timestamp] < boundary])
+        paths.append(record[key] if boundary is None else [item for item in record[key] if (item[timestamp] or item.get("decision_timestamp")) < boundary])
     return hashlib.sha256(_canonical_bytes(paths)).hexdigest()
 
 
@@ -778,7 +774,7 @@ def _no_drift_pair(task: tuple[str, Mapping[str, Any]]) -> dict[str, Any]:
     variant, scenario = task
     off = _l1_evaluate((variant, scenario, "OFF"))
     on = _l1_evaluate((variant, scenario, "ON"))
-    a, b = _path_hashes(off), _path_hashes(on)
+    a, b = off["native_path_hashes"], on["native_path_hashes"]
     return {"scenario_id": scenario["scenario_id"], "recording_off_path_hashes": a, "recording_on_path_hashes": b, "equal": a == b}
 
 

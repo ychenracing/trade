@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from quantfusion.execution.c6_receipts import order_receipt
+
 # pyright: reportAttributeAccessIssue=false
 
 # ruff: noqa: F401
@@ -281,7 +283,11 @@ class EnsembleOrchestrationMixin:
         prev_consensus: float | None = None
         prev_decline_streak = 0
         warm_state = capture_c6_warm_state(states, portfolio_risk, cm_overlay) if diagnostic is not None else None
+        pending_path = []
         for idx, date in enumerate(reference_dates):
+            if diagnostic is not None:
+                pending_path.append({"date": date.strftime("%Y-%m-%d"),
+                                     "pending": [[dict(vars(signal)) for signal, _ in state.pending] for state in states]})
             # P0-4: pass the overlay so it can hard-block re-entry buys
             # for any symbol still in catastrophe cooldown (report P0-4).
             self._execute_ensemble_open(states, date, idx, cm_overlay)
@@ -357,6 +363,9 @@ class EnsembleOrchestrationMixin:
                     state_local_books=self._c6_feature_enabled("F0"),
                 )
             held = self._held_portfolio_symbols(states)
+            for state in states:
+                for signal, _ in state.pending:
+                    order_receipt(state.sleeve, signal, date.strftime("%Y-%m-%d"), queued=True)
             symbol_count_curve.append(
                 {"date": date.strftime("%Y-%m-%d"), "symbol_count": len(held)}
             )
@@ -531,5 +540,8 @@ class EnsembleOrchestrationMixin:
             combined["_c6_states"] = states
             combined["_c6_warm_state"] = warm_state
             combined["_c6_score_trace"] = self._c6_score_trace
+            combined["_c6_orders"] = getattr(states[0].sleeve, "_c6_orders", [])
+            combined["_c6_fills"] = getattr(states[0].sleeve, "_c6_fills", [])
+            combined["_c6_pending_path"] = pending_path
         self.last_result = combined
         return combined

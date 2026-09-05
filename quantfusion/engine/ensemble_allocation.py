@@ -30,6 +30,7 @@ from quantfusion.engine.ensemble import (
     RunRequest,
 )
 from quantfusion.execution.priorities import EXECUTION_PRIORITY
+from quantfusion.execution.c6_receipts import begin_order, order_receipt
 from quantfusion.indicators.technical import Indicators
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
@@ -182,6 +183,9 @@ class EnsembleAllocationMixin:
         sleeve_capital = self.initial_capital / len(horizons)
         self.sleeves = []
         states: list[_PreparedSleeveRun] = []
+        action_sequence = [0]
+        order_receipts: list[dict[str, Any]] = []
+        fill_receipts: list[dict[str, Any]] = []
         base_sleeve_policy = replace(
             effective_policy,
             allocation_mode="single",
@@ -212,6 +216,11 @@ class EnsembleAllocationMixin:
             if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
                 sleeve._c6_action_lifecycle = []
                 sleeve._c6_action_by_signal = {}
+                sleeve._c6_action_sequence = action_sequence
+                sleeve._c6_orders = order_receipts
+                sleeve._c6_fills = fill_receipts
+                sleeve._c6_order_by_signal = {}
+                sleeve._c6_state_index = index
             sleeve._indicator_state = indicator_state
             sleeve._warmup_calendar_days = warmup_days
             sleeve._requested_start_date = request.start_date
@@ -662,6 +671,10 @@ class EnsembleAllocationMixin:
         # have. Opposite same-day fills therefore execute on both sides and pay
         # their respective modeled costs; sells still execute before buys.
         carried_symbols = self._held_portfolio_symbols(states)
+        for state in states:
+            for signal, strategy in state.pending:
+                begin_order(state.sleeve, signal, date.strftime("%Y-%m-%d"),
+                            defensive=strategy is None)
         retained_defensive_books = {
             (
                 state_index,

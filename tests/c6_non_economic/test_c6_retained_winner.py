@@ -213,6 +213,93 @@ def _real_sleeve_with_position(shares: int, prior_volume: float) -> tuple[
         index=dates,
     )
     return sleeve, {"300308": frame}, dates
+
+
+def test_action_receipts_preserve_each_actual_batch_and_exact_book() -> None:
+    """Later fills must not rewrite earlier partial/blocked action receipts."""
+    from copy import deepcopy
+    from quantfusion.application.c6_diagnostics import _action_records
+    from quantfusion.risk.overlay.adapter import apply_risk_actions
+    from quantfusion.risk.overlay.models import RiskAction
+
+    sleeve, data_map, dates = _real_sleeve_with_position(500, 40_000.0)
+    sleeve.positions["300308"]["other"] = Position("300308", "other", 900, 10, "2026-01-05")
+    sleeve._c6_action_lifecycle = []
+    sleeve._c6_action_by_signal = {}
+    state = _state(sleeve, [])
+    apply_risk_actions([RiskAction("300308", "fast", 500, 10, "2026-01-05", "sector_risk_trim", 40)], [state], date_str="2026-01-05")
+    assert sleeve._c6_action_lifecycle[0]["current_shares"] == 500
+    sleeve._start_trading_day()
+    state.pending = sleeve._execute_pending_signals(state.pending, data_map, dates[1], {d: i for i, d in enumerate(dates)})
+    first = deepcopy(_action_records({"_c6_states": [state], "trades": sleeve.trades}))
+    receipt = first[-1]
+    assert 0 < receipt["filled_shares"] < 500
+    assert receipt["carry_to_next_batch"] is True
+    assert receipt["execution_timestamp"] == "2026-01-06"
+    assert state.pending[0][0].target_shares == receipt["remainder_shares"]
+    next_date = dates[1] + pd.offsets.BDay(1)
+    data_map["300308"].loc[next_date] = data_map["300308"].iloc[-1]
+    sleeve._start_trading_day()
+    state.pending = sleeve._execute_pending_signals(state.pending, data_map, next_date, {d: i for i, d in enumerate(data_map["300308"].index)})
+    final = _action_records({"_c6_states": [state], "trades": sleeve.trades})
+    assert final[:len(first)] == first
+    assert final[-1]["execution_timestamp"] == "2026-01-07"
+    assert final[-1]["action_id"] == receipt["action_id"]
+    assert final[-1]["planned_shares"] == receipt["remainder_shares"]
+    assert final[-1]["filled_shares"] == sum(t.shares for t in sleeve.trades if t.date == "2026-01-07")
+
+
+def test_order_receipt_keeps_requested_authorized_fill_and_blocked_attempts() -> None:
+    sleeve, data_map, dates = _real_sleeve_with_position(500, 40_000.0)
+    sleeve._c6_orders = []
+    sleeve._c6_fills = []
+    sleeve._c6_order_by_signal = {}
+    sleeve._c6_state_index = 0
+    signal = Signal("300308", "fast", "sell", target_shares=500, price=10.0,
+                    reason="sector_risk_trim", signal_date="2026-01-05")
+    pending = sleeve._execute_pending_signals([(signal, None)], data_map, dates[1], {d: i for i, d in enumerate(dates)})
+    assert len(sleeve._c6_orders) == 1
+    first = dict(sleeve._c6_orders[0])
+    assert first["requested_shares"] == 500
+    assert first["authorized_shares"] == 200
+    assert first["filled_shares"] == 200
+    assert first["status"] == "partial"
+    fill = sleeve._c6_fills[0]
+    assert fill["order_ordinal"] == first["order_ordinal"]
+    assert fill["slippage"] == pytest.approx(2.0)
+    assert fill["fee"] == pytest.approx(sleeve.trades[0].commission + sleeve.trades[0].stamp_duty_cost)
+    next_date = dates[1] + pd.offsets.BDay(1)
+    pending = sleeve._execute_pending_signals(pending, data_map, next_date, {d: i for i, d in enumerate(dates)})
+    assert sleeve._c6_orders[0] == first
+    second = sleeve._c6_orders[1]
+    assert second["status"] == "blocked"
+    assert second["blocked_reason"] == "blocked_missing_open"
+    assert second["requested_shares"] == 300
+    assert second["authorized_shares"] == 0
+    assert second["filled_shares"] == 0
+    assert pending[0][0].target_shares == 300
+
+
+def test_later_consolidation_does_not_rewrite_executed_receipts() -> None:
+    from copy import deepcopy
+    from quantfusion.risk.overlay.adapter import apply_risk_actions
+    from quantfusion.risk.overlay.models import RiskAction
+    sleeve, data_map, dates = _real_sleeve_with_position(500, 40_000.)
+    sleeve._c6_action_lifecycle, sleeve._c6_orders, sleeve._c6_fills = [], [], []
+    sleeve._c6_action_by_signal, sleeve._c6_order_by_signal = {}, {}
+    sleeve._c6_state_index = 0
+    state = _state(sleeve, [])
+    apply_risk_actions([RiskAction("300308", "fast", 500, 10, "2026-01-05", "sector_risk_trim", 40)], [state], date_str="2026-01-05")
+    state.pending = sleeve._execute_pending_signals(state.pending, data_map, dates[1], {d: i for i, d in enumerate(dates)})
+    old_actions, old_orders = deepcopy(sleeve._c6_action_lifecycle), deepcopy(sleeve._c6_orders)
+    apply_risk_actions([RiskAction("300308", "fast", 300, 10, "2026-01-06", "catastrophe_stop", 100)], [state], date_str="2026-01-06")
+    assert sleeve._c6_action_lifecycle[:len(old_actions)] == old_actions
+    assert sleeve._c6_orders[:len(old_orders)] == old_orders
+    suppressed = [x for x in sleeve._c6_orders if x['status'] == 'suppressed']
+    assert len(suppressed) == 1
+    winner = sleeve._c6_orders[suppressed[0]['suppression_winner_order_ordinal']]
+    assert winner['reason'] == 'catastrophe_stop'
+    assert winner['requested_shares'] == 300
 def test_partial_sublot_remainder_is_released_in_real_execution() -> None:
     sleeve, data_map, dates = _real_sleeve_with_position(250, 1_000_000.0)
     pending = [

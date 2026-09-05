@@ -14,6 +14,10 @@ from quantfusion.config.overlay import (
     RISK_ACTION_PRIORITY,
 )
 from quantfusion.domain.models import Signal
+from quantfusion.execution.c6_receipts import (
+    action_receipt, next_action_ordinal, order_receipt, link_order,
+    prepare_action_consolidation,
+)
 from quantfusion.risk.overlay.models import RiskAction
 
 
@@ -84,6 +88,7 @@ def consolidate_risk_sells(
         for signal, strategy in state.pending:
             if strategy is not None or signal.direction != "sell":
                 continue
+            prepare_action_consolidation(getattr(state, "sleeve", None), signal, date_str)
             book = (
                 (state_index, str(signal.symbol), str(signal.strategy_name))
                 if state_local_books
@@ -125,12 +130,17 @@ def consolidate_risk_sells(
             if signal is winner:
                 retained.append((signal, strategy))
             else:
-                record = getattr(getattr(state, "sleeve", None), "_c6_action_by_signal", {}).get(id(signal))
-                winner_record = getattr(getattr(states[winner_state_index], "sleeve", None), "_c6_action_by_signal", {}).get(id(winner))
+                record = action_receipt(getattr(state, "sleeve", None), signal)
+                winner_record = action_receipt(getattr(states[winner_state_index], "sleeve", None), winner)
+                loser_order = order_receipt(getattr(state, "sleeve", None), signal, date_str)
+                winner_order = order_receipt(getattr(states[winner_state_index], "sleeve", None), winner, date_str)
+                if loser_order is not None and winner_order is not None:
+                    loser_order.update(status="suppressed", suppression_winner_order_ordinal=winner_order["order_ordinal"])
                 if record is not None:
                     record.update({"winner_order_ordinal": winner_record["winner_order_ordinal"] if winner_record else record["winner_order_ordinal"], "retained_shares": 0, "suppressed_shares": record["planned_shares"], "remainder_shares": 0, "terminal_for_current_batch": True, "carry_to_next_batch": False, "release_reason": "CANCELLED"})
                     if winner_record is not None:
-                        winner_record["loser_order_ordinals"].append(record["emission_ordinal"])
+                        if loser_order is not None:
+                            winner_record["loser_order_ordinals"].append(loser_order["order_ordinal"])
                 suppressed.append(
                     {
                         "date": date_str,
@@ -185,11 +195,18 @@ def apply_risk_actions(
         sleeve = getattr(states[action.state_index], "sleeve", None)
         records = getattr(sleeve, "_c6_action_lifecycle", None)
         if records is not None and sleeve is not None:
-            ordinal = sum(len(getattr(state.sleeve, "_c6_action_lifecycle", [])) for state in states)
-            current = sum(position.shares for position in sleeve.positions.get(action.symbol, {}).values())
+            ordinal = next_action_ordinal(sleeve)
+            position = sleeve.positions.get(action.symbol, {}).get(action.strategy_name)
+            current = int(position.shares) if position is not None else 0
             record = {"emission_ordinal": ordinal, "timestamp": action.signal_date, "action_id": f"risk:{action.signal_date}:{ordinal}:{action.state_index}:{action.symbol}:{action.strategy_name}", "winner_order_ordinal": ordinal, "loser_order_ordinals": [], "state_index": action.state_index, "sleeve_name": sleeve.sleeve_name, "strategy_name": action.strategy_name, "symbol": action.symbol, "reason": action.reason, "priority": action.priority, "planned_shares": action.shares, "retained_shares": action.shares, "suppressed_shares": 0, "filled_shares": 0, "current_shares": current, "remainder_shares": action.shares, "scope_kind": "book_symbol", "scope_key": f"{action.state_index}:{action.symbol}:{action.strategy_name}", "post_action_target_shares": max(current - action.shares, 0), "terminal_for_current_batch": False, "carry_to_next_batch": True, "release_reason": "STILL_LIVE"}
+            record["execution_timestamp"] = None
+            record["observation_timestamp"] = action.signal_date
+            record["observation_phase"] = "decision_close"
             records.append(record)
-            sleeve._c6_action_by_signal[id(signal)] = record
+            sleeve._c6_action_by_signal[id(signal)] = (signal, record)
+            order = order_receipt(sleeve, signal, action.signal_date)
+            if order is not None:
+                record["winner_order_ordinal"] = order["order_ordinal"]
     if date_str is not None:
         consolidate_risk_sells(
             states,
@@ -278,8 +295,10 @@ def apply_risk_buy_gate(
             ):
                 scaled_shares = int(signal.target_shares * 0.75 // 100 * 100)
                 if scaled_shares > 0:
+                    adjusted = replace(signal, target_shares=scaled_shares)
+                    link_order(state.sleeve, signal, adjusted)
                     retained.append(
-                        (replace(signal, target_shares=scaled_shares), strategy)
+                        (adjusted, strategy)
                     )
                     continue
                 blocked = True

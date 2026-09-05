@@ -409,6 +409,9 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
             effective = sum(event.get('event') == 'concentration_trim' for event in result['risk_events'])
         if intervention != 'PRODUCTION':
             assert c6_diagnostics._warm_snapshot(result, 2000000.)['phase'] == 'before_first_valuation'
+            assert len(result['_c6_fills']) == len(result['trades'])
+            assert sum(x['filled_shares'] for x in result['_c6_orders']) == sum(x.shares for x in result['trades'])
+            assert all(x['requested_shares'] >= x['filled_shares'] for x in result['_c6_orders'])
     assert paths[0] == paths[1] == paths[2] == paths[3]
     assert effective == 0
     record_property('c6.assertion.s/no-op-control/fixture-identity', json.dumps('s/no-op-control/v1'))
