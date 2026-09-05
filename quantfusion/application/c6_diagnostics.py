@@ -427,7 +427,7 @@ def _l1_predicate_rows(specs: Sequence[Mapping[str, Any]], selected: list[dict[s
     finite_bad = [item["evaluation_id"] for item in selected if not all(math.isfinite(number) for number in _numbers(item))]
     eval_name, control_name = (("L1_BASE_EVALUATION_MANIFEST", "L1_BASE_SYNTHETIC_CONTROL_IDS") if base else ("L1_S_EVALUATION_MANIFEST", "L1_S_SYNTHETIC_CONTROL_IDS"))
     identity_bad = [] if _manifest_ok([x["evaluation_id"] for x in evaluations], manifests[eval_name]) and _manifest_ok([x["control_id"] for x in controls], manifests[control_name]) and _manifest_ok([x["scenario_id"] for x in pairs], manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]) else [chosen]
-    correctness_bad = [x["control_id"] for x in controls if not x["passed"]] + [x["scenario_id"] for x in common + no_effect if not x["equal"]]
+    correctness_bad = [x["control_id"] for x in controls if not x["passed"]] + [x["scenario_id"] for x in common if not x["equal"]] + [x["item_id"] for x in no_effect if not x["equal"]]
     arch_names = {"governance/opinion-no-order-effect", "readiness/not-ready-fail-closed", "warm-boundary/causal-state-only"} if base else {"s/common-prefix", "s/coverage-fail-closed", "s/no-op-control"}
     architecture_bad = [x["control_id"] for x in controls if x["control_id"] in arch_names and not x["passed"]]
     facts = {
@@ -442,7 +442,7 @@ def _l1_predicate_rows(specs: Sequence[Mapping[str, Any]], selected: list[dict[s
         "l1.initial.add_one_601869_proxy": ([f"{chosen}::{x}" for x in add_ids], returns(add_ids), [ref[x]["total_return"] for x in add_ids], [] if add_delta >= -0.03 - 1e-12 else [f"{chosen}::{x}" for x in add_ids], add_delta),
         "l1.permutation.invariant": ([f"{chosen}::{x}" for x in perm_ids], [by_id[x]["official_metrics"] for x in perm_ids], [], perm_bad, not perm_bad),
         "l1.instrumentation.no_drift": ([x["scenario_id"] for x in pairs], pairs, [], [x["scenario_id"] for x in pairs if not x["equal"]], all(x["equal"] for x in pairs)),
-        "l1.correctness.synthetic_controls": ([x["control_id"] for x in controls] + [x["scenario_id"] for x in common + no_effect], controls + common + no_effect, [], correctness_bad, not correctness_bad),
+        "l1.correctness.synthetic_controls": ([x["control_id"] for x in controls] + [x["scenario_id"] for x in common] + [x["item_id"] for x in no_effect], controls + common + no_effect, [], correctness_bad, not correctness_bad),
         "l1.architecture.boundaries": (sorted(arch_names), [x for x in controls if x["control_id"] in arch_names], [], architecture_bad, not architecture_bad),
     }
     return [_predicate_result(spec, *facts[spec["id"]]) for spec in specs]
@@ -652,6 +652,30 @@ def _prefix_hash(record: Mapping[str, Any], boundary: str | None) -> str:
     return hashlib.sha256(_canonical_bytes(paths)).hexdigest()
 
 
+def compare_s_paths(base_evaluations: Sequence[Mapping[str, Any]], s_evaluations: Sequence[Mapping[str, Any]], scenario_ids: Sequence[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Require exact counterpart coverage before comparing any producer path."""
+    base_selected = [item for item in base_evaluations if item["variant_id"] == "C6-Base"]
+    for records, variant in ((base_selected, "C6-Base"), (s_evaluations, "C6-Base+S")):
+        expected = [f"{variant}::{item}" for item in scenario_ids]
+        if (len(set(scenario_ids)) != len(scenario_ids)
+                or [item["evaluation_id"] for item in records] != expected
+                or [item["scenario_id"] for item in records] != list(scenario_ids)
+                or any(item["variant_id"] != variant for item in records)):
+            raise ValueError("S comparison requires exact ordered Base and S coverage")
+    base_by_id = {item["evaluation_id"]: item for item in base_evaluations}
+    common, no_effect = [], []
+    for row in s_evaluations:
+        base_id = base_counterpart_id(row["evaluation_id"])
+        counterpart = base_by_id[base_id]
+        timestamp = row["causal_matrix"]["s_evidence"]["first_early_sell_required_close"]
+        left, right = _prefix_hash(counterpart, timestamp), _prefix_hash(row, timestamp)
+        common.append({"scenario_id": row["evaluation_id"], "base_evaluation_id": base_id, "first_s_effective_timestamp": timestamp, "base_prefix_sha256": left, "s_prefix_sha256": right, "equal": left == right})
+        if timestamp is None:
+            a, b = _path_hashes(counterpart), _path_hashes(row)
+            no_effect.append({"item_kind": "evaluation", "item_id": row["evaluation_id"], "base_evaluation_id": base_id, "s_effective_count": 0, **{f"base_{key}": value for key, value in a.items()}, **{f"s_{key}": value for key, value in b.items()}, "equal": a == b})
+    return common, no_effect
+
+
 def _control_nodes() -> dict[str, list[str]]:
     """Only explicitly covered contracts may inherit an executed test result."""
     groups = {
@@ -689,6 +713,15 @@ def _control_nodes() -> dict[str, list[str]]:
         *(module + f"rejects_pre_window_economic_contamination[{case}]"
           for case in ("cash", "positions", "pending", "trades", "lock", "peak", "sticky")),
     ]
+    mapping.update({
+        "governance/opinion-no-order-effect": ["tests/c6_non_economic/test_c6_diagnostics.py::test_governance_opinion_cannot_change_executable_signals"],
+        "readiness/not-ready-fail-closed": ["tests/c6_non_economic/test_c6_diagnostics.py::test_readiness_not_ready_suppresses_buys_but_preserves_sells"],
+        "no-drift/healthy-bull": ["tests/c6_non_economic/test_c6_diagnostics.py::test_healthy_bull_replay_and_s_noop_preserve_all_five_paths"],
+        "s/no-op-control": ["tests/c6_non_economic/test_c6_diagnostics.py::test_healthy_bull_replay_and_s_noop_preserve_all_five_paths"],
+        "s/common-prefix": ["tests/c6_non_economic/test_c6_diagnostics.py::test_s_common_prefix_uses_one_strict_boundary_and_full_noop_paths"],
+        "s/coverage-fail-closed": [f"tests/c6_non_economic/test_c6_diagnostics.py::test_s_comparison_coverage_rejects_missing_duplicate_extra[{case}]" for case in ("missing", "duplicate", "extra")],
+        "s/dominant-cluster-order": ["tests/c6_non_economic/test_c6_early_concentration.py::test_dominant_cluster_tie_break_is_label_order_and_input_invariant"],
+    })
     return mapping
 
 
@@ -699,6 +732,7 @@ def _controls(prereg: Mapping[str, Any], name: str) -> list[dict[str, Any]]:
     mapping = _control_nodes()
     nodes = sorted({node for control in spec["ids"] for node in mapping.get(control, [])})
     observed: dict[str, bool] = {}
+    properties: dict[str, dict[str, Any]] = {}
     with tempfile.TemporaryDirectory(prefix="c6-control-receipts-") as directory:
         report = Path(directory) / "tests.xml"
         if nodes:
@@ -714,6 +748,13 @@ def _controls(prereg: Mapping[str, Any], name: str) -> list[dict[str, Any]]:
                 if node in observed:
                     raise RuntimeError("duplicate synthetic control test receipt")
                 observed[node] = not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))
+                properties[node] = {}
+                for prop in case.findall("properties/property"):
+                    key = prop.attrib["name"]
+                    if key.startswith("c6.assertion."):
+                        if key in properties[node]:
+                            raise ValueError("duplicate synthetic assertion receipt")
+                        properties[node][key] = json.loads(prop.attrib["value"])
     rows = []
     for control in spec["ids"]:
         required = mapping.get(control, [])
@@ -721,9 +762,15 @@ def _controls(prereg: Mapping[str, Any], name: str) -> list[dict[str, Any]]:
         passed = receipt["coverage_complete"] and all(observed[node] for node in required)
         assertions = []
         for item in spec["assertions_by_control"][control]:
-            if item["comparator"] != "equal" or item["expected"] is not True:
+            if item["comparator"] != "equal":
                 raise ValueError("unsupported synthetic assertion contract")
-            assertions.append({**item, "actual": passed, "passed": passed, "detail_sha256": hashlib.sha256(_canonical_bytes(receipt)).hexdigest()})
+            key = "c6.assertion." + item["id"]
+            values = [properties[node][key] for node in required if key in properties.get(node, {})]
+            actual = values[0] if values and all(value == values[0] for value in values) else (passed if item["expected"] is True and control != "s/no-op-control" else None)
+            matched = passed and type(actual) is type(item["expected"]) and actual == item["expected"]
+            assertion_receipt = {**receipt, "assertion_id": item["id"], "observed_values": values}
+            assertions.append({**item, "actual": actual, "passed": matched, "detail_sha256": hashlib.sha256(_canonical_bytes(assertion_receipt)).hexdigest()})
+        passed = passed and all(item["passed"] for item in assertions)
         rows.append({"control_id": control, "passed": passed, "assertions": assertions, "economic_fields": None})
     return rows
 
@@ -834,17 +881,7 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
         manifest = strict_json_load(Path(args.producer_export) / "manifest.json")
         base_payload = strict_json_load(Path(args.base_producer_export) / "payload.json")
         identity = {"artifact_full_byte_sha256": args.producer_artifact_sha256, "attempt_id": manifest["attempt_id"], "binding_id": manifest["binding_id"], "logical_run_id": manifest["logical_run_id"], "workflow_run_id": manifest["workflow_run_id"]}
-        base_by_id = {item["evaluation_id"]: item for item in base_payload["evaluations"]}
-        common, no_effect = [], []
-        for row in evaluations:
-            base_id = base_counterpart_id(row["evaluation_id"])
-            counterpart = base_by_id[base_id]
-            timestamp = row["causal_matrix"]["s_evidence"]["first_early_sell_required_close"]
-            left, right = _prefix_hash(counterpart, timestamp), _prefix_hash(row, timestamp)
-            common.append({"scenario_id": row["evaluation_id"], "base_evaluation_id": base_id, "first_s_effective_timestamp": timestamp, "base_prefix_sha256": left, "s_prefix_sha256": right, "equal": left == right})
-            if timestamp is None:
-                a, b = _path_hashes(counterpart), _path_hashes(row)
-                no_effect.append({"item_kind": "evaluation", "item_id": row["evaluation_id"], "base_evaluation_id": base_id, "s_effective_count": 0, **{f"base_{key}": value for key, value in a.items()}, **{f"s_{key}": value for key, value in b.items()}, "equal": a == b})
+        common, no_effect = compare_s_paths(base_payload["evaluations"], evaluations, scenario_ids)
         payload.update({"base_producer_identity": qualification["base_producer_identity"], "qualification_producer_identity": identity, "common_prefix_comparisons": common, "no_effect_comparisons": no_effect})
     reference = stress_artifacts._load_initial_baseline_reference(Path(prereg["transition_reference"]["path"]))
     payload["diagnostic_predicates"] = _l1_predicate_rows(specs, selected, evaluations, controls, pairs, reference, manifests, base, common, no_effect)

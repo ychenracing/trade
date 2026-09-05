@@ -308,3 +308,168 @@ def test_warm_boundary_missing_capture_cannot_reconstruct_end_state():
     states, _ = _warm_fixture()
     with pytest.raises(ValueError, match='warm boundary'):
         c6_diagnostics._warm_snapshot({'_c6_states': states}, 2000000)
+
+
+def _synthetic_daily_signals(directory, *, ready, opinion):
+    from tests.integration._daily_scan_support import FakeSignal
+    from tests.integration.test_daily_artifact_transactions import LastGoodArtifactProtectionTests
+    fixture = LastGoodArtifactProtectionTests()
+    result = fixture._make_mock_result(
+        deployment_decision={'name': 'cash_preservation'},
+        warmup_health={'warmup_status': ready, 'reasons': []},
+        risk_opinion=opinion,
+        pending_signals=[FakeSignal('buy', 'turtle', '300308', 100, 150., 'breakout', '2026-07-30'),
+                         FakeSignal('sell', 'turtle', '300502', 100, 150., 'stop_loss', '2026-07-30')],
+    )
+    assert fixture._run_main_with_mock(str(directory), result) == 0
+    return json.loads((directory / 'signals_2026-07-30.json').read_text())
+
+
+def test_readiness_not_ready_suppresses_buys_but_preserves_sells(tmp_path):
+    ready = _synthetic_daily_signals(tmp_path / 'ready', ready='READY', opinion=None)
+    blocked = _synthetic_daily_signals(tmp_path / 'blocked', ready='NOT_READY', opinion=None)
+    assert ready['summary']['buy'] == 1
+    assert blocked['summary']['buy'] == 0
+    assert blocked['summary']['warmup_not_ready'] is True
+    assert not ready['summary']['current_route_mismatch']
+    assert [x for x in blocked['pending_signals'] if x['direction'] == 'sell'] == [x for x in ready['pending_signals'] if x['direction'] == 'sell']
+    assert blocked['summary']['sell'] == 1
+
+
+def test_governance_opinion_cannot_change_executable_signals(tmp_path):
+    baseline = _synthetic_daily_signals(tmp_path / 'baseline', ready='READY', opinion=None)
+    severe = _synthetic_daily_signals(tmp_path / 'severe', ready='READY', opinion={
+        'risk_level': 3, 'block_new_entries': True, 'block_pyramids': True,
+        'recommended_gross_cap': 0., 'bull_silent': False,
+    })
+    for key in ('pending_signals', 'blocked_signals', 'signals', 'summary'):
+        assert severe[key] == baseline[key]
+    assert baseline['summary']['buy'] == baseline['summary']['sell'] == 1
+
+
+def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record_property, monkeypatch):
+    """Exercise real replay exclusively on generated, monotonically rising bars."""
+    from dataclasses import asdict
+    from quantfusion.config.portfolio import PortfolioPolicy
+    from quantfusion.config.overlay import RISK_BASKET
+    from quantfusion.config.regime import REGIME_INDEX_FILES
+    from quantfusion.application.stress_scenarios import ORDERED_CODES
+    dates = pd.bdate_range('2024-01-01', '2026-01-09')
+    close = pd.Series([10. + i * .02 for i in range(len(dates))], index=dates)
+    frame = pd.DataFrame({'open': close, 'high': close, 'low': close * .999,
+                          'close': close, 'volume': 10000000.})
+    frame.index.name = 'date'
+    symbols = list(ORDERED_CODES[:5])
+    for symbol in set(symbols) | set(PortfolioPolicy().regime_symbols) | set(RISK_BASKET) | set(REGIME_INDEX_FILES.values()):
+        frame.to_csv(tmp_path / f'{symbol}.csv')
+    paths = []
+    effective = None
+    opening_states = []
+    original_open = BacktestEngine._execute_ensemble_open
+    def capture_open(engine, states, date, *args, **kwargs):
+        opening_states.append({
+            'date': str(date),
+            'orders': [[asdict(signal) for signal, _ in state.pending] for state in states],
+            'positions': [{symbol: {name: asdict(position) for name, position in books.items()}
+                           for symbol, books in state.sleeve.positions.items()} for state in states],
+        })
+        return original_open(engine, states, date, *args, **kwargs)
+    monkeypatch.setattr(BacktestEngine, '_execute_ensemble_open', capture_open)
+    for intervention in ('BASELINE', 'C6_BASE', 'C6_BASE_PLUS_S'):
+        opening_states = []
+        engine = ProductionReplayEngine(2000000.)
+        result = engine.run_c6_diagnostic(
+            {symbol: symbol for symbol in symbols}, '2026-01-05', '2026-01-09',
+            diagnostic_request={'schema_version': 1, 'intervention_id': intervention,
+                                'recording_mode': 'DEFAULT', 'scenario_id': 'prefix-05',
+                                'diagnostic_noncanonical': True, 'allow_publication': False},
+            data_dir=str(tmp_path), regime_data_dir=str(tmp_path),
+        )
+        # Direct engine ledgers, without the diagnostic serializer's reconstructions.
+        path = {
+            'orders': {'open_batches': [x['orders'] for x in opening_states], 'events': result['order_events'], 'pending': [[asdict(signal) for signal, _ in state.pending] for state in result['_c6_states']]},
+            'fills': [asdict(trade) for trade in result['trades']],
+            'cash': [s['equity_curve']['cash'].to_json(date_format='iso') for s in result['_c6_sleeve_results']],
+            'positions': {'open_batches': [x['positions'] for x in opening_states], 'final': [{symbol: {name: asdict(position) for name, position in books.items()}
+                           for symbol, books in s.sleeve.positions.items()} for s in result['_c6_states']]},
+            'equity': result['equity_curve'].to_json(date_format='iso') if hasattr(result['equity_curve'], 'to_json') else result['equity_curve'],
+        }
+        assert path['fills'], 'fixture must exercise actual execution'
+        paths.append({key: __import__('hashlib').sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest() for key, value in path.items()})
+        if intervention == 'C6_BASE_PLUS_S':
+            effective = sum(event.get('event') == 'concentration_trim' for event in result['risk_events'])
+        assert c6_diagnostics._warm_snapshot(result, 2000000.)['phase'] == 'before_first_valuation'
+    assert paths[0] == paths[1] == paths[2]
+    assert effective == 0
+    record_property('c6.assertion.s/no-op-control/fixture-identity', json.dumps('s/no-op-control/v1'))
+    record_property('c6.assertion.s/no-op-control/s-effective-count', json.dumps(effective))
+    record_property('c6.assertion.s/no-op-control/all-five-path-hashes-equal', json.dumps(paths[1] == paths[2]))
+
+
+def _s_comparison_fixture():
+    from copy import deepcopy
+    def record(variant, scenario):
+        return {'evaluation_id': f'{variant}::{scenario}', 'variant_id': variant, 'scenario_id': scenario,
+                'orders': [{'execution_timestamp': '2026-01-06', 'shares': 100}],
+                'fills': [{'timestamp': '2026-01-06', 'shares': 100}],
+                'cash_series': [{'timestamp': '2026-01-05', 'cash': 1000}],
+                'position_series': [{'timestamp': '2026-01-05', 'shares': 0}],
+                'equity_series': [{'timestamp': '2026-01-05', 'equity': 1000}],
+                'causal_matrix': {'s_evidence': {'first_early_sell_required_close': None}}}
+    base = [record('C6-Base', 'a'), record('C6-Base', 'b')]
+    selected = [record('C6-Base+S', 'a'), record('C6-Base+S', 'b')]
+    return deepcopy(base), deepcopy(selected)
+
+
+def test_s_common_prefix_uses_one_strict_boundary_and_full_noop_paths():
+    base, selected = _s_comparison_fixture()
+    selected[0]['causal_matrix']['s_evidence']['first_early_sell_required_close'] = '2026-01-06'
+    selected[0]['orders'][0]['shares'] = 50
+    selected[0]['fills'][0]['shares'] = 50
+    common, no_effect = c6_diagnostics.compare_s_paths(base, selected, ['a', 'b'])
+    assert len(common) == 2 and all(row['equal'] for row in common)
+    assert common[0]['first_s_effective_timestamp'] == '2026-01-06'
+    assert len(no_effect) == 1 and no_effect[0]['item_id'] == 'C6-Base+S::b'
+    assert no_effect[0]['equal']
+    selected[0]['cash_series'][0]['cash'] = 999
+    selected[1]['orders'][0]['shares'] = 1
+    common, no_effect = c6_diagnostics.compare_s_paths(base, selected, ['a', 'b'])
+    assert not common[0]['equal'] and not common[1]['equal']
+    assert not no_effect[0]['equal']
+
+
+@pytest.mark.parametrize('mutation', ['missing', 'duplicate', 'extra'])
+def test_s_comparison_coverage_rejects_missing_duplicate_extra(mutation):
+    base, selected = _s_comparison_fixture()
+    for target in (base, selected):
+        changed = list(target)
+        if mutation == 'missing':
+            changed.pop()
+        elif mutation == 'duplicate':
+            changed[-1] = changed[0]
+        else:
+            changed.append({**changed[0], 'scenario_id': 'unknown', 'evaluation_id': changed[0]['variant_id'] + '::unknown'})
+        with pytest.raises(ValueError, match='exact ordered'):
+            c6_diagnostics.compare_s_paths(changed if target is base else base, changed if target is selected else selected, ['a', 'b'])
+
+
+@pytest.mark.parametrize('observed', [None, False, 1])
+def test_s_noop_receipt_requires_observed_typed_values(monkeypatch, observed):
+    import xml.etree.ElementTree as ET
+    control = 's/no-op-control'
+    assertion = control + '/s-effective-count'
+    monkeypatch.setattr(c6_diagnostics, '_control_nodes', lambda: {control: ['tests/fake.py::test_control']})
+    def process(argv, **kwargs):
+        report = Path(next(x.split('=', 1)[1] for x in argv if x.startswith('--junitxml=')))
+        root = ET.Element('testsuite')
+        case = ET.SubElement(root, 'testcase', classname='tests.fake', name='test_control')
+        if observed is not None:
+            props = ET.SubElement(case, 'properties')
+            ET.SubElement(props, 'property', name='c6.assertion.' + assertion, value=json.dumps(observed))
+        report.write_bytes(ET.tostring(root))
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(c6_diagnostics.subprocess, 'run', process)
+    p = {'scenario_manifests': {'S': {'ids': [control], 'assertions_by_control': {control: [{'id': assertion, 'comparator': 'equal', 'expected': 0}]}}}}
+    rows = c6_diagnostics._controls(p, 'S')
+    assert not rows[0]['passed']
+    assert rows[0]['assertions'][0]['actual'] is observed

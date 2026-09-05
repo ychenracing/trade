@@ -60,18 +60,14 @@
     "until_approved": "No fresh P freeze, economic dispatch, candidate merge or modification of protected warm-state/account-lock contract."
   },
   "control_evidence_fix": {
-    "status": "fail_closed_with_explicit_remaining_gaps",
+    "status": "all_frozen_synthetic_controls_verified",
     "method": "Each supported Base control is bound to exact executed pytest node IDs and JUnit assertion outcomes; missing or skipped receipts cannot pass. L1 checks coverage before any economic evaluation. Unsupported assertion types raise instead of copying expected values.",
-    "base_verified": 26,
+    "base_verified": 29,
     "base_total": 29,
-    "base_unverified": [
-      "governance/opinion-no-order-effect",
-      "no-drift/healthy-bull",
-      "readiness/not-ready-fail-closed"
-    ],
-    "S_status": "Not claimed verified: per-assertion receipts still required for all four S controls, including the non-boolean no-op assertions.",
-    "verification": "An actual isolated pytest subprocess passed all 26 mapped Base controls, including nine warm boundary cases. The three unmapped controls remain false and block economics.",
-    "no_acceptance_claim": "Incomplete control coverage blocks fresh economics; expected constants are no longer copied into observed results."
+    "base_unverified": [],
+    "S_status": "4/4 verified; no-op assertions read typed observed JUnit properties, including fixture ID, effective count, and all-five-path hash equality.",
+    "verification": "39 targeted contract/diagnostic tests passed before three additional receipt integrity cases; those three cases also passed. Actual isolated control subprocesses passed Base 29/29 and S 4/4. Healthy generated bars execute actual fills through all three replay variants; full observed path hashes match.",
+    "no_acceptance_claim": "Synthetic controls are verified; complete factual economic trace, warm schema amendment, fresh freeze, and producer/D authentication still require review."
   },
   "warm_boundary_amendment_authorization": {
     "status": "approved_by_user_continuation",
@@ -84,5 +80,10 @@
     "raw_peak_semantics": "Account peak/daily/lifetime are uninitialized zero; ConfirmedDrawdown sleeve manager has no independent lifetime_peak_assets, serialized null rather than invented value.",
     "verification": "32 targeted contract/diagnostics tests passed, including nine warm capture/contamination regressions; repository CI Ruff selection passed.",
     "remaining": "Fresh P schema amendment is not frozen; other control and full trace evidence remain incomplete. No economic dispatch authorized by this repair alone."
+  },
+  "S_comparison_repair": {
+    "coverage": "Require exact ordered Base and S IDs against P scenario list before comparison; missing, duplicate, extra members fail closed.",
+    "predicates": "No-effect comparisons use item_id, correcting prior scenario_id KeyError.",
+    "verification": "Four new common-prefix/full-no-op and coverage mutation cases passed."
   }
 }
