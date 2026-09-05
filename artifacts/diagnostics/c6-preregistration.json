@@ -2,8 +2,8 @@
   "schema_version": 2,
   "kind": "c6_causal_risk_closure_preregistration",
   "status": "frozen_before_implementation_or_economic_dispatch",
-  "experiment_id": "c6-causal-risk-closure-17x958-v11",
-  "frozen_at": "2026-09-05T06:57:28Z",
+  "experiment_id": "c6-causal-risk-closure-17x958-v14",
+  "frozen_at": "2026-09-05T14:42:04Z",
   "authority": {
     "repository": "ychenracing/trade",
     "branch": "codex/c6-causal-risk-closure-v11",
@@ -44,20 +44,62 @@
       57,
       60,
       61,
-      62
+      62,
+      65,
+      66
     ],
-    "base_revision": "faf45b9eb0d73fb4456266065d331e67eee15906",
-    "base_tree": "02aa26736ac6a58cf14b797474af331c10be300c",
-    "history_bridge_revision": "148494e2fba01a4ed5bd92be60b017e9f5f03e5d",
-    "restart_checkpoint_revision": "148494e2fba01a4ed5bd92be60b017e9f5f03e5d",
+    "base_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+    "base_tree": "7fbda57f4ff3512afa13fee8a7c2c8702285af7c",
+    "history_bridge_revision": "158e514a1054a999c44252f7b4c003cb1ee83b36",
+    "restart_checkpoint_revision": "159c6c70c7b3114779c4102aec9aab4529eacbac",
     "preregistration_path": "artifacts/diagnostics/c6-preregistration.json",
     "preregistration_commit": null,
     "preregistration_tree": null,
     "preregistration_blob": null,
     "preregistration_sha256": null,
-    "late_binding_rule": "The containing P commit, tree, blob OID and full-byte SHA-256 are verified after this file is committed and are recorded in R; the five nulls here prevent self-reference."
+    "late_binding_rule": "The containing P commit, tree, blob OID and full-byte SHA-256 are verified after this file is committed and are recorded in R; the five nulls here prevent self-reference.",
+    "recovery_continuation": {
+      "governing_contract_path": "docs/C6_RECOVERY_CONTRACT.md",
+      "governing_contract_sha256": "ee1b3402e9faa8264d1884eae6d0b4598add8d89b08a692e429def42901247a0",
+      "continuing_pull_request": 63,
+      "old_P": "d3181f504de319daa9efa366e1f1faf727eab011",
+      "old_I_B": "c76b09c8636a129150c20a7fddcee23a903445d0",
+      "old_I_S": "a3f8a675082e98546e45882fae81880ddc25e517",
+      "old_R": "81612f8b89c790562f0afc807576bbe691e27ea6",
+      "old_execution_status": "INVALID_TERMINAL",
+      "economic_hypotheses_changed": false,
+      "repair_class": "A: native metadata, record validation, checkpoint budget, orchestration and CI/provenance",
+      "observed_data": "Old 530 baseline records and historical transition report remain seen data; this is fixed-contract recovery, not a new out-of-sample study.",
+      "old_evidence": {
+        "assessment_path": "artifacts/diagnostics/c6-v11-recovery-assessment.json",
+        "verified_records": 530,
+        "imported_records": 0,
+        "recompute_prefix_records": 530,
+        "lineage_import": "not_supported; exact-source contracts preserved"
+      },
+      "failure_policy": {
+        "A": "Repair engineering mismatch under new explicit immutable revision; revalidate all dependent fields and decisions. Do not change economic hypotheses.",
+        "B": "Proven deviation from frozen economic formula permits minimal correctness repair. Invalidate affected economic paths and dependents, rebind and rerun. Never claim zero economic drift.",
+        "C": "Valid economic rejection follows fixed Base residual/S qualification/selection gates; no parameter tuning or third candidate.",
+        "D": "Use compliant native capabilities and finish independent work; report only a verified remaining external blocker."
+      },
+      "formal_execution": "One valid complete acceptance on each stable valid final candidate. A proven engineering-invalid invocation may be repaired and affected work rerun; valid economic rejection cannot be renamed or rerun for selection.",
+      "main_sync_and_merge": "Normal merge of main is allowed with dependency-based revalidation. Use active strict up-to-date required checks and protected expected-head squash merge; no bypass and no extra expected-base CAS requirement.",
+      "continuation": "No new research authorization required for A/B. Do not block waiting on one remote operation beyond 10 minutes; verified GitHub chain continues, while independent local work proceeds. If all executable work ends and an external condition remains, report pending honestly.",
+      "prefreeze_serialization_repair": {
+        "invalid_P": "08f93ed79d44f854a8b48826643c5adfb07cadb5",
+        "invalid_I_B": "c48085e867ec767f9cb2296eabd88ede06616bdc",
+        "invalid_I_S": "4caf406600a26c78af48b78d54baf518b6d19d61",
+        "root_cause": "Historical v10 audit companion was truncated by local-to-Git tree transfer chunk budget; detected by exact candidate tree comparison before R or economic dispatch. P JSON and implementation code were complete.",
+        "class": "A_document_transfer",
+        "fix": "Reference the original immutable Git blob directly; verify all frozen input file hashes before publication.",
+        "economic_evaluations": 0,
+        "code_unchanged": true,
+        "workflow_unchanged": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67; retain proven v13 workflow anchor while logical/source refs advance to v14"
+      }
+    }
   },
-  "purpose": "Fresh result-independent reconstruction of the original uploaded C6 causal risk closure contract after review of unsealed v10. Historical v10 run 33933010157 was cancelled with zero artifacts and remains invalid evidence. Preserve the exact 765/958 scenarios, data, economic thresholds, candidate family and official gates. Restore native immutable pre-loop warm state (explicitly authorized), genuine W0..W5 scopes, U candidate-only score propagation, final native S queue feasibility, actual causal/execution evidence, independent consumer recomputation and lossless bounded diagnostic transport. All code prototypes and probes before this freeze used synthetic inputs only; no fresh candidate market outcomes were used to design this P. Original user instructions govern this fresh cycle; historical P constraints invented beyond that contract are not carried forward.",
+  "purpose": "Authorized engineering recovery of immutable invalid v11 under docs/C6_RECOVERY_CONTRACT.md. Repair real native metadata and checkpoint semantic boundaries before large execution, authenticate real cloud continuation, retain seen-data provenance, and reconstruct distinct Base/S identities. Existing economic definitions, 765/3831/3875 manifests, formal 17/958 gates, tolerance, locks and mechanical selection remain unchanged. All old objects and forensic artifacts remain immutable. No cross-source record import: replay the 530 old baseline prefix under this revision.",
   "claims_not_authorized": [
     "out_of_sample_generalization",
     "complete_membership_or_superset_stability",
@@ -2811,11 +2853,11 @@
     "execution_owner": "GitHub Actions C6 Bound Economic Run only",
     "workflow": {
       "path": ".github/workflows/c6-bound-economic.yml",
-      "dispatch_ref": "codex/c6-v11-workflow-anchor",
-      "revision": "faf45b9eb0d73fb4456266065d331e67eee15906",
+      "dispatch_ref": "codex/c6-v13-workflow-anchor",
+      "revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
       "file_mode": "100644",
-      "file_git_blob": "c3efe9864e280595b81bf9d5f4a6e68899e7c090",
-      "file_sha256": "f16cfa6db2d828fa1c7d9d759e79b9d7f6f9f4fbf92e74cd17350fefd5bf14de",
+      "file_git_blob": "8995817891eac8a9fd3aab8fc436536ee81c823b",
+      "file_sha256": "c202653296fd917de115d06602706a8ae3971561e602bffa8be8990341d71b47",
       "permissions": {
         "actions": "read",
         "contents": "read"
@@ -2842,10 +2884,10 @@
       ],
       "fencing_token_generation": "The pinned workflow generates a fresh 64-lowercase-hex run-local nonce with Python secrets before input validation, masks it immediately, and passes it only through GITHUB_ENV and the wrapper/child process environments.",
       "trusted_source_refs": {
-        "I_B": "codex/c6-base-v11",
-        "I_S": "codex/c6-s-v11"
+        "I_B": "codex/c6-base-v14",
+        "I_S": "codex/c6-s-v14"
       },
-      "trusted_evidence_ref": "codex/c6-evidence-v11",
+      "trusted_evidence_ref": "codex/c6-evidence-v14",
       "pre_import_anchor": "Before checkout or import, git ls-remote --refs on the public repository must return exactly source_revision at the candidate's trusted source ref. With empty D, evidence-ref head must equal run_bindings_revision. With nonempty D, evidence-ref head must equal d_commit.",
       "post_D_anchor": "For L2/L4 the checked-out D commit has exactly one parent equal run_bindings_revision and its only diff is A artifacts/diagnostics/c6-selection.json; any other parent/path/status is invalid."
     },
@@ -2894,7 +2936,7 @@
         "record_id": "c6.base.l1",
         "workflow_binding_id": "c6.base.l1",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v11-base-l1",
+        "logical_run_id": "c6-v14-base-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_B",
@@ -2932,7 +2974,7 @@
         "record_id": "c6.s.qualification",
         "workflow_binding_id": "c6.s.qualification",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v11-s-qualification",
+        "logical_run_id": "c6-v14-s-qualification",
         "initial_attempt_id": "a0",
         "stage": "QUALIFICATION",
         "source_alias": "I_S",
@@ -2976,7 +3018,7 @@
         "record_id": "c6.base_plus_s.l1",
         "workflow_binding_id": "c6.base_plus_s.l1",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v11-base-plus-s-l1",
+        "logical_run_id": "c6-v14-base-plus-s-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_S",
@@ -3026,7 +3068,7 @@
         "record_id": "c6.base.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v11-base-l2",
+        "logical_run_id": "c6-v14-base-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_B",
@@ -3064,7 +3106,7 @@
         "record_id": "c6.base_plus_s.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v11-base-plus-s-l2",
+        "logical_run_id": "c6-v14-base-plus-s-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_S",
@@ -3102,7 +3144,7 @@
         "record_id": "c6.base.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v11-base-l4",
+        "logical_run_id": "c6-v14-base-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_B",
@@ -3148,7 +3190,7 @@
         "record_id": "c6.base_plus_s.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v11-base-plus-s-l4",
+        "logical_run_id": "c6-v14-base-plus-s-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_S",
@@ -3246,11 +3288,11 @@
         ],
         "field_types": {
           "path": "literal .github/workflows/c6-bound-economic.yml",
-          "dispatch_ref": "literal codex/c6-v11-workflow-anchor",
-          "revision": "literal faf45b9eb0d73fb4456266065d331e67eee15906",
+          "dispatch_ref": "literal codex/c6-v14-workflow-anchor",
+          "revision": "literal e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
           "mode": "literal 100644",
-          "git_blob": "literal c3efe9864e280595b81bf9d5f4a6e68899e7c090",
-          "sha256": "literal f16cfa6db2d828fa1c7d9d759e79b9d7f6f9f4fbf92e74cd17350fefd5bf14de"
+          "git_blob": "literal 8995817891eac8a9fd3aab8fc436536ee81c823b",
+          "sha256": "literal c202653296fd917de115d06602706a8ae3971561e602bffa8be8990341d71b47"
         },
         "array_order": {}
       },
@@ -3418,8 +3460,8 @@
           "equal_across_all_records": "literal ordered array [P,workflow,resolved_inputs,runtime.runner_image_os,runtime.runner_image_version,runtime.python_version,runtime.dependency_lock,runtime.workers,runtime.process_map_order,runtime.checkpoint_every] whose named values must be deeply equal across all seven records",
           "equal_within_source_alias": "literal ordered array [source_revision,source_tree,source_blob_identities] whose named values must be deeply equal among every I_B record and separately among every I_S record",
           "permitted_record_differences": "literal ordered array [record_id,workflow_binding_id,candidate_id,logical_run_id,initial_attempt_id,stage,source_alias,source_revision,source_tree,source_blob_identities,entrypoint,argv,runtime_late_slots,scenario_manifest_identity,synthetic_control_manifest_identity,evaluation_manifest_identity,item_manifest_contract,producer_policy,decision_policy,attempt_policy,paths,canonical_payload_schema,exit_semantics,record_signature] and no others",
-          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v11,I_S:codex/c6-s-v11}",
-          "trusted_evidence_ref": "literal codex/c6-evidence-v11",
+          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v14,I_S:codex/c6-s-v14}",
+          "trusted_evidence_ref": "literal codex/c6-evidence-v14",
           "validation_policy": "literal deep_compare_before_any_dispatch; unknown path or unlisted difference invalid"
         },
         "array_order": {
@@ -3457,7 +3499,7 @@
           "dispatch_deadline_utc": "literal 2026-11-23T15:55:00Z; every initial or resume workflow created_at must be <= this instant"
         },
         "array_order": {},
-        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v11-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
+        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v14-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
       },
       "R_paths": {
         "type": "object",
@@ -3784,7 +3826,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-base-v11",
+      "ref": "codex/c6-base-v14",
       "stages": [
         "I_B_frozen"
       ],
@@ -3797,7 +3839,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-s-v11",
+      "ref": "codex/c6-s-v14",
       "stages": [
         "I_S"
       ],
@@ -3810,7 +3852,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-evidence-v11",
+      "ref": "codex/c6-evidence-v14",
       "stages": [
         "R",
         "D"
@@ -3841,8 +3883,8 @@
     {
       "event": "workflow_dispatch",
       "workflow": "C6 Bound Economic Run",
-      "workflow_ref": "codex/c6-v11-workflow-anchor",
-      "workflow_revision": "faf45b9eb0d73fb4456266065d331e67eee15906",
+      "workflow_ref": "codex/c6-v13-workflow-anchor",
+      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
       "stages": [
         "L1_Base",
         "S_QUALIFICATION_if_residual",
@@ -3939,7 +3981,7 @@
     },
     {
       "event": "workflow_run",
-      "ref": "codex/c6-v11-workflow-anchor",
+      "ref": "codex/c6-v13-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
@@ -3951,8 +3993,44 @@
       "full958": false,
       "required": false,
       "permissions": "actions:write, contents:read",
-      "workflow_revision": "faf45b9eb0d73fb4456266065d331e67eee15906",
+      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
       "precondition": "successful terminal predecessor with exact sealed incomplete checkpoint, unchanged workflow anchor, no later attempt",
+      "output_boundary": "single successor workflow_dispatch; no candidate imports or economic computation"
+    },
+    {
+      "event": "schedule",
+      "ref": "codex/c6-v13-workflow-anchor",
+      "stages": [
+        "validate_sealed_checkpoint",
+        "dispatch_next_attempt_only"
+      ],
+      "workflows": [
+        "C6 Automatic Checkpoint Resume"
+      ],
+      "economic_fields": false,
+      "full958": false,
+      "required": false,
+      "permissions": "actions:write, contents:read",
+      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+      "precondition": "successful terminal predecessor with exact sealed incomplete checkpoint, unchanged workflow anchor, no later attempt",
+      "output_boundary": "single successor workflow_dispatch; no candidate imports or economic computation"
+    },
+    {
+      "event": "workflow_dispatch",
+      "ref": "codex/c6-v13-workflow-anchor",
+      "stages": [
+        "validate_sealed_checkpoint",
+        "dispatch_next_attempt_only"
+      ],
+      "workflows": [
+        "C6 Automatic Checkpoint Resume"
+      ],
+      "economic_fields": false,
+      "full958": false,
+      "required": false,
+      "permissions": "actions:write, contents:read",
+      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+      "precondition": "trusted completion request names exact predecessor; wait for successful terminal state then authenticate all existing evidence and no later attempt",
       "output_boundary": "single successor workflow_dispatch; no candidate imports or economic computation"
     }
   ],
@@ -3994,11 +4072,13 @@
       "tests/c6_non_economic/test_c6_contract.py",
       "tests/c6_non_economic/test_c6_diagnostics.py",
       "tests/c6_non_economic/test_c6_fixed_reference_admission.py",
-      "tests/c6_non_economic/test_c6_retained_winner.py"
+      "tests/c6_non_economic/test_c6_recovery_boundaries.py",
+      "tests/c6_non_economic/test_c6_retained_winner.py",
+      "tests/contract/test_repository_hygiene.py"
     ],
     "I_B_diff_budget": {
-      "maximum_changed_paths": 23,
-      "maximum_added_lines": 10000,
+      "maximum_changed_paths": 25,
+      "maximum_added_lines": 11000,
       "maximum_deleted_lines": 250
     },
     "I_S_allowed_paths": [
@@ -4090,7 +4170,8 @@
       "tests/regression/test_system_boundaries.py",
       "tests/contract/test_architecture.py",
       "tests/contract/test_fail_closed_boundaries.py",
-      "tests/contract/test_repository_hygiene.py"
+      "tests/contract/test_repository_hygiene.py",
+      "tests/c6_non_economic/test_c6_recovery_boundaries.py"
     ],
     "I_S_pytest_exact_argv": [
       "python",
@@ -4113,10 +4194,11 @@
       "tests/contract/test_fail_closed_boundaries.py",
       "tests/contract/test_repository_hygiene.py",
       "tests/c6_non_economic/test_c6_early_concentration.py",
-      "tests/c6_non_economic/test_c6_s_qualification.py"
+      "tests/c6_non_economic/test_c6_s_qualification.py",
+      "tests/c6_non_economic/test_c6_recovery_boundaries.py"
     ],
-    "prefreeze_CI_branch": "codex/c6-evidence-repair",
-    "required_review": "Focused exact-tree correctness/security review for I_B and I_S, zero Critical/Important findings. Generated controls and static semantics only before R; candidate outcomes may not alter either tree.",
+    "prefreeze_CI_branch": "codex/c6-causal-risk-closure-v11",
+    "required_review": "Focused exact-tree correctness/security review for I_B/I_S with zero unresolved Critical/Important defects before dispatch. Recovery classification A/B remains authorized after observations; economic hypotheses never retune.",
     "import_surface": "Exact checkout only; clean index/tracked/untracked state; PYTHONPATH contains only that checkout; outputs remain under non-importable artifacts/checkpoints/c6.",
     "economic_run_before_I_B_I_S_R_frozen": "forbidden",
     "implementation_identity_rules": {
@@ -4131,11 +4213,15 @@
     },
     "P_allowed_paths": [
       "artifacts/diagnostics/c6-preregistration.json",
-      "artifacts/diagnostics/c6-v10-contract-review.json"
+      "artifacts/diagnostics/c6-v10-contract-review.json",
+      "artifacts/diagnostics/c6-v11-recovery-assessment.json",
+      "artifacts/diagnostics/c6-recovery-engineering-checkpoint.json",
+      "docs/C6_RECOVERY_CONTRACT.md"
     ],
     "budget_basis": {
-      "measured_reviewed_prototype_I_B_added_lines_upper_bound": 9438,
-      "reason": "Scope-exact evidence, protocol and execution repairs include generated controls and bounded IO. Original user contract requires preregistered budgets but does not impose historical invented 6000/2000 caps. Measured prototype plus one 1000-line rounding envelope; deleted lines capped at 250/100. No data/config/formal-runner/gate edits."
+      "reason": "Existing reviewed v11 implementation plus bounded metadata/record-validation regression coverage; same exact paths and economic formulas. No data/config/gate/formal-runner changes.",
+      "prior_I_B_added_lines": 9438,
+      "recovery_added_line_allowance": 1562
     }
   },
   "selection_rule": {
@@ -4144,7 +4230,7 @@
     "D_schema": "schema_catalog.definitions.D_selection",
     "D_commit_rule": "D has exactly R as first parent, changes only D_path as a new regular mode-100644 blob, and has no other tree change.",
     "step_1": "Run exactly c6.base.l1 and validate the entire 3831-evaluation/29-control/15-no-drift payload.",
-    "step_2": "If Base artifact/schema/identity is invalid, stop without D. If the Base payload is valid but any correctness, architecture or applicable no-drift predicate fails, write rejected D and stop; S cannot repair it.",
+    "step_2": "Invalid Base identity/schema cannot produce D or a successor. A/B defects invalidate the execution revision and are repaired/rebound under recovery_continuation; a valid economic diagnostic rejection follows this same mechanical selection contract. S is never used to disguise a correctness defect.",
     "step_3": "Derive complete R_L1 only from the 765 C6-Base evaluation records using the frozen unrounded MDD predicate.",
     "step_4": "If R_L1 is empty, do not dispatch qualification or Base+S. Select I_B iff every Base L1 predicate passes; otherwise reject.",
     "step_5": "If R_L1 is nonempty, dispatch exactly c6.s.qualification with the exact Base producer. Base+S is eligible only if the complete qualification result has all_passed=true.",
@@ -4194,26 +4280,26 @@
       "object_oid": "lowercase hexadecimal Git object OID emitted by ls-tree"
     },
     "manifest_algorithm": "Read the entire tracked tree using git-ls-tree -rz --full-tree semantics; remove only exact A_ALLOWLIST paths; construct each object with exactly manifest_record_exact_keys and no others; sort records by decoded raw path bytes; serialize the record array with json.dumps(records, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False) plus one LF encoded as UTF-8; SHA-256 the exact bytes.",
-    "base_manifest_entry_count": 214,
-    "base_economic_tree_sha256": "8697ae248b528731c1884faf6d0659cf43b13d5efd9c63e84ad5420532f090fe",
+    "base_manifest_entry_count": 217,
+    "base_economic_tree_sha256": "fe87622af857a3670c34c016676ed8e12c0e9152daf840ff5a68f6418dad4469",
     "required_proof": "git diff --raw -z C A touches only allowed 100644 add/modify paths and economic_tree_hash(C) equals economic_tree_hash(A)",
     "source_revision_in_artifact": "C_even_if_A_exists",
     "fallback": "If source/head validation or required CI would rerun L4, keep A null and retain the sealed workflow artifact externally."
   },
   "frozen_file_identity_origin": {
-    "revision": "faf45b9eb0d73fb4456266065d331e67eee15906",
+    "revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
     "rule": "Every entry in frozen_file_identities is resolved and byte-verified at exactly authority.base_revision. The economic dispatch workflow independently binds run_templates.workflow.revision; at P both origins intentionally have identical workflow bytes."
   },
   "frozen_file_identities": {
     ".github/workflows/ci.yml": {
       "mode": "100644",
-      "git_blob": "78d1a9daba6379b560749e754c36db47a4284110",
-      "sha256": "35e8b1f712c80799aaccdf8d459162af1da332b9d100aa11655248c7de1106f4"
+      "git_blob": "a732aaf3f02daeb406a78c7df429342bced5724d",
+      "sha256": "dafc66b340b6de2d8a25e39acbf1a577e555735be87b908b0e129ca960645c71"
     },
     ".github/workflows/c6-bound-economic.yml": {
       "mode": "100644",
-      "git_blob": "c3efe9864e280595b81bf9d5f4a6e68899e7c090",
-      "sha256": "f16cfa6db2d828fa1c7d9d759e79b9d7f6f9f4fbf92e74cd17350fefd5bf14de"
+      "git_blob": "8995817891eac8a9fd3aab8fc436536ee81c823b",
+      "sha256": "c202653296fd917de115d06602706a8ae3971561e602bffa8be8990341d71b47"
     },
     "quantfusion/application/stress.py": {
       "mode": "100644",
@@ -4302,43 +4388,53 @@
     },
     ".github/workflows/c6-auto-resume.yml": {
       "mode": "100644",
-      "git_blob": "d212cb841f1025a77d31a3397a69a5ed1521943b",
-      "sha256": "5d545e5d0817af9f924083b8c9e2abf9beaf2b15cf5efafcb097f3f5564d575f"
+      "git_blob": "f79e4ecf0b507b6bf4878b82a51ae6e8af3867bc",
+      "sha256": "536f1058b76f8a5c9eb4ee4dc0ec7e56d05451a7f035a0d8e92fe6681cbe9512"
     },
     ".github/scripts/c6_auto_resume.py": {
       "mode": "100644",
-      "git_blob": "6693a0d6bf4cd8994c8c1459dff98c5ad0280533",
-      "sha256": "32049ff75e59978a6a68e9e08b1ff039d61114ac53b36792d3f189c6fcadbafd"
+      "git_blob": "d688ca00894752d14e50c7423867fca7545dada9",
+      "sha256": "ffea994bcdd557d04e10ca553b32a74029120596f3e0b0bcc2aceff6d722f18d"
     },
     ".github/scripts/test_c6_auto_resume.py": {
       "mode": "100644",
-      "git_blob": "cfed2c0e346585ed83ba460c53947878c8ba368e",
-      "sha256": "5bed230f4649f26ffacdc34bea01ab2e7121e12ef80cdcf795646442cb2c7538"
+      "git_blob": "a89c0d3de99c0ee3446f9a272be0d7db542446e4",
+      "sha256": "ef81685aceb923dd3fdb94b9250a8639b17343f8a8d7d514c02eac3e31569060"
+    },
+    ".github/scripts/c6_resume_probe.py": {
+      "mode": "100644",
+      "git_blob": "b2b9bdbc5a1d67bc6cd9c4e9d44a0f5c2406e755",
+      "sha256": "ef235af9dbf1235688de9010298cc8239448e48e733eb1bfe727692684bc5ea2"
+    },
+    ".github/scripts/test_c6_resume_probe.py": {
+      "mode": "100644",
+      "git_blob": "8fc0329f2027a4878a8c53d035797e73c37812a6",
+      "sha256": "ac73ab273cbbaba41836c7d5841e001e9a14dbc6353b4946c4064e987d2584cb"
+    },
+    ".github/scripts/c6_request_resume.py": {
+      "mode": "100644",
+      "git_blob": "01dd0c07fd8bf800856fe025990088566d8d5b32",
+      "sha256": "0c7c81a3e8d496b7b9d422f5a9e13889f8523365fd6693731911ba6053f0f916"
     }
   },
   "stop_conditions": [
-    "Any real scenario or backtest economic field is dispatched, enqueued or inspected before P, I_B, I_S and R are all frozen and remotely verified.",
-    "Any frozen workflow, dependency, data, scenario, reference, gate, comparator, seed, parallel merge order or account-lock identity drifts.",
-    "Warm-state audit finds unauthorized holdings, cash, PnL, peaks, pending orders, locks or future information.",
-    "Data audit finds an invalid or universe-dependent old-symbol raw frame or causal indicator.",
-    "Base correctness, identity, architecture or no-drift fails.",
-    "Any Base residual fails S qualification, or the sole Base+S L1 fails an applicable predicate.",
-    "Selected C fails any L2 predicate or any L4 formal gate.",
-    "A third candidate, parameter search, threshold change, scenario change, reference change, gate change or second L4 logical run is proposed.",
-    "Main tracked tree drifts from the frozen base before economic completion.",
-    "Required review or CI has an unresolved Critical or Important result.",
-    "Atomic expected-base merge provenance or supported merge-queue equivalent is unavailable at final merge time.",
-    "Any ambiguity or incompleteness in the exact schema catalog, R expansion, producer chain, D validation, workflow history enumeration, checkpoint identity or exit classification before first dispatch requires a superseding P before any economic enqueue.",
-    "Any native GitHub rerun, missing/expired workflow history, prior matching run without a valid sealed checkpoint/result, duplicate result, or producer-chain mismatch permanently invalidates that logical run.",
-    "L4 exit 2 is a valid terminal rejection and stops without resume; it is not checkpoint failure.",
-    "Any need to modify the merged workflow/CI preflight, dependency lock, official stress/gate code, data, scenario/reference identity or P/I_B/I_S/R after first economic enqueue stops this experiment."
+    "Do not dispatch a new economic execution until exact new P/I_B/I_S/R and real boundary/cloud probe evidence are remotely verified.",
+    "Do not mutate old frozen objects or resume the invalid v11 logical run.",
+    "Any identity, data, schema, formula, runtime or history mismatch blocks the affected execution; classify A/B/C/D under authority.recovery_continuation. A/B recovery is already authorized and preserves history.",
+    "Unauthorized warm holdings/cash/peaks/orders/locks or future information, invalid raw data or universe-dependent old-symbol indicators cannot be accepted.",
+    "A valid Base residual qualification failure, eligible Base+S predicate failure, selected L2 failure or formal L4 gate rejection blocks promotion under the frozen mechanical rules.",
+    "No third candidate, tuning, economic threshold/scenario/reference changes, allocator or account-lock weakening.",
+    "Native GitHub rerun, missing/expired history, a prior run without valid sealed evidence, duplicate result or broken producer lineage permanently invalidates that logical run; never forge a successor.",
+    "L4 exit2 is a valid economic rejection when its schema/provenance and native gates validate; no resume or renamed rerun for outcome selection.",
+    "Required checks/reviews and GitHub protection must pass at the exact head. Main drift permits normal merge and actual dependency revalidation; no bypass or unsupported extra expected-base CAS.",
+    "Any recovered result must carry truthful source/data/runtime. Old observations never become an independent out-of-sample result by changing a revision name."
   ],
   "unknowns_before_implementation": [
     "Exact I_B and I_S commit/tree/blob identities are unknown until their reviewed clean trees are frozen; P supplies only exact construction and R schemas.",
     "Exact R commit/blob/full-byte identity is unknown until both implementations and runtime probe values are frozen.",
     "Base residual IDs and S qualification outcome are intentionally unknown until the one bound Base L1 result; they cannot alter S code, formulas or schemas.",
     "D, C and downstream producer artifact hashes are intentionally unknown until mechanical selection; only their exact late-binding schemas are open.",
-    "Economic effects, formal acceptance and practical live performance remain unknown; no new C6 economic run has been dispatched or inspected."
+    "New revision economic results remain unknown. Historical transition report and old 530 baseline observations have been seen and retained; no new economic replay is used to design this repair."
   ],
   "diagnostic_api_contract": {
     "owner": "quantfusion.engine.replay.ProductionReplayEngine",
@@ -17872,7 +17968,7 @@
       "API": "GitHub Actions list workflow runs plus list artifacts, actions:read",
       "repository": "ychenracing/trade",
       "workflow_path": ".github/workflows/c6-bound-economic.yml",
-      "workflow_revision": "faf45b9eb0d73fb4456266065d331e67eee15906",
+      "workflow_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
       "event": "workflow_dispatch",
       "run_name_prefix": "c6-bound-{workflow_binding_id}-{logical_run_id}-",
       "pagination": "exhaust every page until no result; failure, truncation, rate-limit ambiguity or inaccessible history is STOP",
@@ -17891,18 +17987,25 @@
     "takeover": "A new workflow_dispatch with a new run ID, derived resume attempt ID and new fencing token is required. GitHub rerun is forbidden. Concurrency plus history preflight must complete before the child imports.",
     "writer_rule": "Only the current highest valid GITHUB_RUN_ID fencing sequence may atomically publish into its local attempt path. A stale writer cannot update pointers or seal. Each attempt writes a versioned path and atomically renames only after hashes validate.",
     "completion_once": "Exactly one valid result for a logical_run_id. Discovery of two results is INVALID_HISTORY, not a tie-break.",
-    "checkpoint_progress": "completed_item_ids must be an exact prefix of the binding item manifest; resume starts at next_item_ordinal and never recomputes a completed shard.",
-    "platform_rule": "If a run cannot continue and cannot atomically seal a valid checkpoint, emit incomplete_no_checkpoint and stop the experiment; do not dispatch a replacement.",
-    "graceful_budget_seconds": 900,
-    "budget_rule": "After at most checkpoint_every items, persist the exact completed prefix atomically. After 900 monotonic seconds, yield code 75 only at a durable incomplete boundary. Every resumed attempt performs at least one new chunk. The six causal intervention rows are finalized together before checkpoint publication. Official L4 uses its frozen existing sorted checkpoint representation; wrapper verifies it corresponds to the exact execution prefix and never rewrites child bytes.",
+    "checkpoint_progress": "completed_item_ids must be an exact prefix of the binding item manifest; resume starts at next_item_ordinal and never recomputes a completed shard. Every new/restored diagnostic record passes actual wire types and applicable within-record formulas before entering a reusable prefix; whole-stage and dependent-group predicates execute only when the group/stage is complete.",
+    "platform_rule": "No valid checkpoint means no successor for that logical run. Preserve forensic artifacts; classify the cause, repair A/B with new immutable execution identities and affected reruns under this authorization.",
+    "graceful_budget_seconds": 3600,
+    "budget_rule": "Diagnostics: 3600 seconds from immutable P; chunks remain 10 and full W group is atomic. Measured 530 full-record semantic checks cost 494 seconds locally, so longer segments amortize restore authentication. After each chunk persist exact validated prefix; yield75 only at incomplete boundary after new work. Official L4 retains its existing native 900-second budget and checkpoint format. No 10-minute interactive wait rule is treated as economic segment length.",
     "automatic_resume": {
       "workflow_path": ".github/workflows/c6-auto-resume.yml",
       "script_path": ".github/scripts/c6_auto_resume.py",
-      "trusted_revision": "faf45b9eb0d73fb4456266065d331e67eee15906",
-      "trigger": "workflow_run completed success, exact v11 workflow anchor only",
+      "trusted_revision": "e8f4317cd34d4f0d18ff5f65746cb0c4cc584a67",
+      "trigger": "explicit native workflow_dispatch completion validation, workflow_run completed success or serialized scheduled recovery; exact v13 workflow anchor, repository/workflow ID/path and immutable binding; never v11",
       "dispatch": "workflow_dispatch at the frozen workflow ref, exact 16 inputs reconstructed from the prior sealed manifest; next attempt r{sequence}-{first12(wrapper_sha256)}",
       "no_dispatch": "terminal result, already-visible later attempt, invalid identity/hash/progress/deadline, or native rerun; no native economic reruns",
-      "validation_boundary": "Privileged trusted orchestration imports no candidate code. Full child schemas, exact manifest prefix, complete predecessor chain and fenced lease takeover are revalidated by the frozen bound runner before economic execution."
+      "validation_boundary": "Privileged trusted orchestration imports no candidate code. Full child schemas, exact manifest prefix, complete predecessor chain and fenced lease takeover are revalidated by the frozen bound runner before economic execution.",
+      "completion_request": {
+        "workflow_job": "handoff",
+        "permissions": "actions:write, contents:read",
+        "checkout": "actual github.sha at exact v13 anchor; input workflow_revision must match",
+        "event": "native workflow_dispatch to c6-auto-resume.yml with only exact predecessor_run_id",
+        "authentication": "wait at most30 seconds for terminal predecessor, then existing repository/workflow/binding/artifact/hash/history checks; terminal result produces no successor"
+      }
     }
   }
 }

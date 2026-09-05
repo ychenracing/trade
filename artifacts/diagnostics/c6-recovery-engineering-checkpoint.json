@@ -27,7 +27,14 @@
     "ruff": "changed files E/F/W passed",
     "qualification_passing_record_checkpoint_test": "6 S qualification tests passed in0.27s; real qualifying producer row crosses gzip checkpoint/restore; forged criterion rejected",
     "latest_affected_boundary_tests": "real native synthetic L1/L2 and qualification checkpoint tests:2 passed in21.64s; remaining unchanged boundary tests retain prior coverage",
-    "contract_and_diagnostics": "61 passed in13.33s"
+    "contract_and_diagnostics": "61 passed in13.33s",
+    "candidate_CI_run33972290785": {
+      "passed": 706,
+      "subtests_passed": 81,
+      "failed": 1,
+      "root_cause": "New governing contract Markdown absent from exact documentation allowlist",
+      "fix": "Add only docs/C6_RECOVERY_CONTRACT.md to EXPECTED_MARKDOWN; targeted failing test passed in0.38s; included in I_B exact paths"
+    }
   },
   "remaining": [
     "separate exact Base/S engineering freeze and qualification output precheck",
@@ -59,7 +66,11 @@
       "economic_job": "skipped",
       "economic_evaluations": 0,
       "verified_by": "live run/job/artifact APIs and actual trusted dispatcher/producer logs; complete cloud consumer accepted predecessor; final dispatcher reports no new attempt",
-      "local_artifact_copy": "not available: connector file download URL returns HTTP403; no local byte-verification claim"
+      "local_artifact_copy": {
+        "archive_sha256": "1820154bc73b32d05b0753df746935e370c84b0b3693dabcc51e7b5b673971d6",
+        "payload_sha256": "568d41e1b04c04331eba754d1d4045b484df5ba7e287a00fee1672d99c7b7d80",
+        "manifest_identity_and_actual_terminal_payload_verified": true
+      }
     }
   }
 }
