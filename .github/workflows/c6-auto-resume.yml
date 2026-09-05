@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: [C6 Bound Economic Run]
     types: [completed]
-    branches: [codex/c6-v10-workflow-anchor]
+    branches: [codex/c6-v11-workflow-anchor]
   push:
     branches: [codex/c6-auto-resume-preflight]
 
