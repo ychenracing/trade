@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from quantfusion.execution.c6_receipts import (
+    begin_action_batch, finish_action_batch, begin_order,
+    link_order, note_order, order_receipt, action_receipt,
+)
+
 import math
 from dataclasses import replace
 from typing import Any
@@ -40,6 +45,8 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
 
     ENGINE_LABEL = "Quant Fusion"
     ALLOCATION_LOOKBACKS = (5, 10, 20)
+    policy: Any
+    _candidate_score_series: dict[str, dict[int, pd.Series]]
 
     def __init__(
         self, initial_capital: float = 2_000_000, cfg: dict | None = None
@@ -129,6 +136,8 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         self, data_map: dict[str, pd.DataFrame], date: pd.Timestamp
     ) -> dict[str, float]:
         """Average cached cross-sectional ranks of causal momentum signals."""
+        if getattr(self, "_c6_intervention", None) == "W1_DATA_MAP_ONLY":
+            data_map = {code: frame for code, frame in data_map.items() if code != "601869"}
         date = pd.Timestamp(date)
         cached = self._allocation_score_cache.get(date)
         if cached is not None:
@@ -184,6 +193,45 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                 )
         return raw
 
+    def _fixed_reference_scores(
+        self, date: pd.Timestamp, symbols: set[str] | list[str]
+    ) -> dict[str, float]:
+        """Score symbols at the latest prior close against the fixed basket."""
+        date = pd.Timestamp(date)
+        score_series = getattr(self, "_candidate_score_series", {})
+
+        def prior_value(code: str, window: int) -> float | None:
+            series = score_series.get(code, {}).get(window)
+            if series is None or series.empty:
+                return None
+            position = int(series.index.searchsorted(date, side="left")) - 1
+            if position < 0:
+                return None
+            value = float(series.iloc[position])
+            return value if math.isfinite(value) else None
+
+        result: dict[str, float] = {}
+        for code in sorted(symbols):
+            percentiles: list[float] = []
+            for window in self.policy.candidate_lookbacks:
+                candidate = prior_value(code, window)
+                references = [
+                    prior_value(reference, window)
+                    for reference in self.policy.regime_symbols
+                ]
+                valid_references = [
+                    value for value in references if value is not None
+                ]
+                if candidate is None or len(valid_references) != len(references):
+                    break
+                percentiles.append(
+                    sum(value <= candidate for value in valid_references)
+                    / len(self.policy.regime_symbols)
+                )
+            if len(percentiles) == len(self.policy.candidate_lookbacks):
+                result[code] = sum(percentiles) / len(percentiles)
+        return result
+
     def _record_order_event(
         self,
         *,
@@ -193,6 +241,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         **details: Any,
     ) -> None:
         """Append a compact, serializable order decision to the audit trail."""
+        note_order(self, signal, date, event, **details)
         self.order_events.append(
             {
                 "date": date,
@@ -286,6 +335,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                     )
                     return False
                 adjusted_signal = replace(signal, target_shares=capacity_shares)
+                link_order(self, signal, adjusted_signal)
                 self._record_order_event(
                     date=date_str,
                     signal=signal,
@@ -460,6 +510,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                 )
                 continue
             adjusted = replace(signal, target_shares=allocated)
+            link_order(self, signal, adjusted)
             if allocated < signal.target_shares:
                 self._record_order_event(
                     date=date_str,
@@ -486,11 +537,14 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             return None, False
         frame = data_map.get(signal.symbol)
         if frame is None or date not in frame.index:
+            note_order(self, signal, date_str, "blocked_missing_open")
             return None, True
         open_price = frame.loc[date, "open"]
         if pd.isna(open_price) or float(open_price) <= 0:
+            note_order(self, signal, date_str, "blocked_missing_open")
             return None, True
         executable = replace(signal, price=float(open_price))
+        link_order(self, signal, executable)
         limit_state = self._opening_limit_state(
             executable, frame, date, float(open_price)
         )
@@ -499,7 +553,10 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
                 date=date_str, signal=signal, event="rejected_limit_up_open"
             )
             return None, False
-        return (None, True) if limit_state == "sell_blocked" else (executable, False)
+        if limit_state == "sell_blocked":
+            note_order(self, signal, date_str, "blocked_limit_down_open")
+            return None, True
+        return executable, False
 
     def _execute_pending_signals(
         self,
@@ -508,8 +565,11 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         date: pd.Timestamp,
         date_to_pos: dict[pd.Timestamp, int],
         directions: frozenset[str] | None = None,
+        buy_scores: dict[str, float] | None = None,
     ) -> list[tuple[Signal, BaseStrategy]]:
         """Execute selected sides, batching same-symbol buys before any fill."""
+        if buy_scores is None:
+            buy_scores = getattr(self, "_c6_buy_scores", None)
         date_str = date.strftime("%Y-%m-%d")
         strategy_rank = {"turtle_breakout": 0, "dual_ma": 1, "atr_channel": 2}
         allocation_scores = self._allocation_scores(data_map, date)
@@ -517,7 +577,11 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             pending,
             key=lambda item: (
                 0 if item[0].direction == "sell" else 1,
-                -allocation_scores.get(item[0].symbol, 0.0),
+                -(
+                    buy_scores
+                    if item[0].direction == "buy" and buy_scores is not None and item[0].symbol in buy_scores
+                    else allocation_scores
+                ).get(item[0].symbol, 0.0),
                 item[0].symbol,
                 strategy_rank.get(item[0].strategy_name, 99),
             ),
@@ -529,32 +593,78 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             if signal.direction not in allowed:
                 unexecuted.append((signal, strategy))
                 continue
+            receipt = begin_action_batch(self, signal, date_str)
+            order = begin_order(self, signal, date_str, defensive=strategy is None)
+            if receipt is not None and order is not None:
+                receipt["winner_order_ordinal"] = order["order_ordinal"]
             executable_signal, keep_pending = self._prepare_open_signal(
                 signal, data_map, date, date_to_pos
             )
             if keep_pending:
                 unexecuted.append((signal, strategy))
+                finish_action_batch(receipt, remainder=signal.target_shares,
+                                    carry=True, release="STILL_LIVE")
             if executable_signal is None:
+                if not keep_pending:
+                    finish_action_batch(receipt, release="CANCELLED")
                 continue
+            if order is not None:
+                order["authorized_shares"] = int(executable_signal.target_shares)
             code = executable_signal.symbol
             if executable_signal.direction == "buy":
                 buy_batches.setdefault(code, []).append((executable_signal, strategy))
             elif executable_signal.direction == "sell":
                 sold = self._execute_sell(executable_signal, strategy, date_str)
                 remaining = max(executable_signal.target_shares - sold, 0)
-                # Only re-queue when the sell made real progress (a partial
-                # fill). A zero-fill sell is a sub-lot target that can never be
-                # executed (``_execute_sell`` floors partial sells to a board
-                # lot), so re-queuing it here would spin forever as a permanent
-                # pending order. Limit-blocked sells are already retained
-                # upstream via ``keep_pending``, so they never reach this path.
-                if remaining > 0 and (strategy is None or strategy.position is not None):
-                    unexecuted.append(
-                        (replace(signal, target_shares=remaining), strategy)
+                strat_name = (
+                    strategy.name if strategy is not None else signal.strategy_name
+                )
+                current = self.positions.get(signal.symbol, {}).get(strat_name)
+                current_shares = int(current.shares) if current is not None else 0
+                release_sublot = (
+                    0 < remaining < A_SHARE_LOT_SIZE
+                    and remaining < current_shares
+                )
+                if release_sublot:
+                    self._record_order_event(
+                        date=date_str,
+                        signal=signal,
+                        event="released_unexecutable_sublot_sell",
+                        remaining_shares=int(remaining),
+                        current_shares=current_shares,
                     )
+                    finish_action_batch(receipt, filled=sold, release="UNEXECUTABLE_SUBLOT")
+                elif remaining > 0 and current_shares > 0:
+                    residual = replace(signal, target_shares=remaining)
+                    link_order(self, signal, residual)
+                    unexecuted.append(
+                        (residual, strategy)
+                    )
+                    finish_action_batch(receipt, filled=sold, remainder=remaining,
+                                        carry=True, release="STILL_LIVE")
+                else:
+                    finish_action_batch(receipt, filled=sold,
+                                        release="FILLED" if remaining == 0 else "POSITION_ABSENT")
+                if order is not None and sold == 0 and order["status"] == "pending":
+                    order.update(status="cancelled" if release_sublot or current_shares == 0 else "blocked",
+                                 blocked_reason="unexecutable_sublot" if release_sublot else "position_absent" if current_shares == 0 else "execution_checks")
         for items in buy_batches.values():
             self._execute_buy_batch(items, date_str, data_map, date)
-        return self._dedupe_pending_signals(unexecuted)
+        retained = self._dedupe_pending_signals(unexecuted)
+        retained_ids = {id(signal) for signal, _ in retained}
+        for signal, _ in unexecuted:
+            if id(signal) not in retained_ids:
+                record = order_receipt(self, signal, date_str)
+                if record is not None:
+                    note_order(self, signal, date_str, "pending_remainder_suppressed",
+                               shares=int(signal.target_shares))
+                    if record["filled_shares"] == 0:
+                        record.update(status="suppressed", blocked_reason="pending_deduplication_or_sell_conflict")
+                    action = action_receipt(self, signal)
+                    if action is not None:
+                        action.update(remainder_shares=0, terminal_for_current_batch=True,
+                                      carry_to_next_batch=False, release_reason="CANCELLED")
+        return retained
 
     def _opening_limit_state(
         self,
