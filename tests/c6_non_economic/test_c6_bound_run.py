@@ -53,6 +53,61 @@ def test_producer_dependency_uses_frozen_record_instead_of_version_literal() -> 
         runner.producer_dependency("c6.s.qualification", records + records)
 
 
+def test_durable_history_restores_sealed_child_and_hands_off_lease(tmp_path, monkeypatch) -> None:
+    import hashlib
+    from quantfusion.application import c6_bound_run as runner
+    from quantfusion.application.c6_contract import canonical_json_bytes
+    ids = [f"scenario/{i}" for i in range(3)]
+    path = tmp_path / "original-child"
+    checkpoint = runner.DiagnosticCheckpoint(path, ids, "a" * 64, chunk_size=1, budget_seconds=0)
+    with pytest.raises(SystemExit):
+        checkpoint.map(_checkpoint_square, [0, 1, 2], ids, workers=1)
+    child = path.read_bytes()
+    hash_ids = lambda values: hashlib.sha256("".join(x + "\n" for x in values).encode()).hexdigest()
+    wrapper = {"schema_version": 2, "kind": "c6_bound_checkpoint", "status": "checkpointed_incomplete",
+               "record_id": "fixture", "binding_signature": "a" * 64, "source_revision": "a" * 40,
+               "logical_run_id": "fixture", "attempt_id": "a0", "workflow_run_id": "123",
+               "fencing_sequence": 123, "fencing_token_sha256": hashlib.sha256(TOKEN_1.encode()).hexdigest(),
+               "resume_from": "", "resume_workflow_run_id": "", "child_checkpoint_kind": "c6_diagnostic_shard_v2",
+               "child_checkpoint_path": "child-checkpoint.bin", "child_checkpoint_byte_size": len(child),
+               "child_checkpoint_full_byte_sha256": hashlib.sha256(child).hexdigest(),
+               "item_manifest_count": len(ids), "item_manifest_sha256": hash_ids(ids), "completed_item_ids": ids[:1],
+               "completed_item_ids_sha256": hash_ids(ids[:1]), "next_item_ordinal": 1, "created_at": "2026-09-05T00:00:00Z"}
+    raw = canonical_json_bytes(wrapper)
+    checkpoint_id = hashlib.sha256(raw).hexdigest()
+    export = tmp_path / "export"
+    manifest = seal_export(export, kind="checkpoint", source_revision="a" * 40, run_bindings_revision="b" * 40,
+                           workflow_revision="c" * 40, binding_id="c6.fixture", logical_run_id="fixture", attempt_id="a0",
+                           fencing_token=TOKEN_1, attempt_identity=_attempt_identity(),
+                           files={"checkpoint.json": raw, "child-checkpoint.bin": child})
+    remote = runner.RemoteExport(123, manifest, (export / "manifest.json").read_bytes(),
+                                 {"checkpoint.json": raw, "child-checkpoint.bin": child})
+    history = runner.GitHubActionsLeaseStore("owner/repo", "fixture-token")
+    prior = {"id": 123, "display_title": "c6-bound-c6.fixture-fixture-a0", "event": "workflow_dispatch",
+             "head_branch": "anchor", "head_sha": "c" * 40, "run_attempt": 1, "status": "completed", "created_at": "2026-09-05T00:00:00Z"}
+    current = {**prior, "id": 124, "status": "in_progress"}
+    # Only the remote API boundary is substituted; the production restore validates
+    # the real sealed bytes, exact item prefix, predecessor identity and fence.
+    monkeypatch.setattr(history, "_pages", lambda path, key: [prior] if key == "workflow_runs" else [{"name": "c6-bound-fixture-a0"}])
+    monkeypatch.setattr(history, "_json", lambda url, label: current if url.endswith("/124") else prior)
+    monkeypatch.setattr(history, "_export", lambda run_id, artifact: remote)
+    binding = {"record_id": "fixture", "workflow_binding_id": "c6.fixture", "logical_run_id": "fixture", "source_revision": "a" * 40,
+               "workflow": {"revision": "c" * 40, "dispatch_ref": "anchor"}, "stage": "L2",
+               "attempt_policy": {"dispatch_deadline_utc": "2099-01-01T00:00:00Z"}}
+    restored, lease_path = tmp_path / "restored", tmp_path / "lease"
+    history.restore(binding=binding, current_run_id=124, resume_from=checkpoint_id, resume_workflow_run_id="123",
+                    checkpoint_path=restored, lease_path=lease_path, run_bindings_revision="b" * 40, item_ids=ids)
+    lease = ExclusiveLease.acquire(lease_path, logical_run_id="fixture", attempt_id="r1-aabbccddeeff",
+                                   fencing_token=TOKEN_2, fencing_sequence=124, resume_from=checkpoint_id)
+    lease.assert_current()
+    resumed = runner.DiagnosticCheckpoint(restored, ids, "b" * 64, resume_signature="a" * 64)
+    assert resumed.map(_checkpoint_square, [None, 1, 2], ids, workers=1) == [_checkpoint_square(i) for i in range(3)]
+    prior["status"] = "in_progress"
+    with pytest.raises(BoundRunError, match="prior logical-run workflow identity"):
+        history.restore(binding=binding, current_run_id=124, resume_from=checkpoint_id, resume_workflow_run_id="123",
+                        checkpoint_path=tmp_path / "forbidden", lease_path=tmp_path / "forbidden-lease", run_bindings_revision="b" * 40, item_ids=ids)
+
+
 def test_official_checkpoint_sorted_storage_preserves_execution_prefix() -> None:
     from quantfusion.application.c6_bound_run import checkpoint_progress
     from quantfusion.application.c6_contract import canonical_json_bytes
