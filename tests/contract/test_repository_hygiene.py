@@ -28,6 +28,7 @@ EXPECTED_MARKDOWN = {
     Path("README.md"),
     Path("docs/ARCHITECTURE.md"),
     Path("docs/VALIDATION.md"),
+    Path("docs/C6_RECOVERY_CONTRACT.md"),
     Path("data/README.md"),
 }
 CHINESE_MARKDOWN = {

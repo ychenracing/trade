@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from quantfusion.execution.c6_receipts import link_order
+
 import math
 from dataclasses import dataclass, field, replace
 from typing import Any, cast
@@ -155,6 +157,7 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
                 return False
             if capacity < signal.target_shares:
                 adjusted_signal = replace(signal, target_shares=capacity)
+                link_order(self, signal, adjusted_signal)
                 self._record_order_event(
                     date=date_str,
                     signal=signal,
@@ -209,6 +212,7 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         adjusted_signal = signal
         if capacity < signal.target_shares:
             adjusted_signal = replace(signal, target_shares=capacity)
+            link_order(self, signal, adjusted_signal)
             self._record_order_event(
                 date=date_str,
                 signal=signal,
