@@ -85,5 +85,20 @@
     "coverage": "Require exact ordered Base and S IDs against P scenario list before comparison; missing, duplicate, extra members fail closed.",
     "predicates": "No-effect comparisons use item_id, correcting prior scenario_id KeyError.",
     "verification": "Four new common-prefix/full-no-op and coverage mutation cases passed."
+  },
+  "timeline_and_L2_repair": {
+    "account_events": "Filter actual merged-account owner; use emergency_cycle_drawdown_lock and terminal_portfolio_drawdown_lock plus correct alert/confirmed names. Capture actual risk peak owner/value/date/assets/threshold when draining account events without changing risk policy.",
+    "official_peak": "First equal running peak timestamp retained in L1 and L2 breach records.",
+    "cluster_weight": "L2 uses marked position value / account assets at each sample, replacing symbol-count ratio. L2 uses explicit diagnostic entrypoint matching the source candidate production S flag.",
+    "verification": "47 combined contract/diagnostics tests pass; CI Ruff selection and Bandit medium/high pass. Generated-bars fixture proves five-path equality of normal production and all three diagnostic variants with actual fills.",
+    "remaining": "L1 complete order/causal receipts, indicator provenance, W attribution, remaining L2 telemetry, and D producer authentication still require repair/review before new P."
+  },
+  "dead_code_removal": {
+    "removed": [
+      "build_causal_matrix (unused incompatible output shape)",
+      "decompose_601869 (unused duplicate arithmetic)",
+      "private duplicate exact-key/finite/canonical serialization helpers"
+    ],
+    "evidence": "Repository Python/Markdown/workflow search found no callers of the removed public-shaped helpers; execution uses _attribution. Canonical bytes now use the existing shared contract implementation."
   }
 }

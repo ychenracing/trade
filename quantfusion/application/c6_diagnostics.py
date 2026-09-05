@@ -14,54 +14,13 @@ from pathlib import Path
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from quantfusion.application.c6_contract import canonical_json_bytes as _canonical_bytes
+
 
 def _as_mapping(value: object, where: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping) or any(not isinstance(key, str) for key in value):
         raise ValueError(f"{where} must be an object with string keys")
     return value
-
-
-def _exact_keys(value: object, expected: Sequence[str], where: str) -> Mapping[str, Any]:
-    payload = _as_mapping(value, where)
-    expected_set = set(expected)
-    missing = sorted(expected_set - set(payload))
-    extra = sorted(set(payload) - expected_set)
-    if missing or extra:
-        raise ValueError(f"{where} has missing={missing} extra={extra}")
-    return payload
-
-
-def _validate_finite(value: object, where: str = "payload") -> None:
-    if value is None or isinstance(value, (str, bool, int)):
-        return
-    if isinstance(value, float) and not math.isfinite(value):
-        raise ValueError(f"{where} must contain only finite numbers")
-    if isinstance(value, float):
-        return
-    if isinstance(value, Mapping):
-        if any(not isinstance(key, str) for key in value):
-            raise ValueError(f"{where} contains a non-string object key")
-        for key, nested in value.items():
-            _validate_finite(nested, f"{where}.{key}")
-    elif isinstance(value, list):
-        for index, nested in enumerate(value):
-            _validate_finite(nested, f"{where}[{index}]")
-    else:
-        raise ValueError(f"{where} contains unsupported JSON value {type(value).__name__}")
-
-
-def _canonical_bytes(value: object) -> bytes:
-    _validate_finite(value)
-    return (
-        json.dumps(
-            value,
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False,
-            allow_nan=False,
-        )
-        + "\n"
-    ).encode("utf-8")
 
 
 def _numbers(value: object) -> list[float]:
@@ -115,6 +74,7 @@ def first_official_mdd_breach(
     if threshold < 0 or numeric_tolerance < 0:
         raise ValueError("breach threshold and tolerance must be non-negative")
     peak: float | None = None
+    peak_timestamp: str | None = None
     prior_timestamp: str | None = None
     for ordinal, raw in enumerate(equity_samples):
         sample = _as_mapping(raw, f"equity_samples[{ordinal}]")
@@ -127,7 +87,8 @@ def first_official_mdd_breach(
         if isinstance(equity, bool) or not isinstance(equity, (int, float)) or not math.isfinite(float(equity)):
             raise ValueError("official equity samples must contain finite equity")
         current = float(equity)
-        peak = current if peak is None else max(peak, current)
+        if peak is None or current > peak:
+            peak, peak_timestamp = current, timestamp
         if peak <= 0:
             raise ValueError("official running peak must be positive")
         drawdown = current / peak - 1.0
@@ -137,6 +98,7 @@ def first_official_mdd_breach(
                 "timestamp": timestamp,
                 "sample_ordinal": ordinal,
                 "peak_value": peak,
+                "peak_timestamp": peak_timestamp,
                 "current_assets": current,
                 "drawdown": drawdown,
                 "threshold": threshold,
@@ -146,110 +108,6 @@ def first_official_mdd_breach(
             }
         prior_timestamp = timestamp
     return None
-
-
-def build_causal_matrix(
-    scenario_id: str,
-    evidence: Sequence[Mapping[str, Any]],
-    allowed_labels: Sequence[str],
-) -> dict[str, Any]:
-    """Build a stable multi-label matrix without inventing a single cause."""
-    if not isinstance(scenario_id, str) or not scenario_id:
-        raise ValueError("causal matrix scenario_id must be a non-empty string")
-    allowed = set(allowed_labels)
-    if len(allowed) != len(allowed_labels) or any(not item for item in allowed):
-        raise ValueError("causal label manifest is invalid")
-    required = {
-        "label",
-        "first_observed_date",
-        "state_index",
-        "book_id",
-        "notional",
-        "first_path_divergence",
-    }
-    records: list[dict[str, Any]] = []
-    for index, raw in enumerate(evidence):
-        item = _exact_keys(raw, sorted(required), f"causal evidence[{index}]")
-        if item["label"] not in allowed:
-            raise ValueError(f"unknown causal label: {item['label']}")
-        if not isinstance(item["first_observed_date"], str) or not item["first_observed_date"]:
-            raise ValueError("causal evidence requires first_observed_date")
-        if item["state_index"] is not None and (
-            isinstance(item["state_index"], bool)
-            or not isinstance(item["state_index"], int)
-            or item["state_index"] < 0
-        ):
-            raise ValueError("causal evidence state_index must be non-negative")
-        if item["book_id"] is not None and (
-            not isinstance(item["book_id"], str) or not item["book_id"]
-        ):
-            raise ValueError("causal evidence book_id must be a non-empty string")
-        if item["notional"] is not None and (
-            isinstance(item["notional"], bool)
-            or not isinstance(item["notional"], (int, float))
-            or not math.isfinite(float(item["notional"]))
-        ):
-            raise ValueError("causal evidence notional must be finite")
-        if item["first_path_divergence"] is not None and (
-            not isinstance(item["first_path_divergence"], str)
-            or not item["first_path_divergence"]
-        ):
-            raise ValueError("causal evidence requires first_path_divergence")
-        records.append(dict(item))
-    records.sort(
-        key=lambda item: (
-            item["first_observed_date"],
-            item["label"],
-            -1 if item["state_index"] is None else item["state_index"],
-            "" if item["book_id"] is None else item["book_id"],
-            "" if item["first_path_divergence"] is None else item["first_path_divergence"],
-        )
-    )
-    return {
-        "scenario_id": scenario_id,
-        "evidence": records,
-        "earliest_unavoidable_breach_under_frozen_candidate_family": None,
-    }
-
-
-def decompose_601869(
-    terminal_wealth: Mapping[str, float], order: Sequence[str]
-) -> dict[str, Any]:
-    """Compute the frozen ordered natural-log wealth telescoping decomposition."""
-    frozen_order = list(order)
-    if len(frozen_order) < 2 or len(set(frozen_order)) != len(frozen_order):
-        raise ValueError("601869 intervention order must contain unique steps")
-    if set(terminal_wealth) != set(frozen_order):
-        raise ValueError("601869 wealth keys must exactly match the frozen order")
-    values: list[float] = []
-    for intervention in frozen_order:
-        wealth = terminal_wealth[intervention]
-        if isinstance(wealth, bool) or not isinstance(wealth, (int, float)):
-            raise ValueError("terminal wealth must be a positive finite number")
-        wealth = float(wealth)
-        if not math.isfinite(wealth) or wealth <= 0:
-            raise ValueError("terminal wealth must be a positive finite number")
-        values.append(math.log(wealth))
-    total = values[-1] - values[0]
-    deltas = [values[index] - values[index - 1] for index in range(1, len(values))]
-    # Pin the last term to the endpoint total so deterministic serialization
-    # cannot expose accumulated addition drift as a fictitious interaction.
-    deltas[-1] = total - math.fsum(deltas[:-1])
-    return {
-        "value_function": "natural_log(terminal_wealth)",
-        "order": frozen_order,
-        "log_terminal_wealth": dict(zip(frozen_order, values, strict=True)),
-        "steps": [
-            {
-                "from": frozen_order[index - 1],
-                "to": frozen_order[index],
-                "delta_log_wealth": deltas[index - 1],
-            }
-            for index in range(1, len(frozen_order))
-        ],
-        "total_delta_log_wealth": total,
-        "telescoping_error": 0.0,
-    }
 
 
 def base_counterpart_id(s_evaluation_id: str) -> str:
@@ -264,17 +122,27 @@ def base_counterpart_id(s_evaluation_id: str) -> str:
 
 
 def _manager_event(events: Sequence[Mapping[str, Any]], name: str) -> dict[str, Any]:
-    event = next((item for item in events if item.get("event") == name), None)
+    event = next((item for item in events if item.get("event") == name and item.get("sleeve") == "portfolio"), None)
     return {
         "timestamp": None if event is None else event.get("date"),
-        "peak_owner": None if event is None else "manager_cycle_peak",
-        "peak_timestamp": None,
+        "peak_owner": None if event is None else ("manager_lifetime_peak" if name == "terminal_portfolio_drawdown_lock" else "manager_cycle_peak"),
+        "peak_timestamp": None if event is None else event.get("peak_timestamp"),
         "peak_value": None if event is None else event.get("peak_assets"),
         "current_assets": None if event is None else event.get("current_assets"),
         "drawdown": None if event is None else event.get("drawdown"),
         "threshold": None if event is None else event.get("threshold"),
         "status_source": None if event is None else str(event.get("event")),
     }
+
+
+def maximum_cluster_weight(positions: Sequence[Mapping[str, Any]], assets: Mapping[str, float], groups: Mapping[str, str]) -> float:
+    """Aggregate marked holdings by cluster at each official account sample."""
+    totals: dict[tuple[str, str], float] = {}
+    for position in positions:
+        date = position["timestamp"]
+        key = (date, groups.get(position["symbol"], "unmapped"))
+        totals[key] = totals.get(key, 0.0) + position["market_value"]
+    return max((value / assets[date] for (date, _), value in totals.items()), default=0.0)
 
 
 def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
@@ -284,13 +152,18 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
     from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
     from quantfusion.engine.replay import ProductionReplayEngine
 
+    from quantfusion.risk.overlay.policy import CrossMarketOverlay
+    intervention = "C6_BASE_PLUS_S" if getattr(CrossMarketOverlay, "C6_S_PRODUCTION", False) else "C6_BASE"
     codes = [str(item) for item in scenario["symbols"]]
     with contextlib.redirect_stdout(io.StringIO()):
-        result = ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL).run(
+        result = ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL).run_c6_diagnostic(
             {code: stress.NAMES[code] for code in codes},
             stress_metrics.START_DATE, stress_metrics.END_DATE,
             data_dir=str(MARKET_DATA_DIR), regime_data_dir=str(REGIME_DATA_DIR),
             indicator_state="warm",
+            diagnostic_request={"schema_version": 1, "intervention_id": intervention,
+                                "recording_mode": "DEFAULT", "scenario_id": scenario["scenario_id"],
+                                "diagnostic_noncanonical": True, "allow_publication": False},
         )
     attribution = {name: 0 for name in stress_metrics.ATTRIBUTION_CATEGORIES}
     for trade in result["trades"]:
@@ -302,7 +175,7 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
     breach = {
         "timestamp": None if breach_index is None else str(breach_index.date()),
         "sample_ordinal": None if breach_index is None else int(equity.index.get_loc(breach_index)),
-        "peak_timestamp": None,
+        "peak_timestamp": None if breach_index is None else str(equity.loc[:breach_index, "assets"].idxmax().date()),
         "peak_value": None if breach_index is None else float(equity.loc[:breach_index, "assets"].max()),
         "equity": None if breach_index is None else float(equity.loc[breach_index, "assets"]),
         "drawdown": None if breach_index is None else float(drawdown.loc[breach_index]),
@@ -311,16 +184,10 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
     events = list(result.get("risk_events", []))
     orders = list(result.get("order_events", []))
     risk_orders = [item for item in orders if "sell" in str(item.get("direction", ""))]
-    held: set[str] = set()
-    max_cluster = 0.0
-    for trade in result["trades"]:
-        held.add(trade.symbol) if trade.direction == "buy" else held.discard(trade.symbol)
-        groups: dict[str, int] = {}
-        for symbol in held:
-            group = str(SYMBOL_SUB_INDUSTRY.get(symbol, "unmapped"))
-            groups[group] = groups.get(group, 0) + 1
-        if held:
-            max_cluster = max(max_cluster, max(groups.values()) / len(held))
+    _, positions = _sleeve_paths(result)
+    max_cluster = maximum_cluster_weight(
+        positions, {str(date.date()): float(row.assets) for date, row in equity.iterrows()}, SYMBOL_SUB_INDUSTRY
+    )
     telemetry = {
         "cash_days": int((equity["position_value"] == 0).sum()),
         "max_gross_ratio": float((equity["position_value"] / equity["assets"]).max()),
@@ -332,10 +199,10 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
         "first_evidence_timestamp": min((str(x.get("date")) for x in events), default=None),
         "first_executable_open": min((str(t.date) for t in result["trades"]), default=None),
         "first_official_mdd_breach": breach,
-        "first_account_alert_event": _manager_event(events, "account_drawdown_alert"),
-        "first_confirmed_cycle_lock": _manager_event(events, "confirmed_drawdown_lock"),
-        "first_emergency_cycle_lock": _manager_event(events, "emergency_drawdown_lock"),
-        "first_terminal_lock": _manager_event(events, "terminal_drawdown_lock"),
+        "first_account_alert_event": _manager_event(events, "portfolio_drawdown_alert_on"),
+        "first_confirmed_cycle_lock": _manager_event(events, "confirmed_cycle_drawdown_lock"),
+        "first_emergency_cycle_lock": _manager_event(events, "emergency_cycle_drawdown_lock"),
+        "first_terminal_lock": _manager_event(events, "terminal_portfolio_drawdown_lock"),
         "same_open_offset_shares": 0,
         "carried_conflict_count": sum("retained" in str(x.get("event", "")) for x in orders),
         "cluster_substitution_count": sum("substitution" in str(x.get("event", "")) for x in events),
@@ -538,14 +405,14 @@ def _action_records(result: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 
 def _risk_records(result: Mapping[str, Any]) -> list[dict[str, Any]]:
-    names = {"portfolio_drawdown_alert_on": "ACCOUNT_ALERT", "confirmed_cycle_drawdown_lock": "CONFIRMED_LOCK", "emergency_drawdown_lock": "EMERGENCY_LOCK", "terminal_drawdown_lock": "TERMINAL_LOCK"}
+    names = {"portfolio_drawdown_alert_on": "ACCOUNT_ALERT", "confirmed_cycle_drawdown_lock": "CONFIRMED_LOCK", "emergency_cycle_drawdown_lock": "EMERGENCY_LOCK", "terminal_portfolio_drawdown_lock": "TERMINAL_LOCK"}
     records = []
     for ordinal, event in enumerate(item for item in result.get("risk_events", []) if item.get("date")):
         source = str(event.get("event", "cross_market"))
         kind = names.get(source, "SUBINDUSTRY" if "sector" in source or "subindustr" in source else "CONCENTRATION" if "concentration" in source else "LAYERED_STOP" if "stop" in source or "catastrophe" in source else "OPEN_MARK_GAP" if "gap" in source else "CROSS_MARKET")
         sleeve = event.get("sleeve")
         state = {"fast": 0, "base": 1, "slow": 2}.get(sleeve)
-        records.append({"emission_ordinal": ordinal, "timestamp": str(event["date"]), "phase_order": 0, "event_type": kind, "state_index": state, "sleeve_name": sleeve if state is not None else None, "strategy_name": event.get("strategy") or event.get("strategy_name"), "symbol": event.get("symbol"), "peak_owner": "manager_cycle_peak" if "peak_assets" in event else None, "peak_value": event.get("peak_assets"), "current_assets": event.get("current_assets"), "drawdown": event.get("drawdown"), "threshold": event.get("threshold"), "status_source": source, "evidence_flags": []})
+        records.append({"emission_ordinal": ordinal, "timestamp": str(event["date"]), "phase_order": 0, "event_type": kind, "state_index": state, "sleeve_name": sleeve if state is not None else None, "strategy_name": event.get("strategy") or event.get("strategy_name"), "symbol": event.get("symbol"), "peak_owner": event.get("peak_owner"), "peak_value": event.get("peak_assets"), "current_assets": event.get("current_assets"), "drawdown": event.get("drawdown"), "threshold": event.get("threshold"), "status_source": source, "evidence_flags": []})
     return records
 
 
@@ -615,8 +482,8 @@ def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
     exposure = [{"sample_ordinal": i, "timestamp": item["timestamp"], "phase": "official_sample", "gross_notional": float(equity.iloc[i]["position_value"]), "gross_ratio": float(equity.iloc[i]["position_value"] / equity.iloc[i]["assets"]), "symbol": None, "symbol_notional": None, "cluster": None, "cluster_notional": None, "cluster_weight": None} for i, item in enumerate(equity_series)]
     metrics = {"total_return": float(result["total_return"]), "terminal_wealth": float(result["final_assets"]), "max_drawdown": float(result["max_drawdown"]), "sharpe": float(result["sharpe"]), "calmar": float(result["calmar"]), "total_trades": int(result["total_trades"]), "sleeve_fill_count": int(result["sleeve_fill_count"]), "date_symbol_side_count": int(result["date_symbol_side_count"]), "cash_days": int((equity["position_value"] == 0).sum()), "reason_attribution": attribution, "max_concurrent_symbols": int(result["max_concurrent_symbols"]), "terminal_risk_lock": bool(result["terminal_risk_lock"]), "deployment_policy": "production_daily_replay"}
     raw_breach = first_official_mdd_breach(equity_series)
-    breach = {"timestamp": None, "sample_ordinal": None, "peak_timestamp": None, "peak_value": None, "equity": None, "drawdown": None, "threshold": 0.18, "tolerance": 1e-15} if raw_breach is None else {"timestamp": raw_breach["timestamp"], "sample_ordinal": raw_breach["sample_ordinal"], "peak_timestamp": None, "peak_value": raw_breach["peak_value"], "equity": raw_breach["current_assets"], "drawdown": raw_breach["drawdown"], "threshold": 0.18, "tolerance": 1e-15}
-    timeline = {"first_official_mdd_breach": breach, "first_account_alert_event": _manager_event(result.get("risk_events", []), "portfolio_drawdown_alert_on"), "first_confirmed_cycle_lock": _manager_event(result.get("risk_events", []), "confirmed_cycle_drawdown_lock"), "first_emergency_cycle_lock": _manager_event(result.get("risk_events", []), "emergency_drawdown_lock"), "first_terminal_lock": _manager_event(result.get("risk_events", []), "terminal_drawdown_lock")}
+    breach = {"timestamp": None, "sample_ordinal": None, "peak_timestamp": None, "peak_value": None, "equity": None, "drawdown": None, "threshold": 0.18, "tolerance": 1e-15} if raw_breach is None else {"timestamp": raw_breach["timestamp"], "sample_ordinal": raw_breach["sample_ordinal"], "peak_timestamp": raw_breach["peak_timestamp"], "peak_value": raw_breach["peak_value"], "equity": raw_breach["current_assets"], "drawdown": raw_breach["drawdown"], "threshold": 0.18, "tolerance": 1e-15}
+    timeline = {"first_official_mdd_breach": breach, "first_account_alert_event": _manager_event(result.get("risk_events", []), "portfolio_drawdown_alert_on"), "first_confirmed_cycle_lock": _manager_event(result.get("risk_events", []), "confirmed_cycle_drawdown_lock"), "first_emergency_cycle_lock": _manager_event(result.get("risk_events", []), "emergency_cycle_drawdown_lock"), "first_terminal_lock": _manager_event(result.get("risk_events", []), "terminal_portfolio_drawdown_lock")}
     initial = stress_metrics.INITIAL_CAPITAL
     warm = _warm_snapshot(result, initial)
     definition = {key: scenario.get(key) for key in ("scenario_id", "scenario_type", "symbols", "symbol_count", "omitted_symbol", "added_symbol", "base_size", "seed", "sample_size")}

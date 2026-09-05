@@ -91,6 +91,31 @@ def capture_c6_warm_state(states: list, account_risk: Any, overlay: Any) -> dict
             raise ValueError("warm boundary contains advanced overlay state")
     return captured
 
+
+def capture_account_risk_events(manager: Any, assets: float, date: str, peaks: dict) -> list[dict]:
+    """Attach observed owner, value and policy threshold at event emission."""
+    for field in ("peak_assets", "lifetime_peak_assets"):
+        value = getattr(manager, field)
+        if field not in peaks or peaks[field][0] != value:
+            peaks[field] = (value, date)
+    thresholds = {
+        "portfolio_drawdown_alert_on": manager.policy.drawdown_alert,
+        "portfolio_drawdown_alert_off": manager.policy.drawdown_alert,
+        "confirmed_cycle_drawdown_lock": manager.policy.confirmed_drawdown,
+        "emergency_cycle_drawdown_lock": manager.policy.emergency_drawdown,
+        "terminal_portfolio_drawdown_lock": manager.policy.terminal_drawdown,
+    }
+    events = manager.drain_audit_events()
+    for event in events:
+        name = event["event"]
+        if name in thresholds:
+            lifetime = name == "terminal_portfolio_drawdown_lock"
+            value, timestamp = peaks["lifetime_peak_assets" if lifetime else "peak_assets"]
+            event.update(peak_assets=value, peak_timestamp=timestamp, current_assets=assets,
+                         peak_owner="manager_lifetime_peak" if lifetime else "manager_cycle_peak",
+                         threshold=thresholds[name])
+    return events
+
 _CoreBacktestEngine = CoreBacktestEngine
 _ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
 _EnsembleBacktestEngine = EnsembleBacktestEngine
@@ -195,6 +220,7 @@ class EnsembleOrchestrationMixin:
                 for state in states:
                     state.sleeve.sector_guard_active = True
         portfolio_risk_events: list[dict[str, Any]] = []
+        portfolio_peak_observations: dict[str, tuple[float, str]] = {}
         symbol_count_curve: list[dict[str, Any]] = []
         # 穿越牛熊 overlay: bull-silent defensive layer on top of the ensemble.
         # Default ON, only fires on genuine risk (catastrophe drop / structural
@@ -303,7 +329,9 @@ class EnsembleOrchestrationMixin:
                     trading_dates=reference_dates,
                     date_to_pos=states[0].date_to_pos,
                 )
-                portfolio_risk_events.extend(portfolio_risk.drain_audit_events())
+                portfolio_risk_events.extend(capture_account_risk_events(
+                    portfolio_risk, assets, date.strftime("%Y-%m-%d"), portfolio_peak_observations
+                ))
                 if status:
                     self._apply_global_risk_lock(states, date)
             self._update_tail_sleeve_guard(

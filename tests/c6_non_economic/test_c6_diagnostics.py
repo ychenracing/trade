@@ -365,8 +365,10 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
     paths = []
     effective = None
     opening_states = []
+    replay_states = []
     original_open = BacktestEngine._execute_ensemble_open
     def capture_open(engine, states, date, *args, **kwargs):
+        replay_states[:] = states
         opening_states.append({
             'date': str(date),
             'orders': [[asdict(signal) for signal, _ in state.pending] for state in states],
@@ -375,31 +377,35 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
         })
         return original_open(engine, states, date, *args, **kwargs)
     monkeypatch.setattr(BacktestEngine, '_execute_ensemble_open', capture_open)
-    for intervention in ('BASELINE', 'C6_BASE', 'C6_BASE_PLUS_S'):
+    for intervention in ('BASELINE', 'C6_BASE', 'C6_BASE_PLUS_S', 'PRODUCTION'):
         opening_states = []
         engine = ProductionReplayEngine(2000000.)
-        result = engine.run_c6_diagnostic(
-            {symbol: symbol for symbol in symbols}, '2026-01-05', '2026-01-09',
-            diagnostic_request={'schema_version': 1, 'intervention_id': intervention,
-                                'recording_mode': 'DEFAULT', 'scenario_id': 'prefix-05',
-                                'diagnostic_noncanonical': True, 'allow_publication': False},
-            data_dir=str(tmp_path), regime_data_dir=str(tmp_path),
-        )
+        kwargs = {'data_dir': str(tmp_path), 'regime_data_dir': str(tmp_path)}
+        runner = engine.run
+        if intervention != 'PRODUCTION':
+            runner = engine.run_c6_diagnostic
+            kwargs['diagnostic_request'] = {'schema_version': 1, 'intervention_id': intervention,
+                                           'recording_mode': 'DEFAULT', 'scenario_id': 'prefix-05',
+                                           'diagnostic_noncanonical': True, 'allow_publication': False}
+        result = runner({symbol: symbol for symbol in symbols}, '2026-01-05', '2026-01-09', **kwargs)
+        states = replay_states
+
         # Direct engine ledgers, without the diagnostic serializer's reconstructions.
         path = {
-            'orders': {'open_batches': [x['orders'] for x in opening_states], 'events': result['order_events'], 'pending': [[asdict(signal) for signal, _ in state.pending] for state in result['_c6_states']]},
+            'orders': {'open_batches': [x['orders'] for x in opening_states], 'events': result['order_events'], 'pending': [[asdict(signal) for signal, _ in state.pending] for state in states]},
             'fills': [asdict(trade) for trade in result['trades']],
-            'cash': [s['equity_curve']['cash'].to_json(date_format='iso') for s in result['_c6_sleeve_results']],
+            'cash': [[(row['date'], row['cash']) for row in state.sleeve.equity_curve] for state in states],
             'positions': {'open_batches': [x['positions'] for x in opening_states], 'final': [{symbol: {name: asdict(position) for name, position in books.items()}
-                           for symbol, books in s.sleeve.positions.items()} for s in result['_c6_states']]},
+                           for symbol, books in s.sleeve.positions.items()} for s in states]},
             'equity': result['equity_curve'].to_json(date_format='iso') if hasattr(result['equity_curve'], 'to_json') else result['equity_curve'],
         }
         assert path['fills'], 'fixture must exercise actual execution'
         paths.append({key: __import__('hashlib').sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest() for key, value in path.items()})
         if intervention == 'C6_BASE_PLUS_S':
             effective = sum(event.get('event') == 'concentration_trim' for event in result['risk_events'])
-        assert c6_diagnostics._warm_snapshot(result, 2000000.)['phase'] == 'before_first_valuation'
-    assert paths[0] == paths[1] == paths[2]
+        if intervention != 'PRODUCTION':
+            assert c6_diagnostics._warm_snapshot(result, 2000000.)['phase'] == 'before_first_valuation'
+    assert paths[0] == paths[1] == paths[2] == paths[3]
     assert effective == 0
     record_property('c6.assertion.s/no-op-control/fixture-identity', json.dumps('s/no-op-control/v1'))
     record_property('c6.assertion.s/no-op-control/s-effective-count', json.dumps(effective))
@@ -473,3 +479,75 @@ def test_s_noop_receipt_requires_observed_typed_values(monkeypatch, observed):
     rows = c6_diagnostics._controls(p, 'S')
     assert not rows[0]['passed']
     assert rows[0]['assertions'][0]['actual'] is observed
+
+
+def test_account_timeline_cannot_take_an_earlier_sleeve_alert():
+    events = [
+        {'date': '2026-01-01', 'sleeve': 'fast', 'event': 'portfolio_drawdown_alert_on', 'drawdown': .1},
+        {'date': '2026-01-02', 'sleeve': 'portfolio', 'event': 'portfolio_drawdown_alert_on', 'drawdown': .15,
+         'peak_owner': 'manager_cycle_peak', 'peak_assets': 2000000., 'current_assets': 1700000., 'threshold': .15},
+    ]
+    actual = c6_diagnostics._manager_event(events, 'portfolio_drawdown_alert_on')
+    assert actual['timestamp'] == '2026-01-02'
+    assert actual['current_assets'] == 1700000.
+    assert c6_diagnostics._manager_event(events[:1], 'portfolio_drawdown_alert_on')['timestamp'] is None
+
+
+def test_real_emergency_and_terminal_event_names_and_peak_owners_are_retained():
+    from quantfusion.config.portfolio import PortfolioPolicy
+    from quantfusion.risk.managers import RecoverableDrawdownRiskManager
+    policy = PortfolioPolicy()
+    for assets, name, owner in [
+        (2000000. * (1 - policy.emergency_drawdown - .001), 'emergency_cycle_drawdown_lock', 'manager_cycle_peak'),
+        (2000000. * (1 - policy.terminal_drawdown - .001), 'terminal_portfolio_drawdown_lock', 'manager_lifetime_peak'),
+    ]:
+        manager = RecoverableDrawdownRiskManager({}, policy)
+        manager.check_portfolio_risk(2000000., '2026-01-01')
+        manager.check_portfolio_risk(assets, '2026-01-02')
+        events = [{**event, 'sleeve': 'portfolio'} for event in manager.drain_audit_events()]
+        actual = c6_diagnostics._manager_event(events, name)
+        assert actual['timestamp'] == '2026-01-02'
+        assert actual['peak_owner'] == owner
+        assert actual['status_source'] == name
+
+
+def test_official_breach_retains_the_first_equal_peak_timestamp():
+    breach = c6_diagnostics.first_official_mdd_breach([
+        {'timestamp': '2026-01-01', 'equity': 100.},
+        {'timestamp': '2026-01-02', 'equity': 100.},
+        {'timestamp': '2026-01-03', 'equity': 80.},
+    ])
+    assert breach['peak_timestamp'] == '2026-01-01'
+
+
+def test_account_event_capture_preserves_actual_cycle_and_lifetime_peak_owners():
+    from quantfusion.config.portfolio import PortfolioPolicy
+    from quantfusion.risk.managers import RecoverableDrawdownRiskManager
+    from quantfusion.engine.ensemble_orchestration import capture_account_risk_events
+    manager = RecoverableDrawdownRiskManager({}, PortfolioPolicy())
+    peaks = {}
+    manager.check_portfolio_risk(2000000., '2026-01-01')
+    assert capture_account_risk_events(manager, 2000000., '2026-01-01', peaks) == []
+    manager.check_portfolio_risk(2000000., '2026-01-02')
+    capture_account_risk_events(manager, 2000000., '2026-01-02', peaks)
+    assets = 2000000. * (1 - manager.policy.terminal_drawdown - .001)
+    manager.check_portfolio_risk(assets, '2026-01-03')
+    events = capture_account_risk_events(manager, assets, '2026-01-03', peaks)
+    terminal = next(x for x in events if x['event'] == 'terminal_portfolio_drawdown_lock')
+    assert terminal['peak_owner'] == 'manager_lifetime_peak'
+    assert terminal['peak_assets'] == 2000000.
+    assert terminal['peak_timestamp'] == '2026-01-01'
+    assert terminal['current_assets'] == assets
+    assert terminal['threshold'] == manager.policy.terminal_drawdown
+
+
+def test_cluster_weight_uses_marked_value_over_account_assets():
+    positions = [
+        {'timestamp': '2026-01-01', 'symbol': 'a', 'market_value': 900.},
+        {'timestamp': '2026-01-01', 'symbol': 'b', 'market_value': 100.},
+        {'timestamp': '2026-01-02', 'symbol': 'a', 'market_value': 100.},
+        {'timestamp': '2026-01-02', 'symbol': 'b', 'market_value': 300.},
+    ]
+    assets = {'2026-01-01': 2000., '2026-01-02': 1000.}
+    assert c6_diagnostics.maximum_cluster_weight(positions, assets, {'a': 'optical', 'b': 'equipment'}) == .45
+    assert c6_diagnostics.maximum_cluster_weight([], assets, {}) == 0.
