@@ -1,0 +1,15 @@
+name: C6 stop invalid v10
+on:
+  push:
+    branches: [codex/c6-stop-v10]
+permissions:
+  actions: write
+jobs:
+  cancel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Cancel exact invalid experiment run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/ychenracing/trade/actions/runs/33933010157/cancel
