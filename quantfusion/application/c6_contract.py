@@ -923,6 +923,44 @@ def select_binding(
     return matches[0]
 
 
+def validate_selection_shape(selection: Mapping[str, Any], preregistration: Mapping[str, Any]) -> None:
+    """Enforce all five frozen D branches without excusing correctness failures."""
+    specs = preregistration["diagnostic_predicate_manifests"]["L1_APPLICABLE_DIAGNOSTIC_PREDICATES"]
+    expected_ids = [spec["id"] for spec in specs]
+    def failures(rows: Any) -> set[str]:
+        if (not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows)
+            or [row.get("predicate_id") for row in rows] != expected_ids
+            or any(type(row.get("passed")) is not bool for row in rows)):
+            raise ContractError("D predicate array is incomplete or out of manifest order")
+        return {row["predicate_id"] for row in rows if not row["passed"]}
+    base_failures = failures(selection["base_l1_predicates"])
+    residual = bool(selection["residual_ids"])
+    deferred = {spec["id"] for spec in specs if spec.get("selection_defer_if_base_residual_exists") is True} if residual else set()
+    base_failed = bool(base_failures - deferred)
+    qualification = selection["s_qualification"] is not None
+    s_present = selection["base_plus_s_l1"] is not None
+    s_rows = selection["base_plus_s_l1_predicates"]
+    if s_present != (s_rows is not None):
+        raise ContractError("D S artifact/predicate presence is inconsistent")
+    s_failed = bool(failures(s_rows)) if s_present else False
+    variants = {
+        "BASE_REJECTED": (base_failed and not qualification and not s_present, None, "BASE_L1_PREDICATE_FAILED"),
+        "BASE_SELECTED": (not residual and not base_failures and not qualification and not s_present, "C6-Base", None),
+        "QUALIFICATION_REJECTED": (residual and not base_failed and qualification and not s_present, None, "S_QUALIFICATION_FAILED"),
+        "BASE_PLUS_S_REJECTED": (residual and not base_failed and qualification and s_present and s_failed, None, "BASE_PLUS_S_L1_PREDICATE_FAILED"),
+        "BASE_PLUS_S_SELECTED": (residual and not base_failed and qualification and s_present and not s_failed, "C6-Base+S", None),
+    }
+    branch = selection.get("branch")
+    if not isinstance(branch, str) or branch not in variants:
+        raise ContractError("D branch is missing or unknown")
+    valid, candidate, reason = variants[branch]
+    if (not valid or selection["status"] != ("selected" if candidate else "rejected")
+        or selection["selected_candidate"] != candidate
+        or (selection["C"] is not None) != (candidate is not None)
+        or selection["rejection_reasons"] != ([] if reason is None else [reason])):
+        raise ContractError("D branch is internally inconsistent")
+
+
 def validate_selection_commit(
     path: str | Path,
     *,
@@ -962,26 +1000,6 @@ def validate_selection_commit(
     implementation = run_bindings["implementations"][alias]
     if selection["C"] != implementation:
         raise ContractError("D selected implementation differs from R")
-    branch = selection["branch"]
-    if candidate_id == "C6-Base":
-        valid = branch == "BASE_SELECTED" and not residuals and all(
-            selection[key] is None
-            for key in ("s_qualification", "base_plus_s_l1", "base_plus_s_l1_predicates")
-        )
-    else:
-        valid = (
-            branch == "BASE_PLUS_S_SELECTED" and bool(residuals)
-            and selection["s_qualification"] is not None
-            and selection["base_plus_s_l1"] is not None
-            and isinstance(selection["base_plus_s_l1_predicates"], list)
-        )
-    predicate_groups = [selection["base_l1_predicates"]]
-    if candidate_id == "C6-Base+S":
-        predicate_groups.append(selection["base_plus_s_l1_predicates"])
-    if (
-        not valid or selection["rejection_reasons"] != []
-        or any(not isinstance(group, list) for group in predicate_groups)
-        or any(item.get("passed") is not True for group in predicate_groups for item in group)
-    ):
-        raise ContractError("D selected branch is internally inconsistent")
+    preregistration = load_preregistration("artifacts/diagnostics/c6-preregistration.json")
+    validate_selection_shape(selection, preregistration)
     return implementation

@@ -19,6 +19,40 @@ from quantfusion.application.c6_contract import (
 )
 REPOSITORY = Path(__file__).resolve().parents[2]
 PREREGISTRATION = REPOSITORY / "artifacts/diagnostics/c6-preregistration.json"
+
+
+@pytest.mark.parametrize("branch", ["BASE_REJECTED", "BASE_SELECTED", "QUALIFICATION_REJECTED", "BASE_PLUS_S_REJECTED", "BASE_PLUS_S_SELECTED"])
+def test_selection_shape_preserves_deferred_base_predicates(branch):
+    from quantfusion.application import c6_contract as contract
+    p = load_preregistration(PREREGISTRATION, repository=REPOSITORY)
+    specs = p["diagnostic_predicate_manifests"]["L1_APPLICABLE_DIAGNOSTIC_PREDICATES"]
+    rows = [{"predicate_id": x["id"], "passed": True} for x in specs]
+    residuals = [] if branch == "BASE_SELECTED" else ["prefix-05"]
+    if residuals:
+        next(x for x in rows if x["predicate_id"] == "l1.mdd.noncanonical_18pct_screen")["passed"] = False
+    if branch == "BASE_REJECTED":
+        next(x for x in rows if x["predicate_id"] == "l1.correctness.synthetic_controls")["passed"] = False
+    selected = branch in {"BASE_SELECTED", "BASE_PLUS_S_SELECTED"}
+    qualified = branch.startswith("BASE_PLUS_S_")
+    s_rows = [{"predicate_id": x["id"], "passed": True} for x in specs] if qualified else None
+    if branch == "BASE_PLUS_S_REJECTED":
+        s_rows[0]["passed"] = False
+    reason = {"BASE_REJECTED": "BASE_L1_PREDICATE_FAILED", "QUALIFICATION_REJECTED": "S_QUALIFICATION_FAILED", "BASE_PLUS_S_REJECTED": "BASE_PLUS_S_L1_PREDICATE_FAILED"}
+    state = {"branch": branch, "status": "selected" if selected else "rejected", "residual_ids": residuals,
+             "base_l1_predicates": rows, "s_qualification": {} if branch not in {"BASE_SELECTED", "BASE_REJECTED"} else None,
+             "base_plus_s_l1": {} if qualified else None, "base_plus_s_l1_predicates": s_rows,
+             "selected_candidate": ("C6-Base" if branch == "BASE_SELECTED" else "C6-Base+S") if selected else None,
+             "C": {} if selected else None, "rejection_reasons": [] if selected else [reason[branch]]}
+    contract.validate_selection_shape(state, p)
+    other_branches = [name for name in ("BASE_REJECTED", "BASE_SELECTED", "QUALIFICATION_REJECTED", "BASE_PLUS_S_REJECTED", "BASE_PLUS_S_SELECTED") if name != branch]
+    for altered in [*({**state, "branch": name} for name in other_branches), {**state, "branch": "unknown"}, {**state, "branch": None}, {**state, "base_l1_predicates": rows[:-1]}, {**state, "status": "rejected" if selected else "selected"}]:
+        with pytest.raises(ContractError):
+            contract.validate_selection_shape(altered, p)
+    if branch == "BASE_PLUS_S_SELECTED":
+        rows[0]["passed"] = False  # identity is never a deferred predicate
+        with pytest.raises(ContractError):
+            contract.validate_selection_shape(state, p)
+
 def test_strict_json_rejects_duplicate_keys_and_nonfinite_numbers() -> None:
     with pytest.raises(ContractError, match="duplicate JSON key"):
         strict_json_loads('{"x":1,"x":2}')

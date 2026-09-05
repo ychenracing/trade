@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "kind": "c6_static_contract_review",
+  "economic_execution": false,
+  "reviewed_P": "900a8ba0f27ac8b2fefc40d8017383c858a3d2e9",
+  "reviewed_I_B": "1b9e3c2ff73b05fdeebe06e07093d9122d09e7bb",
+  "reviewed_R": "94937ab900893ec9fc3c4e9ae34900fe7b2582c0",
+  "v10_disposition": {
+    "run_id": 33933010157,
+    "status": "cancelled",
+    "artifact_count": 0,
+    "resume_forbidden": true
+  },
+  "D_fix": {
+    "problem": "D incorrectly rejected P-authorized deferred Base predicate failures on qualified S selection.",
+    "repair": "Five-branch structural validator reads exact deferred IDs from P; complete ordered predicate arrays required; non-deferred failures never excused.",
+    "verification": "13 targeted contract tests pass, including all five branches and cross-branch mutations.",
+    "limits": "Structural validation alone does not authenticate external producer artifacts; full evidence authentication remains required before acceptance."
+  },
+  "warm_boundary_conflict": {
+    "P_rule": "cycle_peak_assets, lifetime_peak_assets and daily_start_assets each equal initial_capital",
+    "P_required_value": 2000000.0,
+    "real_new_risk_manager_observation": {
+      "peak_assets": 0.0,
+      "lifetime_peak_assets": 0.0,
+      "daily_start_assets": 0.0
+    },
+    "observation_point": "RecoverableDrawdownRiskManager construction; ensemble account manager is created before the first reference-date iteration and first economic decision.",
+    "source_paths": [
+      "quantfusion/risk/managers.py",
+      "quantfusion/engine/ensemble_orchestration.py",
+      "quantfusion/application/c6_diagnostics.py"
+    ],
+    "synthetic_contamination_probe": {
+      "input_sleeve_cash": 123.0,
+      "input_positions_nonempty": true,
+      "input_pending_orders_nonempty": true,
+      "reported_sleeve_cash": 666666.6666666666,
+      "reported_positions": [],
+      "reported_pending_orders": [],
+      "reported_unauthorized_economic_state_empty": true
+    },
+    "root_cause": "_warm_snapshot reconstructs expected initialization constants after replay instead of capturing actual state at the boundary. It can conceal contaminated state and cannot prove the frozen invariant."
+  },
+  "control_evidence_gap": {
+    "source": "quantfusion/application/c6_diagnostics.py::_controls",
+    "finding": "The child runs three Base test files then copies every frozen expected value into actual and marks every control passed; no executed-test-to-control mapping or assertion receipt is retained. This includes governance, readiness, warm-boundary and healthy-bull controls outside those three dedicated Base modules.",
+    "acceptance_blocked": true
+  },
+  "proposed_contract_amendment_requires_user_decision": {
+    "boundary": "Capture actual immutable state immediately before the first execution/decision loop; never reconstruct it from end-of-run objects.",
+    "peaks": "Record raw peak_assets, lifetime_peak_assets and daily_start_assets, including legitimate uninitialized zero, with explicit phase before_first_valuation. Do not silently substitute initial capital and do not mutate the risk manager to make the audit pass.",
+    "unchanged_requirements": [
+      "actual initial cash and allocation",
+      "no pre-window positions, pending orders, realized PnL or active locks",
+      "causal information cutoff",
+      "all trading rules, drawdown thresholds, formal gates, data and scenario manifests"
+    ],
+    "additional_proof": "Bind each synthetic control to actually executed assertions; missing, skipped or unobserved assertions must fail closed.",
+    "until_approved": "No fresh P freeze, economic dispatch, candidate merge or modification of protected warm-state/account-lock contract."
+  }
+}
