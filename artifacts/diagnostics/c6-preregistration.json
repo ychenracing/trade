@@ -2,8 +2,8 @@
   "schema_version": 2,
   "kind": "c6_causal_risk_closure_preregistration",
   "status": "frozen_before_implementation_or_economic_dispatch",
-  "experiment_id": "c6-causal-risk-closure-17x958-v18",
-  "frozen_at": "2026-09-05T14:42:04Z",
+  "experiment_id": "c6-causal-risk-closure-17x958-v19",
+  "frozen_at": "2026-09-06T01:15:31Z",
   "authority": {
     "repository": "ychenracing/trade",
     "branch": "codex/c6-causal-risk-closure-v11",
@@ -160,6 +160,51 @@
           "economic_evaluations": 0,
           "evidence": "Actual production envelope accepts different execution/workflow versions; sealed checkpoint authenticated; sole successor terminal; terminal authentication explicitly declines a third attempt; independent archive/source/file hash verification."
         }
+      },
+      "operational_interruption": {
+        "class": "D_user_requested_interruption_with_A_identity_rebinding",
+        "authorization": "TRADE_C6_HANDOFF_PROMPT_20260906(1).md; existing recovery contract A/D; no new strategy research",
+        "handoff_file_sha256": "c280372713f8cea1a9d8c9082d2b51c702cdafff2051180921636c24e042b961",
+        "preserved_execution_revision": "v18",
+        "preserved_identities": {
+          "P": "1a66eab853561609fe9ca3e060157abd77c915b9",
+          "I_B": "0679e65aa269ecca46c038b7bfea785892c969e2",
+          "I_S": "c4fa73a00b41eaf88c4d738e514eb0d930007457",
+          "R": "b5a3cfecef70957854a2f4cc751d67b63d1b25a9"
+        },
+        "cancelled_workflow_run_id": 33976099202,
+        "cancelled_logical_run_id": "c6-v18-base-l1",
+        "cancelled_attempt_id": "a0",
+        "terminal_status": "completed/cancelled",
+        "sealed_artifact_count": 0,
+        "available_sealed_completed_items": 0,
+        "executed_but_unsealed_item_count": null,
+        "classification": "incomplete operational interruption; neither valid economic rejection nor a terminal accepted result",
+        "recovery_receipt_run_id": 34003295122,
+        "recovery_receipt_artifact_id": 9980136292,
+        "recovery_receipt_archive_sha256": "9788c63448a0b49db795f9875847c98361fd7be5938afba5d9addc423679bd09",
+        "protocol_reason": "GitHubActionsLeaseStore.restore requires one exact sealed artifact for each prior logical attempt; the cancelled v18 attempt has none. Native rerun, same-logical a0 reuse and fabricated resume/checkpoint are prohibited.",
+        "new_execution_revision": "v19",
+        "economic_hypotheses_changed": false,
+        "source_code_tests_data_dependencies_workflow_unchanged": true,
+        "new_source_identity": "P metadata changes require real independent I_B/I_S commits; actual commit/tree identities are bound by R, never relabelled as v18.",
+        "old_v11_imported_records": 0,
+        "v18_imported_records": 0,
+        "base_execution_items_to_compute": 3875,
+        "base_economic_evaluations_to_compute": 3831,
+        "diagnostic_unique_scenarios": 765,
+        "old_v11_prefix_records_to_recompute": 530,
+        "recomputation_completed_at_freeze": 0,
+        "engineering_evidence_reuse": {
+          "Base_run_id": 33974140029,
+          "Base_source_revision": "e5ba9922ecac3a3797917225c3160f8e01c4abd6",
+          "S_exact_integration_run_id": 33975892852,
+          "S_source_revision": "ddab7d6cc16ebe307211fdc218896508fe7e26cd",
+          "main_run_id": 33975521834,
+          "method": "Pairwise v18-to-v19 tracked trees differ only at preregistration JSON. Base production/tests/data/lock match Base CI; subsequent workflow and AGENTS changes are covered by the retained main/PR CI. Validate new P/R and independent-source diff proofs. New PR HEAD still requires current exact-HEAD CI.",
+          "cloud_resume_proof": "Reuse unchanged v17 cross-version chain and artifact9972209195; no redundant probe."
+        },
+        "selection": "Fixed Base residuals -> all-residual S qualification if needed -> eligible S L1 -> mechanical D -> selected L2 -> official17/958; no third candidate or tuning."
       }
     }
   },
@@ -2948,10 +2993,10 @@
       ],
       "fencing_token_generation": "The pinned workflow generates a fresh 64-lowercase-hex run-local nonce with Python secrets before input validation, masks it immediately, and passes it only through GITHUB_ENV and the wrapper/child process environments.",
       "trusted_source_refs": {
-        "I_B": "codex/c6-base-v18",
-        "I_S": "codex/c6-s-v18"
+        "I_B": "codex/c6-base-v19",
+        "I_S": "codex/c6-s-v19"
       },
-      "trusted_evidence_ref": "codex/c6-evidence-v18",
+      "trusted_evidence_ref": "codex/c6-evidence-v19",
       "pre_import_anchor": "Before checkout or import, git ls-remote --refs on the public repository must return exactly source_revision at the candidate's trusted source ref. With empty D, evidence-ref head must equal run_bindings_revision. With nonempty D, evidence-ref head must equal d_commit.",
       "post_D_anchor": "For L2/L4 the checked-out D commit has exactly one parent equal run_bindings_revision and its only diff is A artifacts/diagnostics/c6-selection.json; any other parent/path/status is invalid."
     },
@@ -3000,7 +3045,7 @@
         "record_id": "c6.base.l1",
         "workflow_binding_id": "c6.base.l1",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v18-base-l1",
+        "logical_run_id": "c6-v19-base-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_B",
@@ -3038,7 +3083,7 @@
         "record_id": "c6.s.qualification",
         "workflow_binding_id": "c6.s.qualification",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v18-s-qualification",
+        "logical_run_id": "c6-v19-s-qualification",
         "initial_attempt_id": "a0",
         "stage": "QUALIFICATION",
         "source_alias": "I_S",
@@ -3082,7 +3127,7 @@
         "record_id": "c6.base_plus_s.l1",
         "workflow_binding_id": "c6.base_plus_s.l1",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v18-base-plus-s-l1",
+        "logical_run_id": "c6-v19-base-plus-s-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_S",
@@ -3132,7 +3177,7 @@
         "record_id": "c6.base.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v18-base-l2",
+        "logical_run_id": "c6-v19-base-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_B",
@@ -3170,7 +3215,7 @@
         "record_id": "c6.base_plus_s.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v18-base-plus-s-l2",
+        "logical_run_id": "c6-v19-base-plus-s-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_S",
@@ -3208,7 +3253,7 @@
         "record_id": "c6.base.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v18-base-l4",
+        "logical_run_id": "c6-v19-base-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_B",
@@ -3254,7 +3299,7 @@
         "record_id": "c6.base_plus_s.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v18-base-plus-s-l4",
+        "logical_run_id": "c6-v19-base-plus-s-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_S",
@@ -3524,8 +3569,8 @@
           "equal_across_all_records": "literal ordered array [P,workflow,resolved_inputs,runtime.runner_image_os,runtime.runner_image_version,runtime.python_version,runtime.dependency_lock,runtime.workers,runtime.process_map_order,runtime.checkpoint_every] whose named values must be deeply equal across all seven records",
           "equal_within_source_alias": "literal ordered array [source_revision,source_tree,source_blob_identities] whose named values must be deeply equal among every I_B record and separately among every I_S record",
           "permitted_record_differences": "literal ordered array [record_id,workflow_binding_id,candidate_id,logical_run_id,initial_attempt_id,stage,source_alias,source_revision,source_tree,source_blob_identities,entrypoint,argv,runtime_late_slots,scenario_manifest_identity,synthetic_control_manifest_identity,evaluation_manifest_identity,item_manifest_contract,producer_policy,decision_policy,attempt_policy,paths,canonical_payload_schema,exit_semantics,record_signature] and no others",
-          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v18,I_S:codex/c6-s-v18}",
-          "trusted_evidence_ref": "literal codex/c6-evidence-v18",
+          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v19,I_S:codex/c6-s-v19}",
+          "trusted_evidence_ref": "literal codex/c6-evidence-v19",
           "validation_policy": "literal deep_compare_before_any_dispatch; unknown path or unlisted difference invalid"
         },
         "array_order": {
@@ -3890,7 +3935,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-base-v18",
+      "ref": "codex/c6-base-v19",
       "stages": [
         "I_B_frozen"
       ],
@@ -3903,7 +3948,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-s-v18",
+      "ref": "codex/c6-s-v19",
       "stages": [
         "I_S"
       ],
@@ -3916,7 +3961,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-evidence-v18",
+      "ref": "codex/c6-evidence-v19",
       "stages": [
         "R",
         "D"
