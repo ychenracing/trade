@@ -1,0 +1,92 @@
+name: Recover C6 handoff workspace
+on:
+  push:
+    branches: [codex/c6-recover-handoff-20260906]
+permissions:
+  actions: write
+  contents: read
+concurrency:
+  group: c6-recover-handoff-20260906
+  cancel-in-progress: false
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Verify unchanged remote identities and restore orchestration
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ychenracing/trade
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          mkdir -p "$RUNNER_TEMP/c6-recovery-export"
+          export OUT="$RUNNER_TEMP/c6-recovery-export"
+          python3 -I -S - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          def api(path, method=None):
+              cmd = ['gh', 'api']
+              if method: cmd += ['--method', method]
+              raw = subprocess.check_output(cmd + ['repos/ychenracing/trade/' + path])
+              return json.loads(raw) if raw.strip() else None
+          expected = {
+              'main': 'd8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4',
+              'codex/c6-v17-workflow-anchor': 'd8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4',
+              'codex/c6-causal-risk-closure-v11': 'ddab7d6cc16ebe307211fdc218896508fe7e26cd',
+              'codex/c6-preregistration-v18': '1a66eab853561609fe9ca3e060157abd77c915b9',
+              'codex/c6-base-v18': '0679e65aa269ecca46c038b7bfea785892c969e2',
+              'codex/c6-s-v18': 'c4fa73a00b41eaf88c4d738e514eb0d930007457',
+              'codex/c6-evidence-v18': 'b5a3cfecef70957854a2f4cc751d67b63d1b25a9',
+          }
+          for ref, sha in expected.items():
+              assert api('git/ref/heads/' + ref)['object']['sha'] == sha, ref
+          old = api('actions/runs/33976099202')
+          assert (old['status'], old['conclusion'], old['run_attempt']) == ('completed', 'cancelled', 1)
+          artifacts = api('actions/runs/33976099202/artifacts?per_page=100')
+          assert artifacts['total_count'] == 0 and not artifacts['artifacts']
+          for state in ('in_progress', 'queued', 'waiting', 'pending', 'requested'):
+              runs = api('actions/runs?status=' + state + '&per_page=100')
+              assert runs['total_count'] <= 100
+              assert not [r for r in runs['workflow_runs'] if r['path'] in ('.github/workflows/c6-bound-economic.yml', '.github/workflows/c6-dispatch.yml')], state
+          pr = api('pulls/63')
+          assert pr['state'] == 'open' and not pr['merged'] and pr['head']['sha'] == expected['codex/c6-causal-risk-closure-v11']
+          report = {'repository': 'ychenracing/trade', 'refs': expected, 'cancelled_run_id': old['id'], 'cancelled_status': old['status'], 'cancelled_conclusion': old['conclusion'], 'sealed_artifact_count': 0, 'economic_dispatch_performed': False, 'workflow_states': [], 'ruleset': api('rulesets/21902708'), 'reviews': api('pulls/63/reviews?per_page=100'), 'review_comments': api('pulls/63/comments?per_page=100')}
+          for name, expected_id in (('c6-bound-economic.yml', 349948458), ('c6-dispatch.yml', 350321108), ('c6-auto-resume.yml', 350596514)):
+              before = api('actions/workflows/' + name)
+              assert before['id'] == expected_id and before['state'] in ('disabled_manually', 'active')
+              if before['state'] != 'active': api('actions/workflows/' + name + '/enable', 'PUT')
+              after = api('actions/workflows/' + name)
+              assert after['id'] == expected_id and after['state'] == 'active'
+              report['workflow_states'].append({k: after[k] for k in ('id', 'path', 'state')})
+          for name, run_id in (('pr_ci',33975892852), ('base_ci',33974140029), ('main_ci',33975521834)):
+              report[name] = api('actions/runs/' + str(run_id))
+              assert report[name]['status'] == 'completed' and report[name]['conclusion'] == 'success', name
+          Path(os.environ['OUT'], 'remote-state.json').write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps({'refs':expected, 'workflow_states':report['workflow_states'], 'sealed_artifact_count':0, 'reviews':len(report['reviews']), 'review_comments':len(report['review_comments']), 'economic_dispatch_performed':False}, indent=2))
+          PY
+      - name: Check out existing recovery source without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ddab7d6cc16ebe307211fdc218896508fe7e26cd
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export verified source bundle for isolated continuation
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/c6-recovery-export"
+          test -z "$(git status --porcelain)"
+          git for-each-ref --format='%(refname) %(objectname)' refs/remotes/origin > "$out/remote-refs.txt"
+          git ls-tree -r --name-only HEAD | grep -E '(^|/)AGENTS\.md$' > "$out/agent-paths.txt"
+          git bundle create "$out/trade-c6-recovery.bundle" refs/remotes/origin/main refs/remotes/origin/codex/c6-causal-risk-closure-v11 refs/remotes/origin/codex/c6-preregistration-v18 refs/remotes/origin/codex/c6-base-v18 refs/remotes/origin/codex/c6-s-v18 refs/remotes/origin/codex/c6-evidence-v18 refs/remotes/origin/codex/c6-v17-workflow-anchor
+          git bundle verify "$out/trade-c6-recovery.bundle"
+          (cd "$out" && sha256sum trade-c6-recovery.bundle remote-state.json remote-refs.txt agent-paths.txt > SHA256SUMS)
+          cat "$out/SHA256SUMS"
+          cat "$out/agent-paths.txt"
+      - name: Publish recovery workspace and live-state receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c6-handoff-recovery-workspace
+          path: ${{ runner.temp }}/c6-recovery-export/*
+          if-no-files-found: error
+          retention-days: 30
