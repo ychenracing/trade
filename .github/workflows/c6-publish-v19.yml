@@ -1,0 +1,120 @@
+name: Publish C6 v19 interruption identities
+on:
+  push:
+    branches: [codex/c6-publish-v19-20260906]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: c6-publish-v19-20260906
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Read operational recipe
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: admin
+          persist-credentials: false
+      - name: Read immutable existing source and complete ancestors
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ddab7d6cc16ebe307211fdc218896508fe7e26cd
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+      - name: Construct and verify identities without running economics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git -C admin hash-object .github/admin/build_c6_v19.py)" = 5c64943063c67a146a2b9397fb729527d22489c4
+          export OUT="$RUNNER_TEMP/c6-v19-publication"
+          mkdir -p "$OUT"
+          python -I -S - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          def api(path):
+              return json.loads(subprocess.check_output(['gh','api','repos/ychenracing/trade/'+path]))
+          expected={'main':'d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4','codex/c6-v17-workflow-anchor':'d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4','codex/c6-causal-risk-closure-v11':'ddab7d6cc16ebe307211fdc218896508fe7e26cd','codex/c6-preregistration-v18':'1a66eab853561609fe9ca3e060157abd77c915b9','codex/c6-base-v18':'0679e65aa269ecca46c038b7bfea785892c969e2','codex/c6-s-v18':'c4fa73a00b41eaf88c4d738e514eb0d930007457','codex/c6-evidence-v18':'b5a3cfecef70957854a2f4cc751d67b63d1b25a9'}
+          for ref,sha in expected.items():
+              assert api('git/ref/heads/'+ref)['object']['sha']==sha, ref
+          refs=subprocess.check_output(['git','ls-remote','--refs','https://github.com/ychenracing/trade.git'],text=True)
+          for name in ('preregistration','base','s','evidence'):
+              assert 'refs/heads/codex/c6-'+name+'-v19\n' not in refs
+          assert 'refs/heads/codex/c6-v19-integration\n' not in refs
+          old=api('actions/runs/33976099202')
+          assert (old['status'],old['conclusion'],old['run_attempt'])==('completed','cancelled',1)
+          assert api('actions/runs/33976099202/artifacts')['total_count']==0
+          for state in ('in_progress','queued','waiting','pending','requested'):
+              runs=api('actions/runs?status='+state+'&per_page=100')
+              assert runs['total_count']<=100
+              assert not [r for r in runs['workflow_runs'] if r['path'] in ('.github/workflows/c6-bound-economic.yml','.github/workflows/c6-dispatch.yml')]
+          workflows=[api('actions/workflows/'+name) for name in ('c6-bound-economic.yml','c6-dispatch.yml','c6-auto-resume.yml')]
+          assert all(w['state']=='active' for w in workflows)
+          Path(os.environ['OUT'],'prepublication-state.json').write_text(json.dumps({'refs':expected,'workflows':[{k:w[k] for k in ('id','path','state')} for w in workflows],'cancelled_run':33976099202,'sealed_count':0,'economic_dispatch':False},indent=2)+'\n')
+          PY
+          python -I -S "$GITHUB_WORKSPACE/admin/.github/admin/build_c6_v19.py" "$GITHUB_WORKSPACE/source" "$OUT"
+          python -I -S - <<'PY'
+          import json,os
+          from pathlib import Path
+          x=json.loads(Path(os.environ['OUT'],'identities.json').read_text())
+          expected={'P':'3611ac948287ee147ed40e77eda8ea01bab27a35','I_B':'168cd3856cc1b60c928fe54c4a826b6045df01e9','I_S':'00485e8ceb67f4105d76fa62368f583ce82a81c5','R':'4db5cadc90d450f513dfdda10e0436cf330c62f3','PR_head':'334fd50a77f62bd1a31ca6556c89d285d9785ed6','P_sha256':'51142d71bea24f838849bb4b95da7e9d584dd815137379c49bfac7b78784f23c','R_sha256':'9c7fb1a92d8e04c5b95d1d18503ccb4e313f3dde6a3fa73fe6f92e24830956ac'}
+          assert all(x[k]==v for k,v in expected.items()), x
+          print('Native Python3.12 reproduction exactly matches reviewed local Git and file identities.')
+          PY
+      - name: Publish only new immutable refs and verify remote heads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          export OUT="$RUNNER_TEMP/c6-v19-publication"
+          cat > "$RUNNER_TEMP/c6-git-askpass" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' 'x-access-token' ;;
+            *Password*) printf '%s\n' "$GH_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          SH
+          chmod 700 "$RUNNER_TEMP/c6-git-askpass"
+          export GIT_ASKPASS="$RUNNER_TEMP/c6-git-askpass"
+          export GIT_TERMINAL_PROMPT=0
+          cd source
+          test -z "$(git status --porcelain -uall)"
+          test "$(gh api repos/ychenracing/trade/pulls/63 --jq .head.sha)" = ddab7d6cc16ebe307211fdc218896508fe7e26cd
+          git -c credential.helper= push --atomic https://github.com/ychenracing/trade.git \
+            3611ac948287ee147ed40e77eda8ea01bab27a35:refs/heads/codex/c6-preregistration-v19 \
+            168cd3856cc1b60c928fe54c4a826b6045df01e9:refs/heads/codex/c6-base-v19 \
+            00485e8ceb67f4105d76fa62368f583ce82a81c5:refs/heads/codex/c6-s-v19 \
+            4db5cadc90d450f513dfdda10e0436cf330c62f3:refs/heads/codex/c6-evidence-v19 \
+            334fd50a77f62bd1a31ca6556c89d285d9785ed6:refs/heads/codex/c6-v19-integration
+          git ls-remote --refs https://github.com/ychenracing/trade.git > "$OUT/remote-refs.txt"
+          python -I -S - <<'PY'
+          import json,os
+          from pathlib import Path
+          out=Path(os.environ['OUT']);x=json.loads((out/'identities.json').read_text())
+          refs={line.split('\t')[1]:line.split('\t')[0] for line in (out/'remote-refs.txt').read_text().splitlines()}
+          mapping={'P':'codex/c6-preregistration-v19','I_B':'codex/c6-base-v19','I_S':'codex/c6-s-v19','R':'codex/c6-evidence-v19','PR_head':'codex/c6-v19-integration'}
+          assert all(refs['refs/heads/'+ref]==x[key] for key,ref in mapping.items())
+          old=json.loads((out/'prepublication-state.json').read_text())['refs']
+          assert all(refs['refs/heads/'+ref]==sha for ref,sha in old.items())
+          (out/'publication-receipt.json').write_text(json.dumps({'published_and_read_back':mapping,'identities':x,'old_refs_unchanged':True,'PR_head_not_moved':True,'economic_dispatch_performed':False,'workflow_run_id':os.environ['GITHUB_RUN_ID']},indent=2)+'\n')
+          print('All five new refs verified; old refs, PR head and main unchanged; no economic dispatch.')
+          PY
+          (cd "$OUT" && sha256sum *.json *.txt > SHA256SUMS)
+      - name: Seal publication evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c6-v19-publication
+          path: ${{ runner.temp }}/c6-v19-publication/*
+          if-no-files-found: error
+          retention-days: 30
