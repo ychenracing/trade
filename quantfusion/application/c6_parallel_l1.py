@@ -423,7 +423,7 @@ def merge_shard_payloads(
                 validate_checkpoint_item(item, prereg)
             if attestations_required:
                 assert isinstance(span, tuple)
-                by_ref[item_id] = (records.path, span)
+                by_ref[item_id] = (path, span)
             else:
                 by_id[item_id] = result
         if observed_shard != expected_shard:
