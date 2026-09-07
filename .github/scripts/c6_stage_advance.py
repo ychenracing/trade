@@ -28,6 +28,7 @@ R_SHA256 = '9c7fb1a92d8e04c5b95d1d18503ccb4e313f3dde6a3fa73fe6f92e24830956ac'
 WORKFLOW = 'd8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4'
 ANCHOR = 'codex/c6-v17-workflow-anchor'
 D_REF = 'codex/c6-selection-v19'
+EXECUTION_VERSION = 'v19'
 P_PATH = 'artifacts/diagnostics/c6-preregistration.json'
 R_PATH = 'artifacts/diagnostics/c6-run-bindings.json'
 D_PATH = 'artifacts/diagnostics/c6-selection.json'
@@ -117,6 +118,29 @@ def record_runs(record, history):
 
 def initial_allowed(record, history):
     return not record_runs(record, history)
+
+
+def probe_history(history, version=EXECUTION_VERSION):
+    """Cheaply decide whether expensive sealed-result inspection is warranted."""
+    marker = f'-c6-{version}-'
+    current = sorted(
+        (run for run in history if marker in str(run.get('display_title', ''))),
+        key=lambda run: run.get('id', 0),
+    )
+    active = [run for run in current if run.get('status') != 'completed']
+    if active:
+        return False, {'status': 'active', 'active_run_ids': [run['id'] for run in active]}
+    if not current:
+        return False, {'status': 'not_started', 'active_run_ids': []}
+    latest = current[-1]
+    if latest.get('conclusion') != 'success':
+        return False, {
+            'status': 'latest_attempt_not_successful',
+            'latest_run_id': latest.get('id'),
+            'conclusion': latest.get('conclusion'),
+            'active_run_ids': [],
+        }
+    return True, {'status': 'inspect_sealed_result', 'active_run_ids': []}
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -424,11 +448,7 @@ def main(argv=None):
         ready, state = False, {'status': 'task_closed_or_paused'}
     else:
         history = api.history()
-        current = [run for run in history if '-c6-v19-' in run.get('display_title', '')]
-        active = [run for run in current if run['status'] != 'completed']
-        ready = bool(current) and not active
-        state = {'status': 'active' if active else ('inspect_sealed_result' if current else 'not_started'),
-                 'active_run_ids': [run['id'] for run in active]}
+        ready, state = probe_history(history)
     if args.probe:
         with Path(os.environ['GITHUB_OUTPUT']).open('a') as output:
             output.write('ready=' + str(ready).lower() + '\n')
