@@ -1,0 +1,83 @@
+name: C6 Parallel L1 Chunk Preservation
+
+on:
+  push:
+    branches: [codex/c6-parallel-l1-chunk-preservation-20260907]
+    paths: [.github/workflows/c6-parallel-l1-chunk-preservation.yml]
+
+permissions:
+  contents: write
+
+env:
+  BASE_SHA: 6e79bb9d9df9e9f19ca095817516cb1f0af37aba
+  TARGET_BRANCH: codex/c6-causal-risk-closure-v11
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Check exact target head and install
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
+          git checkout --detach "$BASE_SHA"
+          python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Strengthen partition contract first
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('tests/c6_non_economic/test_c6_parallel_l1.py')
+          text=path.read_text(encoding='utf-8')
+          text=text.replace('''          def test_partition_is_exact_balanced_and_order_preserving():\n              ids = [f"evaluation/item-{index:03d}" for index in range(37)]\n              shards = [partition_item_ids(ids, index, 12) for index in range(12)]\n              assert sorted(item for shard in shards for item in shard) == sorted(ids)\n              assert len({item for shard in shards for item in shard}) == len(ids)\n              assert max(map(len, shards)) - min(map(len, shards)) <= 1\n              for index, shard in enumerate(shards):\n                  assert shard == [item for ordinal, item in enumerate(ids) if ordinal % 12 == index]\n''','''          def test_partition_is_exact_balanced_and_preserves_original_worker_chunks():\n              ids = [f"evaluation/item-{index:03d}" for index in range(97)]\n              chunk_size = 10\n              shards = [partition_item_ids(ids, index, 4, chunk_size=chunk_size) for index in range(4)]\n              assert sorted(item for shard in shards for item in shard) == sorted(ids)\n              assert len({item for shard in shards for item in shard}) == len(ids)\n              assert max(map(len, shards)) - min(map(len, shards)) <= chunk_size\n              owner = {item: shard for shard, items in enumerate(shards) for item in items}\n              for start in range(0, len(ids), chunk_size):\n                  original_chunk = ids[start:start + chunk_size]\n                  assert len({owner[item] for item in original_chunk}) == 1\n                  shard = owner[original_chunk[0]]\n                  selected = [item for item in shards[shard] if item in set(original_chunk)]\n                  assert selected == original_chunk\n''')
+          text=text.replace('partition_item_ids(ids, index, shard_count)', 'partition_item_ids(ids, index, shard_count, chunk_size=2)')
+          text=text.replace('''                  shard_count=shard_count,\n                  core_item_ids=ids,''','''                  shard_count=shard_count,\n                  chunk_size=2,\n                  core_item_ids=ids,''')
+          text=text.replace('''                  shard_count=3,\n              )''','''                  shard_count=3,\n                  chunk_size=2,\n              )''')
+          path.write_text(text,encoding='utf-8')
+          PY
+          set +e
+          python -m pytest -q tests/c6_non_economic/test_c6_parallel_l1.py >/tmp/red.log 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+      - name: Preserve exact chunk membership in implementation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('quantfusion/application/c6_parallel_l1.py')
+          text=path.read_text(encoding='utf-8')
+          text=text.replace('''              "shard_index", "shard_count", "core_item_count",\n              "core_item_sha256", "records",''','''              "shard_index", "shard_count", "chunk_size", "core_item_count",\n              "core_item_sha256", "records",''')
+          text=text.replace('''          def partition_item_ids(item_ids: Sequence[str], shard_index: int, shard_count: int) -> list[str]:\n              if shard_count < 1 or shard_index < 0 or shard_index >= shard_count:\n                  raise ValueError("invalid L1 shard index/count")\n              ids = list(item_ids)\n              if not ids or len(set(ids)) != len(ids):\n                  raise ValueError("parallel L1 manifest must be nonempty and unique")\n              return [item for ordinal, item in enumerate(ids) if ordinal % shard_count == shard_index]\n''','''          def partition_item_ids(\n              item_ids: Sequence[str], shard_index: int, shard_count: int, *, chunk_size: int\n          ) -> list[str]:\n              if shard_count < 1 or shard_index < 0 or shard_index >= shard_count or chunk_size < 1:\n                  raise ValueError("invalid L1 shard index/count/chunk")\n              ids = list(item_ids)\n              if not ids or len(set(ids)) != len(ids):\n                  raise ValueError("parallel L1 manifest must be nonempty and unique")\n              return [\n                  item for ordinal, item in enumerate(ids)\n                  if (ordinal // chunk_size) % shard_count == shard_index\n              ]\n''')
+          text=text.replace('''              *, source_revision: str, record_id: str, shard_index: int, shard_count: int,\n              core_item_ids: Sequence[str], records: Sequence[Mapping[str, Any]],''','''              *, source_revision: str, record_id: str, shard_index: int, shard_count: int,\n              chunk_size: int, core_item_ids: Sequence[str], records: Sequence[Mapping[str, Any]],''')
+          text=text.replace('''                  "shard_count": shard_count,\n                  "core_item_count": len(ids),''','''                  "shard_count": shard_count,\n                  "chunk_size": chunk_size,\n                  "core_item_count": len(ids),''')
+          text=text.replace('''              shard_count: int,\n              prereg: Mapping[str, Any] | None = None,''','''              shard_count: int,\n              chunk_size: int,\n              prereg: Mapping[str, Any] | None = None,''')
+          text=text.replace('''                      or payload["shard_count"] != shard_count\n                      or payload["core_item_count"] != len(ids)''','''                      or payload["shard_count"] != shard_count\n                      or payload["chunk_size"] != chunk_size\n                      or payload["core_item_count"] != len(ids)''')
+          text=text.replace('expected_shard = partition_item_ids(ids, index, shard_count)', 'expected_shard = partition_item_ids(ids, index, shard_count, chunk_size=chunk_size)')
+          text=text.replace('''              return merge_shard_payloads(\n                  root,\n                  expected_item_ids=ids,\n                  source_revision=source_revision,\n                  record_id=str(binding["record_id"]),\n                  shard_count=shard_count,\n                  prereg=prereg,\n              )''','''              chunk_size = int(binding["runtime"]["checkpoint_every"])\n              return merge_shard_payloads(\n                  root,\n                  expected_item_ids=ids,\n                  source_revision=source_revision,\n                  record_id=str(binding["record_id"]),\n                  shard_count=shard_count,\n                  chunk_size=chunk_size,\n                  prereg=prereg,\n              )''')
+          text=text.replace('shard_ids = partition_item_ids(ids, args.shard_index, args.shard_count)', 'chunk_size = int(binding["runtime"]["checkpoint_every"])\n              shard_ids = partition_item_ids(ids, args.shard_index, args.shard_count, chunk_size=chunk_size)')
+          text=text.replace('''                      shard_count=args.shard_count,\n                      core_item_ids=ids,''','''                      shard_count=args.shard_count,\n                      chunk_size=chunk_size,\n                      core_item_ids=ids,''')
+          path.write_text(text,encoding='utf-8')
+          PY
+      - name: Verify GREEN and affected boundaries
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/c6_non_economic/test_c6_parallel_l1.py tests/c6_non_economic/test_c6_recovery_boundaries.py tests/c6_non_economic/test_c6_bound_run.py --tb=short
+          python -m compileall -q quantfusion/application/c6_parallel_l1.py quantfusion/application/c6_diagnostics.py tests/c6_non_economic/test_c6_parallel_l1.py
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion/application/c6_parallel_l1.py quantfusion/application/c6_diagnostics.py tests/c6_non_economic/test_c6_parallel_l1.py
+      - name: Publish focused correction
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
+          git add quantfusion/application/c6_parallel_l1.py tests/c6_non_economic/test_c6_parallel_l1.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'perf(c6): preserve worker chunk identity across shards' -m 'Shard whole original checkpoint chunks rather than individual records. Each original 10-item process batch keeps the same members and order; only independently fresh process batches execute concurrently across jobs. Aggregate validation remains exact and fail-closed.'
+          git push origin HEAD:$TARGET_BRANCH
