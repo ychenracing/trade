@@ -951,6 +951,7 @@ class DiagnosticCheckpoint:
         offset = max(start, len(self.items))
         while offset < end:
             if self.new_count and time.monotonic() >= self.deadline:
+                self.save()
                 raise SystemExit(75)
             stop = min(offset + self.chunk_size, end)
             batch = tasks[offset - start:stop - start]
@@ -967,6 +968,7 @@ class DiagnosticCheckpoint:
                                    "result_sha256": canonical_payload_hash(result), "result": result})
             self.new_count += stop - offset
             offset = stop
+        if self.new_count:
             self.save()
         if self.new_count and end < len(self.ids) and time.monotonic() >= self.deadline:
             raise SystemExit(75)
