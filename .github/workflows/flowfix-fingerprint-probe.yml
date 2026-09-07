@@ -1,0 +1,45 @@
+name: Flow-neutral HWM fingerprint probe
+
+on:
+  push:
+    branches: [codex/flow-neutral-sleeve-hwm-fingerprint-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - run: python -m pip install -r requirements-lock.txt
+      - name: Print corrected exact economic sequence fingerprints
+        run: |
+          python - <<'PY'
+          import json
+          from tests.regression.test_quant_fusion import run_quiet, regime_route_fingerprint
+          from scripts.backtest_universes import UNIVERSES
+          from quantfusion.research.fingerprints import economic_sequence_fingerprints
+          out = {}
+          for name, codes in UNIVERSES.items():
+              result = run_quiet(codes)
+              actual = {
+                  key: int(result[key])
+                  for key in (
+                      "total_trades", "sell_trades", "sleeve_fill_count",
+                      "sleeve_sell_fill_count", "date_symbol_side_count",
+                      "date_symbol_sell_side_count",
+                  )
+              }
+              actual.update(economic_sequence_fingerprints(result))
+              actual.pop("regime_state_series_sha256")
+              actual["regime_route_sha256"] = regime_route_fingerprint(result)
+              out[str(len(codes))] = actual
+          print("FLOWFIX_FINGERPRINTS=" + json.dumps(out, sort_keys=True, separators=(",", ":")))
+          PY
