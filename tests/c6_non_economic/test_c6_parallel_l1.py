@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import pytest
 
 from quantfusion.application.c6_contract import canonical_payload_hash
@@ -28,14 +29,23 @@ def _record(item_id: str, value: int) -> dict[str, object]:
     }
 
 
-def test_partition_is_exact_balanced_and_order_preserving():
-    ids = [f"evaluation/item-{index:03d}" for index in range(37)]
-    shards = [partition_item_ids(ids, index, 12) for index in range(12)]
+def test_partition_is_exact_balanced_and_preserves_original_worker_chunks():
+    ids = [f"evaluation/item-{index:03d}" for index in range(97)]
+    chunk_size = 10
+    shards = [
+        partition_item_ids(ids, index, 4, chunk_size=chunk_size)
+        for index in range(4)
+    ]
     assert sorted(item for shard in shards for item in shard) == sorted(ids)
     assert len({item for shard in shards for item in shard}) == len(ids)
-    assert max(map(len, shards)) - min(map(len, shards)) <= 1
-    for index, shard in enumerate(shards):
-        assert shard == [item for ordinal, item in enumerate(ids) if ordinal % 12 == index]
+    assert max(map(len, shards)) - min(map(len, shards)) <= chunk_size
+    owner = {item: shard for shard, items in enumerate(shards) for item in items}
+    for start in range(0, len(ids), chunk_size):
+        original_chunk = ids[start : start + chunk_size]
+        assert len({owner[item] for item in original_chunk}) == 1
+        shard = owner[original_chunk[0]]
+        selected = [item for item in shards[shard] if item in set(original_chunk)]
+        assert selected == original_chunk
 
 
 @pytest.mark.parametrize("workers", [1, 2])
@@ -46,14 +56,19 @@ def test_fresh_pool_map_preserves_order_across_chunks(workers):
     ]
 
 
-def _write_shards(root: Path, ids: list[str], *, shard_count: int = 3) -> None:
+def _write_shards(
+    root: Path, ids: list[str], *, shard_count: int = 3, chunk_size: int = 2
+) -> None:
     for index in range(shard_count):
-        selected = partition_item_ids(ids, index, shard_count)
+        selected = partition_item_ids(
+            ids, index, shard_count, chunk_size=chunk_size
+        )
         payload = shard_payload(
             source_revision="a" * 40,
             record_id="c6.base.l1",
             shard_index=index,
             shard_count=shard_count,
+            chunk_size=chunk_size,
             core_item_ids=ids,
             records=[_record(item, ids.index(item)) for item in selected],
         )
@@ -71,11 +86,14 @@ def test_merge_reassembles_exact_manifest_order(tmp_path):
         source_revision="a" * 40,
         record_id="c6.base.l1",
         shard_count=3,
+        chunk_size=2,
     )
     assert results == [{"value": index} for index in range(len(ids))]
 
 
-@pytest.mark.parametrize("mutation", ["missing", "wrong-shard", "bad-hash"])
+@pytest.mark.parametrize(
+    "mutation", ["missing", "wrong-shard", "bad-hash", "wrong-chunk"]
+)
 def test_merge_fails_closed_on_incomplete_or_corrupt_shards(tmp_path, mutation):
     ids = [f"evaluation/item-{index:03d}" for index in range(9)]
     _write_shards(tmp_path, ids)
@@ -83,12 +101,15 @@ def test_merge_fails_closed_on_incomplete_or_corrupt_shards(tmp_path, mutation):
         (tmp_path / "artifact-2" / "shard.json.gz").unlink()
     else:
         from quantfusion.io.c6_stream import load_object
+
         path = tmp_path / "artifact-1" / "shard.json.gz"
         payload = load_object(path)
         if mutation == "wrong-shard":
             payload["records"][0]["item_id"] = ids[0]
-        else:
+        elif mutation == "bad-hash":
             payload["records"][0]["result"]["value"] = 999
+        else:
+            payload["chunk_size"] = 3
         write_json(path, payload, replace=True)
     with pytest.raises(ValueError):
         merge_shard_payloads(
@@ -97,4 +118,5 @@ def test_merge_fails_closed_on_incomplete_or_corrupt_shards(tmp_path, mutation):
             source_revision="a" * 40,
             record_id="c6.base.l1",
             shard_count=3,
+            chunk_size=2,
         )
