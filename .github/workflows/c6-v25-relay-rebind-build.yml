@@ -1,0 +1,90 @@
+name: C6 v25 Relay Rebind Build
+
+on:
+  push:
+    branches: [codex/c6-v25-relay-rebind-build-20260908]
+    paths:
+      - .github/scripts/build_c6_v25_relay.py
+      - .github/workflows/c6-v25-relay-rebind-build.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-v25-relay-rebind-build-20260908
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: f811cf8d0f0093b3148900bd0fbb96a9e67f9b51
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 71748de130d31d132e69999645e3285f81a651f9
+          path: bindings
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+      - name: Verify immutable inputs and builder scope
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = 'f811cf8d0f0093b3148900bd0fbb96a9e67f9b51'
+          test "$(git -C bindings rev-parse HEAD)" = '71748de130d31d132e69999645e3285f81a651f9'
+          remote="$(git remote get-url origin)"
+          for pair in \
+            'codex/c6-preregistration-v25:d6e76889e36f9efdc2685eb43aa57dff50ac1521' \
+            'codex/c6-base-v25:f811cf8d0f0093b3148900bd0fbb96a9e67f9b51' \
+            'codex/c6-s-v25:3d890d6d501c77a48a9ce46047d504b4f4838b46' \
+            'codex/c6-evidence-v25:71748de130d31d132e69999645e3285f81a651f9' \
+            'codex/c6-v23-workflow-anchor:8db7981012416d6a8fe4c4394e68051d8c293336'; do
+            ref="${pair%%:*}"; sha="${pair##*:}"
+            test "$(git ls-remote --refs "$remote" "refs/heads/$ref" | cut -f1)" = "$sha"
+          done
+          test -z "$(git ls-remote --refs "$remote" refs/heads/codex/c6-v25-relay-rebind-candidate)"
+          cp .github/scripts/build_c6_v25_relay.py "$RUNNER_TEMP/build_c6_v25_relay.py"
+          git checkout --detach de01f669a901da92d1819f22a8e76da8f551e2fd
+      - name: Build exact v25 auto-resume and stage-relay rebind
+        run: |
+          python "$RUNNER_TEMP/build_c6_v25_relay.py"
+          git diff --check
+          test "$(git diff --name-only | sort)" = $'.github/scripts/c6_auto_resume.py\n.github/scripts/c6_stage_advance.py\n.github/scripts/test_c6_stage_advance.py\n.github/workflows/c6-auto-resume.yml\n.github/workflows/c6-stage-advance.yml'
+      - name: Run existing orchestration synthetic suites
+        run: |
+          python -I -S .github/scripts/test_c6_auto_resume.py
+          python -I -S .github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+      - name: Create and publish validated candidate object
+        run: |
+          set -euo pipefail
+          git add \
+            .github/scripts/c6_auto_resume.py \
+            .github/scripts/c6_stage_advance.py \
+            .github/scripts/test_c6_stage_advance.py \
+            .github/workflows/c6-auto-resume.yml \
+            .github/workflows/c6-stage-advance.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'C6: rebind existing continuation relays to frozen v25' -m 'Rebind only the existing automatic checkpoint resume and frozen stage relay to P25/I_B25/I_S25/R25 and immutable W23. Preserve existing schedules, concurrency ownership, fail-closed result consumers and all economic contracts.'
+          git rev-parse HEAD | tee "$RUNNER_TEMP/candidate-sha.txt"
+          git rev-parse HEAD^{tree} | tee "$RUNNER_TEMP/candidate-tree.txt"
+          git push origin HEAD:refs/heads/codex/c6-v25-relay-rebind-candidate || true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-v25-relay-candidate-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/candidate-sha.txt
+            ${{ runner.temp }}/candidate-tree.txt
+          if-no-files-found: ignore
+          retention-days: 30
