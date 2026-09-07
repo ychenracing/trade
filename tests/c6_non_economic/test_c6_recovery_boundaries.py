@@ -197,7 +197,7 @@ def _square(value: int) -> dict[str, int]:
     return {"square": value * value}
 
 
-def test_checkpoint_serializes_only_when_handing_off(tmp_path, monkeypatch):
+def test_checkpoint_serializes_once_per_map_not_per_chunk(tmp_path, monkeypatch):
     ids = [f"scenario/{index}" for index in range(3)]
     path = tmp_path / "child-checkpoint.json"
     checkpoint = bound.DiagnosticCheckpoint(
@@ -215,8 +215,8 @@ def test_checkpoint_serializes_only_when_handing_off(tmp_path, monkeypatch):
     actual = checkpoint.map(_square, [0, 1, 2], ids, workers=1)
 
     assert list(actual) == [_square(index) for index in range(3)]
-    assert calls == 0
-    assert not path.exists()
+    assert calls == 1
+    assert path.is_file()
 
 
 def test_checkpoint_serializes_once_before_graceful_exit(tmp_path, monkeypatch):
