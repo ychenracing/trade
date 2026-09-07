@@ -91,6 +91,21 @@ def test_merge_reassembles_exact_manifest_order(tmp_path):
     assert results == [{"value": index} for index in range(len(ids))]
 
 
+def test_merge_parallel_validation_reassembles_exact_manifest_order(tmp_path):
+    ids = [f"evaluation/item-{index:03d}" for index in range(17)]
+    _write_shards(tmp_path, ids)
+    results = merge_shard_payloads(
+        tmp_path,
+        expected_item_ids=ids,
+        source_revision="a" * 40,
+        record_id="c6.base.l1",
+        shard_count=3,
+        chunk_size=2,
+        validation_workers=2,
+    )
+    assert results == [{"value": index} for index in range(len(ids))]
+
+
 def test_merge_streams_records_array_instead_of_decoding_whole_shard(
     tmp_path, monkeypatch
 ):
