@@ -14,7 +14,7 @@ import os
 import tempfile
 import zipfile
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any, BinaryIO, IO, TextIO, overload
 
@@ -108,8 +108,107 @@ class FileArray(Sequence[Any]):
         return FileArray(self.path, self.spans, field=field, owner=self.owner)
 
 
+class MultiFileArray(Sequence[Any]):
+    """Read-only ordered view over record spans stored in multiple immutable files."""
+
+    def __init__(
+        self,
+        refs: Sequence[tuple[Path, tuple[int, int]]],
+        *,
+        field: str | None = None,
+    ) -> None:
+        self.refs, self.field = list(refs), field
+
+    def __len__(self) -> int:
+        return len(self.refs)
+
+    @overload
+    def __getitem__(self, key: int) -> Any: ...
+
+    @overload
+    def __getitem__(self, key: slice) -> MultiFileArray: ...
+
+    def __getitem__(self, key: int | slice) -> Any:
+        if isinstance(key, slice):
+            return MultiFileArray(self.refs[key], field=self.field)
+        path, span = self.refs[key]
+        with open_json_bytes(path) as stream:
+            return self._read(stream, span)
+
+    def _read(self, stream: BinaryIO | gzip.GzipFile, span: tuple[int, int]) -> Any:
+        offset, size = span
+        stream.seek(offset)
+        raw = stream.read(size)
+        if len(raw) != size:
+            raise ValueError("indexed JSON record was truncated")
+        value = _DECODER.decode(raw.decode("utf-8"))
+        return value if self.field is None else value[self.field]
+
+    def __iter__(self) -> Iterator[Any]:
+        with ExitStack() as stack:
+            streams: dict[Path, BinaryIO | gzip.GzipFile] = {}
+            for path, span in self.refs:
+                stream = streams.get(path)
+                if stream is None:
+                    stream = stack.enter_context(open_json_bytes(path))
+                    streams[path] = stream
+                yield self._read(stream, span)
+
+    def select(self, predicate: Callable[[Any], bool]) -> MultiFileArray:
+        refs = [ref for ref, item in zip(self.refs, self) if predicate(item)]
+        return MultiFileArray(refs, field=self.field)
+
+    def project(self, field: str) -> MultiFileArray:
+        if self.field is not None:
+            raise ValueError("record view already projected")
+        return MultiFileArray(self.refs, field=field)
+
+
+class ChainedArray(Sequence[Any]):
+    """Small composition wrapper that preserves file-backed parts without copying."""
+
+    def __init__(self, parts: Sequence[Sequence[Any]]) -> None:
+        self.parts = [part for part in parts if len(part)]
+
+    def __len__(self) -> int:
+        return sum(len(part) for part in self.parts)
+
+    @overload
+    def __getitem__(self, key: int) -> Any: ...
+
+    @overload
+    def __getitem__(self, key: slice) -> list[Any]: ...
+
+    def __getitem__(self, key: int | slice) -> Any:
+        if isinstance(key, slice):
+            return [self[index] for index in range(*key.indices(len(self)))]
+        index = key if key >= 0 else len(self) + key
+        if index < 0:
+            raise IndexError(key)
+        for part in self.parts:
+            if index < len(part):
+                return part[index]
+            index -= len(part)
+        raise IndexError(key)
+
+    def __iter__(self) -> Iterator[Any]:
+        for part in self.parts:
+            yield from part
+
+    def select(self, predicate: Callable[[Any], bool]) -> ChainedArray:
+        selected: list[Sequence[Any]] = []
+        for part in self.parts:
+            if isinstance(part, (FileArray, MultiFileArray, ChainedArray)):
+                selected.append(part.select(predicate))
+            else:
+                selected.append([item for item in part if predicate(item)])
+        return ChainedArray(selected)
+
+
 def select_records(records: Sequence[Any], predicate: Callable[[Any], bool]) -> Sequence[Any]:
-    return records.select(predicate) if isinstance(records, FileArray) else [item for item in records if predicate(item)]
+    if isinstance(records, (FileArray, MultiFileArray, ChainedArray)):
+        return records.select(predicate)
+    return [item for item in records if predicate(item)]
 
 
 def canonical_chunks(value: Any) -> Iterator[bytes]:
@@ -125,7 +224,7 @@ def canonical_chunks(value: Any) -> Iterator[bytes]:
                 yield json.dumps(key, ensure_ascii=False).encode("utf-8") + b":"
                 yield from encode(item[key])
             yield b"}"
-        elif isinstance(item, FileArray):
+        elif isinstance(item, (FileArray, MultiFileArray, ChainedArray)):
             yield b"["
             for index, record in enumerate(item):
                 if index:

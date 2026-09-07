@@ -10,7 +10,13 @@ from quantfusion.application.c6_parallel_l1 import (
     merge_shard_payloads,
     shard_payload,
 )
-from quantfusion.io.c6_stream import load_object, write_json
+from quantfusion.io.c6_stream import (
+    ChainedArray,
+    MultiFileArray,
+    load_object,
+    select_records,
+    write_json,
+)
 
 
 def _record(item_id: str, value: int) -> dict[str, object]:
@@ -115,7 +121,22 @@ def test_attested_merge_does_not_repeat_semantics_or_result_hashing_and_rejects_
         validator_source_revision="b" * 40,
         preregistration_sha256="c" * 64,
     )
-    assert results == [{"value": index} for index in range(len(ids))]
+    assert isinstance(results, MultiFileArray)
+    assert list(results) == [{"value": index} for index in range(len(ids))]
+    selected = select_records(results, lambda item: item["value"] % 2 == 0)
+    assert isinstance(selected, MultiFileArray)
+    assert list(selected) == [
+        {"value": index} for index in range(0, len(ids), 2)
+    ]
+    chained = ChainedArray((results, [{"value": 99}]))
+    assert len(chained) == len(ids) + 1
+    assert chained[-1] == {"value": 99}
+    output = tmp_path / "streamed.json.gz"
+    write_json(output, {"evaluations": chained})
+    assert list(load_object(output)["evaluations"]) == [
+        *[{"value": index} for index in range(len(ids))],
+        {"value": 99},
+    ]
 
     payload = load_object(path)
     payload["records"][0]["result"] = {"value": 999}
