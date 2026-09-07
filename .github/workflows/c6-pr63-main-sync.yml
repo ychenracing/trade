@@ -1,0 +1,71 @@
+name: C6 PR63 Main Sync Validation
+
+on:
+  push:
+    branches: [codex/c6-pr63-main-sync-executor]
+    paths: [.github/workflows/c6-pr63-main-sync.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-pr63-main-sync-20260907
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PR_HEAD: 16a121e7f5d1411aa107745b5070e64f86dc25ae
+  EXPECTED_MAIN: 3b4b9c2554b2ac54d065173d3889040a30bc6e89
+  TARGET_BRANCH: codex/c6-pr63-main-sync-candidate
+
+jobs:
+  merge-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Construct ordinary two-parent merge without touching PR63
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/codex/c6-causal-risk-closure-v11 | cut -f1)" = "$EXPECTED_PR_HEAD"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN"
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$EXPECTED_PR_HEAD"
+          git checkout --detach "$EXPECTED_PR_HEAD"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-ff "$EXPECTED_MAIN" -m 'Merge corrected main into C6 integration after PR70/71/72'
+          merge_sha="$(git rev-parse HEAD)"
+          test "$(git rev-list --parents -n 1 "$merge_sha")" = "$merge_sha $EXPECTED_PR_HEAD $EXPECTED_MAIN"
+          test -z "$(git status --porcelain -uall)"
+          git diff --check "$EXPECTED_PR_HEAD" "$merge_sha"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Verify directly affected correctness and C6 execution boundaries
+        run: |
+          set -euo pipefail
+          python -m pytest -q \
+            tests/unit/test_internal_cash_flow_risk_bases.py \
+            tests/c6_non_economic/test_c6_parallel_l1.py \
+            tests/c6_non_economic/test_c6_recovery_boundaries.py \
+            tests/c6_non_economic/test_c6_bound_run.py --tb=short
+          python -m compileall -q quantfusion
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
+            quantfusion/application/c6_parallel_l1.py \
+            quantfusion/application/c6_diagnostics.py \
+            quantfusion/application/c6_bound_run.py \
+            quantfusion/engine/ensemble_allocation.py \
+            quantfusion/engine/replay.py \
+            quantfusion/risk/managers.py
+      - name: Publish verified merge candidate only
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/codex/c6-causal-risk-closure-v11 | cut -f1)" = "$EXPECTED_PR_HEAD"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN"
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$EXPECTED_PR_HEAD"
+          git push origin HEAD:$TARGET_BRANCH
