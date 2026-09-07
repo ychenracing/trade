@@ -1,0 +1,683 @@
+name: C6 Bound Economic Run
+run-name: c6-bound-${{ inputs.binding_id }}-${{ inputs.logical_run_id }}-${{ inputs.attempt_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_revision:
+        description: Frozen I_B or I_S 40-character commit SHA
+        required: true
+        type: string
+      run_bindings_revision:
+        description: Frozen evidence-only R commit SHA
+        required: true
+        type: string
+      workflow_revision:
+        description: Frozen commit containing this exact workflow definition
+        required: true
+        type: string
+      binding_id:
+        description: Exact logical binding ID frozen by R
+        required: true
+        type: string
+      candidate_id:
+        description: Exact C6 candidate selected for this binding
+        required: true
+        type: choice
+        options:
+          - C6-Base
+          - C6-Base+S
+          - synthetic-only
+      logical_run_id:
+        description: Unique R-bound logical run identity
+        required: true
+        type: string
+      attempt_id:
+        description: R-authorized attempt identity
+        required: true
+        type: string
+      resume_from:
+        description: Optional R-authorized sealed checkpoint identity
+        required: false
+        default: ""
+        type: string
+      resume_workflow_run_id:
+        description: Exact prior workflow run containing resume_from
+        required: false
+        default: ""
+        type: string
+      d_commit:
+        description: Selected D commit for L2/L4 only
+        required: false
+        default: ""
+        type: string
+      d_selection_blob_oid:
+        description: Exact c6-selection.json blob OID for L2/L4 only
+        required: false
+        default: ""
+        type: string
+      d_selection_file_sha256:
+        description: Exact c6-selection.json full-byte SHA-256 for L2/L4 only
+        required: false
+        default: ""
+        type: string
+      producer_identity_json:
+        description: Exact prior-stage producer identity or the frozen empty object
+        required: false
+        default: '{"artifact_full_byte_sha256":"","attempt_id":"","binding_id":"","logical_run_id":"","workflow_run_id":""}'
+        type: string
+      runner_image_os:
+        description: Frozen GitHub runner ImageOS value
+        required: true
+        type: string
+      runner_image_version:
+        description: Frozen GitHub runner ImageVersion value
+        required: true
+        type: string
+      python_version:
+        description: Frozen Python patch version
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: c6-bound-${{ inputs.logical_run_id }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Synthetic checkpoint route probe
+    if: inputs.binding_id == 'c6.synthetic.resume' && github.ref_name == 'codex/c6-v21-workflow-anchor' && inputs.workflow_revision == github.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ inputs.python_version }}
+      - name: Seal a non-economic checkpoint or terminal result
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -I -S .github/scripts/c6_resume_probe.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c6-bound-${{ inputs.logical_run_id }}-${{ inputs.attempt_id }}
+          path: probe-export/*
+          if-no-files-found: error
+          retention-days: 30
+  parallel_l1:
+    name: Parallel L1 core shard ${{ matrix.shard }}
+    if: (inputs.binding_id == 'c6.base.l1' || inputs.binding_id == 'c6.base_plus_s.l1') && inputs.attempt_id == 'a0' && inputs.resume_from == '' && inputs.resume_workflow_run_id == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - name: Check out frozen source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.source_revision }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check out frozen bindings
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.run_bindings_revision }}
+          path: bindings
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify shard identities before importing candidate code
+        env:
+          C6_SOURCE_REVISION: ${{ inputs.source_revision }}
+          C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
+          C6_WORKFLOW_REVISION: ${{ inputs.workflow_revision }}
+          C6_BINDING_ID: ${{ inputs.binding_id }}
+          C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
+          C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
+          C6_RUNNER_IMAGE_OS: ${{ inputs.runner_image_os }}
+          C6_RUNNER_IMAGE_VERSION: ${{ inputs.runner_image_version }}
+        run: |
+          set -euo pipefail
+          [[ "$C6_SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$C6_RUN_BINDINGS_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$C6_WORKFLOW_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_SHA" = "$C6_WORKFLOW_REVISION"
+          test "${ImageOS:-}" = "$C6_RUNNER_IMAGE_OS"
+          test "${ImageVersion:-}" = "$C6_RUNNER_IMAGE_VERSION"
+          test "$(git -C source rev-parse HEAD)" = "$C6_SOURCE_REVISION"
+          test "$(git -C bindings rev-parse HEAD)" = "$C6_RUN_BINDINGS_REVISION"
+          test -z "$(git -C source status --porcelain -uall)"
+          test -z "$(git -C bindings status --porcelain -uall)"
+          if [[ "$C6_LOGICAL_RUN_ID" =~ ^c6-(v[1-9][0-9]*)- ]]; then
+            version="${BASH_REMATCH[1]}"
+          else
+            exit 1
+          fi
+          case "$C6_BINDING_ID:$C6_CANDIDATE_ID" in
+            c6.base.l1:C6-Base) source_ref="codex/c6-base-$version" ;;
+            c6.base_plus_s.l1:C6-Base+S) source_ref="codex/c6-s-$version" ;;
+            *) exit 1 ;;
+          esac
+          remote="https://github.com/${GITHUB_REPOSITORY}.git"
+          test "$(git ls-remote --refs "$remote" "refs/heads/$source_ref")" = "$C6_SOURCE_REVISION"$'\t'"refs/heads/$source_ref"
+          test "$(git ls-remote --refs "$remote" "refs/heads/codex/c6-evidence-$version")" = "$C6_RUN_BINDINGS_REVISION"$'\t'"refs/heads/codex/c6-evidence-$version"
+          test "$(git -C source rev-parse "$C6_SOURCE_REVISION:requirements-lock.txt")" = "103f5db04d4d2f31a40294cceab5dbbedfda553c"
+          test "$(sha256sum source/requirements-lock.txt | cut -d' ' -f1)" = "22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434"
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ inputs.python_version }}
+          cache: pip
+          cache-dependency-path: source/requirements-lock.txt
+      - name: Verify frozen interpreter
+        run: test "$(python -c 'import platform; print(platform.python_version())')" = "${{ inputs.python_version }}"
+      - name: Install frozen dependencies
+        run: python -m pip install --require-hashes -r source/requirements-lock.txt
+      - name: Compute exact chunk-preserving L1 shard
+        working-directory: source
+        env:
+          C6_BINDING_ID: ${{ inputs.binding_id }}
+          C6_SOURCE_REVISION: ${{ inputs.source_revision }}
+          C6_SHARD_INDEX: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          readarray -t runtime_values < <(python - "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" "$C6_BINDING_ID" <<'PY'
+          import json, sys
+          payload=json.load(open(sys.argv[1], encoding='utf-8'))
+          rows=[r for r in payload['binding_records'] if r['workflow_binding_id']==sys.argv[2] and r['record_id']==sys.argv[2]]
+          if len(rows)!=1:
+              raise SystemExit('parallel L1 binding is ambiguous')
+          print(rows[0]['runtime']['workers'])
+          print(rows[0]['runtime']['checkpoint_every'])
+          PY
+          )
+          test "${runtime_values[0]}" = "4"
+          test "${runtime_values[1]}" = "10"
+          python -m quantfusion.application.c6_parallel_l1 \
+            --preregistration artifacts/diagnostics/c6-preregistration.json \
+            --bindings-file "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" \
+            --binding-record-id "$C6_BINDING_ID" \
+            --source-revision "$C6_SOURCE_REVISION" \
+            --shard-index "$C6_SHARD_INDEX" \
+            --shard-count 12 \
+            --workers "${runtime_values[0]}" \
+            --output "$RUNNER_TEMP/c6-l1-shard/shard.json.gz"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c6-l1-shard-${{ github.run_id }}-${{ matrix.shard }}
+          path: ${{ runner.temp }}/c6-l1-shard/shard.json.gz
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+  run:
+    name: Execute frozen binding
+    needs: [parallel_l1]
+    if: inputs.binding_id != 'c6.synthetic.resume' && (needs.parallel_l1.result == 'success' || needs.parallel_l1.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Initialize run-local fencing token
+        run: |
+          token="$(python3 -I -S -c 'import secrets; print(secrets.token_hex(32))')"
+          echo "::add-mask::$token"
+          printf 'C6_FENCING_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
+      - name: Validate immutable inputs
+        env:
+          C6_SOURCE_REVISION: ${{ inputs.source_revision }}
+          C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
+          C6_WORKFLOW_REVISION: ${{ inputs.workflow_revision }}
+          C6_BINDING_ID: ${{ inputs.binding_id }}
+          C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
+          C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
+          C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
+          C6_RESUME_FROM: ${{ inputs.resume_from }}
+          C6_RESUME_WORKFLOW_RUN_ID: ${{ inputs.resume_workflow_run_id }}
+          C6_D_COMMIT: ${{ inputs.d_commit }}
+          C6_D_SELECTION_BLOB_OID: ${{ inputs.d_selection_blob_oid }}
+          C6_D_SELECTION_FILE_SHA256: ${{ inputs.d_selection_file_sha256 }}
+          C6_PRODUCER_IDENTITY_JSON: ${{ inputs.producer_identity_json }}
+          C6_RUNNER_IMAGE_OS: ${{ inputs.runner_image_os }}
+          C6_RUNNER_IMAGE_VERSION: ${{ inputs.runner_image_version }}
+          C6_PYTHON_VERSION: ${{ inputs.python_version }}
+        run: |
+          [[ "$C6_SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$C6_RUN_BINDINGS_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$C6_WORKFLOW_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$C6_BINDING_ID" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ ]]
+          [[ "$C6_CANDIDATE_ID" = "C6-Base" || "$C6_CANDIDATE_ID" = "C6-Base+S" ]]
+          [[ "$C6_LOGICAL_RUN_ID" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ ]]
+          [[ "$C6_ATTEMPT_ID" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ ]]
+          [[ "$C6_FENCING_TOKEN" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{15,255}$ ]]
+          [[ -z "$C6_RESUME_FROM" || "$C6_RESUME_FROM" =~ ^[0-9a-f]{64}$ ]]
+          [[ -z "$C6_RESUME_WORKFLOW_RUN_ID" || "$C6_RESUME_WORKFLOW_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ -z "$C6_D_COMMIT" || "$C6_D_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ -z "$C6_D_SELECTION_BLOB_OID" || "$C6_D_SELECTION_BLOB_OID" =~ ^[0-9a-f]{40}$ ]]
+          [[ -z "$C6_D_SELECTION_FILE_SHA256" || "$C6_D_SELECTION_FILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$C6_RUNNER_IMAGE_OS" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]
+          [[ "$C6_RUNNER_IMAGE_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]
+          [[ "$C6_PYTHON_VERSION" =~ ^3\.12\.[0-9]+$ ]]
+          [[ "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          if [[ -n "$C6_RESUME_FROM" ]]; then
+            test -n "$C6_RESUME_WORKFLOW_RUN_ID"
+            (( C6_RESUME_WORKFLOW_RUN_ID < GITHUB_RUN_ID ))
+          else
+            test -z "$C6_RESUME_WORKFLOW_RUN_ID"
+          fi
+          if [[ "$C6_LOGICAL_RUN_ID" =~ ^c6-(v[1-9][0-9]*)- ]]; then
+            C6_REF_VERSION="${BASH_REMATCH[1]}"
+          else
+            exit 1
+          fi
+          readonly C6_REF_VERSION
+          case "$C6_BINDING_ID:$C6_CANDIDATE_ID" in
+            c6.base.l1:C6-Base)
+              test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
+              test "$C6_ATTEMPT_ID" = "a0"
+              test -z "$C6_RESUME_FROM$C6_RESUME_WORKFLOW_RUN_ID"
+              C6_SOURCE_REF=codex/c6-base-$C6_REF_VERSION
+              ;;
+            c6.s.qualification:C6-Base+S)
+              test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
+              C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
+              ;;
+            c6.base_plus_s.l1:C6-Base+S)
+              test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
+              test "$C6_ATTEMPT_ID" = "a0"
+              test -z "$C6_RESUME_FROM$C6_RESUME_WORKFLOW_RUN_ID"
+              C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
+              ;;
+            c6.selected.l2:C6-Base|c6.selected.l4:C6-Base)
+              test -n "$C6_D_COMMIT" && test -n "$C6_D_SELECTION_BLOB_OID" && test -n "$C6_D_SELECTION_FILE_SHA256"
+              C6_SOURCE_REF=codex/c6-base-$C6_REF_VERSION
+              ;;
+            c6.selected.l2:C6-Base+S|c6.selected.l4:C6-Base+S)
+              test -n "$C6_D_COMMIT" && test -n "$C6_D_SELECTION_BLOB_OID" && test -n "$C6_D_SELECTION_FILE_SHA256"
+              C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
+              ;;
+            *) exit 1 ;;
+          esac
+          readonly C6_SOURCE_REF
+          readonly C6_EVIDENCE_REF=codex/c6-evidence-$C6_REF_VERSION
+          readonly C6_REMOTE_URL="https://github.com/${GITHUB_REPOSITORY}.git"
+          source_anchor="$(git ls-remote --refs "$C6_REMOTE_URL" "refs/heads/$C6_SOURCE_REF")"
+          test "$source_anchor" = "$C6_SOURCE_REVISION"$'\t'"refs/heads/$C6_SOURCE_REF"
+          evidence_anchor="$(git ls-remote --refs "$C6_REMOTE_URL" "refs/heads/$C6_EVIDENCE_REF")"
+          if [[ -n "$C6_D_COMMIT" ]]; then
+            test "$evidence_anchor" = "$C6_D_COMMIT"$'\t'"refs/heads/$C6_EVIDENCE_REF"
+          else
+            test "$evidence_anchor" = "$C6_RUN_BINDINGS_REVISION"$'\t'"refs/heads/$C6_EVIDENCE_REF"
+          fi
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          def unique(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise SystemExit(f"duplicate producer identity key: {key}")
+                  result[key] = value
+              return result
+
+          def reject_constant(value):
+              raise ValueError(f"non-finite JSON constant: {value}")
+
+          producer = json.loads(
+              os.environ["C6_PRODUCER_IDENTITY_JSON"],
+              object_pairs_hook=unique,
+              parse_constant=reject_constant,
+          )
+          keys = {
+              "artifact_full_byte_sha256",
+              "attempt_id",
+              "binding_id",
+              "logical_run_id",
+              "workflow_run_id",
+          }
+          if not isinstance(producer, dict) or set(producer) != keys:
+              raise SystemExit("producer identity has the wrong schema")
+          if any(type(value) is not str for value in producer.values()):
+              raise SystemExit("producer identity values must be strings")
+          expected = {
+              "c6.base.l1": "",
+              "c6.s.qualification": "c6.base.l1",
+              "c6.base_plus_s.l1": "c6.s.qualification",
+              "c6.selected.l2": "",
+              "c6.selected.l4": "c6.selected.l2",
+          }[os.environ["C6_BINDING_ID"]]
+          if expected:
+              if producer["binding_id"] != expected:
+                  raise SystemExit("producer binding does not match this stage")
+              if re.fullmatch(r"[1-9][0-9]*", producer["workflow_run_id"]) is None:
+                  raise SystemExit("producer workflow run ID is invalid")
+              for key in ("attempt_id", "logical_run_id"):
+                  if re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,62}", producer[key]) is None:
+                      raise SystemExit(f"producer {key} is invalid")
+              if re.fullmatch(r"[0-9a-f]{64}", producer["artifact_full_byte_sha256"]) is None:
+                  raise SystemExit("producer artifact SHA-256 is invalid")
+          elif producer != {key: "" for key in keys}:
+              raise SystemExit("this stage forbids a producer identity")
+          PY
+          test "$GITHUB_SHA" = "$C6_WORKFLOW_REVISION"
+          test "${ImageOS:-}" = "$C6_RUNNER_IMAGE_OS"
+          test "${ImageVersion:-}" = "$C6_RUNNER_IMAGE_VERSION"
+      - name: Check out frozen source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.source_revision }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check out frozen bindings
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.run_bindings_revision }}
+          path: bindings
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check out frozen decision
+        if: ${{ inputs.d_commit != '' }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.d_commit }}
+          path: decision
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Verify checked-out identities
+        env:
+          C6_SOURCE_REVISION: ${{ inputs.source_revision }}
+          C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
+          C6_D_COMMIT: ${{ inputs.d_commit }}
+          C6_D_SELECTION_BLOB_OID: ${{ inputs.d_selection_blob_oid }}
+          C6_D_SELECTION_FILE_SHA256: ${{ inputs.d_selection_file_sha256 }}
+        run: |
+          test "$(git -C source rev-parse HEAD)" = "$C6_SOURCE_REVISION"
+          test "$(git -C bindings rev-parse HEAD)" = "$C6_RUN_BINDINGS_REVISION"
+          test -z "$(git -C source status --porcelain -uall)"
+          test -z "$(git -C bindings status --porcelain -uall)"
+          test "$(git -C source rev-parse "$C6_SOURCE_REVISION:requirements-lock.txt")" = "103f5db04d4d2f31a40294cceab5dbbedfda553c"
+          test "$(git -C source ls-tree "$C6_SOURCE_REVISION" -- requirements-lock.txt | cut -d' ' -f1)" = "100644"
+          test "$(sha256sum source/requirements-lock.txt | cut -d' ' -f1)" = "22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434"
+          if [[ -n "$C6_D_COMMIT" ]]; then
+            test "$(git -C decision rev-parse HEAD)" = "$C6_D_COMMIT"
+            test -z "$(git -C decision status --porcelain -uall)"
+            test "$(git -C decision rev-list --parents -n 1 "$C6_D_COMMIT")" = "$C6_D_COMMIT $C6_RUN_BINDINGS_REVISION"
+            test "$(git -C decision diff --name-status "$C6_RUN_BINDINGS_REVISION" "$C6_D_COMMIT")" = $'A\tartifacts/diagnostics/c6-selection.json'
+            test "$(git -C decision rev-parse "$C6_D_COMMIT:artifacts/diagnostics/c6-selection.json")" = "$C6_D_SELECTION_BLOB_OID"
+            test "$(sha256sum decision/artifacts/diagnostics/c6-selection.json | cut -d' ' -f1)" = "$C6_D_SELECTION_FILE_SHA256"
+            test "$(git -C decision ls-tree "$C6_D_COMMIT" -- artifacts/diagnostics/c6-selection.json | cut -d' ' -f1)" = "100644"
+          else
+            test ! -e decision
+          fi
+          test ! -e source/artifacts/checkpoints/c6/sealed-export
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ inputs.python_version }}
+          cache: pip
+          cache-dependency-path: source/requirements-lock.txt
+      - name: Verify frozen interpreter
+        env:
+          C6_PYTHON_VERSION: ${{ inputs.python_version }}
+        run: test "$(python -c 'import platform; print(platform.python_version())')" = "$C6_PYTHON_VERSION"
+      - name: Install frozen dependencies
+        run: python -m pip install --require-hashes -r source/requirements-lock.txt
+      - name: Download exact same-run L1 shards
+        if: inputs.binding_id == 'c6.base.l1' || inputs.binding_id == 'c6.base_plus_s.l1'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: c6-l1-shard-${{ github.run_id }}-*
+          path: parallel-evaluations
+
+      - name: Execute exact run binding
+        id: execute
+        working-directory: source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          C6_SOURCE_REVISION: ${{ inputs.source_revision }}
+          C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
+          C6_WORKFLOW_REVISION: ${{ inputs.workflow_revision }}
+          C6_BINDING_ID: ${{ inputs.binding_id }}
+          C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
+          C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
+          C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
+          C6_RESUME_FROM: ${{ inputs.resume_from }}
+          C6_RESUME_WORKFLOW_RUN_ID: ${{ inputs.resume_workflow_run_id }}
+          C6_D_COMMIT: ${{ inputs.d_commit }}
+          C6_D_SELECTION_BLOB_OID: ${{ inputs.d_selection_blob_oid }}
+          C6_D_SELECTION_FILE_SHA256: ${{ inputs.d_selection_file_sha256 }}
+          C6_PRODUCER_IDENTITY_JSON: ${{ inputs.producer_identity_json }}
+          C6_RUNNER_IMAGE_OS: ${{ inputs.runner_image_os }}
+          C6_RUNNER_IMAGE_VERSION: ${{ inputs.runner_image_version }}
+          C6_PYTHON_VERSION: ${{ inputs.python_version }}
+        run: |
+          python -m quantfusion.application.c6_bound_run \
+            --bindings-file "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" \
+            --binding-id "$C6_BINDING_ID" \
+            --candidate-id "$C6_CANDIDATE_ID" \
+            --logical-run-id "$C6_LOGICAL_RUN_ID" \
+            --attempt-id "$C6_ATTEMPT_ID" \
+            --resume-from "$C6_RESUME_FROM" \
+            --resume-workflow-run-id "$C6_RESUME_WORKFLOW_RUN_ID" \
+            --d-commit "$C6_D_COMMIT" \
+            --d-selection-blob-oid "$C6_D_SELECTION_BLOB_OID" \
+            --d-selection-file-sha256 "$C6_D_SELECTION_FILE_SHA256" \
+            --decision-checkout "$GITHUB_WORKSPACE/decision" \
+            --producer-identity-json "$C6_PRODUCER_IDENTITY_JSON" \
+            --source-revision "$C6_SOURCE_REVISION" \
+            --run-bindings-revision "$C6_RUN_BINDINGS_REVISION" \
+            --workflow-revision "$C6_WORKFLOW_REVISION" \
+            --runner-image-os "$C6_RUNNER_IMAGE_OS" \
+            --runner-image-version "$C6_RUNNER_IMAGE_VERSION" \
+            --python-version "$C6_PYTHON_VERSION" \
+            --repository "$GITHUB_REPOSITORY" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --require-durable-lease
+      - name: Validate sealed run export
+        id: validate_export
+        if: ${{ always() }}
+        env:
+          C6_EXECUTE_OUTCOME: ${{ steps.execute.outcome }}
+          C6_SOURCE_REVISION: ${{ inputs.source_revision }}
+          C6_RUN_BINDINGS_REVISION: ${{ inputs.run_bindings_revision }}
+          C6_WORKFLOW_REVISION: ${{ inputs.workflow_revision }}
+          C6_BINDING_ID: ${{ inputs.binding_id }}
+          C6_CANDIDATE_ID: ${{ inputs.candidate_id }}
+          C6_LOGICAL_RUN_ID: ${{ inputs.logical_run_id }}
+          C6_ATTEMPT_ID: ${{ inputs.attempt_id }}
+          C6_RESUME_FROM: ${{ inputs.resume_from }}
+          C6_RESUME_WORKFLOW_RUN_ID: ${{ inputs.resume_workflow_run_id }}
+          C6_D_COMMIT: ${{ inputs.d_commit }}
+          C6_D_SELECTION_BLOB_OID: ${{ inputs.d_selection_blob_oid }}
+          C6_D_SELECTION_FILE_SHA256: ${{ inputs.d_selection_file_sha256 }}
+          C6_PRODUCER_IDENTITY_JSON: ${{ inputs.producer_identity_json }}
+          C6_RUNNER_IMAGE_OS: ${{ inputs.runner_image_os }}
+          C6_RUNNER_IMAGE_VERSION: ${{ inputs.runner_image_version }}
+          C6_PYTHON_VERSION: ${{ inputs.python_version }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+
+          root = Path("source/artifacts/checkpoints/c6/sealed-export")
+          manifest_path = root / "manifest.json"
+          outcome = os.environ["C6_EXECUTE_OUTCOME"]
+          if not manifest_path.is_file():
+              if outcome == "success":
+                  raise SystemExit("successful bound run did not produce a sealed export")
+              raise SystemExit(0)
+          if outcome not in {"success", "failure"}:
+              raise SystemExit("sealed export exists although bound execution did not run")
+          if root.is_symlink() or manifest_path.is_symlink():
+              raise SystemExit("sealed export cannot contain symlinked roots or manifests")
+
+          def reject_constant(value: str) -> None:
+              raise ValueError(f"non-finite JSON constant: {value}")
+
+          def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise ValueError(f"duplicate JSON key: {key}")
+                  result[key] = value
+              return result
+
+          manifest = json.loads(
+              manifest_path.read_text(encoding="utf-8"),
+              object_pairs_hook=unique_object,
+              parse_constant=reject_constant,
+          )
+          required_keys = {
+              "schema_version",
+              "kind",
+              "sealed",
+              "source_revision",
+              "run_bindings_revision",
+              "workflow_revision",
+              "binding_id",
+              "candidate_id",
+              "logical_run_id",
+              "attempt_id",
+              "repository",
+              "workflow_run_id",
+              "workflow_run_attempt",
+              "resume_from",
+              "resume_workflow_run_id",
+              "d_commit",
+              "d_selection_blob_oid",
+              "d_selection_file_sha256",
+              "producer_identity",
+              "runner_image_os",
+              "runner_image_version",
+              "python_version",
+              "fencing_token_sha256",
+              "files",
+          }
+          if not isinstance(manifest, dict) or set(manifest) != required_keys:
+              raise SystemExit("sealed export manifest has the wrong schema")
+          if type(manifest["schema_version"]) is not int:
+              raise SystemExit("sealed export schema_version must be an integer")
+          expected = {
+              "schema_version": 2,
+              "source_revision": os.environ["C6_SOURCE_REVISION"],
+              "run_bindings_revision": os.environ["C6_RUN_BINDINGS_REVISION"],
+              "workflow_revision": os.environ["C6_WORKFLOW_REVISION"],
+              "binding_id": os.environ["C6_BINDING_ID"],
+              "candidate_id": os.environ["C6_CANDIDATE_ID"],
+              "logical_run_id": os.environ["C6_LOGICAL_RUN_ID"],
+              "attempt_id": os.environ["C6_ATTEMPT_ID"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "workflow_run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "resume_from": os.environ["C6_RESUME_FROM"],
+              "resume_workflow_run_id": os.environ["C6_RESUME_WORKFLOW_RUN_ID"],
+              "d_commit": os.environ["C6_D_COMMIT"],
+              "d_selection_blob_oid": os.environ["C6_D_SELECTION_BLOB_OID"],
+              "d_selection_file_sha256": os.environ["C6_D_SELECTION_FILE_SHA256"],
+              "runner_image_os": os.environ["C6_RUNNER_IMAGE_OS"],
+              "runner_image_version": os.environ["C6_RUNNER_IMAGE_VERSION"],
+              "python_version": os.environ["C6_PYTHON_VERSION"],
+              "fencing_token_sha256": hashlib.sha256(
+                  os.environ["C6_FENCING_TOKEN"].encode("utf-8")
+              ).hexdigest(),
+          }
+          if any(manifest[key] != value for key, value in expected.items()):
+              raise SystemExit("sealed export identity does not match this attempt")
+          producer_identity = json.loads(
+              os.environ["C6_PRODUCER_IDENTITY_JSON"],
+              object_pairs_hook=unique_object,
+              parse_constant=reject_constant,
+          )
+          if manifest["producer_identity"] != producer_identity:
+              raise SystemExit("sealed export producer identity does not match this attempt")
+          if manifest["sealed"] is not True or manifest["kind"] not in {
+              "checkpoint",
+              "result",
+          }:
+              raise SystemExit("sealed export kind/status is invalid")
+          files = manifest["files"]
+          if not isinstance(files, dict) or not files:
+              raise SystemExit("sealed export file hash map is empty")
+          if manifest["kind"] == "checkpoint":
+              expected_files = {"checkpoint.json", "child-checkpoint.bin"}
+          elif manifest["binding_id"] == "c6.selected.l4":
+              expected_files = {"official-artifact.json", "digest.json"}
+          else:
+              bindings = json.loads(
+                  Path("bindings/artifacts/diagnostics/c6-run-bindings.json").read_text(encoding="utf-8"),
+                  object_pairs_hook=unique_object, parse_constant=reject_constant,
+              )
+              records = [record for record in bindings["binding_records"]
+                         if record["workflow_binding_id"] == manifest["binding_id"]
+                         and record["logical_run_id"] == manifest["logical_run_id"]
+                         and record["candidate_id"] == manifest["candidate_id"]]
+              if len(records) != 1:
+                  raise SystemExit("sealed export has no unique frozen binding")
+              payload_name = records[0]["paths"]["producer_payload_relative_path"]
+              if payload_name not in {"payload.json", "payload.json.gz"}:
+                  raise SystemExit("unsupported frozen diagnostic payload transport")
+              expected_files = {payload_name, "digest.json"}
+          if set(files) != expected_files:
+              raise SystemExit("sealed export file set does not match binding stage")
+
+          actual_files = {}
+          for path in root.rglob("*"):
+              if path.is_symlink():
+                  raise SystemExit(f"sealed export contains symlink: {path}")
+              if not path.is_file() or path == manifest_path:
+                  continue
+              relative = path.relative_to(root).as_posix()
+              if any(part.startswith(".") for part in PurePosixPath(relative).parts):
+                  raise SystemExit(f"sealed export contains hidden path: {relative}")
+              with path.open("rb") as stream:
+                  actual_files[relative] = hashlib.file_digest(stream, "sha256").hexdigest()
+          if set(files) != set(actual_files):
+              raise SystemExit("sealed export manifest file set is incomplete")
+          for relative, digest in files.items():
+              pure = PurePosixPath(relative)
+              if pure.is_absolute() or ".." in pure.parts or relative == "manifest.json":
+                  raise SystemExit(f"invalid sealed export path: {relative}")
+              if not isinstance(digest, str) or digest != actual_files[relative]:
+                  raise SystemExit(f"sealed export hash mismatch: {relative}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("ready=true\n")
+          PY
+      - name: Upload sealed run export
+        if: ${{ always() && steps.validate_export.outputs.ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c6-bound-${{ inputs.logical_run_id }}-${{ inputs.attempt_id }}
+          path: source/artifacts/checkpoints/c6/sealed-export/
+          if-no-files-found: error
+          retention-days: 90
+  handoff:
+    name: Request authenticated continuation
+    needs: [probe, run]
+    if: always() && github.event_name == 'workflow_dispatch' && github.ref_name == 'codex/c6-v21-workflow-anchor' && inputs.workflow_revision == github.sha && (needs.probe.result == 'success' || needs.run.result == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Request validation after this workflow completes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 -I -S .github/scripts/c6_request_resume.py
