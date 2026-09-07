@@ -1,0 +1,97 @@
+name: C6 Stage Relay Cancelled Skip Batch
+
+on:
+  push:
+    branches: [codex/c6-stage-relay-cancelled-skip-batch]
+    paths: [.github/workflows/c6-stage-relay-cancelled-skip-batch.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-stage-relay-cancelled-skip-batch
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: 256a1890709db0421d09f88616f864faf2d11bba
+  TARGET_BRANCH: codex/c6-stage-relay-cancelled-skip
+  FROZEN_BASE: 168cd3856cc1b60c928fe54c4a826b6045df01e9
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.FROZEN_BASE }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify target identity
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
+      - name: Add RED regression first
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/test_c6_stage_advance.py')
+          text = path.read_text(encoding='utf-8')
+          anchor = "\n\nclass FrozenValidatorTests(unittest.TestCase):\n"
+          test = '''\n\nclass ProbeTests(unittest.TestCase):\n    def test_cancelled_latest_attempt_is_a_cheap_terminal_skip(self):\n        history = [\n            {'id': 10, 'display_title': 'c6-bound-c6.base.l1-c6-v19-base-l1-r9',\n             'status': 'completed', 'conclusion': 'success'},\n            {'id': 11, 'display_title': 'c6-bound-c6.base.l1-c6-v19-base-l1-r10',\n             'status': 'completed', 'conclusion': 'cancelled'},\n        ]\n        ready, state = relay.probe_history(history)\n        self.assertFalse(ready)\n        self.assertEqual(state['status'], 'latest_attempt_not_successful')\n        self.assertEqual(state['latest_run_id'], 11)\n        self.assertEqual(state['conclusion'], 'cancelled')\n        self.assertEqual(state['active_run_ids'], [])\n\n    def test_successful_latest_attempt_can_be_inspected(self):\n        history = [\n            {'id': 12, 'display_title': 'c6-bound-c6.base.l1-c6-v19-base-l1-r11',\n             'status': 'completed', 'conclusion': 'success'},\n        ]\n        ready, state = relay.probe_history(history)\n        self.assertTrue(ready)\n        self.assertEqual(state['status'], 'inspect_sealed_result')\n\n    def test_active_attempt_blocks_expensive_inspection(self):\n        history = [\n            {'id': 13, 'display_title': 'c6-bound-c6.base.l1-c6-v19-base-l1-r12',\n             'status': 'in_progress', 'conclusion': None},\n        ]\n        ready, state = relay.probe_history(history)\n        self.assertFalse(ready)\n        self.assertEqual(state['status'], 'active')\n        self.assertEqual(state['active_run_ids'], [13])\n'''
+          if anchor not in text:
+              raise SystemExit('test insertion anchor missing')
+          path.write_text(text.replace(anchor, test + anchor, 1), encoding='utf-8')
+          PY
+          set +e
+          python -I -S .github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source" >/tmp/red.log 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q 'probe_history' /tmp/red.log
+      - name: Implement minimal cheap-skip helper
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/c6_stage_advance.py')
+          text = path.read_text(encoding='utf-8')
+          old = "D_REF = 'codex/c6-selection-v19'\n"
+          new = "D_REF = 'codex/c6-selection-v19'\nEXECUTION_VERSION = 'v19'\n"
+          if old not in text:
+              raise SystemExit('version anchor missing')
+          text = text.replace(old, new, 1)
+          anchor = '''def initial_allowed(record, history):\n    return not record_runs(record, history)\n\n\nclass NoRedirect'''
+          helper = '''def initial_allowed(record, history):\n    return not record_runs(record, history)\n\n\ndef probe_history(history, version=EXECUTION_VERSION):\n    \"\"\"Cheaply decide whether expensive sealed-result inspection is warranted.\"\"\"\n    marker = f'-c6-{version}-'\n    current = sorted(\n        (run for run in history if marker in str(run.get('display_title', ''))),\n        key=lambda run: run.get('id', 0),\n    )\n    active = [run for run in current if run.get('status') != 'completed']\n    if active:\n        return False, {'status': 'active', 'active_run_ids': [run['id'] for run in active]}\n    if not current:\n        return False, {'status': 'not_started', 'active_run_ids': []}\n    latest = current[-1]\n    if latest.get('conclusion') != 'success':\n        return False, {\n            'status': 'latest_attempt_not_successful',\n            'latest_run_id': latest.get('id'),\n            'conclusion': latest.get('conclusion'),\n            'active_run_ids': [],\n        }\n    return True, {'status': 'inspect_sealed_result', 'active_run_ids': []}\n\n\nclass NoRedirect'''
+          if anchor not in text:
+              raise SystemExit('helper insertion anchor missing')
+          text = text.replace(anchor, helper, 1)
+          old_main = '''        history = api.history()\n        current = [run for run in history if '-c6-v19-' in run.get('display_title', '')]\n        active = [run for run in current if run['status'] != 'completed']\n        ready = bool(current) and not active\n        state = {'status': 'active' if active else ('inspect_sealed_result' if current else 'not_started'),\n                 'active_run_ids': [run['id'] for run in active]}\n'''
+          new_main = '''        history = api.history()\n        ready, state = probe_history(history)\n'''
+          if old_main not in text:
+              raise SystemExit('main probe anchor missing')
+          path.write_text(text.replace(old_main, new_main, 1), encoding='utf-8')
+          PY
+      - name: Verify GREEN synthetic relay suite
+        run: |
+          set -euo pipefail
+          python -I -S .github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+          python -m compileall -q .github/scripts/c6_stage_advance.py .github/scripts/test_c6_stage_advance.py
+      - name: Publish two-file fix to narrow branch
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
+          cp .github/scripts/c6_stage_advance.py /tmp/c6_stage_advance.py
+          cp .github/scripts/test_c6_stage_advance.py /tmp/test_c6_stage_advance.py
+          git checkout --detach "$BASE_SHA"
+          cp /tmp/c6_stage_advance.py .github/scripts/c6_stage_advance.py
+          cp /tmp/test_c6_stage_advance.py .github/scripts/test_c6_stage_advance.py
+          git add .github/scripts/c6_stage_advance.py .github/scripts/test_c6_stage_advance.py
+          test "$(git diff --cached --name-only | sort)" = $'.github/scripts/c6_stage_advance.py\n.github/scripts/test_c6_stage_advance.py'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(c6): skip cancelled relay attempts before artifact inspection' -m 'A completed non-success latest attempt cannot be a sealed stage producer. Detect it in the cheap probe so the scheduled relay does not checkout frozen sources, install dependencies, or fail while trying to consume cancelled v19. Active and successful paths remain unchanged.'
+          git push origin HEAD:$TARGET_BRANCH
