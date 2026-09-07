@@ -101,6 +101,7 @@ jobs:
               "tests/unit/test_daily_scan_modules.py",
               "tests/unit/test_data_context.py",
               "tests/unit/test_engine_modules.py",
+              "tests/unit/test_internal_cash_flow_risk_bases.py",
               "tests/unit/test_leaf_modules.py",
               "tests/unit/test_optimizer_modules.py",
               "tests/unit/test_overlay_modules.py",
