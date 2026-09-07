@@ -1,0 +1,112 @@
+name: C6 Non-economic Performance Validation
+
+on:
+  push:
+    branches: [codex/c6-performance-batch-20260907]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: c6-performance-batch-20260907
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'ychenracing/trade'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 1b44486a05432e41f0c187902388249c294fa69c
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install existing locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Verify two-path patch without a write token
+        run: |
+          python - <<'PYCODE'
+          import base64, gzip, hashlib, json, os, subprocess, sys, urllib.request
+          from pathlib import Path
+          base = "1b44486a05432e41f0c187902388249c294fa69c"
+          expected_tree = "9402871847ee24202258a18a634ce225725640bb"
+          paths = ["quantfusion/application/c6_bound_run.py", "tests/c6_non_economic/test_c6_recovery_boundaries.py"]
+          proof = Path(os.environ["RUNNER_TEMP"]) / "c6-performance-proof"
+          proof.mkdir()
+          def command(*args):
+              return subprocess.check_output(args, text=True).strip()
+          assert command("git", "rev-parse", "HEAD") == base
+          assert command("git", "status", "--porcelain") == ""
+          patch = gzip.decompress(base64.b64decode("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"))
+          assert hashlib.sha256(patch).hexdigest() == "841c5390e682119ea407dec45e458bc709bf7ac1e8fd7567584e91c26f60fe8a"
+          (proof / "performance.patch").write_bytes(patch)
+          subprocess.run(["git", "apply", "--check", str(proof / "performance.patch")], check=True)
+          subprocess.run(["git", "apply", str(proof / "performance.patch")], check=True)
+          assert sorted(command("git", "diff", "--name-only").splitlines()) == sorted(paths)
+          subprocess.run([sys.executable, "-m", "compileall", "-q", *paths], check=True)
+          subprocess.run(["ruff", "check", "--select=E,F,W", "--ignore=E501,E402,E731,E741", *paths], check=True)
+          with (proof / "tests.txt").open("w") as output:
+              test = subprocess.run([sys.executable, "-m", "pytest", "-q", "tests/c6_non_economic/test_c6_recovery_boundaries.py", "tests/c6_non_economic/test_c6_bound_run.py", "--tb=short"], stdout=output, stderr=subprocess.STDOUT)
+          print((proof / "tests.txt").read_text(), flush=True)
+          if test.returncode:
+              raise SystemExit(test.returncode)
+          subprocess.run(["git", "add", "--", *paths], check=True)
+          assert command("git", "write-tree") == expected_tree
+          subprocess.run(["git", "archive", "--format=tar.gz", "-o", str(proof / "validated-source.tar.gz"), expected_tree], check=True)
+          PYCODE
+      - name: Publish immutable Git objects only after validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PYCODE'
+          import base64, hashlib, json, os, subprocess, sys, urllib.request
+          from pathlib import Path
+          base = "1b44486a05432e41f0c187902388249c294fa69c"
+          expected_tree = "9402871847ee24202258a18a634ce225725640bb"
+          paths = ["quantfusion/application/c6_bound_run.py", "tests/c6_non_economic/test_c6_recovery_boundaries.py"]
+          proof = Path(os.environ["RUNNER_TEMP"]) / "c6-performance-proof"
+          def command(*args):
+              return subprocess.check_output(args, text=True).strip()
+          assert command("git", "rev-parse", "HEAD") == base
+          assert command("git", "write-tree") == expected_tree
+          patch = (proof / "performance.patch").read_bytes()
+          api = "https://api.github.com/repos/ychenracing/trade/"
+
+          def request(path, payload=None):
+              body = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(api + path, data=body, headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"], "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"})
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  return json.load(response)
+          # No ref update, dispatch, cancellation, default-branch write or settings change.
+          head = request("git/ref/heads/codex/c6-causal-risk-closure-v11")["object"]["sha"]
+          assert head == base, "PR changed during verification; do not publish over newer work"
+          entries = []
+          for path in paths:
+              raw = Path(path).read_bytes()
+              oid = request("git/blobs", {"content": base64.b64encode(raw).decode(), "encoding": "base64"})["sha"]
+              assert oid == command("git", "hash-object", path)
+              entries.append({"path": path, "mode": "100644", "type": "blob", "sha": oid})
+          tree = request("git/trees", {"base_tree": "4d02c6bc640940df3b08d0b9cdca3fbb10baba67", "tree": entries})["sha"]
+          assert tree == expected_tree
+          message = "perf(c6): reuse verified checkpoint records and avoid redundant IO\n\nContinue PR63 from 1b44486. Scope: bound runner and its non-economic tests only.\nSchema/formula reuse is local to one restore under one immutable P; every\nrecord hash, wrapper, source/R/workflow identity and prefix check remains.\nNew or modified records are fully validated; failed validation is not cached.\nAvoid a second complete decode for progress IDs and unchanged map saves.\n\nVerified: affected boundary/runner modules on Python 3.12.14, compile and Ruff.\nNo economic replay, frozen-ref move, active-attempt change or deployment.\nCurrent v19 remains on frozen I_B; explicit lawful re-binding/reuse is pending.\n"
+          commit = request("git/commits", {"message": message, "tree": tree, "parents": [base]})
+          receipt = {"kind": "c6_non_economic_performance_candidate", "base": base, "commit": commit["sha"], "tree": tree, "parent": commit["parents"][0]["sha"], "changed_paths": paths, "patch_sha256": hashlib.sha256(patch).hexdigest(), "python": sys.version, "image_os": os.environ.get("ImageOS"), "image_version": os.environ.get("ImageVersion"), "workflow_run_id": os.environ["GITHUB_RUN_ID"], "workflow_sha": os.environ["GITHUB_SHA"], "tests_exit_code": 0, "branch_updated": False, "economic_runs_started": 0, "v19_deployed": False}
+          assert receipt["parent"] == base
+          (proof / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          print(json.dumps(receipt, indent=2))
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c6-performance-proof-${{ github.run_id }}
+          path: ${{ runner.temp }}/c6-performance-proof
+          if-no-files-found: error
+          retention-days: 90
