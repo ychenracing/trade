@@ -1,0 +1,98 @@
+name: C6 v21 Relay Candidate Object
+
+on:
+  push:
+    branches: [codex/c6-v21-relay-final-build-20260907]
+    paths: [.github/workflows/c6-v21-relay-object-publish.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-v21-relay-object-publish
+  cancel-in-progress: false
+
+env:
+  MAIN_SHA: 3b4b9c2554b2ac54d065173d3889040a30bc6e89
+  P21: 1dbcd6709470c2212919164cb39aa02859314dce
+  IB21: b41b6fbc551903221353271024a38ca42e7c2e19
+  IS21: c89842bc3df1eefcc5f3f6d4a250c2b62323393d
+  R21: 6d68e9b91fe5f93c6535718c886242da75ffae26
+  W21: f9da08afebf22b3dc03a1fb3a0ec351a79adf42c
+
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IB21 }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.R21 }}
+          path: bindings
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: source/requirements-lock.txt
+      - name: Verify exact frozen refs and install
+        run: |
+          set -euo pipefail
+          for pair in \
+            "codex/c6-preregistration-v21:$P21" \
+            "codex/c6-base-v21:$IB21" \
+            "codex/c6-s-v21:$IS21" \
+            "codex/c6-evidence-v21:$R21" \
+            "codex/c6-v21-workflow-anchor:$W21"; do
+            ref="${pair%%:*}"; sha="${pair##*:}"
+            test "$(git ls-remote origin refs/heads/$ref | cut -f1)" = "$sha"
+          done
+          python -m pip install --require-hashes -r source/requirements-lock.txt
+      - name: Rebuild the already validated five-file candidate
+        run: |
+          set -euo pipefail
+          git checkout --detach "$MAIN_SHA"
+          export R_SHA256="$(sha256sum bindings/artifacts/diagnostics/c6-run-bindings.json | cut -d' ' -f1)"
+          python "$(git show 2d9d0f7606c30ddc0cf93eb253e1799f735f0dd9:.github/scripts/build_c6_v21_relay_final.py | sed -n '1p' >/dev/null; echo "$GITHUB_WORKSPACE/.github/scripts/build_c6_v21_relay_final.py")"
+        shell: bash
+      - name: Verify exact diff and both relay suites
+        run: |
+          set -euo pipefail
+          export R_SHA256="$(sha256sum bindings/artifacts/diagnostics/c6-run-bindings.json | cut -d' ' -f1)"
+          git show 2d9d0f7606c30ddc0cf93eb253e1799f735f0dd9:.github/scripts/build_c6_v21_relay_final.py > /tmp/build_relay.py
+          python /tmp/build_relay.py
+          git diff --check
+          test "$(git diff --name-only | sort)" = $'.github/scripts/c6_auto_resume.py\n.github/scripts/c6_stage_advance.py\n.github/scripts/test_c6_stage_advance.py\n.github/workflows/c6-auto-resume.yml\n.github/workflows/c6-stage-advance.yml'
+          python3 -I -S .github/scripts/test_c6_auto_resume.py
+          python -I -S .github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+      - name: Create candidate and attempt object transfer
+        run: |
+          set -euo pipefail
+          git add .github/scripts/c6_auto_resume.py .github/scripts/c6_stage_advance.py .github/scripts/test_c6_stage_advance.py .github/workflows/c6-auto-resume.yml .github/workflows/c6-stage-advance.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ci(c6): rebind existing relay chain to frozen v21' -m 'Rebind existing automatic resume and stage relay plus versioned fixtures to P21/I_B21/I_S21/R21/W21. Preserve existing schedules and economic contracts.'
+          git rev-parse HEAD | tee "$RUNNER_TEMP/candidate-sha.txt"
+          git rev-parse HEAD^{tree} | tee "$RUNNER_TEMP/candidate-tree.txt"
+          set +e
+          git push origin HEAD:refs/heads/codex/c6-v21-relay-rebind-object
+          echo "$?" > "$RUNNER_TEMP/push-status.txt"
+          set -e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: c6-v21-relay-object-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/candidate-sha.txt
+            ${{ runner.temp }}/candidate-tree.txt
+            ${{ runner.temp }}/push-status.txt
+          retention-days: 30
