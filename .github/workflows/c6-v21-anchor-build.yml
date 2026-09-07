@@ -8,7 +8,7 @@ on:
       - .github/scripts/build_c6_v21_anchor.py
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: c6-v21-workflow-anchor-build
@@ -44,7 +44,7 @@ jobs:
           python .github/scripts/build_c6_v21_anchor.py
           test -s /tmp/c6-bound-economic.yml
           test -s /tmp/c6-dispatch.yml
-      - name: Publish two-file immutable anchor candidate
+      - name: Validate and emit exact anchor files
         run: |
           set -euo pipefail
           test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
@@ -53,8 +53,12 @@ jobs:
           cp /tmp/c6-dispatch.yml .github/workflows/c6-dispatch.yml
           git diff --check
           test "$(git diff --name-only | sort)" = $'.github/workflows/c6-bound-economic.yml\n.github/workflows/c6-dispatch.yml'
-          git add .github/workflows/c6-bound-economic.yml .github/workflows/c6-dispatch.yml
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'perf(c6): parallelize immutable L1 core evaluation' -m 'v21 workflow anchor only. Precompute L1 core evaluations across 12 isolated runners while preserving each original 10-item process chunk. Aggregate inside the same workflow run, then execute W0-W5, controls, no-drift, predicates and sealed export centrally. L1 is single-attempt/no-checkpoint; qualification/L2/L4 remain unchanged. Dispatch envelope is rebound only to the exact v21 anchor.'
-          git push origin HEAD:$TARGET_BRANCH
+          sha256sum .github/workflows/c6-bound-economic.yml .github/workflows/c6-dispatch.yml
+          echo C6_BOUND_B64_BEGIN
+          base64 -w0 .github/workflows/c6-bound-economic.yml
+          echo
+          echo C6_BOUND_B64_END
+          echo C6_DISPATCH_B64_BEGIN
+          base64 -w0 .github/workflows/c6-dispatch.yml
+          echo
+          echo C6_DISPATCH_B64_END

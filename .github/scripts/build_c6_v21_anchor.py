@@ -149,7 +149,7 @@ if bound.count(execute_anchor) != 1:
     raise SystemExit("execute step anchor drift")
 download = r'''      - name: Download exact same-run L1 shards
         if: inputs.binding_id == 'c6.base.l1' || inputs.binding_id == 'c6.base_plus_s.l1'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: c6-l1-shard-${{ github.run_id }}-*
           path: parallel-evaluations
@@ -181,6 +181,7 @@ required = [
     "compression-level: 0",
     "path: parallel-evaluations",
     "needs: [parallel_l1]",
+    "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
     "codex/c6-v21-workflow-anchor",
 ]
 for token in required:
