@@ -10,7 +10,7 @@ on:
   workflow_run:
     workflows: [C6 Bound Economic Run]
     types: [completed]
-    branches: [codex/c6-v21-workflow-anchor]
+    branches: [codex/c6-v23-workflow-anchor]
   schedule:
     - cron: '7,17,27,37,47,57 * * * *'
   push:
@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: c6-auto-resume-v21
+  group: c6-auto-resume-v25
   cancel-in-progress: false
 
 jobs:

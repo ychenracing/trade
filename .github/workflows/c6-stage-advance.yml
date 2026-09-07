@@ -7,7 +7,7 @@ on:
       - .github/scripts/test_c6_stage_advance.py
       - .github/workflows/c6-stage-advance.yml
   push:
-    branches: [main, codex/c6-stage-advance-v22]
+    branches: [main, codex/c6-stage-advance-v25]
     paths:
       - .github/scripts/c6_stage_advance.py
       - .github/scripts/test_c6_stage_advance.py
@@ -23,7 +23,7 @@ on:
   workflow_run:
     workflows: [C6 Bound Economic Run]
     types: [completed]
-    branches: [codex/c6-v21-workflow-anchor]
+    branches: [codex/c6-v23-workflow-anchor]
   schedule:
     - cron: '9,39 * * * *'
 
@@ -31,7 +31,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: c6-stage-advance-v22
+  group: c6-stage-advance-v25
   cancel-in-progress: false
 
 jobs:
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: ychenracing/trade
-          ref: addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7
+          ref: f811cf8d0f0093b3148900bd0fbb96a9e67f9b51
           path: source
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -83,14 +83,14 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         if: steps.probe.outputs.ready == 'true'
         with:
-          ref: addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7
+          ref: f811cf8d0f0093b3148900bd0fbb96a9e67f9b51
           path: source
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         if: steps.probe.outputs.ready == 'true'
         with:
-          ref: ea6dfa36b9796df7e4078d6f8d88b539a54072e3
+          ref: 71748de130d31d132e69999645e3285f81a651f9
           path: bindings
           fetch-depth: 0
           persist-credentials: false
@@ -113,7 +113,7 @@ jobs:
           from pathlib import Path
           root = Path(os.environ['RUNNER_TEMP']) / 'c6-stage-output'
           state = json.loads((root / 'stage-status.json').read_text())
-          body = '## C6 v22 frozen stage outcome\n\n' + '```json\n' + json.dumps(state, indent=2) + '\n```\n\n'
+          body = '## C6 v25 frozen stage outcome\n\n' + '```json\n' + json.dumps(state, indent=2) + '\n```\n\n'
           body += 'Native frozen consumers verified this result. This relay did not merge the strategy. '
           body += 'A rejection remains rejected; an accepted formal result still requires selected-source integration, release review and protected PR merge. '
           body += 'Only the finished stage relay is paused to avoid re-reading multi-gigabyte evidence; frozen refs and economic workflows are unchanged.'
