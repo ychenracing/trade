@@ -19,6 +19,7 @@ env:
   IB24: f6aeb467b2aa70703a69a8b4053ec13aae90e2bc
   R24: 5204e90924533558a546f13a9c2f93b017898eb5
   IB22: addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7
+  PRODUCTION_FIX: 81c9efdaa2ea1e5afc3a55b25cf8ebbdbe0e9b3b
   ATTESTATION_RUN: '34149676167'
 
 jobs:
@@ -58,6 +59,8 @@ jobs:
           test "$(git -C patched rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git -C frozen rev-parse HEAD)" = "$IB24"
           test "$(git -C bindings rev-parse HEAD)" = "$R24"
+          git -C patched merge-base --is-ancestor "$PRODUCTION_FIX" "$GITHUB_SHA"
+          test "$(git -C patched diff --name-only "$PRODUCTION_FIX" "$GITHUB_SHA")" = '.github/workflows/c6-v25-central-only-proof.yml'
           test "$(python -c 'import platform; print(platform.python_version())')" = '3.12.14'
       - name: Install frozen dependencies
         run: python -m pip install --require-hashes -r patched/requirements-lock.txt
@@ -90,6 +93,7 @@ jobs:
 
           from quantfusion.application.c6_contract import load_preregistration, load_run_bindings
           from quantfusion.application.c6_parallel_l1 import load_parallel_evaluations
+          from quantfusion.io.c6_stream import MultiFileArray
 
           prereg_path = frozen / 'artifacts/diagnostics/c6-preregistration.json'
           prereg = load_preregistration(prereg_path, repository=frozen)
@@ -116,6 +120,7 @@ jobs:
           finally:
               os.chdir(old_cwd)
           elapsed = time.perf_counter() - started
+          assert isinstance(evaluations, MultiFileArray)
           assert len(evaluations) == 3825
           receipt = {
               'kind': 'c6_v25_attested_central_only_proof',
@@ -124,9 +129,11 @@ jobs:
               'source_attestation_run_id': 34149676167,
               'recovered_core_evaluations': len(evaluations),
               'attestations_verified': 12,
+              'storage_mode': 'disk_backed_multi_file_array',
               'shard_source_revision': os.environ['IB22'],
               'validator_source_revision': os.environ['IB24'],
               'run_bindings_revision': os.environ['R24'],
+              'production_fix_revision': os.environ['PRODUCTION_FIX'],
               'patched_source_revision': os.environ['PATCHED_SOURCE'],
               'elapsed_seconds': elapsed,
               'max_rss_kib': resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
