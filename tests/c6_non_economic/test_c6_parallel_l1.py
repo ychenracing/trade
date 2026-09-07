@@ -91,6 +91,30 @@ def test_merge_reassembles_exact_manifest_order(tmp_path):
     assert results == [{"value": index} for index in range(len(ids))]
 
 
+def test_merge_streams_records_array_instead_of_decoding_whole_shard(
+    tmp_path, monkeypatch
+):
+    ids = [f"evaluation/item-{index:03d}" for index in range(8)]
+    _write_shards(tmp_path, ids, shard_count=1, chunk_size=2)
+
+    from quantfusion.application import c6_parallel_l1 as parallel
+    from quantfusion.io.c6_stream import load_object as real_load_object
+
+    def bounded_load(path, **kwargs):
+        return real_load_object(path, record_limit=512, **kwargs)
+
+    monkeypatch.setattr(parallel, "load_object", bounded_load)
+    results = parallel.merge_shard_payloads(
+        tmp_path,
+        expected_item_ids=ids,
+        source_revision="a" * 40,
+        record_id="c6.base.l1",
+        shard_count=1,
+        chunk_size=2,
+    )
+    assert results == [{"value": index} for index in range(len(ids))]
+
+
 @pytest.mark.parametrize(
     "mutation", ["missing", "wrong-shard", "bad-hash", "wrong-chunk"]
 )
