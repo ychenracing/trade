@@ -782,19 +782,61 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError(f"synthetic controls lack passing execution evidence: {unverified}")
     variants = manifests["L1_BASE_EVALUATION_MANIFEST"]["core_variant_order"] if base else ["C6-Base+S"]
     tasks = [(variant, by_id[scenario], "DEFAULT") for variant in variants for scenario in scenario_ids]
-    checkpoint = DiagnosticCheckpoint.from_environment(execution_item_ids(binding, prereg), chunk_size=binding["runtime"]["checkpoint_every"])
-    evaluations = checkpoint.map(_l1_evaluate, tasks, [f"evaluation/{variant}::{scenario['scenario_id']}" for variant, scenario, _ in tasks])
+    checkpoint = None
+    if args.parallel_evaluations is not None:
+        from quantfusion.application.c6_parallel_l1 import load_parallel_evaluations
+        evaluations = load_parallel_evaluations(
+            Path(args.parallel_evaluations), prereg=prereg, binding=binding,
+            source_revision=args.source_revision, shard_count=args.parallel_shard_count,
+        )
+    else:
+        checkpoint = DiagnosticCheckpoint.from_environment(
+            execution_item_ids(binding, prereg),
+            chunk_size=binding["runtime"]["checkpoint_every"],
+        )
+        evaluations = checkpoint.map(
+            _l1_evaluate, tasks,
+            [f"evaluation/{variant}::{scenario['scenario_id']}" for variant, scenario, _ in tasks],
+        )
     if base:
         interventions = [(variant, by_id["add-one-13-601869"], "DEFAULT") for variant in manifests["L1_BASE_EVALUATION_MANIFEST"]["causal_intervention_order"]]
         # Six interdependent intervention rows are finalized and committed together.
-        if checkpoint.chunk_size < len(interventions):
+        if int(binding["runtime"]["checkpoint_every"]) < len(interventions):
             raise ValueError("checkpoint chunk must hold all causal interventions")
-        checkpoint.map(_l1_evaluate, interventions, [f"evaluation/{variant}::{scenario['scenario_id']}" for variant, scenario, _ in interventions], finalize=_attach_interventions)
-    evaluations = checkpoint.items[:checkpoint.cursor].project("result")
+        if checkpoint is None:
+            from quantfusion.application.c6_parallel_l1 import fresh_pool_map
+            intervention_results = fresh_pool_map(
+                _l1_evaluate, interventions, workers=4,
+                chunk_size=int(binding["runtime"]["checkpoint_every"]),
+            )
+            _attach_interventions(intervention_results)
+            evaluations = [*evaluations, *intervention_results]
+        else:
+            checkpoint.map(
+                _l1_evaluate, interventions,
+                [f"evaluation/{variant}::{scenario['scenario_id']}" for variant, scenario, _ in interventions],
+                finalize=_attach_interventions,
+            )
+    if checkpoint is not None:
+        evaluations = checkpoint.items[:checkpoint.cursor].project("result")
     chosen = "C6-Base" if base else "C6-Base+S"
-    controls = list(checkpoint.map(_identity, control_rows, [f"control/{item}" for item in manifests[control_name]["ids"]], workers=1))
     drift_tasks = [(chosen, by_id[item]) for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]]
-    pairs = list(checkpoint.map(_no_drift_pair, drift_tasks, [f"no-drift/{item}" for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]]))
+    if checkpoint is None:
+        from quantfusion.application.c6_parallel_l1 import fresh_pool_map
+        controls = list(control_rows)
+        pairs = fresh_pool_map(
+            _no_drift_pair, drift_tasks, workers=4,
+            chunk_size=int(binding["runtime"]["checkpoint_every"]),
+        )
+    else:
+        controls = list(checkpoint.map(
+            _identity, control_rows,
+            [f"control/{item}" for item in manifests[control_name]["ids"]], workers=1,
+        ))
+        pairs = list(checkpoint.map(
+            _no_drift_pair, drift_tasks,
+            [f"no-drift/{item}" for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]],
+        ))
     specs = prereg["diagnostic_predicate_manifests"]["L1_APPLICABLE_DIAGNOSTIC_PREDICATES"]
     selected = select_records(evaluations, lambda item: item["variant_id"] == chosen)
     eval_name = "L1_BASE_EVALUATION_MANIFEST" if base else "L1_S_EVALUATION_MANIFEST"
@@ -827,6 +869,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--producer-artifact-sha256")
     parser.add_argument("--base-producer-export")
     parser.add_argument("--base-producer-artifact-sha256")
+    parser.add_argument("--parallel-evaluations")
+    parser.add_argument("--parallel-shard-count", type=int)
     parser.add_argument("--output", required=True)
     return parser
 
@@ -893,7 +937,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         character not in "0123456789abcdef" for character in args.source_revision
     ):
         raise ValueError("source_revision must be a lowercase 40-character Git SHA")
+    parallel = args.parallel_evaluations is not None or args.parallel_shard_count is not None
+    if parallel and (args.parallel_evaluations is None or args.parallel_shard_count is None
+                     or args.parallel_shard_count < 2):
+        raise ValueError("parallel L1 requires a directory and shard_count >= 2")
     if args.binding_record_id.endswith(".l2"):
+        if parallel:
+            raise ValueError("parallel evaluation inputs are L1-only")
         payload = _produce_l2(args)
     else:
         payload = _produce_l1(args)
