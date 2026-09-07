@@ -10,7 +10,7 @@ from quantfusion.application.c6_parallel_l1 import (
     merge_shard_payloads,
     shard_payload,
 )
-from quantfusion.io.c6_stream import write_json
+from quantfusion.io.c6_stream import load_object, write_json
 
 
 def _record(item_id: str, value: int) -> dict[str, object]:
@@ -113,7 +113,12 @@ def test_attested_merge_does_not_repeat_semantics_and_rejects_byte_drift(
     )
     assert results == [{"value": index} for index in range(len(ids))]
 
-    path.write_bytes(path.read_bytes() + b"x")
+    payload = load_object(path)
+    payload["records"][0]["result"] = {"value": 999}
+    payload["records"][0]["result_sha256"] = canonical_payload_hash(
+        payload["records"][0]["result"]
+    )
+    write_json(path, payload, replace=True)
     with pytest.raises(ValueError, match="attestation"):
         merge_shard_payloads(
             tmp_path,
