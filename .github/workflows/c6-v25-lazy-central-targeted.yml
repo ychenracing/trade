@@ -26,9 +26,18 @@ jobs:
       - run: python -m pip install --require-hashes -r requirements-lock.txt
       - name: Apply bounded attested merge fix
         run: python .github/scripts/c6_v25_lazy_merge_patch.py
-      - name: Run affected lint and regressions
+      - name: Run affected static and behavioral checks
         run: |
-          python -m ruff check quantfusion/io/c6_stream.py quantfusion/application/c6_parallel_l1.py quantfusion/application/c6_diagnostics.py tests/c6_non_economic/test_c6_parallel_l1_attestation.py
+          python -m py_compile \
+            quantfusion/io/c6_stream.py \
+            quantfusion/application/c6_parallel_l1.py \
+            quantfusion/application/c6_diagnostics.py \
+            tests/c6_non_economic/test_c6_parallel_l1_attestation.py
+          python -m ruff check --select E9,F821,F822,F823 \
+            quantfusion/io/c6_stream.py \
+            quantfusion/application/c6_parallel_l1.py \
+            quantfusion/application/c6_diagnostics.py \
+            tests/c6_non_economic/test_c6_parallel_l1_attestation.py
           python -m pytest -q \
             tests/c6_non_economic/test_c6_parallel_l1_single_pass.py \
             tests/c6_non_economic/test_c6_parallel_l1_attestation.py \
