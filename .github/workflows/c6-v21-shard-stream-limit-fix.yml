@@ -32,5 +32,9 @@ jobs:
         run: test "$(python -c 'import platform; print(platform.python_version())')" = '3.12.14'
       - name: Install locked dependencies
         run: python -m pip install --require-hashes -r requirements-lock.txt
-      - name: Run exact parallel L1 regression module
-        run: python -m pytest -q tests/c6_non_economic/test_c6_parallel_l1.py
+      - name: Run affected parallel aggregate chain
+        run: |
+          python -m pytest -q \
+            tests/c6_non_economic/test_c6_parallel_l1.py \
+            tests/c6_non_economic/test_c6_diagnostics.py \
+            tests/c6_non_economic/test_c6_bound_run.py
