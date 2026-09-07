@@ -1,0 +1,131 @@
+name: C6 Frozen Stage Advance
+
+on:
+  pull_request:
+    paths:
+      - .github/scripts/c6_stage_advance.py
+      - .github/scripts/test_c6_stage_advance.py
+      - .github/workflows/c6-stage-advance.yml
+  push:
+    branches: [main, codex/c6-stage-advance-v19]
+    paths:
+      - .github/scripts/c6_stage_advance.py
+      - .github/scripts/test_c6_stage_advance.py
+      - .github/workflows/c6-stage-advance.yml
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Verify the relay or advance the already-frozen PR63 task
+        type: choice
+        options: [verify, advance]
+        default: verify
+        required: true
+  workflow_run:
+    workflows: [C6 Bound Economic Run]
+    types: [completed]
+    branches: [codex/c6-v17-workflow-anchor]
+  schedule:
+    - cron: '9,39 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: c6-stage-advance-v19
+  cancel-in-progress: false
+
+jobs:
+  synthetic:
+    name: C6 stage relay synthetic tests
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name != 'main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'verify')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: relay
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: ychenracing/trade
+          ref: 168cd3856cc1b60c928fe54c4a826b6045df01e9
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+      - name: Exercise all mechanical branches and native sealed-result consumers
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -I -S relay/.github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+
+  advance:
+    name: Advance one frozen stage
+    if: github.repository == 'ychenracing/trade' && github.ref_name == 'main' && (github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'advance') || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: relay
+          persist-credentials: false
+      - name: Check task pause, immutable refs and active runs without downloading evidence
+        id: probe
+        run: python3 -I -S relay/.github/scripts/c6_stage_advance.py --probe --output "$RUNNER_TEMP/c6-stage-output"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: steps.probe.outputs.ready == 'true'
+        with:
+          ref: 168cd3856cc1b60c928fe54c4a826b6045df01e9
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: steps.probe.outputs.ready == 'true'
+        with:
+          ref: 4db5cadc90d450f513dfdda10e0436cf330c62f3
+          path: bindings
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        if: steps.probe.outputs.ready == 'true'
+        with:
+          python-version: '3.12.14'
+      - name: Install only the frozen verifier dependencies
+        if: steps.probe.outputs.ready == 'true'
+        run: python -m pip install -r source/requirements-lock.txt
+      - name: Authenticate full results and execute only the R-declared next transition
+        if: steps.probe.outputs.ready == 'true'
+        id: transition
+        run: python -I relay/.github/scripts/c6_stage_advance.py --source "$GITHUB_WORKSPACE/source" --bindings "$GITHUB_WORKSPACE/bindings" --output "$RUNNER_TEMP/c6-stage-output"
+      - name: Publish terminal evidence and pause this relay, never the economic workflows
+        if: steps.transition.outputs.terminal == 'true'
+        run: |
+          python3 -I -S - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'c6-stage-output'
+          state = json.loads((root / 'stage-status.json').read_text())
+          body = '## C6 v19 frozen stage outcome\n\n' + '```json\n' + json.dumps(state, indent=2) + '\n```\n\n'
+          body += 'Native frozen consumers verified this result. This relay did not merge the strategy. '
+          body += 'A rejection remains rejected; an accepted formal result still requires selected-source integration, release review and protected PR merge. '
+          body += 'Only the finished stage relay is paused to avoid re-reading multi-gigabyte evidence; frozen refs and economic workflows are unchanged.'
+          (root / 'terminal-comment.json').write_text(json.dumps({'body': body}))
+          PY
+          gh api --method POST repos/ychenracing/trade/issues/63/comments --input "$RUNNER_TEMP/c6-stage-output/terminal-comment.json"
+          gh api --method PUT repos/ychenracing/trade/actions/workflows/c6-stage-advance.yml/disable
+          gh api repos/ychenracing/trade/actions/workflows/c6-stage-advance.yml --jq '{id,path,state}'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-stage-status-${{ github.run_id }}
+          path: ${{ runner.temp }}/c6-stage-output/*
+          if-no-files-found: warn
+          retention-days: 90
