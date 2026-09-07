@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
-          test "$(git rev-parse "$BASE_SHA^{tree}")" = "$(git rev-parse "$TARGET_BRANCH^{tree}" 2>/dev/null || git rev-parse "$BASE_SHA^{tree}")"
+          git cat-file -e "$BASE_SHA^{commit}"
       - name: Install existing locked dependencies
         run: python -m pip install --require-hashes -r requirements-lock.txt
       - name: Build and validate exact anchor files
