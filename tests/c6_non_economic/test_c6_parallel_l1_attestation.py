@@ -74,12 +74,12 @@ def test_attestation_runs_semantic_validation_once_and_binds_exact_bytes(
     assert len(attestation["shard_file_sha256"]) == 64
 
 
-def test_attested_merge_does_not_repeat_semantics_and_rejects_byte_drift(
+def test_attested_merge_does_not_repeat_semantics_or_result_hashing_and_rejects_byte_drift(
     tmp_path: Path, monkeypatch
 ) -> None:
     ids = [f"evaluation/item-{index:03d}" for index in range(8)]
     path = _write_one(tmp_path, ids)
-    from quantfusion.application import c6_bound_run
+    from quantfusion.application import c6_bound_run, c6_parallel_l1
 
     monkeypatch.setattr(c6_bound_run, "validate_checkpoint_item", lambda item, prereg: None)
     attestation = attest_shard_validation(
@@ -98,7 +98,11 @@ def test_attested_merge_does_not_repeat_semantics_and_rejects_byte_drift(
     def duplicate_semantics_forbidden(item, prereg):
         raise AssertionError("central merge repeated semantic validation")
 
+    def duplicate_hashing_forbidden(result):
+        raise AssertionError("central merge repeated canonical result hashing")
+
     monkeypatch.setattr(c6_bound_run, "validate_checkpoint_item", duplicate_semantics_forbidden)
+    monkeypatch.setattr(c6_parallel_l1, "canonical_payload_hash", duplicate_hashing_forbidden)
     results = merge_shard_payloads(
         tmp_path,
         expected_item_ids=ids,
