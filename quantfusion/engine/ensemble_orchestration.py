@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from quantfusion.execution.c6_receipts import order_receipt, reconcile_close_queue
+
 # pyright: reportAttributeAccessIssue=false
 
 # ruff: noqa: F401
 
 import contextlib
+import copy
 import io
 import math
 from dataclasses import replace
@@ -32,6 +35,88 @@ from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
 from quantfusion.risk.overlay.adapter import apply_risk_actions
 from quantfusion.strategy.trend import BaseStrategy
+
+
+def capture_c6_warm_state(states: list, account_risk: Any, overlay: Any) -> dict:
+    """Copy causal inputs and actual ledgers before the first replay iteration."""
+    first, execution = states[0].all_dates[:2]
+    sleeves = []
+    for state in states:
+        sleeve = state.sleeve
+        if (sleeve.cash != sleeve.initial_capital or sleeve.positions or state.pending
+                or sleeve.pending_signals or sleeve.trades or sleeve.equity_curve
+                or sleeve.sector_guard_active or sleeve._safe_mode_active or sleeve._external_risk_level):
+            raise ValueError("warm boundary contains pre-window economic state")
+        sleeves.append({
+            "name": sleeve.sleeve_name, "cash": sleeve.cash,
+            "positions": sleeve.positions, "pending": state.pending,
+            "pending_signals": sleeve.pending_signals,
+            "trades": sleeve.trades, "equity_curve": sleeve.equity_curve,
+            "risk": {k: v for k, v in vars(sleeve.risk).items()
+                     if k not in {"cfg", "policy", "symbol_groups", "group_weight_limits"}},
+            "regime": {k: v for k, v in vars(sleeve).items()
+                       if k.startswith("_regime_") and k != "_regime_indicator_series"},
+            "sticky": {k: v for k, v in vars(sleeve).items() if k.startswith("_sticky_")},
+            "sector_guard_active": sleeve.sector_guard_active,
+        })
+    state = states[0]
+    captured = copy.deepcopy({
+        "phase": "before_first_valuation", "first": first, "execution": execution,
+        "sleeves": sleeves,
+        "account_risk": {k: v for k, v in vars(account_risk).items()
+                         if k not in {"cfg", "policy", "symbol_groups", "group_weight_limits"}},
+        "overlay": None if overlay is None else {
+            "state": overlay.state_snapshot(), "assets_history": overlay._assets_history,
+            "last_metrics": overlay._last_metrics, "last_metrics_date": overlay._last_metrics_date,
+        },
+        "data": {symbol: frame.loc[frame.index < first] for symbol, frame in state.data_map.items()},
+        "indicators": {symbol: {name: series.loc[series.index < first]
+                                for name, series in fields.items()}
+                       for symbol, fields in state.indicator_map.items()},
+    })
+    for risk in [captured["account_risk"], *(s["risk"] for s in sleeves)]:
+        if any(risk.values()):
+            raise ValueError("warm boundary contains initialized risk or lock state")
+    for sleeve_state in sleeves:
+        for key, value in sleeve_state["regime"].items():
+            expected = "TREND" if key in {"_regime_state", "_regime_prev_state", "_regime_effective_state"} else None
+            if (expected is not None and value != expected) or (expected is None and value):
+                raise ValueError("warm boundary contains advanced regime state")
+        for key, value in sleeve_state["sticky"].items():
+            if (key == "_sticky_last_rotation_pos" and value != -1_000_000) or (key != "_sticky_last_rotation_pos" and value):
+                raise ValueError("warm boundary contains advanced sticky state")
+    if overlay is not None:
+        neutral = {"last_warning_position": -10**9, "execution_owner": "overlay"}
+        if (any(value != neutral[key] if key in neutral else bool(value)
+                for key, value in captured["overlay"]["state"].items())
+                or any(captured["overlay"][key] for key in ("assets_history", "last_metrics", "last_metrics_date"))):
+            raise ValueError("warm boundary contains advanced overlay state")
+    return captured
+
+
+def capture_account_risk_events(manager: Any, assets: float, date: str, peaks: dict) -> list[dict]:
+    """Attach observed owner, value and policy threshold at event emission."""
+    for field in ("peak_assets", "lifetime_peak_assets"):
+        value = getattr(manager, field)
+        if field not in peaks or peaks[field][0] != value:
+            peaks[field] = (value, date)
+    thresholds = {
+        "portfolio_drawdown_alert_on": manager.policy.drawdown_alert,
+        "portfolio_drawdown_alert_off": manager.policy.drawdown_alert,
+        "confirmed_cycle_drawdown_lock": manager.policy.confirmed_drawdown,
+        "emergency_cycle_drawdown_lock": manager.policy.emergency_drawdown,
+        "terminal_portfolio_drawdown_lock": manager.policy.terminal_drawdown,
+    }
+    events = manager.drain_audit_events()
+    for event in events:
+        name = event["event"]
+        if name in thresholds:
+            lifetime = name == "terminal_portfolio_drawdown_lock"
+            value, timestamp = peaks["lifetime_peak_assets" if lifetime else "peak_assets"]
+            event.update(peak_assets=value, peak_timestamp=timestamp, current_assets=assets,
+                         peak_owner="manager_lifetime_peak" if lifetime else "manager_cycle_peak",
+                         threshold=thresholds[name])
+    return events
 
 _CoreBacktestEngine = CoreBacktestEngine
 _ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
@@ -100,6 +185,9 @@ class EnsembleOrchestrationMixin:
         self._new_candidate_intent_streak = {}
         self._tail_guard_active = False
         self._tail_guard_policies = {}
+        diagnostic = getattr(self, "_c6_diagnostic_request", None)
+        self._c6_score_trace = [] if diagnostic is not None and diagnostic["recording_mode"] != "OFF" else None
+        self._c6_exposure_trace = [] if diagnostic is not None and diagnostic["recording_mode"] != "OFF" else None
         effective_policy = self._effective_policy(tradable_count)
         states = self._prepare_ensemble_sleeves(request, effective_policy)
         if not self._reference_evidence_complete(
@@ -135,6 +223,7 @@ class EnsembleOrchestrationMixin:
                 for state in states:
                     state.sleeve.sector_guard_active = True
         portfolio_risk_events: list[dict[str, Any]] = []
+        portfolio_peak_observations: dict[str, tuple[float, str]] = {}
         symbol_count_curve: list[dict[str, Any]] = []
         # 穿越牛熊 overlay: bull-silent defensive layer on top of the ensemble.
         # Default ON, only fires on genuine risk (catastrophe drop / structural
@@ -157,6 +246,18 @@ class EnsembleOrchestrationMixin:
             ),
         ) if self.cfg.get("enable_cm_overlay", True) else None
         if cm_overlay is not None:
+            setattr(
+                cm_overlay,
+                "_c6_s_enabled",
+                self._c6_feature_enabled("S")
+                if diagnostic is not None
+                else bool(getattr(cm_overlay, "C6_S_PRODUCTION", False)),
+            )
+            setattr(
+                cm_overlay,
+                "_c6_diagnostic_evidence_enabled",
+                diagnostic is not None and diagnostic["recording_mode"] != "OFF",
+            )
             cm_overlay.events.append(
                 {
                     "date": request.start_date,
@@ -183,7 +284,12 @@ class EnsembleOrchestrationMixin:
         last_agreement: rg.SleeveAgreementSnapshot | None = None
         prev_consensus: float | None = None
         prev_decline_streak = 0
+        warm_state = capture_c6_warm_state(states, portfolio_risk, cm_overlay) if diagnostic is not None else None
+        pending_path = []
         for idx, date in enumerate(reference_dates):
+            if diagnostic is not None:
+                pending_path.append({"date": date.strftime("%Y-%m-%d"),
+                                     "pending": [[dict(vars(signal)) for signal, _ in state.pending] for state in states]})
             # P0-4: pass the overlay so it can hard-block re-entry buys
             # for any symbol still in catastrophe cooldown (report P0-4).
             self._execute_ensemble_open(states, date, idx, cm_overlay)
@@ -197,12 +303,26 @@ class EnsembleOrchestrationMixin:
                     date,
                     state.pending,
                 )
+                if self._c6_intervention_id() in {
+                    "W1_DATA_MAP_ONLY",
+                    "W2_POOL_DENOMINATOR_ONLY",
+                }:
+                    state.pending = [
+                        item for item in state.pending if item[0].symbol != "601869"
+                    ]
             if request.route_controller is not None:
+                previous_queues = [list(state.pending) for state in states]
+                route_symbols = request.symbols_dict
+                if self._c6_intervention_id() in {"W1_DATA_MAP_ONLY", "W2_POOL_DENOMINATOR_ONLY"}:
+                    route_symbols = {code: name for code, name in route_symbols.items() if code != "601869"}
                 request.route_controller.after_close(
                     states,
                     date,
-                    request.symbols_dict,
+                    route_symbols,
                 )
+                for state, previous in zip(states, previous_queues):
+                    reconcile_close_queue(state.sleeve, previous, state.pending,
+                                          date.strftime("%Y-%m-%d"), "outer_route_transition")
                 if cm_overlay is not None and hasattr(
                     request.route_controller, "current_route"
                 ):
@@ -214,15 +334,26 @@ class EnsembleOrchestrationMixin:
                 state.sleeve._total_assets(state.data_map, date) for state in states
             ]
             assets = sum(state_assets)
-            status = portfolio_risk.check_portfolio_risk(
-                assets,
-                date.strftime("%Y-%m-%d"),
-                trading_dates=reference_dates,
-                date_to_pos=states[0].date_to_pos,
-            )
-            portfolio_risk_events.extend(portfolio_risk.drain_audit_events())
-            if status:
-                self._apply_global_risk_lock(states, date)
+            if (
+                self._c6_intervention_id()
+                != "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK"
+            ):
+                status = portfolio_risk.check_portfolio_risk(
+                    assets,
+                    date.strftime("%Y-%m-%d"),
+                    trading_dates=reference_dates,
+                    date_to_pos=states[0].date_to_pos,
+                )
+                portfolio_risk_events.extend(capture_account_risk_events(
+                    portfolio_risk, assets, date.strftime("%Y-%m-%d"), portfolio_peak_observations
+                ))
+                if status:
+                    self._apply_global_risk_lock(states, date)
+            else:
+                # W5 disables merged lock/rearm only. The existing tail guard
+                # still consumes the actual lifetime high-water mark.
+                portfolio_risk.lifetime_peak_assets = max(portfolio_risk.lifetime_peak_assets, assets)
+                portfolio_risk.peak_assets = max(portfolio_risk.peak_assets, assets)
             self._update_tail_sleeve_guard(
                 states,
                 date,
@@ -243,8 +374,15 @@ class EnsembleOrchestrationMixin:
                     states,
                     date_str=date.strftime("%Y-%m-%d"),
                     events=cm_overlay.events,
+                    state_local_books=self._c6_feature_enabled("F0"),
                 )
+                if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
+                    cm_overlay.finalize_c6_s_queue(states, date, state_local_books=self._c6_feature_enabled("F0"))
             held = self._held_portfolio_symbols(states)
+            self._record_c6_exposure(states, date, "official_sample")
+            for state in states:
+                for signal, strategy in state.pending:
+                    order_receipt(state.sleeve, signal, date.strftime("%Y-%m-%d"), queued=True, defensive=strategy is None)
             symbol_count_curve.append(
                 {"date": date.strftime("%Y-%m-%d"), "symbol_count": len(held)}
             )
@@ -396,6 +534,7 @@ class EnsembleOrchestrationMixin:
                     else None
                 ),
                 "tail_sleeve_guard_active": self._tail_guard_active,
+                "c6_s_evidence": getattr(cm_overlay, "c6_s_evidence", None) if cm_overlay is not None else None,
             }
         )
         # ── 风险治理输出（2026-08-16 报告 P0-1/P0-2/P0-3/P1-1/P1-2）──────
@@ -412,5 +551,15 @@ class EnsembleOrchestrationMixin:
         combined["risk_event_calibration"] = self._calibrate_run_risk_events(
             combined, risk_level_curve, overlay_risk_frames
         )
+        request_data = getattr(self, "_c6_diagnostic_request", None)
+        if request_data is not None:
+            combined["_c6_sleeve_results"] = results
+            combined["_c6_states"] = states
+            combined["_c6_warm_state"] = warm_state
+            combined["_c6_score_trace"] = self._c6_score_trace
+            combined["_c6_orders"] = getattr(states[0].sleeve, "_c6_orders", [])
+            combined["_c6_fills"] = getattr(states[0].sleeve, "_c6_fills", [])
+            combined["_c6_pending_path"] = pending_path
+            combined["_c6_exposure_trace"] = self._c6_exposure_trace
         self.last_result = combined
         return combined
