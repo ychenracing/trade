@@ -1,0 +1,76 @@
+name: C6 v21 Relay Test Fixture Build
+
+on:
+  push:
+    branches: [codex/c6-v21-relay-rebind-build-20260907]
+    paths: [.github/workflows/c6-v21-relay-test-fixture-build.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-v21-relay-test-fixture-build-20260907
+  cancel-in-progress: false
+
+env:
+  MAIN_SHA: 3b4b9c2554b2ac54d065173d3889040a30bc6e89
+  CANDIDATE_SHA: a6c730c17af38f37e62cbb2d394c27ae75299212
+  CANDIDATE_BRANCH: codex/c6-v21-relay-rebind-candidate
+  IB21: b41b6fbc551903221353271024a38ca42e7c2e19
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_BRANCH }}
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IB21 }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: source/requirements-lock.txt
+      - name: Verify exact validated candidate
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test "$(git rev-parse HEAD^)" = "$MAIN_SHA"
+          test "$(git diff --name-only "$MAIN_SHA"...HEAD | sort)" = $'.github/scripts/c6_auto_resume.py\n.github/scripts/c6_stage_advance.py\n.github/workflows/c6-auto-resume.yml\n.github/workflows/c6-stage-advance.yml'
+          test "$(git -C source rev-parse HEAD)" = "$IB21"
+      - name: Install frozen verifier dependencies
+        run: python -m pip install --require-hashes -r source/requirements-lock.txt
+      - name: Rebind only versioned synthetic fixture identities
+        run: |
+          set -euo pipefail
+          python3 -I -S - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/test_c6_stage_advance.py')
+          text = path.read_text(encoding='utf-8')
+          count = text.count('c6-v19')
+          if count != 12:
+              raise SystemExit(f'expected exactly 12 v19 synthetic fixture identities, found {count}')
+          text = text.replace('c6-v19', 'c6-v21')
+          if 'c6-v19' in text:
+              raise SystemExit('v19 synthetic fixture identity survived rebind')
+          path.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = '.github/scripts/test_c6_stage_advance.py'
+          python -I -S .github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+      - name: Commit and push test-only follow-up
+        run: |
+          set -euo pipefail
+          git add .github/scripts/test_c6_stage_advance.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'test(c6): rebind stage relay fixtures to v21' -m 'Keep the synthetic relay fixtures aligned with the v21 execution identity. This changes no scheduler, frozen evidence, economic contract, or runtime selection behavior.'
+          git show --stat --oneline HEAD
+          git push origin HEAD:refs/heads/$CANDIDATE_BRANCH
