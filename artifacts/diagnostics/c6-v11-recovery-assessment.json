@@ -1,0 +1,20 @@
+{
+  "old_run_id": 33961836500,
+  "old_source": "c76b09c8636a129150c20a7fddcee23a903445d0",
+  "archive_sha256": "6368f32412708a88d87b849aa93df63dbe692cce01859143124f843a9d0772dc",
+  "wrapper_sha256": "b271c0a52e192c92e9be985d9b3b49a3d64feecff435a9a65af2a9a8eaffe891",
+  "items_independently_prefix_and_hash_verified": 530,
+  "metadata_corrected_record_semantic_pass": 530,
+  "errors": {},
+  "economic_fields_unchanged": true,
+  "new_economic_evaluation": false,
+  "reused_items": 0,
+  "disposition": "recompute_on_new_binding",
+  "seconds": 494.0682680919999,
+  "full_frozen_execution_manifest_count": 3875,
+  "exact_P_manifest_prefix": true,
+  "variants": {
+    "baseline": 530
+  },
+  "reason": "All 530 complete baseline records pass with only derived symbol_count. Current exact-source checkpoint signatures and per-record evidence contract do not accept cross-source lineage. A new importer would change trust/restore/signature contracts; bounded recovery keeps these contracts and replays the prefix under the new source. Original economic observations remain seen data; no strategy retuning or OOS claim."
+}
