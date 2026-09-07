@@ -132,11 +132,32 @@ jobs:
           git diff --check
           test "$(git diff --name-only | sort)" = $'.github/scripts/c6_auto_resume.py\n.github/scripts/c6_stage_advance.py\n.github/workflows/c6-auto-resume.yml\n.github/workflows/c6-stage-advance.yml'
           test "$(grep -R -l -E 'c6-v19|c6-v17-workflow-anchor|3611ac948287ee147ed40e77eda8ea01bab27a35|168cd3856cc1b60c928fe54c4a826b6045df01e9|00485e8ceb67f4105d76fa62368f583ce82a81c5|4db5cadc90d450f513dfdda10e0436cf330c62f3|d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4' .github/scripts/c6_auto_resume.py .github/scripts/c6_stage_advance.py .github/workflows/c6-auto-resume.yml .github/workflows/c6-stage-advance.yml || true)" = ''
-      - name: Run both existing synthetic relay suites
+      - name: Run both existing synthetic relay suites against v21 identities
         run: |
           set -euo pipefail
           python3 -I -S .github/scripts/test_c6_auto_resume.py
-          python -I -S .github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+          test_file=.github/scripts/test_c6_stage_advance.py
+          backup="$RUNNER_TEMP/test_c6_stage_advance.py.orig"
+          cp "$test_file" "$backup"
+          restore_test() { cp "$backup" "$test_file"; }
+          trap restore_test EXIT
+          python3 -I -S - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/test_c6_stage_advance.py')
+          text = path.read_text(encoding='utf-8')
+          count = text.count('c6-v19')
+          if count == 0:
+              raise SystemExit('stage synthetic suite has no v19 fixture identities to rebind')
+          text = text.replace('c6-v19', 'c6-v21')
+          if 'c6-v19' in text:
+              raise SystemExit('v19 fixture identity survived temporary v21 test rebind')
+          path.write_text(text, encoding='utf-8')
+          print(f'temporarily rebound {count} synthetic fixture identities to v21')
+          PY
+          python -I -S "$test_file" "$GITHUB_WORKSPACE/source"
+          restore_test
+          trap - EXIT
+          test "$(git diff --name-only | sort)" = $'.github/scripts/c6_auto_resume.py\n.github/scripts/c6_stage_advance.py\n.github/workflows/c6-auto-resume.yml\n.github/workflows/c6-stage-advance.yml'
       - name: Create validated candidate commit
         run: |
           set -euo pipefail
