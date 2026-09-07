@@ -785,9 +785,14 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
     checkpoint = None
     if args.parallel_evaluations is not None:
         from quantfusion.application.c6_parallel_l1 import load_parallel_evaluations
+        shard_source_revision = args.parallel_shard_source_revision or args.source_revision
+        preregistration_sha256 = hashlib.sha256(args.preregistration.read_bytes()).hexdigest()
         evaluations = load_parallel_evaluations(
             Path(args.parallel_evaluations), prereg=prereg, binding=binding,
-            source_revision=args.source_revision, shard_count=args.parallel_shard_count,
+            source_revision=shard_source_revision, shard_count=args.parallel_shard_count,
+            attestations_required=args.parallel_validation_attestations_required,
+            validator_source_revision=args.source_revision,
+            preregistration_sha256=preregistration_sha256,
         )
     else:
         checkpoint = DiagnosticCheckpoint.from_environment(
@@ -871,6 +876,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-producer-artifact-sha256")
     parser.add_argument("--parallel-evaluations")
     parser.add_argument("--parallel-shard-count", type=int)
+    parser.add_argument("--parallel-shard-source-revision")
+    parser.add_argument("--parallel-validation-attestations-required", action="store_true")
     parser.add_argument("--output", required=True)
     return parser
 
@@ -937,10 +944,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         character not in "0123456789abcdef" for character in args.source_revision
     ):
         raise ValueError("source_revision must be a lowercase 40-character Git SHA")
-    parallel = args.parallel_evaluations is not None or args.parallel_shard_count is not None
+    parallel = any((
+        args.parallel_evaluations is not None,
+        args.parallel_shard_count is not None,
+        args.parallel_shard_source_revision is not None,
+        args.parallel_validation_attestations_required,
+    ))
     if parallel and (args.parallel_evaluations is None or args.parallel_shard_count is None
                      or args.parallel_shard_count < 2):
         raise ValueError("parallel L1 requires a directory and shard_count >= 2")
+    if args.parallel_shard_source_revision is not None and (
+        len(args.parallel_shard_source_revision) != 40
+        or any(character not in "0123456789abcdef" for character in args.parallel_shard_source_revision)
+    ):
+        raise ValueError("parallel_shard_source_revision must be a lowercase Git SHA")
+    if args.parallel_validation_attestations_required and args.parallel_shard_source_revision is None:
+        raise ValueError("attested parallel L1 requires an explicit shard source revision")
     if args.binding_record_id.endswith(".l2"):
         if parallel:
             raise ValueError("parallel evaluation inputs are L1-only")

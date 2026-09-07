@@ -1,8 +1,9 @@
 """Deterministic parallel precomputation for frozen C6 L1 evaluations.
 
-Shards only compute independent core evaluation records. The trusted
-aggregate process revalidates every record and reconstructs the exact
-frozen order before predicates, W0-W5, controls, or no-drift checks.
+Shards compute independent core evaluation records. Semantic validation may be
+performed in dedicated shard jobs and bound to the exact compressed shard bytes;
+the aggregate process still validates every record hash/schema/partition and the
+exact frozen union/order before predicates, controls, or no-drift checks.
 """
 
 from __future__ import annotations
@@ -12,10 +13,8 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
-from quantfusion.application.c6_contract import (
-    canonical_payload_hash,
-)
-from quantfusion.io.c6_stream import FileArray, content_hash, load_object
+from quantfusion.application.c6_contract import canonical_payload_hash
+from quantfusion.io.c6_stream import FileArray, load_object
 
 _SHARD_KEYS = {
     "schema_version",
@@ -30,10 +29,32 @@ _SHARD_KEYS = {
     "records",
 }
 _RECORD_KEYS = {"item_id", "item_kind", "result_schema", "result_sha256", "result"}
+_ATTESTATION_KEYS = {
+    "schema_version",
+    "kind",
+    "record_id",
+    "shard_index",
+    "shard_count",
+    "chunk_size",
+    "record_count",
+    "record_ids_sha256",
+    "shard_source_revision",
+    "validator_source_revision",
+    "preregistration_sha256",
+    "shard_file_sha256",
+}
 
 
 def _manifest_hash(ids: Sequence[str]) -> str:
     return hashlib.sha256("".join(f"{item}\n" for item in ids).encode()).hexdigest()
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def partition_item_ids(
@@ -105,6 +126,7 @@ def core_l1_tasks(
     prereg: Mapping[str, Any], binding: Mapping[str, Any]
 ) -> tuple[list[str], list[tuple[str, Mapping[str, Any], str]]]:
     from quantfusion.application import stress_scenarios
+
     manifests = prereg["scenario_manifests"]
     scenario_ids = Path(
         manifests["L1_ECONOMIC_SCENARIO_IDS"]["path"]
@@ -177,90 +199,145 @@ def shard_payload(
     }
 
 
-def _validate_shard_payload(
-    payload: object,
+def _validate_shard_header(
+    payload: Mapping[str, Any],
     *,
-    ids: Sequence[str],
-    expected_hash: str,
+    expected_item_ids: Sequence[str],
     source_revision: str,
     record_id: str,
     shard_count: int,
     chunk_size: int,
-) -> tuple[int, list[str], list[Mapping[str, Any]] | FileArray]:
-    if not isinstance(payload, dict) or set(payload) != _SHARD_KEYS:
-        raise ValueError("parallel L1 shard schema is invalid")
-    index = payload["shard_index"]
+) -> int:
+    ids = list(expected_item_ids)
+    index = payload.get("shard_index")
     if (
-        payload["schema_version"] != 1
-        or payload["kind"] != "c6_l1_parallel_shard"
-        or payload["source_revision"] != source_revision
-        or payload["record_id"] != record_id
+        set(payload) != _SHARD_KEYS
+        or payload.get("schema_version") != 1
+        or payload.get("kind") != "c6_l1_parallel_shard"
+        or payload.get("source_revision") != source_revision
+        or payload.get("record_id") != record_id
         or type(index) is not int
         or index < 0
         or index >= shard_count
-        or payload["shard_count"] != shard_count
-        or payload["chunk_size"] != chunk_size
-        or payload["core_item_count"] != len(ids)
-        or payload["core_item_sha256"] != expected_hash
+        or payload.get("shard_count") != shard_count
+        or payload.get("chunk_size") != chunk_size
+        or payload.get("core_item_count") != len(ids)
+        or payload.get("core_item_sha256") != _manifest_hash(ids)
     ):
         raise ValueError("parallel L1 shard identity is invalid")
-    expected_shard = partition_item_ids(
-        ids, index, shard_count, chunk_size=chunk_size
-    )
-    records = payload["records"]
-    if not isinstance(records, (list, FileArray)) or [
-        item.get("item_id") for item in records if isinstance(item, dict)
-    ] != expected_shard:
-        raise ValueError("parallel L1 shard does not contain its exact partition")
-    return index, expected_shard, records
+    return index
 
 
-def _validate_shard_file(
-    arguments: tuple[
-        Path,
-        tuple[str, ...],
-        str,
-        str,
-        int,
-        int,
-        Mapping[str, Any] | None,
-    ]
-) -> tuple[int, str]:
+def _validate_record(
+    item: Any, *, seen_ids: set[str] | None = None
+) -> tuple[str, dict[str, Any]]:
+    if (
+        not isinstance(item, dict)
+        or set(item) != _RECORD_KEYS
+        or item["item_kind"] != "evaluation"
+        or item["result_schema"] != "evaluation_record"
+        or not isinstance(item["item_id"], str)
+        or not isinstance(item["result"], dict)
+        or item["result_sha256"] != canonical_payload_hash(item["result"])
+        or (seen_ids is not None and item["item_id"] in seen_ids)
+    ):
+        raise ValueError("parallel L1 record hash/schema is invalid")
+    return item["item_id"], item["result"]
+
+
+def attest_shard_validation(
+    path: Path,
+    *,
+    expected_item_ids: Sequence[str],
+    shard_source_revision: str,
+    validator_source_revision: str,
+    preregistration_sha256: str,
+    record_id: str,
+    shard_count: int,
+    chunk_size: int,
+    prereg: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Semantically validate one exact shard and attest the compressed bytes."""
     from quantfusion.application.c6_bound_run import validate_checkpoint_item
 
-    path, ids, source_revision, record_id, shard_count, chunk_size, prereg = arguments
-    before = content_hash(path)
-    expected_hash = _manifest_hash(ids)
+    if (
+        len(shard_source_revision) != 40
+        or len(validator_source_revision) != 40
+        or len(preregistration_sha256) != 64
+    ):
+        raise ValueError("parallel L1 validation identity is malformed")
+    ids = list(expected_item_ids)
     payload = load_object(path, array_fields=frozenset({"records"}))
-    index, _expected_shard, records = _validate_shard_payload(
+    if not isinstance(payload, dict):
+        raise ValueError("parallel L1 shard schema is invalid")
+    index = _validate_shard_header(
         payload,
-        ids=ids,
-        expected_hash=expected_hash,
-        source_revision=source_revision,
+        expected_item_ids=ids,
+        source_revision=shard_source_revision,
         record_id=record_id,
         shard_count=shard_count,
         chunk_size=chunk_size,
     )
-    seen: set[str] = set()
+    expected_shard = partition_item_ids(
+        ids, index, shard_count, chunk_size=chunk_size
+    )
+    records = payload["records"]
+    if not isinstance(records, (list, FileArray)):
+        raise ValueError("parallel L1 shard records are invalid")
+    observed: list[str] = []
     for item in records:
-        if (
-            not isinstance(item, dict)
-            or set(item) != _RECORD_KEYS
-            or item["item_kind"] != "evaluation"
-            or item["result_schema"] != "evaluation_record"
-            or not isinstance(item["result"], dict)
-            or item["result_sha256"] != canonical_payload_hash(item["result"])
-            or not isinstance(item["item_id"], str)
-            or item["item_id"] in seen
-        ):
-            raise ValueError("parallel L1 record hash/schema is invalid")
-        if prereg is not None:
-            validate_checkpoint_item(item, prereg)
-        seen.add(item["item_id"])
-    after = content_hash(path)
-    if before != after:
-        raise ValueError("parallel L1 shard changed during validation")
-    return index, after
+        item_id, _ = _validate_record(item)
+        observed.append(item_id)
+        validate_checkpoint_item(item, prereg)
+    if observed != expected_shard:
+        raise ValueError("parallel L1 shard does not contain its exact partition")
+    return {
+        "schema_version": 1,
+        "kind": "c6_l1_semantic_validation_attestation",
+        "record_id": record_id,
+        "shard_index": index,
+        "shard_count": shard_count,
+        "chunk_size": chunk_size,
+        "record_count": len(observed),
+        "record_ids_sha256": _manifest_hash(observed),
+        "shard_source_revision": shard_source_revision,
+        "validator_source_revision": validator_source_revision,
+        "preregistration_sha256": preregistration_sha256,
+        "shard_file_sha256": _file_sha256(path),
+    }
+
+
+def _verify_attestation(
+    path: Path,
+    attestation: Any,
+    *,
+    expected_shard: Sequence[str],
+    shard_source_revision: str,
+    validator_source_revision: str,
+    preregistration_sha256: str,
+    record_id: str,
+    shard_index: int,
+    shard_count: int,
+    chunk_size: int,
+) -> None:
+    if not isinstance(attestation, dict) or set(attestation) != _ATTESTATION_KEYS:
+        raise ValueError("parallel L1 validation attestation is invalid")
+    expected = {
+        "schema_version": 1,
+        "kind": "c6_l1_semantic_validation_attestation",
+        "record_id": record_id,
+        "shard_index": shard_index,
+        "shard_count": shard_count,
+        "chunk_size": chunk_size,
+        "record_count": len(expected_shard),
+        "record_ids_sha256": _manifest_hash(expected_shard),
+        "shard_source_revision": shard_source_revision,
+        "validator_source_revision": validator_source_revision,
+        "preregistration_sha256": preregistration_sha256,
+        "shard_file_sha256": _file_sha256(path),
+    }
+    if attestation != expected:
+        raise ValueError("parallel L1 validation attestation does not bind exact shard bytes")
 
 
 def merge_shard_payloads(
@@ -272,66 +349,65 @@ def merge_shard_payloads(
     shard_count: int,
     chunk_size: int,
     prereg: Mapping[str, Any] | None = None,
-    validation_workers: int = 1,
+    attestations_required: bool = False,
+    validator_source_revision: str | None = None,
+    preregistration_sha256: str | None = None,
 ) -> list[dict[str, Any]]:
+    from quantfusion.application.c6_bound_run import validate_checkpoint_item
+
+    if attestations_required and (
+        validator_source_revision is None or preregistration_sha256 is None
+    ):
+        raise ValueError("parallel L1 attestation identities are required")
     ids = list(expected_item_ids)
-    expected_hash = _manifest_hash(ids)
     paths = sorted(root.rglob("shard.json.gz"))
     if len(paths) != shard_count:
         raise ValueError("parallel L1 shard set is incomplete")
-    if validation_workers < 1:
-        raise ValueError("parallel L1 validation_workers must be positive")
-
-    arguments = [
-        (
-            path,
-            tuple(ids),
-            source_revision,
-            record_id,
-            shard_count,
-            chunk_size,
-            prereg,
-        )
-        for path in paths
-    ]
-    if validation_workers == 1:
-        proofs = list(map(_validate_shard_file, arguments))
-    else:
-        with ProcessPoolExecutor(max_workers=validation_workers) as executor:
-            proofs = list(executor.map(_validate_shard_file, arguments))
-    proof_by_index: dict[int, str] = {}
-    for index, digest in proofs:
-        if index in proof_by_index:
-            raise ValueError("parallel L1 shard identity is duplicated")
-        proof_by_index[index] = digest
-    if set(proof_by_index) != set(range(shard_count)):
-        raise ValueError("parallel L1 shard set is incomplete")
-
     by_id: dict[str, dict[str, Any]] = {}
     seen_shards: set[int] = set()
     for path in paths:
-        before = content_hash(path)
         payload = load_object(path, array_fields=frozenset({"records"}))
-        index, _expected_shard, records = _validate_shard_payload(
+        if not isinstance(payload, dict):
+            raise ValueError("parallel L1 shard schema is invalid")
+        index = _validate_shard_header(
             payload,
-            ids=ids,
-            expected_hash=expected_hash,
+            expected_item_ids=ids,
             source_revision=source_revision,
             record_id=record_id,
             shard_count=shard_count,
             chunk_size=chunk_size,
         )
-        if index in seen_shards or proof_by_index.get(index) != before:
-            raise ValueError("parallel L1 shard validation proof is invalid")
+        if index in seen_shards:
+            raise ValueError("parallel L1 shard identity is invalid")
+        expected_shard = partition_item_ids(
+            ids, index, shard_count, chunk_size=chunk_size
+        )
+        if attestations_required:
+            attestation = load_object(path.with_name("validation.json"))
+            _verify_attestation(
+                path,
+                attestation,
+                expected_shard=expected_shard,
+                shard_source_revision=source_revision,
+                validator_source_revision=str(validator_source_revision),
+                preregistration_sha256=str(preregistration_sha256),
+                record_id=record_id,
+                shard_index=index,
+                shard_count=shard_count,
+                chunk_size=chunk_size,
+            )
+        records = payload["records"]
+        if not isinstance(records, (list, FileArray)):
+            raise ValueError("parallel L1 shard records are invalid")
+        observed_shard: list[str] = []
         for item in records:
-            if not isinstance(item, dict) or item.get("item_id") in by_id:
-                raise ValueError("parallel L1 shard union is duplicated")
-            result = item.get("result")
-            if not isinstance(result, dict):
-                raise ValueError("parallel L1 shard result is invalid")
-            by_id[str(item["item_id"])] = result
-        if content_hash(path) != before:
-            raise ValueError("parallel L1 shard changed during aggregate reconstruction")
+            item_id, result = _validate_record(item, seen_ids=set(by_id))
+            observed_shard.append(item_id)
+            if prereg is not None and not attestations_required:
+                validate_checkpoint_item(item, prereg)
+            by_id[item_id] = result
+        if observed_shard != expected_shard:
+            raise ValueError("parallel L1 shard does not contain its exact partition")
         seen_shards.add(index)
     if seen_shards != set(range(shard_count)) or set(by_id) != set(ids):
         raise ValueError("parallel L1 shard union is incomplete")
@@ -345,10 +421,12 @@ def load_parallel_evaluations(
     binding: Mapping[str, Any],
     source_revision: str,
     shard_count: int,
+    attestations_required: bool = False,
+    validator_source_revision: str | None = None,
+    preregistration_sha256: str | None = None,
 ) -> list[dict[str, Any]]:
     ids, _ = core_l1_tasks(prereg, binding)
     chunk_size = int(binding["runtime"]["checkpoint_every"])
-    workers = int(binding["runtime"]["workers"])
     return merge_shard_payloads(
         root,
         expected_item_ids=ids,
@@ -357,5 +435,7 @@ def load_parallel_evaluations(
         shard_count=shard_count,
         chunk_size=chunk_size,
         prereg=prereg,
-        validation_workers=workers,
+        attestations_required=attestations_required,
+        validator_source_revision=validator_source_revision,
+        preregistration_sha256=preregistration_sha256,
     )
