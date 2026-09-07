@@ -45,10 +45,11 @@ jobs:
           python-version: 3.12.14
           cache: pip
           cache-dependency-path: source/requirements-lock.txt
-      - name: Verify exact immutable inputs
+      - name: Verify exact immutable inputs and builder scope
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "$MAIN_SHA"
+          git merge-base --is-ancestor "$MAIN_SHA" HEAD
+          test "$(git diff --name-only "$MAIN_SHA"...HEAD | sort)" = '.github/workflows/c6-v21-relay-rebind-build.yml'
           test "$(git -C source rev-parse HEAD)" = "$IB21"
           test "$(git -C bindings rev-parse HEAD)" = "$R21"
           for pair in \
@@ -60,6 +61,8 @@ jobs:
             ref="${pair%%:*}"; sha="${pair##*:}"
             test "$(git ls-remote origin refs/heads/$ref | cut -f1)" = "$sha"
           done
+      - name: Install frozen verifier dependencies
+        run: python -m pip install --require-hashes -r source/requirements-lock.txt
       - name: Patch only the existing schedulers and relay identities
         run: |
           set -euo pipefail
@@ -118,8 +121,6 @@ jobs:
           PY
           git diff --check
           test "$(git diff --name-only | sort)" = $'.github/scripts/c6_auto_resume.py\n.github/scripts/c6_stage_advance.py\n.github/workflows/c6-auto-resume.yml\n.github/workflows/c6-stage-advance.yml'
-      - name: Install frozen verifier dependencies
-        run: python -m pip install --require-hashes -r source/requirements-lock.txt
       - name: Run both existing synthetic relay suites
         run: |
           set -euo pipefail
