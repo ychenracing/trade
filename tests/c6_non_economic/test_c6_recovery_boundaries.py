@@ -240,3 +240,152 @@ def test_checkpoint_serializes_once_before_graceful_exit(tmp_path, monkeypatch):
     assert stopped.value.code == 75
     assert calls == 1
     assert path.is_file()
+
+
+@pytest.mark.parametrize("suffix", [".json", ".json.gz"])
+def test_checkpoint_progress_decodes_each_record_once(tmp_path, monkeypatch, suffix):
+    from quantfusion.io.c6_stream import FileArray
+    ids = [f"scenario/{index}" for index in range(3)]
+    path = tmp_path / ("checkpoint" + suffix)
+    checkpoint = bound.DiagnosticCheckpoint(path, ids, "a" * 64, chunk_size=1)
+    checkpoint.map(_square, [0, 1, 2], ids, workers=1)
+    decoded = []
+    original = FileArray.__iter__
+
+    def counted_records(self):
+        for record in original(self):
+            decoded.append(record["item_id"])
+            yield record
+
+    monkeypatch.setattr(FileArray, "__iter__", counted_records)
+    assert bound.checkpoint_progress(
+        path, stage="L1", binding_signature="a" * 64, item_ids=ids
+    ) == ids
+    assert decoded == ids
+
+
+@pytest.mark.parametrize("suffix", [".json", ".json.gz"])
+def test_checkpoint_does_not_resave_without_new_map_records(tmp_path, monkeypatch, suffix):
+    ids = [f"scenario/{index}" for index in range(3)]
+    path = tmp_path / ("checkpoint" + suffix)
+    checkpoint = bound.DiagnosticCheckpoint(path, ids, "a" * 64, chunk_size=1)
+    checkpoint.map(_square, [0], ids[:1], workers=1)
+    before = path.read_bytes()
+
+    def unexpected_save():
+        pytest.fail("completed records were already saved by the preceding map")
+
+    monkeypatch.setattr(checkpoint, "save", unexpected_save)
+    assert list(checkpoint.map(_square, [], [], workers=1)) == []
+    checkpoint.deadline = 0
+    with pytest.raises(SystemExit) as stopped:
+        checkpoint.map(_square, [1, 2], ids[1:], workers=1)
+    assert stopped.value.code == 75
+    assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("suffix", [".json", ".json.gz"])
+@pytest.mark.parametrize("workers", [1, 2])
+def test_checkpoint_graceful_resume_matches_uninterrupted_bytes(tmp_path, suffix, workers):
+    ids = [f"scenario/{index}" for index in range(6)]
+    tasks = list(range(6))
+    full_path = tmp_path / ("full" + suffix)
+    full = bound.DiagnosticCheckpoint(full_path, ids, "b" * 64, chunk_size=2)
+    full.map(_square, tasks[:4], ids[:4], workers=workers)
+    full.map(_square, tasks[4:], ids[4:], workers=workers)
+
+    resumed_path = tmp_path / ("resumed" + suffix)
+    first = bound.DiagnosticCheckpoint(
+        resumed_path, ids, "a" * 64, budget_seconds=0, chunk_size=2
+    )
+    with pytest.raises(SystemExit) as stopped:
+        first.map(_square, tasks[:4], ids[:4], workers=workers)
+    assert stopped.value.code == 75
+    assert bound.checkpoint_progress(
+        resumed_path, stage="L1", binding_signature="a" * 64, item_ids=ids
+    ) == ids[:2]
+    resumed = bound.DiagnosticCheckpoint(
+        resumed_path, ids, "b" * 64, resume_signature="a" * 64, chunk_size=2
+    )
+    # A resumed prefix must not invoke the worker again.
+    assert list(resumed.map(_square, [None, None, 2, 3], ids[:4], workers=workers)) == [
+        _square(index) for index in range(4)
+    ]
+    assert list(resumed.map(_square, tasks[4:], ids[4:], workers=workers)) == [
+        _square(index) for index in range(4, 6)
+    ]
+    assert resumed_path.read_bytes() == full_path.read_bytes()
+
+
+def test_wire_validator_preserves_mapping_and_strict_scalar_types():
+    from collections import UserDict
+    from types import MappingProxyType
+    schema = {"type": "object", "required": ["count"], "additionalProperties": False,
+              "properties": {"count": {"type": "integer", "minimum": 0}}}
+    for factory in (dict, UserDict, MappingProxyType):
+        bound.validate_wire_value(factory({"count": 1}), factory(schema), {})
+        for invalid in (True, None, 1.0, -1, "1"):
+            with pytest.raises(bound.BoundRunError):
+                bound.validate_wire_value(factory({"count": invalid}), factory(schema), {})
+    for invalid in ([], None, True, {"count": 1, "extra": 2}):
+        with pytest.raises(bound.BoundRunError):
+            bound.validate_wire_value(invalid, schema, {})
+
+
+def test_history_validation_reuses_only_identical_authenticated_records(prereg, tmp_path, monkeypatch):
+    from quantfusion.application.c6_predicates import _qualify
+    ids = [f"qualification/synthetic-{index}" for index in range(3)]
+    rows = [_qualify({"scenario_id": item.removeprefix("qualification/"),
+                     "official_metrics": {"max_drawdown": -.19},
+                     "causal_matrix": {"s_evidence": diagnostic._empty_s_evidence(),
+                                       "event_timeline": {"first_official_mdd_breach": {
+                                           "timestamp": "2026-01-05"}}}}) for item in ids]
+    paths = []
+    for count in range(1, 4):
+        path = tmp_path / f"prefix-{count}.json.gz"
+        checkpoint = bound.DiagnosticCheckpoint(path, ids, "a" * 64, prereg=prereg)
+        checkpoint.map(diagnostic._identity, rows[:count], ids[:count], workers=1)
+        paths.append(path)
+    calls = []
+    original = bound.validate_checkpoint_item
+
+    def counted_validation(item, contract):
+        calls.append(item["item_id"])
+        original(item, contract)
+
+    monkeypatch.setattr(bound, "validate_checkpoint_item", counted_validation)
+    validated = {}
+    for count, path in enumerate(paths, start=1):
+        assert bound.checkpoint_progress(
+            path, stage="L1", binding_signature="a" * 64, item_ids=ids,
+            prereg=prereg, _validated_records=validated,
+        ) == ids[:count]
+    assert calls == ids  # Not 1 + 2 + 3 recursive schema/formula validations.
+    assert len(validated) == len(ids)
+
+    # A changed value with the old claimed hash must still fail before reuse.
+    corrupt = load_object(paths[-1])
+    corrupt["completed_items"] = list(corrupt["completed_items"])
+    item = corrupt["completed_items"][0]
+    item["result"]["passed"] = not item["result"]["passed"]
+    damaged = tmp_path / "damaged.json.gz"
+    write_json(damaged, corrupt)
+    with pytest.raises(bound.BoundRunError, match="hash/schema"):
+        bound.checkpoint_progress(damaged, stage="L1", binding_signature="a" * 64,
+                                  item_ids=ids, prereg=prereg, _validated_records=validated)
+    assert calls == ids
+
+    # Rehashing an invalid formula cannot turn it into a cached valid record.
+    item["result_sha256"] = bound.canonical_payload_hash(item["result"])
+    write_json(damaged, corrupt, replace=True)
+    for _ in range(2):
+        with pytest.raises(bound.BoundRunError, match="qualification formulas"):
+            bound.checkpoint_progress(damaged, stage="L1", binding_signature="a" * 64,
+                                      item_ids=ids, prereg=prereg, _validated_records=validated)
+    assert calls == ids + [ids[0], ids[0]]
+    assert len(validated) == len(ids)  # Failed validations never populate reuse state.
+
+    calls.clear()
+    assert bound.checkpoint_progress(paths[-1], stage="L1", binding_signature="a" * 64,
+                                     item_ids=ids, prereg=prereg) == ids
+    assert calls == ids  # Default/independent calls never inherit prior validation.

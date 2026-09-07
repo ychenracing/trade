@@ -23,12 +23,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from contextlib import contextmanager
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from concurrent.futures import ProcessPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
-from typing import Any, Callable, Mapping, Never, Sequence
+from typing import Any, Callable, Never, Sequence
 
 from quantfusion.io.c6_stream import (FileArray, canonical_chunks, content_hash, content_size,
                                     copy_stream, extract_archive, load_object, write_json)
@@ -514,6 +514,9 @@ class GitHubActionsLeaseStore:
             return
         previous = ""
         latest: RemoteExport | None = None
+        # Only this restore owns the cache, under one immutable P/source binding.
+        # Recompute every record hash; reuse expensive schema/formula checks only.
+        validated_records: dict[str, str] = {}
         for detail, artifact in prior:
             if latest is not None:
                 latest.close()
@@ -548,7 +551,10 @@ class GitHubActionsLeaseStore:
             except ContractError as exc:
                 _raise(str(exc), exc)
             completed_ids = wrapper_payload["completed_item_ids"]
-            child_completed = checkpoint_progress(child, stage=binding["stage"], binding_signature=wrapper_payload["binding_signature"], item_ids=item_ids, prereg=prereg)
+            child_completed = checkpoint_progress(
+                child, stage=binding["stage"], binding_signature=wrapper_payload["binding_signature"],
+                item_ids=item_ids, prereg=prereg, _validated_records=validated_records,
+            )
             if (
                 wrapper_payload["schema_version"] != 2
                 or wrapper_payload["kind"] != "c6_bound_checkpoint"
@@ -767,8 +773,13 @@ def checkpoint_progress(
     binding_signature: str,
     item_ids: Sequence[str],
     prereg: Mapping[str, Any] | None = None,
+    _validated_records: dict[str, str] | None = None,
 ) -> list[str]:
-    """Validate a child checkpoint and return its exact completed item prefix."""
+    """Validate a child checkpoint and return its exact completed item prefix.
+
+    The private cache is local to one restore and its immutable P; independent
+    callers omit it. It never bypasses hashes, schema identity or prefix checks.
+    """
     try:
         payload = load_object(child_bytes) if isinstance(child_bytes, Path) else strict_json_loads(child_bytes)
     except (ContractError, ValueError) as exc:
@@ -812,6 +823,7 @@ def checkpoint_progress(
             or payload["item_manifest_sha256"] != expected_hash
             or type(payload["completed_count"]) is not int):
             _raise("diagnostic checkpoint manifest identity is invalid")
+        completed = []
         for item in items:
             if (not isinstance(item, dict)
                 or set(item) != {"item_id", "item_kind", "result_schema", "result_sha256", "result"}
@@ -819,9 +831,15 @@ def checkpoint_progress(
                 or (item["item_kind"], item["result_schema"]) != _ITEM_SCHEMAS.get(str(item["item_id"]).split("/", 1)[0])
                 or item["result_sha256"] != canonical_payload_hash(item["result"])):
                 _raise("diagnostic checkpoint item hash/schema is invalid")
-            if prereg is not None:
+            item_id = str(item["item_id"])
+            if prereg is not None and (
+                _validated_records is None
+                or _validated_records.get(item_id) != item["result_sha256"]
+            ):
                 validate_checkpoint_item(item, prereg)
-        completed = [str(item.get("item_id", "")) for item in items if isinstance(item, dict)]
+                if _validated_records is not None:
+                    _validated_records[item_id] = item["result_sha256"]
+            completed.append(item_id)
     if not completed or completed != list(item_ids[: len(completed)]):
         _raise("child checkpoint does not contain an exact nonempty prefix")
     return completed
@@ -949,9 +967,11 @@ class DiagnosticCheckpoint:
             _raise("checkpoint work is not the next exact manifest segment")
         self.cursor = end
         offset = max(start, len(self.items))
+        new_count_at_start = self.new_count
         while offset < end:
             if self.new_count and time.monotonic() >= self.deadline:
-                self.save()
+                if self.new_count != new_count_at_start:
+                    self.save()
                 raise SystemExit(75)
             stop = min(offset + self.chunk_size, end)
             batch = tasks[offset - start:stop - start]
@@ -968,7 +988,7 @@ class DiagnosticCheckpoint:
                                    "result_sha256": canonical_payload_hash(result), "result": result})
             self.new_count += stop - offset
             offset = stop
-        if self.new_count:
+        if self.new_count != new_count_at_start:
             self.save()
         if self.new_count and end < len(self.ids) and time.monotonic() >= self.deadline:
             raise SystemExit(75)
