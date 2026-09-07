@@ -8,7 +8,7 @@ on:
       - .github/scripts/build_c6_v21_anchor.py
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: c6-v21-workflow-anchor-build
@@ -54,11 +54,17 @@ jobs:
           git diff --check
           test "$(git diff --name-only | sort)" = $'.github/workflows/c6-bound-economic.yml\n.github/workflows/c6-dispatch.yml'
           sha256sum .github/workflows/c6-bound-economic.yml .github/workflows/c6-dispatch.yml
-          echo C6_BOUND_B64_BEGIN
-          base64 -w0 .github/workflows/c6-bound-economic.yml
-          echo
-          echo C6_BOUND_B64_END
-          echo C6_DISPATCH_B64_BEGIN
-          base64 -w0 .github/workflows/c6-dispatch.yml
-          echo
-          echo C6_DISPATCH_B64_END
+      - name: Stage validated anchor blobs outside workflow paths
+        run: |
+          set -euo pipefail
+          git checkout -B codex/c6-v21-workflow-anchor-build "$GITHUB_SHA"
+          mkdir -p artifacts/diagnostics/c6-v21-workflow-anchor
+          cp /tmp/c6-bound-economic.yml artifacts/diagnostics/c6-v21-workflow-anchor/c6-bound-economic.yml
+          cp /tmp/c6-dispatch.yml artifacts/diagnostics/c6-v21-workflow-anchor/c6-dispatch.yml
+          git add artifacts/diagnostics/c6-v21-workflow-anchor/c6-bound-economic.yml artifacts/diagnostics/c6-v21-workflow-anchor/c6-dispatch.yml
+          git diff --cached --check
+          test "$(git diff --cached --name-only | sort)" = $'artifacts/diagnostics/c6-v21-workflow-anchor/c6-bound-economic.yml\nartifacts/diagnostics/c6-v21-workflow-anchor/c6-dispatch.yml'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ci(c6): stage validated v21 workflow anchor blobs'
+          git push origin HEAD:codex/c6-v21-workflow-anchor-build
