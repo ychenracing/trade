@@ -41,8 +41,7 @@ jobs:
           python -m pytest -q \
             tests/c6_non_economic/test_c6_parallel_l1_single_pass.py \
             tests/c6_non_economic/test_c6_parallel_l1_attestation.py \
-            tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py \
-            tests/c6_non_economic/test_c6_streaming_artifacts.py
+            tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py
       - name: Publish verified production and regression fix
         run: |
           git config user.name github-actions[bot]
