@@ -172,9 +172,10 @@ class AdaptiveEngineTests(unittest.TestCase):
         )
         self.assertEqual(result["deployment_policy"], "production_daily_replay")
         self.assertEqual(result["selected_symbols"], sorted(symbols))
-        # Weak-route positions now participate in portfolio/sector liquidation;
-        # keep the corrected execution path as an exact frozen regression.
-        self.assertAlmostEqual(result["total_return"], 0.5222755503315, places=12)
+        # Internal sleeve cash flows are unitized instead of being counted as
+        # investment PnL in sleeve risk/equity bases. Keep that corrected path
+        # as the exact frozen regression.
+        self.assertAlmostEqual(result["total_return"], 0.49679034682374956, places=12)
         self.assertAlmostEqual(
             result["max_drawdown"], -0.17219488006814201, places=12
         )

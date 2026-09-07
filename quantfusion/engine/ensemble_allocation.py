@@ -286,19 +286,11 @@ class EnsembleAllocationMixin:
         ):
             return
         for state, old, target in zip(states, before, targets, strict=True):
+            marks = state.sleeve._execution_mark_prices(state.data_map, date)
+            assets_before = state.sleeve._total_assets_at_prices(marks)
             state.sleeve.cash = target
             cash_flow = target - old
-            risk = state.sleeve.risk
-            for attribute in (
-                "peak_assets",
-                "lifetime_peak_assets",
-                "daily_start_assets",
-            ):
-                if hasattr(risk, attribute):
-                    adjusted = max(
-                        0.0, float(getattr(risk, attribute, 0.0)) + cash_flow
-                    )
-                    setattr(risk, attribute, adjusted)
+            state.sleeve.risk.rebase_after_cash_flow(assets_before, cash_flow)
         self._sleeve_weight_events.append(
             {
                 "date": date.strftime("%Y-%m-%d"),

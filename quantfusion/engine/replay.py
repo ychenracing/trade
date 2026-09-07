@@ -193,20 +193,15 @@ class ProductionRouteController:
         targets[-1] = total_cash - sum(targets[:-1])
         for state, target in zip(states, targets, strict=True):
             old = float(state.sleeve.cash)
+            if not state.sleeve.equity_curve:
+                raise RuntimeError("route cash migration requires a closing equity sample")
+            closing = state.sleeve.equity_curve[-1]
+            assets_before = float(closing["assets"])
             state.sleeve.cash = target
             flow = target - old
-            risk = state.sleeve.risk
-            for attribute in (
-                "peak_assets",
-                "lifetime_peak_assets",
-                "daily_start_assets",
-            ):
-                if hasattr(risk, attribute):
-                    setattr(
-                        risk,
-                        attribute,
-                        max(0.0, float(getattr(risk, attribute, 0.0)) + flow),
-                    )
+            state.sleeve.risk.rebase_after_cash_flow(assets_before, flow)
+            closing["assets"] = assets_before + flow
+            closing["cash"] = float(closing["cash"]) + flow
 
     def after_close(
         self,
