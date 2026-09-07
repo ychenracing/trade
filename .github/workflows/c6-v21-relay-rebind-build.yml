@@ -76,51 +76,62 @@ jobs:
 
           P21=os.environ['P21']; IB21=os.environ['IB21']; IS21=os.environ['IS21']; R21=os.environ['R21']; W21=os.environ['W21']; R_SHA=os.environ['R_SHA256']
 
-          def exact(path, replacements):
-              p=Path(path); text=p.read_text(encoding='utf-8')
-              for old,new,count in replacements:
-                  actual=text.count(old)
-                  if actual != count:
-                      raise SystemExit(f'{path}: expected {count} occurrences of {old!r}, found {actual}')
-                  text=text.replace(old,new)
-              p.write_text(text,encoding='utf-8')
+          def replace_all_required(path, replacements):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              originals = []
+              expected_new = []
+              for old, new in replacements:
+                  if old not in text:
+                      raise SystemExit(f'{path}: required legacy identity is absent: {old!r}')
+                  originals.append(old)
+                  expected_new.append(new)
+                  text = text.replace(old, new)
+              for old in originals:
+                  if old in text:
+                      raise SystemExit(f'{path}: legacy identity survived rebind: {old!r}')
+              for new in expected_new:
+                  if new not in text:
+                      raise SystemExit(f'{path}: rebound identity is absent: {new!r}')
+              p.write_text(text, encoding='utf-8')
 
-          exact('.github/scripts/c6_auto_resume.py', [
-              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor',1),
+          replace_all_required('.github/scripts/c6_auto_resume.py', [
+              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor'),
           ])
-          exact('.github/workflows/c6-auto-resume.yml', [
-              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor',1),
-              ('c6-auto-resume-v17','c6-auto-resume-v21',1),
+          replace_all_required('.github/workflows/c6-auto-resume.yml', [
+              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor'),
+              ('c6-auto-resume-v17','c6-auto-resume-v21'),
           ])
-          exact('.github/scripts/c6_stage_advance.py', [
-              ('3611ac948287ee147ed40e77eda8ea01bab27a35',P21,2),
-              ('168cd3856cc1b60c928fe54c4a826b6045df01e9',IB21,2),
-              ('00485e8ceb67f4105d76fa62368f583ce82a81c5',IS21,2),
-              ('4db5cadc90d450f513dfdda10e0436cf330c62f3',R21,2),
-              ('9c7fb1a92d8e04c5b95d1d18503ccb4e313f3dde6a3fa73fe6f92e24830956ac',R_SHA,1),
-              ('d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4',W21,2),
-              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor',2),
-              ('codex/c6-selection-v19','codex/c6-selection-v21',1),
-              ('codex/c6-preregistration-v19','codex/c6-preregistration-v21',1),
-              ('codex/c6-base-v19','codex/c6-base-v21',1),
-              ('codex/c6-s-v19','codex/c6-s-v21',1),
-              ('codex/c6-evidence-v19','codex/c6-evidence-v21',1),
-              ('c6-v19-','c6-v21-',1),
-              ("v19 stages","v21 stages",1),
+          replace_all_required('.github/scripts/c6_stage_advance.py', [
+              ('3611ac948287ee147ed40e77eda8ea01bab27a35',P21),
+              ('168cd3856cc1b60c928fe54c4a826b6045df01e9',IB21),
+              ('00485e8ceb67f4105d76fa62368f583ce82a81c5',IS21),
+              ('4db5cadc90d450f513dfdda10e0436cf330c62f3',R21),
+              ('9c7fb1a92d8e04c5b95d1d18503ccb4e313f3dde6a3fa73fe6f92e24830956ac',R_SHA),
+              ('d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4',W21),
+              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor'),
+              ('codex/c6-selection-v19','codex/c6-selection-v21'),
+              ('codex/c6-preregistration-v19','codex/c6-preregistration-v21'),
+              ('codex/c6-base-v19','codex/c6-base-v21'),
+              ('codex/c6-s-v19','codex/c6-s-v21'),
+              ('codex/c6-evidence-v19','codex/c6-evidence-v21'),
+              ("EXECUTION_VERSION = 'v19'","EXECUTION_VERSION = 'v21'"),
+              ('v19 stages','v21 stages'),
           ])
-          exact('.github/workflows/c6-stage-advance.yml', [
-              ('codex/c6-stage-advance-v19','codex/c6-stage-advance-v21',1),
-              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor',1),
-              ('c6-stage-advance-v19','c6-stage-advance-v21',1),
-              ('168cd3856cc1b60c928fe54c4a826b6045df01e9',IB21,2),
-              ('4db5cadc90d450f513dfdda10e0436cf330c62f3',R21,1),
-              ('C6 v19 frozen stage outcome','C6 v21 frozen stage outcome',1),
+          replace_all_required('.github/workflows/c6-stage-advance.yml', [
+              ('codex/c6-stage-advance-v19','codex/c6-stage-advance-v21'),
+              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor'),
+              ('c6-stage-advance-v19','c6-stage-advance-v21'),
+              ('168cd3856cc1b60c928fe54c4a826b6045df01e9',IB21),
+              ('4db5cadc90d450f513dfdda10e0436cf330c62f3',R21),
+              ('C6 v19 frozen stage outcome','C6 v21 frozen stage outcome'),
           ])
           for path in ('.github/workflows/c6-auto-resume.yml','.github/workflows/c6-stage-advance.yml'):
               yaml.safe_load(Path(path).read_text(encoding='utf-8'))
           PY
           git diff --check
           test "$(git diff --name-only | sort)" = $'.github/scripts/c6_auto_resume.py\n.github/scripts/c6_stage_advance.py\n.github/workflows/c6-auto-resume.yml\n.github/workflows/c6-stage-advance.yml'
+          test "$(grep -R -l -E 'c6-v19|c6-v17-workflow-anchor|3611ac948287ee147ed40e77eda8ea01bab27a35|168cd3856cc1b60c928fe54c4a826b6045df01e9|00485e8ceb67f4105d76fa62368f583ce82a81c5|4db5cadc90d450f513dfdda10e0436cf330c62f3|d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4' .github/scripts/c6_auto_resume.py .github/scripts/c6_stage_advance.py .github/workflows/c6-auto-resume.yml .github/workflows/c6-stage-advance.yml || true)" = ''
       - name: Run both existing synthetic relay suites
         run: |
           set -euo pipefail
