@@ -34,11 +34,13 @@ jobs:
           import yaml
           path=Path('.github/workflows/c6-bound-economic.yml')
           text=path.read_text(encoding='utf-8')
-          old='python -m quantfusion.application.c6_parallel_l1 \\\\'
-          new='python -m quantfusion.application.c6_parallel_l1_cli \\\\'
-          if text.count(old) != 1:
+          old='python -m quantfusion.application.c6_parallel_l1'
+          new='python -m quantfusion.application.c6_parallel_l1_cli'
+          if text.count(old) != 1 or new in text:
               raise SystemExit('expected exactly one stale parallel CLI invocation')
           text=text.replace(old,new,1)
+          if old in text or text.count(new) != 1:
+              raise SystemExit('parallel CLI correction is not exact')
           yaml.safe_load(text)
           required=[
               'Parallel L1 core shard ${{ matrix.shard }}',
