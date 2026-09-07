@@ -90,7 +90,7 @@ jobs:
         working-directory: source
         run: |
           mkdir -p ../shard-output
-          python /tmp/c6_full958_helper.py run-or-reuse-shard \
+          PYTHONPATH="$PWD" python /tmp/c6_full958_helper.py run-or-reuse-shard \
             --source-sha "$SOURCE_SHA" \
             --shard-index "${{ matrix.shard }}" \
             --output ../shard-output/shard-results.json \
