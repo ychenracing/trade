@@ -1,0 +1,150 @@
+name: C6 v22 Relay Rebind Build
+
+on:
+  push:
+    branches: [codex/c6-v22-relay-rebind-build-20260907]
+    paths:
+      - .github/workflows/c6-v22-relay-rebind-build.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-v22-relay-rebind-build-20260907
+  cancel-in-progress: false
+
+env:
+  MAIN_SHA: 5b5efea8abcd3a7722b2a05aed19e21b03a7c608
+  P22: c50216f70cba21d830b6feb2079ed68039821ecf
+  IB22: addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7
+  IS22: 884851bdba4a5372c5272b28bd4df3e30b5824b9
+  R22: ea6dfa36b9796df7e4078d6f8d88b539a54072e3
+  W21: f9da08afebf22b3dc03a1fb3a0ec351a79adf42c
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.IB22 }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.R22 }}
+          path: bindings
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+      - name: Verify exact immutable inputs and builder scope
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$MAIN_SHA"
+          test "$(git diff --name-only "$MAIN_SHA" HEAD)" = '.github/workflows/c6-v22-relay-rebind-build.yml'
+          remote="$(git remote get-url origin)"
+          test "$(git ls-remote --refs "$remote" refs/heads/main | cut -f1)" = "$MAIN_SHA"
+          for pair in \
+            "codex/c6-preregistration-v22:$P22" \
+            "codex/c6-base-v22:$IB22" \
+            "codex/c6-s-v22:$IS22" \
+            "codex/c6-evidence-v22:$R22" \
+            "codex/c6-v21-workflow-anchor:$W21"; do
+            ref="${pair%%:*}"; sha="${pair##*:}"
+            test "$(git ls-remote --refs "$remote" "refs/heads/$ref" | cut -f1)" = "$sha"
+          done
+          test -z "$(git ls-remote --refs "$remote" refs/heads/codex/c6-v22-relay-rebind-candidate)"
+          test "$(git -C source rev-parse HEAD)" = "$IB22"
+          test "$(git -C bindings rev-parse HEAD)" = "$R22"
+      - name: Build exact v22 stage-relay rebind
+        run: |
+          set -euo pipefail
+          git checkout --detach "$MAIN_SHA"
+          export R22_SHA256="$(sha256sum bindings/artifacts/diagnostics/c6-run-bindings.json | cut -d' ' -f1)"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          P22=os.environ['P22']; IB22=os.environ['IB22']; IS22=os.environ['IS22']; R22=os.environ['R22']; W21=os.environ['W21']; R_SHA=os.environ['R22_SHA256']
+
+          def replace_required(path, pairs):
+              p=Path(path)
+              text=p.read_text(encoding='utf-8')
+              for old,new in pairs:
+                  if old not in text:
+                      raise SystemExit(f'{path}: missing required v21 token {old!r}')
+                  text=text.replace(old,new)
+              p.write_text(text,encoding='utf-8')
+
+          replace_required('.github/scripts/c6_stage_advance.py', [
+              ('1dbcd6709470c2212919164cb39aa02859314dce', P22),
+              ('b41b6fbc551903221353271024a38ca42e7c2e19', IB22),
+              ('c89842bc3df1eefcc5f3f6d4a250c2b62323393d', IS22),
+              ('6d68e9b91fe5f93c6535718c886242da75ffae26', R22),
+              ('2a374f439e3181f8f228ac2e73e53b8f18bcc8ed99111a1cf99b7c467d39a902', R_SHA),
+              ('codex/c6-selection-v21', 'codex/c6-selection-v22'),
+              ("EXECUTION_VERSION = 'v21'", "EXECUTION_VERSION = 'v22'"),
+              ('codex/c6-preregistration-v21', 'codex/c6-preregistration-v22'),
+              ('codex/c6-base-v21', 'codex/c6-base-v22'),
+              ('codex/c6-s-v21', 'codex/c6-s-v22'),
+              ('codex/c6-evidence-v21', 'codex/c6-evidence-v22'),
+              ('frozen C6 v21 stages', 'frozen C6 v22 stages'),
+          ])
+
+          test_path=Path('.github/scripts/test_c6_stage_advance.py')
+          test_text=test_path.read_text(encoding='utf-8')
+          anchor='codex/c6-v21-workflow-anchor'
+          placeholder='__C6_RETAIN_W21__'
+          test_text=test_text.replace(anchor, placeholder)
+          if 'c6-v21-' not in test_text:
+              raise SystemExit('stage relay tests have no v21 logical fixtures')
+          test_text=test_text.replace('c6-v21-', 'c6-v22-').replace(placeholder, anchor)
+          test_path.write_text(test_text,encoding='utf-8')
+
+          replace_required('.github/workflows/c6-stage-advance.yml', [
+              ('codex/c6-stage-advance-v21', 'codex/c6-stage-advance-v22'),
+              ('c6-stage-advance-v21', 'c6-stage-advance-v22'),
+              ('b41b6fbc551903221353271024a38ca42e7c2e19', IB22),
+              ('6d68e9b91fe5f93c6535718c886242da75ffae26', R22),
+              ('C6 v21 frozen stage outcome', 'C6 v22 frozen stage outcome'),
+          ])
+
+          for path in ('.github/scripts/c6_stage_advance.py','.github/scripts/test_c6_stage_advance.py','.github/workflows/c6-stage-advance.yml'):
+              text=Path(path).read_text(encoding='utf-8')
+              if 'codex/c6-v22-workflow-anchor' in text:
+                  raise SystemExit(f'{path}: W21 workflow anchor was rewritten')
+          if W21 not in Path('.github/scripts/c6_stage_advance.py').read_text(encoding='utf-8'):
+              raise SystemExit('stage relay no longer binds exact W21 SHA')
+          PY
+          git diff --check
+          test "$(git diff --name-only | sort)" = $'.github/scripts/c6_stage_advance.py\n.github/scripts/test_c6_stage_advance.py\n.github/workflows/c6-stage-advance.yml'
+      - name: Run existing stage relay synthetic suite against I_B22
+        run: |
+          set -euo pipefail
+          python -I -S .github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+      - name: Create and publish validated candidate branch
+        run: |
+          set -euo pipefail
+          git add .github/scripts/c6_stage_advance.py .github/scripts/test_c6_stage_advance.py .github/workflows/c6-stage-advance.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ci(c6): rebind stage relay to frozen v22' -m 'Rebind only the existing frozen stage relay and its versioned synthetic fixtures to P22/I_B22/I_S22/R22 while retaining the exact W21 workflow anchor and existing schedule. No economic contract changes.'
+          git rev-parse HEAD | tee "$RUNNER_TEMP/candidate-sha.txt"
+          git rev-parse HEAD^{tree} | tee "$RUNNER_TEMP/candidate-tree.txt"
+          git push origin HEAD:refs/heads/codex/c6-v22-relay-rebind-candidate
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-v22-relay-candidate-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/candidate-sha.txt
+            ${{ runner.temp }}/candidate-tree.txt
+          if-no-files-found: ignore
+          retention-days: 30
