@@ -1,0 +1,65 @@
+name: C6 v21 Anchor CLI Fix
+
+on:
+  push:
+    branches: [codex/c6-v21-anchor-cli-fix-20260907]
+    paths: [.github/workflows/c6-v21-anchor-cli-fix.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-v21-anchor-cli-fix-20260907
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: 253e87e7ee01f4ecf3bb9ba3f4c9a968a421a012
+  TARGET_BRANCH: codex/c6-v21-workflow-anchor
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact anchor and patch only executable module
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
+          git checkout --detach "$BASE_SHA"
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          path=Path('.github/workflows/c6-bound-economic.yml')
+          text=path.read_text(encoding='utf-8')
+          old='python -m quantfusion.application.c6_parallel_l1 \\\\'
+          new='python -m quantfusion.application.c6_parallel_l1_cli \\\\'
+          if text.count(old) != 1:
+              raise SystemExit('expected exactly one stale parallel CLI invocation')
+          text=text.replace(old,new,1)
+          yaml.safe_load(text)
+          required=[
+              'Parallel L1 core shard ${{ matrix.shard }}',
+              'shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]',
+              '--shard-count 12',
+              'needs: [parallel_l1]',
+              "github.ref_name == 'codex/c6-v21-workflow-anchor'",
+          ]
+          if any(token not in text for token in required):
+              raise SystemExit('parallel anchor invariant missing after CLI correction')
+          path.write_text(text,encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = '.github/workflows/c6-bound-economic.yml'
+          test "$(git diff --stat | tail -1)" = ' 1 file changed, 1 insertion(+), 1 deletion(-)'
+      - name: Publish append-only anchor correction
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
+          git add .github/workflows/c6-bound-economic.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(c6): point v21 shard jobs at split CLI' -m 'Append-only workflow-anchor correction after the parallel executable moved from c6_parallel_l1 into c6_parallel_l1_cli to restore an acyclic source import graph. The 12-shard matrix, chunk size, worker count, frozen identities and all economic semantics remain unchanged.'
+          git push origin HEAD:$TARGET_BRANCH
