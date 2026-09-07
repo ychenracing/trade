@@ -1,0 +1,107 @@
+name: C6 PR63 Import Cycle Fix
+
+on:
+  push:
+    branches: [codex/c6-pr63-import-cycle-fix-20260907]
+    paths: [.github/workflows/c6-pr63-import-cycle-fix.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-pr63-import-cycle-fix-20260907
+  cancel-in-progress: false
+
+env:
+  BASE_SHA: 74ae8ccf05e9eeb98065b1c12e01aa0e9b0f4ff2
+  TARGET_BRANCH: codex/c6-causal-risk-closure-v11
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Verify exact target and install
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
+          git checkout --detach "$BASE_SHA"
+          python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Reproduce exact architecture failure
+        run: |
+          set +e
+          python -m pytest -q tests/contract/test_architecture.py::DependencyDirectionTests::test_canonical_import_graph_is_acyclic >/tmp/red.log 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q 'c6_diagnostics.*c6_parallel_l1.*c6_diagnostics' /tmp/red.log
+      - name: Split executable CLI from reusable parallel primitives
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('quantfusion/application/c6_parallel_l1.py')
+          text = path.read_text(encoding='utf-8')
+          start = text.index('\ndef build_parser() -> argparse.ArgumentParser:')
+          cli_block = text[start + 1:]
+
+          text = text[:start].rstrip() + '\n'
+          text = text.replace('import argparse\n', '')
+          text = text.replace(
+              '    load_preregistration,\n    load_run_bindings,\n    select_binding,\n',
+              '',
+          )
+          text = text.replace(
+              'from quantfusion.io.c6_stream import load_object, write_json',
+              'from quantfusion.io.c6_stream import load_object',
+          )
+          text = text.replace(
+              '    from quantfusion.application.c6_diagnostics import validate_manifest_identity\n\n',
+              '',
+          )
+          anchor = '''def fresh_pool_map(\n'''
+          helper = '''def validate_manifest_identity(\n    actual_ids: Sequence[str], frozen_manifest: Mapping[str, Any]\n) -> list[str]:\n    \"\"\"Validate the frozen sorted manifest without depending on diagnostics.\"\"\"\n    ids = list(actual_ids)\n    if any(\n        not isinstance(item, str) or not item or "\\n" in item or "\\r" in item\n        for item in ids\n    ):\n        raise ValueError("manifest IDs must be non-empty single-line strings")\n    if len(set(ids)) != len(ids):\n        raise ValueError("manifest contains duplicate IDs")\n    if ids != sorted(ids):\n        raise ValueError("manifest ID order is not lexicographic")\n    count = frozen_manifest.get("count")\n    unique_count = frozen_manifest.get("unique_count", count)\n    if count != len(ids) or unique_count != len(ids):\n        raise ValueError("manifest count does not match frozen identity")\n    embedded = frozen_manifest.get("ids")\n    if embedded is not None and embedded != ids:\n        raise ValueError("manifest IDs do not match frozen order")\n    digest = hashlib.sha256("".join(f"{item}\\n" for item in ids).encode()).hexdigest()\n    if frozen_manifest.get("sha256") != digest:\n        raise ValueError("manifest SHA-256 does not match frozen identity")\n    return ids\n\n\n'''
+          if anchor not in text:
+              raise SystemExit('fresh_pool_map anchor missing')
+          text = text.replace(anchor, helper + anchor, 1)
+          if 'c6_diagnostics' in text:
+              raise SystemExit('parallel primitives still depend on diagnostics')
+          path.write_text(text, encoding='utf-8')
+
+          cli = Path('quantfusion/application/c6_parallel_l1_cli.py')
+          cli.write_text(
+              '''\"\"\"Executable CLI for deterministic frozen C6 L1 parallel shards.\"\"\"\n\nfrom __future__ import annotations\n\nimport argparse\nfrom pathlib import Path\n\nfrom quantfusion.application.c6_contract import (\n    canonical_payload_hash,\n    load_preregistration,\n    load_run_bindings,\n    select_binding,\n)\nfrom quantfusion.application.c6_parallel_l1 import (\n    core_l1_tasks,\n    fresh_pool_map,\n    partition_item_ids,\n    shard_payload,\n)\nfrom quantfusion.io.c6_stream import write_json\n\n\n''' + cli_block,
+              encoding='utf-8',
+          )
+          PY
+      - name: Verify GREEN affected surface
+        run: |
+          set -euo pipefail
+          python -m pytest -q \
+            tests/contract/test_architecture.py::DependencyDirectionTests::test_canonical_import_graph_is_acyclic \
+            tests/c6_non_economic/test_c6_parallel_l1.py \
+            tests/c6_non_economic/test_c6_diagnostics.py \
+            tests/c6_non_economic/test_c6_bound_run.py --tb=short
+          python -m quantfusion.application.c6_parallel_l1_cli --help >/dev/null
+          python -m compileall -q quantfusion/application/c6_parallel_l1.py quantfusion/application/c6_parallel_l1_cli.py
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 \
+            quantfusion/application/c6_parallel_l1.py \
+            quantfusion/application/c6_parallel_l1_cli.py
+      - name: Publish only verified structural repair to PR63
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$BASE_SHA"
+          git add quantfusion/application/c6_parallel_l1.py quantfusion/application/c6_parallel_l1_cli.py
+          test "$(git diff --cached --name-only | sort)" = $'quantfusion/application/c6_parallel_l1.py\nquantfusion/application/c6_parallel_l1_cli.py'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(c6): break parallel diagnostics import cycle' -m 'Keep c6_parallel_l1 as reusable lower-level shard/merge primitives and move its executable entry point into c6_parallel_l1_cli. The CLI may depend on diagnostics, while diagnostics may depend on the primitives, restoring an acyclic canonical import graph without changing evaluation formulas, manifests, chunk partitioning or shard validation.'
+          git push origin HEAD:$TARGET_BRANCH
