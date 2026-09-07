@@ -17,10 +17,10 @@ bound = git_show(".github/workflows/c6-bound-economic.yml")
 dispatch = git_show(".github/workflows/c6-dispatch.yml")
 
 old_probe = "github.ref_name == 'codex/c6-v17-workflow-anchor'"
-if bound.count(old_probe) != 1:
+if bound.count(old_probe) != 2:
     raise SystemExit("probe anchor count drift")
 bound = bound.replace(
-    old_probe, "github.ref_name == 'codex/c6-v21-workflow-anchor'", 1
+    old_probe, "github.ref_name == 'codex/c6-v21-workflow-anchor'"
 )
 
 run_marker = (
