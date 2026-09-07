@@ -15,7 +15,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from quantfusion.application.c6_contract import canonical_json_bytes as _canonical_bytes
-from quantfusion.io.c6_stream import load_object, producer_payload_path, select_records, write_json
+from quantfusion.io.c6_stream import ChainedArray, load_object, producer_payload_path, select_records, write_json
 from quantfusion.application.c6_predicates import (
     _l1_predicate_rows, _predicate_rows,
     _attach_interventions as _attach_interventions,
@@ -815,7 +815,7 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
                 chunk_size=int(binding["runtime"]["checkpoint_every"]),
             )
             _attach_interventions(intervention_results)
-            evaluations = [*evaluations, *intervention_results]
+            evaluations = ChainedArray((evaluations, intervention_results))
         else:
             checkpoint.map(
                 _l1_evaluate, interventions,

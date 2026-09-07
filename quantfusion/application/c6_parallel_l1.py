@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
 from quantfusion.application.c6_contract import canonical_payload_hash
-from quantfusion.io.c6_stream import FileArray, load_object
+from quantfusion.io.c6_stream import FileArray, MultiFileArray, load_object
 
 _SHARD_KEYS = {
     "schema_version",
@@ -229,7 +229,10 @@ def _validate_shard_header(
 
 
 def _validate_record(
-    item: Any, *, seen_ids: set[str] | None = None
+    item: Any,
+    *,
+    seen_ids: set[str] | None = None,
+    verify_result_hash: bool = True,
 ) -> tuple[str, dict[str, Any]]:
     if (
         not isinstance(item, dict)
@@ -238,8 +241,11 @@ def _validate_record(
         or item["result_schema"] != "evaluation_record"
         or not isinstance(item["item_id"], str)
         or not isinstance(item["result"], dict)
-        or item["result_sha256"] != canonical_payload_hash(item["result"])
         or (seen_ids is not None and item["item_id"] in seen_ids)
+    ):
+        raise ValueError("parallel L1 record hash/schema is invalid")
+    if verify_result_hash and item["result_sha256"] != canonical_payload_hash(
+        item["result"]
     ):
         raise ValueError("parallel L1 record hash/schema is invalid")
     return item["item_id"], item["result"]
@@ -352,7 +358,7 @@ def merge_shard_payloads(
     attestations_required: bool = False,
     validator_source_revision: str | None = None,
     preregistration_sha256: str | None = None,
-) -> list[dict[str, Any]]:
+) -> Sequence[dict[str, Any]]:
     from quantfusion.application.c6_bound_run import validate_checkpoint_item
 
     if attestations_required and (
@@ -364,6 +370,8 @@ def merge_shard_payloads(
     if len(paths) != shard_count:
         raise ValueError("parallel L1 shard set is incomplete")
     by_id: dict[str, dict[str, Any]] = {}
+    by_ref: dict[str, tuple[Path, tuple[int, int]]] = {}
+    seen_ids: set[str] = set()
     seen_shards: set[int] = set()
     for path in paths:
         payload = load_object(path, array_fields=frozenset({"records"}))
@@ -400,17 +408,31 @@ def merge_shard_payloads(
         if not isinstance(records, (list, FileArray)):
             raise ValueError("parallel L1 shard records are invalid")
         observed_shard: list[str] = []
-        for item in records:
-            item_id, result = _validate_record(item, seen_ids=set(by_id))
+        if attestations_required and not isinstance(records, FileArray):
+            raise ValueError("attested parallel L1 requires indexed shard records")
+        spans = records.spans if isinstance(records, FileArray) else [None] * len(records)
+        for span, item in zip(spans, records):
+            item_id, result = _validate_record(
+                item,
+                seen_ids=seen_ids,
+                verify_result_hash=not attestations_required,
+            )
             observed_shard.append(item_id)
+            seen_ids.add(item_id)
             if prereg is not None and not attestations_required:
                 validate_checkpoint_item(item, prereg)
-            by_id[item_id] = result
+            if attestations_required:
+                assert isinstance(span, tuple)
+                by_ref[item_id] = (records.path, span)
+            else:
+                by_id[item_id] = result
         if observed_shard != expected_shard:
             raise ValueError("parallel L1 shard does not contain its exact partition")
         seen_shards.add(index)
-    if seen_shards != set(range(shard_count)) or set(by_id) != set(ids):
+    if seen_shards != set(range(shard_count)) or seen_ids != set(ids):
         raise ValueError("parallel L1 shard union is incomplete")
+    if attestations_required:
+        return MultiFileArray([by_ref[item] for item in ids]).project("result")
     return [by_id[item] for item in ids]
 
 
@@ -424,7 +446,7 @@ def load_parallel_evaluations(
     attestations_required: bool = False,
     validator_source_revision: str | None = None,
     preregistration_sha256: str | None = None,
-) -> list[dict[str, Any]]:
+) -> Sequence[dict[str, Any]]:
     ids, _ = core_l1_tasks(prereg, binding)
     chunk_size = int(binding["runtime"]["checkpoint_every"])
     return merge_shard_payloads(
