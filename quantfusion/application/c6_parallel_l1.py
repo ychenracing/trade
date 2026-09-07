@@ -229,7 +229,10 @@ def _validate_shard_header(
 
 
 def _validate_record(
-    item: Any, *, seen_ids: set[str] | None = None
+    item: Any,
+    *,
+    seen_ids: set[str] | None = None,
+    verify_result_hash: bool = True,
 ) -> tuple[str, dict[str, Any]]:
     if (
         not isinstance(item, dict)
@@ -238,8 +241,11 @@ def _validate_record(
         or item["result_schema"] != "evaluation_record"
         or not isinstance(item["item_id"], str)
         or not isinstance(item["result"], dict)
-        or item["result_sha256"] != canonical_payload_hash(item["result"])
         or (seen_ids is not None and item["item_id"] in seen_ids)
+    ):
+        raise ValueError("parallel L1 record hash/schema is invalid")
+    if verify_result_hash and item["result_sha256"] != canonical_payload_hash(
+        item["result"]
     ):
         raise ValueError("parallel L1 record hash/schema is invalid")
     return item["item_id"], item["result"]
@@ -401,7 +407,11 @@ def merge_shard_payloads(
             raise ValueError("parallel L1 shard records are invalid")
         observed_shard: list[str] = []
         for item in records:
-            item_id, result = _validate_record(item, seen_ids=set(by_id))
+            item_id, result = _validate_record(
+            item,
+            seen_ids=set(by_id),
+            verify_result_hash=not attestations_required,
+        )
             observed_shard.append(item_id)
             if prereg is not None and not attestations_required:
                 validate_checkpoint_item(item, prereg)
