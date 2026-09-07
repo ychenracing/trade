@@ -1,0 +1,50 @@
+name: Diagnose flow-neutral sleeve HWM fingerprints
+
+on:
+  push:
+    branches: [codex/flow-neutral-sleeve-hwm-debug]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.repository == 'ychenracing/trade'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 63697f6735faf1940242ac3119f2e6a39a3f9d1f
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Print corrected economic sequence fingerprints
+        run: |
+          python - <<'PY'
+          import json
+          from scripts.backtest_universes import UNIVERSES
+          from tests.regression.test_quant_fusion import run_quiet, regime_route_fingerprint
+          from quantfusion.research.fingerprints import economic_sequence_fingerprints
+          result = {}
+          for name, codes in UNIVERSES.items():
+              run = run_quiet(codes)
+              actual = {
+                  key: int(run[key])
+                  for key in (
+                      'total_trades','sell_trades','sleeve_fill_count',
+                      'sleeve_sell_fill_count','date_symbol_side_count',
+                      'date_symbol_sell_side_count',
+                  )
+              }
+              actual.update(economic_sequence_fingerprints(run))
+              actual.pop('regime_state_series_sha256', None)
+              actual['regime_route_sha256'] = regime_route_fingerprint(run)
+              result[str(len(codes))] = actual
+          print('FLOW_NEUTRAL_FINGERPRINTS=' + json.dumps(result, sort_keys=True, separators=(',', ':')))
+          PY
