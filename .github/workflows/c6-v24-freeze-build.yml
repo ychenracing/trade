@@ -1,0 +1,49 @@
+name: C6 v24 Freeze Build
+
+on:
+  push:
+    branches: [codex/c6-v24-freeze-build-20260908]
+    paths:
+      - .github/scripts/build_c6_v24_from_v23.py
+      - .github/workflows/c6-v24-freeze-build.yml
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: c6-v24-freeze-build-20260908
+  cancel-in-progress: false
+
+jobs:
+  freeze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Verify frozen-style interpreter
+        run: test "$(python -c 'import platform; print(platform.python_version())')" = '3.12.14'
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Derive current-head v24 builder from verified v23 builder
+        run: |
+          python .github/scripts/build_c6_v24_from_v23.py
+          python -m py_compile /tmp/build_c6_v24_freeze.py
+      - name: Build validate and atomically publish P24 I_B24 I_S24 R24
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python /tmp/build_c6_v24_freeze.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-v24-freeze-receipt-${{ github.run_id }}
+          path: c6-v24-freeze-receipt.json
+          if-no-files-found: ignore
+          retention-days: 90
