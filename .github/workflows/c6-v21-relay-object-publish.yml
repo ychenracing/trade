@@ -58,16 +58,10 @@ jobs:
             test "$(git ls-remote origin refs/heads/$ref | cut -f1)" = "$sha"
           done
           python -m pip install --require-hashes -r source/requirements-lock.txt
-      - name: Rebuild the already validated five-file candidate
-        run: |
-          set -euo pipefail
-          git checkout --detach "$MAIN_SHA"
-          export R_SHA256="$(sha256sum bindings/artifacts/diagnostics/c6-run-bindings.json | cut -d' ' -f1)"
-          python "$(git show 2d9d0f7606c30ddc0cf93eb253e1799f735f0dd9:.github/scripts/build_c6_v21_relay_final.py | sed -n '1p' >/dev/null; echo "$GITHUB_WORKSPACE/.github/scripts/build_c6_v21_relay_final.py")"
-        shell: bash
       - name: Verify exact diff and both relay suites
         run: |
           set -euo pipefail
+          git checkout --detach "$MAIN_SHA"
           export R_SHA256="$(sha256sum bindings/artifacts/diagnostics/c6-run-bindings.json | cut -d' ' -f1)"
           git show 2d9d0f7606c30ddc0cf93eb253e1799f735f0dd9:.github/scripts/build_c6_v21_relay_final.py > /tmp/build_relay.py
           python /tmp/build_relay.py
