@@ -1,0 +1,117 @@
+name: C6 v23 Workflow Builder
+
+on:
+  push:
+    branches: [codex/c6-v23-workflow-builder-20260908]
+    paths:
+      - .github/workflows/c6-v23-workflow-builder.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: f9da08afebf22b3dc03a1fb3a0ec351a79adf42c
+          path: candidate
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+          cache: pip
+          cache-dependency-path: candidate/requirements-lock.txt
+      - run: python -m pip install --require-hashes -r candidate/requirements-lock.txt
+      - name: Build exact W23 workflow
+        working-directory: candidate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/c6-bound-economic.yml')
+          text = path.read_text(encoding='utf-8')
+          if text.count('codex/c6-v21-workflow-anchor') != 1:
+              raise SystemExit('unexpected W21 anchor count')
+          text = text.replace('codex/c6-v21-workflow-anchor', 'codex/c6-v23-workflow-anchor')
+
+          marker = '  parallel_l1:\n'
+          if text.count(marker) != 1:
+              raise SystemExit('parallel_l1 marker drifted')
+          guard = '''  base_recovery_guard:\n    name: Authenticate Base22 recovery source\n    if: inputs.binding_id != 'c6.synthetic.resume'\n    runs-on: ubuntu-24.04\n    timeout-minutes: 5\n    steps:\n      - name: Verify fixed Base22 recovery set or no-op\n        if: inputs.binding_id == 'c6.base.l1'\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n        run: |\n          python3 - <<'PY'\n          import json\n          import os\n          import re\n          import urllib.request\n\n          repository = os.environ['GITHUB_REPOSITORY']\n          token = os.environ['GITHUB_TOKEN']\n          root = f'https://api.github.com/repos/{repository}/'\n          headers = {\n              'Authorization': 'Bearer ' + token,\n              'Accept': 'application/vnd.github+json',\n              'X-GitHub-Api-Version': '2022-11-28',\n          }\n\n          def get(path):\n              request = urllib.request.Request(root + path, headers=headers)\n              with urllib.request.urlopen(request, timeout=60) as response:\n                  return json.load(response)\n\n          source_run = 34128460919\n          run = get(f'actions/runs/{source_run}')\n          expected_run = {\n              'workflow_id': 349948458,\n              'head_branch': 'codex/c6-v21-workflow-anchor',\n              'head_sha': 'f9da08afebf22b3dc03a1fb3a0ec351a79adf42c',\n              'event': 'workflow_dispatch',\n              'status': 'completed',\n              'conclusion': 'failure',\n              'run_attempt': 1,\n              'display_title': 'c6-bound-c6.base.l1-c6-v22-base-l1-a0',\n          }\n          if any(run.get(key) != value for key, value in expected_run.items()):\n              raise SystemExit('Base22 recovery run identity drifted')\n\n          jobs = get(f'actions/runs/{source_run}/jobs?per_page=100')['jobs']\n          observed_jobs = {}\n          for job in jobs:\n              match = re.fullmatch(r'Parallel L1 core shard ([0-9]+)', str(job.get('name', '')))\n              if match:\n                  index = int(match.group(1))\n                  observed_jobs[index] = (job.get('status'), job.get('conclusion'))\n          if observed_jobs != {index: ('completed', 'success') for index in range(12)}:\n              raise SystemExit('Base22 shard job set is not exactly 12 successful jobs')\n\n          expected = {\n              0: (10024330850, 'sha256:6418073aefd56eeb6dc92a7e1a3adafbf84c4b1fd8559628d878d244e9dbe8db'),\n              1: (10023438649, 'sha256:6cc87e127e50e80d136d7e82e9a25d4ebca4640338a34f96301cfe8235a08d31'),\n              2: (10023713395, 'sha256:33a58d98e02f2fb7f9da68b483b681a19edf4d18fb382f0c54c9afe3511ece77'),\n              3: (10023684086, 'sha256:cbf20254308aa273f904ead8e5c2168355a3e43a31147e87efbf69aa1e536f5d'),\n              4: (10023697635, 'sha256:bdc2a88db800adcfade4b07bbeece8ed1864e4816855c2b214f546828bb59710'),\n              5: (10024300356, 'sha256:232c334a3607392073bb5945a223287791fa9ef227fe0ec0f7b3ed9c159ca77a'),\n              6: (10023650878, 'sha256:d7c4928c767d34cba6e0c7e8ac3316a42a9d12dba09645904d148e2c66377324'),\n              7: (10022784784, 'sha256:f8cff24b50c13341b64bce5397df1f09825a54b6344e47f3e398763f2629f572'),\n              8: (10023716462, 'sha256:1a2f640104a81044ace3f9dcc21991d4c61c68dfa6ff6d9a4861db38832b7cc4'),\n              9: (10023686351, 'sha256:1e4ea7babc79c833b200152f1b9ad0bd0ddbde813163fb1909a31fa10d45837a'),\n              10: (10024256138, 'sha256:eadb1218d868f7ccda9e2f1dbf2bec85f8c68ff2f052b00dfca49e6bac9caf3a'),\n              11: (10024209166, 'sha256:d80514f7782a021f6c4801807ed6d9b1278054ba30c33fb9c0d61fce02231598'),\n          }\n          artifacts = get(f'actions/runs/{source_run}/artifacts?per_page=100')['artifacts']\n          observed = {}\n          for artifact in artifacts:\n              match = re.fullmatch(r'c6-l1-shard-34128460919-([0-9]+)', str(artifact.get('name', '')))\n              if match:\n                  index = int(match.group(1))\n                  observed[index] = (artifact.get('id'), artifact.get('digest'))\n                  if artifact.get('expired') is not False:\n                      raise SystemExit('Base22 shard artifact expired')\n                  workflow_run = artifact.get('workflow_run') or {}\n                  if workflow_run.get('id') != source_run or workflow_run.get('head_sha') != expected_run['head_sha']:\n                      raise SystemExit('Base22 shard artifact workflow identity drifted')\n          if observed != expected or len(artifacts) != 12:\n              raise SystemExit('Base22 artifact ID/digest set drifted')\n          PY\n\n'''
+          text = text.replace(marker, guard + marker)
+
+          old = '''  parallel_l1:\n    name: Parallel L1 core shard ${{ matrix.shard }}\n    if: (inputs.binding_id == 'c6.base.l1' || inputs.binding_id == 'c6.base_plus_s.l1') && inputs.attempt_id == 'a0' && inputs.resume_from == '' && inputs.resume_workflow_run_id == ''\n    runs-on: ubuntu-24.04\n'''
+          new = '''  parallel_l1:\n    name: Parallel L1 core shard ${{ matrix.shard }}\n    needs: [base_recovery_guard]\n    if: needs.base_recovery_guard.result == 'success' && (inputs.binding_id == 'c6.base.l1' || inputs.binding_id == 'c6.base_plus_s.l1') && inputs.attempt_id == 'a0' && inputs.resume_from == '' && inputs.resume_workflow_run_id == ''\n    runs-on: ubuntu-24.04\n'''
+          if text.count(old) != 1:
+              raise SystemExit('parallel_l1 header drifted')
+          text = text.replace(old, new)
+
+          old = '''      - name: Compute exact chunk-preserving L1 shard\n        working-directory: source\n        env:\n          C6_BINDING_ID: ${{ inputs.binding_id }}\n          C6_SOURCE_REVISION: ${{ inputs.source_revision }}\n          C6_SHARD_INDEX: ${{ matrix.shard }}\n        run: |\n          set -euo pipefail\n          readarray -t runtime_values < <(python - "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" "$C6_BINDING_ID" <<'PY'\n          import json, sys\n          payload=json.load(open(sys.argv[1], encoding='utf-8'))\n          rows=[r for r in payload['binding_records'] if r['workflow_binding_id']==sys.argv[2] and r['record_id']==sys.argv[2]]\n          if len(rows)!=1:\n              raise SystemExit('parallel L1 binding is ambiguous')\n          print(rows[0]['runtime']['workers'])\n          print(rows[0]['runtime']['checkpoint_every'])\n          PY\n          )\n          test "${runtime_values[0]}" = "4"\n          test "${runtime_values[1]}" = "10"\n          python -m quantfusion.application.c6_parallel_l1_cli \\\n            --preregistration artifacts/diagnostics/c6-preregistration.json \\\n            --bindings-file "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" \\\n            --binding-record-id "$C6_BINDING_ID" \\\n            --source-revision "$C6_SOURCE_REVISION" \\\n            --shard-index "$C6_SHARD_INDEX" \\\n            --shard-count 12 \\\n            --workers "${runtime_values[0]}" \\\n            --output "$RUNNER_TEMP/c6-l1-shard/shard.json.gz"\n'''
+          new = '''      - name: Recover exact Base22 shard bytes\n        if: inputs.binding_id == 'c6.base.l1'\n        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093\n        with:\n          name: c6-l1-shard-34128460919-${{ matrix.shard }}\n          path: ${{ runner.temp }}/c6-l1-shard\n          github-token: ${{ github.token }}\n          run-id: 34128460919\n          repository: ychenracing/trade\n      - name: Compute exact chunk-preserving L1 shard\n        if: inputs.binding_id == 'c6.base_plus_s.l1'\n        working-directory: source\n        env:\n          C6_BINDING_ID: ${{ inputs.binding_id }}\n          C6_SOURCE_REVISION: ${{ inputs.source_revision }}\n          C6_SHARD_INDEX: ${{ matrix.shard }}\n        run: |\n          set -euo pipefail\n          readarray -t runtime_values < <(python - "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" "$C6_BINDING_ID" <<'PY'\n          import json, sys\n          payload=json.load(open(sys.argv[1], encoding='utf-8'))\n          rows=[r for r in payload['binding_records'] if r['workflow_binding_id']==sys.argv[2] and r['record_id']==sys.argv[2]]\n          if len(rows)!=1:\n              raise SystemExit('parallel L1 binding is ambiguous')\n          print(rows[0]['runtime']['workers'])\n          print(rows[0]['runtime']['checkpoint_every'])\n          PY\n          )\n          test "${runtime_values[0]}" = "4"\n          test "${runtime_values[1]}" = "10"\n          python -m quantfusion.application.c6_parallel_l1_cli \\\n            --preregistration artifacts/diagnostics/c6-preregistration.json \\\n            --bindings-file "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" \\\n            --binding-record-id "$C6_BINDING_ID" \\\n            --source-revision "$C6_SOURCE_REVISION" \\\n            --shard-index "$C6_SHARD_INDEX" \\\n            --shard-count 12 \\\n            --workers "${runtime_values[0]}" \\\n            --output "$RUNNER_TEMP/c6-l1-shard/shard.json.gz"\n      - name: Semantically attest exact L1 shard\n        working-directory: source\n        env:\n          C6_BINDING_ID: ${{ inputs.binding_id }}\n          C6_SOURCE_REVISION: ${{ inputs.source_revision }}\n          C6_SHARD_INDEX: ${{ matrix.shard }}\n        run: |\n          set -euo pipefail\n          test -f "$RUNNER_TEMP/c6-l1-shard/shard.json.gz"\n          if [[ "$C6_BINDING_ID" = 'c6.base.l1' ]]; then\n            shard_source='addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7'\n          else\n            shard_source="$C6_SOURCE_REVISION"\n          fi\n          python -m quantfusion.application.c6_parallel_l1_validate_cli \\\n            --preregistration artifacts/diagnostics/c6-preregistration.json \\\n            --bindings-file "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" \\\n            --binding-record-id "$C6_BINDING_ID" \\\n            --validator-source-revision "$C6_SOURCE_REVISION" \\\n            --shard-source-revision "$shard_source" \\\n            --shard-index "$C6_SHARD_INDEX" \\\n            --shard-count 12 \\\n            --input "$RUNNER_TEMP/c6-l1-shard/shard.json.gz" \\\n            --output "$RUNNER_TEMP/c6-l1-shard/validation.json"\n'''
+          if text.count(old) != 1:
+              raise SystemExit('parallel compute block drifted')
+          text = text.replace(old, new)
+
+          old = '          path: ${{ runner.temp }}/c6-l1-shard/shard.json.gz\n'
+          new = '          path: ${{ runner.temp }}/c6-l1-shard/\n'
+          if text.count(old) != 1:
+              raise SystemExit('parallel upload path drifted')
+          text = text.replace(old, new)
+
+          old = '''    needs: [parallel_l1]\n    if: inputs.binding_id != 'c6.synthetic.resume' && (needs.parallel_l1.result == 'success' || needs.parallel_l1.result == 'skipped')\n'''
+          new = '''    needs: [base_recovery_guard, parallel_l1]\n    if: inputs.binding_id != 'c6.synthetic.resume' && needs.base_recovery_guard.result == 'success' && (needs.parallel_l1.result == 'success' || needs.parallel_l1.result == 'skipped')\n'''
+          if text.count(old) != 1:
+              raise SystemExit('central needs block drifted')
+          text = text.replace(old, new)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = '.github/workflows/c6-bound-economic.yml'
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          text = Path('.github/workflows/c6-bound-economic.yml').read_text(encoding='utf-8')
+          yaml.safe_load(text)
+          required = [
+              'codex/c6-v23-workflow-anchor',
+              'Authenticate Base22 recovery source',
+              '34128460919',
+              'addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7',
+              'c6_parallel_l1_validate_cli',
+              '--parallel-validation-attestations-required',
+          ]
+          # The last flag belongs in R argv, not the workflow itself yet.
+          if required[-1] in text:
+              raise SystemExit('workflow must not fabricate R argv flags')
+          for token in required[:-1]:
+              if token not in text:
+                  raise SystemExit(f'missing W23 token: {token}')
+          if 'codex/c6-v21-workflow-anchor' not in text:
+              raise SystemExit('Base22 recovery lineage anchor missing')
+          PY
+      - name: Commit exact W23 object
+        working-directory: candidate
+        run: |
+          set -euo pipefail
+          git add .github/workflows/c6-bound-economic.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'C6 W23: recover and attest frozen Base22 shards'
+          git rev-parse HEAD | tee ../w23-sha.txt
+          git rev-parse HEAD^{tree} | tee ../w23-tree.txt
+          git diff --name-only HEAD^ HEAD | tee ../w23-paths.txt
+          git push origin HEAD:refs/heads/codex/c6-v23-workflow-anchor || true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-w23-builder-${{ github.run_id }}
+          path: |
+            w23-sha.txt
+            w23-tree.txt
+            w23-paths.txt
+          if-no-files-found: error
+          retention-days: 30
