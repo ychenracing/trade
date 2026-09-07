@@ -96,22 +96,38 @@ def core_l1_tasks(
         permutation_samples=50,
         seeds=(20260807, 20260817, 20260827),
     )
-    by_id = {item["scenario_id"]: item for item in plan}
+    by_id: dict[str, Mapping[str, Any]] = {}
+    for scenario in plan:
+        if not isinstance(scenario, dict):
+            raise ValueError("L1 scenario plan contains a non-object record")
+        scenario_id = scenario.get("scenario_id")
+        if type(scenario_id) is not str or scenario_id in by_id:
+            raise ValueError("L1 scenario plan identity is invalid or duplicated")
+        by_id[scenario_id] = scenario
+
     base = binding["candidate_id"] == "C6-Base"
-    variants = (
+    variant_values = (
         manifests["L1_BASE_EVALUATION_MANIFEST"]["core_variant_order"]
         if base
         else ["C6-Base+S"]
     )
-    tasks = [
-        (variant, by_id[scenario], "DEFAULT")
-        for variant in variants
-        for scenario in scenario_ids
-    ]
-    ids = [
-        f"evaluation/{variant}::{scenario['scenario_id']}"
-        for variant, scenario, _ in tasks
-    ]
+    if not isinstance(variant_values, list):
+        raise ValueError("L1 core variant order must be a list")
+    variants: list[str] = []
+    for variant in variant_values:
+        if type(variant) is not str:
+            raise ValueError("L1 core variant order contains a non-string identity")
+        variants.append(variant)
+
+    tasks: list[tuple[str, Mapping[str, Any], str]] = []
+    ids: list[str] = []
+    for variant in variants:
+        for scenario_id in scenario_ids:
+            scenario = by_id.get(scenario_id)
+            if scenario is None:
+                raise ValueError("L1 scenario manifest references an unknown scenario")
+            tasks.append((variant, scenario, "DEFAULT"))
+            ids.append(f"evaluation/{variant}::{scenario_id}")
     return ids, tasks
 
 
