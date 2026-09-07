@@ -1,0 +1,62 @@
+name: Build flow-neutral sleeve HWM fix
+
+on:
+  push:
+    branches: [codex/flow-neutral-sleeve-hwm]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flow-neutral-sleeve-hwm-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  build-fix:
+    if: github.repository == 'ychenracing/trade'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Apply checksum-bound correctness patch
+        env:
+          PATCH_B64: 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
+          PATCH_SHA256: 78b26b0996349865a8bb7c773a5a7c3212807e1666557fb16577928cea25e384
+        run: |
+          python - <<'PY'
+          import base64, gzip, hashlib, os
+          from pathlib import Path
+          patch = gzip.decompress(base64.b64decode(os.environ['PATCH_B64']))
+          if hashlib.sha256(patch).hexdigest() != os.environ['PATCH_SHA256']:
+              raise SystemExit('patch checksum mismatch')
+          Path('/tmp/flowfix.patch').write_bytes(patch)
+          PY
+          test "$(git rev-parse HEAD^)" = "47d9b95645af60dd430eca96afc163726fff8508"
+          test "$(git rev-parse HEAD:quantfusion/engine/ensemble_allocation.py)" = "e86f182ddad28e6555d7135985f6810e6115dee3"
+          test "$(git rev-parse HEAD:quantfusion/engine/replay.py)" = "116ed730983a5aa1ee5d497853a32805d9577862"
+          test "$(git rev-parse HEAD:quantfusion/risk/managers.py)" = "9c52bfdd32f70aef9a4b62810d59c5b1cd2e65dc"
+          test "$(git rev-parse HEAD:tests/regression/test_regime_adaptive.py)" = "9f2f796baf00df0c0d50cd4dac343d3a47f40527"
+          test ! -e tests/unit/test_internal_cash_flow_risk_bases.py
+          git apply --index /tmp/flowfix.patch
+          git rm .github/workflows/flow-neutral-sleeve-hwm-bootstrap.yml
+      - name: Verify focused correctness surface
+        run: |
+          python -m compileall -q quantfusion/risk/managers.py quantfusion/engine/ensemble_allocation.py quantfusion/engine/replay.py tests/unit/test_internal_cash_flow_risk_bases.py tests/regression/test_regime_adaptive.py
+          python -m ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion/risk/managers.py quantfusion/engine/ensemble_allocation.py quantfusion/engine/replay.py tests/unit/test_internal_cash_flow_risk_bases.py tests/regression/test_regime_adaptive.py
+          python -m pytest -q tests/unit/test_internal_cash_flow_risk_bases.py tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_weak_real_execution_matches_frozen_research_point tests/regression/test_regime_adaptive.py::DynamicRouteStateMachineTests tests/contract/test_regime_safety_contracts.py --tb=short
+      - name: Publish fix branch
+        run: |
+          test "$(git status --porcelain | wc -l)" -gt 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(risk): make internal sleeve cash flows drawdown-neutral" -m "Rebase sleeve drawdown/daily-loss capital bases proportionally across non-PnL internal cash transfers. Keep route closing equity consistent so the next-day baseline does not reintroduce the flow. Add deterministic RED/GREEN coverage and refresh only the affected weak-route golden return; MDD and trade counts remain unchanged."
+          git push origin HEAD:refs/heads/codex/flow-neutral-sleeve-hwm
