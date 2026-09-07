@@ -1,0 +1,51 @@
+name: Stop invalid C6 v19 flow-accounting run
+
+on:
+  push:
+    branches: [codex/c6-stop-invalid-v19-flowbug-20260907]
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: c6-stop-invalid-v19-flowbug-20260907
+  cancel-in-progress: false
+
+jobs:
+  stop-invalid-run:
+    if: github.repository == 'ychenracing/trade'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Cancel only the exact invalid v19 attempt if still active
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_RUN: '34070745634'
+          EXPECTED_HEAD: 'd8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4'
+          EXPECTED_NAME: 'c6-bound-c6.base.l1-c6-v19-base-l1-r10-72f63a0f3061'
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          repo = os.environ['GITHUB_REPOSITORY']
+          run_id = os.environ['TARGET_RUN']
+          token = os.environ['GH_TOKEN']
+          base = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}"
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+          with urllib.request.urlopen(urllib.request.Request(base, headers=headers), timeout=30) as response:
+              run = json.load(response)
+          if run.get("head_sha") != os.environ['EXPECTED_HEAD'] or run.get("name") != os.environ['EXPECTED_NAME']:
+              raise SystemExit("target run identity mismatch")
+          if run.get("status") == "completed":
+              print(f"target already completed: {run.get('conclusion')}")
+              raise SystemExit(0)
+          request = urllib.request.Request(base + "/cancel", headers=headers, method="POST")
+          with urllib.request.urlopen(request, timeout=30) as response:
+              if response.status != 202:
+                  raise SystemExit(f"unexpected cancel status {response.status}")
+          print("cancel accepted for exact invalid v19 attempt")
+          PY
