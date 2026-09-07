@@ -1,4 +1,4 @@
-"""Advance only PR63's frozen C6 v21 stages; never replay, tune, or merge a strategy.
+"""Advance only PR63's frozen C6 v22 stages; never replay, tune, or merge a strategy.
 
 The existing bound runner owns economics and same-logical checkpoint continuation.
 This separate controller consumes complete sealed results using that runner's exact
@@ -20,20 +20,20 @@ from pathlib import Path
 
 REPOSITORY = 'ychenracing/trade'
 PR = 63
-P_COMMIT = '1dbcd6709470c2212919164cb39aa02859314dce'
-BASE = 'b41b6fbc551903221353271024a38ca42e7c2e19'
-S_SOURCE = 'c89842bc3df1eefcc5f3f6d4a250c2b62323393d'
-R_COMMIT = '6d68e9b91fe5f93c6535718c886242da75ffae26'
-R_SHA256 = '2a374f439e3181f8f228ac2e73e53b8f18bcc8ed99111a1cf99b7c467d39a902'
+P_COMMIT = 'c50216f70cba21d830b6feb2079ed68039821ecf'
+BASE = 'addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7'
+S_SOURCE = '884851bdba4a5372c5272b28bd4df3e30b5824b9'
+R_COMMIT = 'ea6dfa36b9796df7e4078d6f8d88b539a54072e3'
+R_SHA256 = '44fe0934eae8c041ad2c7a2d001be85b7c16bf237f447a4addd1163e4f82ab18'
 WORKFLOW = 'f9da08afebf22b3dc03a1fb3a0ec351a79adf42c'
 ANCHOR = 'codex/c6-v21-workflow-anchor'
-D_REF = 'codex/c6-selection-v21'
-EXECUTION_VERSION = 'v21'
+D_REF = 'codex/c6-selection-v22'
+EXECUTION_VERSION = 'v22'
 P_PATH = 'artifacts/diagnostics/c6-preregistration.json'
 R_PATH = 'artifacts/diagnostics/c6-run-bindings.json'
 D_PATH = 'artifacts/diagnostics/c6-selection.json'
-REFS = {'codex/c6-preregistration-v21': P_COMMIT, 'codex/c6-base-v21': BASE,
-        'codex/c6-s-v21': S_SOURCE, 'codex/c6-evidence-v21': R_COMMIT, ANCHOR: WORKFLOW}
+REFS = {'codex/c6-preregistration-v22': P_COMMIT, 'codex/c6-base-v22': BASE,
+        'codex/c6-s-v22': S_SOURCE, 'codex/c6-evidence-v22': R_COMMIT, ANCHOR: WORKFLOW}
 INPUTS = {'source_revision', 'run_bindings_revision', 'workflow_revision', 'binding_id',
           'candidate_id', 'logical_run_id', 'attempt_id', 'resume_from', 'resume_workflow_run_id',
           'd_commit', 'd_selection_blob_oid', 'd_selection_file_sha256', 'producer_identity_json',
