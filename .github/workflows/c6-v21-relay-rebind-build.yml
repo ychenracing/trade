@@ -1,0 +1,147 @@
+name: C6 v21 Relay Rebind Build
+
+on:
+  push:
+    branches: [codex/c6-v21-relay-rebind-build-20260907]
+    paths: [.github/workflows/c6-v21-relay-rebind-build.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-v21-relay-rebind-build-20260907
+  cancel-in-progress: false
+
+env:
+  MAIN_SHA: 3b4b9c2554b2ac54d065173d3889040a30bc6e89
+  P21: 1dbcd6709470c2212919164cb39aa02859314dce
+  IB21: b41b6fbc551903221353271024a38ca42e7c2e19
+  IS21: c89842bc3df1eefcc5f3f6d4a250c2b62323393d
+  R21: 6d68e9b91fe5f93c6535718c886242da75ffae26
+  W21: f9da08afebf22b3dc03a1fb3a0ec351a79adf42c
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IB21 }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.R21 }}
+          path: bindings
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: source/requirements-lock.txt
+      - name: Verify exact immutable inputs
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$MAIN_SHA"
+          test "$(git -C source rev-parse HEAD)" = "$IB21"
+          test "$(git -C bindings rev-parse HEAD)" = "$R21"
+          for pair in \
+            "codex/c6-preregistration-v21:$P21" \
+            "codex/c6-base-v21:$IB21" \
+            "codex/c6-s-v21:$IS21" \
+            "codex/c6-evidence-v21:$R21" \
+            "codex/c6-v21-workflow-anchor:$W21"; do
+            ref="${pair%%:*}"; sha="${pair##*:}"
+            test "$(git ls-remote origin refs/heads/$ref | cut -f1)" = "$sha"
+          done
+      - name: Patch only the existing schedulers and relay identities
+        run: |
+          set -euo pipefail
+          git checkout --detach "$MAIN_SHA"
+          R_SHA256="$(sha256sum bindings/artifacts/diagnostics/c6-run-bindings.json | cut -d' ' -f1)"
+          export R_SHA256
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import yaml
+
+          P21=os.environ['P21']; IB21=os.environ['IB21']; IS21=os.environ['IS21']; R21=os.environ['R21']; W21=os.environ['W21']; R_SHA=os.environ['R_SHA256']
+
+          def exact(path, replacements):
+              p=Path(path); text=p.read_text(encoding='utf-8')
+              for old,new,count in replacements:
+                  actual=text.count(old)
+                  if actual != count:
+                      raise SystemExit(f'{path}: expected {count} occurrences of {old!r}, found {actual}')
+                  text=text.replace(old,new)
+              p.write_text(text,encoding='utf-8')
+
+          exact('.github/scripts/c6_auto_resume.py', [
+              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor',1),
+          ])
+          exact('.github/workflows/c6-auto-resume.yml', [
+              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor',1),
+              ('c6-auto-resume-v17','c6-auto-resume-v21',1),
+          ])
+          exact('.github/scripts/c6_stage_advance.py', [
+              ('3611ac948287ee147ed40e77eda8ea01bab27a35',P21,2),
+              ('168cd3856cc1b60c928fe54c4a826b6045df01e9',IB21,2),
+              ('00485e8ceb67f4105d76fa62368f583ce82a81c5',IS21,2),
+              ('4db5cadc90d450f513dfdda10e0436cf330c62f3',R21,2),
+              ('9c7fb1a92d8e04c5b95d1d18503ccb4e313f3dde6a3fa73fe6f92e24830956ac',R_SHA,1),
+              ('d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4',W21,2),
+              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor',2),
+              ('codex/c6-selection-v19','codex/c6-selection-v21',1),
+              ('codex/c6-preregistration-v19','codex/c6-preregistration-v21',1),
+              ('codex/c6-base-v19','codex/c6-base-v21',1),
+              ('codex/c6-s-v19','codex/c6-s-v21',1),
+              ('codex/c6-evidence-v19','codex/c6-evidence-v21',1),
+              ('c6-v19-','c6-v21-',1),
+              ("v19 stages","v21 stages",1),
+          ])
+          exact('.github/workflows/c6-stage-advance.yml', [
+              ('codex/c6-stage-advance-v19','codex/c6-stage-advance-v21',1),
+              ('codex/c6-v17-workflow-anchor','codex/c6-v21-workflow-anchor',1),
+              ('c6-stage-advance-v19','c6-stage-advance-v21',1),
+              ('168cd3856cc1b60c928fe54c4a826b6045df01e9',IB21,2),
+              ('4db5cadc90d450f513dfdda10e0436cf330c62f3',R21,1),
+              ('C6 v19 frozen stage outcome','C6 v21 frozen stage outcome',1),
+          ])
+          for path in ('.github/workflows/c6-auto-resume.yml','.github/workflows/c6-stage-advance.yml'):
+              yaml.safe_load(Path(path).read_text(encoding='utf-8'))
+          PY
+          git diff --check
+          test "$(git diff --name-only | sort)" = $'.github/scripts/c6_auto_resume.py\n.github/scripts/c6_stage_advance.py\n.github/workflows/c6-auto-resume.yml\n.github/workflows/c6-stage-advance.yml'
+      - name: Install frozen verifier dependencies
+        run: python -m pip install --require-hashes -r source/requirements-lock.txt
+      - name: Run both existing synthetic relay suites
+        run: |
+          set -euo pipefail
+          python3 -I -S .github/scripts/test_c6_auto_resume.py
+          python -I -S .github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+      - name: Create validated candidate commit
+        run: |
+          set -euo pipefail
+          git add .github/scripts/c6_auto_resume.py .github/scripts/c6_stage_advance.py .github/workflows/c6-auto-resume.yml .github/workflows/c6-stage-advance.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ci(c6): rebind existing relay chain to frozen v21' -m 'Rebind the existing automatic checkpoint resume and frozen stage relay to P21/I_B21/I_S21/R21 and the immutable v21 workflow anchor. Preserve both existing schedules and concurrency; create no duplicate scheduler and change no economic contract.'
+          git rev-parse HEAD | tee "$RUNNER_TEMP/candidate-sha.txt"
+          git show --stat --oneline HEAD
+          set +e
+          git push origin HEAD:refs/heads/codex/c6-v21-relay-rebind-candidate
+          echo "push_status=$?" | tee "$RUNNER_TEMP/push-status.txt"
+          set -e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: c6-v21-relay-rebind-candidate-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/candidate-sha.txt
+            ${{ runner.temp }}/push-status.txt
+          retention-days: 30
