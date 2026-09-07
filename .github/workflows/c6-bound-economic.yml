@@ -201,7 +201,7 @@ jobs:
           )
           test "${runtime_values[0]}" = "4"
           test "${runtime_values[1]}" = "10"
-          python -m quantfusion.application.c6_parallel_l1 \
+          python -m quantfusion.application.c6_parallel_l1_cli \
             --preregistration artifacts/diagnostics/c6-preregistration.json \
             --bindings-file "$GITHUB_WORKSPACE/bindings/artifacts/diagnostics/c6-run-bindings.json" \
             --binding-record-id "$C6_BINDING_ID" \
