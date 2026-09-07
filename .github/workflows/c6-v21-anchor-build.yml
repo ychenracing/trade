@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/c6-v21-anchor-build.yml
       - .github/scripts/build_c6_v21_anchor.py
+      - .github/scripts/build_c6_v21_anchor_current.py
 
 permissions:
   contents: write
@@ -41,7 +42,7 @@ jobs:
       - name: Build and validate exact anchor files
         run: |
           set -euo pipefail
-          python .github/scripts/build_c6_v21_anchor.py
+          python .github/scripts/build_c6_v21_anchor_current.py
           test -s /tmp/c6-bound-economic.yml
           test -s /tmp/c6-dispatch.yml
       - name: Validate and emit exact anchor files
