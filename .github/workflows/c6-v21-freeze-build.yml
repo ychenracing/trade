@@ -1,0 +1,47 @@
+name: C6 v21 Freeze Build
+
+on:
+  push:
+    branches: [codex/c6-v21-freeze-build-20260907]
+    paths:
+      - .github/scripts/build_c6_v21_freeze.py
+      - .github/workflows/c6-v21-freeze-build.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-v21-freeze-build-20260907
+  cancel-in-progress: false
+
+jobs:
+  freeze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.14
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Verify builder branch is non-economic
+        run: |
+          set -euo pipefail
+          git diff --check HEAD^ HEAD
+          test "$(git diff --name-only HEAD^ HEAD)" = '.github/workflows/c6-v21-freeze-build.yml'
+      - name: Install existing locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Build validate and atomically publish P21 I_B21 I_S21 R21
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python .github/scripts/build_c6_v21_freeze.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c6-v21-freeze-receipt-${{ github.run_id }}
+          path: c6-v21-freeze-receipt.json
+          if-no-files-found: ignore
+          retention-days: 90
