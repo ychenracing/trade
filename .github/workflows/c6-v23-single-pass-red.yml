@@ -1,11 +1,13 @@
-name: C6 v23 Single Pass RED
+name: C6 v23 Aggregate Targeted
 
 on:
   push:
     branches: [codex/c6-v23-aggregate-single-pass-red-20260908]
     paths:
       - tests/c6_non_economic/test_c6_parallel_l1_single_pass.py
+      - tests/c6_non_economic/test_c6_parallel_l1_attestation.py
       - quantfusion/application/c6_parallel_l1.py
+      - quantfusion/application/c6_parallel_l1_validate_cli.py
       - .github/workflows/c6-v23-single-pass-red.yml
 
 permissions:
@@ -25,5 +27,8 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-lock.txt
       - run: python -m pip install --require-hashes -r requirements-lock.txt
-      - name: Run single-pass aggregate regression
-        run: python -m pytest -q tests/c6_non_economic/test_c6_parallel_l1_single_pass.py
+      - name: Run aggregate regressions
+        run: >-
+          python -m pytest -q
+          tests/c6_non_economic/test_c6_parallel_l1_single_pass.py
+          tests/c6_non_economic/test_c6_parallel_l1_attestation.py
