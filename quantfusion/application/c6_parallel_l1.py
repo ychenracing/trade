@@ -218,10 +218,9 @@ def merge_shard_payloads(
             ids, index, shard_count, chunk_size=chunk_size
         )
         records = payload["records"]
-        if not isinstance(records, (list, FileArray)) or [
-            item.get("item_id") for item in records if isinstance(item, dict)
-        ] != expected_shard:
-            raise ValueError("parallel L1 shard does not contain its exact partition")
+        if not isinstance(records, (list, FileArray)):
+            raise ValueError("parallel L1 shard records are invalid")
+        observed_shard: list[str] = []
         for item in records:
             if (
                 not isinstance(item, dict)
@@ -233,9 +232,12 @@ def merge_shard_payloads(
                 or item["item_id"] in by_id
             ):
                 raise ValueError("parallel L1 record hash/schema is invalid")
+            observed_shard.append(item["item_id"])
             if prereg is not None:
                 validate_checkpoint_item(item, prereg)
             by_id[item["item_id"]] = item["result"]
+        if observed_shard != expected_shard:
+            raise ValueError("parallel L1 shard does not contain its exact partition")
         seen_shards.add(index)
     if seen_shards != set(range(shard_count)) or set(by_id) != set(ids):
         raise ValueError("parallel L1 shard union is incomplete")
