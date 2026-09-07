@@ -1,0 +1,51 @@
+name: C6 v21 Builder Repair
+
+on:
+  push:
+    branches: [codex/c6-v21-workflow-anchor-build]
+    paths: [.github/workflows/c6-v21-builder-repair.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: c6-v21-builder-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Repair only stale builder assumptions
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/build_c6_v21_anchor.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''if bound.count(old_probe) != 2:\n    raise SystemExit("probe anchor count drift")'''
+          new = '''if bound.count(old_probe) != 1:\n    raise SystemExit("probe anchor count drift")'''
+          if text.count(old) != 1:
+              raise SystemExit('probe-count repair anchor drift')
+          text = text.replace(old, new, 1)
+          old_cli = 'python -m quantfusion.application.c6_parallel_l1 \\\\'
+          new_cli = 'python -m quantfusion.application.c6_parallel_l1_cli \\\\'
+          if text.count(old_cli) != 1:
+              raise SystemExit('parallel CLI repair anchor drift')
+          text = text.replace(old_cli, new_cli, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = '.github/scripts/build_c6_v21_anchor.py'
+      - name: Commit builder repair
+        run: |
+          set -euo pipefail
+          git add .github/scripts/build_c6_v21_anchor.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(c6): repair v21 anchor builder assumptions' -m 'Match the single current v17 probe anchor occurrence and invoke the newly split c6_parallel_l1_cli executable. No generated economic contract, scenario, threshold, candidate or result is changed by this builder-only repair.'
+          git push origin HEAD:codex/c6-v21-workflow-anchor-build
