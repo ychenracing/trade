@@ -113,6 +113,41 @@ class DispatchTests(unittest.TestCase):
         self.assertTrue(relay.initial_allowed(self.record, [{'display_title': 'unrelated'}]))
 
 
+class ProbeTests(unittest.TestCase):
+    def test_cancelled_latest_attempt_is_a_cheap_terminal_skip(self):
+        history = [
+            {'id': 10, 'display_title': 'c6-bound-c6.base.l1-c6-v19-base-l1-r9',
+             'status': 'completed', 'conclusion': 'success'},
+            {'id': 11, 'display_title': 'c6-bound-c6.base.l1-c6-v19-base-l1-r10',
+             'status': 'completed', 'conclusion': 'cancelled'},
+        ]
+        ready, state = relay.probe_history(history)
+        self.assertFalse(ready)
+        self.assertEqual(state['status'], 'latest_attempt_not_successful')
+        self.assertEqual(state['latest_run_id'], 11)
+        self.assertEqual(state['conclusion'], 'cancelled')
+        self.assertEqual(state['active_run_ids'], [])
+
+    def test_successful_latest_attempt_can_be_inspected(self):
+        history = [
+            {'id': 12, 'display_title': 'c6-bound-c6.base.l1-c6-v19-base-l1-r11',
+             'status': 'completed', 'conclusion': 'success'},
+        ]
+        ready, state = relay.probe_history(history)
+        self.assertTrue(ready)
+        self.assertEqual(state['status'], 'inspect_sealed_result')
+
+    def test_active_attempt_blocks_expensive_inspection(self):
+        history = [
+            {'id': 13, 'display_title': 'c6-bound-c6.base.l1-c6-v19-base-l1-r12',
+             'status': 'in_progress', 'conclusion': None},
+        ]
+        ready, state = relay.probe_history(history)
+        self.assertFalse(ready)
+        self.assertEqual(state['status'], 'active')
+        self.assertEqual(state['active_run_ids'], [13])
+
+
 class FrozenValidatorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
