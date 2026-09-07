@@ -15,7 +15,7 @@ from typing import Any, Callable, Mapping, Sequence
 from quantfusion.application.c6_contract import (
     canonical_payload_hash,
 )
-from quantfusion.io.c6_stream import load_object
+from quantfusion.io.c6_stream import FileArray, load_object
 
 _SHARD_KEYS = {
     "schema_version",
@@ -197,7 +197,7 @@ def merge_shard_payloads(
     by_id: dict[str, dict[str, Any]] = {}
     seen_shards: set[int] = set()
     for path in paths:
-        payload = load_object(path)
+        payload = load_object(path, array_fields=frozenset({"records"}))
         if not isinstance(payload, dict) or set(payload) != _SHARD_KEYS:
             raise ValueError("parallel L1 shard schema is invalid")
         index = payload["shard_index"]
@@ -218,7 +218,7 @@ def merge_shard_payloads(
             ids, index, shard_count, chunk_size=chunk_size
         )
         records = payload["records"]
-        if not isinstance(records, list) or [
+        if not isinstance(records, (list, FileArray)) or [
             item.get("item_id") for item in records if isinstance(item, dict)
         ] != expected_shard:
             raise ValueError("parallel L1 shard does not contain its exact partition")
