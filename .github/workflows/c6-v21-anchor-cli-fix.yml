@@ -39,7 +39,7 @@ jobs:
           if text.count(old) != 1 or new in text:
               raise SystemExit('expected exactly one stale parallel CLI invocation')
           text=text.replace(old,new,1)
-          if old in text or text.count(new) != 1:
+          if text.count(new) != 1:
               raise SystemExit('parallel CLI correction is not exact')
           yaml.safe_load(text)
           required=[
