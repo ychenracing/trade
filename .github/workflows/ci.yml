@@ -125,6 +125,9 @@ jobs:
               "tests/c6_non_economic/test_c6_bound_run.py",
               "tests/c6_non_economic/test_c6_early_concentration.py",
               "tests/c6_non_economic/test_c6_parallel_l1.py",
+              "tests/c6_non_economic/test_c6_parallel_l1_attestation.py",
+              "tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py",
+              "tests/c6_non_economic/test_c6_parallel_l1_single_pass.py",
               "tests/c6_non_economic/test_c6_s_qualification.py",
           }
           embargoed_prefixes = (
@@ -155,6 +158,9 @@ jobs:
               "tests/c6_non_economic/test_c6_diagnostics.py",
               "tests/c6_non_economic/test_c6_bound_run.py",
               "tests/c6_non_economic/test_c6_parallel_l1.py",
+              "tests/c6_non_economic/test_c6_parallel_l1_attestation.py",
+              "tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py",
+              "tests/c6_non_economic/test_c6_parallel_l1_single_pass.py",
           }
           is_markers = {
               "quantfusion/application/c6_s_qualification.py",
