@@ -13,3 +13,5 @@ class CrossMarketOverlay(
     OverlayActionMixin,
 ):
     """Evaluate cross-market evidence into immutable risk actions."""
+
+    C6_S_PRODUCTION = True
