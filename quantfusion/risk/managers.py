@@ -36,6 +36,42 @@ class RiskManager:
         else:
             self.group_weight_limits = {group: 1.0 for group in active}
 
+    def rebase_after_cash_flow(
+        self, current_assets_before: float, cash_flow: float
+    ) -> None:
+        """Keep drawdown/loss ratios invariant across a non-PnL cash flow."""
+        before = float(current_assets_before)
+        flow = float(cash_flow)
+        if (
+            not _is_finite_number(before)
+            or not _is_finite_number(flow)
+            or before < 0
+        ):
+            raise ValueError("cash-flow risk rebase requires finite nonnegative assets")
+        after = before + flow
+        if after < -1e-8:
+            raise ValueError("cash flow cannot make sleeve assets negative")
+        after = max(0.0, after)
+        if flow == 0.0:
+            return
+        if before > 0.0:
+            factor = after / before
+            for attribute in (
+                "peak_assets", "lifetime_peak_assets", "daily_start_assets"
+            ):
+                if hasattr(self, attribute):
+                    value = max(0.0, float(getattr(self, attribute)) * factor)
+                    setattr(self, attribute, value)
+            return
+        # A newly funded empty sleeve has no prior per-unit capital base. Locks
+        # remain durable state; the new capital starts at its current unit NAV.
+        if after > 0.0:
+            for attribute in (
+                "peak_assets", "lifetime_peak_assets", "daily_start_assets"
+            ):
+                if hasattr(self, attribute):
+                    setattr(self, attribute, after)
+
     def check_portfolio_risk(
         self,
         current_assets: float,
