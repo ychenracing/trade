@@ -148,6 +148,88 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(state['active_run_ids'], [13])
 
 
+class ProducerArtifactTests(unittest.TestCase):
+    def setUp(self):
+        self.record = {'record_id': 'c6.base.l1', 'workflow_binding_id': 'c6.base.l1',
+                       'logical_run_id': 'c6-v27-base-l1', 'candidate_id': 'C6-Base', 'stage': 'L1',
+                       'source_revision': relay.BASE,
+                       'runtime': {'runner_image_os': 'ubuntu24', 'runner_image_version': 'synthetic',
+                                   'python_version': '3.12.14'}}
+        self.run = {'id': 34180737092, 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
+                    'event': 'workflow_dispatch', 'path': '.github/workflows/c6-bound-economic.yml',
+                    'workflow_id': 349948458, 'head_branch': relay.ANCHOR, 'head_sha': relay.WORKFLOW,
+                    'display_title': 'c6-bound-c6.base.l1-c6-v27-base-l1-a0'}
+        self.artifact = {'id': 10043064982, 'name': 'c6-bound-c6-v27-base-l1-a0'}
+        self.shards = [{'id': i, 'name': f'c6-l1-shard-34180737092-{i}'} for i in range(12)]
+        self.manifest = {'kind': 'checkpoint', 'repository': relay.REPOSITORY,
+                         'workflow_run_id': str(self.run['id']), 'workflow_run_attempt': '1',
+                         'binding_id': self.record['workflow_binding_id'],
+                         'logical_run_id': self.record['logical_run_id'], 'attempt_id': 'a0',
+                         'source_revision': relay.BASE, 'candidate_id': self.record['candidate_id'],
+                         'run_bindings_revision': relay.R_COMMIT, 'workflow_revision': relay.WORKFLOW,
+                         **self.record['runtime']}
+        self.downloads = []
+        self.artifacts = [self.artifact]
+        self.instance = relay.Relay.__new__(relay.Relay)
+        self.instance.records = {self.record['record_id']: self.record}
+        self.instance.cache, self.instance.exports = {}, []
+
+        def export(run_id, artifact):
+            self.downloads.append((run_id, artifact))
+            return SimpleNamespace(manifest=self.manifest)
+
+        self.instance.store = SimpleNamespace(_pages=lambda *args: self.artifacts, _export=export)
+
+    def read(self):
+        return self.instance.read_result(self.record['record_id'], [self.run])
+
+    def test_one_seal_remains_a_checkpoint_not_a_complete_result(self):
+        self.assertIsNone(self.read())
+        self.assertEqual(self.downloads, [(self.run['id'], self.artifact)])
+
+    def test_parallel_shards_do_not_make_the_exact_seal_ambiguous(self):
+        for index in (0, 6, 12):
+            with self.subTest(index=index):
+                self.downloads.clear()
+                self.artifacts = self.shards[:index] + [self.artifact] + self.shards[index:]
+                self.assertIsNone(self.read())
+                self.assertEqual(self.downloads, [(self.run['id'], self.artifact)])
+
+    def test_resumed_attempt_selects_its_seal_not_a0_or_a_prefix_match(self):
+        attempt = 'r1-' + 'b' * 12
+        self.run['display_title'] = 'c6-bound-c6.base.l1-c6-v27-base-l1-' + attempt
+        self.manifest['attempt_id'] = attempt
+        resumed = dict(self.artifact, id=2, name='c6-bound-c6-v27-base-l1-' + attempt)
+        self.artifacts = self.shards + [self.artifact, dict(resumed, id=3, name=resumed['name'] + '-extra'), resumed]
+        self.assertIsNone(self.read())
+        self.assertEqual(self.downloads, [(self.run['id'], resumed)])
+
+    def test_missing_wrong_or_duplicate_seal_is_rejected_before_download(self):
+        for rows in ([], self.shards, [dict(self.artifact, name=self.artifact['name'] + '-extra')],
+                     [dict(self.artifact, name='c6-bound-c6-v27-base-l1-r1-' + 'b' * 12)],
+                     [dict(self.artifact, name='c6-bound-c6-v27-s-l1-a0')],
+                     self.shards + [self.artifact, dict(self.artifact, id=2)]):
+            with self.subTest(names=[row['name'] for row in rows]):
+                self.downloads.clear()
+                self.artifacts = rows
+                with self.assertRaises(ValueError):
+                    self.read()
+                self.assertEqual(self.downloads, [])
+
+    def test_workflow_identity_and_manifest_checks_are_not_weakened(self):
+        for update in ({'run_attempt': 2}, {'head_sha': '0' * 40}, {'event': 'push'}, {'status': 'in_progress'}):
+            with self.subTest(update=update):
+                saved = copy.deepcopy(self.run)
+                self.run.update(update)
+                with self.assertRaises(ValueError):
+                    self.read()
+                self.assertEqual(self.downloads, [])
+                self.run = saved
+        self.manifest['source_revision'] = '0' * 40
+        with self.assertRaisesRegex(ValueError, 'manifest differs'):
+            self.read()
+
+
 class FrozenValidatorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -263,6 +345,17 @@ class NativeExportTests(unittest.TestCase):
         self.assertEqual(payload['kind'], 'synthetic-stage-transport')
         self.assertEqual(claim['artifact_full_byte_sha256'], self.digest['artifact_full_byte_sha256'])
         self.assertEqual(claim['record_id'], 'synthetic.selected.l2')
+
+    def test_shards_do_not_bypass_native_digest_validation(self):
+        self.instance.store._pages = lambda *args: [
+            {'name': f'c6-l1-shard-42-{i}'} for i in range(12)
+        ] + [{'name': 'c6-bound-c6-v27-synthetic-l2-a0'}]
+        self.test_actual_native_digest_signature_schema_and_compressed_transport()
+        self.instance.cache.clear()
+        self.digest_path.write_bytes(self.contract.canonical_json_bytes(
+            dict(self.digest, artifact_byte_size=0)))
+        with self.assertRaises((ValueError, RuntimeError)):
+            self.read()
 
     def test_checkpoint_does_not_advance_even_when_workflow_succeeded(self):
         self.manifest['kind'] = 'checkpoint'

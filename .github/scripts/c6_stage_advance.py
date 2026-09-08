@@ -248,6 +248,10 @@ class Relay:
                 and run['head_branch'] == ANCHOR and run['head_sha'] == WORKFLOW
                 and run['event'] == 'workflow_dispatch' and run['run_attempt'] == 1, 'producer workflow identity')
         artifacts = self.store._pages(f"actions/runs/{run['id']}/artifacts", 'artifacts')
+        # Parallel L1 cores share this run; only its exact attempt seal is stage evidence.
+        artifact_name = 'c6-bound-' + run['display_title'].removeprefix(
+            f"c6-bound-{record['workflow_binding_id']}-")
+        artifacts = [artifact for artifact in artifacts if artifact.get('name') == artifact_name]
         require(len(artifacts) == 1, 'missing/ambiguous producer artifact')
         export = self.store._export(run['id'], artifacts[0])
         self.exports.append(export)
