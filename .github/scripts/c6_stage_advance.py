@@ -314,14 +314,14 @@ class Relay:
             artifact_bytes=raw, payload_schema=record['canonical_payload_schema'],
             payload=self.bound.result_payload(payload, record['stage'], self.p), exit_code=digest['exit_code'])
         require(digest == expected_digest, 'result digest/signature differs')
-        print(json.dumps({'stage': 'sealed_result_authenticated', 'record_id': record_id,
-                          'run_id': run['id'], 'elapsed_seconds':
-                          round((datetime.now(timezone.utc) - started).total_seconds(), 3)}), flush=True)
         if record['stage'] != 'L4':
             require(digest['exit_code'] == 0 and payload['complete'] is True, 'producer is not complete')
         else:
             require((digest['exit_code'], payload['acceptance_status'], payload['canonical']) in
                     ((0, 'accepted', True), (2, 'rejected', False)), 'official result status/exit mismatch')
+        print(json.dumps({'stage': 'sealed_result_authenticated', 'record_id': record_id,
+                          'run_id': run['id'], 'elapsed_seconds':
+                          round((datetime.now(timezone.utc) - started).total_seconds(), 3)}), flush=True)
         claim = {k: digest[k] for k in ('record_id', 'artifact_path', 'artifact_byte_size',
                  'artifact_full_byte_sha256', 'canonical_result_payload_sha256')}
         claim.update({k: m[k] for k in ('candidate_id', 'workflow_run_id', 'logical_run_id', 'attempt_id')})
