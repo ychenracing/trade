@@ -51,11 +51,10 @@ class ArtifactSelectionTests(unittest.TestCase):
     def test_missing_duplicate_and_wrong_attempt_fail_before_download(self):
         for artifacts in ([], self.shards, self.artifacts + [dict(self.seal, id=101)],
                           self.shards + [dict(self.seal, name='c6-bound-c6-v27-base-l1-a1')]):
-            with self.subTest(artifacts=artifacts):
+            with self.subTest(artifacts=artifacts), self.assertRaisesRegex(ValueError, 'missing/ambiguous producer artifact'):
                 self.artifacts = artifacts
-                with self.assertRaisesRegex(ValueError, 'missing/ambiguous producer artifact'):
-                    self.read()
-                self.assertEqual(self.downloads, [])
+                self.read()
+            self.assertEqual(self.downloads, [])
 
     def test_single_export_still_supported(self):
         self.artifacts = [self.seal]
@@ -93,6 +92,85 @@ if (HERE / 'test_c6_stage_advance.py').exists():
             original = self.instance.store._pages
             siblings = [{'name': f'c6-core-synthetic-shard-{i}'} for i in range(12)]
             self.instance.store._pages = lambda *args: original(*args) + siblings
+
+
+class AutoResumeSelectionTests(unittest.TestCase):
+    """Exercise the actual resume entrypoint up to its unchanged sealed consumer."""
+    def setUp(self):
+        import tempfile
+        import json
+        from unittest.mock import patch
+        auto_spec = importlib.util.spec_from_file_location('auto_listing', HERE / 'c6_auto_resume.py')
+        self.auto = importlib.util.module_from_spec(auto_spec)
+        auto_spec.loader.exec_module(self.auto)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        event = Path(self.tmp.name) / 'event.json'
+        event.write_text(json.dumps({'action': 'completed', 'workflow_run': {'id': 42}}))
+        env = patch.dict(self.auto.os.environ, {'GITHUB_REPOSITORY': relay.REPOSITORY,
+                         'GITHUB_EVENT_NAME': 'workflow_run', 'GITHUB_RUN_ATTEMPT': '1',
+                         'GITHUB_EVENT_PATH': str(event)})
+        env.start()
+        self.addCleanup(env.stop)
+        self.run = {'id': 42, 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
+                    'event': 'workflow_dispatch', 'head_branch': self.auto.AUTO_ANCHOR,
+                    'workflow_id': 349948458, 'path': '.github/workflows/c6-bound-economic.yml',
+                    'repository': {'full_name': relay.REPOSITORY},
+                    'head_repository': {'full_name': relay.REPOSITORY},
+                    'display_title': 'c6-bound-c6.base.l1-c6-v27-base-l1-a0'}
+        self.seal = {'id': 100, 'name': 'c6-bound-c6-v27-base-l1-a0', 'expired': False}
+        self.shards = [{'id': i, 'name': f'c6-core-shard-{i}', 'expired': False} for i in range(12)]
+        self.artifacts = self.shards + [self.seal]
+        self.downloads = []
+        fake = SimpleNamespace(read=self.read, pages=lambda *args: self.artifacts, artifact=self.artifact)
+        factory = patch.object(self.auto, 'GitHub', return_value=fake)
+        factory.start()
+        self.addCleanup(factory.stop)
+
+    class SealReached(Exception):
+        pass
+
+    def read(self, path):
+        if path == 'actions/runs/42':
+            return self.run
+        if path == 'actions/workflows/c6-bound-economic.yml':
+            return {'id': 349948458, 'path': self.run['path']}
+        raise AssertionError('unexpected API read: ' + path)
+
+    def artifact(self, artifact_id):
+        self.downloads.append(artifact_id)
+        raise self.SealReached  # Network boundary only; no economic payload fixture.
+
+    def test_multi_artifact_result_and_successor_reach_only_exact_seal(self):
+        for attempt in ('a0', 'r1-' + 'a' * 12):
+            with self.subTest(attempt=attempt):
+                self.run['display_title'] = 'c6-bound-c6.base.l1-c6-v27-base-l1-' + attempt
+                self.seal['name'] = 'c6-bound-c6-v27-base-l1-' + attempt
+                self.downloads.clear()
+                with self.assertRaises(self.SealReached):
+                    self.auto.main()
+                self.assertEqual(self.downloads, [100])
+
+    def test_missing_duplicate_expired_and_wrong_attempt_fail_closed(self):
+        for artifacts in ([], self.shards, self.artifacts + [dict(self.seal, id=101)],
+                          self.shards + [dict(self.seal, expired=True)],
+                          self.shards + [dict(self.seal, name='c6-bound-c6-v27-base-l1-a1')]):
+            with self.subTest(artifacts=artifacts):
+                self.artifacts = artifacts
+                with self.assertRaisesRegex(ValueError, 'missing or ambiguous sealed artifact'):
+                    self.auto.main()
+                self.assertEqual(self.downloads, [])
+
+    def test_native_rerun_and_foreign_repository_still_fail_before_download(self):
+        for changes in ({'run_attempt': 2}, {'head_repository': {'full_name': 'foreign/repo'}},
+                        {'display_title': 'malformed'}, {'display_title': 'c6-bound--wrong'}):
+            with self.subTest(changes=changes):
+                original = dict(self.run)
+                self.run.update(changes)
+                with self.assertRaises(ValueError):
+                    self.auto.main()
+                self.assertEqual(self.downloads, [])
+                self.run = original
 
 
 if __name__ == '__main__':

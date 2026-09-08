@@ -6,6 +6,8 @@ on:
       - .github/scripts/c6_stage_advance.py
       - .github/scripts/test_c6_stage_advance.py
       - .github/scripts/test_c6_stage_artifacts.py
+      - .github/scripts/c6_auto_resume.py
+      - .github/scripts/test_c6_auto_resume.py
       - .github/workflows/c6-stage-advance.yml
   push:
     branches: [main, codex/c6-stage-advance-v27]
@@ -13,6 +15,8 @@ on:
       - .github/scripts/c6_stage_advance.py
       - .github/scripts/test_c6_stage_advance.py
       - .github/scripts/test_c6_stage_artifacts.py
+      - .github/scripts/c6_auto_resume.py
+      - .github/scripts/test_c6_auto_resume.py
       - .github/workflows/c6-stage-advance.yml
   workflow_dispatch:
     inputs:
@@ -62,6 +66,7 @@ jobs:
         run: |
           python -I -S relay/.github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
           python -I -S relay/.github/scripts/test_c6_stage_artifacts.py "$GITHUB_WORKSPACE/source"
+          python -I -S relay/.github/scripts/test_c6_auto_resume.py
 
   advance:
     name: Advance one frozen stage
