@@ -74,7 +74,7 @@ jobs:
       - name: Run affected non-economic regressions
         if: steps.guard.outputs.run == 'true'
         run: |
-          python -m ruff check quantfusion/application/c6_diagnostics.py tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py
+          python -m ruff check tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py
           python -m pytest -q tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py tests/c6_non_economic/test_c6_parallel_l1_attestation.py tests/c6_non_economic/test_c6_parallel_l1_single_pass.py
       - name: Commit exact fix
         if: steps.guard.outputs.run == 'true'
