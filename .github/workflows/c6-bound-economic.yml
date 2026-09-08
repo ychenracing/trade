@@ -342,7 +342,7 @@ jobs:
   run:
     name: Execute frozen binding
     needs: [base_recovery_guard, parallel_l1]
-    if: inputs.binding_id != 'c6.synthetic.resume' && needs.base_recovery_guard.result == 'success' && (needs.parallel_l1.result == 'success' || needs.parallel_l1.result == 'skipped')
+    if: ${{ !cancelled() && inputs.binding_id != 'c6.synthetic.resume' && needs.base_recovery_guard.result == 'success' && (needs.parallel_l1.result == 'success' || needs.parallel_l1.result == 'skipped') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
