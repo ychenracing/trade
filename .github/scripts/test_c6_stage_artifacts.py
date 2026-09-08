@@ -22,20 +22,20 @@ class WorkflowBudgetTests(unittest.TestCase):
 
 class ArtifactSelectionTests(unittest.TestCase):
     def setUp(self):
-        self.record = {'workflow_binding_id': 'c6.base.l1', 'logical_run_id': 'c6-v27-base-l1',
+        self.record = {'workflow_binding_id': 'c6.base.l1', 'logical_run_id': 'c6-v29-base-l1',
                        'stage': 'L1', 'source_revision': relay.BASE, 'candidate_id': 'C6-Base',
                        'runtime': {'runner_image_os': 'ubuntu24', 'runner_image_version': 'synthetic',
                                    'python_version': '3.12.14'}}
         self.run = {'id': 42, 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
                     'event': 'workflow_dispatch', 'path': '.github/workflows/c6-bound-economic.yml',
                     'workflow_id': 349948458, 'head_branch': relay.ANCHOR, 'head_sha': relay.WORKFLOW,
-                    'display_title': 'c6-bound-c6.base.l1-c6-v27-base-l1-a0'}
-        self.seal = {'id': 100, 'name': 'c6-bound-c6-v27-base-l1-a0'}
-        self.shards = [{'id': i, 'name': f'c6-core-c6-v27-base-l1-a0-shard-{i}'} for i in range(12)]
+                    'display_title': 'c6-bound-c6.base.l1-c6-v29-base-l1-a0'}
+        self.seal = {'id': 100, 'name': 'c6-bound-c6-v29-base-l1-a0'}
+        self.shards = [{'id': i, 'name': f'c6-core-c6-v29-base-l1-a0-shard-{i}'} for i in range(12)]
         self.artifacts = self.shards[:6] + [self.seal] + self.shards[6:]
         self.manifest = {'kind': 'checkpoint', 'repository': relay.REPOSITORY,
                          'workflow_run_id': '42', 'workflow_run_attempt': '1',
-                         'binding_id': 'c6.base.l1', 'logical_run_id': 'c6-v27-base-l1',
+                         'binding_id': 'c6.base.l1', 'logical_run_id': 'c6-v29-base-l1',
                          'attempt_id': 'a0', 'source_revision': relay.BASE, 'candidate_id': 'C6-Base',
                          'run_bindings_revision': relay.R_COMMIT, 'workflow_revision': relay.WORKFLOW,
                          **self.record['runtime']}
@@ -58,7 +58,7 @@ class ArtifactSelectionTests(unittest.TestCase):
 
     def test_missing_duplicate_and_wrong_attempt_fail_before_download(self):
         for artifacts in ([], self.shards, self.artifacts + [dict(self.seal, id=101)],
-                          self.shards + [dict(self.seal, name='c6-bound-c6-v27-base-l1-a1')]):
+                          self.shards + [dict(self.seal, name='c6-bound-c6-v29-base-l1-a1')]):
             with self.subTest(artifacts=artifacts), self.assertRaisesRegex(ValueError, 'missing/ambiguous producer artifact'):
                 self.artifacts = artifacts
                 self.read()
@@ -136,8 +136,8 @@ class AutoResumeSelectionTests(unittest.TestCase):
                     'workflow_id': 349948458, 'path': '.github/workflows/c6-bound-economic.yml',
                     'repository': {'full_name': relay.REPOSITORY},
                     'head_repository': {'full_name': relay.REPOSITORY},
-                    'display_title': 'c6-bound-c6.base.l1-c6-v27-base-l1-a0'}
-        self.seal = {'id': 100, 'name': 'c6-bound-c6-v27-base-l1-a0', 'expired': False}
+                    'display_title': 'c6-bound-c6.base.l1-c6-v29-base-l1-a0'}
+        self.seal = {'id': 100, 'name': 'c6-bound-c6-v29-base-l1-a0', 'expired': False}
         self.shards = [{'id': i, 'name': f'c6-core-shard-{i}', 'expired': False} for i in range(12)]
         self.artifacts = self.shards + [self.seal]
         self.downloads = []
@@ -163,8 +163,8 @@ class AutoResumeSelectionTests(unittest.TestCase):
     def test_multi_artifact_result_and_successor_reach_only_exact_seal(self):
         for attempt in ('a0', 'r1-' + 'a' * 12):
             with self.subTest(attempt=attempt):
-                self.run['display_title'] = 'c6-bound-c6.base.l1-c6-v27-base-l1-' + attempt
-                self.seal['name'] = 'c6-bound-c6-v27-base-l1-' + attempt
+                self.run['display_title'] = 'c6-bound-c6.base.l1-c6-v29-base-l1-' + attempt
+                self.seal['name'] = 'c6-bound-c6-v29-base-l1-' + attempt
                 self.downloads.clear()
                 with self.assertRaises(self.SealReached):
                     self.auto.main()
@@ -173,7 +173,7 @@ class AutoResumeSelectionTests(unittest.TestCase):
     def test_missing_duplicate_expired_and_wrong_attempt_fail_closed(self):
         for artifacts in ([], self.shards, self.artifacts + [dict(self.seal, id=101)],
                           self.shards + [dict(self.seal, expired=True)],
-                          self.shards + [dict(self.seal, name='c6-bound-c6-v27-base-l1-a1')]):
+                          self.shards + [dict(self.seal, name='c6-bound-c6-v29-base-l1-a1')]):
             with self.subTest(artifacts=artifacts):
                 self.artifacts = artifacts
                 with self.assertRaisesRegex(ValueError, 'missing or ambiguous sealed artifact'):
