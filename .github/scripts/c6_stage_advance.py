@@ -16,6 +16,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 REPOSITORY = 'ychenracing/trade'
@@ -254,7 +255,21 @@ class Relay:
             f"c6-bound-{record['workflow_binding_id']}-")
         artifacts = [artifact for artifact in artifacts if artifact.get('name') == artifact_name]
         require(len(artifacts) == 1, 'missing/ambiguous producer artifact')
-        export = self.store._export(run['id'], artifacts[0])
+        started = datetime.now(timezone.utc)
+        for attempt in range(2):
+            print(json.dumps({'stage': 'load_sealed_export', 'record_id': record_id,
+                              'run_id': run['id'], 'transport_attempt': attempt + 1}), flush=True)
+            try:
+                export = self.store._export(run['id'], artifacts[0])
+                break
+            except zipfile.BadZipFile:
+                if attempt:
+                    raise
+                print(json.dumps({'stage': 'retry_truncated_sealed_export', 'record_id': record_id,
+                                  'run_id': run['id']}), flush=True)
+        print(json.dumps({'stage': 'sealed_export_loaded', 'record_id': record_id,
+                          'run_id': run['id'], 'elapsed_seconds':
+                          round((datetime.now(timezone.utc) - started).total_seconds(), 3)}), flush=True)
         self.exports.append(export)
         m = export.manifest
         expected = {'repository': REPOSITORY, 'workflow_run_id': str(run['id']), 'workflow_run_attempt': '1',
@@ -272,6 +287,9 @@ class Relay:
         require(len(payload_names) == 1 and len(export.files) == 2, 'result file set differs')
         raw = export.files[payload_names.pop()]
         payload = self.stream.load_object(raw)
+        print(json.dumps({'stage': 'sealed_payload_loaded', 'record_id': record_id,
+                          'run_id': run['id'], 'elapsed_seconds':
+                          round((datetime.now(timezone.utc) - started).total_seconds(), 3)}), flush=True)
         self.bound.validate_result_payload(payload, record, self.p)
         require((record['stage'] in {'L2', 'L4'}) == (decision is not None), 'stage/decision presence differs')
         d_identity, implementation = (None, None) if decision is None else decision
@@ -301,6 +319,9 @@ class Relay:
         else:
             require((digest['exit_code'], payload['acceptance_status'], payload['canonical']) in
                     ((0, 'accepted', True), (2, 'rejected', False)), 'official result status/exit mismatch')
+        print(json.dumps({'stage': 'sealed_result_authenticated', 'record_id': record_id,
+                          'run_id': run['id'], 'elapsed_seconds':
+                          round((datetime.now(timezone.utc) - started).total_seconds(), 3)}), flush=True)
         claim = {k: digest[k] for k in ('record_id', 'artifact_path', 'artifact_byte_size',
                  'artifact_full_byte_sha256', 'canonical_result_payload_sha256')}
         claim.update({k: m[k] for k in ('candidate_id', 'workflow_run_id', 'logical_run_id', 'attempt_id')})
