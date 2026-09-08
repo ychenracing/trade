@@ -264,6 +264,29 @@ class NativeExportTests(unittest.TestCase):
         self.assertEqual(claim['artifact_full_byte_sha256'], self.digest['artifact_full_byte_sha256'])
         self.assertEqual(claim['record_id'], 'synthetic.selected.l2')
 
+    def test_v2_non_l4_payload_uses_schema_and_zero_exit_as_completion_contract(self):
+        schema = self.p['schema_catalog']['definitions']['fixture']['wire_schema']
+        schema['properties'].pop('complete')
+        schema['required'].remove('complete')
+        value = {'kind': 'synthetic-stage-transport'}
+        self.stream.write_json(self.payload, value)
+        self.digest = self.bound.build_digest(
+            stage='L2', record_id=self.record['record_id'],
+            binding_signature=self.digest['binding_signature'],
+            p_identity=self.pid, r_revision=relay.R_COMMIT,
+            source_revision=relay.BASE, source_tree='1' * 40,
+            d_identity=self.decision, implementation=self.implementation,
+            artifact_path=self.bound.resolve_attempt_paths(
+                self.record, 'a0')['payload'].as_posix(),
+            artifact_bytes=self.payload,
+            payload_schema=self.record['canonical_payload_schema'],
+            payload=value, exit_code=0,
+        )
+        self.digest_path.write_bytes(
+            self.contract.canonical_json_bytes(self.digest))
+        payload, _, _ = self.read()
+        self.assertEqual(payload, value)
+
     def test_checkpoint_does_not_advance_even_when_workflow_succeeded(self):
         self.manifest['kind'] = 'checkpoint'
         self.assertIsNone(self.read())
