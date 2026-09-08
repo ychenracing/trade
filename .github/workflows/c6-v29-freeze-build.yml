@@ -1,18 +1,18 @@
-name: C6 v27 Freeze Build
+name: C6 v29 Freeze Build
 
 on:
   push:
-    branches: [codex/c6-v27-freeze-build-20260908]
+    branches: [codex/c6-v29-freeze-build-20260908]
     paths:
-      - .github/scripts/build_c6_v27_from_v26.py
-      - .github/workflows/c6-v27-freeze-build.yml
+      - .github/scripts/build_c6_v29_from_v27.py
+      - .github/workflows/c6-v29-freeze-build.yml
 
 permissions:
   actions: read
   contents: write
 
 concurrency:
-  group: c6-v27-freeze-build-20260908
+  group: c6-v29-freeze-build-20260908
   cancel-in-progress: false
 
 jobs:
@@ -32,21 +32,21 @@ jobs:
         run: test "$(python -c 'import platform; print(platform.python_version())')" = '3.12.14'
       - name: Install locked dependencies
         run: python -m pip install --require-hashes -r requirements-lock.txt
-      - name: Build immutable W27 and derive v27 freeze builder
+      - name: Verify immutable W29 and derive v29 freeze builder
         run: |
-          python -m py_compile .github/scripts/build_c6_v27_from_v26.py
-          python .github/scripts/build_c6_v27_from_v26.py
-          python -m py_compile /tmp/build_c6_v27_freeze.py
-      - name: Build validate and atomically publish P27 I_B27 I_S27 R27
+          python -m py_compile .github/scripts/build_c6_v29_from_v27.py
+          python .github/scripts/build_c6_v29_from_v27.py
+          python -m py_compile /tmp/build_c6_v29_freeze.py
+      - name: Build validate and atomically publish P29 I_B29 I_S29 R29
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python /tmp/build_c6_v27_freeze.py
+        run: python /tmp/build_c6_v29_freeze.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: c6-v27-freeze-receipt-${{ github.run_id }}
+          name: c6-v29-freeze-receipt-${{ github.run_id }}
           path: |
-            c6-v27-freeze-receipt.json
-            c6-v27-anchor-receipt.txt
+            c6-v29-freeze-receipt.json
+            c6-v29-anchor-receipt.txt
           if-no-files-found: ignore
           retention-days: 90
