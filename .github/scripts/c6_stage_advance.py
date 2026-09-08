@@ -1,4 +1,4 @@
-"""Advance only PR63's frozen C6 v26 stages; never replay, tune, or merge a strategy.
+"""Advance only PR63's frozen C6 v27 stages; never replay, tune, or merge a strategy.
 
 The existing bound runner owns economics and same-logical checkpoint continuation.
 This separate controller consumes complete sealed results using that runner's exact
@@ -20,20 +20,20 @@ from pathlib import Path
 
 REPOSITORY = 'ychenracing/trade'
 PR = 63
-P_COMMIT = 'a56a97b56cf1479b46dcc258416255f6ac19b571'
-BASE = '2d7b6e2a153dcb3bc359f0ca75908e6a0c7e9631'
-S_SOURCE = '8c83a242481f510f3d5cba977de4628903011c62'
-R_COMMIT = '85e7b3158f130e2f475de1bd67081ac3629739f1'
-R_SHA256 = '228f14921d8899371a2c499fd8440fdbcc332af1d6c31b33e00ff62f088bf43e'
-WORKFLOW = 'f77d7d4f91e3816d5cde705cbb2f50255aa9200e'
-ANCHOR = 'codex/c6-v26-workflow-anchor'
-D_REF = 'codex/c6-selection-v26'
-EXECUTION_VERSION = 'v26'
+P_COMMIT = 'e02089ec12c25a8912f2adf0cf9c53f3b844069b'
+BASE = '24682791cbe96acc69d36cd0dcfc42e69d61bcda'
+S_SOURCE = 'd6b06596f3280d0e8ce3573d481cae99443ae866'
+R_COMMIT = '1744434eac1c80bb1d74fa0d92fb13193aab9062'
+R_SHA256 = '24589d93159c0725706b055f6cd68cb2624ca9b064bc8b4bb5065536723b1757'
+WORKFLOW = '3a0eb31775d633b0a8dea431207c141ae1f290cc'
+ANCHOR = 'codex/c6-v27-workflow-anchor'
+D_REF = 'codex/c6-selection-v27'
+EXECUTION_VERSION = 'v27'
 P_PATH = 'artifacts/diagnostics/c6-preregistration.json'
 R_PATH = 'artifacts/diagnostics/c6-run-bindings.json'
 D_PATH = 'artifacts/diagnostics/c6-selection.json'
-REFS = {'codex/c6-preregistration-v26': P_COMMIT, 'codex/c6-base-v26': BASE,
-        'codex/c6-s-v26': S_SOURCE, 'codex/c6-evidence-v26': R_COMMIT, ANCHOR: WORKFLOW}
+REFS = {'codex/c6-preregistration-v27': P_COMMIT, 'codex/c6-base-v27': BASE,
+        'codex/c6-s-v27': S_SOURCE, 'codex/c6-evidence-v27': R_COMMIT, ANCHOR: WORKFLOW}
 INPUTS = {'source_revision', 'run_bindings_revision', 'workflow_revision', 'binding_id',
           'candidate_id', 'logical_run_id', 'attempt_id', 'resume_from', 'resume_workflow_run_id',
           'd_commit', 'd_selection_blob_oid', 'd_selection_file_sha256', 'producer_identity_json',
