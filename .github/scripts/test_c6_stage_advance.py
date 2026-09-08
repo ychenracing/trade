@@ -212,8 +212,8 @@ class NativeExportTests(unittest.TestCase):
                                  'checkpoint_wrapper_path_template': '{attempt_root}/checkpoint.json',
                                  'child_checkpoint_path_template': '{attempt_root}/child-checkpoint.bin.gz'}}
         self.p = {'schema_catalog': {'schema_version': 2, 'definitions': {'fixture': {'wire_schema': {
-                      'type': 'object', 'properties': {'kind': {'const': 'synthetic-stage-transport'}, 'complete': {'const': True}},
-                      'required': ['kind', 'complete'], 'additionalProperties': False}}}},
+                      'type': 'object', 'properties': {'kind': {'const': 'synthetic-stage-transport'}},
+                      'required': ['kind'], 'additionalProperties': False}}}},
                   'scenario_manifests': {'L2_EXACT_SCENARIO_IDS': {'ids': ['synthetic']}}}
         self.pid = {'commit': '3' * 40, 'tree': '4' * 40, 'blob': '5' * 40, 'sha256': '6' * 64}
         self.decision = {'commit': '7' * 40, 'selection_blob_oid': '8' * 40, 'selection_file_sha256': '9' * 64}
@@ -226,7 +226,7 @@ class NativeExportTests(unittest.TestCase):
                          'd_commit': self.decision['commit'], 'd_selection_blob_oid': self.decision['selection_blob_oid'],
                          'd_selection_file_sha256': self.decision['selection_file_sha256']}
         self.payload = self.root / 'payload.json.gz'
-        self.stream.write_json(self.payload, {'kind': 'synthetic-stage-transport', 'complete': True})
+        self.stream.write_json(self.payload, {'kind': 'synthetic-stage-transport'})
         ids = self.bound.execution_item_ids(self.record, self.p)
         signature = self.bound.runtime_binding_signature({'record_signature': self.record['record_signature'],
             'run_bindings_revision': relay.R_COMMIT, **{k: self.manifest[k] for k in
@@ -261,6 +261,7 @@ class NativeExportTests(unittest.TestCase):
     def test_actual_native_digest_signature_schema_and_compressed_transport(self):
         payload, claim, _ = self.read()
         self.assertEqual(payload['kind'], 'synthetic-stage-transport')
+        self.assertNotIn('complete', payload)
         self.assertEqual(claim['artifact_full_byte_sha256'], self.digest['artifact_full_byte_sha256'])
         self.assertEqual(claim['record_id'], 'synthetic.selected.l2')
 
