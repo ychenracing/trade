@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   targeted-fix:
-    if: github.event.head_commit.message != 'fix(c6): type preregistration path in recovered L1'
+    if: github.sha == '7c816ba366a84fb6dd431bd710dd9db0b489aabe'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -36,7 +36,6 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           source = Path('quantfusion/application/c6_diagnostics.py')
           text = source.read_text(encoding='utf-8')
           old = '    parser.add_argument("--preregistration", required=True)\n'
@@ -44,14 +43,13 @@ jobs:
           if text.count(old) != 1:
               raise SystemExit(f'expected one parser target, found {text.count(old)}')
           source.write_text(text.replace(old, new), encoding='utf-8')
-
           test = Path('tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py')
           text = test.read_text(encoding='utf-8')
-          import_old = 'from __future__ import annotations\n\nfrom quantfusion.application.c6_diagnostics import build_parser\n'
-          import_new = 'from __future__ import annotations\n\nfrom pathlib import Path\n\nfrom quantfusion.application.c6_diagnostics import build_parser\n'
-          if text.count(import_old) != 1:
+          old_import = 'from __future__ import annotations\n\nfrom quantfusion.application.c6_diagnostics import build_parser\n'
+          new_import = 'from __future__ import annotations\n\nfrom pathlib import Path\n\nfrom quantfusion.application.c6_diagnostics import build_parser\n'
+          if text.count(old_import) != 1:
               raise SystemExit('unexpected recovery CLI import block')
-          text = text.replace(import_old, import_new)
+          text = text.replace(old_import, new_import)
           anchor = '    assert args.source_revision == "b" * 40\n'
           if text.count(anchor) != 1:
               raise SystemExit('unexpected recovery CLI assertion block')
@@ -62,14 +60,10 @@ jobs:
         run: |
           git diff --check
           test "$(git diff --name-only | sort)" = $'quantfusion/application/c6_diagnostics.py\ntests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py'
-          git diff -- quantfusion/application/c6_diagnostics.py tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py
       - name: Run affected non-economic regressions
         run: |
           python -m ruff check quantfusion/application/c6_diagnostics.py tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py
-          python -m pytest -q \
-            tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py \
-            tests/c6_non_economic/test_c6_parallel_l1_attestation.py \
-            tests/c6_non_economic/test_c6_parallel_l1_single_pass.py
+          python -m pytest -q tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py tests/c6_non_economic/test_c6_parallel_l1_attestation.py tests/c6_non_economic/test_c6_parallel_l1_single_pass.py
       - name: Commit exact fix
         run: |
           git config user.name github-actions[bot]
