@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import sys
 import unittest
+import zipfile
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('artifact_relay', HERE / 'c6_stage_advance.py')
@@ -60,6 +61,17 @@ class ArtifactSelectionTests(unittest.TestCase):
         self.artifacts = [self.seal]
         self.assertIsNone(self.read())
         self.assertEqual(self.downloads, [(42, self.seal)])
+
+    def test_truncated_transport_is_retried_once_before_validation(self):
+        def flaky_export(run_id, artifact):
+            self.downloads.append((run_id, artifact))
+            if len(self.downloads) == 1:
+                raise zipfile.BadZipFile('truncated transport')
+            return SimpleNamespace(manifest=self.manifest)
+
+        self.instance.store._export = flaky_export
+        self.assertIsNone(self.read())
+        self.assertEqual(self.downloads, [(42, self.seal), (42, self.seal)])
 
     def test_checkpoint_successor_uses_exact_attempt_not_a0(self):
         attempt = 'r1-' + 'a' * 12
