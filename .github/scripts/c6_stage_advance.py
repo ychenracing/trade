@@ -315,7 +315,10 @@ class Relay:
             payload=self.bound.result_payload(payload, record['stage'], self.p), exit_code=digest['exit_code'])
         require(digest == expected_digest, 'result digest/signature differs')
         if record['stage'] != 'L4':
-            require(digest['exit_code'] == 0 and payload['complete'] is True, 'producer is not complete')
+            # P's closed non-L4 schemas intentionally have no separate
+            # completion flag. A successful exact producer plus a sealed,
+            # schema-valid payload and matching zero-exit digest is complete.
+            require(digest['exit_code'] == 0, 'producer result exit is not successful')
         else:
             require((digest['exit_code'], payload['acceptance_status'], payload['canonical']) in
                     ((0, 'accepted', True), (2, 'rejected', False)), 'official result status/exit mismatch')
