@@ -2,8 +2,8 @@
   "schema_version": 2,
   "kind": "c6_causal_risk_closure_preregistration",
   "status": "frozen_before_implementation_or_economic_dispatch",
-  "experiment_id": "c6-causal-risk-closure-17x958-v19",
-  "frozen_at": "2026-09-06T01:15:31Z",
+  "experiment_id": "c6-causal-risk-closure-17x958-v27",
+  "frozen_at": "2026-09-08T00:54:00Z",
   "authority": {
     "repository": "ychenracing/trade",
     "branch": "codex/c6-causal-risk-closure-v11",
@@ -49,8 +49,8 @@
       66,
       67
     ],
-    "base_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
-    "base_tree": "f7ce66f6eae35f178259ebd83e2ef14e05359b9f",
+    "base_revision": "3b4b9c2554b2ac54d065173d3889040a30bc6e89",
+    "base_tree": "9e7c9f53a1a3b00b133754fda7b6362cffbfae92",
     "history_bridge_revision": "3475cf3ac625e5375715fe1c522657cd882fafb2",
     "restart_checkpoint_revision": "159c6c70c7b3114779c4102aec9aab4529eacbac",
     "preregistration_path": "artifacts/diagnostics/c6-preregistration.json",
@@ -205,10 +205,199 @@
           "cloud_resume_proof": "Reuse unchanged v17 cross-version chain and artifact9972209195; no redundant probe."
         },
         "selection": "Fixed Base residuals -> all-residual S qualification if needed -> eligible S L1 -> mechanical D -> selected L2 -> official17/958; no third candidate or tuning."
+      },
+      "v22_parallel_shard_stream_repair": {
+        "classification": "A_parallel_shard_records_stream_transport_after_B_flow_fix",
+        "invalid_execution_revision": "v21",
+        "invalid_bound_run_id": 34115292050,
+        "invalid_economic_evidence_policy": "retain immutable v21 bytes; no sealed economic result exists; import zero records; never native-rerun/relabel/use for residual/S/D/L2/L4",
+        "correctness_main": "3b4b9c2554b2ac54d065173d3889040a30bc6e89",
+        "corrected_transition_reference": "artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json",
+        "workflow_anchor": "f9da08afebf22b3dc03a1fb3a0ec351a79adf42c",
+        "parallel_l1": {
+          "shard_count": 12,
+          "partition": "whole frozen checkpoint_every=10 worker chunks round-robin by chunk ordinal",
+          "workers_per_shard": 4,
+          "aggregate": "same-workflow exact union/hash/schema/formula revalidation and frozen-order reconstruction",
+          "checkpoint_import": "none"
+        },
+        "economic_hypotheses_changed": false,
+        "frozen_economic_counts": {
+          "L1_unique_scenarios": 765,
+          "Base_evaluations": 3831,
+          "Base_execution_items": 3875,
+          "official_scenarios": 958
+        },
+        "hard_drawdown_gate": 0.18,
+        "prior_frozen_identities": {
+          "P": "1dbcd6709470c2212919164cb39aa02859314dce",
+          "I_B": "b41b6fbc551903221353271024a38ca42e7c2e19",
+          "I_S": "c89842bc3df1eefcc5f3f6d4a250c2b62323393d",
+          "R": "6d68e9b91fe5f93c6535718c886242da75ffae26",
+          "workflow": "f9da08afebf22b3dc03a1fb3a0ec351a79adf42c"
+        },
+        "live_main_at_freeze": "5b5efea8abcd3a7722b2a05aed19e21b03a7c608",
+        "all_parallel_shards_succeeded": 12,
+        "sealed_economic_result": false,
+        "aggregate_failure": "records root array decoded as one JSON record and exceeded the unchanged 64 MiB per-record limit",
+        "repair": "stream only shard records as FileArray; retain the 64 MiB limit and exact per-record partition/hash/schema/preregistration/union validation",
+        "pr63_fix_head": "04ed41b04c2214f3287f6b944c250abba5004b30",
+        "pr63_exact_head_ci": 34125997027,
+        "v21_imported_records": 0
+      },
+      "v27_recovered_shard_attestation": {
+        "classification": "A_runner_interruption_plus_parallel_semantic_attestation",
+        "invalid_execution_revision": "v22",
+        "invalid_bound_run_id": 34128460919,
+        "invalid_central_job_id": 101789958390,
+        "invalid_economic_result_policy": "no sealed Base22 result/checkpoint exists; import zero result/checkpoint records; never native-rerun or relabel Base22",
+        "superseded_predispatch_v25": {
+          "P": "d6e76889e36f9efdc2685eb43aa57dff50ac1521",
+          "I_B": "f811cf8d0f0093b3148900bd0fbb96a9e67f9b51",
+          "I_S": "3d890d6d501c77a48a9ce46047d504b4f4838b46",
+          "R": "71748de130d31d132e69999645e3285f81a651f9",
+          "workflow": "8db7981012416d6a8fe4c4394e68051d8c293336",
+          "economic_dispatches": 0,
+          "sealed_economic_results": 0,
+          "result_or_checkpoint_imported_records": 0,
+          "classification": "A_dispatch_anchor_validation_failure",
+          "dispatch_branch": "codex/c6-dispatch/c6-v25-base-l1/c6.base.l1/a0",
+          "dispatch_commit": "f5a4a98afbb603957e86a77cb1695899a6a99632",
+          "dispatch_envelope_run_id": 34166096907,
+          "failed_job_id": 101877301635,
+          "bound_economic_runs": 0,
+          "reason": "The sole immutable v25 a0 envelope failed closed before dispatch because W23 still hard-coded the historical v21 trusted workflow ref. No bound economic workflow, checkpoint, or result was created; v25 is retained as forensic pre-dispatch evidence and superseded by v26."
+        },
+        "superseded_engineering_v26": {
+          "P": "a56a97b56cf1479b46dcc258416255f6ac19b571",
+          "I_B": "2d7b6e2a153dcb3bc359f0ca75908e6a0c7e9631",
+          "I_S": "8c83a242481f510f3d5cba977de4628903011c62",
+          "R": "85e7b3158f130e2f475de1bd67081ac3629739f1",
+          "workflow": "f77d7d4f91e3816d5cde705cbb2f50255aa9200e",
+          "classification": "A_deterministic_cli_preregistration_path_typing_failure",
+          "dispatch_branch": "codex/c6-dispatch/c6-v26-base-l1/c6.base.l1/a0",
+          "dispatch_commit": "b40d1a14f757c4703dae327a4c2e2ec0547ef261",
+          "dispatch_envelope_run_id": 34170560344,
+          "bound_run_id": 34170566443,
+          "recovered_core_evaluations": 3825,
+          "recovered_shard_attestations_success": 12,
+          "central_failed_job_id": 101891187197,
+          "sealed_economic_results": 0,
+          "sealed_checkpoints": 0,
+          "result_or_checkpoint_imported_records": 0,
+          "reruns": 0,
+          "reason": "The sole immutable v26 Base a0 recovered and semantically attested all 12 exact Base22 core shards without recomputing the 3825 core evaluations, then failed deterministically in the central recovered-L1 CLI because --preregistration was parsed as str while the path consumer required Path.read_bytes(). No sealed result or checkpoint was created; v26 is immutable forensic engineering evidence and is superseded by v27."
+        },
+        "prior_frozen_identities": {
+          "P": "c50216f70cba21d830b6feb2079ed68039821ecf",
+          "I_B": "addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7",
+          "I_S": "884851bdba4a5372c5272b28bd4df3e30b5824b9",
+          "R": "ea6dfa36b9796df7e4078d6f8d88b539a54072e3",
+          "workflow": "f9da08afebf22b3dc03a1fb3a0ec351a79adf42c"
+        },
+        "workflow_anchor": "3a0eb31775d633b0a8dea431207c141ae1f290cc",
+        "recovered_intermediate_policy": {
+          "source_run_id": 34128460919,
+          "source_binding": "c6.base.l1",
+          "source_revision": "addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7",
+          "source_workflow_revision": "f9da08afebf22b3dc03a1fb3a0ec351a79adf42c",
+          "successful_shard_jobs": 12,
+          "reused_core_evaluations": 3825,
+          "base_evaluations_total": 3831,
+          "base_result_or_checkpoint_imported_records": 0,
+          "v19_imported_records": 0,
+          "v21_imported_records": 0,
+          "artifacts": [
+            {
+              "shard_index": 0,
+              "artifact_id": 10024330850,
+              "archive_digest": "sha256:6418073aefd56eeb6dc92a7e1a3adafbf84c4b1fd8559628d878d244e9dbe8db"
+            },
+            {
+              "shard_index": 1,
+              "artifact_id": 10023438649,
+              "archive_digest": "sha256:6cc87e127e50e80d136d7e82e9a25d4ebca4640338a34f96301cfe8235a08d31"
+            },
+            {
+              "shard_index": 2,
+              "artifact_id": 10023713395,
+              "archive_digest": "sha256:33a58d98e02f2fb7f9da68b483b681a19edf4d18fb382f0c54c9afe3511ece77"
+            },
+            {
+              "shard_index": 3,
+              "artifact_id": 10023684086,
+              "archive_digest": "sha256:cbf20254308aa273f904ead8e5c2168355a3e43a31147e87efbf69aa1e536f5d"
+            },
+            {
+              "shard_index": 4,
+              "artifact_id": 10023697635,
+              "archive_digest": "sha256:bdc2a88db800adcfade4b07bbeece8ed1864e4816855c2b214f546828bb59710"
+            },
+            {
+              "shard_index": 5,
+              "artifact_id": 10024300356,
+              "archive_digest": "sha256:232c334a3607392073bb5945a223287791fa9ef227fe0ec0f7b3ed9c159ca77a"
+            },
+            {
+              "shard_index": 6,
+              "artifact_id": 10023650878,
+              "archive_digest": "sha256:d7c4928c767d34cba6e0c7e8ac3316a42a9d12dba09645904d148e2c66377324"
+            },
+            {
+              "shard_index": 7,
+              "artifact_id": 10022784784,
+              "archive_digest": "sha256:f8cff24b50c13341b64bce5397df1f09825a54b6344e47f3e398763f2629f572"
+            },
+            {
+              "shard_index": 8,
+              "artifact_id": 10023716462,
+              "archive_digest": "sha256:1a2f640104a81044ace3f9dcc21991d4c61c68dfa6ff6d9a4861db38832b7cc4"
+            },
+            {
+              "shard_index": 9,
+              "artifact_id": 10023686351,
+              "archive_digest": "sha256:1e4ea7babc79c833b200152f1b9ad0bd0ddbde813163fb1909a31fa10d45837a"
+            },
+            {
+              "shard_index": 10,
+              "artifact_id": 10024256138,
+              "archive_digest": "sha256:eadb1218d868f7ccda9e2f1dbf2bec85f8c68ff2f052b00dfca49e6bac9caf3a"
+            },
+            {
+              "shard_index": 11,
+              "artifact_id": 10024209166,
+              "archive_digest": "sha256:d80514f7782a021f6c4801807ed6d9b1278054ba30c33fb9c0d61fce02231598"
+            }
+          ]
+        },
+        "validation": {
+          "producer_semantic_validation": "full validate_checkpoint_item before Base22 shard upload",
+          "consumer_semantic_validation": "full validate_checkpoint_item independently per recovered shard under I_B23/P23, producing byte-bound validation.json",
+          "central_validation": "single-pass hash/schema/partition/union/frozen-order plus exact compressed-shard attestation verification",
+          "shard_bytes_mutable": false
+        },
+        "profiling_evidence": {
+          "run_id": 34144700261,
+          "shard_index": 7,
+          "record_count": 320,
+          "load_seconds": 31.064624,
+          "identity_second_pass_seconds": 15.04835,
+          "hash_schema_third_pass_seconds": 40.435521,
+          "semantic_fourth_pass_seconds": 377.58922,
+          "measured_total_seconds": 464.137715
+        },
+        "economic_hypotheses_changed": false,
+        "frozen_economic_counts": {
+          "L1_unique_scenarios": 765,
+          "Base_evaluations": 3831,
+          "Base_execution_items": 3875,
+          "official_scenarios": 958
+        },
+        "hard_drawdown_gate": 0.18
       }
     }
   },
-  "purpose": "Authorized engineering recovery of immutable invalid v11 under docs/C6_RECOVERY_CONTRACT.md. Repair real native metadata and checkpoint semantic boundaries before large execution, authenticate real cloud continuation, retain seen-data provenance, and reconstruct distinct Base/S identities. Existing economic definitions, 765/3831/3875 manifests, formal 17/958 gates, tolerance, locks and mechanical selection remain unchanged. All old objects and forensic artifacts remain immutable. No cross-source record import: replay the 530 old baseline prefix under this revision.",
+  "purpose": "Engineering-required v27 rebind after the Base22 GitHub runner interruption. Reuse only the twelve explicitly authenticated successful Base22 core shard intermediates, perform a second full byte-bound semantic validation in parallel, and preserve fixed Base/S economics, 765/3831/3875 manifests, official 17/958 gates, data, seeds, qualification and mechanical selection.",
   "claims_not_authorized": [
     "out_of_sample_generalization",
     "complete_membership_or_superset_stability",
@@ -326,12 +515,12 @@
   "transition_reference": {
     "incumbent_available": false,
     "route": "explicit_initial_baseline",
-    "path": "artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json",
+    "path": "artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json",
     "mode": "100644",
     "git_blob": "8590e24a50f1086ab91fb39f7462342029dca809",
-    "sha256": "63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c",
-    "source_revision": "acf4cccf4117edb35e6beb57aa2f9004476c8b93",
-    "source_fingerprint": "bc999a432587fe52360608d2779482a245eacb84c148d69f0f2ff02d55605406",
+    "sha256": "ffe023ae48de50225870c220d37208d1d1ee6c26ba6905a470093562153decbe",
+    "source_revision": "86fd22448b9aad9d5e6194c0c065c40d56d7bddd",
+    "source_fingerprint": "5e94ba6a8be97c10ae94e8363b22477a22a2318cf030d529c9886248303098aa",
     "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
     "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
     "scenario_count": 958,
@@ -2962,7 +3151,7 @@
     "execution_owner": "GitHub Actions C6 Bound Economic Run only",
     "workflow": {
       "path": ".github/workflows/c6-bound-economic.yml",
-      "dispatch_ref": "codex/c6-v17-workflow-anchor",
+      "dispatch_ref": "codex/c6-v27-workflow-anchor",
       "revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
       "file_mode": "100644",
       "file_git_blob": "28b649fd23f40648bfd3333fb5fd2d60d883d38c",
@@ -2993,10 +3182,10 @@
       ],
       "fencing_token_generation": "The pinned workflow generates a fresh 64-lowercase-hex run-local nonce with Python secrets before input validation, masks it immediately, and passes it only through GITHUB_ENV and the wrapper/child process environments.",
       "trusted_source_refs": {
-        "I_B": "codex/c6-base-v19",
-        "I_S": "codex/c6-s-v19"
+        "I_B": "codex/c6-base-v27",
+        "I_S": "codex/c6-s-v27"
       },
-      "trusted_evidence_ref": "codex/c6-evidence-v19",
+      "trusted_evidence_ref": "codex/c6-evidence-v27",
       "pre_import_anchor": "Before checkout or import, git ls-remote --refs on the public repository must return exactly source_revision at the candidate's trusted source ref. With empty D, evidence-ref head must equal run_bindings_revision. With nonempty D, evidence-ref head must equal d_commit.",
       "post_D_anchor": "For L2/L4 the checked-out D commit has exactly one parent equal run_bindings_revision and its only diff is A artifacts/diagnostics/c6-selection.json; any other parent/path/status is invalid."
     },
@@ -3045,7 +3234,7 @@
         "record_id": "c6.base.l1",
         "workflow_binding_id": "c6.base.l1",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v19-base-l1",
+        "logical_run_id": "c6-v27-base-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_B",
@@ -3068,6 +3257,13 @@
           "c6.base.l1",
           "--source-revision",
           "{SOURCE_REVISION}",
+          "--parallel-evaluations",
+          "../parallel-evaluations",
+          "--parallel-shard-count",
+          "12",
+          "--parallel-shard-source-revision",
+          "addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7",
+          "--parallel-validation-attestations-required",
           "--output",
           "{OUTPUT_PATH}"
         ],
@@ -3083,7 +3279,7 @@
         "record_id": "c6.s.qualification",
         "workflow_binding_id": "c6.s.qualification",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v19-s-qualification",
+        "logical_run_id": "c6-v27-s-qualification",
         "initial_attempt_id": "a0",
         "stage": "QUALIFICATION",
         "source_alias": "I_S",
@@ -3127,7 +3323,7 @@
         "record_id": "c6.base_plus_s.l1",
         "workflow_binding_id": "c6.base_plus_s.l1",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v19-base-plus-s-l1",
+        "logical_run_id": "c6-v27-base-plus-s-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_S",
@@ -3158,6 +3354,13 @@
           "{BASE_PRODUCER_EXPORT_PATH}",
           "--base-producer-artifact-sha256",
           "{BASE_PRODUCER_ARTIFACT_SHA256}",
+          "--parallel-evaluations",
+          "../parallel-evaluations",
+          "--parallel-shard-count",
+          "12",
+          "--parallel-shard-source-revision",
+          "{SOURCE_REVISION}",
+          "--parallel-validation-attestations-required",
           "--output",
           "{OUTPUT_PATH}"
         ],
@@ -3177,7 +3380,7 @@
         "record_id": "c6.base.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v19-base-l2",
+        "logical_run_id": "c6-v27-base-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_B",
@@ -3215,7 +3418,7 @@
         "record_id": "c6.base_plus_s.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v19-base-plus-s-l2",
+        "logical_run_id": "c6-v27-base-plus-s-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_S",
@@ -3253,7 +3456,7 @@
         "record_id": "c6.base.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v19-base-l4",
+        "logical_run_id": "c6-v27-base-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_B",
@@ -3299,7 +3502,7 @@
         "record_id": "c6.base_plus_s.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v19-base-plus-s-l4",
+        "logical_run_id": "c6-v27-base-plus-s-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_S",
@@ -3397,7 +3600,7 @@
         ],
         "field_types": {
           "path": "literal .github/workflows/c6-bound-economic.yml",
-          "dispatch_ref": "literal codex/c6-v17-workflow-anchor",
+          "dispatch_ref": "literal codex/c6-v27-workflow-anchor",
           "revision": "literal d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
           "mode": "literal 100644",
           "git_blob": "literal 28b649fd23f40648bfd3333fb5fd2d60d883d38c",
@@ -3569,8 +3772,8 @@
           "equal_across_all_records": "literal ordered array [P,workflow,resolved_inputs,runtime.runner_image_os,runtime.runner_image_version,runtime.python_version,runtime.dependency_lock,runtime.workers,runtime.process_map_order,runtime.checkpoint_every] whose named values must be deeply equal across all seven records",
           "equal_within_source_alias": "literal ordered array [source_revision,source_tree,source_blob_identities] whose named values must be deeply equal among every I_B record and separately among every I_S record",
           "permitted_record_differences": "literal ordered array [record_id,workflow_binding_id,candidate_id,logical_run_id,initial_attempt_id,stage,source_alias,source_revision,source_tree,source_blob_identities,entrypoint,argv,runtime_late_slots,scenario_manifest_identity,synthetic_control_manifest_identity,evaluation_manifest_identity,item_manifest_contract,producer_policy,decision_policy,attempt_policy,paths,canonical_payload_schema,exit_semantics,record_signature] and no others",
-          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v19,I_S:codex/c6-s-v19}",
-          "trusted_evidence_ref": "literal codex/c6-evidence-v19",
+          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v27,I_S:codex/c6-s-v27}",
+          "trusted_evidence_ref": "literal codex/c6-evidence-v27",
           "validation_policy": "literal deep_compare_before_any_dispatch; unknown path or unlisted difference invalid"
         },
         "array_order": {
@@ -3608,7 +3811,7 @@
           "dispatch_deadline_utc": "literal 2026-11-23T15:55:00Z; every initial or resume workflow created_at must be <= this instant"
         },
         "array_order": {},
-        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v17-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
+        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v27-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
       },
       "R_paths": {
         "type": "object",
@@ -3935,7 +4138,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-base-v19",
+      "ref": "codex/c6-base-v27",
       "stages": [
         "I_B_frozen"
       ],
@@ -3948,7 +4151,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-s-v19",
+      "ref": "codex/c6-s-v27",
       "stages": [
         "I_S"
       ],
@@ -3961,7 +4164,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-evidence-v19",
+      "ref": "codex/c6-evidence-v27",
       "stages": [
         "R",
         "D"
@@ -3992,7 +4195,7 @@
     {
       "event": "workflow_dispatch",
       "workflow": "C6 Bound Economic Run",
-      "workflow_ref": "codex/c6-v17-workflow-anchor",
+      "workflow_ref": "codex/c6-v27-workflow-anchor",
       "workflow_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
       "stages": [
         "L1_Base",
@@ -4090,7 +4293,7 @@
     },
     {
       "event": "workflow_run",
-      "ref": "codex/c6-v17-workflow-anchor",
+      "ref": "codex/c6-v27-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
@@ -4108,7 +4311,7 @@
     },
     {
       "event": "schedule",
-      "ref": "codex/c6-v17-workflow-anchor",
+      "ref": "codex/c6-v27-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
@@ -4126,7 +4329,7 @@
     },
     {
       "event": "workflow_dispatch",
-      "ref": "codex/c6-v17-workflow-anchor",
+      "ref": "codex/c6-v27-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
@@ -4162,6 +4365,9 @@
       "quantfusion/application/c6_bound_run.py",
       "quantfusion/application/c6_contract.py",
       "quantfusion/application/c6_diagnostics.py",
+      "quantfusion/application/c6_parallel_l1.py",
+      "quantfusion/application/c6_parallel_l1_cli.py",
+      "quantfusion/application/c6_parallel_l1_validate_cli.py",
       "quantfusion/application/c6_predicates.py",
       "quantfusion/engine/causal.py",
       "quantfusion/engine/data_flow.py",
@@ -4181,14 +4387,18 @@
       "tests/c6_non_economic/test_c6_contract.py",
       "tests/c6_non_economic/test_c6_diagnostics.py",
       "tests/c6_non_economic/test_c6_fixed_reference_admission.py",
+      "tests/c6_non_economic/test_c6_parallel_l1.py",
+      "tests/c6_non_economic/test_c6_parallel_l1_attestation.py",
+      "tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py",
+      "tests/c6_non_economic/test_c6_parallel_l1_single_pass.py",
       "tests/c6_non_economic/test_c6_recovery_boundaries.py",
       "tests/c6_non_economic/test_c6_retained_winner.py",
       "tests/contract/test_repository_hygiene.py"
     ],
     "I_B_diff_budget": {
-      "maximum_changed_paths": 25,
-      "maximum_added_lines": 11000,
-      "maximum_deleted_lines": 250
+      "maximum_changed_paths": 32,
+      "maximum_added_lines": 11183,
+      "maximum_deleted_lines": 49
     },
     "I_S_allowed_paths": [
       "quantfusion/application/c6_s_qualification.py",
@@ -4200,8 +4410,8 @@
     ],
     "I_S_diff_budget": {
       "maximum_changed_paths": 6,
-      "maximum_added_lines": 1000,
-      "maximum_deleted_lines": 100
+      "maximum_added_lines": 750,
+      "maximum_deleted_lines": 2
     },
     "forbidden_paths_or_classes": [
       ".github/workflows/**",
@@ -4322,9 +4532,9 @@
     },
     "P_allowed_paths": [
       "artifacts/diagnostics/c6-preregistration.json",
+      "artifacts/diagnostics/c6-recovery-engineering-checkpoint.json",
       "artifacts/diagnostics/c6-v10-contract-review.json",
       "artifacts/diagnostics/c6-v11-recovery-assessment.json",
-      "artifacts/diagnostics/c6-recovery-engineering-checkpoint.json",
       "docs/C6_RECOVERY_CONTRACT.md"
     ],
     "budget_basis": {
@@ -4389,8 +4599,8 @@
       "object_oid": "lowercase hexadecimal Git object OID emitted by ls-tree"
     },
     "manifest_algorithm": "Read the entire tracked tree using git-ls-tree -rz --full-tree semantics; remove only exact A_ALLOWLIST paths; construct each object with exactly manifest_record_exact_keys and no others; sort records by decoded raw path bytes; serialize the record array with json.dumps(records, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False) plus one LF encoded as UTF-8; SHA-256 the exact bytes.",
-    "base_manifest_entry_count": 217,
-    "base_economic_tree_sha256": "1811a4822ad621e5020531112fff397deaba26edd7ddde9e151ea448d8f63c29",
+    "base_manifest_entry_count": 222,
+    "base_economic_tree_sha256": "fc07aca1d1673f7e42baea149154fd132c6033e2348be5e18ce1ab668cccdcef",
     "required_proof": "git diff --raw -z C A touches only allowed 100644 add/modify paths and economic_tree_hash(C) equals economic_tree_hash(A)",
     "source_revision_in_artifact": "C_even_if_A_exists",
     "fallback": "If source/head validation or required CI would rerun L4, keep A null and retain the sealed workflow artifact externally."
@@ -4482,8 +4692,8 @@
     },
     "quantfusion/engine/ensemble_allocation.py": {
       "mode": "100644",
-      "git_blob": "e86f182ddad28e6555d7135985f6810e6115dee3",
-      "sha256": "2914f4dbe4abe2a86dc85c7c96d6084c340b3680080e0548665cd567e0d03ddb"
+      "git_blob": "b09f29c077fbbe136eaecdcf27e12014ade3f9f8",
+      "sha256": "70cc9a932c11fdbfd417e02b8b3d0e4c0acf3175671891f94ab30f1af20c6371"
     },
     "quantfusion/engine/universe_selection.py": {
       "mode": "100644",
