@@ -13,6 +13,13 @@ relay = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(relay)
 
 
+class WorkflowBudgetTests(unittest.TestCase):
+    def test_advance_budget_covers_full_native_result_validation(self):
+        workflow = (HERE.parent / 'workflows' / 'c6-stage-advance.yml').read_text()
+        advance = workflow.split('\n  advance:\n', 1)[1]
+        self.assertIn('\n    timeout-minutes: 360\n', advance)
+
+
 class ArtifactSelectionTests(unittest.TestCase):
     def setUp(self):
         self.record = {'workflow_binding_id': 'c6.base.l1', 'logical_run_id': 'c6-v27-base-l1',

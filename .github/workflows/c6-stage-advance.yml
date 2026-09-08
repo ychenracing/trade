@@ -72,7 +72,9 @@ jobs:
     name: Advance one frozen stage
     if: github.repository == 'ychenracing/trade' && github.ref_name == 'main' && (github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'advance') || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    # Base27's 642 MB sealed result loaded successfully, but full native
+    # schema/formula validation exceeded the former 90-minute job budget.
+    timeout-minutes: 360
     permissions:
       actions: write
       contents: write
