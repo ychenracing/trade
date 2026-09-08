@@ -1,0 +1,115 @@
+name: C6 Runtime Recovery Preflight
+on:
+  push:
+    branches: [codex/c6-v30-runtime-preflight-20260909]
+    paths: [.github/workflows/c6-runtime-recovery-preflight.yml]
+permissions:
+  actions: read
+  contents: read
+concurrency:
+  group: c6-runtime-recovery-preflight-20260909
+  cancel-in-progress: false
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: dfed1e6584b0b0e039bd720ff6eff32348123eab
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+      - name: Record actual runtime without economic execution
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, platform, subprocess
+          from pathlib import Path
+          assert platform.python_version() == '3.12.14'
+          source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert source == 'dfed1e6584b0b0e039bd720ff6eff32348123eab'
+          lock_hash = hashlib.sha256(Path('requirements-lock.txt').read_bytes()).hexdigest()
+          assert lock_hash == '22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434'
+          assert os.environ.get('ImageOS') == 'ubuntu24'
+          receipt = dict(shard=int(os.environ['SHARD']), source=source, run_id=os.environ['GITHUB_RUN_ID'], run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], workflow_sha=os.environ['GITHUB_SHA'], image_os=os.environ['ImageOS'], image_version=os.environ['ImageVersion'], python=platform.python_version(), machine=platform.machine(), libc=platform.libc_ver(), dependency_lock_sha256=lock_hash, economic_dispatches=0, sealed_results_created=0)
+          Path('runtime-receipt.json').write_text(json.dumps(receipt, sort_keys=True, indent=2)+'\n')
+          print(json.dumps(receipt, sort_keys=True))
+          PY
+      - name: Install the exact dependency lock on representative runner
+        if: matrix.shard == 0
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Run affected native contract and recovery tests without economics
+        if: matrix.shard == 0
+        run: |
+          python -m pytest -q tests/c6_non_economic/test_c6_contract.py tests/c6_non_economic/test_c6_bound_run.py tests/c6_non_economic/test_c6_parallel_l1_attestation.py tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py > runtime-tests.txt 2>&1
+          cat runtime-tests.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-runtime-${{ github.run_id }}-${{ matrix.shard }}
+          path: |
+            runtime-receipt.json
+            runtime-tests.txt
+          retention-days: 90
+          if-no-files-found: error
+  aggregate:
+    needs: runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ae8803b4df4f8b7d65812e89db59626d03d2429d
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: c6-runtime-${{ github.run_id }}-*
+          path: runtime-observations
+      - name: Verify cohort and preserve compact engineering recovery inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', 'repos/ychenracing/trade/'+path], text=True))
+          out = Path('recovery-inputs'); out.mkdir()
+          for comment_id, filename in [(5579535549, 'watch-contract.md'), (5579901968, 'heartbeat.md')]:
+              payload = api(f'issues/comments/{comment_id}')
+              (out/filename).write_text(payload['body'])
+          assert 'TRADE_C6_WATCH_EXECUTION_CONTRACT_20260908_END' in (out/'watch-contract.md').read_text()
+          pr = api('pulls/63')
+          (out/'pr63.md').write_text(pr['body'])
+          for key, path in [('main', 'git/ref/heads/main'), ('base29_run', 'actions/runs/34280658425'), ('base29_jobs', 'actions/runs/34280658425/jobs?per_page=100'), ('base29_artifacts', 'actions/runs/34280658425/artifacts?per_page=100'), ('v29_receipt', 'actions/artifacts/10076681761')]:
+              (out/(key+'.json')).write_text(json.dumps(api(path), sort_keys=True, indent=2)+'\n')
+          assert json.loads((out/'base29_run.json').read_text())['status'] == 'completed'
+          builder = subprocess.check_output(['git','show','ae8803b4df4f8b7d65812e89db59626d03d2429d:.github/scripts/build_c6_v29_from_v27.py'])
+          (out/'build_c6_v29_from_v27.py').write_bytes(builder)
+          for name, ref, path in [('P29.json','8eaca66fc1f617e2a7f52caa422f99d6c3a8729f','artifacts/diagnostics/c6-preregistration.json'), ('R29.json','9e7e77c37dcf8a1531c223238bfc48cdcfd45ee4','artifacts/diagnostics/c6-run-bindings.json'), ('recovery-contract.md','7aa0b5e606bc13f757539a1f78ec16e708b0fb97','docs/C6_RECOVERY_CONTRACT.md')]:
+              (out/name).write_bytes(subprocess.check_output(['git','show',ref+':'+path]))
+          observations = [json.loads(p.read_text()) for p in Path('runtime-observations').rglob('runtime-receipt.json')]
+          assert len(observations) == 12 and {v['shard'] for v in observations} == set(range(12))
+          assert all(v['run_id'] == os.environ['GITHUB_RUN_ID'] and v['run_attempt'] == os.environ['GITHUB_RUN_ATTEMPT'] and v['workflow_sha'] == os.environ['GITHUB_SHA'] for v in observations)
+          versions = sorted({v['image_version'] for v in observations} | {os.environ['ImageVersion']})
+          report = dict(observations=sorted(observations,key=lambda v:v['shard']), aggregate_image=os.environ['ImageVersion'], all_images=versions, cohort_matches_observed_new_image=versions==['20260907.300.1'], future_fleet_stability_guaranteed=False, economic_dispatches=0, frozen_refs_published=0)
+          (out/'runtime-cohort.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({k:v for k,v in report.items() if k!='observations'},sort_keys=True))
+          assert report['cohort_matches_observed_new_image'], 'hosted image rollout not stable in this bounded sample; do not dispatch new economics'
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-runtime-recovery-${{ github.run_id }}
+          path: recovery-inputs/
+          retention-days: 90
+          if-no-files-found: error
