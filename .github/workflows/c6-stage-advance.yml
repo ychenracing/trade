@@ -5,12 +5,14 @@ on:
     paths:
       - .github/scripts/c6_stage_advance.py
       - .github/scripts/test_c6_stage_advance.py
+      - .github/scripts/test_c6_stage_artifacts.py
       - .github/workflows/c6-stage-advance.yml
   push:
     branches: [main, codex/c6-stage-advance-v27]
     paths:
       - .github/scripts/c6_stage_advance.py
       - .github/scripts/test_c6_stage_advance.py
+      - .github/scripts/test_c6_stage_artifacts.py
       - .github/workflows/c6-stage-advance.yml
   workflow_dispatch:
     inputs:
@@ -57,7 +59,9 @@ jobs:
       - name: Exercise all mechanical branches and native sealed-result consumers
         env:
           PYTHONDONTWRITEBYTECODE: '1'
-        run: python -I -S relay/.github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+        run: |
+          python -I -S relay/.github/scripts/test_c6_stage_advance.py "$GITHUB_WORKSPACE/source"
+          python -I -S relay/.github/scripts/test_c6_stage_artifacts.py "$GITHUB_WORKSPACE/source"
 
   advance:
     name: Advance one frozen stage
