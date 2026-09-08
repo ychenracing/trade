@@ -70,13 +70,13 @@ class PlanningTests(unittest.TestCase):
 
 class DispatchTests(unittest.TestCase):
     def setUp(self):
-        self.record = {'workflow_binding_id': 'c6.s.qualification', 'logical_run_id': 'c6-v26-s-qualification',
+        self.record = {'workflow_binding_id': 'c6.s.qualification', 'logical_run_id': 'c6-v27-s-qualification',
                        'candidate_id': 'C6-Base+S', 'initial_attempt_id': 'a0',
                        'source_revision': '1' * 40,
                        'workflow': {'revision': '2' * 40, 'dispatch_ref': 'frozen'},
                        'runtime': {'runner_image_os': 'ubuntu24', 'runner_image_version': 'image', 'python_version': '3.12.14'}}
         self.claim = {'record_id': 'c6.base.l1', 'workflow_run_id': '42', 'attempt_id': 'a0',
-                      'logical_run_id': 'c6-v26-base-l1', 'artifact_full_byte_sha256': '3' * 64}
+                      'logical_run_id': 'c6-v27-base-l1', 'artifact_full_byte_sha256': '3' * 64}
 
     def test_exact_initial_dispatch_fields_and_producer(self):
         request = relay.dispatch_request(self.record, '4' * 40, self.claim, None)
@@ -105,7 +105,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual([key for key in result if result[key] != other[key]], ['d_commit'])
 
     def test_any_existing_attempt_blocks_initial_dispatch(self):
-        prefix = 'c6-bound-c6.s.qualification-c6-v26-s-qualification-'
+        prefix = 'c6-bound-c6.s.qualification-c6-v27-s-qualification-'
         for status in ('queued', 'in_progress', 'completed', 'waiting'):
             for suffix in ('a0', 'r1-' + 'a' * 12):
                 rows = [{'id': 1, 'display_title': prefix + suffix, 'status': status}]
@@ -116,9 +116,9 @@ class DispatchTests(unittest.TestCase):
 class ProbeTests(unittest.TestCase):
     def test_cancelled_latest_attempt_is_a_cheap_terminal_skip(self):
         history = [
-            {'id': 10, 'display_title': 'c6-bound-c6.base.l1-c6-v26-base-l1-r9',
+            {'id': 10, 'display_title': 'c6-bound-c6.base.l1-c6-v27-base-l1-r9',
              'status': 'completed', 'conclusion': 'success'},
-            {'id': 11, 'display_title': 'c6-bound-c6.base.l1-c6-v26-base-l1-r10',
+            {'id': 11, 'display_title': 'c6-bound-c6.base.l1-c6-v27-base-l1-r10',
              'status': 'completed', 'conclusion': 'cancelled'},
         ]
         ready, state = relay.probe_history(history)
@@ -130,7 +130,7 @@ class ProbeTests(unittest.TestCase):
 
     def test_successful_latest_attempt_can_be_inspected(self):
         history = [
-            {'id': 12, 'display_title': 'c6-bound-c6.base.l1-c6-v26-base-l1-r11',
+            {'id': 12, 'display_title': 'c6-bound-c6.base.l1-c6-v27-base-l1-r11',
              'status': 'completed', 'conclusion': 'success'},
         ]
         ready, state = relay.probe_history(history)
@@ -139,7 +139,7 @@ class ProbeTests(unittest.TestCase):
 
     def test_active_attempt_blocks_expensive_inspection(self):
         history = [
-            {'id': 13, 'display_title': 'c6-bound-c6.base.l1-c6-v26-base-l1-r12',
+            {'id': 13, 'display_title': 'c6-bound-c6.base.l1-c6-v27-base-l1-r12',
              'status': 'in_progress', 'conclusion': None},
         ]
         ready, state = relay.probe_history(history)
@@ -201,7 +201,7 @@ class NativeExportTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         self.record = {'record_id': 'synthetic.selected.l2', 'workflow_binding_id': 'c6.selected.l2',
-                       'logical_run_id': 'c6-v26-synthetic-l2', 'candidate_id': 'C6-Base', 'stage': 'L2',
+                       'logical_run_id': 'c6-v27-synthetic-l2', 'candidate_id': 'C6-Base', 'stage': 'L2',
                        'source_revision': relay.BASE, 'source_tree': '1' * 40, 'record_signature': '2' * 64,
                        'runtime': {'runner_image_os': 'ubuntu24', 'runner_image_version': 'synthetic', 'python_version': '3.12.14'},
                        'canonical_payload_schema': {'name': 'fixture', 'version': 2},
@@ -244,14 +244,14 @@ class NativeExportTests(unittest.TestCase):
         self.run = {'id': 42, 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
                     'event': 'workflow_dispatch', 'path': '.github/workflows/c6-bound-economic.yml', 'workflow_id': 349948458,
                     'head_branch': relay.ANCHOR, 'head_sha': relay.WORKFLOW,
-                    'display_title': 'c6-bound-c6.selected.l2-c6-v26-synthetic-l2-a0'}
+                    'display_title': 'c6-bound-c6.selected.l2-c6-v27-synthetic-l2-a0'}
         self.instance = relay.Relay.__new__(relay.Relay)
         self.instance.records = {self.record['record_id']: self.record}
         self.instance.p, self.instance.r = self.p, {'P': self.pid}
         self.instance.bound, self.instance.stream = self.bound, self.stream
         self.instance.exports, self.instance.cache = [], {}
         self.instance.store = SimpleNamespace(
-            _pages=lambda *a: [{'name': 'c6-bound-c6-v26-synthetic-l2-a0'}],
+            _pages=lambda *a: [{'name': 'c6-bound-c6-v27-synthetic-l2-a0'}],
             _export=lambda *a: self.bound.RemoteExport(42, self.manifest, self.contract.canonical_json_bytes(self.manifest),
                                                        {'payload.json.gz': self.payload, 'digest.json': self.digest_path}))
 
@@ -361,14 +361,14 @@ class APISafetyTests(unittest.TestCase):
         obj = relay.Relay.__new__(relay.Relay)
         obj.api = Fake()
         obj.records = {'c6.base.selected.l4': {
-            'workflow_binding_id': 'c6.selected.l4', 'logical_run_id': 'c6-v26-base-l4',
+            'workflow_binding_id': 'c6.selected.l4', 'logical_run_id': 'c6-v27-base-l4',
             'candidate_id': 'C6-Base', 'initial_attempt_id': 'a0', 'source_revision': relay.BASE,
             'workflow': {'revision': relay.WORKFLOW, 'dispatch_ref': relay.ANCHOR},
             'attempt_policy': {'dispatch_deadline_utc': '9999-01-01T00:00:00Z'},
             'runtime': {'runner_image_os': 'ubuntu24', 'runner_image_version': 'synthetic', 'python_version': '3.12.14'}},
             'c6.base.selected.l2': {'workflow_binding_id': 'c6.selected.l2'}}
         producer = {'record_id': 'c6.base.selected.l2', 'artifact_full_byte_sha256': '1' * 64,
-                    'attempt_id': 'a0', 'workflow_run_id': '42', 'logical_run_id': 'c6-v26-base-l2'}
+                    'attempt_id': 'a0', 'workflow_run_id': '42', 'logical_run_id': 'c6-v27-base-l2'}
         decision = {'commit': '2' * 40, 'selection_blob_oid': '3' * 40, 'selection_file_sha256': '4' * 64}
         return obj, producer, decision
 
