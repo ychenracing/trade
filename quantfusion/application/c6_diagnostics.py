@@ -866,7 +866,7 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
 def build_parser() -> argparse.ArgumentParser:
     """Return the command shape frozen for the R-bound diagnostic runner."""
     parser = argparse.ArgumentParser(description="Run an R-bound C6 diagnostic batch")
-    parser.add_argument("--preregistration", required=True)
+    parser.add_argument("--preregistration", required=True, type=Path)
     parser.add_argument("--bindings-file", required=True)
     parser.add_argument("--binding-record-id", required=True)
     parser.add_argument("--source-revision", required=True)

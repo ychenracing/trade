@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from quantfusion.application.c6_diagnostics import build_parser
 
 
@@ -26,6 +28,7 @@ def test_parallel_recovery_identity_is_explicit_in_diagnostics_argv() -> None:
             "out.json.gz",
         ]
     )
+    assert args.preregistration == Path("p.json")
     assert args.source_revision == "b" * 40
     assert args.parallel_shard_source_revision == "a" * 40
     assert args.parallel_validation_attestations_required is True
