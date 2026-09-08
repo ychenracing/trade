@@ -269,6 +269,7 @@ class NativeExportTests(unittest.TestCase):
         schema['properties'].pop('complete')
         schema['required'].remove('complete')
         value = {'kind': 'synthetic-stage-transport'}
+        self.payload.unlink()
         self.stream.write_json(self.payload, value)
         self.digest = self.bound.build_digest(
             stage='L2', record_id=self.record['record_id'],
