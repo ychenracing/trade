@@ -1,4 +1,4 @@
-"""Advance only PR63's frozen C6 v19 stages; never replay, tune, or merge a strategy.
+"""Advance only PR63's frozen C6 v29 stages; never replay, tune, or merge a strategy.
 
 The existing bound runner owns economics and same-logical checkpoint continuation.
 This separate controller consumes complete sealed results using that runner's exact
@@ -16,24 +16,25 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 REPOSITORY = 'ychenracing/trade'
 PR = 63
-P_COMMIT = '3611ac948287ee147ed40e77eda8ea01bab27a35'
-BASE = '168cd3856cc1b60c928fe54c4a826b6045df01e9'
-S_SOURCE = '00485e8ceb67f4105d76fa62368f583ce82a81c5'
-R_COMMIT = '4db5cadc90d450f513dfdda10e0436cf330c62f3'
-R_SHA256 = '9c7fb1a92d8e04c5b95d1d18503ccb4e313f3dde6a3fa73fe6f92e24830956ac'
-WORKFLOW = 'd8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4'
-ANCHOR = 'codex/c6-v17-workflow-anchor'
-D_REF = 'codex/c6-selection-v19'
-EXECUTION_VERSION = 'v19'
+P_COMMIT = '8eaca66fc1f617e2a7f52caa422f99d6c3a8729f'
+BASE = 'dfed1e6584b0b0e039bd720ff6eff32348123eab'
+S_SOURCE = '60d42b3931ccc7319a7cc815d363b9950e2586d7'
+R_COMMIT = '9e7e77c37dcf8a1531c223238bfc48cdcfd45ee4'
+R_SHA256 = '729b48e0a0fff0b3d09ae8f4651dbaf54fce5edd7e24299957962f258dbcff98'
+WORKFLOW = '01fb58613b44aee921c43291fe56203e76b52b0c'
+ANCHOR = 'codex/c6-v29-workflow-anchor'
+D_REF = 'codex/c6-selection-v29'
+EXECUTION_VERSION = 'v29'
 P_PATH = 'artifacts/diagnostics/c6-preregistration.json'
 R_PATH = 'artifacts/diagnostics/c6-run-bindings.json'
 D_PATH = 'artifacts/diagnostics/c6-selection.json'
-REFS = {'codex/c6-preregistration-v19': P_COMMIT, 'codex/c6-base-v19': BASE,
-        'codex/c6-s-v19': S_SOURCE, 'codex/c6-evidence-v19': R_COMMIT, ANCHOR: WORKFLOW}
+REFS = {'codex/c6-preregistration-v29': P_COMMIT, 'codex/c6-base-v29': BASE,
+        'codex/c6-s-v29': S_SOURCE, 'codex/c6-evidence-v29': R_COMMIT, ANCHOR: WORKFLOW}
 INPUTS = {'source_revision', 'run_bindings_revision', 'workflow_revision', 'binding_id',
           'candidate_id', 'logical_run_id', 'attempt_id', 'resume_from', 'resume_workflow_run_id',
           'd_commit', 'd_selection_blob_oid', 'd_selection_file_sha256', 'producer_identity_json',
@@ -248,8 +249,27 @@ class Relay:
                 and run['head_branch'] == ANCHOR and run['head_sha'] == WORKFLOW
                 and run['event'] == 'workflow_dispatch' and run['run_attempt'] == 1, 'producer workflow identity')
         artifacts = self.store._pages(f"actions/runs/{run['id']}/artifacts", 'artifacts')
+        # Core shards coexist with the seal. Select its exact logical-run/attempt
+        # name, then retain every native provenance, byte and payload check below.
+        artifact_name = 'c6-bound-' + run['display_title'].removeprefix(
+            f"c6-bound-{record['workflow_binding_id']}-")
+        artifacts = [artifact for artifact in artifacts if artifact.get('name') == artifact_name]
         require(len(artifacts) == 1, 'missing/ambiguous producer artifact')
-        export = self.store._export(run['id'], artifacts[0])
+        started = datetime.now(timezone.utc)
+        for attempt in range(2):
+            print(json.dumps({'stage': 'load_sealed_export', 'record_id': record_id,
+                              'run_id': run['id'], 'transport_attempt': attempt + 1}), flush=True)
+            try:
+                export = self.store._export(run['id'], artifacts[0])
+                break
+            except zipfile.BadZipFile:
+                if attempt:
+                    raise
+                print(json.dumps({'stage': 'retry_truncated_sealed_export', 'record_id': record_id,
+                                  'run_id': run['id']}), flush=True)
+        print(json.dumps({'stage': 'sealed_export_loaded', 'record_id': record_id,
+                          'run_id': run['id'], 'elapsed_seconds':
+                          round((datetime.now(timezone.utc) - started).total_seconds(), 3)}), flush=True)
         self.exports.append(export)
         m = export.manifest
         expected = {'repository': REPOSITORY, 'workflow_run_id': str(run['id']), 'workflow_run_attempt': '1',
@@ -267,6 +287,9 @@ class Relay:
         require(len(payload_names) == 1 and len(export.files) == 2, 'result file set differs')
         raw = export.files[payload_names.pop()]
         payload = self.stream.load_object(raw)
+        print(json.dumps({'stage': 'sealed_payload_loaded', 'record_id': record_id,
+                          'run_id': run['id'], 'elapsed_seconds':
+                          round((datetime.now(timezone.utc) - started).total_seconds(), 3)}), flush=True)
         self.bound.validate_result_payload(payload, record, self.p)
         require((record['stage'] in {'L2', 'L4'}) == (decision is not None), 'stage/decision presence differs')
         d_identity, implementation = (None, None) if decision is None else decision
@@ -292,10 +315,16 @@ class Relay:
             payload=self.bound.result_payload(payload, record['stage'], self.p), exit_code=digest['exit_code'])
         require(digest == expected_digest, 'result digest/signature differs')
         if record['stage'] != 'L4':
-            require(digest['exit_code'] == 0 and payload['complete'] is True, 'producer is not complete')
+            # P's closed non-L4 schemas have no separate completion field.
+            # Exact successful producer identity, schema, bytes, digest and
+            # zero exit jointly establish the frozen completion contract.
+            require(digest['exit_code'] == 0, 'producer result exit is not successful')
         else:
             require((digest['exit_code'], payload['acceptance_status'], payload['canonical']) in
                     ((0, 'accepted', True), (2, 'rejected', False)), 'official result status/exit mismatch')
+        print(json.dumps({'stage': 'sealed_result_authenticated', 'record_id': record_id,
+                          'run_id': run['id'], 'elapsed_seconds':
+                          round((datetime.now(timezone.utc) - started).total_seconds(), 3)}), flush=True)
         claim = {k: digest[k] for k in ('record_id', 'artifact_path', 'artifact_byte_size',
                  'artifact_full_byte_sha256', 'canonical_result_payload_sha256')}
         claim.update({k: m[k] for k in ('candidate_id', 'workflow_run_id', 'logical_run_id', 'attempt_id')})

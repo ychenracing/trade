@@ -15,7 +15,7 @@ from pathlib import Path
 
 REPOSITORY = "ychenracing/trade"
 WORKFLOW = "c6-bound-economic.yml"
-AUTO_ANCHOR = "codex/c6-v17-workflow-anchor"
+AUTO_ANCHOR = "codex/c6-v29-workflow-anchor"
 ARCHIVE_LIMIT = 4 * 1024 ** 3
 
 INPUT_NAMES = {
@@ -232,6 +232,10 @@ def main():
         run = github.read(f'actions/runs/{run["id"]}')
     validate_run_identity(run, github.read(f"actions/workflows/{WORKFLOW}"))
     artifacts = github.pages(f'actions/runs/{run["id"]}/artifacts', "artifacts")
+    # A bound run may also retain core shards; only its exact seal is eligible.
+    title = run["display_title"].split("-", 3)
+    require(len(title) == 4 and title[:2] == ["c6", "bound"] and title[2], "invalid producer title")
+    artifacts = [item for item in artifacts if item.get("name") == "c6-bound-" + title[3]]
     require(len(artifacts) == 1 and not artifacts[0]["expired"], "missing or ambiguous sealed artifact")
     manifest, files = github.artifact(artifacts[0]["id"])
     require(artifacts[0]["name"] == f'c6-bound-{manifest["logical_run_id"]}-{manifest["attempt_id"]}', "artifact name mismatch")
