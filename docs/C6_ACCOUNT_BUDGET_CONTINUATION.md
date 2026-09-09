@@ -153,6 +153,59 @@ to AB1-level action churn. Failure remains visible and must not be expanded;
 only a stable AB3 may receive a new formal identity and full applicable
 L1/L2/official17-958 validation.
 
+
+## AB3 deterministic rejection before integration
+
+Focused review 5158548491 found a correctness counterexample in the preregistered
+all-buy veto. At `E=90000,H=100000,G=0`, using the actual unchanged capacity
+function, default costs and one pending-buy book gives
+`K=66917.92294807367` while `ordinary_cap=90000`. The real
+`RecoverableDrawdownRiskManager` remains unlocked for five consecutive closes
+at 10% drawdown, but AB3 cancels every buy because the budget is binding. With
+no holdings or fills, equity cannot recover and the binding condition persists.
+This is an absorbing cash state outside the account lock contract.
+
+AB3 is therefore not eligible for source integration or formal expansion even
+if its already-dispatched fixed-eight diagnostic passes. Run 34392403676 remains
+valid historical diagnostic work and must not be cancelled or relabelled, but
+its result cannot override this synthetic correctness failure.
+
+## AB4 preregistration before implementation or results
+
+AB4 keeps AB3's nonbinding behavior, AB2's weakest-first minimum-sufficient
+sell planner, and the exact AB1 capacity formula, HWM/equity inputs, 0.82 floor,
+two configured daily-loss sessions, costs/minimum-fee reserve, locks, causal
+timestamps and next-open execution.
+
+Only binding-time buy admission changes. Let
+`headroom=max(0,K-G)`, computed from current marked gross before any queued
+sell. If `K == ordinary_cap`, leave the pending-buy batch unchanged for the
+existing canonical execution path. If `K < ordinary_cap`, apply the original
+common downward share scale
+`min(1, headroom / requested_pending_buy_notional)` to the entire already
+generated buy batch, then floor each retained buy to the A-share board lot.
+When `headroom=0`, all buys are vetoed naturally; when it is positive, a
+bounded buy may remain, preventing AB3's cash trap. Queued sells receive zero
+buying credit.
+
+This restores no old AB1 sell behavior and adds no selector, ranking,
+allocator, threshold, cooldown, lock relaxation/reset, date/symbol exception
+or parameter search. Existing canonical cash, total/symbol/group exposure,
+ADV, limit and suspension checks may only reduce the close-authorized batch
+further. Invalid values still fail closed; stronger sell instructions and
+actual account locks remain authoritative.
+
+Synthetic tests must first demonstrate: nonbinding buys remain unchanged;
+binding positive headroom retains a bounded lot-rounded batch; zero headroom
+vetoes buys without crediting queued sells; an unlocked zero-gross account at
+10% drawdown can admit positive risk; and AB2 sell/HWM/cash/next-open invariants
+remain intact. Then run the exact same fixed eight scenarios once after the
+already-running AB3 attempt terminates. The unchanged screens remain necessary:
+all MDD at most 18% plus tolerance, prefix-05 retention at least 0.99, other
+prefix retention at least 0.95, every order bucket at most 200, and materially
+less action churn than AB1. Only a stable locked AB4 may receive a new formal
+identity and complete L1/L2/official17-958 validation.
+
 ## Watch
 
 Original ID6a9e3c8f7fd48191acc3b5e6b5c7acf3. Maintain mandatory contract5579535549 and single heartbeat5579901968, with truthful trigger/executor and STARTED/YIELDED phases. Preserve hourly/Asia-Tokyo cadence. This manual session has no callable timer-management actions after bounded discovery despite installed Task Tool; updating GitHub's mandatory instruction is not a timer-settings readback or scheduled-consumption proof. The next manager-capable invocation must update/read back the same task prompt to this direction without creating a replacement. Missing timer management does not block independent GitHub engineering. Preserve effective single-writer ownership; no competing AB1 or duplicate economic attempt.
