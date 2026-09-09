@@ -1,71 +1,124 @@
-name: C6 AB5 Bounded Engineering and Diagnostic
+name: C6 v33 AB5 Frozen Source Validation
+
 on:
   push:
-    branches: [codex/c6-v30-selection-provenance-build]
-    paths:
-      - .github/scripts/build_c6_v30_selection_provenance.py
-      - .github/scripts/ab5_candidate/**
-      - .github/workflows/c6-v30-selection-provenance-build.yml
+    branches:
+      - codex/c6-v30-selection-provenance-build
+
 permissions:
-  contents: write
+  contents: read
+
 concurrency:
-  group: c6-v30-selection-provenance-build
+  group: c6-v33-ab5-source-validation
   cancel-in-progress: false
+
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     container:
       image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
-    defaults:
-      run:
-        shell: bash
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ github.sha }}
+          path: builder
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 3cfb63c6842d14f8cf102f6c3f52984ca27c1106
+          path: p
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 6619d71abf7317acdc7fba0236ee74291e9ae074
-          path: candidate
+          ref: ec04d46bf82d450bfb51878e1d2c8825d2f829f2
+          path: ib
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify exact runtime and current PR boundary
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 0583f5787868cdea9ca7b63bfeabd1fef1a9f1b7
+          path: is
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact runtime and frozen refs
         run: |
-          python -I -S - <<'PY'
-          import hashlib,platform,sys,sysconfig
-          from pathlib import Path
-          assert platform.python_version()=='3.12.14'
-          assert platform.machine()=='x86_64' and platform.libc_ver()==('glibc','2.36')
-          assert hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest()=='837a48d7afd08447fb43e28b282026fadb59368620072e57e01f66d12977e5ce'
-          lib=Path(sysconfig.get_config_var('LIBDIR'))/sysconfig.get_config_var('LDLIBRARY')
-          assert hashlib.sha256(lib.read_bytes()).hexdigest()=='57a3c0505572977cba024791b79fb07b787d761438befba3685339c81b5e07e6'
-          PY
-          test "$(git ls-remote https://github.com/ychenracing/trade.git refs/heads/codex/c6-causal-risk-closure-v11 | cut -f1)" = 6619d71abf7317acdc7fba0236ee74291e9ae074
+          test "$(python -c 'import platform; print(platform.python_version())')" = 3.12.14
+          test "$(git -C p rev-parse HEAD)" = 3cfb63c6842d14f8cf102f6c3f52984ca27c1106
+          test "$(git -C ib rev-parse HEAD)" = ec04d46bf82d450bfb51878e1d2c8825d2f829f2
+          test "$(git -C is rev-parse HEAD)" = 0583f5787868cdea9ca7b63bfeabd1fef1a9f1b7
+          test "$(git -C p rev-parse HEAD^)" = 3b4b9c2554b2ac54d065173d3889040a30bc6e89
+          test "$(git -C ib rev-parse HEAD^)" = 3cfb63c6842d14f8cf102f6c3f52984ca27c1106
+          test "$(git -C is rev-parse HEAD^)" = ec04d46bf82d450bfb51878e1d2c8825d2f829f2
+          test "$(git -C ib rev-parse HEAD^{tree})" = 2cb7f589b0bb9700dfb10d38a3bc2fb78d7b86a1
+          test "$(git -C is rev-parse HEAD^{tree})" = dee1fa5df6492010fcd5482ab0c84594895ac0cc
       - name: Install unchanged locked dependencies
-        run: python -m pip install --require-hashes -r candidate/requirements-lock.txt
-      - name: Derive exact preregistered candidate without touching refs
-        run: python .github/scripts/build_c6_v30_selection_provenance.py derive
-      - name: Run only affected native checks
-        working-directory: candidate
+        run: python -m pip install --require-hashes -r ib/requirements-lock.txt
+      - name: Validate preregistration and exact implementation boundaries
         run: |
-          git diff --cached --check
-          python -m compileall -q quantfusion tests/c6_non_economic/test_account_risk_budget.py
-          python -m pytest -q tests/c6_non_economic/test_account_risk_budget.py tests/unit/test_config_profiles.py tests/unit/test_internal_cash_flow_risk_bases.py tests/c6_non_economic/test_c6_retained_winner.py tests/c6_non_economic/test_c6_early_concentration.py tests/contract/test_architecture.py | tee ../ab5-proof/native-tests.txt
-          python -m ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion tests/c6_non_economic/test_account_risk_budget.py
-          pyright quantfusion
-      - name: Export verified content objects, never update a branch
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: python .github/scripts/build_c6_v30_selection_provenance.py publish
-      - name: Run registered nine-scenario control comparison only
-        run: python .github/scripts/build_c6_v30_selection_provenance.py diagnose
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path("ib").resolve()))
+          from quantfusion.application.c6_contract import strict_json_load, validate_preregistration
+          prereg = strict_json_load("p/artifacts/diagnostics/c6-preregistration.json")
+          validate_preregistration(prereg, repository="p")
+          assert prereg["experiment_id"] == "c6-causal-risk-closure-17x958-v33-ab5"
+          assert prereg["authority"]["recovery_continuation"]["account_budget_revision_v33"]["locked_diagnostic"]["run_id"] == 34410163617
+          PY
+          test "$(git -C p diff --name-status --no-renames HEAD^ HEAD)" = $'A\tartifacts/diagnostics/c6-preregistration.json'
+          test -z "$(git -C ib rev-list --merges --first-parent 3cfb63c6842d14f8cf102f6c3f52984ca27c1106..HEAD)"
+          test -z "$(git -C is rev-list --merges --first-parent ec04d46bf82d450bfb51878e1d2c8825d2f829f2..HEAD)"
+      - name: Run frozen Base engineering suite
+        working-directory: ib
+        run: |
+          python - <<'PY'
+          import json, subprocess
+          p=json.load(open("artifacts/diagnostics/c6-preregistration.json"))
+          subprocess.run(p["implementation_freeze"]["I_B_pytest_exact_argv"], check=True)
+          for argv in p["implementation_freeze"]["engineering_suite_common_exact_argv"]:
+              subprocess.run(argv, check=True)
+          PY
+      - name: Run frozen conditional-S engineering suite
+        working-directory: is
+        run: |
+          python - <<'PY'
+          import json, subprocess
+          p=json.load(open("artifacts/diagnostics/c6-preregistration.json"))
+          subprocess.run(p["implementation_freeze"]["I_S_pytest_exact_argv"], check=True)
+          for argv in p["implementation_freeze"]["engineering_suite_common_exact_argv"]:
+              subprocess.run(argv, check=True)
+          PY
+      - name: Publish validation receipt
+        if: success()
+        run: |
+          mkdir -p export
+          python - <<'PY'
+          import hashlib, json, pathlib, subprocess
+          def out(cwd,*args):
+              return subprocess.check_output(("git","-C",cwd,*args),text=True).strip()
+          receipt={
+            "kind":"C6_V33_AB5_FROZEN_SOURCE_VALIDATION",
+            "canonical":False,
+            "accepted":False,
+            "economic_dispatches":0,
+            "P":"3cfb63c6842d14f8cf102f6c3f52984ca27c1106",
+            "I_B":"ec04d46bf82d450bfb51878e1d2c8825d2f829f2",
+            "I_B_tree":"2cb7f589b0bb9700dfb10d38a3bc2fb78d7b86a1",
+            "I_S":"0583f5787868cdea9ca7b63bfeabd1fef1a9f1b7",
+            "I_S_tree":"dee1fa5df6492010fcd5482ab0c84594895ac0cc",
+            "python":"3.12.14",
+            "runtime_manifest":"sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970",
+            "preregistration_sha256":hashlib.sha256(pathlib.Path("p/artifacts/diagnostics/c6-preregistration.json").read_bytes()).hexdigest(),
+            "all_declared_engineering_checks_passed":True,
+          }
+          pathlib.Path("export/receipt.json").write_text(json.dumps(receipt,sort_keys=True,separators=(",",":"))+"\n")
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: c6-ab5-bounded-${{ github.run_id }}
-          path: ab5-proof/
-          if-no-files-found: error
+          name: c6-v33-ab5-source-validation-${{ github.run_id }}
+          path: export/*
+          if-no-files-found: warn
           retention-days: 90
-          overwrite: false
