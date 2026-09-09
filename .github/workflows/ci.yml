@@ -115,6 +115,7 @@ jobs:
           # forbidden here: adding a new test file must not silently make it
           # executable during the economic pre-freeze embargo.
           planned_c6_files = {
+              "tests/c6_non_economic/test_account_risk_budget.py",
               "tests/c6_non_economic/test_baseline_rebuild.py",
               "tests/c6_non_economic/test_c6_book_identity.py",
               "tests/c6_non_economic/test_c6_fixed_reference_admission.py",
@@ -170,6 +171,8 @@ jobs:
               "tests/c6_non_economic/test_c6_s_qualification.py",
           }
           required_c6_files = {"tests/c6_non_economic/test_baseline_rebuild.py"}
+          if Path("quantfusion/risk/account_budget.py").is_file():
+              required_c6_files.add("tests/c6_non_economic/test_account_risk_budget.py")
           if any(Path(path).is_file() for path in ib_markers):
               required_c6_files |= ib_required
           if any(Path(path).is_file() for path in is_markers):

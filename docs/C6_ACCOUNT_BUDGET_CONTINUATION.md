@@ -301,6 +301,39 @@ nine-scenario AB5 run after AB3 run 34392403676 reaches a terminal state. Its
 exact source, workflow receipt and artifact must be authenticated before any
 new formal identity or L1/L2 expansion.
 
+
+## AB5 locked diagnostic authentication and promotion to formal candidate
+
+Run [34410163617](https://github.com/ychenracing/trade/actions/runs/34410163617)
+completed at exact builder `acacb4eaaefac20533f1728194dd167070ac9e6f`.
+Its sole artifact `10127361435` has GitHub and independently recomputed ZIP
+SHA-256 `56d789e8b2e9508ca06a8e7ea8be134f0c96e2576e0f1a7324d83b11f765165b`.
+The receipt binds PR base `6619d71abf7317acdc7fba0236ee74291e9ae074`,
+prospective tree `8a9651c741bcbc9efc66dffabcfc493eae769bf3`, frozen Python
+3.12.14/runtime `sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970`,
+unchanged dependency lock `22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434`
+and data tree `85680349e9026a013042752dd7e4a2d54cf89059`. All nine
+published source blobs resolve; the run made zero branch writes and zero formal
+economic dispatches.
+
+All 69 affected native tests passed. The artifact contains the exact nine
+controls and nine AB5 rows; every terminal-equity and MDD recomputation agrees.
+Candidate absolute MDD ranged from 15.868264% to 17.990578%. The lowest wealth
+ratio was 1.007414 on `random-20260807-03-006`, `prefix-05` was 2.315090,
+and every other registered comparison exceeded 1.07. The largest
+date/symbol/side bucket count was 185 and budget fill records ranged from 10 to
+51, materially below AB1's 119--199. The mandatory AB4 counterexample
+`random-20260807-03-004` measured 17.796520%. AB5 therefore passes every
+preregistered locked diagnostic screen without changing a gate.
+
+This promotes the exact AB5 source blobs to a new formal candidate, not to
+accepted/canonical status. Integrating these blobs invalidates prior dependent
+economic evidence. The next required evidence is a separately bound complete
+applicable L1/L2 and official17/958 run using this exact economic source and the
+unchanged gates, followed by cash/HWM audit, final non-embargo checks and
+protected merge. The locked nine-scenario diagnostic remains noncanonical and
+cannot substitute for those stages.
+
 ## Watch
 
 Original ID6a9e3c8f7fd48191acc3b5e6b5c7acf3. Maintain mandatory contract5579535549 and single heartbeat5579901968, with truthful trigger/executor and STARTED/YIELDED phases. Preserve hourly/Asia-Tokyo cadence. This manual session has no callable timer-management actions after bounded discovery despite installed Task Tool; updating GitHub's mandatory instruction is not a timer-settings readback or scheduled-consumption proof. The next manager-capable invocation must update/read back the same task prompt to this direction without creating a replacement. Missing timer management does not block independent GitHub engineering. Preserve effective single-writer ownership; no competing AB1 or duplicate economic attempt.

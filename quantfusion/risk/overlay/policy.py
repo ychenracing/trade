@@ -14,4 +14,5 @@ class CrossMarketOverlay(
 ):
     """Evaluate cross-market evidence into immutable risk actions."""
 
-    C6_S_PRODUCTION = True
+    # Rejected S remains available only through its explicit frozen diagnostic path.
+    C6_S_PRODUCTION = False

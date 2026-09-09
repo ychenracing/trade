@@ -511,6 +511,8 @@ class ProductionReplayEngine:
         risk_state: dict | None = None,
     ) -> dict[str, Any]:
         """Run the explicit non-canonical C6 diagnostic entrypoint."""
+        if self.cfg.get("account_risk_budget_enabled", False):
+            raise ValueError("AB1 requires its own evidence identity, not a frozen C6 Base/S run")
         request = dict(self.validate_c6_diagnostic_request(diagnostic_request))
         diagnostic_symbols = dict(symbols_dict)
         if request["intervention_id"] == "W0_NO_601869":

@@ -378,6 +378,11 @@ class EnsembleOrchestrationMixin:
                 )
                 if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
                     cm_overlay.finalize_c6_s_queue(states, date, state_local_books=self._c6_feature_enabled("F0"))
+            if self.cfg.get("account_risk_budget_enabled", False):
+                self._apply_account_risk_budget(
+                    states, date, assets, float(portfolio_risk.lifetime_peak_assets),
+                    portfolio_risk_events,
+                )
             held = self._held_portfolio_symbols(states)
             self._record_c6_exposure(states, date, "official_sample")
             for state in states:
