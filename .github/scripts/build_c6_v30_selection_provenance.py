@@ -1,4 +1,4 @@
-"""Reuse the retired one-shot builder for authorized PR63 AB2, never v30 refs."""
+"""Reuse the retired one-shot builder for authorized PR63 AB3, never v30 refs."""
 from __future__ import annotations
 import contextlib
 import hashlib
@@ -14,23 +14,23 @@ import time
 import urllib.request
 from concurrent.futures import ProcessPoolExecutor
 
-BASE = '4e0efd3e52b8648c4625716c5311b9e2b680b954'
+BASE = '991eda56257942c0568adc846169f4a7c4d57c50'
 EXPECTED = {
  '.github/workflows/ci.yml': 'dafc30c29cf1f392909702930bcab4e1e5207aea',
  'quantfusion/config/engine.py': 'f378af34ecc311d7a11d674be0877c5bdc21d4c1',
  'quantfusion/config/overlay.py': '7a5e1bb2d4abfe9d24f598ee3ef0c5d36154a3ca',
- 'quantfusion/engine/ensemble_allocation.py': '8e26f209d244ac342d9d1c0aa6ff0c1965074f7c',
+ 'quantfusion/engine/ensemble_allocation.py': 'b20f0cbeddfc528149930a1c8ca357ef3fa093f6',
  'quantfusion/engine/ensemble_orchestration.py': '8ce5ad1b62a57a63185c3bacbbac9291378d2b15',
  'quantfusion/engine/replay.py': '1681a8dcb9811b77d58e532a9a2fdd0b3dffaeaf',
  'quantfusion/risk/overlay/policy.py': 'fefc1dd9f2735ddf7333fc66025e88939bc25eef',
- 'quantfusion/risk/account_budget.py': '48725487e86f6d98b69117f859727101ed5a70d1',
- 'tests/c6_non_economic/test_account_risk_budget.py': 'e71f6d2fff030494774366cf2a5647f0a21835d3',
+ 'quantfusion/risk/account_budget.py': '962f6085f20ac68bc73b50a24745329a3bbc881d',
+ 'tests/c6_non_economic/test_account_risk_budget.py': 'c56b12d4659ce16cf4ffb5cb16a02ee9272e8e84',
 }
 IDS = ('prefix-05','prefix-09','prefix-10','prefix-13','prefix-17',
        'add-one-13-601869','add-one-05-002384','random-20260807-03-006')
 SCRIPT_ROOT = Path(__file__).resolve().parent
 ROOT = Path.cwd() / 'candidate'
-PROOF = Path.cwd() / 'ab2-proof'
+PROOF = Path.cwd() / 'ab3-proof'
 
 def git(*args):
     return subprocess.check_output(['git','-C',str(ROOT),*args],text=True).strip()
@@ -49,19 +49,19 @@ def derive():
     assert git('rev-parse','HEAD:quantfusion') == '6df0af04b69157c2bd702dadc1fe2bdecf2dddbf'
     assert git('rev-parse','HEAD:tests') == '602cf6dbda8d0acb1adecfd4bbb2de40e157d210'
     assert (ROOT/'docs/C6_ACCOUNT_BUDGET_CONTINUATION.md').is_file()
-    patch = str(SCRIPT_ROOT/'ab2_candidate/existing.patch')
+    patch = str(SCRIPT_ROOT/'ab3_candidate/existing.patch')
     subprocess.run(['git','-C',str(ROOT),'apply','--check',patch],check=True)
     subprocess.run(['git','-C',str(ROOT),'apply',patch],check=True)
     for name,path in [('account_budget.py','quantfusion/risk/account_budget.py'),
                       ('test_account_risk_budget.py','tests/c6_non_economic/test_account_risk_budget.py')]:
         assert not (ROOT/path).exists()
-        shutil.copyfile(SCRIPT_ROOT/'ab2_candidate'/name, ROOT/path)
+        shutil.copyfile(SCRIPT_ROOT/'ab3_candidate'/name, ROOT/path)
     verify()
     git('add','--',*EXPECTED)
     assert set(git('diff','--cached','--name-only').splitlines()) == set(EXPECTED)
     PROOF.mkdir(exist_ok=True)
     (PROOF/'source.patch').write_text(git('diff','--cached','--binary','--full-index')+'\n')
-    receipt = dict(kind='AB2_ENGINEERING_AND_DIAGNOSTIC', canonical=False, accepted=False,
+    receipt = dict(kind='AB3_ENGINEERING_AND_DIAGNOSTIC', canonical=False, accepted=False,
         base=BASE, prospective_tree=git('write-tree'), source_blobs=EXPECTED,
         data_tree=git('rev-parse','HEAD:data'), lock_sha256=sha(ROOT/'requirements-lock.txt'),
         preregistration_sha256=sha(ROOT/'docs/C6_ACCOUNT_BUDGET_CONTINUATION.md'),
@@ -105,6 +105,7 @@ def evaluate(task):
             data_dir=str(MARKET_DATA_DIR),regime_data_dir=str(REGIME_DATA_DIR),indicator_state='warm')
     trades=result['trades']
     actions=[e for e in result['risk_events'] if e.get('event')=='account_budget_envelope' and e['new_reduction_orders']]
+    blocked=[e for e in result['risk_events'] if e.get('event')=='account_budget_envelope' and e['buy_shares_removed']]
     fills=[t for t in trades if 'account_budget_trim' in t.reason]
     breaches=result['drawdown_series'][result['drawdown_series'] < -0.18-1e-15]
     row={key:result[key] for key in ('total_return','max_drawdown','total_trades',
@@ -115,6 +116,8 @@ def evaluate(task):
         first_budget_action=actions[0]['date'] if actions else None,
         first_budget_fill=fills[0].date if fills else None,
         budget_fill_records=len(fills), budget_action_days=len(actions),
+        binding_buy_block_days=len(blocked),
+        buy_shares_removed=sum(e['buy_shares_removed'] for e in blocked),
         commission=sum(t.commission for t in trades),stamp_duty=sum(t.stamp_duty_cost for t in trades),
         equity_last_matches_final=abs(float(result['equity_curve']['assets'].iloc[-1])-result['final_assets'])<1e-8,
         mdd_matches_series=abs(float(result['drawdown_series'].min())-result['max_drawdown'])<1e-12)
@@ -142,7 +145,7 @@ def diagnose():
             control_mdd=control['max_drawdown'], candidate_mdd=candidate['max_drawdown'],
             mdd_screen_passed=abs(candidate['max_drawdown'])<=.18+1e-15,
             candidate_order_buckets=candidate['date_symbol_side_count']))
-    result=dict(schema_version=1,kind='AB2_FIXED_EIGHT_DIAGNOSTIC',canonical=False,accepted=False,
+    result=dict(schema_version=1,kind='AB3_FIXED_EIGHT_DIAGNOSTIC',canonical=False,accepted=False,
         complete=True,ordered_ids=list(IDS),source=json.loads((PROOF/'receipt.json').read_text()),
         rows=rows,comparisons=comparisons)
     (PROOF/'diagnostic.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')
