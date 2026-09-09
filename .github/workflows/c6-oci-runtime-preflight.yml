@@ -22,11 +22,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker pull --platform linux/amd64 python:3.12.14-bookworm
-          image="$(docker image inspect --format '{{index .RepoDigests 0}}' python:3.12.14-bookworm)"
+          image='python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970'
+          docker pull --platform linux/amd64 "$image"
           image_id="$(docker image inspect --format '{{.Id}}' "$image")"
           [[ "$image" =~ ^python@sha256:[0-9a-f]{64}$ ]]
           [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+          test "$image_id" = 'sha256:e8565fa265f973c06f0515fac7aa9d102edae01b5677d69216900b84029c6ad0'
           test "$(docker image inspect --format '{{.Architecture}}' "$image")" = amd64
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
@@ -53,11 +54,13 @@ jobs:
           ref: dfed1e6584b0b0e039bd720ff6eff32348123eab
           path: source
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ae977737b11aff0054371984dd348e5f2db9d458
           path: relay
           persist-credentials: false
+          fetch-depth: 0
       - name: Validate actual immutable userspace and native non-economic boundaries
         shell: bash
         env:
@@ -80,6 +83,7 @@ jobs:
           git config --global --add safe.directory /relay
           test "$(git -c safe.directory=/src rev-parse HEAD)" = dfed1e6584b0b0e039bd720ff6eff32348123eab
           test "$(sha256sum requirements-lock.txt | cut -d' ' -f1)" = 22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434
+          git -c safe.directory=/src rev-parse --verify "3b4b9c2554b2ac54d065173d3889040a30bc6e89^{tree}"
           python -c 'import platform; assert platform.python_version() == "3.12.14"'
           python -m pip install --require-hashes -r requirements-lock.txt > /out/dependencies.log 2>&1
           python -m pytest -q -p no:cacheprovider --basetemp=/tmp/c6-pytest tests/c6_non_economic/test_c6_contract.py tests/c6_non_economic/test_c6_bound_run.py tests/c6_non_economic/test_c6_parallel_l1_attestation.py tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py > /out/native-tests.log 2>&1
