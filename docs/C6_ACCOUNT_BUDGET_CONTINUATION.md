@@ -36,6 +36,61 @@ Fixed diagnostic set, registered before economic comparison: prefix-05,prefix-09
 
 A stable candidate still requires separately bound complete applicable L1/L2 and official17/958, audit, removal of temporary C6_PREFREEZE embargo, actual exact-HEAD checks/reviews/protection, selected-source integration, protected squash merge of original PR63 and main verification. New behavior invalidates dependent economic evidence. Do not claim completion at preregistration, synthetic tests, checkpoint or partial CI.
 
+## AB1 fixed-diagnostic result and rejection
+
+Run 34362249425 at builder source
+`7e182ec23b84930b271b496261c7fdcf9692a9aa` completed the 64 locked
+native tests and the registered eight-scenario comparison.  Unique artifact
+10110777329 has ZIP SHA-256
+`d6e7448a85a53d193e0bd601dab0493a6b6a6e863be0f231a4bd46ff5b984afa`;
+the receipt binds prospective tree
+`45a16227246073ce7b2f0c3c412db44b21b5776a`, the frozen OCI runtime,
+dependency lock and data tree.  It is diagnostic/noncanonical and dispatched
+no formal economics.
+
+AB1 put all eight sampled paths within 18% MDD, but already supplies three
+deterministic formal-gate counterexamples.  `prefix-05` retained only
+0.9200186 of control wealth, below the frozen 0.99 initial gate.  The
+other-prefix minimum was 0.8798962 on `prefix-10`, below 0.95.
+`add-one-05-002384` produced 238 date/symbol/side buckets, above the absolute
+200 maximum.  Candidate buckets were 107--238 versus 21--48 for controls, and
+most paths recorded 119--199 budget fills.  AB1 is rejected for
+`RETURN_IMPAIRMENT` and excessive action churn.  Workflow success and eight
+MDD screens do not make it accepted or canonical; do not run AB1 full L1/L2.
+
+## AB2 preregistration before implementation or results
+
+The common observed defect is action allocation, not a fitted cap threshold:
+AB1 applies the same proportional reduction independently to every live book,
+rounds each book upward by a board lot and repeatedly cuts strong and unrelated
+books.  AB2 keeps AB1's registered HWM/equity, 0.82 floor, two configured
+daily-loss sessions, existing cost/min-fee reserve, maximum total weight,
+pending-buy envelope, locks, close-known inputs and canonical next-open
+execution exactly unchanged.
+
+Only the sell planner changes.  Let required notional relief be
+`max(0, G-K)`.  Rank existing books weakest first using the already canonical
+mean allocation score; preserve deterministic tie order by score, symbol,
+state index and strategy.  Emit whole-book reductions until the residual
+relief fits one book, then emit the minimum remaining shares rounded upward to
+one 100-share lot and capped by that book's actual shares.  A full odd-lot exit
+remains legal.  Stronger pending sell instructions remain authoritative through
+the existing RiskAction consolidation.  AB2 adds no alpha signal, selector,
+allocator, threshold, cooldown, date/symbol rule or result-derived parameter.
+
+Synthetic tests must first prove minimum sufficient notional, weakest-first
+ordering, stable ties, one partial final book, stronger-sell preservation,
+unchanged buy-envelope behavior, no HWM/cash mutation and next-open
+fill/block semantics.  Then rerun the exact same eight registered scenario IDs
+against the equivalent control.  Required diagnostic screens are the actual
+frozen witnesses already exposed by AB1: every MDD at most 18%+tolerance,
+`prefix-05` wealth ratio at least 0.99, every other sampled prefix at least
+0.95, all sampled date/symbol/side buckets at most 200, and materially fewer
+budget actions than AB1.  These remain necessary diagnostic screens, not
+sufficient formal acceptance.  A failed AB2 remains visible and must not be
+expanded to a full matrix; a stable AB2 requires a new source/binding and all
+applicable formal L1/L2 and official17/958 gates.
+
 ## Watch
 
 Original ID6a9e3c8f7fd48191acc3b5e6b5c7acf3. Maintain mandatory contract5579535549 and single heartbeat5579901968, with truthful trigger/executor and STARTED/YIELDED phases. Preserve hourly/Asia-Tokyo cadence. This manual session has no callable timer-management actions after bounded discovery despite installed Task Tool; updating GitHub's mandatory instruction is not a timer-settings readback or scheduled-consumption proof. The next manager-capable invocation must update/read back the same task prompt to this direction without creating a replacement. Missing timer management does not block independent GitHub engineering. Preserve effective single-writer ownership; no competing AB1 or duplicate economic attempt.
