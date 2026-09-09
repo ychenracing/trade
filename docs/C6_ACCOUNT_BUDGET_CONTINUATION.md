@@ -275,6 +275,32 @@ and every one of the nine MDDs must be at most 18% plus tolerance. Failure is
 retained and not expanded; only a stable locked AB5 can receive a new formal
 identity and complete applicable L1/L2 and official17/958 validation.
 
+
+## AB5 local preview; locked evidence still pending
+
+The new board-gap-debit assertion was written first and failed under AB4 because
+the receipt had no current gap debit. The minimum AB5 implementation then made
+that assertion pass: in the synthetic binding case current gap debit was
+4,060, remaining gap headroom was 3,930, retained buy debit was 3,857 and the
+common buy scale was 0.193596. Compileall and diff validation passed. Pytest,
+ruff and the frozen Python runtime are not installed in this local environment,
+so their success is not claimed.
+
+A noncanonical local replay then evaluated the original eight plus the new
+`random-20260807-03-004` witness exactly once. All nine reconciled terminal
+equity/return and recomputed MDD. MDD ranged from 15.8683% to 17.9906%; the
+new witness fell from AB4's 18.1224% to 17.7965%. The lowest wealth ratio was
+1.007414 on `random-20260807-03-006`; the largest bucket count was 185 and
+budget fills were 10--51. Thus AB5 passes the preregistered local screen without
+changing the 18% or retention gates.
+
+These are direction-selection results, not accepted/canonical or locked
+evidence. Do not integrate AB5 into PR63 or start formal economics from them.
+The next authorized expensive action is one frozen native/synthetic and
+nine-scenario AB5 run after AB3 run 34392403676 reaches a terminal state. Its
+exact source, workflow receipt and artifact must be authenticated before any
+new formal identity or L1/L2 expansion.
+
 ## Watch
 
 Original ID6a9e3c8f7fd48191acc3b5e6b5c7acf3. Maintain mandatory contract5579535549 and single heartbeat5579901968, with truthful trigger/executor and STARTED/YIELDED phases. Preserve hourly/Asia-Tokyo cadence. This manual session has no callable timer-management actions after bounded discovery despite installed Task Tool; updating GitHub's mandatory instruction is not a timer-settings readback or scheduled-consumption proof. The next manager-capable invocation must update/read back the same task prompt to this direction without creating a replacement. Missing timer management does not block independent GitHub engineering. Preserve effective single-writer ownership; no competing AB1 or duplicate economic attempt.
