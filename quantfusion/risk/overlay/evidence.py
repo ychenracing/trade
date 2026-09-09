@@ -118,6 +118,480 @@ class OverlayEvidenceMixin:
             ),
         }
 
+    def _c6_return(
+        self, states: list, symbol: str, date: pd.Timestamp
+    ) -> tuple[float, str] | None:
+        frame = self._frame_for(states, symbol)
+        if frame is None or date not in frame.index:
+            return None
+        loc = frame.index.get_loc(date)
+        if loc < RISK_FAST_DAYS:
+            return None
+        values = pd.to_numeric(
+            frame["close"].iloc[loc - RISK_FAST_DAYS + 1:loc + 1],
+            errors="coerce",
+        )
+        if len(values) < 2 or values.isna().any() or float(values.iloc[0]) <= 0:
+            return None
+        return float(values.iloc[-1] / values.iloc[0] - 1.0), str(date.date())
+
+    def _c6_evidence_metrics(
+        self, states: list, date: pd.Timestamp, symbols: set[str]
+    ) -> dict[str, Any]:
+        by_cluster: dict[str, list[float]] = {}
+        timestamps: list[str] = []
+        for symbol in sorted(symbols):
+            cluster = SYMBOL_SUB_INDUSTRY.get(symbol)
+            observed = self._c6_return(states, symbol, date)
+            if cluster is None or observed is None:
+                continue
+            value, timestamp = observed
+            by_cluster.setdefault(cluster, []).append(value)
+            timestamps.append(timestamp)
+        returns = [sum(values) / len(values) for values in by_cluster.values()]
+        breadth = [
+            sum(value < 0 for value in values) / len(values)
+            for values in by_cluster.values()
+        ]
+        return {
+            "observed_count": sum(len(values) for values in by_cluster.values()),
+            "observed_industries": len(by_cluster),
+            "fast_return": sum(returns) / len(returns) if returns else 0.0,
+            "declining_ratio": sum(breadth) / len(breadth) if breadth else 0.0,
+            "latest_source_timestamp": max(timestamps) if timestamps else None,
+            "freshness_passed": bool(timestamps)
+            and all(timestamp == str(date.date()) for timestamp in timestamps),
+        }
+
+    def _c6_stressed_clusters(
+        self,
+        states: list,
+        date: pd.Timestamp,
+        *,
+        excluded: set[str] | None = None,
+    ) -> list[str]:
+        excluded = excluded or set()
+        held = {
+            symbol
+            for _, symbol, _, _ in self._held_positions(states)
+            if SYMBOL_SUB_INDUSTRY.get(symbol) in RISK_SUB_BASKETS
+        }
+        stressed: list[str] = []
+        for label, configured in RISK_SUB_BASKETS.items():
+            members = sorted(
+                ({*configured} | {
+                    symbol for symbol in held
+                    if SYMBOL_SUB_INDUSTRY.get(symbol) == label
+                }) - excluded
+            )
+            returns = [
+                observed[0]
+                for symbol in members
+                if (observed := self._c6_return(states, symbol, date)) is not None
+            ]
+            if returns and (
+                sum(returns) / len(returns) <= RISK_SUB_FAST_RETURN_SHOCK
+                and sum(value < 0 for value in returns) / len(returns)
+                >= RISK_SUB_BREADTH_SHOCK
+            ):
+                stressed.append(label)
+        return sorted(stressed)
+
+    def observe_c6_s_evidence(
+        self,
+        states: list,
+        date: pd.Timestamp,
+        date_pos: int,
+        prices: dict[str, float],
+        assets: float,
+        drawdown: float,
+        scoring_fn,
+    ) -> dict[str, Any]:
+        """Build read-only S qualification evidence without scheduling an action."""
+        held = self._held_positions(states)
+        values: dict[str, float] = {}
+        books: dict[str, list[tuple]] = {}
+        for state, symbol, strategy, position in held:
+            price = prices.get(symbol, 0.0)
+            if price <= 0:
+                continue
+            values[symbol] = values.get(symbol, 0.0) + position.shares * price
+            books.setdefault(symbol, []).append((state, strategy, position))
+        unmapped_value = sum(
+            value for symbol, value in values.items()
+            if SYMBOL_SUB_INDUSTRY.get(symbol) not in RISK_SUB_BASKETS
+        )
+        unmapped_weight = unmapped_value / assets if assets > 0 else 1.0
+        clusters: dict[str, tuple[float, list[str]]] = {}
+        for symbol, value in values.items():
+            cluster = SYMBOL_SUB_INDUSTRY.get(symbol)
+            if cluster not in RISK_SUB_BASKETS:
+                continue
+            current, members = clusters.get(cluster, (0.0, []))
+            clusters[cluster] = current + value, members + [symbol]
+        eligible = [
+            (label, value, sorted(set(members)))
+            for label, (value, members) in clusters.items()
+            if len(set(members)) >= CONCENTRATION_MIN_CLUSTER
+        ]
+        worst = min(eligible, key=lambda item: (-item[1], item[0])) if eligible else None
+        worst_cluster = worst[0] if worst else None
+        worst_value = worst[1] if worst else 0.0
+        members = worst[2] if worst else []
+        worst_weight = worst_value / assets if worst and assets > 0 else None
+
+        metrics = self._c6_evidence_metrics(states, date, set(RISK_BASKET))
+        coverage = {
+            "observed_count": metrics["observed_count"],
+            "minimum_observed": RISK_MIN_OBSERVED,
+            "observed_industries": metrics["observed_industries"],
+            "minimum_observed_industries": 3,
+            "decision_timestamp": str(date.date()),
+            "latest_source_timestamp": metrics["latest_source_timestamp"],
+            "freshness_max_sessions": 0,
+            "freshness_passed": metrics["freshness_passed"],
+            "coverage_passed": (
+                metrics["observed_count"] >= RISK_MIN_OBSERVED
+                and metrics["observed_industries"] >= 3
+            ),
+            "unmapped_weight": float(min(max(unmapped_weight, 0.0), 1.0)),
+            "unmapped_limit": CONCENTRATION_UNMAPPED_LIMIT,
+            "unmapped_passed": unmapped_weight < CONCENTRATION_UNMAPPED_LIMIT,
+        }
+        stressed = self._c6_stressed_clusters(states, date)
+        removed = sorted(
+            symbol for symbol in RISK_BASKET
+            if SYMBOL_SUB_INDUSTRY.get(symbol) == worst_cluster
+        ) if worst_cluster else []
+        remaining = (
+            set(RISK_BASKET) - set(removed)
+        ) | {
+            symbol for symbol in values
+            if SYMBOL_SUB_INDUSTRY.get(symbol) == worst_cluster
+            and symbol not in removed
+        }
+        leave_metrics = self._c6_evidence_metrics(states, date, remaining)
+        recomputed = self._c6_stressed_clusters(
+            states, date, excluded=set(removed)
+        )
+        same_preserved = worst_cluster in recomputed if worst_cluster else False
+        leave_mode = "recomputed" if removed else "disjoint_pass"
+        leave_coverage = (
+            leave_metrics["observed_count"] >= RISK_MIN_OBSERVED
+            and leave_metrics["observed_industries"] >= 3
+        )
+        leave_passed = (
+            same_preserved
+            and (
+                not removed
+                or (
+                    leave_metrics["freshness_passed"]
+                    and leave_coverage
+                    and leave_metrics["fast_return"] <= RISK_FAST_RETURN_SHOCK
+                    and leave_metrics["declining_ratio"] >= RISK_SUB_BREADTH_SHOCK
+                )
+            )
+        )
+        leave = {
+            "mode": leave_mode,
+            "target_cluster": worst_cluster or "none",
+            "removed_components": removed,
+            "remaining_components": sorted(remaining),
+            "observed_count": leave_metrics["observed_count"],
+            "observed_industries": leave_metrics["observed_industries"],
+            "minimum_observed": RISK_MIN_OBSERVED,
+            "minimum_observed_industries": 3,
+            "recomputed_fast_return": (
+                leave_metrics["fast_return"] if removed else None
+            ),
+            "fast_return_threshold": RISK_FAST_RETURN_SHOCK,
+            "recomputed_declining_ratio": (
+                leave_metrics["declining_ratio"] if removed else None
+            ),
+            "breadth_threshold": RISK_SUB_BREADTH_SHOCK,
+            "recomputed_stressed_cluster_set": recomputed,
+            "freshness_passed": leave_metrics["freshness_passed"],
+            "coverage_passed": leave_coverage,
+            "same_evidence_preserved": same_preserved,
+            "passed": leave_passed,
+        }
+        portfolio_return = self._portfolio_fast_return()
+        existing_eligible = (
+            bool(worst) and not self._outer_defensive_mode
+            and coverage["unmapped_passed"]
+        )
+        evidence_active = (
+            worst_cluster in stressed
+            and self._risk_level >= 1
+            and portfolio_return < 0
+            and coverage["freshness_passed"]
+            and coverage["coverage_passed"]
+            and coverage["unmapped_passed"]
+            and leave_passed
+        )
+        legacy_open = drawdown >= CONCENTRATION_DRAWDOWN
+        early = bool(
+            evidence_active
+            and existing_eligible
+            and len(members) >= CONCENTRATION_MIN_CLUSTER
+            and worst_weight is not None
+            and worst_weight > CONCENTRATION_CAP
+            and not legacy_open
+        )
+        weak = min(
+            members,
+            key=lambda symbol: (
+                scoring_fn(symbol) if scoring_fn else 0.0,
+                symbol,
+            ),
+        ) if members else None
+        planned = 0
+        if early and weak is not None:
+            weak_value = values[weak]
+            trim_value = min(
+                worst_value - CONCENTRATION_CAP * assets,
+                weak_value * CONCENTRATION_MAX_TRIM_RATIO,
+            )
+            planned = floor_to_lot(int(trim_value / prices[weak]))
+
+        next_date = (
+            states[0].all_dates[date_pos + 1]
+            if states and date_pos + 1 < len(states[0].all_dates)
+            else None
+        )
+        open_available = not_suspended = not_limit_blocked = False
+        t_plus_one = next_date is not None and next_date > date
+        capacity = 0
+        executable = 0
+        book_receipts = []
+        shared_remaining = {}
+        if planned > 0 and weak is not None and next_date is not None:
+            remaining_plan = planned
+            for state, strategy, position in books[weak]:
+                if remaining_plan <= 0:
+                    break
+                take = min(int(position.shares), remaining_plan)
+                remaining_plan -= take  # The existing action never reallocates a blocked book's target.
+                receipt = {"state_index": next(i for i, item in enumerate(states) if item is state),
+                           "sleeve_name": state.sleeve.sleeve_name, "strategy_name": strategy, "symbol": weak,
+                           "current_shares": int(position.shares), "planned_shares": take,
+                           "raw_adv_capacity_shares": 0, "capacity_shares": 0, "executable_shares": 0,
+                           "t_plus_one_passed": t_plus_one, "open_available": False,
+                           "not_suspended": False, "not_limit_blocked": False}
+                book_receipts.append(receipt)
+                frame = state.data_map.get(weak)
+                if frame is None or next_date not in frame.index:
+                    continue
+                open_price = frame.loc[next_date, "open"]
+                if pd.isna(open_price) or float(open_price) <= 0:
+                    continue
+                open_available = True
+                volume = frame.loc[next_date, "volume"] if "volume" in frame else 1
+                book_not_suspended = not pd.isna(volume) and float(volume) > 0
+                signal = Signal(
+                    symbol=weak, strategy_name=strategy, direction="sell",
+                    target_shares=take,
+                    price=float(open_price), reason="concentration_trim",
+                    signal_date=str(date.date()),
+                )
+                book_not_limit_blocked = (
+                    state.sleeve._opening_limit_state(
+                        signal, frame, next_date, float(open_price)
+                    ) != "sell_blocked"
+                )
+                key = (receipt["state_index"], weak)
+                if key not in shared_remaining:
+                    cap = state.sleeve._remaining_adv_capacity(weak, "sell", state.data_map, next_date)
+                    shared_remaining[key] = max(int(cap or 0), 0)
+                raw_cap = shared_remaining[key]
+                available = min(take, raw_cap)
+                lot_shares = available if available >= position.shares else floor_to_lot(available)
+                filled = lot_shares if t_plus_one and book_not_suspended and book_not_limit_blocked else 0
+                shared_remaining[key] -= lot_shares
+                capacity += lot_shares
+                executable += filled
+                not_suspended = not_suspended or book_not_suspended
+                not_limit_blocked = not_limit_blocked or book_not_limit_blocked
+                receipt.update(raw_adv_capacity_shares=raw_cap, capacity_shares=lot_shares,
+                               executable_shares=filled, open_available=True,
+                               not_suspended=book_not_suspended, not_limit_blocked=book_not_limit_blocked)
+        nonzero = executable > 0 and executable <= planned
+        fillability = {
+            "t_plus_one_passed": t_plus_one,
+            "open_available": open_available,
+            "not_suspended": not_suspended,
+            "not_limit_blocked": not_limit_blocked,
+            "adv_capacity_shares": capacity,
+            "lot_size": 100,
+            "nonzero_executable_lot": nonzero,
+        }
+        shortfall = max(planned - executable, 0)
+        reason = "NONE"
+        for passed, failure in (
+            (t_plus_one, "T_PLUS_ONE"),
+            (open_available, "MISSING_OPEN"),
+            (not_suspended, "SUSPENDED"),
+            (not_limit_blocked, "LIMIT_BLOCKED"),
+            (capacity > 0, "ADV_ZERO"),
+            (capacity >= planned, "CAPACITY"),
+            (executable > 0, "SUB_LOT"),
+        ):
+            if not passed:
+                reason = failure
+                break
+        pre_open_drawdown = None
+        if next_date is not None and assets > 0 and drawdown < 1:
+            open_assets = sum(float(state.sleeve.cash) for state in states)
+            for state, symbol, _, position in held:
+                frame = state.data_map.get(symbol)
+                if frame is None or next_date not in frame.index:
+                    open_assets += position.shares * prices.get(symbol, 0.0)
+                    continue
+                mark = frame.loc[next_date, "open"]
+                open_assets += position.shares * (
+                    prices.get(symbol, 0.0)
+                    if pd.isna(mark) or float(mark) <= 0 else float(mark)
+                )
+            peak = assets / (1.0 - drawdown)
+            pre_open_drawdown = float(open_assets / peak - 1.0)
+        scheduled = (
+            {
+                "decision_close": str(date.date()),
+                "execution_open": str(next_date.date()),
+                "calendar_ordinal": date_pos + 1,
+            }
+            if early and planned > 0 and next_date is not None else None
+        )
+        return {
+            "first_causal_stressed_cluster_close": (
+                str(date.date()) if evidence_active else None
+            ),
+            "worst_cluster": worst_cluster,
+            "worst_cluster_weight": worst_weight,
+            "stressed_cluster_set": stressed,
+            "coverage": coverage,
+            "leave_held_components_out": leave,
+            "first_early_sell_required_close": str(date.date()) if early else None,
+            "risk_level": int(self._risk_level),
+            "portfolio_fast_return": float(portfolio_return),
+            "existing_concentration_eligible": existing_eligible,
+            "cluster_symbol_count": len(members),
+            "minimum_cluster_size": CONCENTRATION_MIN_CLUSTER,
+            "legacy_gate_open": legacy_open,
+            "early_sell_required": early,
+            "scheduled_execution_batch": scheduled,
+            "lead_batch_count": 0,
+            "pre_trade_open_drawdown": pre_open_drawdown,
+            "official_sample_relation": "NO_SCHEDULED_BATCH",
+            "identical_valuation_instant_proven": False,
+            "planned_shares": planned,
+            "executable_lot_shares": executable,
+            "fillability": fillability,
+            "book_fillability": book_receipts,
+            "queue_fillability": None,
+            "shortfall": {"shares": shortfall, "reason": reason},
+            "pre_sell_crossing_buy_witness": False,
+        }
+
+    def finalize_c6_s_queue(self, states: list, date: pd.Timestamp, *, state_local_books: bool = True) -> None:
+        """Measure one scheduled S sell against the final queue, without trading.
+
+        Only integer inventories and ADV balances are copied. No account, price
+        path, return or drawdown is evolved. Other symbols cannot consume this
+        symbol's side-specific sell ADV; native strategy order is sufficient.
+        """
+        from types import SimpleNamespace
+        from quantfusion.risk.overlay.adapter import consolidate_risk_sells, make_sell_signal
+
+        evidence = getattr(self, "c6_s_evidence", None)
+        if not evidence or evidence["first_early_sell_required_close"] != str(date.date()):
+            return
+        schedule = evidence["scheduled_execution_batch"]
+        books = evidence["book_fillability"]
+        if schedule is None or not books:
+            return
+        next_date = pd.Timestamp(schedule["execution_open"])
+        symbol = books[0]["symbol"]
+        copies = [SimpleNamespace(sleeve=SimpleNamespace(sleeve_name=state.sleeve.sleeve_name),
+                                  pending=list(state.pending)) for state in states]
+        proposed = {}
+        for row in books:
+            state_index = row["state_index"]
+            pending = copies[state_index].pending
+            signal = next((signal for signal, strategy in pending
+                           if strategy is None and signal.direction == "sell" and signal.symbol == symbol
+                           and signal.strategy_name == row["strategy_name"]
+                           and signal.signal_date == str(date.date())
+                           and signal.reason == f"concentration_trim:cluster={evidence['worst_cluster']}"
+                           and signal.target_shares == row["planned_shares"]), None)
+            if signal is None:
+                frame = states[state_index].data_map[symbol]
+                signal = make_sell_signal(symbol, row["strategy_name"], row["planned_shares"],
+                                          float(frame.loc[date, "close"]), str(date.date()),
+                                          "concentration_trim", f"cluster={evidence['worst_cluster']}")
+                pending.append((signal, None))
+            proposed[id(signal)] = row
+            row.update(capacity_shares=0, executable_shares=0, raw_adv_capacity_shares=0,
+                       inventory_before_shares=row["current_shares"], suppression_winner_reason=None)
+        suppressed = []
+        consolidate_risk_sells(copies, str(date.date()), suppressed, state_local_books=state_local_books)
+        for event in suppressed:
+            for row in books:
+                if (row["state_index"] == event["loser_state_index"] and row["strategy_name"] == event["strategy_name"]
+                        and row["symbol"] == event["symbol"] and event["loser_reason"].startswith("concentration_trim:")):
+                    row["suppression_winner_reason"] = event["winner_reason"]
+        queue = []
+        ranks = {"turtle_breakout": 0, "dual_ma": 1, "atr_channel": 2}
+        for state_index, state in enumerate(states):
+            pending = sorted((item for item in copies[state_index].pending
+                              if item[0].symbol == symbol and item[0].direction == "sell"),
+                             key=lambda item: ranks.get(item[0].strategy_name, 99))
+            inventory = {name: int(pos.shares) for name, pos in state.sleeve.positions.get(symbol, {}).items()}
+            cap = state.sleeve._remaining_adv_capacity(symbol, "sell", state.data_map, next_date)
+            remaining = max(int(cap), 0) if cap is not None else sum(inventory.values())
+            frame = state.data_map.get(symbol)
+            for signal, strategy in pending:
+                name = strategy.name if strategy is not None else signal.strategy_name
+                before = inventory.get(name, 0)
+                open_price = frame.loc[next_date, "open"] if frame is not None and next_date in frame.index else None
+                opened = open_price is not None and not pd.isna(open_price) and float(open_price) > 0
+                volume = frame.loc[next_date, "volume"] if opened and frame is not None and "volume" in frame else None
+                active = volume is not None and not pd.isna(volume) and float(volume) > 0
+                limit_ok = opened and frame is not None and open_price is not None and state.sleeve._opening_limit_state(signal, frame, next_date, float(open_price)) != "sell_blocked"
+                t_plus_one = next_date > pd.Timestamp(signal.signal_date)
+                available = min(int(signal.target_shares), before, remaining)
+                capacity = available if available == before else floor_to_lot(available)
+                filled = capacity if opened and active and limit_ok and t_plus_one else 0
+                row = {"state_index": state_index, "sleeve_name": state.sleeve.sleeve_name,
+                       "strategy_name": name, "symbol": symbol, "reason": signal.reason,
+                       "signal_date": signal.signal_date, "is_s_proposal": id(signal) in proposed,
+                       "requested_shares": int(signal.target_shares), "inventory_before_shares": before,
+                       "raw_adv_capacity_shares": remaining, "capacity_shares": capacity,
+                       "executable_shares": filled, "t_plus_one_passed": t_plus_one,
+                       "open_available": opened, "not_suspended": active, "not_limit_blocked": limit_ok}
+                queue.append(row)
+                if id(signal) in proposed:
+                    proposed[id(signal)].update({key: row[key] for key in (
+                        "inventory_before_shares", "raw_adv_capacity_shares", "capacity_shares", "executable_shares",
+                        "t_plus_one_passed", "open_available", "not_suspended", "not_limit_blocked")})
+                inventory[name] = before - filled
+                remaining -= filled
+        evidence["queue_fillability"] = queue
+        capacity = sum(row["capacity_shares"] for row in books)
+        executable = sum(row["executable_shares"] for row in books)
+        fill = evidence["fillability"]
+        for key in ("t_plus_one_passed", "open_available", "not_suspended", "not_limit_blocked"):
+            fill[key] = any(row[key] for row in books)
+        fill.update(adv_capacity_shares=capacity, nonzero_executable_lot=executable > 0)
+        evidence["executable_lot_shares"] = executable
+        checks = [(fill[key], reason) for key, reason in (
+            ("t_plus_one_passed", "T_PLUS_ONE"), ("open_available", "MISSING_OPEN"),
+            ("not_suspended", "SUSPENDED"), ("not_limit_blocked", "LIMIT_BLOCKED"))]
+        checks.extend(((capacity > 0, "ADV_ZERO"), (capacity >= evidence["planned_shares"], "CAPACITY"),
+                       (executable > 0, "SUB_LOT")))
+        evidence["shortfall"] = {"shares": max(evidence["planned_shares"] - executable, 0),
+                                 "reason": next((reason for passed, reason in checks if not passed), "NONE")}
+
     def _layered_protection(
         self, state, symbol: str, pos, date: pd.Timestamp, drawdown: float
     ) -> tuple[float, str]:
