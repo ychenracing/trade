@@ -57,5 +57,6 @@ jobs:
         with:
           name: c6-v30-relay-candidate-${{ github.run_id }}
           path: relay-output/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 90
