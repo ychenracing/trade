@@ -74,6 +74,22 @@ jobs:
         with:
           pattern: c6-runtime-${{ github.run_id }}-*
           path: runtime-observations
+      - name: Preserve exact recovery source for dependency analysis
+        run: |
+          set -euo pipefail
+          mkdir -p recovery-inputs
+          git bundle create recovery-inputs/c6-source-recovery.bundle \
+            refs/remotes/origin/main \
+            refs/remotes/origin/codex/c6-causal-risk-closure-v11 \
+            refs/remotes/origin/codex/c6-base-v29 \
+            refs/remotes/origin/codex/c6-s-v29 \
+            refs/remotes/origin/codex/c6-evidence-v29 \
+            refs/remotes/origin/codex/c6-v29-workflow-anchor \
+            refs/remotes/origin/codex/c6-v29-freeze-build-20260908
+          git bundle verify recovery-inputs/c6-source-recovery.bundle
+          git bundle list-heads recovery-inputs/c6-source-recovery.bundle > recovery-inputs/bundle-refs.txt
+          sha256sum recovery-inputs/c6-source-recovery.bundle > recovery-inputs/bundle-sha256.txt
+          test "$(stat -c %s recovery-inputs/c6-source-recovery.bundle)" -lt 400000000
       - name: Verify cohort and preserve compact engineering recovery inputs
         env:
           GH_TOKEN: ${{ github.token }}
@@ -83,7 +99,7 @@ jobs:
           from pathlib import Path
           def api(path):
               return json.loads(subprocess.check_output(['gh', 'api', 'repos/ychenracing/trade/'+path], text=True))
-          out = Path('recovery-inputs'); out.mkdir()
+          out = Path('recovery-inputs'); out.mkdir(exist_ok=True)
           for comment_id, filename in [(5579535549, 'watch-contract.md'), (5579901968, 'heartbeat.md')]:
               payload = api(f'issues/comments/{comment_id}')
               (out/filename).write_text(payload['body'])
