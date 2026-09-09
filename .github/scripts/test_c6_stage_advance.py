@@ -53,6 +53,11 @@ class PlanningTests(unittest.TestCase):
         self.rows[2]['passed'] = False
         self.assertEqual(self.plan(), 'BASE_REJECTED')
 
+    def test_selection_commit_message_uses_current_execution_version(self):
+        message = relay.selection_commit_message('BASE_SELECTED')
+        self.assertEqual(message, 'Seal mechanical C6 v30 selection: BASE_SELECTED')
+        self.assertNotIn('v19', message)
+
     def test_malformed_predicates_and_ineligible_s_fail_closed(self):
         for rows in (self.rows[:-1], list(reversed(self.rows)), self.rows + self.rows[:1],
                      [dict(x, passed=1) for x in self.rows]):
