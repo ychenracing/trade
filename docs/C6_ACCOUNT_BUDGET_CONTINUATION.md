@@ -206,6 +206,75 @@ prefix retention at least 0.95, every order bucket at most 200, and materially
 less action churn than AB1. Only a stable locked AB4 may receive a new formal
 identity and complete L1/L2/official17-958 validation.
 
+
+## AB4 local preview and bounded rejection before locked dispatch
+
+Tests were changed before implementation. The positive-binding-headroom assertion
+failed under AB3 while `K=66917.92294807367` and then passed under the minimum
+AB4 common-scale implementation. Nonbinding, zero-headroom, unlocked-empty-account
+re-entry and existing sell-path assertions also passed as direct synthetic
+checks. Python compileall and diff whitespace validation passed; this local
+environment does not contain pytest or ruff, so no locked/native-suite claim is
+made.
+
+A noncanonical local replay of the exact registered eight paths passed the
+registered screens: MDD ranged from 17.2793% to 17.9832%, every listed wealth
+ratio was at least 1.0075, the largest date/symbol/side bucket count was 176,
+and budget fills were 25--68. The eighth registered row is
+`random-20260807-03-006`; an initial scratch invocation accidentally used
+`random-20260807-03-004` and is not counted as the registered-eight result.
+
+That accidental row nevertheless exposed a deterministic full-plan witness
+which cannot be hidden. Under AB4, `random-20260807-03-004` reached
+18.1223663541% MDD, above the unchanged 18% hard gate. The first budget sell
+decision was 2025-09-04 and filled 2025-09-05. At the 2025-09-05 close the
+loss budget was binding, existing gross was 2,724,624 and `K` was
+5,070,915, so AB4 admitted the complete 1,619,352 pending buy batch in 688498.
+Those buys filled on 2025-09-08; the position then fell from the 254.98473
+fill to the 219.99978 next open and the account first breached 18% on
+2025-09-09 before the close-generated reductions could fill. Equity-return and
+MDD recomputation reconciled exactly.
+
+This classifies AB4 as `EXECUTION_GAP_RISK / ACTION_INSUFFICIENT`, not a
+threshold or scenario problem. Its local evidence is not frozen acceptance,
+but the known formal scenario counterexample blocks full-matrix expansion and
+must be retained. The still-valid AB3 run 34392403676 remains untouched; no
+AB4 locked run may be duplicated ahead of it.
+
+## AB5 preregistration before implementation or results
+
+AB5 keeps AB4's HWM/equity, 0.82 floor, remaining-budget `B`, two-session
+gross cap `K`, weakest-first minimum-sufficient sells, nonbinding buy
+behavior, account/sleeve locks, costs, timestamps and canonical next-open
+execution. It adds no alpha selector, ranking, allocator, fitted threshold,
+cooldown or date/symbol exception.
+
+Only binding-time pending-buy admission gains a second, execution-gap loss
+ledger using the engine's already canonical `limit_pct_for_code` board-limit
+classification. At a binding close, debit current marked books from `B` by
+`marked_notional * (limit_pct_for_code(symbol) + variable_exit_cost_rate)`.
+Queued sells receive no credit. Debit each pending buy at its close-known
+signal notional times the same symbol-specific factor. Compute a common batch
+scale as the minimum of AB4's gross-headroom scale and
+`max(0, B-current_gap_debit) / requested_buy_gap_debit`, capped at one, then
+floor every retained order to the existing A-share lot. A zero debit headroom
+vetoes buys naturally; an unlocked empty account with positive `B` can still
+admit a bounded lot batch. Existing execution checks may only reduce it.
+
+The statutory board-limit mapping is existing execution-domain data, not a
+searched parameter. This ledger is a conservative planning witness, not a
+promise that every future gap is bounded. Synthetic tests must first prove
+board-limit classification reuse, simultaneous current-book debit, no
+queued-sell credit, common scaling/lot rounding, positive empty-account
+re-entry, and unchanged AB2/AB4 sell/HWM/cash/next-open behavior.
+
+After the sole AB3 attempt is terminal, locked validation may run once on the
+original registered eight plus the newly mandatory
+`random-20260807-03-004` regression witness. All original screens remain,
+and every one of the nine MDDs must be at most 18% plus tolerance. Failure is
+retained and not expanded; only a stable locked AB5 can receive a new formal
+identity and complete applicable L1/L2 and official17/958 validation.
+
 ## Watch
 
 Original ID6a9e3c8f7fd48191acc3b5e6b5c7acf3. Maintain mandatory contract5579535549 and single heartbeat5579901968, with truthful trigger/executor and STARTED/YIELDED phases. Preserve hourly/Asia-Tokyo cadence. This manual session has no callable timer-management actions after bounded discovery despite installed Task Tool; updating GitHub's mandatory instruction is not a timer-settings readback or scheduled-consumption proof. The next manager-capable invocation must update/read back the same task prompt to this direction without creating a replacement. Missing timer management does not block independent GitHub engineering. Preserve effective single-writer ownership; no competing AB1 or duplicate economic attempt.
