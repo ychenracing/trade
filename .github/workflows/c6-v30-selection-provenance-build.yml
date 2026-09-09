@@ -1,0 +1,50 @@
+name: C6 v30 Selection Provenance Build
+on:
+  push:
+    branches: [codex/c6-v30-selection-provenance-build]
+    paths:
+      - .github/scripts/build_c6_v30_selection_provenance.py
+      - .github/workflows/c6-v30-selection-provenance-build.yml
+permissions:
+  contents: write
+concurrency:
+  group: c6-v30-selection-provenance-build
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: codex/c6-v30-selection-provenance
+          path: candidate
+          fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: dc1553f040695ed18379e52a04889de25f3c11f6
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+      - name: Derive exact two-file provenance fix
+        run: python .github/scripts/build_c6_v30_selection_provenance.py
+      - name: Run affected native stage tests
+        run: |
+          python -m py_compile candidate/.github/scripts/c6_stage_advance.py candidate/.github/scripts/test_c6_stage_advance.py
+          python -I -S candidate/.github/scripts/test_c6_stage_advance.py source
+          git -C candidate diff --check
+      - name: Publish validated candidate files
+        run: |
+          set -euo pipefail
+          test "$(git -C candidate diff --name-only | wc -l)" -eq 2
+          git -C candidate config user.name "C6 Provenance Builder"
+          git -C candidate config user.email "c6-provenance@users.noreply.github.com"
+          git -C candidate add .github/scripts/c6_stage_advance.py .github/scripts/test_c6_stage_advance.py
+          git -C candidate commit -m "fix(c6): stamp mechanical D with current execution version"
+          git -C candidate push origin HEAD:refs/heads/codex/c6-v30-selection-provenance
