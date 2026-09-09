@@ -91,6 +91,68 @@ sufficient formal acceptance.  A failed AB2 remains visible and must not be
 expanded to a full matrix; a stable AB2 requires a new source/binding and all
 applicable formal L1/L2 and official17/958 gates.
 
+
+## AB2 fixed-diagnostic result and rejection
+
+Run 34370628906 at builder source
+`9e42675196696c8020879795b558c1f022715f5e` completed every locked step.
+Unique artifact 10119067325 has ZIP SHA-256
+`f896553c2a52904e677a9322f8fa7d553f8accf25b107e802785ece60e7ba304`;
+its receipt binds prospective tree
+`8f79b26bd39a7fce0acbc1356723e1cc003c2c42`, the same frozen OCI,
+dependency lock and data tree, and reports no branch write or formal economic
+dispatch. The artifact was independently downloaded and its GitHub digest,
+receipt and complete sixteen rows were checked.
+
+AB2 materially fixed AB1's sell-allocation churn. All eight candidate MDDs
+were between 17.41% and 17.90%, every date/symbol/side bucket was at most 199,
+and budget fills fell to 42--60 from AB1's 119--199. But four required prefix
+retention witnesses still failed: prefix-09 `0.8935881`, prefix-10
+`0.8799609`, prefix-13 `0.9350364` and prefix-17 `0.9117807`, each below
+0.95. AB2 is therefore rejected/noncanonical for `RETURN_IMPAIRMENT`; its
+workflow success and risk screens do not authorize a full matrix.
+
+The common causal defect is now narrower than AB1's sell planner. Replaying
+the exact AB2 source on prefix-09 showed 118 buy-clipping days and 709 clipped
+buy-order records, including 78 clipping days before the first budget sell
+action on 2025-09-02. The first clipping occurred on 2025-04-24 while the
+budget cap still equalled the ordinary `max_total_weight * equity` ceiling.
+Across the run 3,280,800 requested shares were removed and 310 buy intents
+were rounded to zero. These counts are a noncanonical causal diagnostic, not
+new acceptance evidence. The canonical execution path already enforces the
+same ordinary total-exposure ceiling and cash at the actual next open, so AB2
+duplicated normal buy allocation before the risk budget was binding.
+
+## AB3 preregistration before implementation or results
+
+AB3 keeps AB2's exact HWM/equity inputs, 0.82 floor, two configured
+daily-loss sessions, costs/minimum-fee reserve, weakest-first minimum-sufficient
+sell planner, locks, causal timestamps and next-open execution. It changes
+only how the already registered pending-buy envelope distinguishes the normal
+portfolio ceiling from a binding loss budget.
+
+Let `ordinary_cap = max_total_weight * E` and keep AB2's `K` unchanged.
+When `K` equals `ordinary_cap`, leave pending buys byte-for-byte unchanged
+and let the existing canonical execution-day exposure/cash/ADV/limit checks
+handle them. When `K < ordinary_cap`, the loss budget is binding: cancel all
+pending buys/additions for that close, without credit for queued sells, while
+still emitting AB2's required weakest-first reductions when `G > K`.
+Comparison uses the existing finite-value tolerance only; it adds no fitted
+threshold, ranking, allocator, cooldown, date/symbol exception or parameter
+search. Invalid inputs still fail closed and stronger existing exits remain
+dominant.
+
+Synthetic tests must first show that a nonbinding envelope does not rewrite a
+pending buy batch, a binding envelope blocks every pending buy without credit
+for queued sells, the transition is derived from the unchanged formula, and
+all AB2 sell/HWM/cash/fill invariants remain true. Then run the exact same
+registered eight scenarios and controls once. The same diagnostic screens
+apply: every MDD at most 18% plus tolerance, prefix-05 retention at least 0.99,
+other sampled prefixes at least 0.95, every bucket at most 200, and no return
+to AB1-level action churn. Failure remains visible and must not be expanded;
+only a stable AB3 may receive a new formal identity and full applicable
+L1/L2/official17-958 validation.
+
 ## Watch
 
 Original ID6a9e3c8f7fd48191acc3b5e6b5c7acf3. Maintain mandatory contract5579535549 and single heartbeat5579901968, with truthful trigger/executor and STARTED/YIELDED phases. Preserve hourly/Asia-Tokyo cadence. This manual session has no callable timer-management actions after bounded discovery despite installed Task Tool; updating GitHub's mandatory instruction is not a timer-settings readback or scheduled-consumption proof. The next manager-capable invocation must update/read back the same task prompt to this direction without creating a replacement. Missing timer management does not block independent GitHub engineering. Preserve effective single-writer ownership; no competing AB1 or duplicate economic attempt.
