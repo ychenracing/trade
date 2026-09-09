@@ -1,4 +1,4 @@
-"""Reuse the retired one-shot builder for authorized PR63 AB1, never v30 refs."""
+"""Reuse the retired one-shot builder for authorized PR63 AB2, never v30 refs."""
 from __future__ import annotations
 import contextlib
 import hashlib
@@ -14,23 +14,23 @@ import time
 import urllib.request
 from concurrent.futures import ProcessPoolExecutor
 
-BASE = 'dd47414a881197cb4c9d25cf18de42fead0c0865'
+BASE = '4e0efd3e52b8648c4625716c5311b9e2b680b954'
 EXPECTED = {
  '.github/workflows/ci.yml': 'dafc30c29cf1f392909702930bcab4e1e5207aea',
  'quantfusion/config/engine.py': 'f378af34ecc311d7a11d674be0877c5bdc21d4c1',
  'quantfusion/config/overlay.py': '7a5e1bb2d4abfe9d24f598ee3ef0c5d36154a3ca',
- 'quantfusion/engine/ensemble_allocation.py': 'f7b6ea4c95968b0abe9c828a1a7bbdbd6332fa33',
+ 'quantfusion/engine/ensemble_allocation.py': '8e26f209d244ac342d9d1c0aa6ff0c1965074f7c',
  'quantfusion/engine/ensemble_orchestration.py': '8ce5ad1b62a57a63185c3bacbbac9291378d2b15',
  'quantfusion/engine/replay.py': '1681a8dcb9811b77d58e532a9a2fdd0b3dffaeaf',
  'quantfusion/risk/overlay/policy.py': 'fefc1dd9f2735ddf7333fc66025e88939bc25eef',
  'quantfusion/risk/account_budget.py': '48725487e86f6d98b69117f859727101ed5a70d1',
- 'tests/c6_non_economic/test_account_risk_budget.py': '498cad14254aef4b1a65ae9c1a620bbbc15d0d14',
+ 'tests/c6_non_economic/test_account_risk_budget.py': 'e71f6d2fff030494774366cf2a5647f0a21835d3',
 }
 IDS = ('prefix-05','prefix-09','prefix-10','prefix-13','prefix-17',
        'add-one-13-601869','add-one-05-002384','random-20260807-03-006')
 SCRIPT_ROOT = Path(__file__).resolve().parent
 ROOT = Path.cwd() / 'candidate'
-PROOF = Path.cwd() / 'ab1-proof'
+PROOF = Path.cwd() / 'ab2-proof'
 
 def git(*args):
     return subprocess.check_output(['git','-C',str(ROOT),*args],text=True).strip()
@@ -49,19 +49,19 @@ def derive():
     assert git('rev-parse','HEAD:quantfusion') == '6df0af04b69157c2bd702dadc1fe2bdecf2dddbf'
     assert git('rev-parse','HEAD:tests') == '602cf6dbda8d0acb1adecfd4bbb2de40e157d210'
     assert (ROOT/'docs/C6_ACCOUNT_BUDGET_CONTINUATION.md').is_file()
-    patch = str(SCRIPT_ROOT/'ab1_candidate/existing.patch')
+    patch = str(SCRIPT_ROOT/'ab2_candidate/existing.patch')
     subprocess.run(['git','-C',str(ROOT),'apply','--check',patch],check=True)
     subprocess.run(['git','-C',str(ROOT),'apply',patch],check=True)
     for name,path in [('account_budget.py','quantfusion/risk/account_budget.py'),
                       ('test_account_risk_budget.py','tests/c6_non_economic/test_account_risk_budget.py')]:
         assert not (ROOT/path).exists()
-        shutil.copyfile(SCRIPT_ROOT/'ab1_candidate'/name, ROOT/path)
+        shutil.copyfile(SCRIPT_ROOT/'ab2_candidate'/name, ROOT/path)
     verify()
     git('add','--',*EXPECTED)
     assert set(git('diff','--cached','--name-only').splitlines()) == set(EXPECTED)
     PROOF.mkdir(exist_ok=True)
     (PROOF/'source.patch').write_text(git('diff','--cached','--binary','--full-index')+'\n')
-    receipt = dict(kind='AB1_ENGINEERING_AND_DIAGNOSTIC', canonical=False, accepted=False,
+    receipt = dict(kind='AB2_ENGINEERING_AND_DIAGNOSTIC', canonical=False, accepted=False,
         base=BASE, prospective_tree=git('write-tree'), source_blobs=EXPECTED,
         data_tree=git('rev-parse','HEAD:data'), lock_sha256=sha(ROOT/'requirements-lock.txt'),
         preregistration_sha256=sha(ROOT/'docs/C6_ACCOUNT_BUDGET_CONTINUATION.md'),
@@ -142,7 +142,7 @@ def diagnose():
             control_mdd=control['max_drawdown'], candidate_mdd=candidate['max_drawdown'],
             mdd_screen_passed=abs(candidate['max_drawdown'])<=.18+1e-15,
             candidate_order_buckets=candidate['date_symbol_side_count']))
-    result=dict(schema_version=1,kind='AB1_FIXED_EIGHT_DIAGNOSTIC',canonical=False,accepted=False,
+    result=dict(schema_version=1,kind='AB2_FIXED_EIGHT_DIAGNOSTIC',canonical=False,accepted=False,
         complete=True,ordered_ids=list(IDS),source=json.loads((PROOF/'receipt.json').read_text()),
         rows=rows,comparisons=comparisons)
     (PROOF/'diagnostic.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')
