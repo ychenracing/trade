@@ -102,7 +102,7 @@ jobs:
           print(json.dumps(receipt, sort_keys=True))
           PY
           cat /out/native-tests.log
-          tail -5 /out/stage-tests.log /out/artifact-tests.log /out/auto-tests.log
+          tail -n 5 /out/stage-tests.log /out/artifact-tests.log /out/auto-tests.log
           SH
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
