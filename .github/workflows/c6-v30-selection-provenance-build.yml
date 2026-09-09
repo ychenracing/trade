@@ -1,10 +1,10 @@
-name: C6 AB3 Bounded Engineering and Diagnostic
+name: C6 AB5 Bounded Engineering and Diagnostic
 on:
   push:
     branches: [codex/c6-v30-selection-provenance-build]
     paths:
       - .github/scripts/build_c6_v30_selection_provenance.py
-      - .github/scripts/ab3_candidate/**
+      - .github/scripts/ab5_candidate/**
       - .github/workflows/c6-v30-selection-provenance-build.yml
 permissions:
   contents: write
@@ -27,7 +27,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 991eda56257942c0568adc846169f4a7c4d57c50
+          ref: 6619d71abf7317acdc7fba0236ee74291e9ae074
           path: candidate
           fetch-depth: 0
           persist-credentials: false
@@ -42,7 +42,7 @@ jobs:
           lib=Path(sysconfig.get_config_var('LIBDIR'))/sysconfig.get_config_var('LDLIBRARY')
           assert hashlib.sha256(lib.read_bytes()).hexdigest()=='57a3c0505572977cba024791b79fb07b787d761438befba3685339c81b5e07e6'
           PY
-          test "$(git ls-remote https://github.com/ychenracing/trade.git refs/heads/codex/c6-causal-risk-closure-v11 | cut -f1)" = 991eda56257942c0568adc846169f4a7c4d57c50
+          test "$(git ls-remote https://github.com/ychenracing/trade.git refs/heads/codex/c6-causal-risk-closure-v11 | cut -f1)" = 6619d71abf7317acdc7fba0236ee74291e9ae074
       - name: Install unchanged locked dependencies
         run: python -m pip install --require-hashes -r candidate/requirements-lock.txt
       - name: Derive exact preregistered candidate without touching refs
@@ -52,20 +52,20 @@ jobs:
         run: |
           git diff --cached --check
           python -m compileall -q quantfusion tests/c6_non_economic/test_account_risk_budget.py
-          python -m pytest -q tests/c6_non_economic/test_account_risk_budget.py tests/unit/test_config_profiles.py tests/unit/test_internal_cash_flow_risk_bases.py tests/c6_non_economic/test_c6_retained_winner.py tests/c6_non_economic/test_c6_early_concentration.py tests/contract/test_architecture.py | tee ../ab3-proof/native-tests.txt
+          python -m pytest -q tests/c6_non_economic/test_account_risk_budget.py tests/unit/test_config_profiles.py tests/unit/test_internal_cash_flow_risk_bases.py tests/c6_non_economic/test_c6_retained_winner.py tests/c6_non_economic/test_c6_early_concentration.py tests/contract/test_architecture.py | tee ../ab5-proof/native-tests.txt
           python -m ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion tests/c6_non_economic/test_account_risk_budget.py
           pyright quantfusion
       - name: Export verified content objects, never update a branch
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python .github/scripts/build_c6_v30_selection_provenance.py publish
-      - name: Run registered eight-scenario control comparison only
+      - name: Run registered nine-scenario control comparison only
         run: python .github/scripts/build_c6_v30_selection_provenance.py diagnose
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: c6-ab3-bounded-${{ github.run_id }}
-          path: ab3-proof/
+          name: c6-ab5-bounded-${{ github.run_id }}
+          path: ab5-proof/
           if-no-files-found: error
           retention-days: 90
           overwrite: false

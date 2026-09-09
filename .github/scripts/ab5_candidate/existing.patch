@@ -1,0 +1,254 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index f6eeda23d5a0446d2225fe0cf25391c0b70d5b38..dafc30c29cf1f392909702930bcab4e1e5207aea 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -115,6 +115,7 @@ jobs:
+           # forbidden here: adding a new test file must not silently make it
+           # executable during the economic pre-freeze embargo.
+           planned_c6_files = {
++              "tests/c6_non_economic/test_account_risk_budget.py",
+               "tests/c6_non_economic/test_baseline_rebuild.py",
+               "tests/c6_non_economic/test_c6_book_identity.py",
+               "tests/c6_non_economic/test_c6_fixed_reference_admission.py",
+@@ -170,6 +171,8 @@ jobs:
+               "tests/c6_non_economic/test_c6_s_qualification.py",
+           }
+           required_c6_files = {"tests/c6_non_economic/test_baseline_rebuild.py"}
++          if Path("quantfusion/risk/account_budget.py").is_file():
++              required_c6_files.add("tests/c6_non_economic/test_account_risk_budget.py")
+           if any(Path(path).is_file() for path in ib_markers):
+               required_c6_files |= ib_required
+           if any(Path(path).is_file() for path in is_markers):
+diff --git a/quantfusion/config/engine.py b/quantfusion/config/engine.py
+index 15a982da43c95c5a20fb8b754c2331700b934a58..f378af34ecc311d7a11d674be0877c5bdc21d4c1 100644
+--- a/quantfusion/config/engine.py
++++ b/quantfusion/config/engine.py
+@@ -211,7 +211,8 @@ def default_engine_config() -> dict[str, Any]:
+ def validate_engine_config(cfg: Mapping[str, Any]) -> dict[str, Any]:
+     """Validate one complete engine configuration and normalize containers."""
+     out = dict(cfg)
+-    allowed_keys = set(default_engine_config().keys())
++    # Optional research flag: absent preserves the exact existing profile facts.
++    allowed_keys = set(default_engine_config().keys()) | {"account_risk_budget_enabled"}
+     unknown_keys = sorted(set(out) - allowed_keys)
+     if unknown_keys:
+         raise ValueError(
+@@ -496,6 +497,10 @@ def _validate_numeric_config(out: dict) -> None:
+ 
+ def _validate_boolean_config(out: dict) -> None:
+     """Reject truthy strings and integers for every Boolean option."""
++    if "account_risk_budget_enabled" in out:
++        out["account_risk_budget_enabled"] = _require_bool(
++            "account_risk_budget_enabled", out["account_risk_budget_enabled"]
++        )
+     boolean_keys = (
+         "liquidate_on_circuit_breaker",
+         "sector_guard_enabled",
+diff --git a/quantfusion/config/overlay.py b/quantfusion/config/overlay.py
+index aa02338cfc9dddbe6ff2a5480f84b3e0689d1b40..7a5e1bb2d4abfe9d24f598ee3ef0c5d36154a3ca 100644
+--- a/quantfusion/config/overlay.py
++++ b/quantfusion/config/overlay.py
+@@ -89,6 +89,7 @@ SHOCK_MIN_HELD = 2
+ SHOCK_TRIM_DRAWDOWN = 0.08
+ SHOCK_TRIM_RATIO = 0.30
+ RISK_ACTION_PRIORITY: dict[str, int] = {
++    "account_budget_trim": 80,  # account envelope; preserve stronger full exits
+     "catastrophe_stop": 100,      # full exit, always armed
+     "cost_stop": 90,              # full exit, layered cost line
+     "atr_stop": 90,               # full exit, layered ATR chandelier
+diff --git a/quantfusion/engine/ensemble_allocation.py b/quantfusion/engine/ensemble_allocation.py
+index 49e50e0f8825e23a09a035bb58ef6854e4655dcf..904616448d86871b07f0a25d8725d407dde26931 100644
+--- a/quantfusion/engine/ensemble_allocation.py
++++ b/quantfusion/engine/ensemble_allocation.py
+@@ -21,7 +21,12 @@ from quantfusion.config.universe import (
+ )
+ from quantfusion.data.providers import DataFetcher
+ from quantfusion.domain.models import MarketRegimeObservation, Signal
+-from quantfusion.domain.rules import floor_to_lot, require_int
++from quantfusion.domain.rules import (
++    floor_to_lot,
++    limit_pct_for_code,
++    require_finite,
++    require_int,
++)
+ from quantfusion.engine.core import CoreBacktestEngine
+ from quantfusion.engine.ensemble import (
+     EnsembleBacktestEngine,
+@@ -34,9 +39,13 @@ from quantfusion.execution.c6_receipts import begin_order, reconcile_close_queue
+ from quantfusion.indicators.technical import Indicators
+ from quantfusion.config.portfolio import PortfolioPolicy
+ from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
++from quantfusion.risk.account_budget import account_budget_capacity
++from quantfusion.risk.overlay.models import RiskAction
++from quantfusion.config.overlay import RISK_ACTION_PRIORITY
+ from quantfusion.risk.overlay.adapter import (
+     apply_cooldown_buy_gate,
+     apply_risk_buy_gate,
++    apply_risk_actions,
+ )
+ from quantfusion.strategy.trend import BaseStrategy
+ 
+@@ -697,6 +706,123 @@ class EnsembleAllocationMixin:
+                 }
+             )
+ 
++    def _apply_account_risk_budget(
++        self, states: list[_PreparedSleeveRun], date: pd.Timestamp,
++        assets: float, peak: float, events: list[dict[str, Any]],
++    ) -> None:
++        """Reduce close-known intents only; queued sells never fund new risk."""
++        date_str = date.strftime("%Y-%m-%d")
++        books, buys = [], []
++        book_ids = set()
++        costs = dict(self.cfg)
++        for state_index, state in enumerate(states):
++            for key in ("slippage", "commission_rate", "stamp_duty", "min_commission"):
++                costs[key] = max(costs[key], state.sleeve.cfg[key])
++            for symbol, positions in sorted(state.sleeve.positions.items()):
++                for strategy, position in sorted(positions.items()):
++                    shares = require_int("held shares", position.shares, min_value=0)
++                    if not shares:
++                        continue
++                    frame = state.data_map.get(symbol)
++                    if frame is None:
++                        raise ValueError("account budget requires every held mark")
++                    price = require_finite("held close", state.sleeve._latest_close_on_or_before(frame, date), min_value=0.000001)
++                    books.append((state_index, symbol, strategy, shares, price))
++                    book_ids.add((state_index, symbol, strategy))
++            for signal, strategy in state.pending:
++                if signal.direction == "buy":
++                    shares = require_int("pending buy shares", signal.target_shares, min_value=0)
++                    price = require_finite("pending buy price", signal.price, min_value=0.000001)
++                    if signal.signal_date is None or pd.Timestamp(signal.signal_date) > date:
++                        raise ValueError("account budget requires close-known buy intents")
++                    buys.append((state_index, signal, shares*price))
++                    if shares:
++                        book_ids.add((state_index, signal.symbol, signal.strategy_name))
++        receipt = account_budget_capacity(assets, peak, costs, len(book_ids))
++        gross = sum(shares*price for _, _, _, shares, price in books)
++        if gross > assets + 1e-8:
++            raise ValueError("account budget cannot certify leveraged/negative-cash books")
++        cap = receipt["gross_cap"]
++        requested = sum(value for _, _, value in buys)
++        buy_envelope_binding = cap < receipt["ordinary_gross_cap"] - 1e-8
++        buy_gross_scale = (
++            min(1., max(0., cap-gross)/requested)
++            if buy_envelope_binding and requested else 1.
++        )
++        variable_gap_cost = receipt["cost_rate"]
++        current_gap_debit = sum(
++            shares * price * (limit_pct_for_code(symbol, costs) + variable_gap_cost)
++            for _, symbol, _, shares, price in books
++        )
++        requested_buy_gap_debit = sum(
++            value * (limit_pct_for_code(signal.symbol, costs) + variable_gap_cost)
++            for _, signal, value in buys
++        )
++        buy_gap_scale = (
++            min(
++                1.,
++                max(0., receipt["remaining_loss_budget"] - current_gap_debit)
++                / requested_buy_gap_debit,
++            )
++            if buy_envelope_binding and requested_buy_gap_debit else 1.
++        )
++        buy_scale = min(buy_gross_scale, buy_gap_scale)
++        actions = []
++        score = self._overlay_allocation_score(states, date)
++        remaining_relief = max(0., gross-cap)
++        for state_index, symbol, strategy, shares, price in sorted(
++            books,
++            key=lambda book: (score(book[1]), book[1], book[0], book[2]),
++        ):
++            # Exhaust weaker books first and round only the one final partial
++            # reduction.  This avoids AB1's per-book rounding and winner churn.
++            reduction = min(
++                shares,
++                math.ceil(remaining_relief/price/100.)*100,
++            )
++            if not reduction:
++                continue
++            covered = any(signal.direction == "sell" and signal.symbol == symbol
++                          and signal.strategy_name == strategy and signal.target_shares >= reduction
++                          for signal, _ in states[state_index].pending)
++            if not covered:
++                actions.append(RiskAction(symbol, strategy, reduction, price, date_str,
++                                          "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
++                                          state_index=state_index))
++            remaining_relief = max(0., remaining_relief-reduction*price)
++        # Validate and plan the entire batch before changing any pending queue.
++        previous = [list(state.pending) for state in states]
++        clipped = 0
++        for state in states:
++            retained = []
++            for signal, strategy in state.pending:
++                if signal.direction == "buy" and buy_scale < 1.:
++                    quantity = floor_to_lot(signal.target_shares*buy_scale)
++                    clipped += signal.target_shares - quantity
++                    state.sleeve._record_order_event(
++                        date=date_str, signal=signal, event="account_budget_buy_reduced",
++                        authorized_shares=quantity, close_gross_cap=cap,
++                    )
++                    if not quantity:
++                        continue
++                    signal = replace(signal, target_shares=quantity)
++                retained.append((signal, strategy))
++            state.pending = retained
++        apply_risk_actions(actions, states, date_str=date_str, events=events,
++                           state_local_books=True)
++        for state, before in zip(states, previous):
++            reconcile_close_queue(state.sleeve, before, state.pending, date_str, "account_budget_envelope")
++        events.append({"date": date_str, "event": "account_budget_envelope",
++                       "mechanism": "AB5", "planned_not_filled": True, **receipt,
++                       "gross_before": gross,
++                       "buy_envelope_binding": buy_envelope_binding,
++                       "buy_gross_scale": buy_gross_scale,
++                       "current_gap_debit": current_gap_debit,
++                       "requested_buy_gap_debit": requested_buy_gap_debit,
++                       "buy_gap_scale": buy_gap_scale,
++                       "buy_scale": buy_scale,
++                       "buy_shares_removed": clipped, "new_reduction_orders": len(actions)})
++
+     def _execute_ensemble_open(
+         self,
+         states: list[_PreparedSleeveRun],
+diff --git a/quantfusion/engine/ensemble_orchestration.py b/quantfusion/engine/ensemble_orchestration.py
+index 8715756a775abadceaec6e56893cef6814479d82..8ce5ad1b62a57a63185c3bacbbac9291378d2b15 100644
+--- a/quantfusion/engine/ensemble_orchestration.py
++++ b/quantfusion/engine/ensemble_orchestration.py
+@@ -378,6 +378,11 @@ class EnsembleOrchestrationMixin:
+                 )
+                 if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
+                     cm_overlay.finalize_c6_s_queue(states, date, state_local_books=self._c6_feature_enabled("F0"))
++            if self.cfg.get("account_risk_budget_enabled", False):
++                self._apply_account_risk_budget(
++                    states, date, assets, float(portfolio_risk.lifetime_peak_assets),
++                    portfolio_risk_events,
++                )
+             held = self._held_portfolio_symbols(states)
+             self._record_c6_exposure(states, date, "official_sample")
+             for state in states:
+diff --git a/quantfusion/engine/replay.py b/quantfusion/engine/replay.py
+index bbbf392b9bc528a4cd5d58e7926e5655d39751f7..1681a8dcb9811b77d58e532a9a2fdd0b3dffaeaf 100644
+--- a/quantfusion/engine/replay.py
++++ b/quantfusion/engine/replay.py
+@@ -511,6 +511,8 @@ class ProductionReplayEngine:
+         risk_state: dict | None = None,
+     ) -> dict[str, Any]:
+         """Run the explicit non-canonical C6 diagnostic entrypoint."""
++        if self.cfg.get("account_risk_budget_enabled", False):
++            raise ValueError("AB1 requires its own evidence identity, not a frozen C6 Base/S run")
+         request = dict(self.validate_c6_diagnostic_request(diagnostic_request))
+         diagnostic_symbols = dict(symbols_dict)
+         if request["intervention_id"] == "W0_NO_601869":
+diff --git a/quantfusion/risk/overlay/policy.py b/quantfusion/risk/overlay/policy.py
+index 91233e938a72c2fd5f956ddc113dbfb186bcc296..fefc1dd9f2735ddf7333fc66025e88939bc25eef 100644
+--- a/quantfusion/risk/overlay/policy.py
++++ b/quantfusion/risk/overlay/policy.py
+@@ -14,4 +14,5 @@ class CrossMarketOverlay(
+ ):
+     """Evaluate cross-market evidence into immutable risk actions."""
+ 
+-    C6_S_PRODUCTION = True
++    # Rejected S remains available only through its explicit frozen diagnostic path.
++    C6_S_PRODUCTION = False

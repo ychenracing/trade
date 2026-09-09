@@ -1,4 +1,4 @@
-"""Reuse the retired one-shot builder for authorized PR63 AB3, never v30 refs."""
+"""Reuse the retired one-shot builder for authorized PR63 AB5, never v30 refs."""
 from __future__ import annotations
 import contextlib
 import hashlib
@@ -14,23 +14,24 @@ import time
 import urllib.request
 from concurrent.futures import ProcessPoolExecutor
 
-BASE = '991eda56257942c0568adc846169f4a7c4d57c50'
+BASE = '6619d71abf7317acdc7fba0236ee74291e9ae074'
 EXPECTED = {
  '.github/workflows/ci.yml': 'dafc30c29cf1f392909702930bcab4e1e5207aea',
  'quantfusion/config/engine.py': 'f378af34ecc311d7a11d674be0877c5bdc21d4c1',
  'quantfusion/config/overlay.py': '7a5e1bb2d4abfe9d24f598ee3ef0c5d36154a3ca',
- 'quantfusion/engine/ensemble_allocation.py': 'b20f0cbeddfc528149930a1c8ca357ef3fa093f6',
+ 'quantfusion/engine/ensemble_allocation.py': '904616448d86871b07f0a25d8725d407dde26931',
  'quantfusion/engine/ensemble_orchestration.py': '8ce5ad1b62a57a63185c3bacbbac9291378d2b15',
  'quantfusion/engine/replay.py': '1681a8dcb9811b77d58e532a9a2fdd0b3dffaeaf',
  'quantfusion/risk/overlay/policy.py': 'fefc1dd9f2735ddf7333fc66025e88939bc25eef',
  'quantfusion/risk/account_budget.py': '962f6085f20ac68bc73b50a24745329a3bbc881d',
- 'tests/c6_non_economic/test_account_risk_budget.py': 'c56b12d4659ce16cf4ffb5cb16a02ee9272e8e84',
+ 'tests/c6_non_economic/test_account_risk_budget.py': '6d892d12badac83de221a474a37b2a04704a2d23',
 }
 IDS = ('prefix-05','prefix-09','prefix-10','prefix-13','prefix-17',
-       'add-one-13-601869','add-one-05-002384','random-20260807-03-006')
+       'add-one-13-601869','add-one-05-002384','random-20260807-03-006',
+       'random-20260807-03-004')
 SCRIPT_ROOT = Path(__file__).resolve().parent
 ROOT = Path.cwd() / 'candidate'
-PROOF = Path.cwd() / 'ab3-proof'
+PROOF = Path.cwd() / 'ab5-proof'
 
 def git(*args):
     return subprocess.check_output(['git','-C',str(ROOT),*args],text=True).strip()
@@ -49,19 +50,19 @@ def derive():
     assert git('rev-parse','HEAD:quantfusion') == '6df0af04b69157c2bd702dadc1fe2bdecf2dddbf'
     assert git('rev-parse','HEAD:tests') == '602cf6dbda8d0acb1adecfd4bbb2de40e157d210'
     assert (ROOT/'docs/C6_ACCOUNT_BUDGET_CONTINUATION.md').is_file()
-    patch = str(SCRIPT_ROOT/'ab3_candidate/existing.patch')
+    patch = str(SCRIPT_ROOT/'ab5_candidate/existing.patch')
     subprocess.run(['git','-C',str(ROOT),'apply','--check',patch],check=True)
     subprocess.run(['git','-C',str(ROOT),'apply',patch],check=True)
     for name,path in [('account_budget.py','quantfusion/risk/account_budget.py'),
                       ('test_account_risk_budget.py','tests/c6_non_economic/test_account_risk_budget.py')]:
         assert not (ROOT/path).exists()
-        shutil.copyfile(SCRIPT_ROOT/'ab3_candidate'/name, ROOT/path)
+        shutil.copyfile(SCRIPT_ROOT/'ab5_candidate'/name, ROOT/path)
     verify()
     git('add','--',*EXPECTED)
     assert set(git('diff','--cached','--name-only').splitlines()) == set(EXPECTED)
     PROOF.mkdir(exist_ok=True)
     (PROOF/'source.patch').write_text(git('diff','--cached','--binary','--full-index')+'\n')
-    receipt = dict(kind='AB3_ENGINEERING_AND_DIAGNOSTIC', canonical=False, accepted=False,
+    receipt = dict(kind='AB5_ENGINEERING_AND_DIAGNOSTIC', canonical=False, accepted=False,
         base=BASE, prospective_tree=git('write-tree'), source_blobs=EXPECTED,
         data_tree=git('rev-parse','HEAD:data'), lock_sha256=sha(ROOT/'requirements-lock.txt'),
         preregistration_sha256=sha(ROOT/'docs/C6_ACCOUNT_BUDGET_CONTINUATION.md'),
@@ -145,7 +146,7 @@ def diagnose():
             control_mdd=control['max_drawdown'], candidate_mdd=candidate['max_drawdown'],
             mdd_screen_passed=abs(candidate['max_drawdown'])<=.18+1e-15,
             candidate_order_buckets=candidate['date_symbol_side_count']))
-    result=dict(schema_version=1,kind='AB3_FIXED_EIGHT_DIAGNOSTIC',canonical=False,accepted=False,
+    result=dict(schema_version=1,kind='AB5_FIXED_NINE_DIAGNOSTIC',canonical=False,accepted=False,
         complete=True,ordered_ids=list(IDS),source=json.loads((PROOF/'receipt.json').read_text()),
         rows=rows,comparisons=comparisons)
     (PROOF/'diagnostic.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')
