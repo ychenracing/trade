@@ -6,7 +6,7 @@ on:
       - .github/scripts/build_c6_v30_relay.py
       - .github/workflows/c6-v30-relay-build.yml
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: c6-v30-relay-build-20260909
   cancel-in-progress: false
@@ -20,10 +20,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ae977737b11aff0054371984dd348e5f2db9d458
+          ref: codex/c6-v30-relay-rebind
           path: candidate
           fetch-depth: 0
-          persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: dc1553f040695ed18379e52a04889de25f3c11f6
@@ -52,6 +51,16 @@ jobs:
           print('workflow YAML parsed')
           PY
           git -C candidate diff --check
+      - name: Publish only validated non-workflow relay files
+        run: |
+          set -euo pipefail
+          git -C candidate restore --source=HEAD -- .github/workflows/c6-auto-resume.yml .github/workflows/c6-stage-advance.yml
+          test "$(git -C candidate diff --name-only | wc -l)" -eq 4
+          git -C candidate config user.name "C6 Relay Builder"
+          git -C candidate config user.email "c6-relay@users.noreply.github.com"
+          git -C candidate add .github/scripts/c6_auto_resume.py .github/scripts/c6_stage_advance.py .github/scripts/test_c6_stage_advance.py .github/scripts/test_c6_stage_artifacts.py
+          git -C candidate commit -m "chore(c6): rebind relay scripts to v30"
+          git -C candidate push origin HEAD:refs/heads/codex/c6-v30-relay-rebind
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
