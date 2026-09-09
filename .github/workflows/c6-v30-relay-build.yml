@@ -1,0 +1,61 @@
+name: C6 v30 Relay Rebind Build
+on:
+  push:
+    branches: [codex/c6-v30-relay-build-20260909]
+    paths:
+      - .github/scripts/build_c6_v30_relay.py
+      - .github/workflows/c6-v30-relay-build.yml
+permissions:
+  contents: read
+concurrency:
+  group: c6-v30-relay-build-20260909
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ae977737b11aff0054371984dd348e5f2db9d458
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: dc1553f040695ed18379e52a04889de25f3c11f6
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.14'
+      - name: Install exact dependency lock
+        run: python -m pip install --require-hashes -r source/requirements-lock.txt
+      - name: Derive exact six-file relay candidate
+        run: python .github/scripts/build_c6_v30_relay.py
+      - name: Validate changed scripts and native relay contracts
+        run: |
+          python -m py_compile candidate/.github/scripts/c6_auto_resume.py candidate/.github/scripts/c6_stage_advance.py candidate/.github/scripts/test_c6_stage_advance.py candidate/.github/scripts/test_c6_stage_artifacts.py
+          python -I -S candidate/.github/scripts/test_c6_auto_resume.py
+          python -I -S candidate/.github/scripts/test_c6_stage_advance.py source
+          python -I -S candidate/.github/scripts/test_c6_stage_artifacts.py source
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          for path in ['candidate/.github/workflows/c6-auto-resume.yml','candidate/.github/workflows/c6-stage-advance.yml']:
+              value=yaml.safe_load(Path(path).read_text())
+              assert isinstance(value, dict) and 'jobs' in value
+          print('workflow YAML parsed')
+          PY
+          git -C candidate diff --check
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-v30-relay-candidate-${{ github.run_id }}
+          path: relay-output/
+          if-no-files-found: error
+          retention-days: 90
