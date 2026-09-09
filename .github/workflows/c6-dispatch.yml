@@ -183,7 +183,7 @@ jobs:
           if version is None:
               raise SystemExit("logical run ID has no valid version")
           # Workflow identity is independent of the source/execution revision.
-          expected_workflow_ref = "codex/c6-v29-workflow-anchor"
+          expected_workflow_ref = "codex/c6-v30-workflow-anchor"
           if request["workflow_ref"] != expected_workflow_ref:
               raise SystemExit("dispatch workflow ref is not the trusted anchor")
           expected_ref = (
