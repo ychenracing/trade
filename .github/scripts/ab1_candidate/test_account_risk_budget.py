@@ -1,0 +1,164 @@
+"""Synthetic controls for the separately preregistered AB1 risk envelope."""
+from __future__ import annotations
+
+from copy import deepcopy
+from types import SimpleNamespace
+
+import pandas as pd
+import pytest
+
+from quantfusion.config.engine import default_engine_config, validate_engine_config
+from quantfusion.config.portfolio import PortfolioPolicy
+from quantfusion.domain.models import Position, Signal
+from quantfusion.engine.ensemble import EnsembleSleeveBacktestEngine
+from quantfusion.engine.universe import BacktestEngine
+
+
+def fixture(shares=8000, cash=10000.0):
+    cfg = default_engine_config()
+    cfg['account_risk_budget_enabled'] = True
+    sleeve = EnsembleSleeveBacktestEngine(100000., cfg=cfg, policy=PortfolioPolicy(),
+                                          allocation_lookbacks=(3, 5, 10), sleeve_name='fast')
+    sleeve._reset_run_state({'300308': 'test'})
+    sleeve.positions = {'300308': {'turtle_breakout': Position(
+        symbol='300308', strategy_name='turtle_breakout', shares=shares,
+        entry_price=10., entry_date='2026-01-01', stop_loss=7.,
+        highest_since_entry=10., highest_close_since_entry=10., last_buy_date='2026-01-01')}}
+    sleeve.cash = cash
+    dates = pd.to_datetime(['2026-01-05', '2026-01-06', '2026-01-07'])
+    frame = pd.DataFrame({'open': [10., 10., 10.], 'close': [10., 10., 10.],
+                          'high': [10., 10., 10.], 'low': [10., 10., 10.],
+                          'volume': [1e8]*3}, index=dates)
+    state = SimpleNamespace(sleeve=sleeve, data_map={'300308': frame}, pending=[],
+                            all_dates=list(dates), date_to_pos={d:i for i,d in enumerate(dates)})
+    engine = BacktestEngine(cfg={"account_risk_budget_enabled": True})
+    return engine, state, dates
+
+
+def apply(engine, states, dates, equity=90000., peak=100000.):
+    events = []
+    engine._apply_account_risk_budget(states, dates[0], equity, peak, events)
+    return events[-1]
+
+
+def test_budget_intervenes_before_18_percent_without_mutating_account():
+    engine, state, dates = fixture()
+    before = deepcopy((state.sleeve.positions, state.sleeve.cash, vars(state.sleeve.risk)))
+    receipt = apply(engine, [state], dates)
+    assert receipt['gross_before'] == 80000.
+    assert receipt['gross_cap'] < 80000.
+    assert receipt['planned_not_filled'] is True
+    assert state.pending and all(s.direction == 'sell' for s, _ in state.pending)
+    assert (state.sleeve.positions, state.sleeve.cash, vars(state.sleeve.risk)) == before
+
+
+def test_budget_bull_silent_and_disabled_by_default():
+    engine, state, dates = fixture(cash=20000.)
+    apply(engine, [state], dates, equity=100000.)
+    assert not state.pending
+    assert default_engine_config().get('account_risk_budget_enabled', False) is False
+
+
+def test_budget_formula_has_fixed_two_session_and_fee_reserve():
+    engine, state, dates = fixture()
+    r = apply(engine, [state], dates)
+    cfg = engine.cfg
+    stress = 1-(1-cfg['daily_loss_limit'])**2
+    costs = 2*cfg['slippage']+2*cfg['commission_rate']+cfg['stamp_duty']
+    assert r['floor'] == pytest.approx(82000.)
+    assert r['stress_fraction'] == pytest.approx(stress)
+    assert r['gross_cap'] == pytest.approx(min(cfg['max_total_weight']*90000.,
+                       (90000.-82000.-2*cfg['min_commission'])/(stress+costs)))
+
+
+def test_budget_clips_buy_batch_and_does_not_credit_pending_sell():
+    engine, state, dates = fixture(shares=2000, cash=70000.)
+    buy = Signal('300308', 'turtle_breakout', 'buy', target_shares=10000,
+                 price=10., signal_date='2026-01-05', reason='initial entry')
+    state.pending = [(buy, SimpleNamespace(name='turtle_breakout')),
+                     (Signal('300308', 'turtle_breakout', 'sell', target_shares=2000,
+                             price=10., signal_date='2026-01-05', reason='portfolio-level drawdown liquidation'), None)]
+    r = apply(engine, [state], dates)
+    buys = [s for s, _ in state.pending if s.direction == 'buy']
+    assert 0 < sum(s.target_shares*s.price for s in buys) <= max(0., r['gross_cap']-20000.)
+    assert all(s.target_shares % 100 == 0 for s in buys)
+    assert state.sleeve.positions['300308']['turtle_breakout'].shares == 2000
+
+
+def test_stronger_lock_liquidation_is_not_replaced():
+    engine, state, dates = fixture()
+    signal = Signal('300308', 'turtle_breakout', 'sell', target_shares=8000,
+                    price=10., signal_date='2026-01-05', reason='portfolio-level drawdown liquidation')
+    state.pending = [(signal, None)]
+    apply(engine, [state], dates)
+    assert state.pending == [(signal, None)]
+
+
+def test_sibling_books_remain_independent_and_lot_rounding_covers_cap():
+    engine, state, dates = fixture(shares=4050, cash=4500.)
+    sibling = deepcopy(state)
+    sibling.sleeve.sleeve_name = 'slow'
+    r = apply(engine, [state, sibling], dates)
+    sold = [s.target_shares for st in (state, sibling) for s, _ in st.pending]
+    assert len(sold) == 2 and sold[0] == sold[1]
+    assert all(q % 100 == 0 or q == 4050 for q in sold)
+    assert (8100-sum(sold))*10 <= r['gross_cap']
+
+
+@pytest.mark.parametrize('value', [float('nan'), float('inf'), -1., True])
+def test_invalid_equity_fails_closed_before_queue_mutation(value):
+    engine, state, dates = fixture()
+    with pytest.raises(ValueError):
+        apply(engine, [state], dates, equity=value)
+    assert not state.pending
+
+
+def test_missing_held_mark_fails_closed():
+    engine, state, dates = fixture()
+    state.data_map = {}
+    with pytest.raises(ValueError):
+        apply(engine, [state], dates)
+    assert not state.pending
+
+
+def test_future_prices_cannot_change_close_decision():
+    engine, state, dates = fixture()
+    other = deepcopy(state)
+    other.data_map['300308'].loc[dates[1]:, ['open', 'close', 'volume']] = 0.
+    apply(engine, [state], dates)
+    apply(engine, [other], dates)
+    assert state.pending == other.pending
+
+
+def test_generated_reduction_uses_canonical_next_open_fill_and_limit_block():
+    engine, state, dates = fixture()
+    apply(engine, [state], dates)
+    before = state.sleeve.positions['300308']['turtle_breakout'].shares
+    pending = state.sleeve._execute_pending_signals(state.pending, state.data_map,
+                                                   dates[0], state.date_to_pos, frozenset({'sell'}))
+    assert state.sleeve.positions['300308']['turtle_breakout'].shares == before
+    assert not state.sleeve.trades
+    blocked = deepcopy(state)
+    blocked.data_map['300308'].loc[dates[1], 'open'] = 7.9
+    blocked.sleeve._execute_pending_signals(pending, blocked.data_map, dates[1],
+                                          blocked.date_to_pos, frozenset({'sell'}))
+    assert not blocked.sleeve.trades
+    state.sleeve._execute_pending_signals(pending, state.data_map, dates[1],
+                                         state.date_to_pos, frozenset({'sell'}))
+    assert state.sleeve.trades and state.sleeve.trades[0].date == '2026-01-06'
+    assert state.sleeve.trades[0].commission > 0
+
+
+def test_budget_flag_is_not_truthy_string():
+    cfg = default_engine_config()
+    cfg['account_risk_budget_enabled'] = 'false'
+    with pytest.raises(ValueError):
+        validate_engine_config(cfg)
+
+
+def test_budget_cannot_masquerade_as_frozen_base_or_s():
+    from quantfusion.engine.replay import ProductionReplayEngine
+    engine = ProductionReplayEngine(cfg={'account_risk_budget_enabled': True})
+    with pytest.raises(ValueError, match="own evidence identity"):
+        engine.run_c6_diagnostic({}, '2025-04-01', '2026-07-20',
+            data_dir='unused', regime_data_dir='unused', diagnostic_request={})
