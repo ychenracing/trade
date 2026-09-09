@@ -1,0 +1,144 @@
+name: C6 Immutable Userspace Preflight
+on:
+  push:
+    branches: [codex/c6-v30-runtime-preflight-20260909]
+    paths: [.github/workflows/c6-oci-runtime-preflight.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: c6-oci-runtime-preflight-20260909
+  cancel-in-progress: false
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      image: ${{ steps.pin.outputs.image }}
+      image_id: ${{ steps.pin.outputs.image_id }}
+    steps:
+      - name: Resolve official patch-version image once
+        id: pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull --platform linux/amd64 python:3.12.14-bookworm
+          image="$(docker image inspect --format '{{index .RepoDigests 0}}' python:3.12.14-bookworm)"
+          image_id="$(docker image inspect --format '{{.Id}}' "$image")"
+          [[ "$image" =~ ^python@sha256:[0-9a-f]{64}$ ]]
+          [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+          test "$(docker image inspect --format '{{.Architecture}}' "$image")" = amd64
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+          printf '%s\n%s\n' "$image" "$image_id" > oci-image.txt
+          docker run --rm --network none "$image" python -c 'import platform; assert platform.python_version() == "3.12.14"; print(platform.python_version())'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-oci-pin-${{ github.run_id }}
+          path: oci-image.txt
+          if-no-files-found: error
+          retention-days: 90
+  validate:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        instance: [0, 1]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: dfed1e6584b0b0e039bd720ff6eff32348123eab
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ae977737b11aff0054371984dd348e5f2db9d458
+          path: relay
+          persist-credentials: false
+      - name: Validate actual immutable userspace and native non-economic boundaries
+        shell: bash
+        env:
+          OCI_IMAGE: ${{ needs.resolve.outputs.image }}
+          OCI_IMAGE_ID: ${{ needs.resolve.outputs.image_id }}
+          INSTANCE: ${{ matrix.instance }}
+        run: |
+          set -euo pipefail
+          docker pull --platform linux/amd64 "$OCI_IMAGE"
+          test "$(docker image inspect --format '{{.Id}}' "$OCI_IMAGE")" = "$OCI_IMAGE_ID"
+          mkdir -p output
+          export C6_HOST_IMAGE_OS="$ImageOS" C6_HOST_IMAGE_VERSION="$ImageVersion"
+          docker run --rm -i --platform linux/amd64 \
+            -e OCI_IMAGE -e OCI_IMAGE_ID -e INSTANCE -e GITHUB_RUN_ID -e GITHUB_RUN_ATTEMPT -e GITHUB_SHA \
+            -e C6_HOST_IMAGE_OS -e C6_HOST_IMAGE_VERSION -e PYTHONDONTWRITEBYTECODE=1 \
+            -v "$GITHUB_WORKSPACE/source:/src:ro" -v "$GITHUB_WORKSPACE/relay:/relay:ro" \
+            -v "$GITHUB_WORKSPACE/output:/out" -w /src "$OCI_IMAGE" bash -s <<'SH'
+          set -euo pipefail
+          git config --global --add safe.directory /src
+          git config --global --add safe.directory /relay
+          test "$(git -c safe.directory=/src rev-parse HEAD)" = dfed1e6584b0b0e039bd720ff6eff32348123eab
+          test "$(sha256sum requirements-lock.txt | cut -d' ' -f1)" = 22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434
+          python -c 'import platform; assert platform.python_version() == "3.12.14"'
+          python -m pip install --require-hashes -r requirements-lock.txt > /out/dependencies.log 2>&1
+          python -m pytest -q -p no:cacheprovider --basetemp=/tmp/c6-pytest tests/c6_non_economic/test_c6_contract.py tests/c6_non_economic/test_c6_bound_run.py tests/c6_non_economic/test_c6_parallel_l1_attestation.py tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py > /out/native-tests.log 2>&1
+          python -I -S /relay/.github/scripts/test_c6_stage_advance.py /src > /out/stage-tests.log 2>&1
+          python -I -S /relay/.github/scripts/test_c6_stage_artifacts.py /src > /out/artifact-tests.log 2>&1
+          python -I -S /relay/.github/scripts/test_c6_auto_resume.py > /out/auto-tests.log 2>&1
+          python -m pip freeze > /out/installed.txt
+          python - <<'PY'
+          import hashlib, json, os, platform, sys, sysconfig
+          from pathlib import Path
+          def sha(path):
+              return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+          lib = Path(sysconfig.get_config_var('LIBDIR')) / sysconfig.get_config_var('LDLIBRARY')
+          receipt = dict(kind='c6_oci_runtime_engineering_preflight', source_revision='dfed1e6584b0b0e039bd720ff6eff32348123eab', relay_revision='ae977737b11aff0054371984dd348e5f2db9d458', image=os.environ['OCI_IMAGE'], image_id=os.environ['OCI_IMAGE_ID'], python=platform.python_version(), python_sha256=sha(sys.executable), libpython_sha256=sha(lib), libc=platform.libc_ver(), os_release=Path('/etc/os-release').read_text(), dependency_lock_sha256=sha('/src/requirements-lock.txt'), instance=int(os.environ['INSTANCE']), host_image_os=os.environ['C6_HOST_IMAGE_OS'], host_image_version=os.environ['C6_HOST_IMAGE_VERSION'], run_id=os.environ['GITHUB_RUN_ID'], run_attempt=os.environ['GITHUB_RUN_ATTEMPT'], workflow_sha=os.environ['GITHUB_SHA'], economic_dispatches=0, sealed_economic_results_created=0, frozen_refs_published=0, old_economic_equivalence_proven=False)
+          Path('/out/receipt.json').write_text(json.dumps(receipt, sort_keys=True, indent=2)+'\n')
+          print(json.dumps(receipt, sort_keys=True))
+          PY
+          cat /out/native-tests.log
+          tail -5 /out/stage-tests.log /out/artifact-tests.log /out/auto-tests.log
+          SH
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-oci-validation-${{ github.run_id }}-${{ matrix.instance }}
+          path: output/
+          if-no-files-found: error
+          retention-days: 90
+  aggregate:
+    needs: [resolve, validate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: c6-oci-validation-${{ github.run_id }}-*
+          path: evidence
+      - name: Check identical userspace without weakening the old runner contract
+        env:
+          OCI_IMAGE: ${{ needs.resolve.outputs.image }}
+          OCI_IMAGE_ID: ${{ needs.resolve.outputs.image_id }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          receipts = [json.loads(p.read_text()) for p in Path('evidence').rglob('receipt.json')]
+          assert len(receipts) == 2 and {r['instance'] for r in receipts} == {0, 1}
+          keys = ('image', 'image_id', 'python', 'python_sha256', 'libpython_sha256', 'libc', 'os_release', 'dependency_lock_sha256')
+          assert all({k:r[k] for k in keys} == {k:receipts[0][k] for k in keys} for r in receipts)
+          for r in receipts:
+              assert r['image'] == os.environ['OCI_IMAGE'] and r['image_id'] == os.environ['OCI_IMAGE_ID']
+              assert r['run_id'] == os.environ['GITHUB_RUN_ID'] and r['run_attempt'] == os.environ['GITHUB_RUN_ATTEMPT'] and r['workflow_sha'] == os.environ['GITHUB_SHA']
+              assert r['economic_dispatches'] == r['sealed_economic_results_created'] == r['frozen_refs_published'] == 0
+          result = dict(status='native_engineering_passed', receipts=receipts, economic_equivalence=False, new_freeze_required=True, old_refs_unchanged=True)
+          Path('oci-runtime-proof.json').write_text(json.dumps(result, sort_keys=True, indent=2)+'\n')
+          print(json.dumps({k:v for k,v in result.items() if k!='receipts'}, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c6-oci-runtime-proof-${{ github.run_id }}
+          path: oci-runtime-proof.json
+          if-no-files-found: error
+          retention-days: 90
