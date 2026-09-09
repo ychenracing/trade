@@ -2,8 +2,8 @@
   "schema_version": 2,
   "kind": "c6_causal_risk_closure_preregistration",
   "status": "frozen_before_implementation_or_economic_dispatch",
-  "experiment_id": "c6-causal-risk-closure-17x958-v27",
-  "frozen_at": "2026-09-08T00:54:00Z",
+  "experiment_id": "c6-causal-risk-closure-17x958-v30",
+  "frozen_at": "2026-09-09T01:20:00Z",
   "authority": {
     "repository": "ychenracing/trade",
     "branch": "codex/c6-causal-risk-closure-v11",
@@ -245,7 +245,7 @@
         "pr63_exact_head_ci": 34125997027,
         "v21_imported_records": 0
       },
-      "v27_recovered_shard_attestation": {
+      "v29_recovered_shard_attestation": {
         "classification": "A_runner_interruption_plus_parallel_semantic_attestation",
         "invalid_execution_revision": "v22",
         "invalid_bound_run_id": 34128460919,
@@ -288,6 +288,35 @@
           "reruns": 0,
           "reason": "The sole immutable v26 Base a0 recovered and semantically attested all 12 exact Base22 core shards without recomputing the 3825 core evaluations, then failed deterministically in the central recovered-L1 CLI because --preregistration was parsed as str while the path consumer required Path.read_bytes(). No sealed result or checkpoint was created; v26 is immutable forensic engineering evidence and is superseded by v27."
         },
+        "v27_base_valid_qualification_orchestration_failure": {
+          "P": "e02089ec12c25a8912f2adf0cf9c53f3b844069b",
+          "I_B": "24682791cbe96acc69d36cd0dcfc42e69d61bcda",
+          "I_S": "d6b06596f3280d0e8ce3573d481cae99443ae866",
+          "R": "1744434eac1c80bb1d74fa0d92fb13193aab9062",
+          "workflow": "3a0eb31775d633b0a8dea431207c141ae1f290cc",
+          "repair_workflow": "037b609b99e84081d2e0137604074fc279797a7c",
+          "dispatch_workflow": "01fb58613b44aee921c43291fe56203e76b52b0c",
+          "classification": "A_false_green_dependency_status_gating",
+          "base_dispatch_branch": "codex/c6-dispatch/c6-v27-base-l1/c6.base.l1/a0",
+          "base_dispatch_commit": "b9b8dbe8d712d6392994265a2d056c0dd99a391b",
+          "base_dispatch_envelope_run_id": 34180184742,
+          "base_bound_run_id": 34180737092,
+          "base_central_job_id": 101925714778,
+          "base_seal_artifact_id": 10043064982,
+          "base_seal_artifact_digest": "sha256:b3cc5266c9802f68d8ca81c18e13c1cdd2f5d77a6bbf00ee636d9d1887f0628c",
+          "base_stage_run_id": 34262502342,
+          "base_stage_status_artifact_id": 10074734892,
+          "base_stage_status_artifact_digest": "sha256:d2c9c89f3d97f1aa817f949b87173abe0eb9b1b12b6db1e9d21e6ff0b89d4b18",
+          "base_sealed_economic_results": 1,
+          "qualification_dispatch_branch": "codex/c6-dispatch/c6-v27-s-qualification/c6.s.qualification/a0",
+          "qualification_dispatch_commit": "b5496d8d60f367182c186862ff92a6d2936b8529",
+          "qualification_bound_run_id": 34273464686,
+          "qualification_run_job_id": 102220655253,
+          "qualification_bound_job_conclusion": "skipped",
+          "qualification_artifacts": 0,
+          "result_or_checkpoint_imported_records": 0,
+          "reason": "The v27 Base result was sealed and fully authenticated by the stage consumer. Its sole immutable S-qualification successor then completed false-green without executing the bound job because the workflow omitted an explicit status-function override while depending on an intentionally skipped parallel_l1 job. This is not an economic rejection. W28 adds the cancellation-safe !cancelled() dependency gate and W29 rebinds immutable dispatch. v29 imports zero v27 result/checkpoint records and rebuilds the Base seal from fresh attestations of only the exact Base22 core shards."
+        },
         "prior_frozen_identities": {
           "P": "c50216f70cba21d830b6feb2079ed68039821ecf",
           "I_B": "addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7",
@@ -295,7 +324,7 @@
           "R": "ea6dfa36b9796df7e4078d6f8d88b539a54072e3",
           "workflow": "f9da08afebf22b3dc03a1fb3a0ec351a79adf42c"
         },
-        "workflow_anchor": "3a0eb31775d633b0a8dea431207c141ae1f290cc",
+        "workflow_anchor": "01fb58613b44aee921c43291fe56203e76b52b0c",
         "recovered_intermediate_policy": {
           "source_run_id": 34128460919,
           "source_binding": "c6.base.l1",
@@ -394,10 +423,50 @@
           "official_scenarios": 958
         },
         "hard_drawdown_gate": 0.18
+      },
+      "v30_immutable_userspace_recovery": {
+        "classification": "A/D_runtime_identity",
+        "prior_P": "8eaca66fc1f617e2a7f52caa422f99d6c3a8729f",
+        "prior_I_B": "dfed1e6584b0b0e039bd720ff6eff32348123eab",
+        "prior_I_S": "60d42b3931ccc7319a7cc815d363b9950e2586d7",
+        "prior_R": "9e7e77c37dcf8a1531c223238bfc48cdcfd45ee4",
+        "prior_W": "01fb58613b44aee921c43291fe56203e76b52b0c",
+        "failed_run": 34280658425,
+        "failure": "mixed hosted images 20260831.293.1/20260907.300.1 rejected by pre-import exact guard; seven shard attestations only; no sealed Base29 result/checkpoint",
+        "runtime_preflights": [
+          34290737379,
+          34296463578
+        ],
+        "oci_proof_run": 34297934892,
+        "oci_proof_artifact": 10083860114,
+        "oci_proof_sha256": "a55fd1f700e797f325fde8c4a381a4b4f118426ba1555cfef27d6ba6561327cf",
+        "image": "python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970",
+        "config_id": "sha256:e8565fa265f973c06f0515fac7aa9d102edae01b5677d69216900b84029c6ad0",
+        "python_binary_sha256": "837a48d7afd08447fb43e28b282026fadb59368620072e57e01f66d12977e5ce",
+        "libpython_sha256": "57a3c0505572977cba024791b79fb07b787d761438befba3685339c81b5e07e6",
+        "runtime_identity": {
+          "runner_image_os": "oci-debian12-amd64",
+          "runner_image_version": "sha256-581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970",
+          "meaning": "OCI Debian12 linux/amd64 userspace and immutable manifest digest, not a GitHub hosted ImageVersion. Host kernel and provisioning image remain audit data. Trusted workflow pins container digest and verifies OS, libc, architecture and binary hashes before candidate import."
+        },
+        "old_runtime_economic_equivalence_proven": false,
+        "prior_records_imported": 0,
+        "prior_results_imported": 0,
+        "prior_checkpoints_imported": 0,
+        "fresh_Base_core_evaluations": 3825,
+        "fresh_Base_evaluations": 3831,
+        "Base_execution_items": 3875,
+        "economic_hypotheses_changed": false,
+        "source_code_changed": false,
+        "dependency_lock_changed": false,
+        "prior_evidence_validity": "Base27 and Base22 intermediate evidence remain preserved in their original environments; no automatic cross-runtime validity claim",
+        "supersedes_for_current_execution": "v29 recovered_intermediate_policy; historical sections remain forensic snapshots",
+        "PR_head": "fa1317916e47b41c27ad60e08134df06c0a2526d",
+        "PR_exact_CI": 34296808809
       }
     }
   },
-  "purpose": "Engineering-required v27 rebind after the Base22 GitHub runner interruption. Reuse only the twelve explicitly authenticated successful Base22 core shard intermediates, perform a second full byte-bound semantic validation in parallel, and preserve fixed Base/S economics, 765/3831/3875 manifests, official 17/958 gates, data, seeds, qualification and mechanical selection.",
+  "purpose": "A/D runtime recovery after the hosted runner image rollout prevented Base29 completion. All economic formulas, gates and inputs remain unchanged. Use a digest-pinned OCI userspace with measured interpreter identity and fresh Base/S calculations. No old result, checkpoint or intermediate economic record is imported; prior evidence remains seen data and retained, not relabelled or treated as out-of-sample.",
   "claims_not_authorized": [
     "out_of_sample_generalization",
     "complete_membership_or_superset_stability",
@@ -3151,11 +3220,11 @@
     "execution_owner": "GitHub Actions C6 Bound Economic Run only",
     "workflow": {
       "path": ".github/workflows/c6-bound-economic.yml",
-      "dispatch_ref": "codex/c6-v27-workflow-anchor",
-      "revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
+      "dispatch_ref": "codex/c6-v30-workflow-anchor",
+      "revision": "927b2dd86225769db5c22a98af06f4244fa6f448",
       "file_mode": "100644",
-      "file_git_blob": "28b649fd23f40648bfd3333fb5fd2d60d883d38c",
-      "file_sha256": "801b2872983b7fbc03f4dbbcdb1a2aae4b21292c9755a6123a87779bc14a3a71",
+      "file_git_blob": "833511bee358ec811fcf45abc0a50695ac36dcb5",
+      "file_sha256": "40c9d6e1758d0567c5a490325fcd7c7ae2e46cb919d72f31c19f253355f7a1df",
       "permissions": {
         "actions": "read",
         "contents": "read"
@@ -3182,10 +3251,10 @@
       ],
       "fencing_token_generation": "The pinned workflow generates a fresh 64-lowercase-hex run-local nonce with Python secrets before input validation, masks it immediately, and passes it only through GITHUB_ENV and the wrapper/child process environments.",
       "trusted_source_refs": {
-        "I_B": "codex/c6-base-v27",
-        "I_S": "codex/c6-s-v27"
+        "I_B": "codex/c6-base-v30",
+        "I_S": "codex/c6-s-v30"
       },
-      "trusted_evidence_ref": "codex/c6-evidence-v27",
+      "trusted_evidence_ref": "codex/c6-evidence-v30",
       "pre_import_anchor": "Before checkout or import, git ls-remote --refs on the public repository must return exactly source_revision at the candidate's trusted source ref. With empty D, evidence-ref head must equal run_bindings_revision. With nonempty D, evidence-ref head must equal d_commit.",
       "post_D_anchor": "For L2/L4 the checked-out D commit has exactly one parent equal run_bindings_revision and its only diff is A artifacts/diagnostics/c6-selection.json; any other parent/path/status is invalid."
     },
@@ -3217,8 +3286,8 @@
       "checkpoint_every": 10,
       "python_minor": "3.12",
       "python_patch": "resolved exactly in R from a successful non-economic runner probe",
-      "runner_image_os": "resolved exactly in R",
-      "runner_image_version": "resolved exactly in R"
+      "runner_image_os": "fixed_OCI_userspace_oci-debian12-amd64",
+      "runner_image_version": "fixed_OCI_manifest_sha256-581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970"
     },
     "binding_record_order": [
       "c6.base.l1",
@@ -3234,7 +3303,7 @@
         "record_id": "c6.base.l1",
         "workflow_binding_id": "c6.base.l1",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v27-base-l1",
+        "logical_run_id": "c6-v30-base-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_B",
@@ -3262,7 +3331,7 @@
           "--parallel-shard-count",
           "12",
           "--parallel-shard-source-revision",
-          "addb5c8ebf98ac43e08676cbc6ffe81a2627d9d7",
+          "{SOURCE_REVISION}",
           "--parallel-validation-attestations-required",
           "--output",
           "{OUTPUT_PATH}"
@@ -3279,7 +3348,7 @@
         "record_id": "c6.s.qualification",
         "workflow_binding_id": "c6.s.qualification",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v27-s-qualification",
+        "logical_run_id": "c6-v30-s-qualification",
         "initial_attempt_id": "a0",
         "stage": "QUALIFICATION",
         "source_alias": "I_S",
@@ -3323,7 +3392,7 @@
         "record_id": "c6.base_plus_s.l1",
         "workflow_binding_id": "c6.base_plus_s.l1",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v27-base-plus-s-l1",
+        "logical_run_id": "c6-v30-base-plus-s-l1",
         "initial_attempt_id": "a0",
         "stage": "L1",
         "source_alias": "I_S",
@@ -3380,7 +3449,7 @@
         "record_id": "c6.base.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v27-base-l2",
+        "logical_run_id": "c6-v30-base-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_B",
@@ -3418,7 +3487,7 @@
         "record_id": "c6.base_plus_s.selected.l2",
         "workflow_binding_id": "c6.selected.l2",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v27-base-plus-s-l2",
+        "logical_run_id": "c6-v30-base-plus-s-l2",
         "initial_attempt_id": "a0",
         "stage": "L2",
         "source_alias": "I_S",
@@ -3456,7 +3525,7 @@
         "record_id": "c6.base.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base",
-        "logical_run_id": "c6-v27-base-l4",
+        "logical_run_id": "c6-v30-base-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_B",
@@ -3502,7 +3571,7 @@
         "record_id": "c6.base_plus_s.selected.l4",
         "workflow_binding_id": "c6.selected.l4",
         "candidate_id": "C6-Base+S",
-        "logical_run_id": "c6-v27-base-plus-s-l4",
+        "logical_run_id": "c6-v30-base-plus-s-l4",
         "initial_attempt_id": "a0",
         "stage": "L4",
         "source_alias": "I_S",
@@ -3600,11 +3669,11 @@
         ],
         "field_types": {
           "path": "literal .github/workflows/c6-bound-economic.yml",
-          "dispatch_ref": "literal codex/c6-v27-workflow-anchor",
-          "revision": "literal d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
+          "dispatch_ref": "literal codex/c6-v30-workflow-anchor",
+          "revision": "literal 927b2dd86225769db5c22a98af06f4244fa6f448",
           "mode": "literal 100644",
-          "git_blob": "literal 28b649fd23f40648bfd3333fb5fd2d60d883d38c",
-          "sha256": "literal 801b2872983b7fbc03f4dbbcdb1a2aae4b21292c9755a6123a87779bc14a3a71"
+          "git_blob": "literal 833511bee358ec811fcf45abc0a50695ac36dcb5",
+          "sha256": "literal 40c9d6e1758d0567c5a490325fcd7c7ae2e46cb919d72f31c19f253355f7a1df"
         },
         "array_order": {}
       },
@@ -3772,8 +3841,8 @@
           "equal_across_all_records": "literal ordered array [P,workflow,resolved_inputs,runtime.runner_image_os,runtime.runner_image_version,runtime.python_version,runtime.dependency_lock,runtime.workers,runtime.process_map_order,runtime.checkpoint_every] whose named values must be deeply equal across all seven records",
           "equal_within_source_alias": "literal ordered array [source_revision,source_tree,source_blob_identities] whose named values must be deeply equal among every I_B record and separately among every I_S record",
           "permitted_record_differences": "literal ordered array [record_id,workflow_binding_id,candidate_id,logical_run_id,initial_attempt_id,stage,source_alias,source_revision,source_tree,source_blob_identities,entrypoint,argv,runtime_late_slots,scenario_manifest_identity,synthetic_control_manifest_identity,evaluation_manifest_identity,item_manifest_contract,producer_policy,decision_policy,attempt_policy,paths,canonical_payload_schema,exit_semantics,record_signature] and no others",
-          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v27,I_S:codex/c6-s-v27}",
-          "trusted_evidence_ref": "literal codex/c6-evidence-v27",
+          "trusted_ref_by_source_alias": "literal object {I_B:codex/c6-base-v30,I_S:codex/c6-s-v30}",
+          "trusted_evidence_ref": "literal codex/c6-evidence-v30",
           "validation_policy": "literal deep_compare_before_any_dispatch; unknown path or unlisted difference invalid"
         },
         "array_order": {
@@ -3811,7 +3880,7 @@
           "dispatch_deadline_utc": "literal 2026-11-23T15:55:00Z; every initial or resume workflow created_at must be <= this instant"
         },
         "array_order": {},
-        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v27-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
+        "history_anchor": "Each initial/resume attempt validates the complete prior-attempt chain from GitHub Actions API: event must be workflow_dispatch, head_branch must equal codex/c6-v30-workflow-anchor, head_sha must equal the pinned workflow revision, run_attempt must equal 1, created_at must be <= dispatch_deadline_utc, and every predecessor run/attempt/checkpoint identity must match the signed chain."
       },
       "R_paths": {
         "type": "object",
@@ -4138,7 +4207,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-base-v27",
+      "ref": "codex/c6-base-v30",
       "stages": [
         "I_B_frozen"
       ],
@@ -4151,7 +4220,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-s-v27",
+      "ref": "codex/c6-s-v30",
       "stages": [
         "I_S"
       ],
@@ -4164,7 +4233,7 @@
     },
     {
       "event": "push",
-      "ref": "codex/c6-evidence-v27",
+      "ref": "codex/c6-evidence-v30",
       "stages": [
         "R",
         "D"
@@ -4195,7 +4264,7 @@
     {
       "event": "workflow_dispatch",
       "workflow": "C6 Bound Economic Run",
-      "workflow_ref": "codex/c6-v27-workflow-anchor",
+      "workflow_ref": "codex/c6-v30-workflow-anchor",
       "workflow_revision": "d8bc65f3edaf1869e0c6c26ba9f26d7e7931ced4",
       "stages": [
         "L1_Base",
@@ -4293,7 +4362,7 @@
     },
     {
       "event": "workflow_run",
-      "ref": "codex/c6-v27-workflow-anchor",
+      "ref": "codex/c6-v30-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
@@ -4311,7 +4380,7 @@
     },
     {
       "event": "schedule",
-      "ref": "codex/c6-v27-workflow-anchor",
+      "ref": "codex/c6-v30-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
@@ -4329,7 +4398,7 @@
     },
     {
       "event": "workflow_dispatch",
-      "ref": "codex/c6-v27-workflow-anchor",
+      "ref": "codex/c6-v30-workflow-anchor",
       "stages": [
         "validate_sealed_checkpoint",
         "dispatch_next_attempt_only"
