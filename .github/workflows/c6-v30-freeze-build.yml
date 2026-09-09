@@ -1,0 +1,68 @@
+name: C6 v30 Immutable Runtime Freeze
+on:
+  push:
+    branches: [codex/c6-v30-runtime-preflight-20260909]
+    paths:
+      - .github/scripts/build_c6_v30_anchor.py
+      - .github/scripts/build_c6_v30_freeze.py
+      - .github/workflows/c6-v30-freeze-build.yml
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: c6-v30-freeze-20260909
+  cancel-in-progress: false
+jobs:
+  freeze:
+    runs-on: ubuntu-24.04
+    container:
+      image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 20
+    env:
+      C6_BUILD_OUTPUT: /tmp/c6-v30-build-output
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact source helper and hashed dependencies
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(python -c 'import platform; print(platform.python_version())')" = 3.12.14
+          test "$(sha256sum requirements-lock.txt | cut -d' ' -f1)" = 22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434
+          python -m pip install --require-hashes -r requirements-lock.txt
+          python -m py_compile .github/scripts/build_c6_v30_anchor.py .github/scripts/build_c6_v30_freeze.py
+          python .github/scripts/build_c6_v30_anchor.py
+      - name: Prove production runtime guard accepts exact bytes and rejects identity drift
+        env:
+          C6_RUNNER_IMAGE_OS: oci-debian12-amd64
+          C6_RUNNER_IMAGE_VERSION: sha256-581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
+          C6_PYTHON_VERSION: 3.12.14
+        run: |
+          python -I -S "$C6_BUILD_OUTPUT/runtime-guard.py" | tee "$C6_BUILD_OUTPUT/runtime-positive.log"
+          python - <<'PY'
+          import os, subprocess, sys
+          from pathlib import Path
+          script=Path(os.environ['C6_BUILD_OUTPUT'])/'runtime-guard.py'
+          cases={'C6_RUNNER_IMAGE_OS':'ubuntu24','C6_RUNNER_IMAGE_VERSION':'20260907.300.1','C6_PYTHON_VERSION':'3.12.13'}
+          for key,value in cases.items():
+              result=subprocess.run([sys.executable,'-I','-S',str(script)],env={**os.environ,key:value},capture_output=True,text=True)
+              assert result.returncode != 0, key
+          print('exact OCI runtime accepted; three independent legacy/mismatch identities rejected')
+          PY
+      - name: Validate frozen Base and S then publish only their immutable identities
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python .github/scripts/build_c6_v30_freeze.py --publish
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: c6-v30-freeze-${{ github.run_id }}
+          path: /tmp/c6-v30-build-output/
+          if-no-files-found: error
+          retention-days: 90
