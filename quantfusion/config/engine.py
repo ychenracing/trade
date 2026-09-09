@@ -211,7 +211,8 @@ def default_engine_config() -> dict[str, Any]:
 def validate_engine_config(cfg: Mapping[str, Any]) -> dict[str, Any]:
     """Validate one complete engine configuration and normalize containers."""
     out = dict(cfg)
-    allowed_keys = set(default_engine_config().keys())
+    # Optional research flag: absent preserves the exact existing profile facts.
+    allowed_keys = set(default_engine_config().keys()) | {"account_risk_budget_enabled"}
     unknown_keys = sorted(set(out) - allowed_keys)
     if unknown_keys:
         raise ValueError(
@@ -496,6 +497,10 @@ def _validate_numeric_config(out: dict) -> None:
 
 def _validate_boolean_config(out: dict) -> None:
     """Reject truthy strings and integers for every Boolean option."""
+    if "account_risk_budget_enabled" in out:
+        out["account_risk_budget_enabled"] = _require_bool(
+            "account_risk_budget_enabled", out["account_risk_budget_enabled"]
+        )
     boolean_keys = (
         "liquidate_on_circuit_breaker",
         "sector_guard_enabled",
