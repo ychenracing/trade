@@ -54,7 +54,7 @@ jobs:
           test "$(git -C p rev-parse HEAD)" = 26f3f63c654f9d9b2034e84501f1534ef9ca850c
           test "$(git -C ib rev-parse HEAD)" = 914e8cbca90689a9b4bf22ad5c5ad62f6d49fd86
           test "$(git -C is rev-parse HEAD)" = af2f146940c12fa5449751d4e2106f24b048ff77
-          test "$(git -C p rev-parse HEAD^)" = 3b4b9c2554b2ac54d065173d3889040a30bc6e89
+          test "$(git -C p rev-parse HEAD^)" = 1f8385f7a0421dcb1d666d1c27984ead8b6c5c9d
           test "$(git -C ib rev-parse HEAD^)" = 26f3f63c654f9d9b2034e84501f1534ef9ca850c
           test "$(git -C is rev-parse HEAD^)" = 914e8cbca90689a9b4bf22ad5c5ad62f6d49fd86
           test "$(git -C ib rev-parse HEAD^{tree})" = 4f9cc0b8c6c1deb82bbcfd821bb97631fb63ea8c
