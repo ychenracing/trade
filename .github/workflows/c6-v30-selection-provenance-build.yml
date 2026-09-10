@@ -67,7 +67,7 @@ jobs:
           assert prereg["experiment_id"] == "c6-causal-risk-closure-17x958-v33-ab5"
           assert prereg["authority"]["recovery_continuation"]["account_budget_revision_v33"]["locked_diagnostic"]["run_id"] == 34410163617
           PY
-          test "$(git -C p diff --name-status --no-renames HEAD^ HEAD)" = $'A\tartifacts/diagnostics/c6-preregistration.json'
+          test "$(git -C p diff --name-status --no-renames HEAD^ HEAD)" = "$(printf 'A\tartifacts/diagnostics/c6-preregistration.json')"
           test -z "$(git -C ib rev-list --merges --first-parent 3cfb63c6842d14f8cf102f6c3f52984ca27c1106..HEAD)"
           test -z "$(git -C is rev-list --merges --first-parent ec04d46bf82d450bfb51878e1d2c8825d2f829f2..HEAD)"
       - name: Run frozen Base engineering suite
