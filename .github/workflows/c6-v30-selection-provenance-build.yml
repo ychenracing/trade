@@ -1,4 +1,4 @@
-name: C6 v36 AB5 Frozen Source Validation
+name: C6 v40 AB5 Frozen Source and R Validation
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: c6-v36-ab5-source-validation
+  group: c6-v40-ab5-source-validation
   cancel-in-progress: false
 
 jobs:
@@ -26,33 +26,43 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 1f8385f7a0421dcb1d666d1c27984ead8b6c5c9d
+          ref: 26f3f63c654f9d9b2034e84501f1534ef9ca850c
           path: p
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 5cb1fb8a1208c96cfee075ef38e0d5f115929613
+          ref: 914e8cbca90689a9b4bf22ad5c5ad62f6d49fd86
           path: ib
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 67b8c6aa442c003c27a38e784b3f937e737825cb
+          ref: af2f146940c12fa5449751d4e2106f24b048ff77
           path: is
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: c8977da721ecdc1daa822acdea14212c988ecf1f
+          path: r
           fetch-depth: 0
           persist-credentials: false
       - name: Verify exact runtime and frozen refs
         run: |
           test "$(python -c 'import platform; print(platform.python_version())')" = 3.12.14
-          test "$(git -C p rev-parse HEAD)" = 1f8385f7a0421dcb1d666d1c27984ead8b6c5c9d
-          test "$(git -C ib rev-parse HEAD)" = 5cb1fb8a1208c96cfee075ef38e0d5f115929613
-          test "$(git -C is rev-parse HEAD)" = 67b8c6aa442c003c27a38e784b3f937e737825cb
+          test "$(git -C p rev-parse HEAD)" = 26f3f63c654f9d9b2034e84501f1534ef9ca850c
+          test "$(git -C ib rev-parse HEAD)" = 914e8cbca90689a9b4bf22ad5c5ad62f6d49fd86
+          test "$(git -C is rev-parse HEAD)" = af2f146940c12fa5449751d4e2106f24b048ff77
           test "$(git -C p rev-parse HEAD^)" = 3b4b9c2554b2ac54d065173d3889040a30bc6e89
-          test "$(git -C ib rev-parse HEAD^)" = 1f8385f7a0421dcb1d666d1c27984ead8b6c5c9d
-          test "$(git -C is rev-parse HEAD^)" = 5cb1fb8a1208c96cfee075ef38e0d5f115929613
-          test "$(git -C ib rev-parse HEAD^{tree})" = 706ee4a8b3dfa20c28ab74430b2e94e3936e0ef0
-          test "$(git -C is rev-parse HEAD^{tree})" = 6da23c8f2b42106fa7bcf84ef40c41834c204974
+          test "$(git -C ib rev-parse HEAD^)" = 26f3f63c654f9d9b2034e84501f1534ef9ca850c
+          test "$(git -C is rev-parse HEAD^)" = 914e8cbca90689a9b4bf22ad5c5ad62f6d49fd86
+          test "$(git -C ib rev-parse HEAD^{tree})" = 4f9cc0b8c6c1deb82bbcfd821bb97631fb63ea8c
+          test "$(git -C is rev-parse HEAD^{tree})" = 763f673c92ddcf8c75f70d2fc95d942f6322127d
+          test "$(git -C r rev-parse HEAD)" = c8977da721ecdc1daa822acdea14212c988ecf1f
+          test "$(git -C r rev-parse HEAD^)" = 26f3f63c654f9d9b2034e84501f1534ef9ca850c
+          test "$(git -C r rev-parse HEAD^{tree})" = 2e12d9aa27a6bb391665d4681807003d624fd8e8
+          git -C r fetch --no-tags origin codex/c6-base-v40 codex/c6-s-v40
       - name: Install unchanged locked dependencies
         run: python -m pip install --require-hashes -r ib/requirements-lock.txt
       - name: Validate preregistration and exact implementation boundaries
@@ -61,14 +71,24 @@ jobs:
           import json, sys
           from pathlib import Path
           sys.path.insert(0, str(Path("ib").resolve()))
-          from quantfusion.application.c6_contract import strict_json_load, validate_preregistration
+          from quantfusion.application.c6_contract import strict_json_load, validate_preregistration, load_run_bindings, validate_implementation_git_proofs
           prereg = strict_json_load("p/artifacts/diagnostics/c6-preregistration.json")
           validate_preregistration(prereg, repository="p")
-          assert prereg["experiment_id"] == "c6-causal-risk-closure-17x958-v36"
+          bindings = load_run_bindings("r/artifacts/diagnostics/c6-run-bindings.json")
+          assert bindings["P"]["commit"] == "26f3f63c654f9d9b2034e84501f1534ef9ca850c"
+          assert [item["candidate_id"] for item in bindings["binding_records"]] == [
+              "C6-Base+AB5", "C6-Base+AB5+S", "C6-Base+AB5+S",
+              "C6-Base+AB5", "C6-Base+AB5+S", "C6-Base+AB5", "C6-Base+AB5+S",
+          ]
+          validate_implementation_git_proofs(
+              prereg, bindings, repository=Path("r"),
+              bindings_revision="c8977da721ecdc1daa822acdea14212c988ecf1f",
+          )
+          assert prereg["experiment_id"] == "c6-causal-risk-closure-17x958-v40"
           assert prereg["authority"]["recovery_continuation"]["account_budget_revision_v36"]["locked_diagnostic"]["run_id"] == 34410163617
           PY
-          test -z "$(git -C ib rev-list --merges --first-parent 1f8385f7a0421dcb1d666d1c27984ead8b6c5c9d..HEAD)"
-          test -z "$(git -C is rev-list --merges --first-parent 5cb1fb8a1208c96cfee075ef38e0d5f115929613..HEAD)"
+          test -z "$(git -C ib rev-list --merges --first-parent 26f3f63c654f9d9b2034e84501f1534ef9ca850c..HEAD)"
+          test -z "$(git -C is rev-list --merges --first-parent 914e8cbca90689a9b4bf22ad5c5ad62f6d49fd86..HEAD)"
           python - <<'PY'
           import json, subprocess
 
@@ -86,8 +106,8 @@ jobs:
           assert "artifacts/diagnostics/c6-preregistration.json" in p_paths
           assert set(p_paths) <= set(prereg["implementation_freeze"]["P_allowed_paths"])
           pairs = {
-              "I_B": ("1f8385f7a0421dcb1d666d1c27984ead8b6c5c9d", "ib"),
-              "I_S": ("5cb1fb8a1208c96cfee075ef38e0d5f115929613", "is"),
+              "I_B": ("26f3f63c654f9d9b2034e84501f1534ef9ca850c", "ib"),
+              "I_S": ("914e8cbca90689a9b4bf22ad5c5ad62f6d49fd86", "is"),
           }
           for alias, (base_revision, implementation) in pairs.items():
               raw = subprocess.check_output(
@@ -146,15 +166,18 @@ jobs:
           def out(cwd,*args):
               return subprocess.check_output(("git","-C",cwd,*args),text=True).strip()
           receipt={
-            "kind":"C6_V36_AB5_FROZEN_SOURCE_VALIDATION",
+            "kind":"C6_V40_AB5_FROZEN_SOURCE_AND_R_VALIDATION",
             "canonical":False,
             "accepted":False,
             "economic_dispatches":0,
-            "P":"1f8385f7a0421dcb1d666d1c27984ead8b6c5c9d",
-            "I_B":"5cb1fb8a1208c96cfee075ef38e0d5f115929613",
-            "I_B_tree":"706ee4a8b3dfa20c28ab74430b2e94e3936e0ef0",
-            "I_S":"67b8c6aa442c003c27a38e784b3f937e737825cb",
-            "I_S_tree":"6da23c8f2b42106fa7bcf84ef40c41834c204974",
+            "P":"26f3f63c654f9d9b2034e84501f1534ef9ca850c",
+            "I_B":"914e8cbca90689a9b4bf22ad5c5ad62f6d49fd86",
+            "I_B_tree":"4f9cc0b8c6c1deb82bbcfd821bb97631fb63ea8c",
+            "I_S":"af2f146940c12fa5449751d4e2106f24b048ff77",
+            "I_S_tree":"763f673c92ddcf8c75f70d2fc95d942f6322127d",
+            "R":"c8977da721ecdc1daa822acdea14212c988ecf1f",
+            "R_tree":"2e12d9aa27a6bb391665d4681807003d624fd8e8",
+            "R_sha256":hashlib.sha256(pathlib.Path("r/artifacts/diagnostics/c6-run-bindings.json").read_bytes()).hexdigest(),
             "python":"3.12.14",
             "runtime_manifest":"sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970",
             "preregistration_sha256":hashlib.sha256(pathlib.Path("p/artifacts/diagnostics/c6-preregistration.json").read_bytes()).hexdigest(),
@@ -165,7 +188,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: c6-v36-ab5-source-validation-${{ github.run_id }}
+          name: c6-v40-ab5-source-validation-${{ github.run_id }}
           path: export/*
           if-no-files-found: warn
           retention-days: 90
