@@ -127,7 +127,7 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$GITHUB_REF_NAME" = codex/c6-v30-workflow-anchor
           test "$GITHUB_SHA" = "$C6_WORKFLOW_REVISION"
-          [[ "$C6_LOGICAL_RUN_ID" =~ ^c6-v30-[a-z0-9][a-z0-9.-]*$ ]]
+          [[ "$C6_LOGICAL_RUN_ID" =~ ^c6-v[1-9][0-9]*-[a-z0-9][a-z0-9.-]*$ ]]
 
   parallel_l1:
     name: Parallel L1 core shard ${{ matrix.shard }}
