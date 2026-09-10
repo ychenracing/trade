@@ -125,6 +125,7 @@ jobs:
               "tests/c6_non_economic/test_c6_recovery_boundaries.py",
               "tests/c6_non_economic/test_c6_bound_run.py",
               "tests/c6_non_economic/test_c6_early_concentration.py",
+              "tests/c6_non_economic/test_c6_formal_ab5.py",
               "tests/c6_non_economic/test_c6_parallel_l1.py",
               "tests/c6_non_economic/test_c6_parallel_l1_attestation.py",
               "tests/c6_non_economic/test_c6_parallel_l1_recovery_cli.py",
