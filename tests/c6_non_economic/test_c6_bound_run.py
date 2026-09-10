@@ -785,6 +785,57 @@ def test_factual_evidence_reconciles_primitive_ledgers(mutation):
         validate_execution_facts(payload, complete_path=True)
 
 
+def test_factual_cash_reconciliation_uses_initial_account_scale_for_roundoff():
+    from quantfusion.application.c6_bound_run import validate_execution_facts
+
+    payload = _factual_ledger()
+    initial = 2_000_000.0
+    shares = 199_800
+    payload["warm_boundary"]["sleeve_cash"][0]["cash"] = initial
+    payload["orders"][0].update(
+        requested_shares=shares,
+        authorized_shares=shares,
+        filled_shares=shares,
+    )
+    payload["fills"][0].update(shares=shares, notional=shares * 10.0)
+    for row, held, mark in zip(
+        payload["position_series"],
+        (shares, shares - 100),
+        (10.0, 11.0),
+        strict=True,
+    ):
+        row.update(shares=held, mark=mark, market_value=held * mark)
+    drift = 1.3e-8
+    cash_values = (
+        initial - shares * 10.0 - 1.0 + drift,
+        initial - shares * 10.0 - 1.0 + 1099.0 + drift,
+    )
+    equity_values = tuple(
+        cash + row["market_value"]
+        for cash, row in zip(cash_values, payload["position_series"], strict=True)
+    )
+    for cash_row, equity_row, drawdown_row, cash, equity in zip(
+        payload["cash_series"],
+        payload["equity_series"],
+        payload["drawdown_series"],
+        cash_values,
+        equity_values,
+        strict=True,
+    ):
+        cash_row["cash"] = cash
+        equity_row["equity"] = equity
+        drawdown_row.update(equity=equity, running_peak=equity)
+    payload["official_metrics"].update(
+        terminal_wealth=equity_values[-1],
+        total_return=equity_values[-1] / initial - 1.0,
+    )
+
+    validate_execution_facts(payload, complete_path=True)
+    payload["cash_series"][0]["cash"] += 0.01
+    with pytest.raises(BoundRunError, match="account cash"):
+        validate_execution_facts(payload, complete_path=True)
+
+
 def test_l2_predicate_receipts_are_recomputed_and_respect_frozen_numeric_tolerance():
     from copy import deepcopy
     from quantfusion.application.c6_predicates import _predicate_rows, validate_predicate_results
