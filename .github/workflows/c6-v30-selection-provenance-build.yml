@@ -1,23 +1,22 @@
-name: C6 v42 AB5 Frozen Source and R Validation
+name: C6 v42 Base Seal Receipt
 
 on:
   push:
     branches:
-      - codex/c6-v30-selection-provenance-build
+      - codex/c6-v42-seal-receipt
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
-  group: c6-v42-ab5-source-validation
+  group: c6-v42-base-seal-receipt
   cancel-in-progress: false
 
 jobs:
-  validate:
+  extract:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    container:
-      image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -26,169 +25,177 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 26f3f63c654f9d9b2034e84501f1534ef9ca850c
-          path: p
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: 4659a2b6d265f45256777da6a2fc25d1369308bd
-          path: ib
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: 77668f80e990a0dd573e689c6e5646a082f92479
-          path: is
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
           ref: f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb
-          path: r
-          fetch-depth: 0
+          path: bindings
           persist-credentials: false
-      - name: Verify exact runtime and frozen refs
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          repository: ychenracing/trade
+          run-id: 34509818018
+          name: c6-bound-c6-v42-base-l1-a0
+          path: sealed
+      - name: Authenticate exact v42 Base seal and emit metadata only
         run: |
-          test "$(python -c 'import platform; print(platform.python_version())')" = 3.12.14
-          test "$(git -C p rev-parse HEAD)" = 26f3f63c654f9d9b2034e84501f1534ef9ca850c
-          test "$(git -C ib rev-parse HEAD)" = 4659a2b6d265f45256777da6a2fc25d1369308bd
-          test "$(git -C is rev-parse HEAD)" = 77668f80e990a0dd573e689c6e5646a082f92479
-          test "$(git -C p rev-parse HEAD^)" = 1f8385f7a0421dcb1d666d1c27984ead8b6c5c9d
-          test "$(git -C ib rev-parse HEAD^)" = 26f3f63c654f9d9b2034e84501f1534ef9ca850c
-          test "$(git -C is rev-parse HEAD^)" = 4659a2b6d265f45256777da6a2fc25d1369308bd
-          test "$(git -C ib rev-parse HEAD^{tree})" = eb80b0d2d2ee9a09ab9c6dc5ab1df09110e22d93
-          test "$(git -C is rev-parse HEAD^{tree})" = 875d50b204a2fb26a5c46ebf97c6ccc082fcc6a2
-          test "$(git -C r rev-parse HEAD)" = f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb
-          test "$(git -C r rev-parse HEAD^)" = 26f3f63c654f9d9b2034e84501f1534ef9ca850c
-          test "$(git -C r rev-parse HEAD^{tree})" = d06ff7df41349ca55d5146917f800640989ff01e
-          git -C r fetch --no-tags origin codex/c6-base-v42 codex/c6-s-v42
-      - name: Install unchanged locked dependencies
-        run: python -m pip install --require-hashes -r ib/requirements-lock.txt
-      - name: Validate preregistration and exact implementation boundaries
-        run: |
+          mkdir -p receipt
           python - <<'PY'
-          import json, sys
-          from pathlib import Path
-          sys.path.insert(0, str(Path("ib").resolve()))
-          from quantfusion.application.c6_contract import strict_json_load, validate_preregistration, load_run_bindings, validate_implementation_git_proofs
-          prereg = strict_json_load("p/artifacts/diagnostics/c6-preregistration.json")
-          validate_preregistration(prereg, repository="p")
-          bindings = load_run_bindings("r/artifacts/diagnostics/c6-run-bindings.json")
-          assert bindings["P"]["commit"] == "26f3f63c654f9d9b2034e84501f1534ef9ca850c"
-          assert [item["candidate_id"] for item in bindings["binding_records"]] == [
-              "C6-Base+AB5", "C6-Base+AB5+S", "C6-Base+AB5+S",
-              "C6-Base+AB5", "C6-Base+AB5+S", "C6-Base+AB5", "C6-Base+AB5+S",
-          ]
-          validate_implementation_git_proofs(
-              prereg, bindings, repository=Path("r"),
-              bindings_revision="f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb",
-          )
-          assert prereg["experiment_id"] == "c6-causal-risk-closure-17x958-v40"
-          assert prereg["authority"]["recovery_continuation"]["account_budget_revision_v36"]["locked_diagnostic"]["run_id"] == 34410163617
-          PY
-          test -z "$(git -C ib rev-list --merges --first-parent 26f3f63c654f9d9b2034e84501f1534ef9ca850c..HEAD)"
-          test -z "$(git -C is rev-list --merges --first-parent 4659a2b6d265f45256777da6a2fc25d1369308bd..HEAD)"
-          python - <<'PY'
-          import json, subprocess
+          import hashlib
+          import json
+          from pathlib import Path, PurePosixPath
 
-          prereg = json.load(open("p/artifacts/diagnostics/c6-preregistration.json"))
-          p_raw = subprocess.check_output(
-              ["git", "-C", "p", "diff", "--raw", "-z", "--no-renames", "HEAD^", "HEAD"]
-          ).split(b"\0")
-          p_paths = []
-          for offset in range(0, len(p_raw) - 1, 2):
-              metadata = p_raw[offset].split()
-              path = p_raw[offset + 1].decode()
-              assert len(metadata) == 5 and metadata[-1] in {b"A", b"M"}
-              assert metadata[0] in {b":000000", b":100644"} and metadata[1] == b"100644"
-              p_paths.append(path)
-          assert "artifacts/diagnostics/c6-preregistration.json" in p_paths
-          assert set(p_paths) <= set(prereg["implementation_freeze"]["P_allowed_paths"])
-          pairs = {
-              "I_B": ("26f3f63c654f9d9b2034e84501f1534ef9ca850c", "ib"),
-              "I_S": ("4659a2b6d265f45256777da6a2fc25d1369308bd", "is"),
+          def reject_constant(value):
+              raise ValueError(f"non-finite JSON constant: {value}")
+
+          def unique_object(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise ValueError(f"duplicate JSON key: {key}")
+                  result[key] = value
+              return result
+
+          def load(path):
+              return json.loads(
+                  Path(path).read_text(encoding="utf-8"),
+                  object_pairs_hook=unique_object,
+                  parse_constant=reject_constant,
+              )
+
+          def sha256(path):
+              digest = hashlib.sha256()
+              with Path(path).open("rb") as stream:
+                  while chunk := stream.read(1024 * 1024):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          root = Path("sealed")
+          expected_files = {"manifest.json", "payload.json.gz", "digest.json"}
+          actual_files = {
+              path.relative_to(root).as_posix()
+              for path in root.rglob("*")
+              if path.is_file()
           }
-          for alias, (base_revision, implementation) in pairs.items():
-              raw = subprocess.check_output(
-                  ["git", "-C", implementation, "diff", "--raw", "-z", "--no-renames", base_revision, "HEAD"]
-              ).split(b"\0")
-              paths = []
-              for offset in range(0, len(raw) - 1, 2):
-                  metadata = raw[offset].split()
-                  path = raw[offset + 1].decode()
-                  assert len(metadata) == 5 and metadata[-1] in {b"A", b"M"}
-                  assert metadata[0] in {b":000000", b":100644"} and metadata[1] == b"100644"
-                  paths.append(path)
-              allowed = set(prereg["implementation_freeze"][f"{alias}_allowed_paths"])
-              assert set(paths) <= allowed
-              added = deleted = 0
-              rows = subprocess.check_output(
-                  ["git", "-C", implementation, "diff", "--numstat", "-z", "--no-renames", base_revision, "HEAD"]
-              ).split(b"\0")
-              for row in rows:
-                  if not row:
-                      continue
-                  plus, minus, _ = row.split(b"\t", 2)
-                  added += int(plus)
-                  deleted += int(minus)
-              budget = prereg["implementation_freeze"][f"{alias}_diff_budget"]
-              assert len(set(paths)) <= budget["maximum_changed_paths"]
-              assert added <= budget["maximum_added_lines"]
-              assert deleted <= budget["maximum_deleted_lines"]
-          PY
-      - name: Run frozen Base engineering suite
-        working-directory: ib
-        run: |
-          python - <<'PY'
-          import json, subprocess
-          p=json.load(open("artifacts/diagnostics/c6-preregistration.json"))
-          subprocess.run(p["implementation_freeze"]["I_B_pytest_exact_argv"], check=True)
-          for argv in p["implementation_freeze"]["engineering_suite_common_exact_argv"]:
-              subprocess.run(argv, check=True)
-          PY
-      - name: Run frozen conditional-S engineering suite
-        working-directory: is
-        run: |
-          python - <<'PY'
-          import json, subprocess
-          p=json.load(open("artifacts/diagnostics/c6-preregistration.json"))
-          subprocess.run(p["implementation_freeze"]["I_S_pytest_exact_argv"], check=True)
-          for argv in p["implementation_freeze"]["engineering_suite_common_exact_argv"]:
-              subprocess.run(argv, check=True)
-          PY
-      - name: Publish validation receipt
-        if: success()
-        run: |
-          mkdir -p export
-          python - <<'PY'
-          import hashlib, json, pathlib, subprocess
-          def out(cwd,*args):
-              return subprocess.check_output(("git","-C",cwd,*args),text=True).strip()
-          receipt={
-            "kind":"C6_V42_AB5_FROZEN_SOURCE_AND_R_VALIDATION",
-            "canonical":False,
-            "accepted":False,
-            "economic_dispatches":0,
-            "P":"26f3f63c654f9d9b2034e84501f1534ef9ca850c",
-            "I_B":"4659a2b6d265f45256777da6a2fc25d1369308bd",
-            "I_B_tree":"eb80b0d2d2ee9a09ab9c6dc5ab1df09110e22d93",
-            "I_S":"77668f80e990a0dd573e689c6e5646a082f92479",
-            "I_S_tree":"875d50b204a2fb26a5c46ebf97c6ccc082fcc6a2",
-            "R":"f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb",
-            "R_tree":"d06ff7df41349ca55d5146917f800640989ff01e",
-            "R_sha256":hashlib.sha256(pathlib.Path("r/artifacts/diagnostics/c6-run-bindings.json").read_bytes()).hexdigest(),
-            "python":"3.12.14",
-            "runtime_manifest":"sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970",
-            "preregistration_sha256":hashlib.sha256(pathlib.Path("p/artifacts/diagnostics/c6-preregistration.json").read_bytes()).hexdigest(),
-            "all_declared_engineering_checks_passed":True,
+          assert actual_files == expected_files
+          assert not any(path.is_symlink() for path in root.rglob("*"))
+
+          manifest = load(root / "manifest.json")
+          required_manifest_keys = {
+              "schema_version", "kind", "sealed", "source_revision",
+              "run_bindings_revision", "workflow_revision", "binding_id",
+              "candidate_id", "logical_run_id", "attempt_id", "repository",
+              "workflow_run_id", "workflow_run_attempt", "resume_from",
+              "resume_workflow_run_id", "d_commit", "d_selection_blob_oid",
+              "d_selection_file_sha256", "producer_identity", "runner_image_os",
+              "runner_image_version", "python_version", "fencing_token_sha256",
+              "files",
           }
-          pathlib.Path("export/receipt.json").write_text(json.dumps(receipt,sort_keys=True,separators=(",",":"))+"\n")
+          assert set(manifest) == required_manifest_keys
+          expected_identity = {
+              "schema_version": 2,
+              "kind": "result",
+              "sealed": True,
+              "source_revision": "4659a2b6d265f45256777da6a2fc25d1369308bd",
+              "run_bindings_revision": "f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb",
+              "workflow_revision": "36d07e82ebac72b5d284ee12a954239e8c591548",
+              "binding_id": "c6.base.l1",
+              "candidate_id": "C6-Base+AB5",
+              "logical_run_id": "c6-v42-base-l1",
+              "attempt_id": "a0",
+              "repository": "ychenracing/trade",
+              "workflow_run_id": "34509818018",
+              "workflow_run_attempt": "1",
+              "resume_from": "",
+              "resume_workflow_run_id": "",
+              "d_commit": "",
+              "d_selection_blob_oid": "",
+              "d_selection_file_sha256": "",
+              "producer_identity": {
+                  "artifact_full_byte_sha256": "",
+                  "attempt_id": "",
+                  "binding_id": "",
+                  "logical_run_id": "",
+                  "workflow_run_id": "",
+              },
+              "runner_image_os": "oci-debian12-amd64",
+              "runner_image_version": "sha256-581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970",
+              "python_version": "3.12.14",
+          }
+          assert all(manifest[key] == value for key, value in expected_identity.items())
+          assert isinstance(manifest["fencing_token_sha256"], str)
+          assert len(manifest["fencing_token_sha256"]) == 64
+          assert set(manifest["files"]) == {"payload.json.gz", "digest.json"}
+          for relative, expected in manifest["files"].items():
+              assert PurePosixPath(relative).as_posix() == relative
+              assert sha256(root / relative) == expected
+
+          bindings_path = Path("bindings/artifacts/diagnostics/c6-run-bindings.json")
+          assert sha256(bindings_path) == "b8f6505688bf5f35de355270b35ee2339e0b434a6c18cae45b109cf858b08f88"
+          bindings = load(bindings_path)
+          records = [
+              record for record in bindings["binding_records"]
+              if record["record_id"] == "c6.base.l1"
+          ]
+          assert len(records) == 1
+          record = records[0]
+          assert record["candidate_id"] == manifest["candidate_id"]
+          assert record["source_revision"] == manifest["source_revision"]
+          assert record["logical_run_id"] == manifest["logical_run_id"]
+          assert record["workflow_binding_id"] == manifest["binding_id"]
+
+          digest = load(root / "digest.json")
+          required_digest_keys = {
+              "schema_version", "kind", "stage", "record_id",
+              "binding_signature", "P", "R_revision", "source_revision",
+              "source_tree", "D", "C", "selection_status", "artifact_path",
+              "artifact_byte_size", "artifact_full_byte_sha256",
+              "canonical_result_payload_schema",
+              "canonical_result_payload_sha256", "envelope_path",
+              "official_artifact_unchanged", "exit_code",
+          }
+          assert set(digest) == required_digest_keys
+          assert digest["schema_version"] == 2
+          assert digest["kind"] == "c6_artifact_digest"
+          assert digest["stage"] == "L1"
+          assert digest["record_id"] == "c6.base.l1"
+          assert digest["P"] == bindings["P"]
+          assert digest["R_revision"] == manifest["run_bindings_revision"]
+          assert digest["source_revision"] == manifest["source_revision"]
+          assert digest["source_tree"] == record["source_tree"]
+          assert digest["D"] is None and digest["C"] is None
+          assert digest["selection_status"] == "unselected"
+          assert digest["artifact_path"].endswith("/payload.json.gz")
+          assert digest["artifact_byte_size"] == (root / "payload.json.gz").stat().st_size
+          assert digest["artifact_full_byte_sha256"] == manifest["files"]["payload.json.gz"]
+          assert digest["canonical_result_payload_schema"] == record["canonical_payload_schema"]
+          assert isinstance(digest["canonical_result_payload_sha256"], str)
+          assert len(digest["canonical_result_payload_sha256"]) == 64
+          assert digest["envelope_path"] == "manifest.json"
+          assert digest["official_artifact_unchanged"] is False
+          assert digest["exit_code"] == 0
+
+          receipt = {
+              "schema_version": 1,
+              "kind": "c6_v42_base_seal_receipt",
+              "canonical": False,
+              "accepted": False,
+              "economic_dispatches": 0,
+              "github_artifact": {
+                  "id": 10176496556,
+                  "name": "c6-bound-c6-v42-base-l1-a0",
+                  "size_in_bytes": 734379936,
+                  "sha256": "046a1716801ac72d92fb14d424e74ea43186606923eea46b5324508e08aa7405",
+              },
+              "manifest": manifest,
+              "digest": digest,
+          }
+          Path("receipt/seal-receipt.json").write_text(
+              json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n",
+              encoding="utf-8",
+          )
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
         with:
-          name: c6-v42-ab5-source-validation-${{ github.run_id }}
-          path: export/*
-          if-no-files-found: warn
+          name: c6-v42-base-seal-receipt-${{ github.run_id }}
+          path: receipt/seal-receipt.json
+          if-no-files-found: error
           retention-days: 90
