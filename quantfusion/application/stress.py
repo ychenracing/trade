@@ -226,9 +226,20 @@ def _metrics(
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
     include_diagnostics: bool = False,
+    candidate_id: str = "C6-Base",
 ) -> dict[str, Any]:
+    from quantfusion.application.c6_contract import candidate_spec
+
+    spec = candidate_spec(candidate_id)
+    cfg = (
+        {"account_risk_budget_enabled": True}
+        if spec["account_risk_budget_enabled"]
+        else None
+    )
     with contextlib.redirect_stdout(io.StringIO()):
-        result = ra.ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL).run(
+        result = ra.ProductionReplayEngine(
+            stress_metrics.INITIAL_CAPITAL, cfg=cfg
+        ).run(
             {code: NAMES[code] for code in codes},
             stress_metrics.START_DATE,
             stress_metrics.END_DATE,
@@ -265,6 +276,7 @@ def _run_scenario(
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
     include_diagnostics: bool = False,
+    candidate_id: str = "C6-Base",
 ) -> dict[str, Any]:
     codes = tuple(str(code) for code in scenario["symbols"])
     return {
@@ -274,6 +286,7 @@ def _run_scenario(
             data_dir=data_dir,
             regime_data_dir=regime_data_dir,
             include_diagnostics=include_diagnostics,
+            candidate_id=candidate_id,
         ),
     }
 
@@ -334,6 +347,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--source-revision",
         required=True,
         help="Verified 40-character Git SHA containing the final Python source",
+    )
+    parser.add_argument(
+        "--candidate-id",
+        choices=("C6-Base", "C6-Base+S", "C6-Base+AB5", "C6-Base+AB5+S"),
+        default="C6-Base",
+        help="Exact candidate identity; only explicit AB5 identities enable the account budget",
     )
     return parser
 
@@ -491,6 +510,7 @@ def main() -> int:
         data_dir=data_dir,
         regime_data_dir=regime_data_dir,
         include_diagnostics=not formal_plan_complete,
+        candidate_id=args.candidate_id,
     )
     with ProcessPoolExecutor(max_workers=args.workers) as executor:
         for start in range(0, len(pending), args.checkpoint_every):

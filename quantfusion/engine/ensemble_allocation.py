@@ -107,6 +107,8 @@ class EnsembleAllocationMixin:
             "U_ONLY": {"U"},
             "C6_BASE": {"F0", "F1", "U"},
             "C6_BASE_PLUS_S": {"F0", "F1", "U", "S"},
+            "C6_BASE_AB5": {"F0", "F1", "U"},
+            "C6_BASE_AB5_PLUS_S": {"F0", "F1", "U", "S"},
             "W0_NO_601869": set(),
             "W1_DATA_MAP_ONLY": set(),
             "W2_POOL_DENOMINATOR_ONLY": set(),

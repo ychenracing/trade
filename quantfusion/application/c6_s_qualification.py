@@ -30,6 +30,7 @@ def qualify_base_payload(
     R_revision: str,
     I_B: Mapping[str, Any],
     I_S: Mapping[str, Any],
+    base_candidate_id: str = "C6-Base",
     checkpointed: bool = False,
 ) -> dict[str, Any]:
     evaluations = base_payload.get("evaluations")
@@ -38,7 +39,7 @@ def qualify_base_payload(
     selected = [
         {"scenario_id": item["scenario_id"], "official_metrics": item["official_metrics"],
          "causal_matrix": {key: item["causal_matrix"][key] for key in ("event_timeline", "s_evidence")}} for item in evaluations
-        if isinstance(item, Mapping) and item.get("variant_id") == "C6-Base"
+        if isinstance(item, Mapping) and item.get("variant_id") == base_candidate_id
     ]
     scenario_ids = [item.get("scenario_id") for item in selected]
     if (
@@ -125,10 +126,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         "logical_run_id": manifest["logical_run_id"],
         "workflow_run_id": manifest["workflow_run_id"],
     }
+    base_binding = next(
+        record for record in bindings["binding_records"]
+        if record["record_id"] == "c6.base.l1"
+    )
     if (
         base_identity["binding_id"] != "c6.base.l1"
-        or base_identity["logical_run_id"] != next(record["logical_run_id"] for record in bindings["binding_records"] if record["record_id"] == "c6.base.l1")
-        or manifest["candidate_id"] != "C6-Base"
+        or base_identity["logical_run_id"] != base_binding["logical_run_id"]
+        or manifest["candidate_id"] != base_binding["candidate_id"]
         or manifest["source_revision"]
         != bindings["implementations"]["I_B"]["commit"]
     ):
@@ -140,6 +145,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         R_revision=manifest["run_bindings_revision"],
         I_B=bindings["implementations"]["I_B"],
         I_S=bindings["implementations"]["I_S"],
+        base_candidate_id=base_binding["candidate_id"],
         checkpointed=True,
     )
     qualification = prereg["S_QUALIFICATION_RUN"]

@@ -90,6 +90,32 @@ BINDING_RECORD_ORDER = (
     "c6.base.selected.l4",
     "c6.base_plus_s.selected.l4",
 )
+C6_CANDIDATE_SPECS = {
+    "C6-Base": {
+        "role": "base",
+        "source_alias": "I_B",
+        "intervention_id": "C6_BASE",
+        "account_risk_budget_enabled": False,
+    },
+    "C6-Base+S": {
+        "role": "s",
+        "source_alias": "I_S",
+        "intervention_id": "C6_BASE_PLUS_S",
+        "account_risk_budget_enabled": False,
+    },
+    "C6-Base+AB5": {
+        "role": "base",
+        "source_alias": "I_B",
+        "intervention_id": "C6_BASE_AB5",
+        "account_risk_budget_enabled": True,
+    },
+    "C6-Base+AB5+S": {
+        "role": "s",
+        "source_alias": "I_S",
+        "intervention_id": "C6_BASE_AB5_PLUS_S",
+        "account_risk_budget_enabled": True,
+    },
+}
 RUNTIME_LATE_SLOTS = frozenset(
     {
         "RUN_BINDINGS_PATH",
@@ -819,6 +845,38 @@ def binding_identity(binding: Mapping[str, Any]) -> str:
     )
 
 
+def candidate_spec(candidate_id: str) -> dict[str, Any]:
+    """Return the exact execution role for one registered C6 identity."""
+    spec = C6_CANDIDATE_SPECS.get(candidate_id)
+    if spec is None:
+        raise ContractError(f"unknown C6 candidate identity: {candidate_id}")
+    return dict(spec)
+
+
+def preregistered_candidate_ids(
+    preregistration: Mapping[str, Any],
+) -> tuple[str, str]:
+    """Return the exact two-candidate family in its frozen Base/S order."""
+    candidates = preregistration.get("candidate_family", {}).get("candidates")
+    if not isinstance(candidates, list) or len(candidates) != 2:
+        raise ContractError("candidate family must contain exact Base/S identities")
+    ids = tuple(
+        item.get("candidate_id") if isinstance(item, dict) else None
+        for item in candidates
+    )
+    if not all(isinstance(item, str) for item in ids):
+        raise ContractError("candidate family identity is invalid")
+    base_id, s_id = str(ids[0]), str(ids[1])
+    if (
+        candidate_spec(base_id)["role"] != "base"
+        or candidate_spec(s_id)["role"] != "s"
+        or candidate_spec(base_id)["account_risk_budget_enabled"]
+        != candidate_spec(s_id)["account_risk_budget_enabled"]
+    ):
+        raise ContractError("candidate family Base/S roles are inconsistent")
+    return base_id, s_id
+
+
 def validate_binding(
     binding: Mapping[str, Any],
     expected_sha256: str | None = None,
@@ -968,7 +1026,7 @@ def load_run_bindings(
             )
         ):
             raise ContractError("record source identity differs from implementation")
-        expected_alias = "I_B" if binding["candidate_id"] == "C6-Base" else "I_S"
+        expected_alias = candidate_spec(binding["candidate_id"])["source_alias"]
         if alias != expected_alias:
             raise ContractError("candidate/source_alias mapping is invalid")
         for key in ("resolved_inputs", "runtime"):
@@ -1012,12 +1070,13 @@ def validate_selection_shape(selection: Mapping[str, Any], preregistration: Mapp
     if s_present != (s_rows is not None):
         raise ContractError("D S artifact/predicate presence is inconsistent")
     s_failed = bool(failures(s_rows)) if s_present else False
+    base_candidate, s_candidate = preregistered_candidate_ids(preregistration)
     variants = {
         "BASE_REJECTED": (base_failed and not qualification and not s_present, None, "BASE_L1_PREDICATE_FAILED"),
-        "BASE_SELECTED": (not residual and not base_failures and not qualification and not s_present, "C6-Base", None),
+        "BASE_SELECTED": (not residual and not base_failures and not qualification and not s_present, base_candidate, None),
         "QUALIFICATION_REJECTED": (residual and not base_failed and qualification and not s_present, None, "S_QUALIFICATION_FAILED"),
         "BASE_PLUS_S_REJECTED": (residual and not base_failed and qualification and s_present and s_failed, None, "BASE_PLUS_S_L1_PREDICATE_FAILED"),
-        "BASE_PLUS_S_SELECTED": (residual and not base_failed and qualification and s_present and not s_failed, "C6-Base+S", None),
+        "BASE_PLUS_S_SELECTED": (residual and not base_failed and qualification and s_present and not s_failed, s_candidate, None),
     }
     branch = selection.get("branch")
     if not isinstance(branch, str) or branch not in variants:
@@ -1035,7 +1094,17 @@ def validate_selection_producer_payloads(
     selected_s: Mapping[str, Any] | None, scenario_ids: Sequence[str],
 ) -> None:
     """Compare D claims with already authenticated, sealed producer contents."""
-    selected_base = [{"scenario_id": row["scenario_id"], "official_metrics": row["official_metrics"]} for row in base["evaluations"] if row["variant_id"] == "C6-Base"]
+    base_ids = {
+        str(row.get("variant_id"))
+        for row in base["evaluations"]
+        if isinstance(row, Mapping)
+        and row.get("variant_id") in C6_CANDIDATE_SPECS
+        and candidate_spec(str(row["variant_id"]))["role"] == "base"
+    }
+    if len(base_ids) != 1:
+        raise ContractError("D Base producer candidate identity is ambiguous")
+    base_candidate = next(iter(base_ids))
+    selected_base = [{"scenario_id": row["scenario_id"], "official_metrics": row["official_metrics"]} for row in base["evaluations"] if row["variant_id"] == base_candidate]
     residuals = sorted(row["scenario_id"] for row in selected_base
                        if abs(float(row["official_metrics"]["max_drawdown"])) > 0.18 + 1e-15)
     if ([row["scenario_id"] for row in selected_base] != list(scenario_ids)
@@ -1100,7 +1169,7 @@ def validate_selection_commit(
         raise ContractError("D residual identity is invalid")
     if selection["status"] != "selected" or selection["selected_candidate"] != candidate_id:
         raise ContractError("D did not select this candidate")
-    alias = "I_B" if candidate_id == "C6-Base" else "I_S"
+    alias = candidate_spec(candidate_id)["source_alias"]
     implementation = run_bindings["implementations"][alias]
     if selection["C"] != implementation:
         raise ContractError("D selected implementation differs from R")

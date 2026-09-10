@@ -77,7 +77,11 @@ def _manifest_ok(ids: list[str], manifest: Mapping[str, Any]) -> bool:
 
 
 def _l1_predicate_rows(specs: Sequence[Mapping[str, Any]], selected: Sequence[dict[str, Any]], evaluations: Sequence[dict[str, Any]], controls: list[dict[str, Any]], pairs: list[dict[str, Any]], reference: Mapping[str, Any], manifests: Mapping[str, Any], base: bool, common: list[dict[str, Any]], no_effect: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    chosen = "C6-Base" if base else "C6-Base+S"
+    if not selected:
+        raise ValueError("selected candidate evaluations are empty")
+    chosen = selected[0]["variant_id"]
+    if any(item.get("variant_id") != chosen for item in selected):
+        raise ValueError("selected candidate evaluations mix identities")
     by_id = {item["scenario_id"]: {key: item[key] for key in ("scenario_definition", "official_metrics")} for item in selected}
     ref = {item["scenario_id"]: item for item in reference["results"]}
     selected_ids = [item["evaluation_id"] for item in selected]
@@ -534,7 +538,8 @@ def validate_predicate_results(payload: Mapping[str, Any], prereg: Mapping[str, 
         base = kind == 'c6_l1_base'
         if base:
             validate_intervention_results(payload)
-        candidate = 'C6-Base' if base else 'C6-Base+S'
+        from quantfusion.application.c6_contract import preregistered_candidate_ids
+        candidate = preregistered_candidate_ids(prereg)[0 if base else 1]
         selected = select_records(payload['evaluations'], lambda row: row['variant_id'] == candidate)
         expected = _l1_predicate_rows(prereg['diagnostic_predicate_manifests']['L1_APPLICABLE_DIAGNOSTIC_PREDICATES'],
             selected, payload['evaluations'], payload['synthetic_controls'], payload['no_drift_pairs'], reference,
@@ -547,9 +552,16 @@ def validate_predicate_results(payload: Mapping[str, Any], prereg: Mapping[str, 
 
 def validate_qualification_results(qualification: Mapping[str, Any], base: Mapping[str, Any]) -> None:
     """Bind every qualification value to the actual corresponding Base row."""
+    from quantfusion.application.c6_contract import C6_CANDIDATE_SPECS, candidate_spec
+    base_ids = {row['variant_id'] for row in base['evaluations']
+                if row['variant_id'] in C6_CANDIDATE_SPECS
+                if candidate_spec(str(row['variant_id']))['role'] == 'base'}
+    if len(base_ids) != 1:
+        raise ValueError('qualification Base identity is ambiguous')
+    base_id = next(iter(base_ids))
     selected = [{'scenario_id': row['scenario_id'], 'official_metrics': row['official_metrics'],
                  'causal_matrix': {key: row['causal_matrix'][key] for key in ('event_timeline','s_evidence')}}
-                for row in base['evaluations'] if row['variant_id'] == 'C6-Base']
+                for row in base['evaluations'] if row['variant_id'] == base_id]
     if len(selected) != 765 or len({row['scenario_id'] for row in selected}) != 765:
         raise ValueError('qualification requires exact Base scenario coverage')
     residual = sorted((row for row in selected if abs(row['official_metrics']['max_drawdown']) > .18 + 1e-15),
@@ -607,15 +619,20 @@ def validate_l2_telemetry(row: Mapping[str, Any]) -> None:
         raise ValueError('L2 trade counts differ from recorded fills')
 
 
-def base_counterpart_id(s_evaluation_id: str) -> str:
+def base_counterpart_id(
+    s_evaluation_id: str,
+    *,
+    base_candidate_id: str = "C6-Base",
+    s_candidate_id: str = "C6-Base+S",
+) -> str:
     """Derive the sole authorized Base record for a Base+S evaluation."""
-    prefix = "C6-Base+S::"
+    prefix = f"{s_candidate_id}::"
     if not isinstance(s_evaluation_id, str) or not s_evaluation_id.startswith(prefix):
-        raise ValueError("S evaluation_id must start with exact C6-Base+S:: prefix")
+        raise ValueError("S evaluation_id must start with the exact candidate prefix")
     scenario_id = s_evaluation_id[len(prefix) :]
     if not scenario_id:
         raise ValueError("S evaluation_id must contain a scenario ID")
-    return f"C6-Base::{scenario_id}"
+    return f"{base_candidate_id}::{scenario_id}"
 
 
 
@@ -680,8 +697,18 @@ def _prefix_hash(record: Mapping[str, Any], boundary: str | None) -> str:
 
 def compare_s_paths(base_evaluations: Sequence[Mapping[str, Any]], s_evaluations: Sequence[Mapping[str, Any]], scenario_ids: Sequence[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Require exact counterpart coverage before comparing any producer path."""
-    base_selected = select_records(base_evaluations, lambda item: item["variant_id"] == "C6-Base")
-    for records, variant in ((base_selected, "C6-Base"), (s_evaluations, "C6-Base+S")):
+    from quantfusion.application.c6_contract import C6_CANDIDATE_SPECS, candidate_spec
+    base_ids = {str(item["variant_id"]) for item in base_evaluations
+                if item["variant_id"] in C6_CANDIDATE_SPECS
+                if candidate_spec(str(item["variant_id"]))["role"] == "base"}
+    s_ids = {str(item["variant_id"]) for item in s_evaluations
+             if item["variant_id"] in C6_CANDIDATE_SPECS
+             if candidate_spec(str(item["variant_id"]))["role"] == "s"}
+    if len(base_ids) != 1 or len(s_ids) != 1:
+        raise ValueError("S comparison candidate identities are ambiguous")
+    base_variant, s_variant = next(iter(base_ids)), next(iter(s_ids))
+    base_selected = select_records(base_evaluations, lambda item: item["variant_id"] == base_variant)
+    for records, variant in ((base_selected, base_variant), (s_evaluations, s_variant)):
         expected = [f"{variant}::{item}" for item in scenario_ids]
         if (len(set(scenario_ids)) != len(scenario_ids)
                 or [item["evaluation_id"] for item in records] != expected
@@ -690,7 +717,10 @@ def compare_s_paths(base_evaluations: Sequence[Mapping[str, Any]], s_evaluations
             raise ValueError("S comparison requires exact ordered Base and S coverage")
     common, no_effect = [], []
     for counterpart, row in zip(base_selected, s_evaluations):
-        base_id = base_counterpart_id(row["evaluation_id"])
+        base_id = base_counterpart_id(
+            row["evaluation_id"], base_candidate_id=base_variant,
+            s_candidate_id=s_variant,
+        )
         timestamp = row["causal_matrix"]["s_evidence"]["first_early_sell_required_close"]
         left, right = _prefix_hash(counterpart, timestamp), _prefix_hash(row, timestamp)
         common.append({"scenario_id": row["evaluation_id"], "base_evaluation_id": base_id, "first_s_effective_timestamp": timestamp, "base_prefix_sha256": left, "s_prefix_sha256": right, "equal": left == right})

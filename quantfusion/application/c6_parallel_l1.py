@@ -148,11 +148,14 @@ def core_l1_tasks(
             raise ValueError("L1 scenario plan identity is invalid or duplicated")
         by_id[scenario_id] = scenario
 
-    base = binding["candidate_id"] == "C6-Base"
+    from quantfusion.application.c6_contract import candidate_spec
+
+    candidate_id = str(binding["candidate_id"])
+    base = candidate_spec(candidate_id)["role"] == "base"
     variant_values = (
         manifests["L1_BASE_EVALUATION_MANIFEST"]["core_variant_order"]
         if base
-        else ["C6-Base+S"]
+        else [candidate_id]
     )
     if not isinstance(variant_values, list):
         raise ValueError("L1 core variant order must be a list")

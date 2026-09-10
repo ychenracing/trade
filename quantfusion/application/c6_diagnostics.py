@@ -156,19 +156,30 @@ def maximum_cluster_weight(positions: Sequence[Mapping[str, Any]], assets: Mappi
     return max((value / assets[date] for (date, _), value in totals.items()), default=0.0)
 
 
-def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
+def _l2_evaluate(
+    task: tuple[str, Mapping[str, Any]] | Mapping[str, Any],
+) -> dict[str, Any]:
     """Run one selected-candidate scenario and retain the frozen L2 fields."""
+    candidate_id, scenario = (
+        task if isinstance(task, tuple) else ("C6-Base", task)
+    )
     metadata = _scenario_metadata(scenario)
     from quantfusion.application import stress, stress_metrics
     from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
     from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
     from quantfusion.engine.replay import ProductionReplayEngine
 
-    from quantfusion.risk.overlay.policy import CrossMarketOverlay
-    intervention = "C6_BASE_PLUS_S" if getattr(CrossMarketOverlay, "C6_S_PRODUCTION", False) else "C6_BASE"
+    from quantfusion.application.c6_contract import candidate_spec
+    spec = candidate_spec(candidate_id)
+    intervention = str(spec["intervention_id"])
+    cfg = (
+        {"account_risk_budget_enabled": True}
+        if spec["account_risk_budget_enabled"]
+        else None
+    )
     codes = [str(item) for item in scenario["symbols"]]
     with contextlib.redirect_stdout(io.StringIO()):
-        result = ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL).run_c6_diagnostic(
+        result = ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL, cfg=cfg).run_c6_diagnostic(
             {code: stress.NAMES[code] for code in codes},
             stress_metrics.START_DATE, stress_metrics.END_DATE,
             data_dir=str(MARKET_DATA_DIR), regime_data_dir=str(REGIME_DATA_DIR),
@@ -235,6 +246,8 @@ def _l2_evaluate(scenario: Mapping[str, Any]) -> dict[str, Any]:
 _VARIANTS = {
     "baseline": "BASELINE", "F0-only": "F0_ONLY", "F0+F1": "F0_F1",
     "U-only": "U_ONLY", "C6-Base": "C6_BASE", "C6-Base+S": "C6_BASE_PLUS_S",
+    "C6-Base+AB5": "C6_BASE_AB5",
+    "C6-Base+AB5+S": "C6_BASE_AB5_PLUS_S",
     "W0-no-601869": "W0_NO_601869", "W1-data-map-only": "W1_DATA_MAP_ONLY",
     "W2-pool-denominator-only": "W2_POOL_DENOMINATOR_ONLY",
     "W3-real-intents-fixed-reference-U": "W3_REAL_INTENTS_FIXED_REFERENCE_U",
@@ -774,13 +787,15 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
     validate_manifest_identity(scenario_ids, manifests["L1_ECONOMIC_SCENARIO_IDS"])
     plan = stress_scenarios._multi_seed_scenarios(random_samples=50, permutation_samples=50, seeds=(20260807, 20260817, 20260827))
     by_id = {item["scenario_id"]: item for item in plan}
-    base = binding["candidate_id"] == "C6-Base"
+    from quantfusion.application.c6_contract import candidate_spec
+    candidate_id = str(binding["candidate_id"])
+    base = candidate_spec(candidate_id)["role"] == "base"
     control_name = "L1_BASE_SYNTHETIC_CONTROL_IDS" if base else "L1_S_SYNTHETIC_CONTROL_IDS"
     control_rows = _controls(prereg, control_name)
     unverified = [row["control_id"] for row in control_rows if not row["passed"]]
     if unverified:
         raise ValueError(f"synthetic controls lack passing execution evidence: {unverified}")
-    variants = manifests["L1_BASE_EVALUATION_MANIFEST"]["core_variant_order"] if base else ["C6-Base+S"]
+    variants = manifests["L1_BASE_EVALUATION_MANIFEST"]["core_variant_order"] if base else [candidate_id]
     tasks = [(variant, by_id[scenario], "DEFAULT") for variant in variants for scenario in scenario_ids]
     checkpoint = None
     if args.parallel_evaluations is not None:
@@ -824,7 +839,7 @@ def _produce_l1(args: argparse.Namespace) -> dict[str, Any]:
             )
     if checkpoint is not None:
         evaluations = checkpoint.items[:checkpoint.cursor].project("result")
-    chosen = "C6-Base" if base else "C6-Base+S"
+    chosen = candidate_id
     drift_tasks = [(chosen, by_id[item]) for item in manifests["L1_INSTRUMENTATION_NO_DRIFT_SCENARIO_IDS"]["ids"]]
     if checkpoint is None:
         from quantfusion.application.c6_parallel_l1 import fresh_pool_map
@@ -919,7 +934,9 @@ def _produce_l2(args: argparse.Namespace) -> dict[str, Any]:
     by_id = {item["scenario_id"]: item for item in plan}
     item_ids = execution_item_ids(binding, prereg)
     checkpoint = DiagnosticCheckpoint.from_environment(item_ids, chunk_size=binding["runtime"]["checkpoint_every"])
-    results = list(checkpoint.map(_l2_evaluate, [by_id[item] for item in ids], item_ids))
+    results = list(checkpoint.map(
+        _l2_evaluate, [(binding["candidate_id"], by_id[item]) for item in ids], item_ids
+    ))
     summary = stress_metrics._summary(results)
     for key in ("trades_worst", "date_symbol_side_buckets_worst", "sleeve_fills_worst"):
         summary[key] = int(summary[key])

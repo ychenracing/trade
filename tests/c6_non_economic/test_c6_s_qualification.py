@@ -188,6 +188,19 @@ def test_complete_residual_qualification_recomputes_all_seven_criteria(tmp_path)
     )
 
 
+def test_ab5_base_identity_uses_the_same_frozen_qualification_math() -> None:
+    payload = _base_payload()
+    for row in payload["evaluations"]:
+        row["variant_id"] = "C6-Base+AB5"
+    result = c6_s_qualification.qualify_base_payload(
+        payload,
+        **_identities(),
+        base_candidate_id="C6-Base+AB5",
+    )
+    assert result["residual_ids"] == ["scenario-000"]
+    assert result["all_passed"] is True
+
+
 def test_nested_pass_booleans_are_not_trusted() -> None:
     payload = _base_payload()
     evidence = payload["evaluations"][0]["causal_matrix"]["s_evidence"]

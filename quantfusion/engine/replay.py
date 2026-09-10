@@ -58,6 +58,8 @@ _C6_INTERVENTIONS = {
     "U_ONLY",
     "C6_BASE",
     "C6_BASE_PLUS_S",
+    "C6_BASE_AB5",
+    "C6_BASE_AB5_PLUS_S",
     "W0_NO_601869",
     "W1_DATA_MAP_ONLY",
     "W2_POOL_DENOMINATOR_ONLY",
@@ -65,6 +67,23 @@ _C6_INTERVENTIONS = {
     "W4_FULL_BASE_PRODUCTION_POOL_RELATIVE",
     "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK",
 }
+
+_C6_AB5_INTERVENTIONS = {"C6_BASE_AB5", "C6_BASE_AB5_PLUS_S"}
+
+
+def c6_diagnostic_engine_config(
+    cfg: Mapping[str, Any], request: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Bind the existing budget mechanism only to explicit AB5 identities."""
+    out = dict(cfg)
+    enabled = request.get("intervention_id") in _C6_AB5_INTERVENTIONS
+    if out.get("account_risk_budget_enabled", False) and not enabled:
+        raise ValueError(
+            "AB5 requires its own evidence identity, not a frozen C6 Base/S run"
+        )
+    if enabled:
+        out["account_risk_budget_enabled"] = True
+    return out
 
 class ProductionRouteController:
     """Apply the daily outer route inside one persistent production ledger.
@@ -421,7 +440,10 @@ class ProductionReplayEngine:
             no_drift = scenario in {"add-one-13-601869", "random-20260807-03-004"} or (
                 scenario.startswith("prefix-") and scenario[7:] in {f"{n:02d}" for n in range(5, 18)}
             )
-            if request["intervention_id"] not in {"C6_BASE", "C6_BASE_PLUS_S"} or not no_drift:
+            if request["intervention_id"] not in {
+                "C6_BASE", "C6_BASE_PLUS_S", "C6_BASE_AB5",
+                "C6_BASE_AB5_PLUS_S",
+            } or not no_drift:
                 raise ValueError("recording_mode is restricted to the frozen selected-candidate no-drift manifest")
         if request["diagnostic_noncanonical"] is not True:
             raise ValueError("diagnostic_noncanonical must be literal true")
@@ -511,9 +533,15 @@ class ProductionReplayEngine:
         risk_state: dict | None = None,
     ) -> dict[str, Any]:
         """Run the explicit non-canonical C6 diagnostic entrypoint."""
-        if self.cfg.get("account_risk_budget_enabled", False):
-            raise ValueError("AB1 requires its own evidence identity, not a frozen C6 Base/S run")
+        if self.cfg.get("account_risk_budget_enabled", False) and (
+            not isinstance(diagnostic_request, Mapping)
+            or diagnostic_request.get("intervention_id") not in _C6_AB5_INTERVENTIONS
+        ):
+            raise ValueError(
+                "AB5 requires its own evidence identity, not a frozen C6 Base/S run"
+            )
         request = dict(self.validate_c6_diagnostic_request(diagnostic_request))
+        diagnostic_cfg = c6_diagnostic_engine_config(self.cfg, request)
         diagnostic_symbols = dict(symbols_dict)
         if request["intervention_id"] == "W0_NO_601869":
             diagnostic_symbols.pop("601869", None)
@@ -542,7 +570,7 @@ class ProductionReplayEngine:
         )
         self.delegate = BacktestEngine(
             self.initial_capital,
-            cfg=self.cfg,
+            cfg=diagnostic_cfg,
             policy=replay_policy,
         )
         setattr(self.delegate, "_c6_diagnostic_request", request)
