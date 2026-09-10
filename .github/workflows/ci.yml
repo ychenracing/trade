@@ -157,6 +157,7 @@ jobs:
               "tests/c6_non_economic/test_c6_retained_winner.py",
               "tests/c6_non_economic/test_c6_contract.py",
               "tests/c6_non_economic/test_c6_diagnostics.py",
+              "tests/c6_non_economic/test_c6_formal_ab5.py",
               "tests/c6_non_economic/test_c6_bound_run.py",
               "tests/c6_non_economic/test_c6_parallel_l1.py",
               "tests/c6_non_economic/test_c6_parallel_l1_attestation.py",
@@ -168,6 +169,7 @@ jobs:
           }
           is_required = {
               "tests/c6_non_economic/test_c6_early_concentration.py",
+              "tests/c6_non_economic/test_c6_formal_ab5.py",
               "tests/c6_non_economic/test_c6_s_qualification.py",
           }
           required_c6_files = {"tests/c6_non_economic/test_baseline_rebuild.py"}
