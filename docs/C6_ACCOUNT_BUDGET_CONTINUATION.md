@@ -337,3 +337,37 @@ cannot substitute for those stages.
 ## Watch
 
 Original ID6a9e3c8f7fd48191acc3b5e6b5c7acf3. Maintain mandatory contract5579535549 and single heartbeat5579901968, with truthful trigger/executor and STARTED/YIELDED phases. Preserve hourly/Asia-Tokyo cadence. This manual session has no callable timer-management actions after bounded discovery despite installed Task Tool; updating GitHub's mandatory instruction is not a timer-settings readback or scheduled-consumption proof. The next manager-capable invocation must update/read back the same task prompt to this direction without creating a replacement. Missing timer management does not block independent GitHub engineering. Preserve effective single-writer ownership; no competing AB1 or duplicate economic attempt.
+
+
+## v37 formal-path integration rejection and AB5-FORMAL-1 preregistration
+
+### Authenticated v37 evidence and classification
+
+Run [34441331412](https://github.com/ychenracing/trade/actions/runs/34441331412) completed successfully at 2026-09-10T09:51:05Z. All 12 fixed OCI shard ZIPs were independently downloaded and their bytes matched the 12 GitHub SHA-256 digests. Their semantic attestations bind source/validator revision I_B36 `5cb1fb8a1208c96cfee075ef38e0d5f115929613`, P36, the fixed 12-way chunking, and the same preregistration digest. The shards contain exactly 3825 evaluation records (765 scenarios times five variants).
+
+The assembled artifact is `10146274233`, `c6-bound-c6-v37-base-l1-a0`, 642301990 bytes, GitHub digest `sha256:b51aa3f7d6139d24dff18338b6dd279b0766e0dc8d23376e851c9bb0eda39617`. The current connector cannot download a single artifact above 512 MiB. The central job log nevertheless proves that it verified the twelve shard digests, assembled and internally verified the sealed export, and uploaded that exact digest. This size limitation does not convert the run to failure, but it is retained as an independent-wrapper-download limitation.
+
+Independent recomputation over the authenticated shard records found that the formal `C6-Base` row breached the unchanged 18% hard-MDD boundary in 678 of 765 scenarios. Worst was `add-one-13-601869` at 24.424813929407263% MDD. `random-20260807-03-004` was 23.406655496167797%, whereas the locked AB5 diagnostic was 17.796520%. Every formal `C6-Base` record had zero `account_budget_events` and zero `account_budget_orders`; for `...004`, `C6-Base`, `F0+F1`, and `F0-only` were identical.
+
+This is `IMPLEMENTATION_INTEGRATION_ERROR / FORMAL_CANDIDATE_IDENTITY_NOT_BOUND`, not an AB5 economic rejection. The exact source explains the observation:
+
+- `account_risk_budget_enabled` is optional and defaults false.
+- the account-budget action executes only when that flag is true;
+- the diagnostic guard rejects enabling it while claiming frozen `C6-Base` or `C6-Base+S`;
+- R37 bound `c6.base.l1` to candidate `C6-Base`.
+
+Thus v37 is valid evidence for the unchanged old Base path, but inadmissible as formal AB5 evidence. It must not feed S qualification, D selection, L2, official17/958, acceptance or canonical publication for AB5. No such successor is authorized from this result.
+
+### AB5-FORMAL-1 frozen correction
+
+The next correction is integration-only: bind the already locked AB5 mechanism to a distinct candidate identity (working name `C6-Base+AB5`) that cannot masquerade as `C6-Base` or `C6-Base+S`. It does not change AB5 equations, risk thresholds, 18% MDD+tolerance, retention/initial/promotion gates, data, seeds, scenario membership/order, metrics, transaction costs, account-lock rules, execution causality, or allocator behavior.
+
+Before implementation, the following tests are required and must fail on I_B36:
+
+1. a formal AB5 binding selects a candidate identity distinct from both frozen Base/S identities and maps to the exact AB5 implementation source;
+2. only that identity enables `account_risk_budget_enabled`; frozen `C6-Base` and `C6-Base+S` remain byte/behavior compatible with the flag absent;
+3. formal AB5 `random-20260807-03-004` emits account-budget envelope/order evidence and reproduces the locked AB5 path rather than the old Base row;
+4. L1 task/item manifests, predicates, checkpoints, seals, selection and downstream source resolution consume the distinct AB5 identity without changing the 765-scenario manifest or frozen gates;
+5. any attempt to label an enabled-budget run as `C6-Base` or `C6-Base+S` fails closed.
+
+The implementation must be the smallest coherent identity/config plumbing needed to satisfy those tests. Because P/R and candidate binding semantics change, all affected formal evidence is invalidated and must use a new P/I/R identity before one fresh Base L1. v37 and every earlier rejection remain immutable. No economic dispatch is allowed until the new frozen-source receipt and evidence-only R both authenticate the exact formal AB5 path.
