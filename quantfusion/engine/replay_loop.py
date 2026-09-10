@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from quantfusion.execution.c6_receipts import reconcile_close_queue
+
 # pyright: reportAttributeAccessIssue=false
 
 # The same stable domain vocabulary is intentionally available to each mixin;
@@ -246,7 +248,9 @@ class CoreReplayLoopMixin:
         date_str: str,
     ) -> list[tuple[Signal, BaseStrategy]]:
         """Deduplicate pending instructions and mark the closing portfolio equity."""
+        before = list(pending)
         pending = self._dedupe_pending_signals(pending)
+        reconcile_close_queue(self, before, pending, date_str, "close_pending_deduplication")
         self._record_equity(data_map, date, date_str)
         return pending
 
@@ -269,6 +273,9 @@ class CoreReplayLoopMixin:
         pending: list[tuple[Signal, BaseStrategy]],
     ) -> list[tuple[Signal, BaseStrategy]]:
         """Evaluate close-based risk and signals after the opening execution phase."""
+        if getattr(self, "_c6_intervention", None) in {"W1_DATA_MAP_ONLY", "W2_POOL_DENOMINATOR_ONLY"}:
+            symbols_dict = {code: name for code, name in symbols_dict.items() if code != "601869"}
+        before = list(pending)
         date_str = date.strftime("%Y-%m-%d")
         current_assets = self._total_assets(data_map, date)
         pending, risk_blocked, liquidate = self._apply_portfolio_risk(
@@ -303,6 +310,7 @@ class CoreReplayLoopMixin:
                 current_assets,
                 pending,
             )
+        reconcile_close_queue(self, before, pending, date_str, "close_risk_or_signal_merge")
         return self._finish_trading_day(pending, data_map, date, date_str)
 
     def _process_trading_day(
