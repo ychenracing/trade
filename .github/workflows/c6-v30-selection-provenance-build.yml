@@ -1,4 +1,4 @@
-name: C6 v42 Base Seal Receipt
+name: C6 v42 Dispatch Ref Rearm
 
 on:
   push:
@@ -6,196 +6,68 @@ on:
       - codex/c6-v42-seal-receipt
 
 permissions:
-  actions: read
-  contents: read
+  contents: write
 
 concurrency:
-  group: c6-v42-base-seal-receipt
+  group: c6-v42-s-qualification-dispatch-rearm
   cancel-in-progress: false
 
 jobs:
-  extract:
+  rearm:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ github.sha }}
-          path: builder
-          persist-credentials: false
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb
-          path: bindings
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          github-token: ${{ github.token }}
-          repository: ychenracing/trade
-          run-id: 34509818018
-          name: c6-bound-c6-v42-base-l1-a0
-          path: sealed
-      - name: Authenticate exact v42 Base seal and emit metadata only
+      - name: Validate and atomically recreate the exact dispatch ref
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p receipt
           python - <<'PY'
+          import base64
           import hashlib
           import json
-          from pathlib import Path, PurePosixPath
+          import os
+          import urllib.request
 
-          def reject_constant(value):
-              raise ValueError(f"non-finite JSON constant: {value}")
+          repo = "ychenracing/trade"
+          branch = "codex/c6-dispatch/c6-v42-s-qualification/c6.s.qualification/a0"
+          target = "653eea8cf8a95763a88b6504c702cdae2f0af204"
+          parent = "36d07e82ebac72b5d284ee12a954239e8c591548"
+          request_sha256 = "d35d1f58b70105e0b9cfc7ef51e27ef95af4d0f54293a93ca52b443ea1a20ff1"
+          api = f"https://api.github.com/repos/{repo}"
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
 
-          def unique_object(pairs):
-              result = {}
-              for key, value in pairs:
-                  if key in result:
-                      raise ValueError(f"duplicate JSON key: {key}")
-                  result[key] = value
-              return result
-
-          def load(path):
-              return json.loads(
-                  Path(path).read_text(encoding="utf-8"),
-                  object_pairs_hook=unique_object,
-                  parse_constant=reject_constant,
+          def call(method, path, payload=None):
+              body = None if payload is None else json.dumps(payload).encode()
+              request = urllib.request.Request(
+                  api + path, data=body, headers=headers, method=method
               )
+              with urllib.request.urlopen(request) as response:
+                  raw = response.read()
+                  return response.status, json.loads(raw) if raw else None
 
-          def sha256(path):
-              digest = hashlib.sha256()
-              with Path(path).open("rb") as stream:
-                  while chunk := stream.read(1024 * 1024):
-                      digest.update(chunk)
-              return digest.hexdigest()
+          _, ref = call("GET", f"/git/ref/heads/{branch}")
+          assert ref["object"]["type"] == "commit"
+          assert ref["object"]["sha"] == target
 
-          root = Path("sealed")
-          expected_files = {"manifest.json", "payload.json.gz", "digest.json"}
-          actual_files = {
-              path.relative_to(root).as_posix()
-              for path in root.rglob("*")
-              if path.is_file()
-          }
-          assert actual_files == expected_files
-          assert not any(path.is_symlink() for path in root.rglob("*"))
+          _, commit = call("GET", f"/git/commits/{target}")
+          assert [item["sha"] for item in commit["parents"]] == [parent]
 
-          manifest = load(root / "manifest.json")
-          required_manifest_keys = {
-              "schema_version", "kind", "sealed", "source_revision",
-              "run_bindings_revision", "workflow_revision", "binding_id",
-              "candidate_id", "logical_run_id", "attempt_id", "repository",
-              "workflow_run_id", "workflow_run_attempt", "resume_from",
-              "resume_workflow_run_id", "d_commit", "d_selection_blob_oid",
-              "d_selection_file_sha256", "producer_identity", "runner_image_os",
-              "runner_image_version", "python_version", "fencing_token_sha256",
-              "files",
-          }
-          assert set(manifest) == required_manifest_keys
-          expected_identity = {
-              "schema_version": 2,
-              "kind": "result",
-              "sealed": True,
-              "source_revision": "4659a2b6d265f45256777da6a2fc25d1369308bd",
-              "run_bindings_revision": "f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb",
-              "workflow_revision": "36d07e82ebac72b5d284ee12a954239e8c591548",
-              "binding_id": "c6.base.l1",
-              "candidate_id": "C6-Base+AB5",
-              "logical_run_id": "c6-v42-base-l1",
-              "attempt_id": "a0",
-              "repository": "ychenracing/trade",
-              "workflow_run_id": "34509818018",
-              "workflow_run_attempt": "1",
-              "resume_from": "",
-              "resume_workflow_run_id": "",
-              "d_commit": "",
-              "d_selection_blob_oid": "",
-              "d_selection_file_sha256": "",
-              "producer_identity": {
-                  "artifact_full_byte_sha256": "",
-                  "attempt_id": "",
-                  "binding_id": "",
-                  "logical_run_id": "",
-                  "workflow_run_id": "",
-              },
-              "runner_image_os": "oci-debian12-amd64",
-              "runner_image_version": "sha256-581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970",
-              "python_version": "3.12.14",
-          }
-          assert all(manifest[key] == value for key, value in expected_identity.items())
-          assert isinstance(manifest["fencing_token_sha256"], str)
-          assert len(manifest["fencing_token_sha256"]) == 64
-          assert set(manifest["files"]) == {"payload.json.gz", "digest.json"}
-          for relative, expected in manifest["files"].items():
-              assert PurePosixPath(relative).as_posix() == relative
-              assert sha256(root / relative) == expected
-
-          bindings_path = Path("bindings/artifacts/diagnostics/c6-run-bindings.json")
-          assert sha256(bindings_path) == "b8f6505688bf5f35de355270b35ee2339e0b434a6c18cae45b109cf858b08f88"
-          bindings = load(bindings_path)
-          records = [
-              record for record in bindings["binding_records"]
-              if record["record_id"] == "c6.base.l1"
-          ]
-          assert len(records) == 1
-          record = records[0]
-          assert record["candidate_id"] == manifest["candidate_id"]
-          assert record["source_revision"] == manifest["source_revision"]
-          assert record["logical_run_id"] == manifest["logical_run_id"]
-          assert record["workflow_binding_id"] == manifest["binding_id"]
-
-          digest = load(root / "digest.json")
-          required_digest_keys = {
-              "schema_version", "kind", "stage", "record_id",
-              "binding_signature", "P", "R_revision", "source_revision",
-              "source_tree", "D", "C", "selection_status", "artifact_path",
-              "artifact_byte_size", "artifact_full_byte_sha256",
-              "canonical_result_payload_schema",
-              "canonical_result_payload_sha256", "envelope_path",
-              "official_artifact_unchanged", "exit_code",
-          }
-          assert set(digest) == required_digest_keys
-          assert digest["schema_version"] == 2
-          assert digest["kind"] == "c6_artifact_digest"
-          assert digest["stage"] == "L1"
-          assert digest["record_id"] == "c6.base.l1"
-          assert digest["P"] == bindings["P"]
-          assert digest["R_revision"] == manifest["run_bindings_revision"]
-          assert digest["source_revision"] == manifest["source_revision"]
-          assert digest["source_tree"] == record["source_tree"]
-          assert digest["D"] is None and digest["C"] is None
-          assert digest["selection_status"] == "unselected"
-          assert digest["artifact_path"].endswith("/payload.json.gz")
-          assert digest["artifact_byte_size"] == (root / "payload.json.gz").stat().st_size
-          assert digest["artifact_full_byte_sha256"] == manifest["files"]["payload.json.gz"]
-          assert digest["canonical_result_payload_schema"] == record["canonical_payload_schema"]
-          assert isinstance(digest["canonical_result_payload_sha256"], str)
-          assert len(digest["canonical_result_payload_sha256"]) == 64
-          assert digest["envelope_path"] == "manifest.json"
-          assert digest["official_artifact_unchanged"] is False
-          assert digest["exit_code"] == 0
-
-          receipt = {
-              "schema_version": 1,
-              "kind": "c6_v42_base_seal_receipt",
-              "canonical": False,
-              "accepted": False,
-              "economic_dispatches": 0,
-              "github_artifact": {
-                  "id": 10176496556,
-                  "name": "c6-bound-c6-v42-base-l1-a0",
-                  "size_in_bytes": 734379936,
-                  "sha256": "046a1716801ac72d92fb14d424e74ea43186606923eea46b5324508e08aa7405",
-              },
-              "manifest": manifest,
-              "digest": digest,
-          }
-          Path("receipt/seal-receipt.json").write_text(
-              json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n",
-              encoding="utf-8",
+          _, content = call(
+              "GET", f"/contents/.github/c6-dispatch-request.json?ref={target}"
           )
+          request_bytes = base64.b64decode(content["content"], validate=True)
+          assert hashlib.sha256(request_bytes).hexdigest() == request_sha256
+
+          status, _ = call("DELETE", f"/git/refs/heads/{branch}")
+          assert status == 204
+          status, recreated = call(
+              "POST", "/git/refs", {"ref": f"refs/heads/{branch}", "sha": target}
+          )
+          assert status == 201
+          assert recreated["object"]["sha"] == target
+          print(json.dumps({"branch": branch, "sha": target}, sort_keys=True))
           PY
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: c6-v42-base-seal-receipt-${{ github.run_id }}
-          path: receipt/seal-receipt.json
-          if-no-files-found: error
-          retention-days: 90
