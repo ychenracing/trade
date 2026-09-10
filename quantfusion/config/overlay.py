@@ -89,6 +89,7 @@ SHOCK_MIN_HELD = 2
 SHOCK_TRIM_DRAWDOWN = 0.08
 SHOCK_TRIM_RATIO = 0.30
 RISK_ACTION_PRIORITY: dict[str, int] = {
+    "account_budget_trim": 80,  # account envelope; preserve stronger full exits
     "catastrophe_stop": 100,      # full exit, always armed
     "cost_stop": 90,              # full exit, layered cost line
     "atr_stop": 90,               # full exit, layered ATR chandelier
