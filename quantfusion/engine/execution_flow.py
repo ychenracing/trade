@@ -34,6 +34,7 @@ from quantfusion.domain.rules import (
     require_positive,
 )
 from quantfusion.indicators.technical import Indicators
+from quantfusion.execution.c6_receipts import record_fill
 from quantfusion.risk.managers import RiskManager
 from quantfusion.strategy.trend import (
     ATRChannelStrategy,
@@ -338,6 +339,7 @@ class CoreExecutionMixin:
                 cash_after=self.cash,
             )
         )
+        record_fill(self, signal, self.trades[-1])
         return True
 
     def _execute_sell(
@@ -416,6 +418,7 @@ class CoreExecutionMixin:
                 exit_from_peak_pct=exit_from_peak_pct,
             )
         )
+        record_fill(self, signal, self.trades[-1])
         return sell_shares
 
     def _generate_liquidation_signals(
