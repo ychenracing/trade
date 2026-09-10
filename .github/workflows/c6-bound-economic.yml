@@ -27,6 +27,8 @@ on:
         options:
           - C6-Base
           - C6-Base+S
+          - C6-Base+AB5
+          - C6-Base+AB5+S
           - synthetic-only
       logical_run_id:
         description: Unique R-bound logical run identity
@@ -212,8 +214,10 @@ jobs:
             exit 1
           fi
           case "$C6_BINDING_ID:$C6_CANDIDATE_ID" in
-            c6.base.l1:C6-Base) source_ref="codex/c6-base-$version" ;;
-            c6.base_plus_s.l1:C6-Base+S) source_ref="codex/c6-s-$version" ;;
+            c6.base.l1:C6-Base|c6.base.l1:C6-Base+AB5)
+              source_ref="codex/c6-base-$version" ;;
+            c6.base_plus_s.l1:C6-Base+S|c6.base_plus_s.l1:C6-Base+AB5+S)
+              source_ref="codex/c6-s-$version" ;;
             *) exit 1 ;;
           esac
           remote="https://github.com/${GITHUB_REPOSITORY}.git"
@@ -349,7 +353,7 @@ jobs:
           [[ "$C6_RUN_BINDINGS_REVISION" =~ ^[0-9a-f]{40}$ ]]
           [[ "$C6_WORKFLOW_REVISION" =~ ^[0-9a-f]{40}$ ]]
           [[ "$C6_BINDING_ID" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ ]]
-          [[ "$C6_CANDIDATE_ID" = "C6-Base" || "$C6_CANDIDATE_ID" = "C6-Base+S" ]]
+          [[ "$C6_CANDIDATE_ID" = "C6-Base" || "$C6_CANDIDATE_ID" = "C6-Base+S" || "$C6_CANDIDATE_ID" = "C6-Base+AB5" || "$C6_CANDIDATE_ID" = "C6-Base+AB5+S" ]]
           [[ "$C6_LOGICAL_RUN_ID" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ ]]
           [[ "$C6_ATTEMPT_ID" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ ]]
           [[ "$C6_FENCING_TOKEN" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{15,255}$ ]]
@@ -376,27 +380,27 @@ jobs:
           fi
           readonly C6_REF_VERSION
           case "$C6_BINDING_ID:$C6_CANDIDATE_ID" in
-            c6.base.l1:C6-Base)
+            c6.base.l1:C6-Base|c6.base.l1:C6-Base+AB5)
               test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
               test "$C6_ATTEMPT_ID" = "a0"
               test -z "$C6_RESUME_FROM$C6_RESUME_WORKFLOW_RUN_ID"
               C6_SOURCE_REF=codex/c6-base-$C6_REF_VERSION
               ;;
-            c6.s.qualification:C6-Base+S)
+            c6.s.qualification:C6-Base+S|c6.s.qualification:C6-Base+AB5+S)
               test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
               C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
               ;;
-            c6.base_plus_s.l1:C6-Base+S)
+            c6.base_plus_s.l1:C6-Base+S|c6.base_plus_s.l1:C6-Base+AB5+S)
               test -z "$C6_D_COMMIT$C6_D_SELECTION_BLOB_OID$C6_D_SELECTION_FILE_SHA256"
               test "$C6_ATTEMPT_ID" = "a0"
               test -z "$C6_RESUME_FROM$C6_RESUME_WORKFLOW_RUN_ID"
               C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
               ;;
-            c6.selected.l2:C6-Base|c6.selected.l4:C6-Base)
+            c6.selected.l2:C6-Base|c6.selected.l4:C6-Base|c6.selected.l2:C6-Base+AB5|c6.selected.l4:C6-Base+AB5)
               test -n "$C6_D_COMMIT" && test -n "$C6_D_SELECTION_BLOB_OID" && test -n "$C6_D_SELECTION_FILE_SHA256"
               C6_SOURCE_REF=codex/c6-base-$C6_REF_VERSION
               ;;
-            c6.selected.l2:C6-Base+S|c6.selected.l4:C6-Base+S)
+            c6.selected.l2:C6-Base+S|c6.selected.l4:C6-Base+S|c6.selected.l2:C6-Base+AB5+S|c6.selected.l4:C6-Base+AB5+S)
               test -n "$C6_D_COMMIT" && test -n "$C6_D_SELECTION_BLOB_OID" && test -n "$C6_D_SELECTION_FILE_SHA256"
               C6_SOURCE_REF=codex/c6-s-$C6_REF_VERSION
               ;;

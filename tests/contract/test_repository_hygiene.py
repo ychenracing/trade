@@ -353,6 +353,9 @@ class RepositoryHygieneTests(unittest.TestCase):
             '"actions/workflows/c6-bound-economic.yml/dispatches"',
             dispatcher,
         )
+        for candidate_id in ("C6-Base+AB5", "C6-Base+AB5+S"):
+            self.assertIn(candidate_id, bound_workflow)
+            self.assertIn(candidate_id, dispatcher)
         self.assertNotIn("workflow_dispatch:", dispatcher)
 
     def test_c6_prefreeze_branch_allowlist_has_one_source_of_truth(self) -> None:

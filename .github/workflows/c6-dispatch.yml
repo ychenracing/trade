@@ -119,7 +119,9 @@ jobs:
               raise SystemExit("dispatch contains an invalid logical identity")
           if not slug(inputs["attempt_id"]):
               raise SystemExit("dispatch contains an invalid attempt identity")
-          if inputs["candidate_id"] not in {"C6-Base", "C6-Base+S"}:
+          if inputs["candidate_id"] not in {
+              "C6-Base", "C6-Base+S", "C6-Base+AB5", "C6-Base+AB5+S"
+          }:
               raise SystemExit("dispatch contains an invalid candidate")
           for name in ("d_commit", "d_selection_blob_oid"):
               if inputs[name] and not sha(inputs[name]):
