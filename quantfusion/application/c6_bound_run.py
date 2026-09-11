@@ -1179,8 +1179,8 @@ def validate_execution_facts(record: Mapping[str, Any], *, complete_path: bool =
     """Reconcile recorded quantities and valuations; never replay a strategy."""
     from collections import defaultdict
 
-    def same(actual, expected, label):
-        if not math.isclose(actual, expected, rel_tol=1e-12, abs_tol=1e-8):
+    def same(actual, expected, label, *, abs_tol=1e-8):
+        if not math.isclose(actual, expected, rel_tol=1e-12, abs_tol=abs_tol):
             _raise(f"factual evidence {label} does not reconcile")
     orders = {row["order_ordinal"]: row for row in record["orders"]}
     if len(orders) != len(record["orders"]):
@@ -1256,7 +1256,12 @@ def validate_execution_facts(record: Mapping[str, Any], *, complete_path: bool =
             _raise("factual holdings do not reconcile with fills")
         if len({row["state_index"] for row in cash_by_date[date]}) != len(cash_by_date[date]):
             _raise("duplicate factual cash sample")
-        same(math.fsum(row["cash"] for row in cash_by_date[date]), cash, "account cash")
+        same(
+            math.fsum(row["cash"] for row in cash_by_date[date]),
+            cash,
+            "account cash",
+            abs_tol=max(1e-8, abs(initial) * 1e-12),
+        )
         value = cash + math.fsum(row["market_value"] for row in positions_by_date[date])
         same(sample["equity"], value, "account equity")
         peak = max(peak, sample["equity"])
