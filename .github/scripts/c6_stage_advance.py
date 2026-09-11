@@ -98,6 +98,10 @@ def rejection_reasons(branch):
     return [reasons[branch]] if branch in reasons else []
 
 
+def selection_commit_message(branch):
+    return f'Seal mechanical C6 {EXECUTION_VERSION} selection: {branch}'
+
+
 def producer_identity(claim):
     if claim is None:
         return dict(EMPTY_PRODUCER)
@@ -395,7 +399,7 @@ class Relay:
         else:
             require(self.api.live_guard(), 'task paused/closed before D publication')
             sha = self.api.request('git/commits', {'tree': tree['sha'], 'parents': [R_COMMIT],
-                  'message': 'Seal mechanical C6 v19 selection: ' + selection['branch']})['sha']
+                  'message': selection_commit_message(selection['branch'])})['sha']
             self.api.request('git/refs', {'ref': 'refs/heads/' + D_REF, 'sha': sha})
         require(self.api.request('git/ref/heads/' + D_REF)['object']['sha'] == sha, 'D ref read-back differs')
         content = self.api.request('contents/' + D_PATH + '?ref=' + sha)
