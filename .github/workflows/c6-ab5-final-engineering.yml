@@ -5,6 +5,7 @@ on:
     paths: [.github/workflows/c6-ab5-final-engineering.yml]
 permissions:
   contents: write
+  actions: read
 concurrency:
   group: c6-ab5-final-engineering
   cancel-in-progress: false
@@ -16,36 +17,37 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       EXPECTED_HEAD: c8d46db65b4ae1e72884399cbcaeb7999f6c400b
-      EXPECTED_TREE: 85eed00c3662e5c6568dc098c8762dda1f31bb32
+      EXPECTED_TREE: 44e84d8976329cb874dee67d9b573d6fd5b52469
+      PYTHONUNBUFFERED: '1'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Authenticate exact locally tested patch before touching source
+      - name: Authenticate exact tested patches before touching source
         run: |
           set -euo pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           mkdir -p "$RUNNER_TEMP/final-engineering"
-          cp .github/c6-transfer/final-fixes-*.b64 "$RUNNER_TEMP/final-engineering/"
+          cp .github/c6-transfer/final-fixes-*.b64 .github/c6-transfer/l2-predicate-repair.patch "$RUNNER_TEMP/final-engineering/"
           python - <<'PY'
           import base64,hashlib,os,pathlib,zlib
           out=pathlib.Path(os.environ['RUNNER_TEMP'])/'final-engineering'
           parts=[(out/f'final-fixes-{i}.b64').read_text().strip() for i in range(2)]
-          # Correct the observed connector-transcription defects only; expected hashes are immutable.
           parts[0]=parts[0].replace('LjU0m6y5H1HBe4','LjU0m6z5H1HBe4').replace('vdneb82e2dbPh9','vdneb82dbPh9').replace('def237rtfffquNb1Ybaw','def237rtfffquwuNb1Ybaw')
           expected=['6c4d1f472afec32292ae9f4eca2a039dedacec7e331f85597a594f707f570a5b','a5eed1aef61fa6ee168e5019849ec1a1bf3fdd992bf81e27fe2ec4b15baaf4ed']
           for i,part in enumerate(parts):
-              digest=hashlib.sha256(part.encode()).hexdigest()
-              assert digest==expected[i],(i,digest)
+              assert hashlib.sha256(part.encode()).hexdigest()==expected[i],i
           patch=zlib.decompress(base64.b64decode(''.join(parts),validate=True))
           assert hashlib.sha256(patch).hexdigest()=='e07366fee06a923fe577bfe7bd6fe67ae4a69da2f9e905d9c9aa4548832c440a'
           (out/'final.patch').write_bytes(patch)
+          assert hashlib.sha256((out/'l2-predicate-repair.patch').read_bytes()).hexdigest()=='5625813875024d26a0b2b207fd03e017b8718f0e63e384d5bfc2f03e01d4dc24'
           PY
           git switch --detach "$EXPECTED_HEAD"
           git apply --index "$RUNNER_TEMP/final-engineering/final.patch"
+          git apply --index "$RUNNER_TEMP/final-engineering/l2-predicate-repair.patch"
           test "$(git write-tree)" = "$EXPECTED_TREE"
           git diff --cached --check
       - name: Verify existing pinned runtime and dependencies
@@ -58,18 +60,54 @@ jobs:
           assert hashlib.sha256(pathlib.Path('requirements-lock.txt').read_bytes()).hexdigest()=='22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434'
           PY
           python -m pip install --require-hashes -r requirements-lock.txt
-      - name: Verify only affected final engineering boundaries
+      - name: Verify affected final engineering and frozen-formula boundaries
         run: |
           set -euo pipefail
-          python -m pytest -q tests/contract/test_repository_hygiene.py tests/c6_non_economic/test_c6_release_publication.py tests/c6_non_economic/test_c6_release_acceptance.py tests/regression/test_regime_adaptive.py::TestRegimeAdaptiveGoldenRegression::test_bull_path_matches_existing_universe 2>&1 | tee "$RUNNER_TEMP/final-engineering/tests.txt"
-          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion/application/c6_release_acceptance.py tests/c6_non_economic/test_c6_release_publication.py tests/contract/test_repository_hygiene.py tests/regression/test_regime_adaptive.py 2>&1 | tee "$RUNNER_TEMP/final-engineering/lint.txt"
+          python -m pytest -q tests/contract/test_repository_hygiene.py tests/c6_non_economic/test_c6_release_publication.py tests/c6_non_economic/test_c6_release_acceptance.py tests/c6_non_economic/test_c6_bound_run.py tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_frozen_bull_single_symbol_golden_metric 2>&1 | tee "$RUNNER_TEMP/final-engineering/tests.txt"
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion/application/c6_release_acceptance.py quantfusion/application/c6_predicates.py quantfusion/application/stress_artifacts.py scripts/c6_ab5_release.py tests/c6_non_economic/test_c6_release_publication.py tests/contract/test_repository_hygiene.py tests/regression/test_regime_adaptive.py 2>&1 | tee "$RUNNER_TEMP/final-engineering/lint.txt"
+          git config user.name ychenracing
+          git config user.email ychenracing@163.com
+          git commit -m 'fix(c6): align L2 minimum aggregation with frozen contract and preserve authentic regression source'
+      - name: Authenticate original completed L2 without rerunning it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,io,os,pathlib,urllib.error,urllib.request,zipfile
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,headers,newurl): return None
+          req=urllib.request.Request('https://api.github.com/repos/ychenracing/trade/actions/artifacts/10276433256/zip',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+          try:
+              with urllib.request.build_opener(NoRedirect).open(req,timeout=60) as response: raw=response.read()
+          except urllib.error.HTTPError as error:
+              if error.code!=302: raise
+              location=error.headers['Location'];assert location.startswith('https://')
+              with urllib.request.urlopen(location,timeout=120) as response: raw=response.read()
+          assert hashlib.sha256(raw).hexdigest()=='1771990a779f3a228b1e401699bd2be95b55320e3a47fb59086171f9b5991d16'
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'original-L2';out.mkdir()
+          with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+              for name in ('L2/l2-evidence.json','original-D.zip'):
+                  data=archive.read(name)
+                  (out/pathlib.Path(name).name).write_bytes(data)
+          PY
+          python -m scripts.c6_ab5_release --selection-receipt "$RUNNER_TEMP/original-L2/original-D.zip" --reuse-l2-evidence "$RUNNER_TEMP/original-L2/l2-evidence.json" --output-dir "$RUNNER_TEMP/final-engineering/L2" --source-revision "$(git rev-parse HEAD)" --workers 4 2>&1 | tee "$RUNNER_TEMP/final-engineering/l2-reuse.txt"
+          python - <<'PY'
+          import json,os,pathlib,subprocess
+          from quantfusion.application.stress_artifacts import validate_release_l2_evidence
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'final-engineering'
+          evidence=json.loads((root/'L2/l2-evidence.json').read_text())
+          reference=json.loads(pathlib.Path('artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json').read_text())
+          result=validate_release_l2_evidence(evidence,source_revision=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),reference=reference)
+          assert evidence['assessment']['assessment_id']=='068033ce38ccd750b43115831f1aef7adcebfe5fc6ffd30c4256c801db4b9e6f'
+          assert result['economic_producer']['economic_replays']==0
+          (root/'l2-receipt.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(result,sort_keys=True))
+          PY
       - name: Preserve a verified candidate for connected-app PR fast-forward
         run: |
           set -euo pipefail
           test "$(git ls-remote origin refs/heads/codex/c6-causal-risk-closure-v11 | cut -f1)" = "$EXPECTED_HEAD"
-          git config user.name ychenracing
-          git config user.email ychenracing@163.com
-          git commit -m 'fix(c6): bind regression expectations to authenticated frozen source and preserve L2 rejection'
           git push origin HEAD:refs/heads/codex/c6-ab5-final-engineering-20260912
           test "$(git ls-remote origin refs/heads/codex/c6-ab5-final-engineering-20260912 | cut -f1)" = "$(git rev-parse HEAD)"
           git branch c6-final-engineering HEAD
@@ -78,7 +116,7 @@ jobs:
           python - <<'PY'
           import hashlib,json,os,pathlib,subprocess
           out=pathlib.Path(os.environ['RUNNER_TEMP'])/'final-engineering'
-          receipt={'source_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_tree':os.environ['EXPECTED_TREE'],'parent':os.environ['EXPECTED_HEAD'],'workflow_run_id':os.environ['GITHUB_RUN_ID'],'candidate_published':True,'pr_updated':False,'base_reruns':0,'L2_reruns':0,'official_dispatches':0,'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file()}}
+          receipt={'source_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_tree':os.environ['EXPECTED_TREE'],'parent':os.environ['EXPECTED_HEAD'],'workflow_run_id':os.environ['GITHUB_RUN_ID'],'candidate_published':True,'pr_updated':False,'base_reruns':0,'L2_reruns':0,'official_dispatches':0,'sha256':{str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}}
           (out/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
           print(json.dumps(receipt,sort_keys=True))
           PY
