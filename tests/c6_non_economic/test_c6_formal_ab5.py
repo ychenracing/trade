@@ -139,3 +139,46 @@ def test_formal_official_runner_accepts_only_explicit_candidate_identity() -> No
     assert args.candidate_id == "C6-Base+AB5"
     legacy = parser.parse_args(["--source-revision", "a" * 40])
     assert legacy.candidate_id == "C6-Base"
+
+
+def test_formal_checkpoint_signature_binds_actual_candidate(tmp_path) -> None:
+    from quantfusion.application import stress_artifacts
+
+    scenario = stress_scenarios._multi_seed_scenarios(
+        random_samples=1, permutation_samples=1, seeds=(20260807,)
+    )[0]
+    market, regime = tmp_path / 'market', tmp_path / 'regime'
+    market.mkdir()
+    regime.mkdir()
+    kwargs = {'source_revision': 'a' * 40}
+    ordinary = stress_artifacts._build_provenance(
+        [scenario], market, regime, candidate_id='C6-Base', **kwargs
+    )
+    ab5 = stress_artifacts._build_provenance(
+        [scenario], market, regime, candidate_id='C6-Base+AB5', **kwargs
+    )
+    assert ab5['candidate_id'] == 'C6-Base+AB5'
+    assert ordinary['run_signature'] != ab5['run_signature']
+    assert ordinary['source_fingerprint'] == ab5['source_fingerprint']
+    assert ordinary['data_fingerprint'] == ab5['data_fingerprint']
+    assert ordinary['scenario_signature'] == ab5['scenario_signature']
+    checkpoint = {'signature': ordinary['run_signature'], 'provenance': ordinary,
+                  'results': [], 'completed': 0, 'scenario_count': 1}
+    with pytest.raises(ValueError, match='signature changed'):
+        stress_artifacts._validated_checkpoint(
+            checkpoint, [scenario], signature=ab5['run_signature'],
+            provenance=ab5, diagnostic_selection=None,
+        )
+    assert stress_artifacts._run_signature(
+        [scenario], market, regime, candidate_id='C6-Base+AB5', **kwargs
+    ) == ab5['run_signature']
+
+
+def test_formal_provenance_rejects_unknown_candidate(tmp_path) -> None:
+    from quantfusion.application import stress_artifacts
+
+    with pytest.raises(ContractError, match='candidate'):
+        stress_artifacts._build_provenance(
+            [], tmp_path, tmp_path, source_revision='a' * 40,
+            candidate_id='C6-Base+AB5-typo',
+        )

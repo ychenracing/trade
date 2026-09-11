@@ -956,13 +956,14 @@ class StressScenarioTests(unittest.TestCase):
             {
                 "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
                 "source_revision": "a" * 40,
+                "candidate_id": "C6-Base",
                 "source_fingerprint": "source-fingerprint",
                 "data_fingerprint": "data-fingerprint",
                 "scenario_signature": (
                     "b4c38909f96e42d54207c28cf402350411ad3a6beac754ef33d5314253a364aa"
                 ),
                 "run_signature": (
-                    "42a175c2c8587c6e548c6808443d21bb466962781261540f461cfeb010ec9d48"
+                    "84bb04358ee44ed2f783a82fee99ac847a373f3c6a8d6d6625c7eaffa74d594c"
                 ),
                 "scenario_count": len(scenarios),
                 "start_date": "2025-04-01",

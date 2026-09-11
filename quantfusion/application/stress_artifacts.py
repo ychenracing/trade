@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from quantfusion.application import stress_metrics, stress_scenarios
+from quantfusion.application.c6_contract import candidate_spec
 from quantfusion.config.paths import PROJECT_ROOT, VALIDATION_ARTIFACT_DIR
 
 PROVENANCE_FIELDS = (
@@ -87,7 +88,9 @@ def _build_provenance(
     regime_data_dir: Path,
     *,
     source_revision: str,
+    candidate_id: str = "C6-Base",
 ) -> dict[str, Any]:
+    candidate_spec(candidate_id)
     if len(source_revision) != 40 or any(
         character not in "0123456789abcdef" for character in source_revision
     ):
@@ -98,6 +101,7 @@ def _build_provenance(
     payload = {
         "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
         "source_revision": source_revision,
+        "candidate_id": candidate_id,
         "source_fingerprint": source_fingerprint,
         "data_fingerprint": data_fingerprint,
         "scenario_signature": scenario_signature,
@@ -121,6 +125,7 @@ def _run_signature(
     regime_data_dir: Path,
     *,
     source_revision: str,
+    candidate_id: str = "C6-Base",
 ) -> str:
     return str(
         _build_provenance(
@@ -128,6 +133,7 @@ def _run_signature(
             data_dir,
             regime_data_dir,
             source_revision=source_revision,
+            candidate_id=candidate_id,
         )["run_signature"]
     )
 

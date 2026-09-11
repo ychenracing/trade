@@ -483,6 +483,7 @@ def main() -> int:
         data_dir,
         regime_data_dir,
         source_revision=args.source_revision,
+        candidate_id=args.candidate_id,
     )
     signature = str(provenance["run_signature"])
     checkpoint = (
