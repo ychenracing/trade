@@ -1,0 +1,93 @@
+name: C6 AB5 regression source diagnosis
+on:
+  push:
+    branches: [codex/c6-ab5-release-build-20260912]
+    paths: [.github/workflows/c6-ab5-regression-diagnosis.yml]
+permissions:
+  contents: read
+concurrency:
+  group: c6-ab5-regression-source-diagnosis
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    container:
+      image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c8d46db65b4ae1e72884399cbcaeb7999f6c400b
+          fetch-depth: 0
+      - name: Install identical locked dependencies for all three source trees
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          python -m pip install --require-hashes -r requirements-lock.txt
+          mkdir -p "$RUNNER_TEMP/ab5-regression"
+      - name: Compare exact affected replays without changing any strategy or golden
+        run: |
+          set -euo pipefail
+          export OUT="$RUNNER_TEMP/ab5-regression"
+          git worktree add --detach "$RUNNER_TEMP/main-reference" 0250163dbe1b234e96339f9059f9a2074f19cb06
+          git worktree add --detach "$RUNNER_TEMP/ab5-reference" 4659a2b6d265f45256777da6a2fc25d1369308bd
+          cat > "$RUNNER_TEMP/probe.py" <<'PY'
+          import contextlib, hashlib, io, json, os, pathlib, subprocess, sys
+          from concurrent.futures import ProcessPoolExecutor
+          from dataclasses import asdict
+          sys.path.insert(0, os.getcwd())
+          from scripts.backtest_universes import UNIVERSES, NAMES
+          from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR, BACKTEST_GOLDEN_METRICS
+          from quantfusion.engine.universe import BacktestEngine
+          from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
+          from quantfusion.research.fingerprints import economic_sequence_fingerprints
+          def canonical(value):
+              return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False)
+          def run(task):
+              name, codes, adaptive = task
+              with contextlib.redirect_stdout(io.StringIO()):
+                  engine = RegimeAdaptiveBacktestEngine() if adaptive else BacktestEngine(2_000_000)
+                  kwargs = dict(data_dir=str(MARKET_DATA_DIR), indicator_state='warm')
+                  if adaptive: kwargs['regime_data_dir'] = str(REGIME_DATA_DIR)
+                  result = engine.run({code:NAMES[code] for code in codes}, '2025-04-01', '2026-06-30' if adaptive else '2026-07-20', **kwargs)
+              keys = ('total_return', 'max_drawdown', 'total_trades', 'sell_trades', 'sleeve_fill_count', 'sleeve_sell_fill_count', 'date_symbol_side_count', 'date_symbol_sell_side_count')
+              metrics = {key:result[key] for key in keys}
+              metrics.update(economic_sequence_fingerprints(result))
+              route = [{key:item.get(key) for key in ('date','state','previous_state','candidate')} for item in result.get('regime_state_series', [])]
+              metrics['regime_route_sha256'] = hashlib.sha256(canonical(route).encode()).hexdigest()
+              return name, {'metrics':metrics, 'trades':[asdict(t) for t in result['trades']]}
+          if __name__ == '__main__':
+              tasks = [(name,codes,False) for name,codes in UNIVERSES.items()] + [('adaptive_bull',('300308',),True)]
+              with ProcessPoolExecutor(max_workers=4) as pool:
+                  rows = dict(pool.map(run, tasks))
+              doc={'source_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'golden_sha256':hashlib.sha256(BACKTEST_GOLDEN_METRICS.read_bytes()).hexdigest(),'results':rows,'purpose':'source-equivalence diagnosis only, not new economic acceptance or updated golden'}
+              (pathlib.Path(os.environ['OUT'])/(sys.argv[1]+'.json')).write_text(canonical(doc)+'\n')
+              print(sys.argv[1], {k:(v['metrics']['total_return'],v['metrics']['total_trades']) for k,v in rows.items()})
+          PY
+          (cd "$RUNNER_TEMP/main-reference" && python "$RUNNER_TEMP/probe.py" main)
+          (cd "$RUNNER_TEMP/ab5-reference" && python "$RUNNER_TEMP/probe.py" frozen)
+          python "$RUNNER_TEMP/probe.py" current
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT'])
+          rows={key:json.loads((out/(key+'.json')).read_text()) for key in ('main','frozen','current')}
+          comparisons={}
+          for case, frozen in rows['frozen']['results'].items():
+              current=rows['current']['results'][case]
+              main=rows['main']['results'][case]
+              assert current==frozen, f'Actual regression drift beyond frozen AB5 at {case}'
+              first=next(({'ordinal':i,'main':a,'selected':b} for i,(a,b) in enumerate(zip(main['trades'],current['trades'])) if a!=b),None)
+              comparisons[case]={'current_equals_frozen':True,'first_trade_difference_from_main':first,'changed_metrics':{k:{'main':main['metrics'][k],'frozen':v} for k,v in frozen['metrics'].items() if main['metrics'][k]!=v}}
+          body={'source_revisions':{k:v['source_revision'] for k,v in rows.items()},'case_count':len(comparisons),'all_current_equal_frozen':True,'comparisons':comparisons,'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.glob('*.json')},'golden_writes':0,'production_writes':0,'formal_dispatches':0}
+          (out/'comparison.json').write_text(json.dumps(body,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(body,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c6-ab5-regression-source-${{ github.run_id }}
+          path: ${{ runner.temp }}/ab5-regression/
+          if-no-files-found: error
+          retention-days: 90
