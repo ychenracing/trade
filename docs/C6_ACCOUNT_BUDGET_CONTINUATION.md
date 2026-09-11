@@ -482,3 +482,39 @@ identities remain unchanged; and all prior lock, board classification,
 fail-closed and T+1 tests pass.  Then execute the same fixed 15-row comparison
 once.  AB8 is rejected without formal expansion if any existing risk,
 retention, order, reconciliation or lock screen fails.
+
+## AB8 fixed diagnostic rejection and AB9 preregistration
+
+The same 15-row comparison completed once for AB8.  It materially reduced
+AB6/AB7 churn and kept 12 rows under 18%, but remains rejected/noncanonical.
+`random-20260817-08-023`, `random-20260807-05-040` and
+`leave-one-out-300308` still reached 21.33%, 21.01% and 18.46% MDD.
+Prefix-05/17 wealth retention was only 0.7099/0.6389 and prefix-17 produced
+209 date/symbol/side orders.  All cash/equity and MDD recomputations remained
+exact within floating tolerance and no terminal lock appeared.
+
+A focused AB5/AB8 comparison on prefix-05 and prefix-17 shows the structural
+return injury: the stronger account sells fully remove multiple strategy books
+and those exact book identities receive no later filled buy.  Cash days rise
+from 33 to 56 on prefix-05 and total fills rise from 264 to 279; on prefix-17
+fills rise from 438 to 529.  The mechanism is therefore changing the long-term
+holding/re-entry path, not merely paying a one-day defensive cost.  Changing
+the reinforcement multiple again would be parameter search and is forbidden.
+
+AB9 keeps AB8's one-tranche bound and every existing account/execution rule.
+It changes only how the *additional* stock-gap tranche consumes the existing
+weakest-first book order.  First plan the unchanged minimum AB5 gross-cap
+relief.  Then traverse the post-AB5 remaining books in the same stable order,
+but the additional tranche may not remove the final existing A-share board lot
+from any book.  This preserves book/strategy identity for canonical re-entry
+and additions; it is not a new ranker or allocator.  If insufficient removable
+inventory exists, report the residual gap rather than weakening a lock,
+inventing credit or forcing a full exit.  Stronger pre-existing exits and the
+base AB5 action remain authoritative and may still liquidate a book.
+
+Tests must fail first and prove the two-pass boundary, final-lot retention only
+for the extra tranche, exact AB5 base quantity, stable weakest-first order,
+truthful residual receipt, stronger-exit priority, and unchanged board/cash/T+1
+contracts.  Then run the same fixed 15-row AB5/AB9 comparison once.  Any MDD,
+retention, order, reconciliation or lock failure rejects AB9 without full
+matrix expansion.

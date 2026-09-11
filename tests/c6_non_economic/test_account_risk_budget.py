@@ -57,6 +57,11 @@ def apply_ab8(engine, states, dates, equity=90000., peak=100000.):
     return apply(engine, states, dates, equity=equity, peak=peak)
 
 
+def apply_ab9(engine, states, dates, equity=90000., peak=100000.):
+    engine._c6_diagnostic_request = {"intervention_id": "C6_BASE_AB9"}
+    return apply(engine, states, dates, equity=equity, peak=peak)
+
+
 def test_budget_intervenes_before_18_percent_without_mutating_account():
     engine, state, dates = fixture()
     before = deepcopy((state.sleeve.positions, state.sleeve.cash, vars(state.sleeve.risk)))
@@ -232,6 +237,27 @@ def test_ab8_keeps_ab7_no_new_sell_date_boundary():
     assert r['current_gap_debit'] > r['remaining_loss_budget']
     assert r['stock_gap_constraint_binding'] is False
     assert state.pending == []
+
+
+def test_ab9_extra_tranche_retains_the_final_lot_of_each_surviving_book():
+    engine, first, dates = fixture(shares=2000, cash=10000.)
+    states = [first]
+    for index in range(1, 4):
+        sibling = deepcopy(first)
+        sibling.sleeve.sleeve_name = f'sleeve-{index}'
+        states.append(sibling)
+
+    r = apply_ab9(engine, states, dates)
+
+    sold = [sum(signal.target_shares for signal, _ in state.pending
+                if signal.reason == 'account_budget_trim') for state in states]
+    planned_notional = sum(sold) * 10.
+    base_relief = r['gross_before'] - r['gross_cap']
+    assert sold[0] == 1900
+    assert all(2000 - quantity >= 100 for quantity in sold)
+    assert planned_notional >= 2 * base_relief
+    assert planned_notional - 2000. < 2 * base_relief
+    assert r['extra_gap_relief_unfilled'] >= 0
 
 
 def test_binding_budget_zero_headroom_vetoes_buys_without_sell_credit():

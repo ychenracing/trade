@@ -121,6 +121,16 @@ def test_ab8_has_a_noncanonical_diagnostic_identity_not_a_formal_candidate() -> 
         candidate_spec("C6-Base+AB8")
 
 
+def test_ab9_has_a_noncanonical_diagnostic_identity_not_a_formal_candidate() -> None:
+    request = _request("C6_BASE_AB9")
+    assert ProductionReplayEngine.validate_c6_diagnostic_request(request) == request
+    assert c6_diagnostic_engine_config({}, request)[
+        "account_risk_budget_enabled"
+    ] is True
+    with pytest.raises(ContractError, match="candidate"):
+        candidate_spec("C6-Base+AB9")
+
+
 def test_formal_ab5_l1_uses_binding_candidate_without_changing_scenarios() -> None:
     prereg = load_preregistration(
         "artifacts/diagnostics/c6-preregistration.json"
