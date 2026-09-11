@@ -1,0 +1,237 @@
+diff --git a/docs/C6_AB5_RELEASE.md b/docs/C6_AB5_RELEASE.md
+index 117a8e15fe8cad683d0217ad22fe99f506a15185..76c2c088ce8f4347d41ed0176824a43520b73934 100644
+--- a/docs/C6_AB5_RELEASE.md
++++ b/docs/C6_AB5_RELEASE.md
+@@ -109,36 +109,27 @@ print(result["total_return"], result["max_drawdown"])
+ 不替代带预算的 77 场景 L2 或正式 958 场景验收，也不把旧利润门重新解释为已通过。
+ 
+ 
+-## 首次完整 L2 的真实拒绝（2026-09-11）
+-
+-运行 `34630144631` 在源码 `c8d46db65b4ae1e72884399cbcaeb7999f6c400b`、
+-锁定 OCI 中完成 77/77 场景；原生 schema、完整账本、来源和排列不变性通过。
+-已授权的四项例外正确应用，发布判据 8/9 通过；唯一失败为既有
+-`l2.initial.worst_add_one`，不是新增门槛或再次拒绝已接受的回撤。
+-
+-该指标按每个 add-one 场景计算：
+-`(1+R_candidate_add)/(1+R_candidate_prefix) - (1+R_reference_add)/(1+R_reference_prefix)`。
+-相对放宽后的下限是 `-0.0345`，原数值容差 `1e-12` 不变；实际最差值为
+-`-2.1454881566248734`，24 个 add-one 中有 13 个低于该下限。
+-原判据的 `failed_item_ids` 包含整个失败聚合的 24 个输入，不能误报成 24 个个体都失败。
+-
+-最差见证 `add-one-09-002409`：AB5 基础池总收益 `3.677594937776629`，
+-加一后 `3.404517316873373`，财富比 `0.9416200794348696`；
+-固定参考分别为 `2.9083755606000006`、`11.065578382742878`，财富比 `3.087108236059743`。
+-两者之差 `-2.1454881566248734` 不是本金亏损 214.55%。这个加一股票池与 `prefix-10`
+-确为同一有序股票集合且 AB5 输出相同；这里比较的是相对固定参考的加一效果，
+-不是重新把同一池的已接受终值保留率判为失败。
+-另一个非相邻 prefix 的见证 `add-one-05-300604` 财富比 `0.48919675235694743`，
+-固定参考为 `0.9811930515677323`，差值 `-0.49199629921078486`。
+-因此不能仅因最差见证与 prefix 重合，就把整个 add-one 退化指标视为已获豁免。
+-
+-原始工件 `10276433256`（28,254,588 字节）ZIP SHA-256：
+-`1771990a779f3a228b1e401699bd2be95b55320e3a47fb59086171f9b5991d16`。
+-所有成员哈希已核对；失败判据输入/参考 detail hash 已独立重算一致：
+-`e7e383be3019325c653876c087b551af5a6693ab7f716f7c858cddd83dc1a4fa`。
+-L2 assessment ID：`f13a0d1e77a26d795d900c7d0e02022a18ec381f49141fdfeb9b3fd90abd351b`。
+-该工件保留完整 L2 和检查点；后继正式 17/958 没有执行，不得把工件中为取证复制的旧
+-`native-validation` 文件当成本次正式结果。不得修改旧拒绝或重跑同一经济计算来改变结论。
+-
+-后续如明确修订该项产品条件，优先复用已认证的同一 77 场景原始结果、重新生成独立判定；
+-若未修订则保持拒绝并完成可独立的工程与测试。不得擅自放宽该项或开发替代策略。
++## 首次完整 L2：已定位并修复的聚合错误（2026-09-11）
++
++运行 `34630144631` 在源码 `c8d46db65b4ae1e72884399cbcaeb7999f6c400b`、锁定 OCI 中
++完成 77/77 场景。最初的失败是既有 `l2.initial.worst_add_one` 实现偏离冻结公式，不是新的经济拒绝。
++I_B42 原始 P 的该判据明确写的是：
++`minimum current add-one wealth change minus exact-reference minimum add-one wealth change`。
++旧代码却计算 `min(current_i - reference_i)`，与合同的 `min(current_i) - min(reference_i)` 不同。
++
++先用两场景交叉反例复现（旧实现 -0.6，合同正确值 +0.1），再修正聚合；真正退化仍被拒绝。
++对已认证的 77 个实际结果，不重跑经济计算：当前最小加一财富变化 `-0.5108032476430526`，
++固定参考最小值 `-0.7145312965039285`，合同正确差值为 `+0.20372804886087592`。
++它通过原来的 -0.03 及放宽后的 -0.0345 下限，不需要新增豁免。修正后 9/9 L2 发布判据通过。
++其余八项判据数值及全部订单、成交、净值、指标、场景、参考和误差容限均未改变。
++
++原失败运行、原生 L2 evidence 和检查点保留。原始工件 `10276433256` ZIP SHA-256：
++`1771990a779f3a228b1e401699bd2be95b55320e3a47fb59086171f9b5991d16`；
++原始 L2 evidence SHA-256：`a1f8054b29b948ba6eecc4bee062e8cb7b24387934fa56f9ebf47fa5c7c3c57d`。
++重判使用明确的派生身份，`derivation` 固定记录原经济源码、原运行、原文件哈希和零次经济重算；
++消费者重算完整 77 记录的规范哈希并拒绝任何替换。新的 `execution_source_revision` 指评估执行源码，
++不是声称这些成交由新源码重新算出。可通过已有命令的 `--reuse-l2-evidence <原始l2-evidence.json>`
++复用这一个已认证的原始文件；不建立通用跨版本迁移，不对其他失败或其他候选自动豁免。
++
++原运行中的后继正式 17/958 没有执行，不能把取证复制的旧 `native-validation` 文件冒充本次结果。
++修复后的独立正式运行必须先认证派生 L2，再执行原完整正式场景和所有其他未豁免门。
+diff --git a/quantfusion/application/c6_predicates.py b/quantfusion/application/c6_predicates.py
+index e0a6317f99ad338763ad30ce796651bf371a7497..846b53f94433d66ff8bbeb35731346f2aea1f077 100644
+--- a/quantfusion/application/c6_predicates.py
++++ b/quantfusion/application/c6_predicates.py
+@@ -50,7 +50,10 @@ def _predicate_rows(specs: Sequence[Mapping[str, Any]], results: list[dict[str,
+     p0910 = (1 + by_id["prefix-10"]["total_return"]) / (1 + by_id["prefix-09"]["total_return"]) - 1
+     adjacent = [(1 + by_id[b]["total_return"]) / (1 + by_id[a]["total_return"]) - 1 for a, b in zip(prefixes, prefixes[1:])]
+     ratios = {item: (1 + by_id[item]["total_return"]) / (1 + ref[item]["total_return"]) for item in prefixes}
+-    deltas = [(1 + by_id[item]["total_return"]) / (1 + by_id[f"prefix-{by_id[item]['base_size']:02d}"]["total_return"]) - (1 + ref[item]["total_return"]) / (1 + ref[f"prefix-{ref[item]['base_size']:02d}"]["total_return"]) for item in add_ids]
++    # Frozen P specifies the difference of the two minima, not the minimum of paired differences.
++    current_add_changes = [(1 + by_id[item]["total_return"]) / (1 + by_id[f"prefix-{by_id[item]['base_size']:02d}"]["total_return"]) - 1 for item in add_ids]
++    reference_add_changes = [(1 + ref[item]["total_return"]) / (1 + ref[f"prefix-{ref[item]['base_size']:02d}"]["total_return"]) - 1 for item in add_ids]
++    add_delta = min(current_add_changes) - min(reference_add_changes)
+     perm_bad = []
+     for seed in sorted({by_id[item]["seed"] for item in perm_ids}):
+         group = [item for item in perm_ids if by_id[item]["seed"] == seed]
+@@ -65,7 +68,7 @@ def _predicate_rows(specs: Sequence[Mapping[str, Any]], results: list[dict[str,
+         "l2.prefix.worst_adjacent_wealth": (prefixes, [by_id[x]["total_return"] for x in prefixes], [], [] if min(adjacent) >= -0.30 - 1e-12 else prefixes, min(adjacent)),
+         "l2.initial.prefix05": (["prefix-05"], [by_id["prefix-05"]["total_return"]], [ref["prefix-05"]["total_return"]], [] if ratios["prefix-05"] >= 0.99 - 1e-12 else ["prefix-05"], ratios["prefix-05"]),
+         "l2.initial.other_prefix": ([x for x in prefixes if x != "prefix-05"], [by_id[x]["total_return"] for x in prefixes if x != "prefix-05"], [ref[x]["total_return"] for x in prefixes if x != "prefix-05"], [x for x in prefixes if x != "prefix-05" and ratios[x] < 0.95 - 1e-12], min(ratios[x] for x in prefixes if x != "prefix-05")),
+-        "l2.initial.worst_add_one": (add_ids + sorted({f"prefix-{by_id[x]['base_size']:02d}" for x in add_ids}), [by_id[x]["total_return"] for x in add_ids], [ref[x]["total_return"] for x in add_ids], [] if min(deltas) >= -0.03 - 1e-12 else add_ids, min(deltas)),
++        "l2.initial.worst_add_one": (add_ids + sorted({f"prefix-{by_id[x]['base_size']:02d}" for x in add_ids}), [by_id[x]["total_return"] for x in add_ids], [ref[x]["total_return"] for x in add_ids], [] if add_delta >= -0.03 - 1e-12 else add_ids, add_delta),
+         "l2.permutation.invariant": (perm_ids, [by_id[x] for x in perm_ids], [], perm_bad, not perm_bad),
+     }
+     return [_predicate_result(spec, *facts[spec["id"]]) for spec in specs]
+diff --git a/quantfusion/application/c6_release_acceptance.py b/quantfusion/application/c6_release_acceptance.py
+index acc2caac08038e55088f797fc3739a76dcbee7e5..cb38763dbb1e29c290f5a31757ad1362a3c33fa6 100644
+--- a/quantfusion/application/c6_release_acceptance.py
++++ b/quantfusion/application/c6_release_acceptance.py
+@@ -329,6 +329,28 @@ def verify_ab5_release_source(source_revision: str, *, root: Path = PROJECT_ROOT
+ AB5_ORIGINAL_D_SHA256 = "6afee85f4c35502816ccde2af43f5c528bd0154f1770204dfcf27e18f66dad29"
+ 
+ 
++
++# One authenticated, already executed L2; reuse changes only the erroneous predicate aggregation.
++AB5_L2_RESULTS_SHA256 = "0025431de9f09a335037deb5d2c68cbc74ae998f83670d8460c799c6c004fbd1"
++AB5_L2_REUSE = {
++    "kind": "c6_l2_difference_of_minima_reassessment",
++    "economic_source_revision": "c8d46db65b4ae1e72884399cbcaeb7999f6c400b",
++    "economic_workflow_run_id": 34630144631,
++    "original_artifact_id": 10276433256,
++    "original_artifact_sha256": "1771990a779f3a228b1e401699bd2be95b55320e3a47fb59086171f9b5991d16",
++    "original_evidence_sha256": "a1f8054b29b948ba6eecc4bee062e8cb7b24387934fa56f9ebf47fa5c7c3c57d",
++    "original_raw_payload_sha256": "a32981a24e05b62db5d9fd255d2fbe93f4676e94f757239dfd8548103c5a6880",
++    "economic_replays": 0,
++}
++
++
++def validate_l2_reuse(lineage: Mapping[str, Any], *, results_sha256: str) -> None:
++    """Validate the known producer and unchanged records; never relabel economic source."""
++    if (canonical_payload_hash(lineage) != canonical_payload_hash(AB5_L2_REUSE)
++            or results_sha256 != AB5_L2_RESULTS_SHA256):
++        raise ValueError("AB5 L2 reuse differs from its authenticated economic producer")
++
++
+ def ab5_preregistration() -> dict[str, Any]:
+     """Read the immutable native schema and scenario lists; never edit old P."""
+     import json
+diff --git a/quantfusion/application/stress_artifacts.py b/quantfusion/application/stress_artifacts.py
+index c8c918b1184c685d1ae9d336a51603b21922c035..280ed934711915ac7e71293cc3b7926c4f5130f1 100644
+--- a/quantfusion/application/stress_artifacts.py
++++ b/quantfusion/application/stress_artifacts.py
+@@ -561,6 +561,10 @@ def validate_release_l2_evidence(
+     from quantfusion.application.c6_bound_run import validate_result_payload
+ 
+     raw = evidence["raw_l2"]
++    if "derivation" in evidence:
++        from quantfusion.application.c6_release_acceptance import validate_l2_reuse
++
++        validate_l2_reuse(evidence["derivation"], results_sha256=canonical_payload_hash(raw["results"]))
+     prereg = ab5_preregistration()
+     validate_result_payload(raw, {"canonical_payload_schema": {"name": "L2_payload"}}, prereg)
+     assessment = release_predicate_assessment(
+@@ -572,4 +576,8 @@ def validate_release_l2_evidence(
+         raise ValueError("AB5 L2 evidence is altered or has an unwaived failure")
+     return {"selection_id": selection["selection_id"], "l2_assessment_id": assessment["assessment_id"],
+             "l2_evidence_sha256": canonical_payload_hash(evidence), "l2_scenario_count": 77,
+-            "execution_source_revision": source_revision}
++            "execution_source_revision": source_revision,
++            "economic_producer": evidence.get("derivation") or {
++                "economic_source_revision": source_revision,
++                "economic_workflow_run_id": evidence.get("workflow_run_id"),
++            }}
+diff --git a/scripts/c6_ab5_release.py b/scripts/c6_ab5_release.py
+index b0808f7d3587caeb5fc834791a31af1e0b2909e6..ab0d5dc8152a6a5ce859ed8986f1938b635e8e2b 100644
+--- a/scripts/c6_ab5_release.py
++++ b/scripts/c6_ab5_release.py
+@@ -41,6 +41,7 @@ def main() -> int:
+     parser.add_argument("--source-revision", required=True)
+     parser.add_argument("--workers", type=int, default=4)
+     parser.add_argument("--preflight-only", action="store_true")
++    parser.add_argument("--reuse-l2-evidence", type=Path)
+     args = parser.parse_args()
+     if args.workers < 1 or args.workers > 12:
+         raise ValueError("workers must be in 1..12")
+@@ -73,7 +74,19 @@ def main() -> int:
+     if args.preflight_only:
+         return 0
+     completed = []
+-    if checkpoint.exists():
++    derivation = None
++    if args.reuse_l2_evidence is not None:
++        original_bytes = args.reuse_l2_evidence.read_bytes()
++        if hashlib.sha256(original_bytes).hexdigest() != release.AB5_L2_REUSE["original_evidence_sha256"]:
++            raise ValueError("AB5 L2 reuse requires the exact authenticated original evidence")
++        original = json.loads(original_bytes)
++        completed = original["raw_l2"]["results"]
++        if [row["scenario_id"] for row in completed] != ids:
++            raise ValueError("AB5 L2 reuse does not cover the complete frozen population")
++        derivation = dict(release.AB5_L2_REUSE)
++        release.validate_l2_reuse(derivation, results_sha256=canonical_payload_hash(completed))
++        print("Reusing all 77 authenticated L2 records; economic replays=0", flush=True)
++    elif checkpoint.exists():
+         saved = json.loads(checkpoint.read_text())
+         if saved.get("signature") != signature:
+             raise ValueError("AB5 L2 checkpoint source/selection/manifest changed")
+@@ -109,6 +122,9 @@ def main() -> int:
+                 "execution_source_revision": args.source_revision, "selection": selection,
+                 "raw_l2": raw, "assessment": assessment, "source_binding": proof, "provenance": provenance,
+                 "workflow_run_id": os.environ.get("GITHUB_RUN_ID"), "python_version": platform.python_version()}
++    if derivation is not None:
++        evidence["derivation"] = derivation
++    # execution_source_revision is this assessment execution. Derivation identifies the unchanged economic producer.
+     # Preserve a true rejection too; it must never launch the official successor.
+     stress_artifacts._atomic_json(out / "l2-evidence.json", evidence)
+     print(json.dumps({"l2_passed": assessment["passed"], "assessment": assessment}, ensure_ascii=False), flush=True)
+diff --git a/tests/c6_non_economic/test_c6_release_publication.py b/tests/c6_non_economic/test_c6_release_publication.py
+index 2e368472402777aed9926245c0523f460f3ec4a4..93091c817eade0030ae175620a22bcab40bd7fdf 100644
+--- a/tests/c6_non_economic/test_c6_release_publication.py
++++ b/tests/c6_non_economic/test_c6_release_publication.py
+@@ -217,3 +217,41 @@ def test_published_release_assessment_reconciles_its_prepublication_payload():
+         damaged = {**published, field: value}
+         with pytest.raises(ValueError, match="accepted"):
+             release.validate_published_release_assessment(damaged)
++
++
++def test_l2_add_one_uses_difference_of_minima_from_the_frozen_contract():
++    from quantfusion.application.c6_predicates import _predicate_rows
++
++    spec = next(row for row in release.ab5_preregistration()[
++        "diagnostic_predicate_manifests"]["L2_APPLICABLE_DIAGNOSTIC_PREDICATES"]
++        if row["id"] == "l2.initial.worst_add_one")
++    assert spec["formula"] == (
++        "minimum current add-one wealth change minus exact-reference minimum "
++        "add-one wealth change >= -0.03 - 1e-12")
++    prefixes = [dict(scenario_id=f"prefix-{i:02d}", scenario_type="prefix",
++                     total_return=0., max_drawdown=-.1, seed=None) for i in range(1, 18)]
++    candidate = prefixes + [dict(scenario_id=f"add-{i}", scenario_type="add_one",
++                                base_size=5, total_return=r, max_drawdown=-.1, seed=None)
++                            for i, r in enumerate((-.1, .2))]
++    reference = deepcopy(candidate)
++    reference[-2]["total_return"] = .5
++    reference[-1]["total_return"] = -.2
++    ids = [row["scenario_id"] for row in candidate]
++    result = _predicate_rows([spec], candidate, {"results": reference}, ids)[0]
++    assert result["observed"]["value"] == pytest.approx(.1)
++    assert result["passed"] is True
++    candidate[-2]["total_return"] = -.4
++    result = _predicate_rows([spec], candidate, {"results": reference}, ids)[0]
++    assert result["observed"]["value"] == pytest.approx(-.2)
++    assert result["passed"] is False
++
++
++def test_l2_reuse_is_limited_to_authenticated_records_and_original_execution():
++    lineage = deepcopy(release.AB5_L2_REUSE)
++    release.validate_l2_reuse(lineage, results_sha256=release.AB5_L2_RESULTS_SHA256)
++    for key in lineage:
++        changed = {**lineage, key: "foreign"}
++        with pytest.raises(ValueError, match="L2 reuse"):
++            release.validate_l2_reuse(changed, results_sha256=release.AB5_L2_RESULTS_SHA256)
++    with pytest.raises(ValueError, match="L2 reuse"):
++        release.validate_l2_reuse(lineage, results_sha256="0" * 64)
