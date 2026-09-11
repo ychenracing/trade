@@ -52,6 +52,11 @@ def apply_ab7(engine, states, dates, equity=90000., peak=100000.):
     return apply(engine, states, dates, equity=equity, peak=peak)
 
 
+def apply_ab8(engine, states, dates, equity=90000., peak=100000.):
+    engine._c6_diagnostic_request = {"intervention_id": "C6_BASE_AB8"}
+    return apply(engine, states, dates, equity=equity, peak=peak)
+
+
 def test_budget_intervenes_before_18_percent_without_mutating_account():
     engine, state, dates = fixture()
     before = deepcopy((state.sleeve.positions, state.sleeve.cash, vars(state.sleeve.risk)))
@@ -199,6 +204,34 @@ def test_ab7_strengthens_an_existing_ab5_sell_only_to_gap_budget():
     assert r['gross_before'] > r['gross_cap']
     assert r['stock_gap_constraint_binding'] is True
     assert r['post_plan_current_gap_debit'] <= r['remaining_loss_budget']
+
+
+def test_ab8_bounds_gap_reinforcement_to_one_existing_ab5_tranche():
+    engine, state, dates = fixture(shares=8000, cash=10000.)
+
+    r = apply_ab8(engine, [state], dates)
+
+    planned_notional = sum(
+        signal.target_shares * signal.price
+        for signal, _ in state.pending
+        if signal.reason == 'account_budget_trim'
+    )
+    base_relief = r['gross_before'] - r['gross_cap']
+    assert r['stock_gap_constraint_binding'] is True
+    assert planned_notional >= 2 * base_relief
+    assert planned_notional - 1000. < 2 * base_relief
+    assert r['post_plan_current_gap_debit'] > r['remaining_loss_budget']
+
+
+def test_ab8_keeps_ab7_no_new_sell_date_boundary():
+    engine, state, dates = fixture(shares=4000, cash=50000.)
+
+    r = apply_ab8(engine, [state], dates)
+
+    assert r['gross_before'] <= r['gross_cap']
+    assert r['current_gap_debit'] > r['remaining_loss_budget']
+    assert r['stock_gap_constraint_binding'] is False
+    assert state.pending == []
 
 
 def test_binding_budget_zero_headroom_vetoes_buys_without_sell_credit():

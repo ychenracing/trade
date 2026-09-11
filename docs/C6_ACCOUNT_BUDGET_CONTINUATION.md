@@ -450,3 +450,35 @@ compatibility, lock priority, fail-closed inputs and T+1 execution.  Then run
 the same 15-row AB5/AB7 comparison once with the same screens.  Failure stays
 noncanonical and drives the next causal split; only a stable AB7 may receive a
 new formal candidate identity.
+
+## AB7 fixed diagnostic rejection and AB8 preregistration
+
+The same 15-row comparison completed once for AB7.  It reduced prefix-13's
+order bucket from AB6's 221 to 211 and restored its wealth ratio to 0.9827,
+but the candidate remains rejected/noncanonical: prefix-05/09/10/17 still
+reached 19.35%--19.50% MDD, prefix-05 and prefix-17 wealth ratios remained
+0.4719 and 0.4573, and prefix-13 still exceeded the 200-order screen.  Four of
+six v42 residual witnesses passed 18%; `leave-one-out-300308` worsened to
+19.40%.  Accounting, MDD and terminal-lock checks remained valid.  Therefore
+the return injury comes mainly from the full stock-gap liquidation amount on
+otherwise-valid AB5 sell dates, not only from AB6's extra sell dates.
+
+At 2025-09-02, harmful prefix-05/17 paths had only 0.58%--0.63% equity of AB5
+gross-cap excess but AB7 expanded directly to the full board-gap debit.  The
+worst v42 residual had 14.34% gross-cap excess on that same date.  AB8 does not
+turn that observation into a fitted cutoff.  Instead it uses the magnitude of
+the existing AB5 action itself as the causal, parameter-free bound: when the
+AB7 predicate holds, add at most one further gross-notional tranche equal to
+the minimum AB5 gross relief.  Thus total planned gross relief is
+`min(current_gross, 2 * (current_gross - gross_cap))`; the stock-gap ledger
+only activates the second tranche and per-book debit remains recorded.  There
+is no action when AB5 has none, no fraction search, and no changed risk or
+execution threshold.
+
+Tests must fail first and then prove: the extra tranche is neither smaller
+than the requested one-for-one reinforcement nor larger by more than existing
+lot rounding; the AB7 no-new-date rule remains; AB5/AB6/AB7 diagnostic
+identities remain unchanged; and all prior lock, board classification,
+fail-closed and T+1 tests pass.  Then execute the same fixed 15-row comparison
+once.  AB8 is rejected without formal expansion if any existing risk,
+retention, order, reconciliation or lock screen fails.
