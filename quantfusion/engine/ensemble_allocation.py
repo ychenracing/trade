@@ -109,6 +109,7 @@ class EnsembleAllocationMixin:
             "C6_BASE_PLUS_S": {"F0", "F1", "U", "S"},
             "C6_BASE_AB5": {"F0", "F1", "U"},
             "C6_BASE_AB5_PLUS_S": {"F0", "F1", "U", "S"},
+            "C6_BASE_AB11": {"F0", "F1", "U"},
             "W0_NO_601869": set(),
             "W1_DATA_MAP_ONLY": set(),
             "W2_POOL_DENOMINATOR_ONLY": set(),
@@ -760,13 +761,21 @@ class EnsembleAllocationMixin:
             value * (limit_pct_for_code(signal.symbol, costs) + variable_gap_cost)
             for _, signal, value in buys
         )
+        intervention_id = self._c6_intervention_id()
         buy_gap_scale = (
             min(
                 1.,
                 max(0., receipt["remaining_loss_budget"] - current_gap_debit)
                 / requested_buy_gap_debit,
             )
-            if buy_envelope_binding and requested_buy_gap_debit else 1.
+            if (
+                requested_buy_gap_debit
+                and (
+                    buy_envelope_binding
+                    or intervention_id == "C6_BASE_AB11"
+                )
+            )
+            else 1.
         )
         buy_scale = min(buy_gross_scale, buy_gap_scale)
         actions = []
@@ -815,7 +824,9 @@ class EnsembleAllocationMixin:
         for state, before in zip(states, previous):
             reconcile_close_queue(state.sleeve, before, state.pending, date_str, "account_budget_envelope")
         events.append({"date": date_str, "event": "account_budget_envelope",
-                       "mechanism": "AB5", "planned_not_filled": True, **receipt,
+                       "mechanism": (
+                           "AB11" if intervention_id == "C6_BASE_AB11" else "AB5"
+                       ), "planned_not_filled": True, **receipt,
                        "gross_before": gross,
                        "buy_envelope_binding": buy_envelope_binding,
                        "buy_gross_scale": buy_gross_scale,
