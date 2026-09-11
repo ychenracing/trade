@@ -1,0 +1,129 @@
+name: C6 AB5 publication verification
+on:
+  push:
+    branches: [codex/c6-ab5-release-build-20260912]
+    paths: [.github/workflows/c6-ab5-publication-check.yml]
+permissions:
+  contents: write
+concurrency:
+  group: c6-ab5-publication-verification
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    container:
+      image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
+    timeout-minutes: 20
+    env:
+      EXPECTED_HEAD: 07d1294958667224073314d905b87194a0ee5ba7
+      EXPECTED_MAIN: 0250163dbe1b234e96339f9059f9a2074f19cb06
+      EXPECTED_TREE: 0ec1a254552e8e0045713b32b63dd482f78105ba
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Authenticate transfer and combine completed independent checkpoint work
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          mkdir -p "$RUNNER_TEMP/ab5-publication"
+          python - <<'PY'
+          import base64, hashlib, os
+          from pathlib import Path
+          parts = [(Path('.github/c6-transfer') / f'publication-{i}.b64').read_text().strip() for i in range(6)]
+          # Repair only three observed transport transcription defects; immutable bundle SHA is mandatory.
+          parts[1] = parts[1].replace('FO2tz27i113/Ure','FO2tz27i13/Ure').replace('GIpu24TO6d4273','GIpu24TO6M4273').replace('FVxhE8weburVrimH7GKvVrim','FVxhE8weburVxhHp7GKvVrim')
+          expected = ['3144b5b2a11cb4e8f2b59227ff0cd790f11e98b6de015a2e556f1652177989e3','af1e378532b6029927b16437417a1136e571b96837584b7969ef9c290846aace','0683d0c4e490b2cc813068aee74c9677aaa60e81034240328af734e1fc9a2df3','0ebe1b96b574b792a8e4b61a0ecfcc5f1b6dad02ea7fe1e235a310c064363038','5b3aadc30f730872dc315ddd33265ae05db303c4dbc3108f0605e7fe057a66d3','c4046b1f7d37e7b3d772e437b3400be0da79fa2b890d9373cbcb284dccfebc69']
+          for i, part in enumerate(parts):
+              assert hashlib.sha256(part.encode()).hexdigest() == expected[i], f'transfer part {i}'
+          raw = base64.b64decode(''.join(parts), validate=True)
+          assert hashlib.sha256(raw).hexdigest() == '33bdc435593332028460c359560bac94d6f3803352239e479de7f6e822a0d9ff'
+          (Path(os.environ['RUNNER_TEMP'])/'publication.bundle').write_bytes(raw)
+          PY
+          git bundle verify "$RUNNER_TEMP/publication.bundle"
+          git fetch "$RUNNER_TEMP/publication.bundle" refs/heads/direct-ab5-transfer:refs/heads/c6-publication-import
+          test "$(git rev-parse c6-publication-import)" = 5a55f39b7a138303d4effdd83eddf46cedaa5d4a
+          git switch --detach "$EXPECTED_HEAD"
+          git config user.name ychenracing
+          git config user.email ychenracing@163.com
+          git merge --no-commit --no-ff c6-publication-import
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('quantfusion/application/stress_artifacts.py')
+          s=p.read_text()
+          old='    from quantfusion.application.c6_contract import candidate_spec\n\n    candidate_spec(candidate_id)\n    payload["candidate_id"] = candidate_id\n'
+          assert s.count(old)==1
+          p.write_text(s.replace(old,''))
+          PY
+          git add quantfusion/application/stress_artifacts.py
+          test "$(git write-tree)" = "$EXPECTED_TREE"
+          git diff --cached --check
+          git commit -m 'feat(c6): integrate native AB5 release publication and verified checkpoint audit'
+      - name: Verify pinned runtime and install the existing lock
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, pathlib, platform, sys
+          assert platform.python_version() == '3.12.14'
+          assert platform.libc_ver()[1] == '2.36'
+          assert hashlib.sha256(pathlib.Path(sys.executable).read_bytes()).hexdigest() == '837a48d7afd08447fb43e28b282026fadb59368620072e57e01f66d12977e5ce'
+          assert hashlib.sha256(pathlib.Path('requirements-lock.txt').read_bytes()).hexdigest() == '22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434'
+          PY
+          python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Test the complete affected publication and native consumer boundary
+        run: |
+          set -euo pipefail
+          python -m compileall -q quantfusion/application/c6_release_acceptance.py quantfusion/application/stress.py quantfusion/application/stress_artifacts.py scripts/c6_ab5_release.py
+          python -m pytest -q tests/c6_non_economic/test_c6_release_publication.py tests/c6_non_economic/test_c6_release_acceptance.py tests/unit/test_stress_scenarios.py tests/contract/test_architecture.py tests/c6_non_economic/test_c6_formal_ab5.py tests/c6_non_economic/test_c6_bound_run.py tests/c6_non_economic/test_c6_selected_ab5.py 2>&1 | tee "$RUNNER_TEMP/ab5-publication/tests.txt"
+      - name: Authenticate original D and verify the actual release preflight without economics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, os, urllib.error, urllib.request
+          from pathlib import Path
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          req=urllib.request.Request('https://api.github.com/repos/ychenracing/trade/actions/artifacts/10189149456/zip',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+          try:
+              with urllib.request.build_opener(NoRedirect).open(req,timeout=60) as response:
+                  raw=response.read()
+          except urllib.error.HTTPError as error:
+              if error.code != 302: raise
+              location=error.headers['Location']
+              assert location.startswith('https://')
+              with urllib.request.urlopen(location,timeout=60) as response:
+                  raw=response.read()
+          assert hashlib.sha256(raw).hexdigest() == '786e1d9c3926bbb0ebe69d12cd6f05412332e94bd7aba08c9b8983161de670b4'
+          (Path(os.environ['RUNNER_TEMP'])/'ab5-publication/original-D.zip').write_bytes(raw)
+          PY
+          python -m scripts.c6_ab5_release --selection-receipt "$RUNNER_TEMP/ab5-publication/original-D.zip" --output-dir "$RUNNER_TEMP/ab5-publication/preflight" --source-revision "$(git rev-parse HEAD)" --preflight-only 2>&1 | tee "$RUNNER_TEMP/ab5-publication/preflight.txt"
+      - name: Preserve tested candidate without moving original PR63
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/codex/c6-causal-risk-closure-v11 | cut -f1)" = "$EXPECTED_HEAD"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN"
+          git push origin HEAD:refs/heads/codex/c6-ab5-publication-verified-20260912
+          test "$(git ls-remote origin refs/heads/codex/c6-ab5-publication-verified-20260912 | cut -f1)" = "$(git rev-parse HEAD)"
+          git branch c6-publication-verified HEAD
+          git bundle create "$RUNNER_TEMP/ab5-publication/verified.bundle" c6-publication-verified
+          git show -s --format='%H %T %P' HEAD > "$RUNNER_TEMP/ab5-publication/head.txt"
+          python - <<'PY'
+          import hashlib, json, os, pathlib, subprocess
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'ab5-publication'
+          body={'workflow_run_id':os.environ['GITHUB_RUN_ID'],'source_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_tree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(),'expected_pr_head':os.environ['EXPECTED_HEAD'],'candidate_published':True,'pr_updated':False,'economic_dispatches':0,'sha256':{str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}}
+          (out/'receipt.json').write_text(json.dumps(body,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(body,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c6-ab5-publication-verified-${{ github.run_id }}
+          path: ${{ runner.temp }}/ab5-publication/
+          if-no-files-found: error
+          retention-days: 30
