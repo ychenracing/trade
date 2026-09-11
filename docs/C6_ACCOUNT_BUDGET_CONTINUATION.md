@@ -399,3 +399,19 @@ lock priority, exact AB5 witness, and fail-closed diagnostic identity.  Then
 run the fixed 15-row comparison once.  Any hard MDD, existing retention,
 initial/promotion, order, cash/equity, recomputation or terminal-lock failure
 rejects AB11 without a formal identity or full matrix.
+
+## AB11 fixed-witness rejection
+
+The AB11 identity and buy guard passed 28 affected account-budget and formal
+AB5 tests; the exact AB5 witness remained unchanged.  The first attempted
+15-row comparison produced no durable result and is classified as an invalid
+engineering execution, not economic evidence.  A single preregistered fixed
+witness was then sufficient to reach the mechanical decision:
+`random-20260817-03-027` improved from AB5's 21.1062% MDD to 18.6028%, but
+still breached the unchanged 18% hard gate.  Across that full diagnostic path,
+AB11 removed 2,794,600 shares of otherwise pending buy intent, retained
+terminal wealth 9,078,568.67, produced 86 date/symbol/side orders and did not
+end in a terminal lock.  Because any fixed-witness MDD failure was an explicit
+rejection condition, AB11 remains noncanonical and receives no formal identity
+or full matrix.  The failed 15-row execution is not repeated: the single valid
+counterexample already determines the outcome.
