@@ -7,7 +7,7 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: c6-ab5-final-c8d46db65b4a
+  group: c6-ab5-final-56e5743ff899
   cancel-in-progress: false
 defaults:
   run:
@@ -19,22 +19,25 @@ jobs:
       image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
     timeout-minutes: 350
     env:
-      SOURCE: c8d46db65b4ae1e72884399cbcaeb7999f6c400b
+      SOURCE: 56e5743ff8999540f07270ca0ddd0b5c664d8033
+      SOURCE_TREE: 44e84d8976329cb874dee67d9b573d6fd5b52469
+      BUILDER_ARTIFACT_ID: '10279012393'
+      BUILDER_ARTIFACT_SHA256: 481ab5c090e754c84dd943a4863afa8ad73e89d0419e1872f87430a5dfbc8c0a
       PYTHONUNBUFFERED: '1'
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: c8d46db65b4ae1e72884399cbcaeb7999f6c400b
+          ref: 56e5743ff8999540f07270ca0ddd0b5c664d8033
           fetch-depth: 0
-      - name: Verify live authority, sole execution, runtime and native original D
+      - name: Authenticate live authority, unique execution, source and derived L2
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          mkdir -p "$RUNNER_TEMP/ab5-final"
+          mkdir -p "$RUNNER_TEMP/ab5-final/L2"
           python - <<'PY'
-          import hashlib,json,os,pathlib,platform,subprocess,sys,urllib.error,urllib.request
+          import hashlib,io,json,os,pathlib,platform,subprocess,sys,urllib.error,urllib.request,zipfile
           out=pathlib.Path(os.environ['RUNNER_TEMP'])/'ab5-final'
           base='https://api.github.com/repos/ychenracing/trade/'
           headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
@@ -43,47 +46,87 @@ jobs:
                   return json.load(response)
           pr=get('pulls/63')
           assert pr['state']=='open' and not pr['merged'] and pr['head']['sha']==os.environ['SOURCE']
-          contract=get('issues/comments/5579535549')
-          assert 'C6_AB5_RETURN_EXCEPTIONS_20260911' in contract['body'] and 'TRADE_C6_WATCH_EXECUTION_CONTRACT_20260908_END' in contract['body']
-          history=get('actions/workflows/c6-ab5-release-final.yml/runs?per_page=100')['workflow_runs']
-          previous=[r for r in history if str(r['id'])!=os.environ['GITHUB_RUN_ID']]
-          assert not previous, 'An existing final run requires explicit checkpoint recovery, not duplicate initial execution'
+          contract=get('issues/comments/5579535549')['body']
+          assert all(marker in contract for marker in (
+              'C6_AB5_NORMAL_MERGE_AUTHORIZATION_20260912',
+              'C6_AB5_RETURN_EXCEPTIONS_20260911',
+              'C6_ACCEPTANCE_RELAX15_20260911',
+              'TRADE_C6_WATCH_EXECUTION_CONTRACT_20260908_END'))
+          history=get('actions/workflows/356003662/runs?per_page=100')['workflow_runs']
+          allowed={34630144631,int(os.environ['GITHUB_RUN_ID'])}
+          assert not [row['id'] for row in history if row['id'] not in allowed], 'unexpected duplicate native final run'
           assert platform.python_version()=='3.12.14' and platform.libc_ver()[1]=='2.36'
           assert hashlib.sha256(pathlib.Path(sys.executable).read_bytes()).hexdigest()=='837a48d7afd08447fb43e28b282026fadb59368620072e57e01f66d12977e5ce'
           assert hashlib.sha256(pathlib.Path('requirements-lock.txt').read_bytes()).hexdigest()=='22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434'
           assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==os.environ['SOURCE']
+          assert subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip()==os.environ['SOURCE_TREE']
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self,req,fp,code,msg,headers,newurl): return None
-          req=urllib.request.Request(base+'actions/artifacts/10189149456/zip',headers=headers)
+          req=urllib.request.Request(base+f"actions/artifacts/{os.environ['BUILDER_ARTIFACT_ID']}/zip",headers=headers)
           try:
               with urllib.request.build_opener(NoRedirect).open(req,timeout=60) as response: raw=response.read()
           except urllib.error.HTTPError as error:
               if error.code!=302: raise
               location=error.headers['Location']; assert location.startswith('https://')
-              with urllib.request.urlopen(location,timeout=60) as response: raw=response.read()
-          assert hashlib.sha256(raw).hexdigest()=='786e1d9c3926bbb0ebe69d12cd6f05412332e94bd7aba08c9b8983161de670b4'
-          (out/'original-D.zip').write_bytes(raw)
-          (out/'authority.json').write_text(json.dumps({'workflow_run_id':os.environ['GITHUB_RUN_ID'],'source_revision':os.environ['SOURCE'],'runtime':platform.python_version(),'contract_comment':contract,'base_reruns':0,'L2_expected':77,'official_expected':958},sort_keys=True)+'\n')
+              with urllib.request.urlopen(location,timeout=180) as response: raw=response.read()
+          assert hashlib.sha256(raw).hexdigest()==os.environ['BUILDER_ARTIFACT_SHA256']
+          with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+              receipt=json.loads(archive.read('receipt.json'))
+              for name,digest in receipt['sha256'].items():
+                  assert hashlib.sha256(archive.read(name)).hexdigest()==digest,name
+              l2_receipt=json.loads(archive.read('l2-receipt.json'))
+              l2_bytes=archive.read('L2/l2-evidence.json')
+          assert receipt['source_revision']==os.environ['SOURCE']
+          assert receipt['source_tree']==os.environ['SOURCE_TREE']
+          assert receipt['parent']=='c8d46db65b4ae1e72884399cbcaeb7999f6c400b'
+          assert receipt['workflow_run_id']=='34634128259'
+          assert receipt['base_reruns']==receipt['L2_reruns']==receipt['official_dispatches']==0
+          assert l2_receipt['l2_scenario_count']==77
+          assert l2_receipt['l2_assessment_id']=='068033ce38ccd750b43115831f1aef7adcebfe5fc6ffd30c4256c801db4b9e6f'
+          assert l2_receipt['selection_id']=='3311a3231848270b7edb26dd1068bb8d1b1004263375538ba159169698f4f340'
+          assert l2_receipt['economic_producer']['economic_replays']==0
+          (out/'L2/l2-evidence.json').write_bytes(l2_bytes)
+          (out/'builder-receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          (out/'l2-receipt.json').write_text(json.dumps(l2_receipt,sort_keys=True,indent=2)+'\n')
+          (out/'authority.json').write_text(json.dumps({
+              'workflow_run_id':os.environ['GITHUB_RUN_ID'],'source_revision':os.environ['SOURCE'],
+              'source_tree':os.environ['SOURCE_TREE'],'builder_run_id':34634128259,
+              'builder_artifact_id':int(os.environ['BUILDER_ARTIFACT_ID']),
+              'builder_artifact_sha256':os.environ['BUILDER_ARTIFACT_SHA256'],
+              'base_reruns':0,'L2_reruns':0,'official_expected':958},sort_keys=True,indent=2)+'\n')
           PY
       - name: Install exact existing locked dependencies
         run: python -m pip install --require-hashes -r requirements-lock.txt
-      - name: Derive existing Base selection and execute the exact native L2 77
+      - name: Validate authenticated derived L2 without economic replay
         run: |
           set -euo pipefail
-          python -m scripts.c6_ab5_release --selection-receipt "$RUNNER_TEMP/ab5-final/original-D.zip" --output-dir "$RUNNER_TEMP/ab5-final/L2" --source-revision "$SOURCE" --workers 4 2>&1 | tee "$RUNNER_TEMP/ab5-final/L2.log"
-      - name: Execute complete native official17 and958 with verified L2
+          python - <<'PY'
+          import json,os,pathlib
+          from quantfusion.application.stress_artifacts import validate_release_l2_evidence
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'ab5-final'
+          evidence=json.loads((out/'L2/l2-evidence.json').read_text())
+          reference=json.loads(pathlib.Path('artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json').read_text())
+          receipt=validate_release_l2_evidence(evidence,source_revision=os.environ['SOURCE'],reference=reference)
+          assert receipt['l2_scenario_count']==77
+          assert receipt['l2_assessment_id']=='068033ce38ccd750b43115831f1aef7adcebfe5fc6ffd30c4256c801db4b9e6f'
+          assert receipt['economic_producer']['economic_replays']==0
+          print(json.dumps(receipt,sort_keys=True))
+          PY
+      - name: Execute first complete native official17 and958
         run: |
           set -euo pipefail
           python -m quantfusion.application.stress --candidate-id C6-Base+AB5 --source-revision "$SOURCE" --workers 4 --checkpoint-every 10 --checkpoint "$RUNNER_TEMP/ab5-final/formal-checkpoint.json" --establish-initial-baseline --initial-baseline-reference artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json --ab5-release-acceptance --ab5-release-evidence "$RUNNER_TEMP/ab5-final/L2/l2-evidence.json" 2>&1 | tee "$RUNNER_TEMP/ab5-final/formal.log"
       - name: Verify actual publication and record exact final receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           python - <<'PY'
-          import hashlib,json,os,pathlib,subprocess
-          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'ab5-final'
-          from quantfusion.application.c6_release_acceptance import release_formal_assessment
+          import json,os,pathlib,subprocess,urllib.request
+          from quantfusion.application.c6_release_acceptance import validate_published_release_assessment
           from quantfusion.application.c6_contract import canonical_payload_hash
           from quantfusion.application import stress_scenarios
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'ab5-final'
           source=os.environ['SOURCE']
           universe=json.loads(pathlib.Path('artifacts/validation/universe_stress.json').read_text())
           prefix=json.loads(pathlib.Path('artifacts/validation/prefix_stress.json').read_text())
@@ -91,13 +134,24 @@ jobs:
           assert universe['candidate_id']==prefix['candidate_id']=='C6-Base+AB5'
           assert universe['canonical'] is True and prefix['canonical'] is True
           assert universe['acceptance_status']==prefix['acceptance_status']=='accepted'
+          assert universe['baseline_kind']==prefix['baseline_kind']=='initial_current_contract'
           assert len(universe['results'])==958 and len(prefix['results'])==17
           plan=stress_scenarios._multi_seed_scenarios(random_samples=50,permutation_samples=50,seeds=(20260807,20260817,20260827))
+          assert len({r['scenario_id'] for r in universe['results']})==958
           assert {r['scenario_id'] for r in universe['results']}=={r['scenario_id'] for r in plan}
-          assert release_formal_assessment(universe)==universe['release_acceptance']['assessment']
-          assert universe['release_acceptance']['assessment']['passed'] is True
+          validate_published_release_assessment(universe)
+          assert prefix['release_acceptance']==universe['release_acceptance']
           assert canonical_payload_hash([r for r in universe['results'] if r['scenario_type']=='prefix'])==canonical_payload_hash(prefix['results'])
-          receipt={'source_revision':source,'source_tree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(),'workflow_run_id':os.environ['GITHUB_RUN_ID'],'accepted':True,'canonical':True,'L2_scenario_count':77,'official_scenario_count':958,'prefix_count':17,'base_reruns':0,'original_D_unchanged':True,'release_assessment_id':universe['release_acceptance']['assessment']['assessment_id']}
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          with urllib.request.urlopen(urllib.request.Request('https://api.github.com/repos/ychenracing/trade/pulls/63',headers=headers),timeout=60) as response:
+              pr=json.load(response)
+          assert pr['state']=='open' and not pr['merged'] and pr['head']['sha']==source
+          assessment=universe['release_acceptance']['assessment']
+          receipt={'source_revision':source,'source_tree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(),
+                   'workflow_run_id':os.environ['GITHUB_RUN_ID'],'accepted':True,'canonical':True,
+                   'L2_scenario_count':77,'official_scenario_count':958,'prefix_count':17,
+                   'base_reruns':0,'L2_reruns':0,'original_D_unchanged':True,
+                   'release_assessment_id':assessment['assessment_id']}
           (out/'final-receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
           print(json.dumps(receipt,sort_keys=True))
           PY
