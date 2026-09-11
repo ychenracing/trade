@@ -760,6 +760,14 @@ class EnsembleAllocationMixin:
             value * (limit_pct_for_code(signal.symbol, costs) + variable_gap_cost)
             for _, signal, value in buys
         )
+        stock_gap_debit_enabled = bool(
+            getattr(self, "_c6_ab6_stock_gap_debit", False)
+        )
+        stock_gap_constraint_binding = (
+            stock_gap_debit_enabled
+            and buy_envelope_binding
+            and current_gap_debit > receipt["remaining_loss_budget"] + 1e-8
+        )
         buy_gap_scale = (
             min(
                 1.,
@@ -772,16 +780,23 @@ class EnsembleAllocationMixin:
         actions = []
         score = self._overlay_allocation_score(states, date)
         remaining_relief = max(0., gross-cap)
+        remaining_gap_relief = (
+            max(0., current_gap_debit-receipt["remaining_loss_budget"])
+            if stock_gap_constraint_binding else 0.
+        )
+        planned_gap_release = 0.
         for state_index, symbol, strategy, shares, price in sorted(
             books,
             key=lambda book: (score(book[1]), book[1], book[0], book[2]),
         ):
             # Exhaust weaker books first and round only the one final partial
             # reduction.  This avoids AB1's per-book rounding and winner churn.
-            reduction = min(
-                shares,
-                math.ceil(remaining_relief/price/100.)*100,
-            )
+            gap_factor = limit_pct_for_code(symbol, costs) + variable_gap_cost
+            gross_reduction = math.ceil(remaining_relief/price/100.)*100
+            gap_reduction = math.ceil(
+                remaining_gap_relief/price/gap_factor/100.
+            )*100
+            reduction = min(shares, max(gross_reduction, gap_reduction))
             if not reduction:
                 continue
             covered = any(signal.direction == "sell" and signal.symbol == symbol
@@ -792,6 +807,9 @@ class EnsembleAllocationMixin:
                                           "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
                                           state_index=state_index))
             remaining_relief = max(0., remaining_relief-reduction*price)
+            released_gap = reduction*price*gap_factor
+            planned_gap_release += released_gap
+            remaining_gap_relief = max(0., remaining_gap_relief-released_gap)
         # Validate and plan the entire batch before changing any pending queue.
         previous = [list(state.pending) for state in states]
         clipped = 0
@@ -815,11 +833,16 @@ class EnsembleAllocationMixin:
         for state, before in zip(states, previous):
             reconcile_close_queue(state.sleeve, before, state.pending, date_str, "account_budget_envelope")
         events.append({"date": date_str, "event": "account_budget_envelope",
-                       "mechanism": "AB5", "planned_not_filled": True, **receipt,
+                       "mechanism": "AB6" if stock_gap_debit_enabled else "AB5",
+                       "planned_not_filled": True, **receipt,
                        "gross_before": gross,
                        "buy_envelope_binding": buy_envelope_binding,
                        "buy_gross_scale": buy_gross_scale,
                        "current_gap_debit": current_gap_debit,
+                       "stock_gap_constraint_binding": stock_gap_constraint_binding,
+                       "post_plan_current_gap_debit": max(
+                           0., current_gap_debit-planned_gap_release
+                       ),
                        "requested_buy_gap_debit": requested_buy_gap_debit,
                        "buy_gap_scale": buy_gap_scale,
                        "buy_scale": buy_scale,

@@ -42,6 +42,11 @@ def apply(engine, states, dates, equity=90000., peak=100000.):
     return events[-1]
 
 
+def apply_ab6(engine, states, dates, equity=90000., peak=100000.):
+    engine._c6_ab6_stock_gap_debit = True
+    return apply(engine, states, dates, equity=equity, peak=peak)
+
+
 def test_budget_intervenes_before_18_percent_without_mutating_account():
     engine, state, dates = fixture()
     before = deepcopy((state.sleeve.positions, state.sleeve.cash, vars(state.sleeve.risk)))
@@ -126,7 +131,7 @@ def test_binding_buy_batch_debits_existing_board_limit_gap_risk():
 def test_stock_gap_debit_forces_minimum_additional_sell_relief():
     engine, state, dates = fixture(shares=8000, cash=10000.)
 
-    r = apply(engine, [state], dates)
+    r = apply_ab6(engine, [state], dates)
 
     factor = limit_pct_for_code('300308', engine.cfg) + r['cost_rate']
     planned = sum(
@@ -153,7 +158,7 @@ def test_stock_gap_planner_uses_each_books_board_limit_debit():
     weak.sleeve._allocation_scores = lambda *_: scores
     strong.sleeve._allocation_scores = lambda *_: scores
 
-    r = apply(engine, [weak, strong], dates)
+    r = apply_ab6(engine, [weak, strong], dates)
 
     sold = [(signal.symbol, signal.target_shares)
             for state in (weak, strong) for signal, _ in state.pending
