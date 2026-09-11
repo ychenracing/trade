@@ -1,27 +1,28 @@
-name: C6 v42 Base Seal Receipt
+name: C6 v42 Selection Receipt
 
 on:
   push:
     branches:
-      - codex/c6-v42-seal-receipt
+      - codex/c6-v42-selection-receipt
 
 permissions:
   actions: read
   contents: read
 
 concurrency:
-  group: c6-v42-base-seal-receipt
+  group: c6-v42-selection-receipt
   cancel-in-progress: false
 
 jobs:
-  extract:
+  build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
+    container: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ github.sha }}
-          path: builder
+          ref: 77668f80e990a0dd573e689c6e5646a082f92479
+          path: source
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -34,168 +35,254 @@ jobs:
           repository: ychenracing/trade
           run-id: 34509818018
           name: c6-bound-c6-v42-base-l1-a0
-          path: sealed
-      - name: Authenticate exact v42 Base seal and emit metadata only
+          path: base
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          repository: ychenracing/trade
+          run-id: 34544740705
+          name: c6-bound-c6-v42-s-qualification-a0
+          path: qualification
+      - name: Install exact frozen dependencies
+        run: python -m pip install --require-hashes -r source/requirements-lock.txt
+      - name: Authenticate producers and build mechanical D bytes
         run: |
           mkdir -p receipt
-          python - <<'PY'
+          PYTHONPATH=source python - <<'PY'
           import hashlib
           import json
+          import os
+          import subprocess
           from pathlib import Path, PurePosixPath
 
-          def reject_constant(value):
-              raise ValueError(f"non-finite JSON constant: {value}")
+          from quantfusion.application import c6_bound_run as bound
+          from quantfusion.application import c6_contract as contract
+          from quantfusion.application import c6_predicates as predicates
+          from quantfusion.io import c6_stream as stream
 
-          def unique_object(pairs):
-              result = {}
-              for key, value in pairs:
-                  if key in result:
-                      raise ValueError(f"duplicate JSON key: {key}")
-                  result[key] = value
-              return result
-
-          def load(path):
-              return json.loads(
-                  Path(path).read_text(encoding="utf-8"),
-                  object_pairs_hook=unique_object,
-                  parse_constant=reject_constant,
-              )
+          ROOT = Path.cwd()
+          SOURCE = ROOT / "source"
+          BINDINGS = ROOT / "bindings"
+          R_COMMIT = "f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb"
+          R_SHA256 = "b8f6505688bf5f35de355270b35ee2339e0b434a6c18cae45b109cf858b08f88"
+          EMPTY = {
+              "artifact_full_byte_sha256": "",
+              "attempt_id": "",
+              "binding_id": "",
+              "logical_run_id": "",
+              "workflow_run_id": "",
+          }
 
           def sha256(path):
               digest = hashlib.sha256()
-              with Path(path).open("rb") as stream:
-                  while chunk := stream.read(1024 * 1024):
+              with Path(path).open("rb") as handle:
+                  while chunk := handle.read(1024 * 1024):
                       digest.update(chunk)
               return digest.hexdigest()
 
-          root = Path("sealed")
-          expected_files = {"manifest.json", "payload.json.gz", "digest.json"}
-          actual_files = {
-              path.relative_to(root).as_posix()
-              for path in root.rglob("*")
-              if path.is_file()
-          }
-          assert actual_files == expected_files
-          assert not any(path.is_symlink() for path in root.rglob("*"))
+          def git(*args):
+              return subprocess.check_output(["git", *args], cwd=BINDINGS, text=True).strip()
 
-          manifest = load(root / "manifest.json")
-          required_manifest_keys = {
-              "schema_version", "kind", "sealed", "source_revision",
-              "run_bindings_revision", "workflow_revision", "binding_id",
-              "candidate_id", "logical_run_id", "attempt_id", "repository",
-              "workflow_run_id", "workflow_run_attempt", "resume_from",
-              "resume_workflow_run_id", "d_commit", "d_selection_blob_oid",
-              "d_selection_file_sha256", "producer_identity", "runner_image_os",
-              "runner_image_version", "python_version", "fencing_token_sha256",
-              "files",
+          def producer_identity(claim):
+              if claim is None:
+                  return dict(EMPTY)
+              return {
+                  **{key: claim[key] for key in EMPTY if key != "binding_id"},
+                  "binding_id": claim.get("binding_id", claim["record_id"]),
+              }
+
+          os.chdir(SOURCE)
+          prereg = contract.load_preregistration(
+              "artifacts/diagnostics/c6-preregistration.json",
+              repository=SOURCE,
+          )
+          bindings_path = BINDINGS / "artifacts/diagnostics/c6-run-bindings.json"
+          assert sha256(bindings_path) == R_SHA256
+          bindings = contract.load_run_bindings(bindings_path)
+          records = {item["record_id"]: item for item in bindings["binding_records"]}
+
+          def read_result(root, record_id):
+              root = ROOT / root
+              record = records[record_id]
+              expected_files = {"manifest.json", "digest.json", record["paths"]["producer_payload_relative_path"]}
+              actual_files = {
+                  item.relative_to(root).as_posix()
+                  for item in root.rglob("*")
+                  if item.is_file()
+              }
+              assert actual_files == expected_files
+              assert not any(item.is_symlink() for item in root.rglob("*"))
+              manifest_path = root / "manifest.json"
+              manifest = contract.strict_json_load(manifest_path)
+              payload_path = root / record["paths"]["producer_payload_relative_path"]
+              digest_path = root / "digest.json"
+              assert set(manifest["files"]) == {payload_path.name, digest_path.name}
+              assert manifest["files"][payload_path.name] == sha256(payload_path)
+              assert manifest["files"][digest_path.name] == sha256(digest_path)
+              assert manifest["sealed"] is True and manifest["kind"] == "result"
+              assert manifest["repository"] == "ychenracing/trade"
+              assert manifest["binding_id"] == record["workflow_binding_id"]
+              assert manifest["logical_run_id"] == record["logical_run_id"]
+              assert manifest["candidate_id"] == record["candidate_id"]
+              assert manifest["source_revision"] == record["source_revision"]
+              assert manifest["run_bindings_revision"] == R_COMMIT
+              assert manifest["workflow_revision"] == record["workflow"]["revision"]
+              assert manifest["workflow_run_attempt"] == "1"
+              assert manifest["resume_from"] == ""
+              assert manifest["resume_workflow_run_id"] == ""
+              assert manifest["d_commit"] == ""
+              assert manifest["d_selection_blob_oid"] == ""
+              assert manifest["d_selection_file_sha256"] == ""
+              for key in ("runner_image_os", "runner_image_version", "python_version"):
+                  assert manifest[key] == record["runtime"][key]
+
+              payload = stream.load_object(payload_path)
+              bound.validate_result_payload(payload, record, prereg)
+              digest = contract.strict_json_load(digest_path)
+              if record["stage"] == "QUALIFICATION":
+                  ids = [f"qualification/{item}" for item in payload["residual_ids"]]
+              else:
+                  ids = bound.execution_item_ids(record, prereg)
+              signature = bound.runtime_binding_signature({
+                  "record_signature": record["record_signature"],
+                  "run_bindings_revision": R_COMMIT,
+                  **{key: manifest[key] for key in (
+                      "attempt_id", "workflow_run_id", "resume_from",
+                      "resume_workflow_run_id", "fencing_token_sha256",
+                  )},
+                  "direct_producer_identity": manifest["producer_identity"],
+                  "transitive_base_producer_identity": EMPTY,
+                  "D": None,
+                  "C": None,
+                  "selection_status": "unselected",
+                  "item_manifest_count": len(ids),
+                  "item_manifest_sha256": hashlib.sha256(
+                      "".join(item + "\n" for item in ids).encode()
+                  ).hexdigest(),
+              })
+              expected_digest = bound.build_digest(
+                  stage=record["stage"],
+                  record_id=record_id,
+                  binding_signature=signature,
+                  p_identity=bindings["P"],
+                  r_revision=R_COMMIT,
+                  source_revision=record["source_revision"],
+                  source_tree=record["source_tree"],
+                  d_identity=None,
+                  implementation=None,
+                  artifact_path=bound.resolve_attempt_paths(record, manifest["attempt_id"])["payload"].as_posix(),
+                  artifact_bytes=payload_path.read_bytes(),
+                  payload_schema=record["canonical_payload_schema"],
+                  payload=bound.result_payload(payload, record["stage"], prereg),
+                  exit_code=digest["exit_code"],
+              )
+              assert digest == expected_digest
+              assert digest["exit_code"] == 0
+              claim = {
+                  key: digest[key]
+                  for key in (
+                      "record_id", "artifact_path", "artifact_byte_size",
+                      "artifact_full_byte_sha256", "canonical_result_payload_sha256",
+                  )
+              }
+              claim.update({
+                  key: manifest[key]
+                  for key in (
+                      "candidate_id", "workflow_run_id", "logical_run_id", "attempt_id",
+                  )
+              })
+              claim["manifest_full_byte_sha256"] = sha256(manifest_path)
+              return payload, claim
+
+          base, base_claim = read_result("base", "c6.base.l1")
+          qualification, qualification_claim = read_result(
+              "qualification", "c6.s.qualification"
+          )
+          assert qualification["base_producer_identity"] == producer_identity(base_claim)
+          specs = prereg["diagnostic_predicate_manifests"]["L1_APPLICABLE_DIAGNOSTIC_PREDICATES"]
+          mdd = next(
+              row for row in base["diagnostic_predicates"]
+              if row["predicate_id"] == "l1.mdd.noncanonical_18pct_screen"
+          )
+          failed_ids = mdd["observed"]["failed_item_ids"]
+          assert all(item.startswith("C6-Base::") for item in failed_ids)
+          residuals = [item.removeprefix("C6-Base::") for item in failed_ids]
+          assert qualification["residual_ids"] == residuals
+          assert qualification["complete"] is True
+          assert qualification["all_passed"] is False
+          assert len(qualification["results"]) == len(residuals) == 152
+          assert not any(item["passed"] for item in qualification["results"])
+          predicates.validate_qualification_results(qualification, base)
+
+          failures = {
+              row["predicate_id"]
+              for row in base["diagnostic_predicates"]
+              if not row["passed"]
           }
-          assert set(manifest) == required_manifest_keys
-          expected_identity = {
+          deferred = {
+              spec["id"] for spec in specs
+              if spec.get("selection_defer_if_base_residual_exists") is True
+          }
+          assert failures and not (failures - deferred)
+          selection = {
               "schema_version": 2,
-              "kind": "result",
-              "sealed": True,
-              "source_revision": "4659a2b6d265f45256777da6a2fc25d1369308bd",
-              "run_bindings_revision": "f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb",
-              "workflow_revision": "36d07e82ebac72b5d284ee12a954239e8c591548",
-              "binding_id": "c6.base.l1",
-              "candidate_id": "C6-Base+AB5",
-              "logical_run_id": "c6-v42-base-l1",
-              "attempt_id": "a0",
-              "repository": "ychenracing/trade",
-              "workflow_run_id": "34509818018",
-              "workflow_run_attempt": "1",
-              "resume_from": "",
-              "resume_workflow_run_id": "",
-              "d_commit": "",
-              "d_selection_blob_oid": "",
-              "d_selection_file_sha256": "",
-              "producer_identity": {
-                  "artifact_full_byte_sha256": "",
-                  "attempt_id": "",
-                  "binding_id": "",
-                  "logical_run_id": "",
-                  "workflow_run_id": "",
+              "kind": "c6_selection",
+              "branch": "QUALIFICATION_REJECTED",
+              "status": "rejected",
+              "P": bindings["P"],
+              "R": {
+                  "commit": R_COMMIT,
+                  "tree": git("rev-parse", "HEAD^{tree}"),
+                  "blob": git("rev-parse", "HEAD:artifacts/diagnostics/c6-run-bindings.json"),
+                  "sha256": R_SHA256,
               },
-              "runner_image_os": "oci-debian12-amd64",
-              "runner_image_version": "sha256-581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970",
-              "python_version": "3.12.14",
+              "base_l1": base_claim,
+              "base_l1_predicates": base["diagnostic_predicates"],
+              "residual_ids": residuals,
+              "residual_ids_sha256": hashlib.sha256(
+                  "".join(item + "\n" for item in residuals).encode()
+              ).hexdigest(),
+              "s_qualification": qualification_claim,
+              "base_plus_s_l1": None,
+              "base_plus_s_l1_predicates": None,
+              "selected_candidate": None,
+              "C": None,
+              "rejection_reasons": ["S_QUALIFICATION_FAILED"],
           }
-          assert all(manifest[key] == value for key, value in expected_identity.items())
-          assert isinstance(manifest["fencing_token_sha256"], str)
-          assert len(manifest["fencing_token_sha256"]) == 64
-          assert set(manifest["files"]) == {"payload.json.gz", "digest.json"}
-          for relative, expected in manifest["files"].items():
-              assert PurePosixPath(relative).as_posix() == relative
-              assert sha256(root / relative) == expected
-
-          bindings_path = Path("bindings/artifacts/diagnostics/c6-run-bindings.json")
-          assert sha256(bindings_path) == "b8f6505688bf5f35de355270b35ee2339e0b434a6c18cae45b109cf858b08f88"
-          bindings = load(bindings_path)
-          records = [
-              record for record in bindings["binding_records"]
-              if record["record_id"] == "c6.base.l1"
-          ]
-          assert len(records) == 1
-          record = records[0]
-          assert record["candidate_id"] == manifest["candidate_id"]
-          assert record["source_revision"] == manifest["source_revision"]
-          assert record["logical_run_id"] == manifest["logical_run_id"]
-          assert record["workflow_binding_id"] == manifest["binding_id"]
-
-          digest = load(root / "digest.json")
-          required_digest_keys = {
-              "schema_version", "kind", "stage", "record_id",
-              "binding_signature", "P", "R_revision", "source_revision",
-              "source_tree", "D", "C", "selection_status", "artifact_path",
-              "artifact_byte_size", "artifact_full_byte_sha256",
-              "canonical_result_payload_schema",
-              "canonical_result_payload_sha256", "envelope_path",
-              "official_artifact_unchanged", "exit_code",
-          }
-          assert set(digest) == required_digest_keys
-          assert digest["schema_version"] == 2
-          assert digest["kind"] == "c6_artifact_digest"
-          assert digest["stage"] == "L1"
-          assert digest["record_id"] == "c6.base.l1"
-          assert digest["P"] == bindings["P"]
-          assert digest["R_revision"] == manifest["run_bindings_revision"]
-          assert digest["source_revision"] == manifest["source_revision"]
-          assert digest["source_tree"] == record["source_tree"]
-          assert digest["D"] is None and digest["C"] is None
-          assert digest["selection_status"] == "unselected"
-          assert digest["artifact_path"].endswith("/payload.json.gz")
-          assert digest["artifact_byte_size"] == (root / "payload.json.gz").stat().st_size
-          assert digest["artifact_full_byte_sha256"] == manifest["files"]["payload.json.gz"]
-          assert digest["canonical_result_payload_schema"] == record["canonical_payload_schema"]
-          assert isinstance(digest["canonical_result_payload_sha256"], str)
-          assert len(digest["canonical_result_payload_sha256"]) == 64
-          assert digest["envelope_path"] == "manifest.json"
-          assert digest["official_artifact_unchanged"] is False
-          assert digest["exit_code"] == 0
-
+          definitions = prereg["schema_catalog"]["definitions"]
+          bound.validate_wire_value(
+              selection, definitions["D_selection"]["wire_schema"], definitions
+          )
+          contract.validate_selection_shape(selection, prereg)
+          scenario_path = SOURCE / prereg["scenario_manifests"]["L1_ECONOMIC_SCENARIO_IDS"]["path"]
+          scenario_ids = scenario_path.read_text(encoding="utf-8").splitlines()
+          contract.validate_selection_producer_payloads(
+              selection, base, qualification, None, scenario_ids
+          )
+          raw = contract.canonical_json_bytes(selection)
+          output = ROOT / "receipt"
+          (output / "c6-selection.json").write_bytes(raw)
           receipt = {
               "schema_version": 1,
-              "kind": "c6_v42_base_seal_receipt",
-              "canonical": False,
-              "accepted": False,
+              "kind": "c6_v42_selection_receipt",
               "economic_dispatches": 0,
-              "github_artifact": {
-                  "id": 10176496556,
-                  "name": "c6-bound-c6-v42-base-l1-a0",
-                  "size_in_bytes": 734379936,
-                  "sha256": "046a1716801ac72d92fb14d424e74ea43186606923eea46b5324508e08aa7405",
-              },
-              "manifest": manifest,
-              "digest": digest,
+              "branch": selection["branch"],
+              "status": selection["status"],
+              "selected_candidate": None,
+              "base_workflow_run_id": base_claim["workflow_run_id"],
+              "qualification_workflow_run_id": qualification_claim["workflow_run_id"],
+              "residual_count": len(residuals),
+              "qualified_count": sum(item["passed"] for item in qualification["results"]),
+              "selection_file_sha256": hashlib.sha256(raw).hexdigest(),
+              "base_payload_sha256": base_claim["artifact_full_byte_sha256"],
+              "qualification_payload_sha256": qualification_claim["artifact_full_byte_sha256"],
+              "R": selection["R"],
           }
-          Path("receipt/seal-receipt.json").write_text(
-              json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n",
-              encoding="utf-8",
-          )
+          (output / "receipt.json").write_bytes(contract.canonical_json_bytes(receipt))
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: c6-v42-base-seal-receipt-${{ github.run_id }}
-          path: receipt/seal-receipt.json
+          name: c6-v42-selection-receipt-${{ github.run_id }}
+          path: receipt/
           if-no-files-found: error
           retention-days: 90
