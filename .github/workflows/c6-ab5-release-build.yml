@@ -13,14 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      EXPECTED_HEAD: e612d8df9d80fca1afb6dce6e840837ad5b4e97b
+      EXPECTED_HEAD: 07d1294958667224073314d905b87194a0ee5ba7
       EXPECTED_MAIN: 0250163dbe1b234e96339f9059f9a2074f19cb06
-      EXPECTED_TREE: 416a9b518c1ba59b5bc2cf7a5e858eab01790ec3
+      EXPECTED_TREE: f6f121a545276f2e156cccd56ef9c01eda5d1b0c
       TARGET_BRANCH: codex/c6-causal-risk-closure-v11
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: e612d8df9d80fca1afb6dce6e840837ad5b4e97b
+          ref: 07d1294958667224073314d905b87194a0ee5ba7
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -29,7 +29,7 @@ jobs:
           cache-dependency-path: requirements-lock.txt
       - name: Install existing locked engineering dependencies
         run: python -m pip install --require-hashes -r requirements-lock.txt
-      - name: Apply the already tested candidate checkpoint fence and authenticated audit
+      - name: Restore exact reviewed source blobs and minimal native wiring
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -38,88 +38,35 @@ jobs:
           test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$EXPECTED_HEAD"
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN"
           python - <<'PY'
-          import base64, hashlib, json, os, urllib.request
+          import base64, hashlib, json, os, subprocess, urllib.request
           from pathlib import Path
-          def replace_once(text, old, new):
-              assert text.count(old) == 1, old
-              return text.replace(old, new)
-          p = Path('quantfusion/application/stress_artifacts.py')
-          s = p.read_text()
-          s = replace_once(s, 'from quantfusion.application import stress_metrics, stress_scenarios', 'from quantfusion.application import stress_metrics, stress_scenarios\nfrom quantfusion.application.c6_contract import candidate_spec')
-          s = replace_once(s, '    source_revision: str,\n) -> dict[str, Any]:\n    if len(source_revision)', '    source_revision: str,\n    candidate_id: str = "C6-Base",\n) -> dict[str, Any]:\n    candidate_spec(candidate_id)\n    if len(source_revision)')
-          s = replace_once(s, '        "source_revision": source_revision,\n        "source_fingerprint": source_fingerprint,', '        "source_revision": source_revision,\n        "candidate_id": candidate_id,\n        "source_fingerprint": source_fingerprint,')
-          s = replace_once(s, '    source_revision: str,\n) -> str:', '    source_revision: str,\n    candidate_id: str = "C6-Base",\n) -> str:')
-          s = replace_once(s, '            source_revision=source_revision,\n        )["run_signature"]', '            source_revision=source_revision,\n            candidate_id=candidate_id,\n        )["run_signature"]')
-          p.write_text(s)
-          p = Path('quantfusion/application/stress.py')
-          p.write_text(replace_once(p.read_text(), '        source_revision=args.source_revision,\n    )\n    signature', '        source_revision=args.source_revision,\n        candidate_id=args.candidate_id,\n    )\n    signature'))
-          p = Path('tests/unit/test_stress_scenarios.py')
-          s = p.read_text()
-          start = s.index('    def test_provenance_exposes_independent_source_data_and_scenario_hashes(')
-          end = s.index('\n    def ', start + 10)
-          part = replace_once(s[start:end], '                "source_revision": "a" * 40,', '                "source_revision": "a" * 40,\n                "candidate_id": "C6-Base",')
-          part = replace_once(part, '42a175c2c8587c6e548c6808443d21bb466962781261540f461cfeb010ec9d48', '84bb04358ee44ed2f783a82fee99ac847a373f3c6a8d6d6625c7eaffa74d594c')
-          p.write_text(s[:start] + part + s[end:])
-          blob = 'ea0d9eb1479b353b18f561312a82b34729c9aca6'
-          req = urllib.request.Request('https://api.github.com/repos/ychenracing/trade/git/blobs/' + blob, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN']})
-          with urllib.request.urlopen(req, timeout=60) as response:
-              payload = json.load(response)
-          raw = base64.b64decode(payload['content'])
-          assert hashlib.sha256(raw).hexdigest() == '2a8c7b870d3c1a1ee4277e655b5f78086e98c8ee974ac27b2952777912f2d465'
-          assert hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest() == blob
-          Path('docs/C6_AB5_RELEASE_AUDIT.md').write_bytes(raw)
+          def blob(oid):
+              req = urllib.request.Request('https://api.github.com/repos/ychenracing/trade/git/blobs/' + oid, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  payload = json.load(response)
+              raw = base64.b64decode(payload['content'])
+              assert hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest() == oid
+              return raw
+          for path, oid in {
+              'quantfusion/application/c6_release_publication.py': '54aaf2851e2d002e5923d918bfd184feec28e698',
+              'tests/c6_non_economic/test_c6_release_publication.py': '28a372cbcaad1e1dc6fc46f59cba7bc1324d3a01',
+              'docs/C6_AB5_PUBLICATION.md': 'f6bd11c78da1275f9491789df0c298694283b84a',
+          }.items():
+              assert not Path(path).exists()
+              Path(path).write_bytes(blob(oid))
+          wiring = blob('1e55ef2230d04dc60060379ad350158462195f15')
+          assert hashlib.sha256(wiring).hexdigest() == '1642bafe4beb3b812e00da9ef65d1f5bfb9796138e7c93a84a8fe47a1bd924d3'
+          subprocess.run(['git', 'apply', '--check', '-'], input=wiring, check=True)
+          subprocess.run(['git', 'apply', '-'], input=wiring, check=True)
           PY
-          cat >> tests/c6_non_economic/test_c6_formal_ab5.py <<'PY'
-
-
-          def test_formal_checkpoint_signature_binds_actual_candidate(tmp_path) -> None:
-              from quantfusion.application import stress_artifacts
-
-              scenario = stress_scenarios._multi_seed_scenarios(
-                  random_samples=1, permutation_samples=1, seeds=(20260807,)
-              )[0]
-              market, regime = tmp_path / 'market', tmp_path / 'regime'
-              market.mkdir()
-              regime.mkdir()
-              kwargs = {'source_revision': 'a' * 40}
-              ordinary = stress_artifacts._build_provenance(
-                  [scenario], market, regime, candidate_id='C6-Base', **kwargs
-              )
-              ab5 = stress_artifacts._build_provenance(
-                  [scenario], market, regime, candidate_id='C6-Base+AB5', **kwargs
-              )
-              assert ab5['candidate_id'] == 'C6-Base+AB5'
-              assert ordinary['run_signature'] != ab5['run_signature']
-              assert ordinary['source_fingerprint'] == ab5['source_fingerprint']
-              assert ordinary['data_fingerprint'] == ab5['data_fingerprint']
-              assert ordinary['scenario_signature'] == ab5['scenario_signature']
-              checkpoint = {'signature': ordinary['run_signature'], 'provenance': ordinary,
-                            'results': [], 'completed': 0, 'scenario_count': 1}
-              with pytest.raises(ValueError, match='signature changed'):
-                  stress_artifacts._validated_checkpoint(
-                      checkpoint, [scenario], signature=ab5['run_signature'],
-                      provenance=ab5, diagnostic_selection=None,
-                  )
-              assert stress_artifacts._run_signature(
-                  [scenario], market, regime, candidate_id='C6-Base+AB5', **kwargs
-              ) == ab5['run_signature']
-
-
-          def test_formal_provenance_rejects_unknown_candidate(tmp_path) -> None:
-              from quantfusion.application import stress_artifacts
-
-              with pytest.raises(ContractError, match='candidate'):
-                  stress_artifacts._build_provenance(
-                      [], tmp_path, tmp_path, source_revision='a' * 40,
-                      candidate_id='C6-Base+AB5-typo',
-                  )
-          PY
-          git add quantfusion/application/stress.py quantfusion/application/stress_artifacts.py tests/c6_non_economic/test_c6_formal_ab5.py tests/unit/test_stress_scenarios.py docs/C6_AB5_RELEASE_AUDIT.md
+          git add quantfusion/application/c6_release_publication.py quantfusion/application/stress.py quantfusion/application/stress_artifacts.py tests/c6_non_economic/test_c6_release_publication.py docs/C6_AB5_PUBLICATION.md
           test "$(git write-tree)" = "$EXPECTED_TREE"
           git diff --cached --check
-          python -m compileall -q quantfusion/application/stress.py quantfusion/application/stress_artifacts.py tests/c6_non_economic/test_c6_formal_ab5.py tests/unit/test_stress_scenarios.py
-          python -m pytest -q tests/unit/test_stress_scenarios.py tests/c6_non_economic/test_c6_formal_ab5.py -k 'not formal_ab5_witness_reproduces_locked_path_and_budget_orders' 2>&1 | tee "$RUNNER_TEMP/c6-release-export/checkpoint-tests.txt"
-      - name: Publish tested checkpoint identity repair to original PR63
+          python -m compileall -q quantfusion/application/c6_release_publication.py quantfusion/application/stress.py quantfusion/application/stress_artifacts.py tests/c6_non_economic/test_c6_release_publication.py
+          python -m pytest -q tests/c6_non_economic/test_c6_release_publication.py tests/c6_non_economic/test_c6_release_acceptance.py tests/c6_non_economic/test_c6_bound_run.py tests/unit/test_stress_scenarios.py tests/contract/test_architecture.py 2>&1 | tee "$RUNNER_TEMP/c6-release-export/publication-tests.txt"
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion/application/c6_release_publication.py quantfusion/application/stress.py quantfusion/application/stress_artifacts.py tests/c6_non_economic/test_c6_release_publication.py 2>&1 | tee "$RUNNER_TEMP/c6-release-export/lint.txt"
+          pyright quantfusion/application/c6_release_publication.py quantfusion/application/stress.py quantfusion/application/stress_artifacts.py 2>&1 | tee "$RUNNER_TEMP/c6-release-export/typecheck.txt"
+      - name: Verify actual clean source admission and publish original PR63
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -135,11 +82,22 @@ jobs:
           PY
           git config user.name ychenracing
           git config user.email ychenracing@163.com
-          git commit -m 'fix(stress): fence checkpoints by candidate; complete AB5 ledger audit'
+          git commit -m 'feat(stress): bind AB5 owner acceptance to native formal publication'
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          from quantfusion.application import c6_release_publication as release, stress_artifacts, stress_scenarios
+          from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
+          sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          plan = stress_scenarios._multi_seed_scenarios(random_samples=50, permutation_samples=50, seeds=(20260807,20260817,20260827))
+          provenance = stress_artifacts._build_provenance(plan, MARKET_DATA_DIR, REGIME_DATA_DIR, source_revision=sha, candidate_id='C6-Base+AB5')
+          proof = release.verify_execution_identity(provenance)
+          (Path(os.environ['RUNNER_TEMP']) / 'c6-release-export' / 'source-admission.json').write_text(json.dumps(proof,sort_keys=True,indent=2) + '\n')
+          PY
           git push origin HEAD:refs/heads/$TARGET_BRANCH
           test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$(git rev-parse HEAD)"
-          git branch c6-export-checkpoint HEAD
-          git bundle create "$RUNNER_TEMP/c6-release-export/integrated.bundle" c6-export-checkpoint
+          git branch c6-export-publication HEAD
+          git bundle create "$RUNNER_TEMP/c6-release-export/integrated.bundle" c6-export-publication
           git show -s --format='%H %T %P' HEAD > "$RUNNER_TEMP/c6-release-export/head.txt"
           git diff "$EXPECTED_HEAD" HEAD --stat > "$RUNNER_TEMP/c6-release-export/diff-stat.txt"
           python - <<'PY'
@@ -152,7 +110,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: c6-ab5-checkpoint-integration-${{ github.run_id }}
+          name: c6-ab5-publication-integration-${{ github.run_id }}
           path: ${{ runner.temp }}/c6-release-export/
           if-no-files-found: error
           retention-days: 30
