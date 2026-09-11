@@ -524,6 +524,22 @@ def _qualify(evaluation: Mapping[str, Any]) -> dict[str, Any]:
 
 
 
+def validate_attached_release_assessment(payload: Mapping[str, Any]) -> None:
+    """Validate an optional derived release decision against unchanged raw rows."""
+    assessment = payload.get("release_acceptance")
+    if assessment is None:
+        return
+    if not isinstance(assessment, Mapping):
+        raise ValueError("release acceptance must be an object")
+    raw_payload = dict(payload)
+    del raw_payload["release_acceptance"]
+    from quantfusion.application.c6_release_acceptance import (
+        validate_release_predicate_assessment,
+    )
+
+    validate_release_predicate_assessment(assessment, raw_payload)
+
+
 def validate_predicate_results(payload: Mapping[str, Any], prereg: Mapping[str, Any], reference: Mapping[str, Any]) -> None:
     """Recompute complete result rows from their authenticated primitive inputs."""
     from quantfusion.io.c6_stream import select_records
@@ -548,6 +564,7 @@ def validate_predicate_results(payload: Mapping[str, Any], prereg: Mapping[str, 
         raise ValueError('unknown diagnostic predicate payload')
     if canonical_payload_hash(payload['diagnostic_predicates']) != canonical_payload_hash(expected):
         raise ValueError('diagnostic predicates differ from recomputed factual inputs')
+    validate_attached_release_assessment(payload)
 
 
 def validate_qualification_results(qualification: Mapping[str, Any], base: Mapping[str, Any]) -> None:
