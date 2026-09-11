@@ -111,6 +111,7 @@ class EnsembleAllocationMixin:
             "C6_BASE_AB5_PLUS_S": {"F0", "F1", "U", "S"},
             "C6_BASE_AB6": {"F0", "F1", "U"},
             "C6_BASE_AB7": {"F0", "F1", "U"},
+            "C6_BASE_AB8": {"F0", "F1", "U"},
             "W0_NO_601869": set(),
             "W1_DATA_MAP_ONLY": set(),
             "W2_POOL_DENOMINATOR_ONLY": set(),
@@ -764,13 +765,16 @@ class EnsembleAllocationMixin:
         )
         intervention_id = self._c6_intervention_id()
         stock_gap_debit_enabled = intervention_id in {
-            "C6_BASE_AB6", "C6_BASE_AB7",
+            "C6_BASE_AB6", "C6_BASE_AB7", "C6_BASE_AB8",
         }
         stock_gap_constraint_binding = (
             stock_gap_debit_enabled
             and buy_envelope_binding
             and current_gap_debit > receipt["remaining_loss_budget"] + 1e-8
-            and (intervention_id != "C6_BASE_AB7" or gross > cap + 1e-8)
+            and (
+                intervention_id not in {"C6_BASE_AB7", "C6_BASE_AB8"}
+                or gross > cap + 1e-8
+            )
         )
         buy_gap_scale = (
             min(
@@ -783,10 +787,17 @@ class EnsembleAllocationMixin:
         buy_scale = min(buy_gross_scale, buy_gap_scale)
         actions = []
         score = self._overlay_allocation_score(states, date)
-        remaining_relief = max(0., gross-cap)
+        base_gross_relief = max(0., gross-cap)
+        planned_gross_relief_target = (
+            min(gross, 2.*base_gross_relief)
+            if intervention_id == "C6_BASE_AB8"
+            and stock_gap_constraint_binding else base_gross_relief
+        )
+        remaining_relief = planned_gross_relief_target
         remaining_gap_relief = (
             max(0., current_gap_debit-receipt["remaining_loss_budget"])
-            if stock_gap_constraint_binding else 0.
+            if stock_gap_constraint_binding and intervention_id != "C6_BASE_AB8"
+            else 0.
         )
         planned_gap_release = 0.
         for state_index, symbol, strategy, shares, price in sorted(
@@ -838,11 +849,14 @@ class EnsembleAllocationMixin:
             reconcile_close_queue(state.sleeve, before, state.pending, date_str, "account_budget_envelope")
         events.append({"date": date_str, "event": "account_budget_envelope",
                        "mechanism": (
-                           "AB7" if intervention_id == "C6_BASE_AB7"
+                           "AB8" if intervention_id == "C6_BASE_AB8"
+                           else "AB7" if intervention_id == "C6_BASE_AB7"
                            else "AB6" if stock_gap_debit_enabled else "AB5"
                        ),
                        "planned_not_filled": True, **receipt,
                        "gross_before": gross,
+                       "base_gross_relief": base_gross_relief,
+                       "planned_gross_relief_target": planned_gross_relief_target,
                        "buy_envelope_binding": buy_envelope_binding,
                        "buy_gross_scale": buy_gross_scale,
                        "current_gap_debit": current_gap_debit,

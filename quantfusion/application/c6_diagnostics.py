@@ -250,6 +250,7 @@ _VARIANTS = {
     "C6-Base+AB5+S": "C6_BASE_AB5_PLUS_S",
     "C6-Base+AB6": "C6_BASE_AB6",
     "C6-Base+AB7": "C6_BASE_AB7",
+    "C6-Base+AB8": "C6_BASE_AB8",
     "W0-no-601869": "W0_NO_601869", "W1-data-map-only": "W1_DATA_MAP_ONLY",
     "W2-pool-denominator-only": "W2_POOL_DENOMINATOR_ONLY",
     "W3-real-intents-fixed-reference-U": "W3_REAL_INTENTS_FIXED_REFERENCE_U",
