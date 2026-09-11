@@ -223,8 +223,9 @@ jobs:
               if row["predicate_id"] == "l1.mdd.noncanonical_18pct_screen"
           )
           failed_ids = mdd["observed"]["failed_item_ids"]
-          assert all(item.startswith("C6-Base::") for item in failed_ids)
-          residuals = [item.removeprefix("C6-Base::") for item in failed_ids]
+          prefix = f"{base_claim['candidate_id']}::"
+          assert all(item.startswith(prefix) for item in failed_ids)
+          residuals = [item.removeprefix(prefix) for item in failed_ids]
           assert qualification["residual_ids"] == residuals
           assert qualification["complete"] is True
           assert qualification["all_passed"] is False
