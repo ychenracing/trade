@@ -11,7 +11,7 @@ import math
 import os
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from quantfusion.application import stress_metrics, stress_scenarios
 from quantfusion.config.paths import PROJECT_ROOT, VALIDATION_ARTIFACT_DIR
@@ -87,6 +87,7 @@ def _build_provenance(
     regime_data_dir: Path,
     *,
     source_revision: str,
+    candidate_id: str = "C6-Base",
 ) -> dict[str, Any]:
     if len(source_revision) != 40 or any(
         character not in "0123456789abcdef" for character in source_revision
@@ -102,6 +103,10 @@ def _build_provenance(
         "data_fingerprint": data_fingerprint,
         "scenario_signature": scenario_signature,
     }
+    from quantfusion.application.c6_contract import candidate_spec
+
+    candidate_spec(candidate_id)
+    payload["candidate_id"] = candidate_id
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     return {
         **payload,
@@ -246,6 +251,9 @@ def _validate_publish_candidate(
             for artifact in (prefix_artifact, universe_artifact)
         ):
             raise ValueError(f"Stress candidate provenance changed: {field}")
+    if any(artifact.get("candidate_id") != provenance.get("candidate_id")
+           for artifact in (prefix_artifact, universe_artifact)):
+        raise ValueError("Stress candidate provenance changed: candidate_id")
     results = universe_artifact.get("results")
     if not isinstance(results, list):
         raise ValueError("Stress candidate results must be a list")
@@ -388,6 +396,8 @@ def _publish_formal_artifacts(
     formal_plan_complete: bool,
     establish_initial_baseline: bool = False,
     initial_baseline_reference: dict[str, Any] | None = None,
+    ab5_release_acceptance: bool = False,
+    ab5_release_evidence: dict[str, Any] | None = None,
 ) -> bool:
     """Retain complete failures; publish canonical files only after acceptance."""
     if not formal_plan_complete:
@@ -432,6 +442,23 @@ def _publish_formal_artifacts(
         and universe_artifact["retained_robustness_hard_gates"]["passed"]
         and route_accepted
     )
+    if ab5_release_acceptance:
+        from quantfusion.application.c6_release_acceptance import (
+            release_formal_assessment,
+        )
+
+        if incumbent is not None or not establish_initial_baseline:
+            raise ValueError("AB5 release requires its authorized initial-baseline route")
+        proof = validate_ab5_release_request(provenance, initial_baseline_reference)
+        l2 = validate_release_l2_evidence(ab5_release_evidence or {},
+            source_revision=str(provenance["source_revision"]), reference=initial_baseline_reference or {})
+        assessment = release_formal_assessment(universe_artifact)
+        # Original native gates and metric records stay byte-for-byte in the new
+        # artifact. The owner-approved release assessment has a separate identity.
+        accepted = assessment["passed"]
+        release_evidence = {"assessment": assessment, "source_binding": proof, "L2": l2}
+        prefix_artifact = {**prefix_artifact, "release_acceptance": release_evidence}
+        universe_artifact = {**universe_artifact, "release_acceptance": release_evidence}
     if not accepted:
         candidate = {
             **universe_artifact,
@@ -444,6 +471,12 @@ def _publish_formal_artifacts(
                 establish_initial_baseline=establish_initial_baseline,
             ),
         }
+        if ab5_release_acceptance:
+            candidate["original_rejection_reasons"] = candidate["rejection_reasons"]
+            candidate["rejection_reasons"] = [
+                {"gate_family": row["gate_family"], "gate": row["predicate_id"]}
+                for row in assessment["predicate_results"] if not row["release_passed"]
+            ]
         source_revision = str(provenance["source_revision"])
         _atomic_json(
             VALIDATION_ARTIFACT_DIR
@@ -468,3 +501,74 @@ def _publish_formal_artifacts(
     _atomic_json(VALIDATION_ARTIFACT_DIR / "prefix_stress.json", prefix_artifact)
     _atomic_json(VALIDATION_ARTIFACT_DIR / "universe_stress.json", universe_artifact)
     return True
+
+
+def validate_ab5_release_request(provenance: Mapping[str, Any], reference: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Reject foreign reference, input/window or source BEFORE a formal replay."""
+    from quantfusion.application.c6_release_acceptance import (
+        AB5_CANDIDATE_ID, AB5_DATA_FINGERPRINT, AB5_BASE_PRODUCER_RUN_ID,
+        AB5_REFERENCE_SHA256, _AB5_REFERENCE_PAYLOAD_SHA256, verify_ab5_release_source,
+    )
+    from quantfusion.application.c6_contract import canonical_payload_hash
+
+    if reference is None or canonical_payload_hash(reference) != _AB5_REFERENCE_PAYLOAD_SHA256:
+        raise ValueError("AB5 release requires the exact authorized fixed reference")
+    expected = {"candidate_id": AB5_CANDIDATE_ID, "data_fingerprint": AB5_DATA_FINGERPRINT,
+                "start_date": "2025-04-01", "end_date": "2026-07-20", "initial_capital": 2_000_000.0,
+                "engine": "ProductionReplayEngine", "deployment_policy": "production_daily_replay"}
+    if any(provenance.get(key) != value for key, value in expected.items()):
+        raise ValueError("AB5 release candidate, data or execution window differs")
+    from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
+
+    if _tree_fingerprint(_data_files(MARKET_DATA_DIR, REGIME_DATA_DIR)) != AB5_DATA_FINGERPRINT:
+        raise ValueError("AB5 actual data snapshot changed")
+    if _tree_fingerprint(_source_files()) != provenance.get("source_fingerprint"):
+        raise ValueError("AB5 actual source fingerprint differs from provenance")
+    proof = verify_ab5_release_source(str(provenance.get("source_revision", "")))
+    return {**proof, "candidate_id": AB5_CANDIDATE_ID, "base_producer_run_id": AB5_BASE_PRODUCER_RUN_ID,
+            "reference_sha256": AB5_REFERENCE_SHA256, "data_fingerprint": AB5_DATA_FINGERPRINT}
+
+
+def validate_release_l2_evidence(
+    evidence: Mapping[str, Any], *, source_revision: str, reference: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Recompute the exact 77-row L2 and its new selection before formal release."""
+    from quantfusion.application.c6_release_acceptance import (
+        AB5_CANDIDATE_ID, AB5_BASE_SOURCE_REVISION, AB5_BASE_PRODUCER_RUN_ID, AB5_REFERENCE_SHA256,
+        _AB5_REFERENCE_PAYLOAD_SHA256, derive_base_release_selection, release_predicate_assessment, ab5_preregistration,
+    )
+    from quantfusion.application.c6_contract import canonical_payload_hash
+
+    if (evidence.get("kind") != "c6_ab5_release_l2_evidence"
+            or evidence.get("execution_source_revision") != source_revision):
+        raise ValueError("AB5 formal publication requires source-bound L2 evidence")
+    if canonical_payload_hash(reference) != _AB5_REFERENCE_PAYLOAD_SHA256:
+        raise ValueError("AB5 L2 evidence reference differs")
+    provenance = evidence.get("provenance")
+    if not isinstance(provenance, Mapping) or provenance.get("source_revision") != source_revision:
+        raise ValueError("AB5 L2 evidence provenance differs")
+    proof = validate_ab5_release_request(provenance, reference)
+    if evidence.get("source_binding") != proof:
+        raise ValueError("AB5 L2 evidence source binding differs")
+    selection = evidence.get("selection")
+    if not isinstance(selection, Mapping) or not isinstance(selection.get("original_D"), Mapping):
+        raise ValueError("AB5 L2 evidence lacks the original selection receipt")
+    expected_selection = derive_base_release_selection(selection["original_D"])
+    if (canonical_payload_hash(selection) != canonical_payload_hash(expected_selection)
+            or selection["selected_candidate"] != AB5_CANDIDATE_ID):
+        raise ValueError("AB5 L2 evidence selection is not accepted or authentic")
+    from quantfusion.application.c6_bound_run import validate_result_payload
+
+    raw = evidence["raw_l2"]
+    prereg = ab5_preregistration()
+    validate_result_payload(raw, {"canonical_payload_schema": {"name": "L2_payload"}}, prereg)
+    assessment = release_predicate_assessment(
+        raw, candidate_id=AB5_CANDIDATE_ID, source_revision=AB5_BASE_SOURCE_REVISION,
+        producer_run_id=AB5_BASE_PRODUCER_RUN_ID, reference_sha256=AB5_REFERENCE_SHA256,
+    )
+    if (canonical_payload_hash(evidence.get("assessment")) != canonical_payload_hash(assessment)
+            or not assessment["passed"]):
+        raise ValueError("AB5 L2 evidence is altered or has an unwaived failure")
+    return {"selection_id": selection["selection_id"], "l2_assessment_id": assessment["assessment_id"],
+            "l2_evidence_sha256": canonical_payload_hash(evidence), "l2_scenario_count": 77,
+            "execution_source_revision": source_revision}

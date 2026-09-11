@@ -354,6 +354,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default="C6-Base",
         help="Exact candidate identity; only explicit AB5 identities enable the account budget",
     )
+    parser.add_argument("--ab5-release-acceptance", action="store_true",
+                        help="Apply the explicit source-bound owner-approved AB5 release profile")
+    parser.add_argument("--ab5-release-evidence", help="Source-bound complete L2 evidence for the explicit AB5 release")
     return parser
 
 
@@ -483,7 +486,22 @@ def main() -> int:
         data_dir,
         regime_data_dir,
         source_revision=args.source_revision,
+        candidate_id=args.candidate_id,
     )
+    release_l2_evidence = None
+    if args.ab5_release_acceptance:
+
+        if not formal_plan_complete or not args.establish_initial_baseline or not args.initial_baseline_reference:
+            raise ValueError("AB5 release requires the full formal plan and explicit initial reference")
+        reference = stress_artifacts._load_initial_baseline_reference(
+            Path(args.initial_baseline_reference).expanduser().resolve())
+        stress_artifacts.validate_ab5_release_request(provenance, reference)
+        if not args.ab5_release_evidence:
+            raise ValueError("AB5 release requires complete source-bound L2 evidence")
+        release_l2_evidence = json.loads(Path(args.ab5_release_evidence).read_text(encoding="utf-8"))
+        stress_artifacts.validate_release_l2_evidence(release_l2_evidence, source_revision=args.source_revision, reference=reference)
+        if stress_artifacts._load_incumbent(stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json") is not None:
+            raise ValueError("AB5 release cannot change the frozen initial-baseline route")
     signature = str(provenance["run_signature"])
     checkpoint = (
         Path(args.checkpoint)
@@ -649,6 +667,8 @@ def main() -> int:
         incumbent=incumbent,
         formal_plan_complete=formal_plan_complete,
         establish_initial_baseline=args.establish_initial_baseline,
+        ab5_release_acceptance=args.ab5_release_acceptance,
+        ab5_release_evidence=release_l2_evidence,
         initial_baseline_reference=initial_baseline_reference,
     )
     print(
