@@ -59,7 +59,7 @@ jobs:
           _, content = call(
               "GET", f"/contents/.github/c6-dispatch-request.json?ref={target}"
           )
-          request_bytes = base64.b64decode(content["content"], validate=True)
+          request_bytes = base64.b64decode(content["content"])
           assert hashlib.sha256(request_bytes).hexdigest() == request_sha256
 
           status, _ = call("DELETE", f"/git/refs/heads/{branch}")
