@@ -518,3 +518,32 @@ truthful residual receipt, stronger-exit priority, and unchanged board/cash/T+1
 contracts.  Then run the same fixed 15-row AB5/AB9 comparison once.  Any MDD,
 retention, order, reconciliation or lock failure rejects AB9 without full
 matrix expansion.
+
+## AB9 fixed diagnostic rejection and selected-book capacity gate
+
+The same fixed 15-row comparison completed once for AB9.  It remains rejected
+and noncanonical.  Prefix-05 improved to 16.60% MDD, 0.7655 wealth retention
+and 109 date/symbol/side orders, but prefix-17 retained only 0.7439 of AB5
+wealth and produced 212 orders.  Add-one-13-601869 and add-one-05-002384
+retained only 0.6397 and 0.7217.  Three fixed v42 residual witnesses still
+failed the hard MDD gate: `random-20260817-08-023` at 21.36%,
+`random-20260807-05-040` at 21.08%, and `leave-one-out-300308` at 18.42%.
+Cash/equity and MDD recomputation reconciled and no terminal lock appeared.
+AB9 therefore does not receive a formal identity or full matrix.
+
+Before implementing another sell-topology variant, a read-only capacity gate
+used the authenticated six-witness gap projection.  On the final decision date
+before each first breach, it subtracted both the existing AB5 planned release
+and the maximum possible release from fully liquidating only those books AB5
+had already selected.  All six witnesses still exceeded their remaining loss
+budget.  The post-completion debit versus budget ranged from 648,571.85 versus
+434,606.61 to 1,421,850.98 versus 865,425.41.  Consequently an intervention
+restricted to already-selected AB5 book identities is structurally incapable
+of covering the observed execution gap; it is rejected analytically without
+implementation or another economic run.
+
+Do not tune the reinforcement multiple, trigger, or retained lot count after
+these results.  A successor, if any, must be based on a different causal signal
+or an existing canonical risk path, separately preregistered and falsified on
+the fixed diagnostics.  Automatic restoration/rebuy, a new selector, or a new
+allocator remains out of bounds.
