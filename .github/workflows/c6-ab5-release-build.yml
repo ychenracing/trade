@@ -4,48 +4,131 @@ on:
     branches: [codex/c6-ab5-release-build-20260912]
     paths: [.github/workflows/c6-ab5-release-build.yml]
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: c6-ab5-direct-release-engineering
   cancel-in-progress: false
 jobs:
-  export:
+  integrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      EXPECTED_HEAD: b25be996881350caa273d5ef4e6edd5b0ae6607c
+      EXPECTED_MAIN: 0250163dbe1b234e96339f9059f9a2074f19cb06
+      EXPECTED_MERGE_TREE: 02f5814d13fc4079bae4a66b784464bb7e23917b
+      EXPECTED_SELECTED_TREE: 8f0601f40bdadc7bbc50cf81c5f76f6b5b4dcc28
+      TARGET_BRANCH: codex/c6-causal-risk-closure-v11
     steps:
       - uses: actions/checkout@v4
         with:
           ref: b25be996881350caa273d5ef4e6edd5b0ae6607c
           fetch-depth: 0
-      - name: Export immutable current source and exact AB5 history without economics
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.14'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install existing locked engineering dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Normally merge main and preserve both independently tested relay repairs
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/c6-release-export"
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$EXPECTED_HEAD"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN"
+          git config user.name ychenracing
+          git config user.email ychenracing@163.com
+          set +e
+          git merge --no-commit --no-ff "$EXPECTED_MAIN"
+          status=$?
+          set -e
+          test "$status" -eq 1
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+          conflicts = subprocess.check_output(['git','diff','--name-only','--diff-filter=U'],text=True).splitlines()
+          path = '.github/scripts/test_c6_stage_advance.py'
+          assert conflicts == [path], conflicts
+          p = Path(path)
+          s = p.read_text()
+          assert s.count('<<<<<<< HEAD\n') == 1 and s.count('=======\n') == 1
+          assert s.count('>>>>>>> ') == 1
+          s = s.replace('<<<<<<< HEAD\n','').replace('=======\n','\n')
+          s = ''.join(line for line in s.splitlines(keepends=True) if not line.startswith('>>>>>>> '))
+          assert 'test_selection_commit_message_uses_current_execution_version' in s
+          assert 'test_residual_ids_follow_authenticated_base_candidate' in s
+          p.write_text(s)
+          PY
+          git add .github/scripts/test_c6_stage_advance.py
+          test "$(git write-tree)" = "$EXPECTED_MERGE_TREE"
+          git diff --cached --check
+          python -I -S .github/scripts/test_c6_stage_advance.py 2>&1 | tee "$RUNNER_TEMP/c6-release-export/relay-tests.txt"
+          git commit -m 'merge main into PR63 preserving both tested C6 relay repairs'
+      - name: Align only unselected S paths to the immutable AB5 implementation
+        run: |
+          set -euo pipefail
+          for f in quantfusion/risk/overlay/actions.py quantfusion/risk/overlay/policy_base.py; do
+            git show 4659a2b6d265f45256777da6a2fc25d1369308bd:"$f" > "$f"
+          done
+          git rm quantfusion/application/c6_s_qualification.py tests/c6_non_economic/test_c6_early_concentration.py tests/c6_non_economic/test_c6_s_qualification.py
+          cat > tests/c6_non_economic/test_c6_selected_ab5.py <<'PY'
+          """The selected release uses AB5, never the unselected early-S action."""
+          from __future__ import annotations
+
+          import inspect
+          from pathlib import Path
+
+          from quantfusion.risk.overlay.actions import OverlayActionMixin
+          from quantfusion.risk.overlay.policy import CrossMarketOverlay
+
+
+          def test_selected_ab5_does_not_offer_early_s_execution() -> None:
+              assert CrossMarketOverlay.C6_S_PRODUCTION is False
+              assert "early_s_evidence" not in inspect.signature(
+                  OverlayActionMixin._apply_concentration_guard
+              ).parameters
+
+
+          def test_selected_ab5_has_no_unselected_s_entrypoint() -> None:
+              root = Path(__file__).resolve().parents[2]
+              assert not (root / "quantfusion/application/c6_s_qualification.py").exists()
+          PY
+          git add quantfusion/risk/overlay/actions.py quantfusion/risk/overlay/policy_base.py tests/c6_non_economic/test_c6_selected_ab5.py
+          test "$(git write-tree)" = "$EXPECTED_SELECTED_TREE"
+          git diff --cached --check
+          python -m pytest -q tests/c6_non_economic/test_c6_selected_ab5.py tests/c6_non_economic/test_c6_formal_ab5.py tests/c6_non_economic/test_account_risk_budget.py 2>&1 | tee "$RUNNER_TEMP/c6-release-export/selected-tests.txt"
+          git commit -m 'fix(c6): align selected release actions to exact AB5 source'
+      - name: Publish only the tested fast-forward to original PR63 and export source
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/c6-release-export"
-          export OUT="$RUNNER_TEMP/c6-release-export"
-          git branch c6-export-pr b25be996881350caa273d5ef4e6edd5b0ae6607c
-          git branch c6-export-main 0250163dbe1b234e96339f9059f9a2074f19cb06
-          git branch c6-export-ib42 4659a2b6d265f45256777da6a2fc25d1369308bd
-          git bundle create "$OUT/release.bundle" c6-export-pr c6-export-main c6-export-ib42
-          git bundle verify "$OUT/release.bundle"
-          git ls-tree -r b25be996881350caa273d5ef4e6edd5b0ae6607c > "$OUT/pr-tree.txt"
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$EXPECTED_HEAD"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN"
           python - <<'PY'
-          import hashlib, json, os, pathlib, urllib.request
-          out = pathlib.Path(os.environ['OUT'])
-          base = 'https://api.github.com/repos/ychenracing/trade/'
-          endpoints = {'pr.json':'pulls/63', 'heartbeat.json':'issues/comments/5579901968', 'contract.json':'issues/comments/5579535549'}
-          for filename, path in endpoints.items():
-              req = urllib.request.Request(base+path, headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'], 'Accept':'application/vnd.github+json'})
-              with urllib.request.urlopen(req, timeout=60) as response:
-                  (out/filename).write_bytes(response.read())
-          receipt = {'source_revision':'b25be996881350caa273d5ef4e6edd5b0ae6607c', 'main_revision':'0250163dbe1b234e96339f9059f9a2074f19cb06', 'ab5_source_revision':'4659a2b6d265f45256777da6a2fc25d1369308bd', 'economic_dispatches':0, 'source_writes':0, 'workflow_run_id':os.environ['GITHUB_RUN_ID'], 'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file()}}
-          (out/'receipt.json').write_text(json.dumps(receipt, sort_keys=True, indent=2)+'\n')
-          print(json.dumps(receipt, sort_keys=True))
+          import json, os, urllib.request
+          req = urllib.request.Request('https://api.github.com/repos/ychenracing/trade/pulls/63', headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+          with urllib.request.urlopen(req, timeout=60) as response:
+              pr = json.load(response)
+          assert pr['state'] == 'open' and not pr['merged'] and pr['head']['sha'] == os.environ['EXPECTED_HEAD']
+          PY
+          git push origin HEAD:refs/heads/$TARGET_BRANCH
+          test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$(git rev-parse HEAD)"
+          git branch c6-export-integrated HEAD
+          git bundle create "$RUNNER_TEMP/c6-release-export/integrated.bundle" c6-export-integrated
+          git show -s --format='%H %T %P' HEAD > "$RUNNER_TEMP/c6-release-export/head.txt"
+          git diff "$EXPECTED_HEAD" HEAD --stat > "$RUNNER_TEMP/c6-release-export/diff-stat.txt"
+          python - <<'PY'
+          import hashlib,json,os,pathlib,subprocess
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'c6-release-export'
+          receipt={'workflow_run_id':os.environ['GITHUB_RUN_ID'],'source_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_tree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(),'previous_head':os.environ['EXPECTED_HEAD'],'main_revision':os.environ['EXPECTED_MAIN'],'published':True,'economic_dispatches':0,'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file()}}
+          (out/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(receipt,sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: c6-ab5-direct-release-source-${{ github.run_id }}
+          name: c6-ab5-direct-integration-${{ github.run_id }}
           path: ${{ runner.temp }}/c6-release-export/
           if-no-files-found: error
           retention-days: 30
