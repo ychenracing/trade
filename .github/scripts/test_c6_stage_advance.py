@@ -53,6 +53,18 @@ class PlanningTests(unittest.TestCase):
         self.rows[2]['passed'] = False
         self.assertEqual(self.plan(), 'BASE_REJECTED')
 
+    def test_residual_ids_follow_authenticated_base_candidate(self):
+        self.assertEqual(
+            relay.residual_ids_for_candidate(
+                ['C6-Base+AB5::synthetic'], 'C6-Base+AB5'
+            ),
+            ['synthetic'],
+        )
+        with self.assertRaises(ValueError):
+            relay.residual_ids_for_candidate(
+                ['C6-Base::synthetic'], 'C6-Base+AB5'
+            )
+
     def test_malformed_predicates_and_ineligible_s_fail_closed(self):
         for rows in (self.rows[:-1], list(reversed(self.rows)), self.rows + self.rows[:1],
                      [dict(x, passed=1) for x in self.rows]):
