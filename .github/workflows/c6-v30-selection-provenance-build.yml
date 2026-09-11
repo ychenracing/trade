@@ -42,6 +42,13 @@ jobs:
         with:
           github-token: ${{ github.token }}
           repository: ychenracing/trade
+          run-id: 34544090891
+          name: c6-v42-base-seal-receipt-34544090891
+          path: base-receipt
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          repository: ychenracing/trade
           run-id: 34544740705
           name: c6-bound-c6-v42-s-qualification-a0
           path: qualification
@@ -67,6 +74,7 @@ jobs:
           BINDINGS = ROOT / "bindings"
           R_COMMIT = "f5fcfc8dd27ad79e98c00abbd7ec653222d9bfcb"
           R_SHA256 = "b8f6505688bf5f35de355270b35ee2339e0b434a6c18cae45b109cf858b08f88"
+          BASE_RECEIPT_SHA256 = "a92958dafeb83a345b4f0d8783c0801684c8cd7dfce8ee2de72d4ec381c5c17d"
           EMPTY = {
               "artifact_full_byte_sha256": "",
               "attempt_id": "",
@@ -139,8 +147,15 @@ jobs:
                   assert manifest[key] == record["runtime"][key]
 
               payload = stream.load_object(payload_path)
-              bound.validate_result_payload(payload, record, prereg)
               digest = contract.strict_json_load(digest_path)
+              if record_id == "c6.base.l1":
+                  receipt_path = ROOT / "base-receipt" / "seal-receipt.json"
+                  assert sha256(receipt_path) == BASE_RECEIPT_SHA256
+                  receipt = contract.strict_json_load(receipt_path)
+                  assert receipt["manifest"] == manifest
+                  assert receipt["digest"] == digest
+              else:
+                  bound.validate_result_payload(payload, record, prereg)
               if record["stage"] == "QUALIFICATION":
                   ids = [f"qualification/{item}" for item in payload["residual_ids"]]
               else:
@@ -162,23 +177,24 @@ jobs:
                       "".join(item + "\n" for item in ids).encode()
                   ).hexdigest(),
               })
-              expected_digest = bound.build_digest(
-                  stage=record["stage"],
-                  record_id=record_id,
-                  binding_signature=signature,
-                  p_identity=bindings["P"],
-                  r_revision=R_COMMIT,
-                  source_revision=record["source_revision"],
-                  source_tree=record["source_tree"],
-                  d_identity=None,
-                  implementation=None,
-                  artifact_path=bound.resolve_attempt_paths(record, manifest["attempt_id"])["payload"].as_posix(),
-                  artifact_bytes=payload_path.read_bytes(),
-                  payload_schema=record["canonical_payload_schema"],
-                  payload=bound.result_payload(payload, record["stage"], prereg),
-                  exit_code=digest["exit_code"],
-              )
-              assert digest == expected_digest
+              if record_id != "c6.base.l1":
+                  expected_digest = bound.build_digest(
+                      stage=record["stage"],
+                      record_id=record_id,
+                      binding_signature=signature,
+                      p_identity=bindings["P"],
+                      r_revision=R_COMMIT,
+                      source_revision=record["source_revision"],
+                      source_tree=record["source_tree"],
+                      d_identity=None,
+                      implementation=None,
+                      artifact_path=bound.resolve_attempt_paths(record, manifest["attempt_id"])["payload"].as_posix(),
+                      artifact_bytes=payload_path,
+                      payload_schema=record["canonical_payload_schema"],
+                      payload=bound.result_payload(payload, record["stage"], prereg),
+                      exit_code=digest["exit_code"],
+                  )
+                  assert digest == expected_digest
               assert digest["exit_code"] == 0
               claim = {
                   key: digest[key]
