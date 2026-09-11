@@ -70,6 +70,15 @@ def test_only_ab5_interventions_enable_the_existing_budget_path() -> None:
         )
 
 
+def test_ab11_has_a_fail_closed_noncanonical_budget_identity() -> None:
+    request = _request("C6_BASE_AB11")
+
+    assert ProductionReplayEngine.validate_c6_diagnostic_request(request) == request
+    assert c6_diagnostic_engine_config({}, request)[
+        "account_risk_budget_enabled"
+    ] is True
+
+
 def test_ab5_variants_keep_full_base_and_s_feature_sets() -> None:
     engine = object.__new__(BacktestEngine)
     for intervention, expected in (

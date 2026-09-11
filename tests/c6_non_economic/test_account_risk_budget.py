@@ -86,6 +86,22 @@ def test_nonbinding_budget_leaves_existing_buy_batch_unchanged():
     assert r['buy_shares_removed'] == 0
 
 
+def test_ab11_gap_guard_vetoes_buy_when_gross_cap_is_nonbinding():
+    engine, state, dates = fixture(shares=9000, cash=10000.)
+    engine._c6_diagnostic_request = {'intervention_id': 'C6_BASE_AB11'}
+    buy = Signal('300308', 'turtle_breakout', 'buy', target_shares=10000,
+                 price=10., signal_date='2026-01-05', reason='initial entry')
+    state.pending = [(buy, SimpleNamespace(name='turtle_breakout'))]
+
+    r = apply(engine, [state], dates, equity=100000., peak=100000.)
+
+    assert r['gross_cap'] == r['ordinary_gross_cap']
+    assert r['buy_envelope_binding'] is False
+    assert r['current_gap_debit'] > r['remaining_loss_budget']
+    assert r['buy_gap_scale'] == 0.
+    assert [signal for signal, _ in state.pending if signal.direction == 'buy'] == []
+
+
 def test_binding_budget_retains_bounded_buy_batch_without_sell_credit():
     engine, state, dates = fixture(shares=2000, cash=70000.)
     buy = Signal('300308', 'turtle_breakout', 'buy', target_shares=10000,

@@ -371,3 +371,31 @@ Before implementation, the following tests are required and must fail on I_B36:
 5. any attempt to label an enabled-budget run as `C6-Base` or `C6-Base+S` fails closed.
 
 The implementation must be the smallest coherent identity/config plumbing needed to satisfy those tests. Because P/R and candidate binding semantics change, all affected formal evidence is invalidated and must use a new P/I/R identity before one fresh Base L1. v37 and every earlier rejection remain immutable. No economic dispatch is allowed until the new frozen-source receipt and evidence-only R both authenticate the exact formal AB5 path.
+
+## AB11 preregistration: gap-debit buy guard without stronger liquidation
+
+The authenticated six-witness projection and one exact AB5 replay exclude late
+signals and T+1 sell obstruction.  They also expose a distinct post-trim gap:
+AB5 sells were decided on 2025-09-02 and filled on 2025-09-03, but the one-day
+equity rebound made the gross-cap envelope nonbinding.  New strategy buys were
+then admitted on the 2025-09-03 close and increased gross exposure by roughly
+0.41m--1.21m at the 2025-09-04 open, immediately before the first hard-MDD
+breach.  The existing code conditions its buy gap-debit scale on the gross-cap
+envelope also being binding, even when held-book gap debit alone already
+exceeds the remaining HWM loss budget.
+
+AB11 changes only that conjunction for an isolated noncanonical identity.  It
+uses the existing HWM floor, current held-book gap debit, board-limit factors,
+cost reserve, pending-buy debit, lot rounding and T+1 queue.  When a close-known
+pending buy would exceed the remaining gap-debit headroom, it is scaled by the
+existing formula even if the ordinary gross cap is otherwise nonbinding.  It
+does not add a sell, change sell ordering or quantity, persist a timed lock,
+restore/rebuy a book, add an allocator, or introduce any fitted threshold.
+Formal AB5 behavior must remain byte-for-byte/economically unchanged.
+
+Tests must first fail and then prove the nonbinding-gross/over-budget buy veto,
+partial gap headroom, board-specific debit, empty-account re-entry, stronger
+lock priority, exact AB5 witness, and fail-closed diagnostic identity.  Then
+run the fixed 15-row comparison once.  Any hard MDD, existing retention,
+initial/promotion, order, cash/equity, recomputation or terminal-lock failure
+rejects AB11 without a formal identity or full matrix.
