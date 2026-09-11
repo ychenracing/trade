@@ -561,6 +561,10 @@ def validate_release_l2_evidence(
     from quantfusion.application.c6_bound_run import validate_result_payload
 
     raw = evidence["raw_l2"]
+    if "derivation" in evidence:
+        from quantfusion.application.c6_release_acceptance import validate_l2_reuse
+
+        validate_l2_reuse(evidence["derivation"], results_sha256=canonical_payload_hash(raw["results"]))
     prereg = ab5_preregistration()
     validate_result_payload(raw, {"canonical_payload_schema": {"name": "L2_payload"}}, prereg)
     assessment = release_predicate_assessment(
@@ -572,4 +576,8 @@ def validate_release_l2_evidence(
         raise ValueError("AB5 L2 evidence is altered or has an unwaived failure")
     return {"selection_id": selection["selection_id"], "l2_assessment_id": assessment["assessment_id"],
             "l2_evidence_sha256": canonical_payload_hash(evidence), "l2_scenario_count": 77,
-            "execution_source_revision": source_revision}
+            "execution_source_revision": source_revision,
+            "economic_producer": evidence.get("derivation") or {
+                "economic_source_revision": source_revision,
+                "economic_workflow_run_id": evidence.get("workflow_run_id"),
+            }}

@@ -41,6 +41,7 @@ def main() -> int:
     parser.add_argument("--source-revision", required=True)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--preflight-only", action="store_true")
+    parser.add_argument("--reuse-l2-evidence", type=Path)
     args = parser.parse_args()
     if args.workers < 1 or args.workers > 12:
         raise ValueError("workers must be in 1..12")
@@ -73,7 +74,19 @@ def main() -> int:
     if args.preflight_only:
         return 0
     completed = []
-    if checkpoint.exists():
+    derivation = None
+    if args.reuse_l2_evidence is not None:
+        original_bytes = args.reuse_l2_evidence.read_bytes()
+        if hashlib.sha256(original_bytes).hexdigest() != release.AB5_L2_REUSE["original_evidence_sha256"]:
+            raise ValueError("AB5 L2 reuse requires the exact authenticated original evidence")
+        original = json.loads(original_bytes)
+        completed = original["raw_l2"]["results"]
+        if [row["scenario_id"] for row in completed] != ids:
+            raise ValueError("AB5 L2 reuse does not cover the complete frozen population")
+        derivation = dict(release.AB5_L2_REUSE)
+        release.validate_l2_reuse(derivation, results_sha256=canonical_payload_hash(completed))
+        print("Reusing all 77 authenticated L2 records; economic replays=0", flush=True)
+    elif checkpoint.exists():
         saved = json.loads(checkpoint.read_text())
         if saved.get("signature") != signature:
             raise ValueError("AB5 L2 checkpoint source/selection/manifest changed")
@@ -109,6 +122,9 @@ def main() -> int:
                 "execution_source_revision": args.source_revision, "selection": selection,
                 "raw_l2": raw, "assessment": assessment, "source_binding": proof, "provenance": provenance,
                 "workflow_run_id": os.environ.get("GITHUB_RUN_ID"), "python_version": platform.python_version()}
+    if derivation is not None:
+        evidence["derivation"] = derivation
+    # execution_source_revision is this assessment execution. Derivation identifies the unchanged economic producer.
     # Preserve a true rejection too; it must never launch the official successor.
     stress_artifacts._atomic_json(out / "l2-evidence.json", evidence)
     print(json.dumps({"l2_passed": assessment["passed"], "assessment": assessment}, ensure_ascii=False), flush=True)

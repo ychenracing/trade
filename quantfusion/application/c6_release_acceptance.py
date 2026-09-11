@@ -275,6 +275,25 @@ def release_formal_assessment(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {**body, "assessment_id": canonical_payload_hash(body)}
 
 
+def validate_published_release_assessment(payload: Mapping[str, Any]) -> None:
+    """Verify the assessment against its native input, excluding publication stamps.
+
+    This checks the derived assessment only. The caller must also authenticate
+    the artifact and validate its native records, source, reference and L2 proof.
+    """
+    if (payload.get("acceptance_status") != "accepted" or payload.get("canonical") is not True
+            or payload.get("baseline_kind") != "initial_current_contract"):
+        raise ValueError("AB5 published artifact is not an accepted initial baseline")
+    attachment = payload.get("release_acceptance")
+    if not isinstance(attachment, Mapping) or not isinstance(attachment.get("assessment"), Mapping):
+        raise ValueError("AB5 published artifact has no release assessment")
+    native = {key: value for key, value in payload.items() if key not in {
+        "release_acceptance", "acceptance_status", "canonical", "baseline_kind"}}
+    expected = release_formal_assessment(native)
+    if not expected["passed"] or canonical_payload_hash(attachment["assessment"]) != canonical_payload_hash(expected):
+        raise ValueError("AB5 published release assessment differs from its native input")
+
+
 def verify_ab5_release_source(source_revision: str, *, root: Path = PROJECT_ROOT) -> dict[str, Any]:
     """Bind the actual checkout to AB5 economic bytes plus explicit release plumbing.
 
@@ -308,6 +327,28 @@ def verify_ab5_release_source(source_revision: str, *, root: Path = PROJECT_ROOT
 
 
 AB5_ORIGINAL_D_SHA256 = "6afee85f4c35502816ccde2af43f5c528bd0154f1770204dfcf27e18f66dad29"
+
+
+
+# One authenticated, already executed L2; reuse changes only the erroneous predicate aggregation.
+AB5_L2_RESULTS_SHA256 = "0025431de9f09a335037deb5d2c68cbc74ae998f83670d8460c799c6c004fbd1"
+AB5_L2_REUSE = {
+    "kind": "c6_l2_difference_of_minima_reassessment",
+    "economic_source_revision": "c8d46db65b4ae1e72884399cbcaeb7999f6c400b",
+    "economic_workflow_run_id": 34630144631,
+    "original_artifact_id": 10276433256,
+    "original_artifact_sha256": "1771990a779f3a228b1e401699bd2be95b55320e3a47fb59086171f9b5991d16",
+    "original_evidence_sha256": "a1f8054b29b948ba6eecc4bee062e8cb7b24387934fa56f9ebf47fa5c7c3c57d",
+    "original_raw_payload_sha256": "a32981a24e05b62db5d9fd255d2fbe93f4676e94f757239dfd8548103c5a6880",
+    "economic_replays": 0,
+}
+
+
+def validate_l2_reuse(lineage: Mapping[str, Any], *, results_sha256: str) -> None:
+    """Validate the known producer and unchanged records; never relabel economic source."""
+    if (canonical_payload_hash(lineage) != canonical_payload_hash(AB5_L2_REUSE)
+            or results_sha256 != AB5_L2_RESULTS_SHA256):
+        raise ValueError("AB5 L2 reuse differs from its authenticated economic producer")
 
 
 def ab5_preregistration() -> dict[str, Any]:

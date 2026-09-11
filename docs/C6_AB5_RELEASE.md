@@ -32,7 +32,9 @@
 验收修订不会修改策略的 0.82 预算地板、风险触发、账户锁、成本、订单队列或下一交易日成交规则。
 普通 Base 与 AB5 必须有不同的 checkpoint 身份，不能借用相同源码 SHA 混用结果。
 当前 AB5 通过明确的候选/配置接入：`account_risk_budget_enabled=True`。
-未指定 AB5 的旧研究命令不会被偷偷转换成 AB5；部署/日常使用入口是否选中 AB5 必须另外核验。
+未指定 AB5 的研究命令不启用账户风险预算，不能把它们的输出称为 AB5。
+共同的 F0（账本身份）、F1（保留风险卖单抑制同批买入）、U（固定参考评分）
+正确性修复属于本次 C6 的共享生产路径；因此未启用 AB5 预算也不代表与 pre-C6 经济序列相同。
 
 ## 明确来源的执行路径
 
@@ -56,5 +58,78 @@ python -m quantfusion.application.stress \
 来源不匹配、缺少 L2、非 canonical 计划、非原固定参考或不同 incumbent 路由均不能发布。
 真实新经济失败保留为 rejected；工程失败先修根因，仅重新验证受影响依赖。
 
-最后还需完成剩余现金/HWM/订单因果审计、完整测试、五池回归、实际使用入口检查、
-最终 diff/HEAD 检查、合并及 main 核验。本文本身不是正式验收通过或已合并的证明。
+现金/HWM/订单因果审计已完成，精确范围与来源见 `C6_AB5_RELEASE_AUDIT.md`。
+正式验收、完整测试、五池回归、最终 diff/HEAD 检查、合并及 main 核验仍需以真实结果确认；
+本文本身不是正式验收通过或已合并的证明。
+
+## 日常研究如何明确使用 AB5
+
+规范 `ProductionReplayEngine` 已接受严格布尔配置 `account_risk_budget_enabled`，
+正式 AB5 工作者也是把同一个配置传给该引擎，不使用第二套撮合或风控实现。
+复用已验证本地日线数据进行人工决策支持时，可按下面的现有公开接口运行：
+
+```python
+from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
+from quantfusion.config.universe import SYMBOL_NAMES
+from quantfusion.engine.replay import ProductionReplayEngine
+
+engine = ProductionReplayEngine(
+    2_000_000, cfg={"account_risk_budget_enabled": True}
+)
+result = engine.run(
+    dict(SYMBOL_NAMES), "2025-04-01", "2026-07-20",
+    data_dir=str(MARKET_DATA_DIR),
+    regime_data_dir=str(REGIME_DATA_DIR),
+    leader_data_dir=str(MARKET_DATA_DIR),
+    indicator_state="warm",
+)
+print(result["total_return"], result["max_drawdown"])
+```
+
+日期必须与实际合法数据匹配；这个示例不是行情下载器，不连接券商，
+也不是已经通过正式验收的声明。普通回放不生成 canonical 工件。
+实际账户快照的时点建议与历史模拟账户不同；不得声称已有真实账户建议入口
+自动获得了 AB5 连续 HWM 与账本历史。未知真实账户状态仍按原边界失败关闭。
+
+## 五池回归基线的来源变化
+
+原 main `0250163dbe1b234e96339f9059f9a2074f19cb06` 的黄金指标对应 pre-C6 实现，
+不能要求授权后的 F0/F1/U 正确性修复继续逐笔复制旧路径，也不能直接用当前结果覆盖预期来隐藏新增漂移。
+发布核对运行 `34631177857` 在同一锁定 OCI 中独立执行旧 main、冻结 I_B42 和当前发布源码的
+五池回放及单股自适应回放：六个用例的当前指标、逐笔成交和事件指纹均与冻结 I_B42 完全一致；
+旧 main 也复现其旧黄金指标。这证明差异在冻结实现中已存在，不是发布接入造成的新经济漂移。
+
+`tests/fixtures/backtest_golden_metrics.json` 的当前预期由独立冻结源码输出生成，
+不是从当前 PR 的失败输出采纳；原文件完整保留在上述旧 main，原 SHA-256 为
+`2590ff7a7649f102a9680c57575291ad7ce1f4f4c2fa31dfa0146f246baf004a`。
+新文件的 `_source_binding` 记录源版本、只读验证运行及工件哈希。
+整数与事件指纹仍精确比较，浮点回归容差不变。
+
+这组五池使用 `BacktestEngine` 的共享 C6 路径，未开启 AB5 预算；它是源集成回归，
+不替代带预算的 77 场景 L2 或正式 958 场景验收，也不把旧利润门重新解释为已通过。
+
+
+## 首次完整 L2：已定位并修复的聚合错误（2026-09-11）
+
+运行 `34630144631` 在源码 `c8d46db65b4ae1e72884399cbcaeb7999f6c400b`、锁定 OCI 中
+完成 77/77 场景。最初的失败是既有 `l2.initial.worst_add_one` 实现偏离冻结公式，不是新的经济拒绝。
+I_B42 原始 P 的该判据明确写的是：
+`minimum current add-one wealth change minus exact-reference minimum add-one wealth change`。
+旧代码却计算 `min(current_i - reference_i)`，与合同的 `min(current_i) - min(reference_i)` 不同。
+
+先用两场景交叉反例复现（旧实现 -0.6，合同正确值 +0.1），再修正聚合；真正退化仍被拒绝。
+对已认证的 77 个实际结果，不重跑经济计算：当前最小加一财富变化 `-0.5108032476430526`，
+固定参考最小值 `-0.7145312965039285`，合同正确差值为 `+0.20372804886087592`。
+它通过原来的 -0.03 及放宽后的 -0.0345 下限，不需要新增豁免。修正后 9/9 L2 发布判据通过。
+其余八项判据数值及全部订单、成交、净值、指标、场景、参考和误差容限均未改变。
+
+原失败运行、原生 L2 evidence 和检查点保留。原始工件 `10276433256` ZIP SHA-256：
+`1771990a779f3a228b1e401699bd2be95b55320e3a47fb59086171f9b5991d16`；
+原始 L2 evidence SHA-256：`a1f8054b29b948ba6eecc4bee062e8cb7b24387934fa56f9ebf47fa5c7c3c57d`。
+重判使用明确的派生身份，`derivation` 固定记录原经济源码、原运行、原文件哈希和零次经济重算；
+消费者重算完整 77 记录的规范哈希并拒绝任何替换。新的 `execution_source_revision` 指评估执行源码，
+不是声称这些成交由新源码重新算出。可通过已有命令的 `--reuse-l2-evidence <原始l2-evidence.json>`
+复用这一个已认证的原始文件；不建立通用跨版本迁移，不对其他失败或其他候选自动豁免。
+
+原运行中的后继正式 17/958 没有执行，不能把取证复制的旧 `native-validation` 文件冒充本次结果。
+修复后的独立正式运行必须先认证派生 L2，再执行原完整正式场景和所有其他未豁免门。

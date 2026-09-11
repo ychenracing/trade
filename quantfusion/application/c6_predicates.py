@@ -50,7 +50,10 @@ def _predicate_rows(specs: Sequence[Mapping[str, Any]], results: list[dict[str, 
     p0910 = (1 + by_id["prefix-10"]["total_return"]) / (1 + by_id["prefix-09"]["total_return"]) - 1
     adjacent = [(1 + by_id[b]["total_return"]) / (1 + by_id[a]["total_return"]) - 1 for a, b in zip(prefixes, prefixes[1:])]
     ratios = {item: (1 + by_id[item]["total_return"]) / (1 + ref[item]["total_return"]) for item in prefixes}
-    deltas = [(1 + by_id[item]["total_return"]) / (1 + by_id[f"prefix-{by_id[item]['base_size']:02d}"]["total_return"]) - (1 + ref[item]["total_return"]) / (1 + ref[f"prefix-{ref[item]['base_size']:02d}"]["total_return"]) for item in add_ids]
+    # Frozen P specifies the difference of the two minima, not the minimum of paired differences.
+    current_add_changes = [(1 + by_id[item]["total_return"]) / (1 + by_id[f"prefix-{by_id[item]['base_size']:02d}"]["total_return"]) - 1 for item in add_ids]
+    reference_add_changes = [(1 + ref[item]["total_return"]) / (1 + ref[f"prefix-{ref[item]['base_size']:02d}"]["total_return"]) - 1 for item in add_ids]
+    add_delta = min(current_add_changes) - min(reference_add_changes)
     perm_bad = []
     for seed in sorted({by_id[item]["seed"] for item in perm_ids}):
         group = [item for item in perm_ids if by_id[item]["seed"] == seed]
@@ -65,7 +68,7 @@ def _predicate_rows(specs: Sequence[Mapping[str, Any]], results: list[dict[str, 
         "l2.prefix.worst_adjacent_wealth": (prefixes, [by_id[x]["total_return"] for x in prefixes], [], [] if min(adjacent) >= -0.30 - 1e-12 else prefixes, min(adjacent)),
         "l2.initial.prefix05": (["prefix-05"], [by_id["prefix-05"]["total_return"]], [ref["prefix-05"]["total_return"]], [] if ratios["prefix-05"] >= 0.99 - 1e-12 else ["prefix-05"], ratios["prefix-05"]),
         "l2.initial.other_prefix": ([x for x in prefixes if x != "prefix-05"], [by_id[x]["total_return"] for x in prefixes if x != "prefix-05"], [ref[x]["total_return"] for x in prefixes if x != "prefix-05"], [x for x in prefixes if x != "prefix-05" and ratios[x] < 0.95 - 1e-12], min(ratios[x] for x in prefixes if x != "prefix-05")),
-        "l2.initial.worst_add_one": (add_ids + sorted({f"prefix-{by_id[x]['base_size']:02d}" for x in add_ids}), [by_id[x]["total_return"] for x in add_ids], [ref[x]["total_return"] for x in add_ids], [] if min(deltas) >= -0.03 - 1e-12 else add_ids, min(deltas)),
+        "l2.initial.worst_add_one": (add_ids + sorted({f"prefix-{by_id[x]['base_size']:02d}" for x in add_ids}), [by_id[x]["total_return"] for x in add_ids], [ref[x]["total_return"] for x in add_ids], [] if add_delta >= -0.03 - 1e-12 else add_ids, add_delta),
         "l2.permutation.invariant": (perm_ids, [by_id[x] for x in perm_ids], [], perm_bad, not perm_bad),
     }
     return [_predicate_result(spec, *facts[spec["id"]]) for spec in specs]

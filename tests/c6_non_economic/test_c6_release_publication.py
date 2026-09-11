@@ -195,3 +195,63 @@ def test_release_runner_authenticates_original_d_and_never_relabels_it(tmp_path)
 def test_formal_publication_requires_complete_source_bound_l2_evidence():
     with pytest.raises(ValueError, match='L2 evidence'):
         stress_artifacts.validate_release_l2_evidence({}, source_revision='a'*40, reference={})
+
+
+def test_published_release_assessment_reconciles_its_prepublication_payload():
+    """Publication stamps are not part of the unchanged assessed native input."""
+    raw = _gates()
+    assessed = release.release_formal_assessment(raw)
+    published = {**raw, "release_acceptance": {"assessment": assessed},
+                 "acceptance_status": "accepted", "canonical": True,
+                 "baseline_kind": "initial_current_contract"}
+    release.validate_published_release_assessment(published)
+    damaged = deepcopy(published)
+    damaged["absolute_hard_gates"]["observed"]["all_worst_drawdown"] = -.22
+    with pytest.raises(ValueError, match="assessment"):
+        release.validate_published_release_assessment(damaged)
+    damaged = deepcopy(published)
+    damaged["release_acceptance"]["assessment"]["passed"] = False
+    with pytest.raises(ValueError, match="assessment"):
+        release.validate_published_release_assessment(damaged)
+    for field, value in (("canonical", False), ("acceptance_status", "rejected")):
+        damaged = {**published, field: value}
+        with pytest.raises(ValueError, match="accepted"):
+            release.validate_published_release_assessment(damaged)
+
+
+def test_l2_add_one_uses_difference_of_minima_from_the_frozen_contract():
+    from quantfusion.application.c6_predicates import _predicate_rows
+
+    spec = next(row for row in release.ab5_preregistration()[
+        "diagnostic_predicate_manifests"]["L2_APPLICABLE_DIAGNOSTIC_PREDICATES"]
+        if row["id"] == "l2.initial.worst_add_one")
+    assert spec["formula"] == (
+        "minimum current add-one wealth change minus exact-reference minimum "
+        "add-one wealth change >= -0.03 - 1e-12")
+    prefixes = [dict(scenario_id=f"prefix-{i:02d}", scenario_type="prefix",
+                     total_return=0., max_drawdown=-.1, seed=None) for i in range(1, 18)]
+    candidate = prefixes + [dict(scenario_id=f"add-{i}", scenario_type="add_one",
+                                base_size=5, total_return=r, max_drawdown=-.1, seed=None)
+                            for i, r in enumerate((-.1, .2))]
+    reference = deepcopy(candidate)
+    reference[-2]["total_return"] = .5
+    reference[-1]["total_return"] = -.2
+    ids = [row["scenario_id"] for row in candidate]
+    result = _predicate_rows([spec], candidate, {"results": reference}, ids)[0]
+    assert result["observed"]["value"] == pytest.approx(.1)
+    assert result["passed"] is True
+    candidate[-2]["total_return"] = -.4
+    result = _predicate_rows([spec], candidate, {"results": reference}, ids)[0]
+    assert result["observed"]["value"] == pytest.approx(-.2)
+    assert result["passed"] is False
+
+
+def test_l2_reuse_is_limited_to_authenticated_records_and_original_execution():
+    lineage = deepcopy(release.AB5_L2_REUSE)
+    release.validate_l2_reuse(lineage, results_sha256=release.AB5_L2_RESULTS_SHA256)
+    for key in lineage:
+        changed = {**lineage, key: "foreign"}
+        with pytest.raises(ValueError, match="L2 reuse"):
+            release.validate_l2_reuse(changed, results_sha256=release.AB5_L2_RESULTS_SHA256)
+    with pytest.raises(ValueError, match="L2 reuse"):
+        release.validate_l2_reuse(lineage, results_sha256="0" * 64)

@@ -30,6 +30,8 @@ EXPECTED_MARKDOWN = {
     Path("docs/VALIDATION.md"),
     Path("docs/C6_RECOVERY_CONTRACT.md"),
     Path("docs/C6_ACCOUNT_BUDGET_CONTINUATION.md"),
+    Path("docs/C6_AB5_RELEASE.md"),
+    Path("docs/C6_AB5_RELEASE_AUDIT.md"),
     Path("data/README.md"),
 }
 CHINESE_MARKDOWN = {
@@ -217,6 +219,20 @@ class RepositoryHygieneTests(unittest.TestCase):
                 (ROOT / "artifacts" / "validation" / name).exists(),
                 msg=name,
             )
+
+    def test_current_golden_is_bound_to_the_selected_frozen_source(self) -> None:
+        payload = json.loads((ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text())
+        proof = payload["_source_binding"]
+        self.assertEqual(proof["expected_from_source"], "4659a2b6d265f45256777da6a2fc25d1369308bd")
+        self.assertEqual(proof["comparison_source"], "c8d46db65b4ae1e72884399cbcaeb7999f6c400b")
+        self.assertEqual(proof["case_count"], 6)
+        self.assertIs(proof["all_current_equal_frozen"], True)
+        self.assertIs(proof["account_risk_budget_enabled"], False)
+        self.assertEqual(proof["initial_capital"], 2_000_000)
+        self.assertEqual({key for key in payload if key.isdigit()}, {"1", "3", "5", "13", "17"})
+        self.assertEqual(len(proof["artifact_sha256"]), 64)
+        self.assertEqual(len(proof["original_golden_sha256"]), 64)
+        self.assertEqual(payload["_adaptive_bull"]["source_revision"], proof["expected_from_source"])
 
     def test_validation_script_reads_the_single_golden_metrics_source(self) -> None:
         validation_script = importlib.import_module("scripts.run_regime_validation")
