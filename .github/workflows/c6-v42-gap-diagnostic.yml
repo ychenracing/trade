@@ -1,0 +1,54 @@
+name: C6 v42 AB5 Gap Diagnostic
+
+on:
+  push:
+    branches:
+      - codex/c6-v42-gap-diagnostic
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: c6-v42-gap-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  project:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    container: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: diagnostic-builder
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 77668f80e990a0dd573e689c6e5646a082f92479
+          path: source
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          repository: ychenracing/trade
+          run-id: 34509818018
+          name: c6-bound-c6-v42-base-l1-a0
+          path: base
+      - name: Verify classifier controls
+        run: python diagnostic-builder/.github/scripts/test_c6_v42_gap_projection.py
+      - name: Project authenticated AB5 residual evidence
+        env:
+          PYTHONPATH: source
+        run: |
+          python diagnostic-builder/.github/scripts/c6_v42_gap_projection.py \
+            --payload base/payload.json.gz \
+            --expected-sha256 8b207862a0d870b1b4513cfb9319cc4e4765b7027607c4c77d177e6c03824db8 \
+            --output diagnostic/gap-projection.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c6-v42-ab5-gap-diagnostic-${{ github.run_id }}
+          path: diagnostic/
+          if-no-files-found: error
+          retention-days: 90
