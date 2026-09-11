@@ -1,0 +1,51 @@
+name: C6 AB5 direct release engineering
+on:
+  push:
+    branches: [codex/c6-ab5-release-build-20260912]
+    paths: [.github/workflows/c6-ab5-release-build.yml]
+permissions:
+  contents: read
+concurrency:
+  group: c6-ab5-direct-release-engineering
+  cancel-in-progress: false
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b25be996881350caa273d5ef4e6edd5b0ae6607c
+          fetch-depth: 0
+      - name: Export immutable current source and exact AB5 history without economics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/c6-release-export"
+          export OUT="$RUNNER_TEMP/c6-release-export"
+          git branch c6-export-pr b25be996881350caa273d5ef4e6edd5b0ae6607c
+          git branch c6-export-main 0250163dbe1b234e96339f9059f9a2074f19cb06
+          git branch c6-export-ib42 4659a2b6d265f45256777da6a2fc25d1369308bd
+          git bundle create "$OUT/release.bundle" c6-export-pr c6-export-main c6-export-ib42
+          git bundle verify "$OUT/release.bundle"
+          git ls-tree -r b25be996881350caa273d5ef4e6edd5b0ae6607c > "$OUT/pr-tree.txt"
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.request
+          out = pathlib.Path(os.environ['OUT'])
+          base = 'https://api.github.com/repos/ychenracing/trade/'
+          endpoints = {'pr.json':'pulls/63', 'heartbeat.json':'issues/comments/5579901968', 'contract.json':'issues/comments/5579535549'}
+          for filename, path in endpoints.items():
+              req = urllib.request.Request(base+path, headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'], 'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  (out/filename).write_bytes(response.read())
+          receipt = {'source_revision':'b25be996881350caa273d5ef4e6edd5b0ae6607c', 'main_revision':'0250163dbe1b234e96339f9059f9a2074f19cb06', 'ab5_source_revision':'4659a2b6d265f45256777da6a2fc25d1369308bd', 'economic_dispatches':0, 'source_writes':0, 'workflow_run_id':os.environ['GITHUB_RUN_ID'], 'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file()}}
+          (out/'receipt.json').write_text(json.dumps(receipt, sort_keys=True, indent=2)+'\n')
+          print(json.dumps(receipt, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: c6-ab5-direct-release-source-${{ github.run_id }}
+          path: ${{ runner.temp }}/c6-release-export/
+          if-no-files-found: error
+          retention-days: 30
