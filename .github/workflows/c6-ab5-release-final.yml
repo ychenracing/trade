@@ -1,0 +1,122 @@
+name: C6 AB5 final native acceptance
+on:
+  push:
+    branches: [codex/c6-ab5-release-build-20260912]
+    paths: [.github/workflows/c6-ab5-release-final.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: c6-ab5-final-c8d46db65b4a
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+jobs:
+  formal:
+    runs-on: ubuntu-latest
+    container:
+      image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
+    timeout-minutes: 350
+    env:
+      SOURCE: c8d46db65b4ae1e72884399cbcaeb7999f6c400b
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c8d46db65b4ae1e72884399cbcaeb7999f6c400b
+          fetch-depth: 0
+      - name: Verify live authority, sole execution, runtime and native original D
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          mkdir -p "$RUNNER_TEMP/ab5-final"
+          python - <<'PY'
+          import hashlib,json,os,pathlib,platform,subprocess,sys,urllib.error,urllib.request
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'ab5-final'
+          base='https://api.github.com/repos/ychenracing/trade/'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          def get(path):
+              with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers),timeout=60) as response:
+                  return json.load(response)
+          pr=get('pulls/63')
+          assert pr['state']=='open' and not pr['merged'] and pr['head']['sha']==os.environ['SOURCE']
+          contract=get('issues/comments/5579535549')
+          assert 'C6_AB5_RETURN_EXCEPTIONS_20260911' in contract['body'] and 'TRADE_C6_WATCH_EXECUTION_CONTRACT_20260908_END' in contract['body']
+          history=get('actions/workflows/c6-ab5-release-final.yml/runs?per_page=100')['workflow_runs']
+          previous=[r for r in history if str(r['id'])!=os.environ['GITHUB_RUN_ID']]
+          assert not previous, 'An existing final run requires explicit checkpoint recovery, not duplicate initial execution'
+          assert platform.python_version()=='3.12.14' and platform.libc_ver()[1]=='2.36'
+          assert hashlib.sha256(pathlib.Path(sys.executable).read_bytes()).hexdigest()=='837a48d7afd08447fb43e28b282026fadb59368620072e57e01f66d12977e5ce'
+          assert hashlib.sha256(pathlib.Path('requirements-lock.txt').read_bytes()).hexdigest()=='22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434'
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==os.environ['SOURCE']
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,headers,newurl): return None
+          req=urllib.request.Request(base+'actions/artifacts/10189149456/zip',headers=headers)
+          try:
+              with urllib.request.build_opener(NoRedirect).open(req,timeout=60) as response: raw=response.read()
+          except urllib.error.HTTPError as error:
+              if error.code!=302: raise
+              location=error.headers['Location']; assert location.startswith('https://')
+              with urllib.request.urlopen(location,timeout=60) as response: raw=response.read()
+          assert hashlib.sha256(raw).hexdigest()=='786e1d9c3926bbb0ebe69d12cd6f05412332e94bd7aba08c9b8983161de670b4'
+          (out/'original-D.zip').write_bytes(raw)
+          (out/'authority.json').write_text(json.dumps({'workflow_run_id':os.environ['GITHUB_RUN_ID'],'source_revision':os.environ['SOURCE'],'runtime':platform.python_version(),'contract_comment':contract,'base_reruns':0,'L2_expected':77,'official_expected':958},sort_keys=True)+'\n')
+          PY
+      - name: Install exact existing locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+      - name: Derive existing Base selection and execute the exact native L2 77
+        run: |
+          set -euo pipefail
+          python -m scripts.c6_ab5_release --selection-receipt "$RUNNER_TEMP/ab5-final/original-D.zip" --output-dir "$RUNNER_TEMP/ab5-final/L2" --source-revision "$SOURCE" --workers 4 2>&1 | tee "$RUNNER_TEMP/ab5-final/L2.log"
+      - name: Execute complete native official17 and958 with verified L2
+        run: |
+          set -euo pipefail
+          python -m quantfusion.application.stress --candidate-id C6-Base+AB5 --source-revision "$SOURCE" --workers 4 --checkpoint-every 10 --checkpoint "$RUNNER_TEMP/ab5-final/formal-checkpoint.json" --establish-initial-baseline --initial-baseline-reference artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json --ab5-release-acceptance --ab5-release-evidence "$RUNNER_TEMP/ab5-final/L2/l2-evidence.json" 2>&1 | tee "$RUNNER_TEMP/ab5-final/formal.log"
+      - name: Verify actual publication and record exact final receipt
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os,pathlib,subprocess
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'ab5-final'
+          from quantfusion.application.c6_release_acceptance import release_formal_assessment
+          from quantfusion.application.c6_contract import canonical_payload_hash
+          from quantfusion.application import stress_scenarios
+          source=os.environ['SOURCE']
+          universe=json.loads(pathlib.Path('artifacts/validation/universe_stress.json').read_text())
+          prefix=json.loads(pathlib.Path('artifacts/validation/prefix_stress.json').read_text())
+          assert universe['source_revision']==prefix['source_revision']==source
+          assert universe['candidate_id']==prefix['candidate_id']=='C6-Base+AB5'
+          assert universe['canonical'] is True and prefix['canonical'] is True
+          assert universe['acceptance_status']==prefix['acceptance_status']=='accepted'
+          assert len(universe['results'])==958 and len(prefix['results'])==17
+          plan=stress_scenarios._multi_seed_scenarios(random_samples=50,permutation_samples=50,seeds=(20260807,20260817,20260827))
+          assert {r['scenario_id'] for r in universe['results']}=={r['scenario_id'] for r in plan}
+          assert release_formal_assessment(universe)==universe['release_acceptance']['assessment']
+          assert universe['release_acceptance']['assessment']['passed'] is True
+          assert canonical_payload_hash([r for r in universe['results'] if r['scenario_type']=='prefix'])==canonical_payload_hash(prefix['results'])
+          receipt={'source_revision':source,'source_tree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(),'workflow_run_id':os.environ['GITHUB_RUN_ID'],'accepted':True,'canonical':True,'L2_scenario_count':77,'official_scenario_count':958,'prefix_count':17,'base_reruns':0,'original_D_unchanged':True,'release_assessment_id':universe['release_acceptance']['assessment']['assessment_id']}
+          (out/'final-receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(receipt,sort_keys=True))
+          PY
+      - name: Preserve native checkpoints, outputs and failures without changing labels
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/ab5-final/native-validation"
+          cp -a artifacts/validation/. "$RUNNER_TEMP/ab5-final/native-validation/"
+          git status --short > "$RUNNER_TEMP/ab5-final/worktree-status.txt"
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'ab5-final'
+          hashes={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file()}
+          (out/'sha256.json').write_text(json.dumps(hashes,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c6-ab5-native-final-${{ github.run_id }}
+          path: ${{ runner.temp }}/ab5-final/
+          if-no-files-found: error
+          retention-days: 90
