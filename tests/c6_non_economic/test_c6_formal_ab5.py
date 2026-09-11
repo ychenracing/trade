@@ -84,6 +84,23 @@ def test_ab5_variants_keep_full_base_and_s_feature_sets() -> None:
         } == expected
 
 
+def test_ab6_has_a_noncanonical_diagnostic_identity_not_a_formal_candidate() -> None:
+    request = _request("C6_BASE_AB6")
+    assert ProductionReplayEngine.validate_c6_diagnostic_request(request) == request
+    assert c6_diagnostic_engine_config({}, request)[
+        "account_risk_budget_enabled"
+    ] is True
+    engine = object.__new__(BacktestEngine)
+    engine._c6_diagnostic_request = request
+    assert {
+        feature
+        for feature in ("F0", "F1", "U", "S")
+        if engine._c6_feature_enabled(feature)
+    } == {"F0", "F1", "U"}
+    with pytest.raises(ContractError, match="candidate"):
+        candidate_spec("C6-Base+AB6")
+
+
 def test_formal_ab5_l1_uses_binding_candidate_without_changing_scenarios() -> None:
     prereg = load_preregistration(
         "artifacts/diagnostics/c6-preregistration.json"

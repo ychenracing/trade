@@ -109,6 +109,7 @@ class EnsembleAllocationMixin:
             "C6_BASE_PLUS_S": {"F0", "F1", "U", "S"},
             "C6_BASE_AB5": {"F0", "F1", "U"},
             "C6_BASE_AB5_PLUS_S": {"F0", "F1", "U", "S"},
+            "C6_BASE_AB6": {"F0", "F1", "U"},
             "W0_NO_601869": set(),
             "W1_DATA_MAP_ONLY": set(),
             "W2_POOL_DENOMINATOR_ONLY": set(),
@@ -760,9 +761,7 @@ class EnsembleAllocationMixin:
             value * (limit_pct_for_code(signal.symbol, costs) + variable_gap_cost)
             for _, signal, value in buys
         )
-        stock_gap_debit_enabled = bool(
-            getattr(self, "_c6_ab6_stock_gap_debit", False)
-        )
+        stock_gap_debit_enabled = self._c6_intervention_id() == "C6_BASE_AB6"
         stock_gap_constraint_binding = (
             stock_gap_debit_enabled
             and buy_envelope_binding

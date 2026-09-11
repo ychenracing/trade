@@ -43,7 +43,7 @@ def apply(engine, states, dates, equity=90000., peak=100000.):
 
 
 def apply_ab6(engine, states, dates, equity=90000., peak=100000.):
-    engine._c6_ab6_stock_gap_debit = True
+    engine._c6_diagnostic_request = {"intervention_id": "C6_BASE_AB6"}
     return apply(engine, states, dates, equity=equity, peak=peak)
 
 
