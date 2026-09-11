@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Validate and atomically recreate the exact dispatch ref
+      - name: Validate and delete the inert dispatch ref
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -64,10 +64,5 @@ jobs:
 
           status, _ = call("DELETE", f"/git/refs/heads/{branch}")
           assert status == 204
-          status, recreated = call(
-              "POST", "/git/refs", {"ref": f"refs/heads/{branch}", "sha": target}
-          )
-          assert status == 201
-          assert recreated["object"]["sha"] == target
-          print(json.dumps({"branch": branch, "sha": target}, sort_keys=True))
+          print(json.dumps({"deleted_branch": branch, "sha": target}, sort_keys=True))
           PY
