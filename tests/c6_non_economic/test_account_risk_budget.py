@@ -123,6 +123,52 @@ def test_binding_buy_batch_debits_existing_board_limit_gap_risk():
     assert r['buy_gap_scale'] < r['buy_gross_scale']
 
 
+def test_stock_gap_debit_forces_minimum_additional_sell_relief():
+    engine, state, dates = fixture(shares=8000, cash=10000.)
+
+    r = apply(engine, [state], dates)
+
+    factor = limit_pct_for_code('300308', engine.cfg) + r['cost_rate']
+    planned = sum(
+        signal.target_shares
+        for signal, _ in state.pending
+        if signal.direction == 'sell' and signal.reason == 'account_budget_trim'
+    )
+    remaining_gap_debit = (8000 - planned) * 10. * factor
+    assert r['current_gap_debit'] > r['remaining_loss_budget']
+    assert r['stock_gap_constraint_binding'] is True
+    assert r['post_plan_current_gap_debit'] == pytest.approx(remaining_gap_debit)
+    assert r['post_plan_current_gap_debit'] <= r['remaining_loss_budget']
+    assert (8000 - planned + 100) * 10. * factor > r['remaining_loss_budget']
+
+
+def test_stock_gap_planner_uses_each_books_board_limit_debit():
+    engine, weak, dates = fixture(shares=3000, cash=30000.)
+    strong = deepcopy(weak)
+    position = strong.sleeve.positions.pop('300308').pop('turtle_breakout')
+    position.symbol = '601869'
+    strong.sleeve.positions = {'601869': {'turtle_breakout': position}}
+    strong.data_map = {'601869': strong.data_map.pop('300308')}
+    scores = {'300308': 0.1, '601869': 0.9}
+    weak.sleeve._allocation_scores = lambda *_: scores
+    strong.sleeve._allocation_scores = lambda *_: scores
+
+    r = apply(engine, [weak, strong], dates)
+
+    sold = [(signal.symbol, signal.target_shares)
+            for state in (weak, strong) for signal, _ in state.pending
+            if signal.reason == 'account_budget_trim']
+    factor_300 = limit_pct_for_code('300308', engine.cfg) + r['cost_rate']
+    factor_600 = limit_pct_for_code('601869', engine.cfg) + r['cost_rate']
+    post_gap = 3000 * 10. * (factor_300 + factor_600)
+    for symbol, shares in sold:
+        factor = factor_300 if symbol == '300308' else factor_600
+        post_gap -= shares * 10. * factor
+    assert sold and sold[0][0] == '300308'
+    assert post_gap == pytest.approx(r['post_plan_current_gap_debit'])
+    assert post_gap <= r['remaining_loss_budget']
+
+
 def test_binding_budget_zero_headroom_vetoes_buys_without_sell_credit():
     engine, state, dates = fixture(shares=8000, cash=2000.)
     buy = Signal('300308', 'turtle_breakout', 'buy', target_shares=10000,

@@ -371,3 +371,48 @@ Before implementation, the following tests are required and must fail on I_B36:
 5. any attempt to label an enabled-budget run as `C6-Base` or `C6-Base+S` fails closed.
 
 The implementation must be the smallest coherent identity/config plumbing needed to satisfy those tests. Because P/R and candidate binding semantics change, all affected formal evidence is invalidated and must use a new P/I/R identity before one fresh Base L1. v37 and every earlier rejection remain immutable. No economic dispatch is allowed until the new frozen-source receipt and evidence-only R both authenticate the exact formal AB5 path.
+
+## AB6 preregistration: stock-book execution-gap debit
+
+Authenticated v42 Base L1 and its sealed D retain `C6-Base+AB5` as
+`QUALIFICATION_REJECTED`: 152 of 765 scenarios exceed the unchanged 18% MDD
+gate and none qualifies for S.  Read-only run 34576152841 projected six fixed
+representatives from that exact Base artifact.  All six had a close-known AB5
+action before the first breach, complete next-open fills and no execution
+obstruction, yet still breached.  Their last pre-breach `current_gap_debit`
+was 1.62--1.99 times `remaining_loss_budget`.  The common class is therefore
+`ACTION_INSUFFICIENT`, not late signal or blocked execution.
+
+AB6 keeps AB5's account HWM/equity, 0.82 floor, two-session stress cap, cost
+reserve, ordinary exposure cap, pending-buy gap debit, weakest-first ordering,
+locks, timestamps and canonical next-open queue.  It adds no threshold,
+selector, allocator, cooldown, date/symbol exception or searched parameter.
+Only the already-computed stock-book execution-gap ledger becomes a sell-side
+constraint: at a binding close, plan the minimum lot-rounded weakest-first
+reductions needed for both `gross <= gross_cap` and
+`remaining_current_gap_debit <= remaining_loss_budget`.  Each reduced book
+releases its marked notional times its existing
+`limit_pct_for_code(symbol) + variable_exit_cost_rate`; pending or queued sells
+receive no advance credit.  Stronger existing exits remain authoritative.
+
+Tests must fail first under AB5 and then prove: the stock-gap constraint adds
+only the minimum required lot relief when it is tighter than the two-session
+cap; different board-limit classes release their own debit; a nonbinding
+account remains unchanged; pending sells do not fund buys or erase current
+inventory debit; stronger locks are not weakened; invalid inputs fail before
+queue mutation; and generated actions still use the existing T+1 execution
+path.  Receipts must expose pre-plan and post-plan stock-gap debit and whether
+that constraint bound.
+
+Only after those tests pass may one noncanonical fixed diagnostic compare AB5
+and AB6 on the original nine registered AB5 rows plus these six v42 residual
+witnesses: `random-20260817-03-027`, `random-20260807-12-040`,
+`random-20260817-08-023`, `random-20260807-05-040`,
+`leave-one-out-300308`, and `random-20260807-08-046`.  Existing control
+evidence may be reused only where identity and inputs are equivalent.  The
+unchanged screens are MDD at most 18% plus tolerance, prefix-05 retention at
+least 0.99, every other prefix at least 0.95, every date/symbol/side bucket at
+most 200, exact cash/equity/MDD reconciliation, and no new terminal lock or
+execution-boundary violation.  Failure is retained and classified; it is not
+expanded to a full matrix.  A stable AB6 must receive a new formal identity
+and invalidate every AB5-dependent economic result before any L1 expansion.
