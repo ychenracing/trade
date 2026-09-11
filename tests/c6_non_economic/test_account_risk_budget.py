@@ -47,6 +47,11 @@ def apply_ab6(engine, states, dates, equity=90000., peak=100000.):
     return apply(engine, states, dates, equity=equity, peak=peak)
 
 
+def apply_ab7(engine, states, dates, equity=90000., peak=100000.):
+    engine._c6_diagnostic_request = {"intervention_id": "C6_BASE_AB7"}
+    return apply(engine, states, dates, equity=equity, peak=peak)
+
+
 def test_budget_intervenes_before_18_percent_without_mutating_account():
     engine, state, dates = fixture()
     before = deepcopy((state.sleeve.positions, state.sleeve.cash, vars(state.sleeve.risk)))
@@ -172,6 +177,27 @@ def test_stock_gap_planner_uses_each_books_board_limit_debit():
     assert sold and sold[0][0] == '300308'
     assert post_gap == pytest.approx(r['post_plan_current_gap_debit'])
     assert post_gap <= r['remaining_loss_budget']
+
+
+def test_ab7_does_not_create_a_stock_only_sell_date():
+    engine, state, dates = fixture(shares=4000, cash=50000.)
+
+    r = apply_ab7(engine, [state], dates)
+
+    assert r['gross_before'] <= r['gross_cap']
+    assert r['current_gap_debit'] > r['remaining_loss_budget']
+    assert r['stock_gap_constraint_binding'] is False
+    assert state.pending == []
+
+
+def test_ab7_strengthens_an_existing_ab5_sell_only_to_gap_budget():
+    engine, state, dates = fixture(shares=8000, cash=10000.)
+
+    r = apply_ab7(engine, [state], dates)
+
+    assert r['gross_before'] > r['gross_cap']
+    assert r['stock_gap_constraint_binding'] is True
+    assert r['post_plan_current_gap_debit'] <= r['remaining_loss_budget']
 
 
 def test_binding_budget_zero_headroom_vetoes_buys_without_sell_credit():

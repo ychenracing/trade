@@ -416,3 +416,37 @@ most 200, exact cash/equity/MDD reconciliation, and no new terminal lock or
 execution-boundary violation.  Failure is retained and classified; it is not
 expanded to a full matrix.  A stable AB6 must receive a new formal identity
 and invalidate every AB5-dependent economic result before any L1 expansion.
+
+## AB6 fixed diagnostic rejection and AB7 preregistration
+
+The exact preregistered 15-row local comparison completed once on the AB6
+diagnostic source.  AB6 improved four of the six v42 residual witnesses below
+18%, but it is rejected/noncanonical.  `prefix-05`, `prefix-09`, `prefix-10`
+and `prefix-17` worsened to 19.35%--19.50% MDD; prefix-05 and prefix-17 wealth
+ratios were 0.4695 and 0.4573.  Prefix-13 and add-one-13-601869 produced 221
+and 245 date/symbol/side orders.  Cash/equity and MDD recomputation reconciled
+and no terminal lock appeared, so this is `RETURN_IMPAIRMENT / ACTION_CHURN`,
+not an accounting or execution error.  The rejection remains visible and AB6
+must not receive a formal identity or full matrix.
+
+The minimal causal discriminator on prefix-05 found 20 stock-gap binding
+dates, including eight dates on which `gross <= gross_cap` and AB5 would not
+have emitted any sell.  AB6 had therefore expanded the intervention from
+"make an existing AB5 reduction sufficient" to "create a new reduction on
+any binding-budget date".  That expansion is not required by the six residual
+witnesses, all of which already had AB5 reduction orders before breach.
+
+AB7 keeps AB6's exact debit arithmetic, lot rounding, weakest-first order and
+all AB5 boundaries, but applies the stock-book gap constraint only when the
+unchanged AB5 sell predicate already holds: `gross > gross_cap` using the
+existing finite-value tolerance.  When AB5 would not create a sell, AB7 must
+not create one solely from the stock-gap ledger.  Pending-buy gap debit remains
+the unchanged AB5 rule.  This introduces no fitted threshold, cooldown,
+selector, allocator, date/symbol exception or parameter search.
+
+Tests must first fail under AB6 and then prove the exact non-expansion case,
+the stronger amount on an existing AB5 sell date, per-board debit, AB5 identity
+compatibility, lock priority, fail-closed inputs and T+1 execution.  Then run
+the same 15-row AB5/AB7 comparison once with the same screens.  Failure stays
+noncanonical and drives the next causal split; only a stable AB7 may receive a
+new formal candidate identity.
