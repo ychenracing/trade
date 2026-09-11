@@ -13,15 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      EXPECTED_HEAD: b25be996881350caa273d5ef4e6edd5b0ae6607c
+      EXPECTED_HEAD: e612d8df9d80fca1afb6dce6e840837ad5b4e97b
       EXPECTED_MAIN: 0250163dbe1b234e96339f9059f9a2074f19cb06
-      EXPECTED_MERGE_TREE: 02f5814d13fc4079bae4a66b784464bb7e23917b
-      EXPECTED_SELECTED_TREE: 8f0601f40bdadc7bbc50cf81c5f76f6b5b4dcc28
+      EXPECTED_TREE: 416a9b518c1ba59b5bc2cf7a5e858eab01790ec3
       TARGET_BRANCH: codex/c6-causal-risk-closure-v11
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: b25be996881350caa273d5ef4e6edd5b0ae6607c
+          ref: e612d8df9d80fca1afb6dce6e840837ad5b4e97b
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -30,75 +29,97 @@ jobs:
           cache-dependency-path: requirements-lock.txt
       - name: Install existing locked engineering dependencies
         run: python -m pip install --require-hashes -r requirements-lock.txt
-      - name: Normally merge main and preserve both independently tested relay repairs
+      - name: Apply the already tested candidate checkpoint fence and authenticated audit
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/c6-release-export"
           test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$EXPECTED_HEAD"
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN"
-          git config user.name ychenracing
-          git config user.email ychenracing@163.com
-          set +e
-          git merge --no-commit --no-ff "$EXPECTED_MAIN"
-          status=$?
-          set -e
-          test "$status" -eq 1
           python - <<'PY'
-          import subprocess
+          import base64, hashlib, json, os, urllib.request
           from pathlib import Path
-          conflicts = subprocess.check_output(['git','diff','--name-only','--diff-filter=U'],text=True).splitlines()
-          path = '.github/scripts/test_c6_stage_advance.py'
-          assert conflicts == [path], conflicts
-          p = Path(path)
+          def replace_once(text, old, new):
+              assert text.count(old) == 1, old
+              return text.replace(old, new)
+          p = Path('quantfusion/application/stress_artifacts.py')
           s = p.read_text()
-          assert s.count('<<<<<<< HEAD\n') == 1 and s.count('=======\n') == 1
-          assert s.count('>>>>>>> ') == 1
-          s = s.replace('<<<<<<< HEAD\n','').replace('=======\n','\n')
-          s = ''.join(line for line in s.splitlines(keepends=True) if not line.startswith('>>>>>>> '))
-          assert 'test_selection_commit_message_uses_current_execution_version' in s
-          assert 'test_residual_ids_follow_authenticated_base_candidate' in s
+          s = replace_once(s, 'from quantfusion.application import stress_metrics, stress_scenarios', 'from quantfusion.application import stress_metrics, stress_scenarios\nfrom quantfusion.application.c6_contract import candidate_spec')
+          s = replace_once(s, '    source_revision: str,\n) -> dict[str, Any]:\n    if len(source_revision)', '    source_revision: str,\n    candidate_id: str = "C6-Base",\n) -> dict[str, Any]:\n    candidate_spec(candidate_id)\n    if len(source_revision)')
+          s = replace_once(s, '        "source_revision": source_revision,\n        "source_fingerprint": source_fingerprint,', '        "source_revision": source_revision,\n        "candidate_id": candidate_id,\n        "source_fingerprint": source_fingerprint,')
+          s = replace_once(s, '    source_revision: str,\n) -> str:', '    source_revision: str,\n    candidate_id: str = "C6-Base",\n) -> str:')
+          s = replace_once(s, '            source_revision=source_revision,\n        )["run_signature"]', '            source_revision=source_revision,\n            candidate_id=candidate_id,\n        )["run_signature"]')
           p.write_text(s)
+          p = Path('quantfusion/application/stress.py')
+          p.write_text(replace_once(p.read_text(), '        source_revision=args.source_revision,\n    )\n    signature', '        source_revision=args.source_revision,\n        candidate_id=args.candidate_id,\n    )\n    signature'))
+          p = Path('tests/unit/test_stress_scenarios.py')
+          s = p.read_text()
+          start = s.index('    def test_provenance_exposes_independent_source_data_and_scenario_hashes(')
+          end = s.index('\n    def ', start + 10)
+          part = replace_once(s[start:end], '                "source_revision": "a" * 40,', '                "source_revision": "a" * 40,\n                "candidate_id": "C6-Base",')
+          part = replace_once(part, '42a175c2c8587c6e548c6808443d21bb466962781261540f461cfeb010ec9d48', '84bb04358ee44ed2f783a82fee99ac847a373f3c6a8d6d6625c7eaffa74d594c')
+          p.write_text(s[:start] + part + s[end:])
+          blob = 'ea0d9eb1479b353b18f561312a82b34729c9aca6'
+          req = urllib.request.Request('https://api.github.com/repos/ychenracing/trade/git/blobs/' + blob, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN']})
+          with urllib.request.urlopen(req, timeout=60) as response:
+              payload = json.load(response)
+          raw = base64.b64decode(payload['content'])
+          assert hashlib.sha256(raw).hexdigest() == '2a8c7b870d3c1a1ee4277e655b5f78086e98c8ee974ac27b2952777912f2d465'
+          assert hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest() == blob
+          Path('docs/C6_AB5_RELEASE_AUDIT.md').write_bytes(raw)
           PY
-          git add .github/scripts/test_c6_stage_advance.py
-          test "$(git write-tree)" = "$EXPECTED_MERGE_TREE"
-          git diff --cached --check
-          python -I -S .github/scripts/test_c6_stage_advance.py 2>&1 | tee "$RUNNER_TEMP/c6-release-export/relay-tests.txt"
-          git commit -m 'merge main into PR63 preserving both tested C6 relay repairs'
-      - name: Align only unselected S paths to the immutable AB5 implementation
-        run: |
-          set -euo pipefail
-          for f in quantfusion/risk/overlay/actions.py quantfusion/risk/overlay/policy_base.py; do
-            git show 4659a2b6d265f45256777da6a2fc25d1369308bd:"$f" > "$f"
-          done
-          git rm quantfusion/application/c6_s_qualification.py tests/c6_non_economic/test_c6_early_concentration.py tests/c6_non_economic/test_c6_s_qualification.py
-          cat > tests/c6_non_economic/test_c6_selected_ab5.py <<'PY'
-          """The selected release uses AB5, never the unselected early-S action."""
-          from __future__ import annotations
-
-          import inspect
-          from pathlib import Path
-
-          from quantfusion.risk.overlay.actions import OverlayActionMixin
-          from quantfusion.risk.overlay.policy import CrossMarketOverlay
+          cat >> tests/c6_non_economic/test_c6_formal_ab5.py <<'PY'
 
 
-          def test_selected_ab5_does_not_offer_early_s_execution() -> None:
-              assert CrossMarketOverlay.C6_S_PRODUCTION is False
-              assert "early_s_evidence" not in inspect.signature(
-                  OverlayActionMixin._apply_concentration_guard
-              ).parameters
+          def test_formal_checkpoint_signature_binds_actual_candidate(tmp_path) -> None:
+              from quantfusion.application import stress_artifacts
+
+              scenario = stress_scenarios._multi_seed_scenarios(
+                  random_samples=1, permutation_samples=1, seeds=(20260807,)
+              )[0]
+              market, regime = tmp_path / 'market', tmp_path / 'regime'
+              market.mkdir()
+              regime.mkdir()
+              kwargs = {'source_revision': 'a' * 40}
+              ordinary = stress_artifacts._build_provenance(
+                  [scenario], market, regime, candidate_id='C6-Base', **kwargs
+              )
+              ab5 = stress_artifacts._build_provenance(
+                  [scenario], market, regime, candidate_id='C6-Base+AB5', **kwargs
+              )
+              assert ab5['candidate_id'] == 'C6-Base+AB5'
+              assert ordinary['run_signature'] != ab5['run_signature']
+              assert ordinary['source_fingerprint'] == ab5['source_fingerprint']
+              assert ordinary['data_fingerprint'] == ab5['data_fingerprint']
+              assert ordinary['scenario_signature'] == ab5['scenario_signature']
+              checkpoint = {'signature': ordinary['run_signature'], 'provenance': ordinary,
+                            'results': [], 'completed': 0, 'scenario_count': 1}
+              with pytest.raises(ValueError, match='signature changed'):
+                  stress_artifacts._validated_checkpoint(
+                      checkpoint, [scenario], signature=ab5['run_signature'],
+                      provenance=ab5, diagnostic_selection=None,
+                  )
+              assert stress_artifacts._run_signature(
+                  [scenario], market, regime, candidate_id='C6-Base+AB5', **kwargs
+              ) == ab5['run_signature']
 
 
-          def test_selected_ab5_has_no_unselected_s_entrypoint() -> None:
-              root = Path(__file__).resolve().parents[2]
-              assert not (root / "quantfusion/application/c6_s_qualification.py").exists()
+          def test_formal_provenance_rejects_unknown_candidate(tmp_path) -> None:
+              from quantfusion.application import stress_artifacts
+
+              with pytest.raises(ContractError, match='candidate'):
+                  stress_artifacts._build_provenance(
+                      [], tmp_path, tmp_path, source_revision='a' * 40,
+                      candidate_id='C6-Base+AB5-typo',
+                  )
           PY
-          git add quantfusion/risk/overlay/actions.py quantfusion/risk/overlay/policy_base.py tests/c6_non_economic/test_c6_selected_ab5.py
-          test "$(git write-tree)" = "$EXPECTED_SELECTED_TREE"
+          git add quantfusion/application/stress.py quantfusion/application/stress_artifacts.py tests/c6_non_economic/test_c6_formal_ab5.py tests/unit/test_stress_scenarios.py docs/C6_AB5_RELEASE_AUDIT.md
+          test "$(git write-tree)" = "$EXPECTED_TREE"
           git diff --cached --check
-          python -m pytest -q tests/c6_non_economic/test_c6_selected_ab5.py tests/c6_non_economic/test_c6_formal_ab5.py tests/c6_non_economic/test_account_risk_budget.py 2>&1 | tee "$RUNNER_TEMP/c6-release-export/selected-tests.txt"
-          git commit -m 'fix(c6): align selected release actions to exact AB5 source'
-      - name: Publish only the tested fast-forward to original PR63 and export source
+          python -m compileall -q quantfusion/application/stress.py quantfusion/application/stress_artifacts.py tests/c6_non_economic/test_c6_formal_ab5.py tests/unit/test_stress_scenarios.py
+          python -m pytest -q tests/unit/test_stress_scenarios.py tests/c6_non_economic/test_c6_formal_ab5.py -k 'not formal_ab5_witness_reproduces_locked_path_and_budget_orders' 2>&1 | tee "$RUNNER_TEMP/c6-release-export/checkpoint-tests.txt"
+      - name: Publish tested checkpoint identity repair to original PR63
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -107,28 +128,31 @@ jobs:
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN"
           python - <<'PY'
           import json, os, urllib.request
-          req = urllib.request.Request('https://api.github.com/repos/ychenracing/trade/pulls/63', headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+          req = urllib.request.Request('https://api.github.com/repos/ychenracing/trade/pulls/63', headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN']})
           with urllib.request.urlopen(req, timeout=60) as response:
               pr = json.load(response)
           assert pr['state'] == 'open' and not pr['merged'] and pr['head']['sha'] == os.environ['EXPECTED_HEAD']
           PY
+          git config user.name ychenracing
+          git config user.email ychenracing@163.com
+          git commit -m 'fix(stress): fence checkpoints by candidate; complete AB5 ledger audit'
           git push origin HEAD:refs/heads/$TARGET_BRANCH
           test "$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)" = "$(git rev-parse HEAD)"
-          git branch c6-export-integrated HEAD
-          git bundle create "$RUNNER_TEMP/c6-release-export/integrated.bundle" c6-export-integrated
+          git branch c6-export-checkpoint HEAD
+          git bundle create "$RUNNER_TEMP/c6-release-export/integrated.bundle" c6-export-checkpoint
           git show -s --format='%H %T %P' HEAD > "$RUNNER_TEMP/c6-release-export/head.txt"
           git diff "$EXPECTED_HEAD" HEAD --stat > "$RUNNER_TEMP/c6-release-export/diff-stat.txt"
           python - <<'PY'
-          import hashlib,json,os,pathlib,subprocess
-          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'c6-release-export'
-          receipt={'workflow_run_id':os.environ['GITHUB_RUN_ID'],'source_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_tree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(),'previous_head':os.environ['EXPECTED_HEAD'],'main_revision':os.environ['EXPECTED_MAIN'],'published':True,'economic_dispatches':0,'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file()}}
-          (out/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          import hashlib, json, os, pathlib, subprocess
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'c6-release-export'
+          receipt = {'workflow_run_id': os.environ['GITHUB_RUN_ID'], 'source_revision': subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(), 'source_tree': subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(), 'previous_head': os.environ['EXPECTED_HEAD'], 'main_revision': os.environ['EXPECTED_MAIN'], 'published': True, 'economic_dispatches': 0, 'sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file()}}
+          (out / 'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2) + '\n')
           print(json.dumps(receipt,sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: c6-ab5-direct-integration-${{ github.run_id }}
+          name: c6-ab5-checkpoint-integration-${{ github.run_id }}
           path: ${{ runner.temp }}/c6-release-export/
           if-no-files-found: error
           retention-days: 30
