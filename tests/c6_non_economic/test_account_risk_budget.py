@@ -187,6 +187,7 @@ def test_ab7_does_not_create_a_stock_only_sell_date():
     assert r['gross_before'] <= r['gross_cap']
     assert r['current_gap_debit'] > r['remaining_loss_budget']
     assert r['stock_gap_constraint_binding'] is False
+    assert r['mechanism'] == 'AB7'
     assert state.pending == []
 
 
