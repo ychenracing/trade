@@ -333,11 +333,6 @@ class OverlayPolicyMixin:
             actions.extend(
                 self._apply_concentration_guard(
                     states, prices, date_str, scoring_fn, drawdown, assets,
-                    early_s_evidence=bool(
-                        s_enabled
-                        and observed is not None
-                        and observed["early_sell_required"]
-                    ),
                 )
             )
 
