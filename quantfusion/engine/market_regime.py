@@ -4,40 +4,19 @@ from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
 
-# ruff: noqa: F401
 
-import contextlib
-import io
 import math
 from dataclasses import replace
-from typing import Any, ClassVar
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
-from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import MarketRegimeObservation, Signal
 from quantfusion.domain.rules import floor_to_lot, require_int
-from quantfusion.engine.core import CoreBacktestEngine
-from quantfusion.engine.ensemble import (
-    EnsembleBacktestEngine,
-    EnsembleSleeveBacktestEngine,
-    PreparedSleeveRun,
-    RunRequest,
-)
-from quantfusion.execution.priorities import EXECUTION_PRIORITY
 from quantfusion.indicators.technical import Indicators
-from quantfusion.config.portfolio import PortfolioPolicy
-from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
 from quantfusion.strategy.trend import BaseStrategy
 
-_CoreBacktestEngine = CoreBacktestEngine
-_ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
-_EnsembleBacktestEngine = EnsembleBacktestEngine
-_EnsembleSleeveBacktestEngine = EnsembleSleeveBacktestEngine
-_PreparedSleeveRun = PreparedSleeveRun
-_RunRequest = RunRequest
 _floor_to_lot = floor_to_lot
 _require_int = require_int
 
@@ -53,7 +32,7 @@ class MarketRegimeMixin:
         )
         self._tradable_symbol_codes: set[str] = set(symbols_dict)
         self._candidate_score_series: dict[str, dict[int, pd.Series]] = {}
-        # Report P1-3: sticky-candidate rotation state. ``_sticky_beat_days``
+        # Sticky-candidate rotation state. ``_sticky_beat_days``
         # counts consecutive days a NEW candidate has clearly beaten the weakest
         # replaceable held name (confirmation before rotating); ``_sticky_leader``
         # is the candidate currently being confirmed so the count only advances

@@ -2,44 +2,19 @@
 
 from __future__ import annotations
 
-# ruff: noqa: F401
 
-import contextlib
-import io
 import math
 from dataclasses import replace
 from typing import Any, ClassVar
 
-import numpy as np
-import pandas as pd
 
-from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
-from quantfusion.data.providers import DataFetcher
-from quantfusion.domain.models import MarketRegimeObservation, Signal
-from quantfusion.domain.rules import floor_to_lot, require_int
-from quantfusion.engine.core import CoreBacktestEngine
-from quantfusion.engine.ensemble import (
-    EnsembleBacktestEngine,
-    EnsembleSleeveBacktestEngine,
-    PreparedSleeveRun,
-    RunRequest,
-)
-from quantfusion.execution.priorities import EXECUTION_PRIORITY
-from quantfusion.indicators.technical import Indicators
+from quantfusion.domain.rules import require_int
+from quantfusion.engine.ensemble import EnsembleBacktestEngine, EnsembleSleeveBacktestEngine
 from quantfusion.config.portfolio import PortfolioPolicy
-from quantfusion.risk.managers import (
-    RecoverableDrawdownRiskManager,
-    RiskManager,
-)
-from quantfusion.strategy.trend import BaseStrategy
+from quantfusion.risk.managers import RiskManager
 
-_CoreBacktestEngine = CoreBacktestEngine
-_ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
 _EnsembleBacktestEngine = EnsembleBacktestEngine
 _EnsembleSleeveBacktestEngine = EnsembleSleeveBacktestEngine
-_PreparedSleeveRun = PreparedSleeveRun
-_RunRequest = RunRequest
-_floor_to_lot = floor_to_lot
 _require_int = require_int
 from quantfusion.engine.ensemble_allocation import EnsembleAllocationMixin
 from quantfusion.engine.ensemble_orchestration import EnsembleOrchestrationMixin
@@ -59,7 +34,7 @@ class _UniverseInvariantSleeveMixin(
     risk_events: list[dict[str, Any]]
     _risk_lock_logged: bool
 
-    # Report P1-3: sticky candidates reduce large-pool churn. A held name is
+    # Sticky candidates reduce large-pool churn. A held name is
     # retained (incumbent bonus) unless it stops qualifying, and a weak held
     # non-core name is replaced only when a new candidate CLEARLY beats it by
     # ``MIN_SCORE_GAP`` for ``STICKY_CONFIRM_DAYS`` consecutive days, at most

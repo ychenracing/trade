@@ -4,13 +4,12 @@ from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
 
-# ruff: noqa: F401
 
 import contextlib
 import io
 import math
 from dataclasses import replace
-from typing import Any, ClassVar
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -19,24 +18,13 @@ from quantfusion.config.universe import (
     ESTABLISHED_BASE_CORE,
     ESTABLISHED_EXPANSION_CORE,
 )
-from quantfusion.data.providers import DataFetcher
-from quantfusion.domain.models import MarketRegimeObservation, Signal
-from quantfusion.domain.rules import (
-    floor_to_lot,
-    require_int,
-)
-from quantfusion.engine.core import CoreBacktestEngine
-from quantfusion.engine.ensemble import (
-    EnsembleBacktestEngine,
-    EnsembleSleeveBacktestEngine,
-    PreparedSleeveRun,
-    RunRequest,
-)
+from quantfusion.domain.models import Signal
+from quantfusion.domain.rules import require_int
+from quantfusion.engine.ensemble import PreparedSleeveRun, RunRequest
 from quantfusion.execution.priorities import EXECUTION_PRIORITY
 from quantfusion.execution.c6_receipts import begin_order, reconcile_close_queue
-from quantfusion.indicators.technical import Indicators
 from quantfusion.config.portfolio import PortfolioPolicy
-from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
+from quantfusion.risk.managers import RecoverableDrawdownRiskManager
 from quantfusion.risk.account_budget import apply_account_risk_budget
 from quantfusion.risk.overlay.adapter import (
     apply_cooldown_buy_gate,
@@ -44,14 +32,10 @@ from quantfusion.risk.overlay.adapter import (
 )
 from quantfusion.strategy.trend import BaseStrategy
 
-_CoreBacktestEngine = CoreBacktestEngine
 _ESTABLISHED_BASE_CORE = ESTABLISHED_BASE_CORE
 _ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
-_EnsembleBacktestEngine = EnsembleBacktestEngine
-_EnsembleSleeveBacktestEngine = EnsembleSleeveBacktestEngine
 _PreparedSleeveRun = PreparedSleeveRun
 _RunRequest = RunRequest
-_floor_to_lot = floor_to_lot
 _require_int = require_int
 
 

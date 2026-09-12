@@ -4,42 +4,12 @@ from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
 
-# ruff: noqa: F401
 
-import contextlib
-import io
 import math
-from dataclasses import replace
-from typing import Any, ClassVar
 
-import numpy as np
 import pandas as pd
 
-from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
-from quantfusion.data.providers import DataFetcher
-from quantfusion.domain.models import MarketRegimeObservation, Signal
-from quantfusion.domain.rules import floor_to_lot, require_int
-from quantfusion.engine.core import CoreBacktestEngine
-from quantfusion.engine.ensemble import (
-    EnsembleBacktestEngine,
-    EnsembleSleeveBacktestEngine,
-    PreparedSleeveRun,
-    RunRequest,
-)
-from quantfusion.execution.priorities import EXECUTION_PRIORITY
-from quantfusion.indicators.technical import Indicators
-from quantfusion.config.portfolio import PortfolioPolicy
-from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
-from quantfusion.strategy.trend import BaseStrategy
-
-_CoreBacktestEngine = CoreBacktestEngine
-_ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
-_EnsembleBacktestEngine = EnsembleBacktestEngine
-_EnsembleSleeveBacktestEngine = EnsembleSleeveBacktestEngine
-_PreparedSleeveRun = PreparedSleeveRun
-_RunRequest = RunRequest
-_floor_to_lot = floor_to_lot
-_require_int = require_int
+from quantfusion.risk.managers import RecoverableDrawdownRiskManager
 
 
 class UniverseSelectionMixin:
@@ -116,7 +86,7 @@ class UniverseSelectionMixin:
 
         ranked = sorted(eligible, key=sort_key)
         scores = {code: scores[code] for code in eligible}
-        # Report P1-3: sticky candidates for large pools. The daily ranking is
+        # Sticky candidates keep large-pool rankings stable. The daily ranking is
         # noisy, and rotating a held name out because its percentile dipped
         # slightly is pure churn (fee/slippage + selling a winner). We therefore
         # retain every eligible held symbol (incumbent bonus) and only rotate
@@ -143,7 +113,7 @@ class UniverseSelectionMixin:
         # Incumbent bonus: every eligible held name is retained by default.
         selected = set(eligible_held)
         # Expire rotated-out names whose cooldown has elapsed so a finite pool
-        # never dead-locks rotation (report P1-3 "recently rotated"). This prune
+        # never dead-locks rotation. This prune
         # must run BEFORE both the spare-slot fill and the rotation branch so a
         # freshly rotated-out name is never re-admitted into a spare slot within
         # its cooldown window.
@@ -173,7 +143,7 @@ class UniverseSelectionMixin:
                 selected.add(code)
         # Full book: rotate the weakest non-core held name when a clearly better
         # new candidate persists. Core (strongest STICKY_CORE_LOCK) names are
-        # locked against short-term ranking noise (report P1-3 "core lock").
+        # locked against short-term ranking noise.
         if len(selected) >= maximum and eligible_held:
             score_dispersion = (
                 max(scores.values()) - min(scores.values()) if scores else 0.0
@@ -224,7 +194,7 @@ class UniverseSelectionMixin:
                     if scores[cand] >= weakest_score + gap:
                         best_new = cand
                         break
-                # Consecutive-day confirmation (report P1-3 "consecutive days"):
+                # Consecutive-day confirmation:
                 # the beat counter advances only while the SAME candidate keeps
                 # being the best new option. A switch of leader (or the absence
                 # of any qualifying leader) resets the previous leader's count,
