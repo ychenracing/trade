@@ -29,7 +29,6 @@ EXPECTED_MARKDOWN = {
     Path("docs/ARCHITECTURE.md"),
     Path("docs/VALIDATION.md"),
     Path("docs/C6_RECOVERY_CONTRACT.md"),
-    Path("docs/C6_ACCOUNT_BUDGET_CONTINUATION.md"),
     Path("docs/C6_AB5_RELEASE.md"),
     Path("docs/C6_AB5_RELEASE_AUDIT.md"),
     Path("data/README.md"),
@@ -385,37 +384,29 @@ class RepositoryHygieneTests(unittest.TestCase):
         )
         self.assertNotIn("c6-v7-*) C6_REF_VERSION=v7", workflow)
 
-    def test_c6_bound_workflow_accepts_only_frozen_push_dispatch_envelopes(self) -> None:
-        bound_workflow = (
-            ROOT / ".github/workflows/c6-bound-economic.yml"
-        ).read_text(encoding="utf-8")
-        dispatcher = (
-            ROOT / ".github/workflows/c6-dispatch.yml"
-        ).read_text(encoding="utf-8")
-
-        self.assertNotIn("      - codex/c6-dispatch/**\n", bound_workflow)
-        self.assertIn("      - codex/c6-dispatch/**\n", dispatcher)
-        self.assertIn("  actions: write\n", dispatcher)
-        self.assertIn("  contents: read\n", dispatcher)
-        self.assertIn("      - name: Check out dispatch envelope\n", dispatcher)
-        self.assertIn('if os.environ["GITHUB_EVENT_NAME"] != "push":', dispatcher)
-        self.assertIn('if trigger_parent != inputs["workflow_revision"]:', dispatcher)
-        self.assertIn(
-            'if trigger_diff != "A\\t.github/c6-dispatch-request.json":',
-            dispatcher,
+    def test_completed_c6_relay_is_absent_from_current_maintenance(self) -> None:
+        for filename in ("c6-auto-resume.yml", "c6-dispatch.yml", "c6-stage-advance.yml"):
+            self.assertFalse((ROOT / ".github/workflows" / filename).exists())
+        self.assertEqual(list((ROOT / ".github/scripts").glob("*c6*.py")), [])
+        workflow = (ROOT / ".github/workflows/c6-bound-economic.yml").read_text(
+            encoding="utf-8"
         )
-        self.assertIn(
-            '"actions/workflows/c6-bound-economic.yml/dispatches"',
-            dispatcher,
-        )
-        self.assertNotIn("workflow_dispatch:", dispatcher)
+        # Manual, source-bound recovery remains; completed-task probes and
+        # automatic successor dispatch must not return through the retained entry.
+        self.assertIn("  workflow_dispatch:\n", workflow)
+        self.assertIn("      - name: Execute exact run binding\n", workflow)
+        for retired in ("  probe:", "  handoff:", ".github/scripts/", "actions: write",
+                        "synthetic-only", "c6.synthetic.resume"):
+            self.assertNotIn(retired, workflow)
 
-    def test_c6_prefreeze_branch_allowlist_has_one_source_of_truth(self) -> None:
+    def test_ci_runs_normal_checks_without_historical_branch_exemptions(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-
-        self.assertEqual(workflow.count("codex/c6-push-dispatch-preflight"), 1)
-        self.assertEqual(workflow.count("codex/c6-causal-risk-closure-v9"), 1)
-        self.assertNotIn("unapproved C6 pre-freeze branch", workflow)
+        self.assertNotIn("C6_PREFREEZE", workflow)
+        self.assertNotIn("codex/c6-", workflow)
+        self.assertIn("name: Run complete test suite", workflow)
+        self.assertIn("name: Fetch retained formal artifact source", workflow)
+        self.assertIn("name: Verify five frozen universes", workflow)
+        self.assertIn("needs: [test, typecheck, security]", workflow)
 
     def test_generated_directories_are_not_committed(self) -> None:
         forbidden_parts = {

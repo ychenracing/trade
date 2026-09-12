@@ -1,4 +1,4 @@
-"""Synthetic controls for the separately preregistered AB2 risk envelope."""
+"""Account risk-budget plans, default enablement, and execution receipts."""
 from __future__ import annotations
 
 from copy import deepcopy

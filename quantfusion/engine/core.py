@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-# ruff: noqa: F401
-
-from typing import Any
 
 import pandas as pd
 

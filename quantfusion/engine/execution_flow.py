@@ -4,52 +4,17 @@ from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
 
-# The same stable domain vocabulary is intentionally available to each mixin;
-# responsibility is split by behavior, not by duplicating implementations.
-# ruff: noqa: F401
+from typing import Any
 
-import math
-from dataclasses import replace
-from typing import Any, Callable, ClassVar
-
-import numpy as np
 import pandas as pd
 
-from quantfusion.config.engine import default_engine_config
-from quantfusion.data.providers import DataFetcher
-from quantfusion.domain.models import (
-    BarContext,
-    Position,
-    SectorObservation,
-    Signal,
-    TradeRecord,
-)
-from quantfusion.domain.rules import (
-    SYMBOL_RE,
-    floor_to_lot,
-    is_finite_number,
-    require_bool,
-    require_finite,
-    require_int,
-    require_positive,
-)
-from quantfusion.indicators.technical import Indicators
+from quantfusion.domain.models import Position, Signal, TradeRecord
+from quantfusion.domain.rules import floor_to_lot, is_finite_number
 from quantfusion.execution.c6_receipts import record_fill
-from quantfusion.risk.managers import RiskManager
-from quantfusion.strategy.trend import (
-    ATRChannelStrategy,
-    BaseStrategy,
-    DualMAStrategy,
-    TurtleBreakoutStrategy,
-)
+from quantfusion.strategy.trend import BaseStrategy
 
-_SYMBOL_RE = SYMBOL_RE
 _floor_to_lot = floor_to_lot
 _is_finite_number = is_finite_number
-_require_bool = require_bool
-_require_finite = require_finite
-_require_int = require_int
-_require_positive = require_positive
 
 
 class CoreExecutionMixin:
