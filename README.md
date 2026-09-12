@@ -49,19 +49,6 @@ Quant Fusion 是面向 A 股 AI 硬件、光通信和半导体产业链的日线
 
 以上输出随回测结果自动附出：`warmup_health`、`risk_opinion`、`sleeve_agreement`、`risk_governance_series`（逐日）与 `risk_event_calibration`（事件表与指标）。
 
-## AB5 本次发布范围
-
-原 PR63 选中的 `C6-Base+AB5` 在既有连续账户、订单队列和下一可交易日执行链上增加
-账户风险预算，不改变账户锁或买卖撮合规则。它须显式使用
-`account_risk_budget_enabled=True`；未指定 AB5 的日扫和旧研究命令不会自动启用。
-现有公开引擎调用、正式命令、来源绑定及用户明确接受的回撤与财富保留例外，
-见 [AB5 发布说明](docs/C6_AB5_RELEASE.md)；完整已封存 Base 的账本审计见
-[AB5 账本审计](docs/C6_AB5_RELEASE_AUDIT.md)。
-
-已知 21.106217% 最大回撤和三个财富比较差异是本次明确接受的历史结果，
-不是 18% 风险触发线的未来保证；L1 通过新例外判定也不等于 958 场景正式验收完成。
-以下通用策略参数、旧标准和历史正式报告保留各自原口径，不用新例外改写旧证据。
-
 ## 默认策略参数
 
 完整默认策略字段如下，具体默认值和校验分别以 `quantfusion.config.engine.default_engine_config()` 与 `validate_engine_config()` 为唯一事实来源：
