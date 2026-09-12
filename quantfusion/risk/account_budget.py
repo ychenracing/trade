@@ -44,7 +44,7 @@ def account_budget_capacity(
 
 
 def account_budget_plan(
-    equity: float, peak: float, cfg: Mapping[str, Any], book_count: int,
+    equity: float, peak: float, cfg: dict[str, Any], book_count: int,
     holdings: Sequence[tuple[str, int, float]],
     buys: Sequence[tuple[str, int, float]], *, sell_order: Sequence[int],
 ) -> tuple[dict[str, Any], list[int]]:
