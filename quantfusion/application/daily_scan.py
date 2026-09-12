@@ -15,6 +15,7 @@ from typing import Any, cast
 import pandas as pd
 
 from quantfusion.application import account_scan, engine_api as qf, regime_api as ra
+from quantfusion.application.daily_report import publish_daily_report
 from quantfusion.application.daily_signals import (
     apply_buy_suppression,
     serialize_pending_signals,
@@ -174,7 +175,7 @@ def _run_main() -> int:
     if risk_error:
         print(f"  ✗ {risk_error}")
         print("  风险状态文件损坏 — 拒绝继续运行以防止丢失终态锁定状态。")
-        print("  请删除 risk_state.json 后重试，或检查文件权限。")
+        print("  请先保留原文件，核对内容、权限和账户身份；不要删除风险状态来绕过锁定。")
         return 1
 
     mode_label = "模拟模式"
@@ -369,7 +370,7 @@ def _run_main() -> int:
         prev_total = prev_risk.get("total_symbols", 0)
         if not prev_hash:
             print("  ⚠ 前次风险状态缺少 symbols_hash (旧格式)，拒绝加载以防止交叉污染。")
-            print("    删除 risk_state.json 可清除此警告。")
+            print("    请保留原文件并核对来源，不要通过删除风险状态消除警告。")
             prev_risk = None
             suppress_buys = True
         elif prev_hash != current_hash:
@@ -379,7 +380,7 @@ def _run_main() -> int:
             prev_risk = None
             suppress_buys = True
             print("  ⚠ 买入信号将被抑制 (风险状态不匹配 — fail-closed)。")
-            print("    删除 risk_state.json 并重新运行可恢复完整信号。")
+            print("    请核对股票池、配置和原风险状态；删除状态不代表原账户风险已解除。")
 
     # Risk-state identity and current-route safety are independent. A route
     # change blocks new buys but must not disable the state/artifact transaction.
@@ -570,18 +571,10 @@ def _run_main() -> int:
             "profile": qf.get_symbol_profile(code, "default"),
         })
 
-    # ── Print summary table ──────────────────────────────────────────
-    print(f"{'代码':<10} {'名称':<10} {'信号':<12} {'行业':<20} {'Profile':<12} {'持仓股数':>12}  {'策略'}")
-    print("─" * 100)
-
+    # Keep machine summary counts independent from the reading report.
     buy_count = sell_count = hold_count = wait_count = untradeable_count = 0
     suppressed_buy_count = 0
     for row in rows:
-        print(
-            f"{row['code']:<10} {row['name']:<10} {row['signal']:<12} "
-            f"{row['industry']:<20} {row['profile']:<12} "
-            f"{row['held_shares']:>12,}  {row['strategies']}"
-        )
         if "买入已抑制" in row["signal"]:
             # Mixed signal with buys suppressed — only the sell part
             # remains visible (buy suppression removes buy labels and
@@ -606,137 +599,7 @@ def _run_main() -> int:
         else:
             hold_count += 1
 
-    print("─" * 72)
-    print(
-        f"信号汇总:  买入 {buy_count}  |  卖出 {sell_count}  |  "
-        f"持有 {hold_count}  |  观望 {wait_count}  |  不可交易 {untradeable_count}"
-    )
-    if suppressed_buy_count:
-        print(f"  ⚠ {suppressed_buy_count} 个买入信号已被抑制 (风险状态不匹配)")
-    print()
-
-    # ── Portfolio metrics ────────────────────────────────────────────
-    print("─" * 72)
-    print("  组合绩效指标")
-    print("─" * 72)
-    print(f"  最终资产:     ¥{result['final_assets']:>15,.0f}")
-    print(f"  总收益率:       {result['total_return']:>14.2%}")
-    print(f"  最大回撤:       {result['max_drawdown']:>14.2%}")
-    print(f"  Sharpe:         {result['sharpe']:>14.2f}")
-    print(f"  成交记录数:     {result['total_trades']:>14}")
-    print(
-        "  日期/股票/方向桶:"
-        f"{result.get('date_symbol_side_count', 0):>12}"
-    )
-    print(f"  自动策略路由:   {result.get('deployment_policy', 'unknown'):>14}")
-    allocation_mode = result.get("allocation_mode", "ensemble")
-    print(f"  分配模式:       {allocation_mode:>14}")
-    print(
-        f"  风险锁定:       "
-        f"{'是' if result.get('terminal_risk_lock') else '否'}"
-    )
     guard = result.get("sector_guard_active", False)
-    print(f"  板块风控激活:   {'是' if guard else '否'}")
-    safe_mode = result.get("safe_mode_active", False)
-    if safe_mode:
-        print("  ⚠ 市场状态: CHOPPY (震荡市)")
-    print()
-
-    # ── Risk state continuity check ─────────────────────────────────
-    if prev_risk:
-        print("─" * 72)
-        print("  风险状态连续性检查")
-        print("─" * 72)
-        prev_lock = prev_risk.get("terminal_risk_lock", False)
-        curr_lock = bool(result.get("terminal_risk_lock", False))
-        prev_guard = prev_risk.get("sector_guard_active", False)
-        curr_guard = bool(guard)
-        if prev_lock and not curr_lock:
-            print("  ⚠ 上次终态锁定已激活，但本次回测未检测到 — 可能因回测区间不同")
-            print("    如实盘仍有终态锁定，请勿根据本次信号加仓。")
-        elif prev_lock and curr_lock:
-            print("  终态锁定: 上次 ✓  本次 ✓ (一致)")
-        elif not prev_lock and curr_lock:
-            print("  ⚠ 本次检测到终态锁定 — 上次未激活")
-        else:
-            print("  终态锁定: 上次 ✗  本次 ✗ (正常)")
-        if prev_guard and not curr_guard:
-            print("  ⚠ 上次板块风控已激活，本次已解除 — 确认市场是否真的恢复")
-        elif prev_guard and curr_guard:
-            print("  板块风控: 上次 ✓  本次 ✓ (一致)")
-        elif not prev_guard and curr_guard:
-            print("  ⚠ 本次板块风控已激活 — 上次未激活")
-        else:
-            print("  板块风控: 上次 ✗  本次 ✗ (正常)")
-        print(f"  上次最大回撤: {prev_risk.get('max_drawdown', 0):.2%}")
-        print(f"  本次最大回撤: {result.get('max_drawdown', 0):.2%}")
-        print()
-
-    # ── Bear market position advisory ────────────────────────────────
-    # Check current backtest drawdown to advise on position sizing
-    if result.get("max_drawdown", 0) and abs(result["max_drawdown"]) > 0.15:
-        dd = abs(result["max_drawdown"])
-        advisory = ""
-        if dd > 0.20:
-            advisory = f"  ⚠ 当前组合最大回撤 {dd:.1%}，建议总仓位不超过50%"
-        elif dd > 0.15:
-            advisory = f"  ⚠ 当前组合最大回撤 {dd:.1%}，建议总仓位不超过70%"
-        print("─" * 72)
-        print("  弱市仓位建议")
-        print("─" * 72)
-        print(advisory)
-        print()
-
-    # ── Risk events (latest) ─────────────────────────────────────────
-    risk_events = result.get("risk_events", [])
-    if risk_events:
-        latest_events = risk_events[-5:]
-        print("─" * 72)
-        print("  最近风控事件 (最多5条)")
-        print("─" * 72)
-        for ev in latest_events:
-            print(
-                f"  {ev.get('date', '?')}  {ev.get('event', '?')}  "
-                f"[{ev.get('sleeve', 'portfolio')}]"
-            )
-        print()
-
-    # ── Independent risk opinion (2026-08-16 报告 P0-3) ──────────────
-    if isinstance(risk_opinion, dict):
-        print("─" * 72)
-        print("  独立风险意见 (与交易动作分离)")
-        print("─" * 72)
-        level = int(risk_opinion.get("risk_level", 0))
-        print(f"  日期:           {risk_opinion.get('date', '?')}")
-        print(f"  风险等级:       L{level}")
-        print(
-            f"  风险置信度:     {float(risk_opinion.get('risk_confidence', 0.0)):.2f}"
-            "  (风险篮覆盖度加权)"
-        )
-        print(f"  市场状态:       {risk_opinion.get('regime', '?')}")
-        print(
-            f"  健康牛市沉默:   {'是' if risk_opinion.get('bull_silent') else '否'}"
-        )
-        print(
-            f"  禁止新开仓:     {'是' if risk_opinion.get('block_new_entries') else '否'}"
-            f"   冻结加仓: {'是' if risk_opinion.get('block_pyramids') else '否'}"
-        )
-        print(
-            f"  建议总敞口上限: {float(risk_opinion.get('recommended_gross_cap', 1.0)):.0%}"
-        )
-        clusters = risk_opinion.get("weakest_clusters") or []
-        if clusters:
-            print(f"  最弱集群:       {', '.join(map(str, clusters))}")
-        consensus = risk_opinion.get("sleeve_consensus")
-        if consensus is not None:
-            print(
-                f"  袖套共识:       {float(consensus):.2f}"
-                f" (连续退化 {int(risk_opinion.get('sleeve_consensus_decline_streak', 0))} 日)"
-            )
-        reasons = risk_opinion.get("reason_codes") or []
-        if reasons:
-            print(f"  原因代码:       {', '.join(map(str, reasons))}")
-        print()
 
     # ── Build artifact and pre-serialize to detect nested NaN ───────
     # The artifact is pre-serialized (allow_nan=False) to detect NaN/Inf
@@ -983,7 +846,7 @@ def _run_main() -> int:
     elif risk_identity_mismatch:
         print(f"  结果已保存: {output_file}")
         print("  ⚠ 风险状态未保存 (身份不匹配 — 保留旧状态以维持终态锁连续性)")
-        print("  使用 --reset-risk-state 可建立新身份并清除买入抑制。")
+        print("  只有明确建立新研究身份时才使用 --reset-risk-state；先保全原状态，这不解除原账户风险锁。")
     else:
         print(f"  结果已保存: {output_file}")
         if risk_state_save_error:
@@ -994,6 +857,7 @@ def _run_main() -> int:
     # Risk state save failure is a runtime error.
     if risk_state_save_error:
         return 1
+    publish_daily_report(output_file, replay=result, expected_identity=("run_id", run_id))
     return 0
 
 
