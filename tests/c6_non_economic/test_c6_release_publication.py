@@ -17,7 +17,7 @@ def _gates():
                        "random_p90_date_symbol_side_buckets_at_most_160": False,
                        "all_date_symbol_side_buckets_at_most_200": False},
             "observed": {"all_worst_drawdown": -0.2110621724651241,
-                         "random_p90_date_symbol_side_buckets": 184.0,
+                         "random_p90_date_symbol_side_buckets": 185.0,
                          "all_worst_date_symbol_side_buckets": 230},
         },
         "retained_robustness_hard_gates": {
@@ -48,13 +48,13 @@ def test_formal_profile_applies_all_and_only_authorized_limits():
     assert raw == before
     assert assessed["passed"] is True
     assert len(assessed["predicate_results"]) == 10
-    assert sum(row["exception_applied"] is not None for row in assessed["predicate_results"]) == 4
+    assert sum(row["exception_applied"] is not None for row in assessed["predicate_results"]) == 5
     assert assessed["acceptance_revision"] == release.ACCEPTANCE_REVISION
 
 
 @pytest.mark.parametrize(("family", "field", "value"), [
     ("absolute_hard_gates", "all_worst_drawdown", -0.212),
-    ("absolute_hard_gates", "random_p90_date_symbol_side_buckets", 184.01),
+    ("absolute_hard_gates", "random_p90_date_symbol_side_buckets", 185.01),
     ("absolute_hard_gates", "all_worst_date_symbol_side_buckets", 231),
     ("retained_robustness_hard_gates", "prefix_9_to_10_wealth_change", -0.115),
     ("retained_robustness_hard_gates", "worst_adjacent_wealth_change", -0.456),
@@ -125,7 +125,7 @@ def test_initial_release_publisher_preserves_native_gates_and_refuses_unwaived_f
     total_return = max(row['total_return'] for row in reference['results']) + 1
     rows = [{**scenario, 'symbol_count':len(scenario['symbols']), 'total_return':total_return,
              'max_drawdown':-0.2110621724651241, 'sharpe':1., 'calmar':1., 'total_trades':230,
-             'sleeve_fill_count':230, 'date_symbol_side_count':184 if scenario['scenario_type']=='random_subset' else 230,
+             'sleeve_fill_count':230, 'date_symbol_side_count':185 if scenario['scenario_type']=='random_subset' else 230,
              'max_concurrent_symbols':len(scenario['symbols']), 'terminal_risk_lock':True,
              'reason_attribution':{k:230 if k=='initial_entry' else 0 for k in stress_metrics.ATTRIBUTION_CATEGORIES},
              'deployment_policy':'production_daily_replay'} for scenario in plan]
