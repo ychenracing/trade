@@ -286,6 +286,10 @@ def _validate_publish_candidate(
         prefix_scenarios
     ):
         raise ValueError("Stress candidate did not complete the prefix scenario plan")
+    if completed_prefixes != {
+        scenario_id: completed[scenario_id] for scenario_id in expected_prefix_ids
+    }:
+        raise ValueError("Stress candidate prefix and universe results differ")
     expected_absolute_gates = stress_metrics._absolute_hard_gates(results)
     if universe_artifact.get("absolute_hard_gates") != expected_absolute_gates:
         raise ValueError("Stress candidate absolute hard gates changed")
@@ -324,7 +328,69 @@ def _load_incumbent(path: Path) -> dict[str, Any] | None:
     ):
         return None
     stress_metrics._current_incumbent_by_id(payload)
+    if payload.get("candidate_id") == "C6-Base+AB5" or "release_acceptance" in payload:
+        _validate_ab5_incumbent(payload)
     return payload
+
+
+def _validate_ab5_incumbent(payload: dict[str, Any]) -> None:
+    """Reconcile stored native facts and release proof, not today's checkout SHA.
+
+    Artifact transport/authenticity remains the caller's responsibility. This
+    read boundary rejects altered assessments, native gates and proof context;
+    it does not rerun economic scenarios or fetch the large original L2 ledger.
+    """
+    from quantfusion.application.c6_contract import canonical_payload_hash
+    from quantfusion.application.c6_release_acceptance import (
+        AB5_BASE_PRODUCER_RUN_ID, AB5_BASE_SOURCE_REVISION, AB5_CANDIDATE_ID,
+        AB5_DATA_FINGERPRINT, AB5_REFERENCE_SHA256, _AB5_REFERENCE_PAYLOAD_SHA256,
+        validate_published_release_assessment,
+    )
+
+    validate_published_release_assessment(payload)
+    if payload.get("candidate_id") != AB5_CANDIDATE_ID:
+        raise ValueError("AB5 release assessment attached to a foreign candidate")
+    attachment = payload["release_acceptance"]
+    binding, l2 = attachment.get("source_binding"), attachment.get("L2")
+    expected_binding = {
+        "kind": "ab5_economic_dependency_equivalence",
+        "candidate_id": AB5_CANDIDATE_ID,
+        "execution_source_revision": payload.get("source_revision"),
+        "base_source_revision": AB5_BASE_SOURCE_REVISION,
+        "base_producer_run_id": AB5_BASE_PRODUCER_RUN_ID,
+        "reference_sha256": AB5_REFERENCE_SHA256,
+        "data_fingerprint": AB5_DATA_FINGERPRINT,
+    }
+    if (not isinstance(binding, Mapping)
+            or any(binding.get(key) != value for key, value in expected_binding.items())
+            or payload.get("data_fingerprint") != AB5_DATA_FINGERPRINT):
+        raise ValueError("AB5 release assessment source binding differs")
+    if (not isinstance(l2, Mapping) or l2.get("l2_scenario_count") != 77
+            or l2.get("execution_source_revision") != payload.get("source_revision")
+            or not isinstance(l2.get("economic_producer"), Mapping)):
+        raise ValueError("AB5 release assessment L2 binding differs")
+    for name in ("selection_id", "l2_assessment_id", "l2_evidence_sha256"):
+        value = l2.get(name)
+        if (not isinstance(value, str) or len(value) != 64
+                or any(character not in "0123456789abcdef" for character in value)):
+            raise ValueError("AB5 release assessment L2 identity is incomplete")
+    reference_path = PROJECT_ROOT / "artifacts" / "validation" / "candidates" / (
+        "stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json")
+    reference = _load_initial_baseline_reference(reference_path)
+    if canonical_payload_hash(reference) != _AB5_REFERENCE_PAYLOAD_SHA256:
+        raise ValueError("AB5 incumbent requires its authenticated fixed reference")
+    scenarios = stress_scenarios._multi_seed_scenarios(
+        random_samples=50, permutation_samples=50, seeds=stress_scenarios.DEFAULT_SEEDS,
+    )
+    provenance = {field: payload.get(field) for field in (*PROVENANCE_FIELDS, "candidate_id")}
+    if provenance["scenario_signature"] != stress_scenarios._scenario_signature(scenarios):
+        raise ValueError("AB5 release assessment scenario signature differs")
+    _validate_publish_candidate(
+        {**provenance, "results": [row for row in payload["results"]
+                                  if row["scenario_type"] == "prefix"]},
+        payload, scenarios=scenarios, provenance=provenance, incumbent=None,
+        initial_baseline_reference=reference,
+    )
 
 
 def _load_initial_baseline_reference(path: Path) -> dict[str, Any]:
