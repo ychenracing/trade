@@ -46,14 +46,21 @@ def _digest(value: Any) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
+def _prior_profile(config: dict[str, Any]) -> dict[str, Any]:
+    # The sole authorized profile change is default activation, not alpha tuning.
+    assert config["account_risk_budget_enabled"] is True
+    return {key: value for key, value in config.items()
+            if key != "account_risk_budget_enabled"}
+
+
 def test_every_named_profile_has_exact_pre_refactor_content() -> None:
     for name, expected in PROFILE_HASHES.items():
-        assert _digest(getattr(profiles, name)()) == expected
+        assert _digest(_prior_profile(getattr(profiles, name)())) == expected
 
 
 def test_every_mapped_symbol_has_exact_effective_profile_at_default_shrinkage() -> None:
     effective = {
-        code: profiles.config_for_symbol(code)
+        code: _prior_profile(profiles.config_for_symbol(code))
         for code in sorted(profiles.SYMBOL_PROFILES)
     }
     assert len(effective) == 36
@@ -86,7 +93,7 @@ def test_symbol_routing_fact_sets_are_immutable() -> None:
 
 def test_default_config_content_and_validation_are_exact() -> None:
     defaults = default_engine_config()
-    assert _digest(defaults) == (
+    assert _digest(_prior_profile(defaults)) == (
         "9f12be9c503bf493dd3a8c9b8cbb6169d981746f7b2417db2bfb38d49c7f6dca"
     )
     assert validate_engine_config(defaults) == defaults

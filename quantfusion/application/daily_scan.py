@@ -24,6 +24,7 @@ from quantfusion.application.daily_support import (
     extract_positions,
     today_str,
     validate_result_fields,
+    validate_production_risk_result,
 )
 from quantfusion.config.daily import (
     DEFAULT_CACHE_DIR,
@@ -360,7 +361,7 @@ def _run_main() -> int:
     # to prevent entering new positions without verified risk-state continuity.
     config_fingerprint = (
         f"start={start_date}|indicator=warm"
-        f"|capital={capital}|warmup=365|deployment={args.deployment_mode}"
+        f"|capital={capital}|warmup=365|deployment={args.deployment_mode}|account_risk_budget=AB5"
     )
     suppress_buys = False
     if prev_risk:
@@ -419,6 +420,8 @@ def _run_main() -> int:
     # artifact to a SEPARATE file (signals_<date>.error.json) so the last
     # successful artifact (signals_<date>.json) is never overwritten.
     result_invalid_fields = _validate_result_fields(result)
+    if not result_invalid_fields:
+        result_invalid_fields.extend(validate_production_risk_result(result))
     result_is_valid = len(result_invalid_fields) == 0
 
     if not result_is_valid:
@@ -777,6 +780,7 @@ def _run_main() -> int:
         },
         "warmup_health": warmup_health,
         "risk_opinion": risk_opinion,
+        "account_risk_budget": result["account_risk_budget"],
         "portfolio": {
             "final_assets": float(result["final_assets"]),
             "total_return": float(result["total_return"]),

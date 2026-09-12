@@ -6,6 +6,7 @@ from __future__ import annotations
 # ruff: noqa: F401
 
 from ._daily_scan_support import (
+    synthetic_budget_fields,
     FakeSignal,
     FakeTrade,
     Path,
@@ -513,7 +514,7 @@ class ArtifactStrictJSONTests(unittest.TestCase):
             "final_assets": 2200000.0,
             "sharpe": 2.5,
             "total_trades": 50,
-            "risk_events": [],
+            **synthetic_budget_fields(),
             "pending_signals": [],
             "trades": [],
             "safe_mode_active": False,

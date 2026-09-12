@@ -170,3 +170,14 @@ canonical 仓库路径由 `quantfusion.config.paths` 提供。用户显式传入
 
 <!-- C6_BASELINE_REBUILD_META: {"reference_scenarios": 958, "cohort_scenarios": 765, "failures": 649, "boundaries": 110, "controls": 6} -->
 历史 C6 基线兼容性重建保留旧 281 场景证据不变，并从当时唯一完整的 17 股/958 场景 rejected transition reference 确定性派生 765 个场景：649 个失败、110 个 17%—18% 边界和 6 个对照；该重建本身未运行新回测、未建立 accepted canonical 基线。当前 AB5 基线来自另行完成的正式经济运行及已授权派生验收，不改写这份历史重建。
+
+## 默认风险预算的单一所有权
+
+`quantfusion.risk.account_budget` 维护同一 AB5 容量公式与整数减仓计划。
+组合回放每个收盘只由合并账户执行一次，子袖套不重复消费预算；独立单袖套/弱市回放
+用自身连续权益与原挂单队列执行。风险动作仍经既有适配器，不引入第二撮合或资本分配器。
+
+日扫检查实际 `account_risk_budget` 评估回执，缺失/关闭/仅配置未执行的结果不能发布成功。
+`AccountSignalEngine` 使用同一纯规划器限制真实快照建议，读取已有 `peak_equity`；
+不回放伪造持仓历史、不把单个账户拆成虚构袖套，不让未成交减仓给新买入信用。
+历史诊断用显式候选身份和关闭预算配置隔离，默认值变化不能改写原已冻结对照。

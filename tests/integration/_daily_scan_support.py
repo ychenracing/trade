@@ -43,3 +43,17 @@ VALID_RISK_STATE = {
     "total_return": 0.08,
     "final_assets": 2160000.0,
 }
+
+
+def synthetic_budget_fields() -> dict:
+    """A genuinely evaluated synthetic close, not an enabled-only success stub."""
+    from quantfusion.config.engine import default_engine_config
+    from quantfusion.risk.account_budget import account_budget_plan, account_budget_status
+
+    plan, _ = account_budget_plan(2_000_000., 2_000_000., default_engine_config(),
+                                  0, [], [], sell_order=[])
+    event = {"event": "account_budget_envelope", "date": "2026-07-30",
+             "mechanism": "AB5", "planned_not_filled": True, **plan,
+             "buy_shares_removed": 0, "new_reduction_orders": 0}
+    return {"risk_events": [event], "account_risk_budget": account_budget_status(
+        True, [event], hwm_source="merged_account.lifetime_peak_assets")}

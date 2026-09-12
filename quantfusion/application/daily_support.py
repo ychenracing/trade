@@ -110,3 +110,19 @@ today_str = _today_str
 validate_result_fields = _validate_result_fields
 classify_signal = _classify_signal
 extract_positions = _extract_positions
+
+
+def validate_production_risk_result(result: dict[str, Any]) -> list[str]:
+    """Refuse daily publication when AB5 is merely configured, not evaluated."""
+    from quantfusion.risk.account_budget import account_budget_status
+
+    events = result.get("risk_events")
+    receipt = result.get("account_risk_budget")
+    if not isinstance(events, list) or any(not isinstance(row, dict) for row in events):
+        return ["account_risk_budget: risk events are unavailable"]
+    if not isinstance(receipt, dict) or receipt.get("enabled") is not True:
+        return ["account_risk_budget: production budget is not enabled"]
+    expected = account_budget_status(True, events, hwm_source=str(receipt.get("hwm_source", "")))
+    if receipt != expected or receipt.get("status") != "APPLIED":
+        return ["account_risk_budget: no matching actual budget evaluations"]
+    return []

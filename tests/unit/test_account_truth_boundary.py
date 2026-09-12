@@ -200,7 +200,6 @@ def _run_with_market(
         patch.object(account_scan, "DualMAStrategy", _NoBuyStrategy),
         patch.object(account_scan, "ATRChannelStrategy", _NoBuyStrategy),
         patch.object(account_scan, "trend_candidate_score", return_value=0.9),
-        patch.object(account_scan, "default_engine_config", return_value={"max_positions": 6}),
     ):
         result = engine.run(
             snapshot,
@@ -584,7 +583,7 @@ def test_real_weak_route_reuses_one_frozen_frame_per_symbol() -> None:
     )
 
 
-def test_entry_before_loaded_window_without_peak_disables_peak_stop() -> None:
+def test_incomplete_position_peak_does_not_disable_account_budget() -> None:
     result, _ = _run_with_market(
         snapshot=_holding_snapshot(
             cash=0.0,
@@ -597,7 +596,9 @@ def test_entry_before_loaded_window_without_peak_disables_peak_stop() -> None:
     )
 
     held = next(item for item in result["actions"] if item["symbol"] == "300308")
-    assert held["action"] == "HOLD"
+    assert held["action"] == "REDUCE_REVIEW"
+    assert held["risk_budget_required_shares"] == 100
+    assert "account_budget_trim" in held["reason"]
     assert held["protective_stop"] == 85.0
     assert held["peak_close"] == 100.0
     assert held["peak_evidence_status"] == "PEAK_EVIDENCE_INCOMPLETE"

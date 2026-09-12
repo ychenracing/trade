@@ -35,8 +35,8 @@
 
 验收修订不会修改策略的 0.82 预算地板、风险触发、账户锁、成本、订单队列或下一交易日成交规则。
 普通 Base 与 AB5 必须有不同的 checkpoint 身份，不能借用相同源码 SHA 混用结果。
-当前 AB5 通过明确的候选/配置接入：`account_risk_budget_enabled=True`。
-未指定 AB5 的研究命令不启用账户风险预算，不能把它们的输出称为 AB5。
+当前生产默认配置为 `account_risk_budget_enabled=True`，正常命令无需手工启用。
+正式压力默认候选为 AB5；历史 Base/消融仍显式关闭预算并保留各自身份。
 共同的 F0（账本身份）、F1（保留风险卖单抑制同批买入）、U（固定参考评分）
 正确性修复属于本次 C6 的共享生产路径；因此未启用 AB5 预算也不代表与 pre-C6 经济序列相同。
 
@@ -86,7 +86,7 @@ python -m quantfusion.application.stress \
 新判定为 10/10，源绑定字段区分评估执行源码与原经济源码，没有把旧成交改称为新源码重算。
 最终 exact-HEAD CI、PR63 合并与 main 核验以对应 GitHub 实际运行结果为准。
 
-## 日常研究如何明确使用 AB5
+## 日常入口默认使用 AB5
 
 规范 `ProductionReplayEngine` 已接受严格布尔配置 `account_risk_budget_enabled`，
 正式 AB5 工作者也是把同一个配置传给该引擎，不使用第二套撮合或风控实现。
@@ -97,9 +97,7 @@ from quantfusion.config.paths import MARKET_DATA_DIR, REGIME_DATA_DIR
 from quantfusion.config.universe import SYMBOL_NAMES
 from quantfusion.engine.replay import ProductionReplayEngine
 
-engine = ProductionReplayEngine(
-    2_000_000, cfg={"account_risk_budget_enabled": True}
-)
+engine = ProductionReplayEngine(2_000_000)
 result = engine.run(
     dict(SYMBOL_NAMES), "2025-04-01", "2026-07-20",
     data_dir=str(MARKET_DATA_DIR),
@@ -112,10 +110,15 @@ print(result["total_return"], result["max_drawdown"])
 
 日期必须与实际合法数据匹配；这个示例不是行情下载器，不连接券商，
 也不是正式验收通过本身的证明。普通回放不生成 canonical 工件。
-实际账户快照的时点建议与历史模拟账户不同；不得声称已有真实账户建议入口
-自动获得了 AB5 连续 HWM 与账本历史。未知真实账户状态仍按原边界失败关闭。
+日扫、回测和单袖套入口默认执行预算，日扫发布检查真实评估回执，而不是仅检查开关。
+账户快照入口也默认复用同一预算规划器：读取已有必填 `peak_equity` 和当前现金、持仓，
+只用实际书面声明的账户峰值与可卖数量，不伪造历史回放、袖套或成交。预算建议进入原 actions，
+T+1/手数受阻明确列出；待卖出不为买入提供信用。更强的原止损/路由卖出不被预算缩减。
+峰值缺失/非有限拒绝，行情不全时预算标记 `BLOCKED_DATA` 并抑制买入。
+账户峰值必须由同一账户的有效权益与出入金口径维护，模型 HWM 不得替代真实账户 HWM。
+该快照适配并未参与原 958 历史模拟，不声称复现它的收益或获得未来回撤保证。
 
-## 五池回归基线的来源变化
+## 历史五池回归基线的来源变化
 
 原 main `0250163dbe1b234e96339f9059f9a2074f19cb06` 的黄金指标对应 pre-C6 实现，
 不能要求授权后的 F0/F1/U 正确性修复继续逐笔复制旧路径，也不能直接用当前结果覆盖预期来隐藏新增漂移。
@@ -123,13 +126,13 @@ print(result["total_return"], result["max_drawdown"])
 五池回放及单股自适应回放：六个用例的当前指标、逐笔成交和事件指纹均与冻结 I_B42 完全一致；
 旧 main 也复现其旧黄金指标。这证明差异在冻结实现中已存在，不是发布接入造成的新经济漂移。
 
-`tests/fixtures/backtest_golden_metrics.json` 的当前预期由独立冻结源码输出生成，
+PR63 当时的 `tests/fixtures/backtest_golden_metrics.json` 预期由独立冻结源码输出生成，
 不是从当前 PR 的失败输出采纳；原文件完整保留在上述旧 main，原 SHA-256 为
 `2590ff7a7649f102a9680c57575291ad7ce1f4f4c2fa31dfa0146f246baf004a`。
 新文件的 `_source_binding` 记录源版本、只读验证运行及工件哈希。
 整数与事件指纹仍精确比较，浮点回归容差不变。
 
-这组五池使用 `BacktestEngine` 的共享 C6 路径，未开启 AB5 预算；它是源集成回归，
+以上历史五池使用 `BacktestEngine` 的共享 C6 路径，未开启 AB5 预算；它是源集成回归，
 不替代带预算的 77 场景 L2 或正式 958 场景验收，也不把旧利润门重新解释为已通过。
 
 ## 首次完整 L2：已定位并修复的聚合错误（2026-09-11）
@@ -168,3 +171,10 @@ I_B42 原始 P 的该判据明确写的是：
 传输真实性由已认证的原始 GitHub 工件哈希与仓库发布证据保障；读取器的内部一致性校验不是数字签名。
 发布核验在锁定环境中独立比较原经济源码树与指纹、原生 958/17 输入、已认证 L2 回执及派生文件。
 完整账本核对复用已完成的 12 分片审计，不重复经济计算。原生 gate 和历史 rejected 身份始终保留。
+
+## 默认启用的对照验证边界
+
+当前黄金预期从原 main `314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796` 显式开启预算的
+独立回放产生；默认入口与其逐项比较订单、成交、净值和经济事件，不从失败输出反向采纳预期。
+黄金文件保留原关闭预算预期及其 SHA-256，并记录输入补丁和原来源。原 17/958 正式工件
+及其 source revision 不修改，也不把这次入口验证冒充新一次完整正式压力验收。

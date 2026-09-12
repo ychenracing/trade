@@ -247,17 +247,22 @@ class RepositoryHygieneTests(unittest.TestCase):
         self.assertIs(original["canonical"], False)
 
     def test_current_golden_is_bound_to_the_selected_frozen_source(self) -> None:
+        import hashlib
+
         payload = json.loads((ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text())
         proof = payload["_source_binding"]
-        self.assertEqual(proof["expected_from_source"], "4659a2b6d265f45256777da6a2fc25d1369308bd")
-        self.assertEqual(proof["comparison_source"], "c8d46db65b4ae1e72884399cbcaeb7999f6c400b")
+        self.assertEqual(proof["expected_from_source"], "314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796")
+        self.assertEqual(proof["expected_config"], {"account_risk_budget_enabled": True})
         self.assertEqual(proof["case_count"], 6)
+        self.assertEqual(proof["additional_replay_cases"], 1)
         self.assertIs(proof["all_current_equal_frozen"], True)
-        self.assertIs(proof["account_risk_budget_enabled"], False)
+        self.assertIs(proof["account_risk_budget_enabled"], True)
         self.assertEqual(proof["initial_capital"], 2_000_000)
         self.assertEqual({key for key in payload if key.isdigit()}, {"1", "3", "5", "13", "17"})
-        self.assertEqual(len(proof["artifact_sha256"]), 64)
-        self.assertEqual(len(proof["original_golden_sha256"]), 64)
+        self.assertEqual(len(proof["comparison_patch_sha256"]), 64)
+        self.assertEqual(len(proof["comparison_sha256"]), 64)
+        prior_raw = (json.dumps(payload["_previous_default"], sort_keys=True, indent=2) + "\n").encode()
+        self.assertEqual(hashlib.sha256(prior_raw).hexdigest(), proof["original_golden_sha256"])
         self.assertEqual(payload["_adaptive_bull"]["source_revision"], proof["expected_from_source"])
 
     def test_validation_script_reads_the_single_golden_metrics_source(self) -> None:

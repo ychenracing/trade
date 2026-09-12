@@ -6,6 +6,7 @@ from __future__ import annotations
 # ruff: noqa: F401
 
 from ._daily_scan_support import (
+    synthetic_budget_fields,
     FakeSignal,
     FakeTrade,
     Path,
@@ -85,7 +86,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
                 "final_assets": 2200000.0,
                 "sharpe": 2.5,
                 "total_trades": 50,
-                "risk_events": [],
+                **synthetic_budget_fields(),
                 "pending_signals": [],
                 "trades": [],
                 "safe_mode_active": False,
@@ -128,7 +129,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
                 "final_assets": 2200000.0,
                 "sharpe": 2.5,
                 "total_trades": 50,
-                "risk_events": [],
+                **synthetic_budget_fields(),
                 "pending_signals": [],
                 "trades": [],
                 "safe_mode_active": False,
@@ -176,7 +177,7 @@ class LastGoodArtifactProtectionTests(unittest.TestCase):
             "final_assets": 2500000.0,
             "sharpe": 2.5,
             "total_trades": 50,
-            "risk_events": [],
+            **synthetic_budget_fields(),
             "pending_signals": [],
             "trades": [],
             "safe_mode_active": False,
@@ -202,6 +203,16 @@ class LastGoodArtifactProtectionTests(unittest.TestCase):
                 "--end-date", "2026-07-30",
             ]):
                 return dss.main()
+
+    def test_missing_budget_execution_does_not_overwrite_previous_success(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            good = self._make_mock_result()
+            self.assertEqual(self._run_main_with_mock(tmpdir, good), 0)
+            target = Path(tmpdir) / "signals_2026-07-30.json"
+            previous = target.read_bytes()
+            bad = self._make_mock_result(risk_events=[])
+            self.assertEqual(self._run_main_with_mock(tmpdir, bad), 1)
+            self.assertEqual(target.read_bytes(), previous)
 
     def test_failure_does_not_overwrite_previous_success(self) -> None:
         """A failed run must not overwrite the last successful artifact."""
@@ -323,7 +334,7 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
             "final_assets": 2200000.0,
             "sharpe": 2.5,
             "total_trades": 50,
-            "risk_events": [],
+            **synthetic_budget_fields(),
             "pending_signals": [],
             "trades": [],
             "safe_mode_active": False,
@@ -463,7 +474,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
             "final_assets": 2200000.0,
             "sharpe": 2.5,
             "total_trades": 50,
-            "risk_events": [],
+            **synthetic_budget_fields(),
             "pending_signals": [],
             "trades": [],
             "safe_mode_active": False,
@@ -586,7 +597,7 @@ class RunIdConsistencyTests(unittest.TestCase):
             "final_assets": 2200000.0,
             "sharpe": 2.5,
             "total_trades": 50,
-            "risk_events": [],
+            **synthetic_budget_fields(),
             "pending_signals": [],
             "trades": [],
             "safe_mode_active": False,

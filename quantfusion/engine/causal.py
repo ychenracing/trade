@@ -10,6 +10,7 @@ from quantfusion.execution.c6_receipts import (
 import math
 from dataclasses import replace
 from typing import Any
+from types import SimpleNamespace
 
 import pandas as pd
 
@@ -32,6 +33,7 @@ from quantfusion.domain.rules import (
 )
 from quantfusion.engine.core import CoreBacktestEngine
 from quantfusion.risk.managers import PersistentRiskManager
+from quantfusion.risk.account_budget import apply_account_risk_budget, account_budget_status
 from quantfusion.strategy.trend import BaseStrategy
 
 _CoreBacktestEngine = CoreBacktestEngine
@@ -845,11 +847,53 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             cache_dir=cache_dir,
         )
 
+    def _process_trading_day(
+        self, symbols_dict: dict[str, str], data_map: dict[str, pd.DataFrame],
+        indicator_map: dict[str, dict[str, pd.Series]], all_dates: list[pd.Timestamp],
+        date_to_pos: dict[pd.Timestamp, int], date: pd.Timestamp,
+        pending: list[tuple[Signal, BaseStrategy]],
+    ) -> list[tuple[Signal, BaseStrategy]]:
+        """Apply AB5 once for standalone books; ensemble has its own account owner.
+
+        The ensemble calls _evaluate_trading_day directly, so its child sleeves
+        do not each consume a second budget. Standalone runs retain their real
+        single ledger and queue, never a synthetic three-sleeve account.
+        """
+        enabled = bool(self.cfg["account_risk_budget_enabled"])
+        if enabled:
+            winners = {(signal.symbol, signal.strategy_name) for signal, strategy in pending
+                       if signal.direction == "sell" and strategy is None}
+            retained = []
+            for signal, strategy in pending:
+                if signal.direction == "buy" and (signal.symbol, signal.strategy_name) in winners:
+                    self._record_order_event(date=str(date.date()), signal=signal,
+                                             event="blocked_retained_defensive_sell")
+                else:
+                    retained.append((signal, strategy))
+            pending = retained
+        pending = super()._process_trading_day(
+            symbols_dict, data_map, indicator_map, all_dates, date_to_pos, date, pending)
+        if enabled:
+            assets = self._total_assets(data_map, date)
+            # Full account curve, not a cycle peak that can rearm/reset.
+            peak = max(self.initial_capital, assets,
+                       *(float(row["assets"]) for row in self.equity_curve))
+            state = SimpleNamespace(sleeve=self, data_map=data_map, pending=pending)
+            scores = self._allocation_scores(data_map, date)
+            apply_account_risk_budget([state], date, assets, peak, self.risk_events,
+                                      cfg=self.cfg, score=lambda code: scores.get(code, 0.))
+            pending = state.pending
+        return pending
+
     def _build_result(self, final_assets: float, all_dates: list[pd.Timestamp]) -> dict:
         """Extend the inherited report with allocation and resolved-config audits."""
         result = super()._build_result(final_assets, all_dates)
         result.update(
             {
+                "account_risk_budget": account_budget_status(
+                    bool(self.cfg["account_risk_budget_enabled"]), self.risk_events,
+                    hwm_source="continuous_account_equity",
+                ),
                 "indicator_state": self._indicator_state,
                 "allocation_lookbacks": list(self.ALLOCATION_LOOKBACKS),
                 "order_events": list(self.order_events),

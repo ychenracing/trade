@@ -226,16 +226,12 @@ def _metrics(
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
     include_diagnostics: bool = False,
-    candidate_id: str = "C6-Base",
+    candidate_id: str = "C6-Base+AB5",
 ) -> dict[str, Any]:
     from quantfusion.application.c6_contract import candidate_spec
 
     spec = candidate_spec(candidate_id)
-    cfg = (
-        {"account_risk_budget_enabled": True}
-        if spec["account_risk_budget_enabled"]
-        else None
-    )
+    cfg = {"account_risk_budget_enabled": spec["account_risk_budget_enabled"]}
     with contextlib.redirect_stdout(io.StringIO()):
         result = ra.ProductionReplayEngine(
             stress_metrics.INITIAL_CAPITAL, cfg=cfg
@@ -276,7 +272,7 @@ def _run_scenario(
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
     include_diagnostics: bool = False,
-    candidate_id: str = "C6-Base",
+    candidate_id: str = "C6-Base+AB5",
 ) -> dict[str, Any]:
     codes = tuple(str(code) for code in scenario["symbols"])
     return {
@@ -351,7 +347,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--candidate-id",
         choices=("C6-Base", "C6-Base+S", "C6-Base+AB5", "C6-Base+AB5+S"),
-        default="C6-Base",
+        default="C6-Base+AB5",
         help="Exact candidate identity; only explicit AB5 identities enable the account budget",
     )
     parser.add_argument("--ab5-release-acceptance", action="store_true",

@@ -949,6 +949,7 @@ class StressScenarioTests(unittest.TestCase):
                 Path(tmpdir),
                 Path(tmpdir),
                 source_revision="a" * 40,
+                candidate_id="C6-Base",
             )
 
         self.assertEqual(

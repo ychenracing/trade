@@ -25,13 +25,17 @@ from quantfusion.account.snapshot import (
     load_account_snapshot_with_sha256,
 )
 from quantfusion.config.engine import default_engine_config
+from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.profiles import config_for_symbol, get_symbol_profile
 from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.config.weak import weak_regime_config
 from quantfusion.data import contracts as data_contracts
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import BarContext
+from quantfusion.domain.rules import floor_to_lot, require_finite
 from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
+from quantfusion.engine.universe import SleeveBacktestEngine
+from quantfusion.risk.account_budget import account_budget_plan
 from quantfusion.indicators.technical import Indicators
 from quantfusion.io.artifacts import atomic_json
 from quantfusion.strategy.trend import (
@@ -231,6 +235,83 @@ class AccountSignalEngine:
             )
         return candidates
 
+    @staticmethod
+    def _apply_account_budget(
+        snapshot: AccountSnapshot, prepared: dict[str, _PreparedMarket],
+        actions: list[dict[str, Any]], *, equity: float, evidence_date: str,
+    ) -> dict[str, Any]:
+        """Constrain actual snapshot advice with the same AB5 planner as replay.
+
+        A snapshot has one actual book per symbol, not three invented sleeves.
+        Stateless horizon scorers reuse the production weak-first ordering;
+        they do not replay or receive the real holdings as simulated positions.
+        """
+        cfg = default_engine_config()
+        for _, _, symbol_cfg, _ in prepared.values():
+            for key in ("slippage", "commission_rate", "stamp_duty", "min_commission"):
+                cfg[key] = max(cfg[key], symbol_cfg.get(key, cfg[key]))
+        frames = {code: value[0] for code, value in prepared.items()}
+        policy = PortfolioPolicy()
+        scores = [
+            SleeveBacktestEngine(
+                1., cfg=cfg, policy=policy, allocation_lookbacks=horizon,
+                sleeve_name="account_score_only",
+            )._allocation_scores(frames, pd.Timestamp(evidence_date))
+            for horizon in policy.allocation_horizons
+        ]
+        holdings = [(p.symbol, p.shares, float(frames[p.symbol]["close"].iloc[-1]))
+                    for p in snapshot.positions]
+        buy_actions = [a for a in actions if a["action"] == "BUY_CANDIDATE"]
+        buys = [(a["symbol"], a["indicative_target_shares"], a["close"]) for a in buy_actions]
+        book_count = len({p.symbol for p in snapshot.positions}
+                         | {code for code, shares, _ in buys if shares})
+        sell_order = sorted(range(len(holdings)), key=lambda i: (
+            sum(score.get(holdings[i][0], 0.) for score in scores) / len(scores),
+            holdings[i][0],
+        ))
+        receipt, reductions = account_budget_plan(
+            equity, max(snapshot.peak_equity, equity), cfg, book_count,
+            holdings, buys, sell_order=sell_order,
+        )
+        by_symbol = {a["symbol"]: a for a in actions}
+        for position, reduction in zip(snapshot.positions, reductions, strict=True):
+            action = by_symbol[position.symbol]
+            action["risk_budget_required_shares"] = reduction
+            if not reduction:
+                continue
+            action["reason"] += "; account_budget_trim: close-known AB5 account risk budget"
+            # Never reduce an already stronger stop/route recommendation or
+            # treat an unfilled recommendation as available cash or risk relief.
+            if action["action"] != "HOLD":
+                continue
+            executable = min(reduction, position.sellable_shares)
+            if executable < position.shares:
+                executable = floor_to_lot(executable)
+            blocked = reduction - executable
+            action.update(
+                action="REDUCE_REVIEW", recommended_shares=executable,
+                blocked_shares=blocked,
+                execution_status=("EXECUTABLE" if blocked == 0 else
+                                  "PARTIALLY_T1_OR_LOT_BLOCKED" if executable else
+                                  "T1_OR_LOT_BLOCKED"),
+            )
+        removed = 0
+        for action in buy_actions:
+            requested = action["indicative_target_shares"]
+            quantity = floor_to_lot(requested * receipt["buy_scale"])
+            removed += requested - quantity
+            if quantity == requested:
+                continue
+            action["indicative_target_shares"] = quantity
+            action["target_weight"] = min(action["target_weight"], quantity * action["close"] / equity)
+            action["reason"] += "; account_budget_buy_reduced: planned sells provide no buying credit"
+            if quantity == 0:
+                action.update(action="BLOCKED", execution_status="RISK_BUDGET_BLOCKED")
+        return {"enabled": True, "mechanism": "AB5", "status": "APPLIED",
+                "scope": "account_snapshot", "hwm_source": "account_snapshot.peak_equity",
+                "declared_peak_equity": snapshot.peak_equity, "book_count": book_count,
+                "planned_not_filled": True, **receipt, "buy_shares_removed": removed}
+
     def run(
         self,
         snapshot: AccountSnapshot,
@@ -258,6 +339,8 @@ class AccountSignalEngine:
                 f"snapshot_date={snapshot.snapshot_date!r} does not match "
                 f"requested_as_of={as_of!r}"
             )
+
+        require_finite("account peak_equity", snapshot.peak_equity, min_value=0.01)
 
         # The route decision and all later account advice share this one local
         # market snapshot.  In particular, weak-route leader selection must not
@@ -701,6 +784,19 @@ class AccountSignalEngine:
                 }
             )
 
+        account_budget: dict[str, Any] = {
+            "enabled": True, "mechanism": "AB5", "status": "BLOCKED_DATA",
+            "scope": "account_snapshot", "hwm_source": "account_snapshot.peak_equity",
+        }
+        if data_complete and valuation_complete:
+            account_budget = self._apply_account_budget(
+                snapshot, prepared, actions, equity=snapshot.cash + priced_market_value,
+                evidence_date=evidence_date or as_of,
+            )
+            if account_budget["buy_shares_removed"]:
+                buy_suppression_reasons.append("ACCOUNT_RISK_BUDGET")
+                buys_suppressed = True
+
         estimated_market_value: float | None = (
             priced_market_value if valuation_complete else None
         )
@@ -725,6 +821,7 @@ class AccountSignalEngine:
             "buys_suppressed": buys_suppressed,
             "buy_suppression_reasons": buy_suppression_reasons,
             "peak_equity": snapshot.peak_equity,
+            "account_risk_budget": account_budget,
             "deployment_decision": asdict(decision),
             "actions": actions,
             "disclaimer": (

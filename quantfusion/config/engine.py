@@ -154,6 +154,7 @@ def default_engine_config() -> dict[str, Any]:
         # clean bull run is untouched. shock_trim is opt-in (the ensemble
         # already carries regime de-risking + drawdown circuit breakers).
         "enable_cm_overlay": True,
+        "account_risk_budget_enabled": True,
         "cm_overlay_shock_trim": False,
         "cm_independent_risk_basket": True,
         "cm_trend_health_protection": True,
@@ -211,8 +212,7 @@ def default_engine_config() -> dict[str, Any]:
 def validate_engine_config(cfg: Mapping[str, Any]) -> dict[str, Any]:
     """Validate one complete engine configuration and normalize containers."""
     out = dict(cfg)
-    # Optional research flag: absent preserves the exact existing profile facts.
-    allowed_keys = set(default_engine_config().keys()) | {"account_risk_budget_enabled"}
+    allowed_keys = set(default_engine_config())
     unknown_keys = sorted(set(out) - allowed_keys)
     if unknown_keys:
         raise ValueError(

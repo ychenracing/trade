@@ -131,13 +131,15 @@ def test_formal_ab5_witness_reproduces_locked_path_and_budget_orders() -> None:
     assert budget_orders[0]["decision_timestamp"] == "2025-09-04"
 
 
-def test_formal_official_runner_accepts_only_explicit_candidate_identity() -> None:
+def test_formal_official_runner_defaults_to_ab5_and_retains_explicit_control() -> None:
     parser = stress.build_argument_parser()
     args = parser.parse_args(
         ["--source-revision", "a" * 40, "--candidate-id", "C6-Base+AB5"]
     )
     assert args.candidate_id == "C6-Base+AB5"
-    legacy = parser.parse_args(["--source-revision", "a" * 40])
+    default = parser.parse_args(["--source-revision", "a" * 40])
+    assert default.candidate_id == "C6-Base+AB5"
+    legacy = parser.parse_args(["--source-revision", "a" * 40, "--candidate-id", "C6-Base"])
     assert legacy.candidate_id == "C6-Base"
 
 

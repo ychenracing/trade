@@ -35,6 +35,7 @@ from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
 from quantfusion.risk.overlay.adapter import apply_risk_actions
 from quantfusion.strategy.trend import BaseStrategy
+from quantfusion.risk.account_budget import account_budget_status
 
 
 def capture_c6_warm_state(states: list, account_risk: Any, overlay: Any) -> dict:
@@ -378,7 +379,7 @@ class EnsembleOrchestrationMixin:
                 )
                 if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
                     cm_overlay.finalize_c6_s_queue(states, date, state_local_books=self._c6_feature_enabled("F0"))
-            if self.cfg.get("account_risk_budget_enabled", False):
+            if self.cfg["account_risk_budget_enabled"]:
                 self._apply_account_risk_budget(
                     states, date, assets, float(portfolio_risk.lifetime_peak_assets),
                     portfolio_risk_events,
@@ -520,6 +521,10 @@ class EnsembleOrchestrationMixin:
                     cm_overlay.state_snapshot() if cm_overlay else None
                 ),
                 "risk_events": self._sort_events(combined_risk_events),
+                "account_risk_budget": account_budget_status(
+                    bool(self.cfg["account_risk_budget_enabled"]), portfolio_risk_events,
+                    hwm_source="merged_account.lifetime_peak_assets",
+                ),
                 "regime_state_series": (
                     list(results[0].get("regime_state_series", []))
                     if results
