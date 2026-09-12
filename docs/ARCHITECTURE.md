@@ -119,7 +119,9 @@ canonical 仓库路径由 `quantfusion.config.paths` 提供。用户显式传入
 
 普通业务模块超过约一千行或单函数超过约一百二十行时必须审查。`config/engine.py` 是默认值、可按标的单股覆盖字段与配置校验的唯一事实源；`config/profiles.py` 组合这些默认值并唯一拥有行业分类、符号路由和画像构造，engine 不提供同名 wrapper。`application/daily_scan.py` 保留不可交换的事务顺序编排，其快照、信号、工件和状态实现已拆出。
 
-压力执行按四个直接职责分开：`application/stress_scenarios.py` 构造及选择计划，`stress_metrics.py` 计算汇总和门禁，`stress_artifacts.py` 校验检查点与控制发布，`stress.py` 只负责参数、编排和退出码。合同 v2 将所有正式场景 `abs(max_drawdown) <= 0.18` 与账本上限放在 absolute hard gates；9→10 与最差相邻前缀财富保护属于 retained robustness hard gates；add-one 相对终值及其配对回撤、成交、桶和锁变化只属于 robustness diagnostics；已有 incumbent 的相对非回归属于 promotion gates。整体接受要求两个 hard-gate family 同时通过。任何 ID、family、ID 文件或 shard selector 都产生 diagnostic 计划；诊断检查点和输出与正式验证 namespace 隔离，只有未经筛选且与 canonical 默认场景计划精确一致的运行可以调用正式发布边界。没有 v2 incumbent 时，发布还要求显式的一次性首基线动作及独立当前语义参考工件，并对 hard gates、收益保护、排列不变性和 provenance 失败关闭。
+压力执行按四个直接职责分开：`application/stress_scenarios.py` 构造及选择计划，`stress_metrics.py` 计算汇总和门禁，`stress_artifacts.py` 校验检查点与控制发布，`stress.py` 只负责参数、编排和退出码。合同 v2 将所有正式场景 `abs(max_drawdown) <= 0.18` 与账本上限放在 absolute hard gates；9→10 与最差相邻前缀财富保护属于 retained robustness hard gates；add-one 相对终值及其配对回撤、成交、桶和锁变化只属于 robustness diagnostics；已有 incumbent 的相对非回归属于 promotion gates。原标准接受要求两个 hard-gate family 同时通过；当前 AB5 首基线则使用明确授权、来源绑定的独立 `release_acceptance` 评估，保留原门禁失败值，不修改策略风险触发线。任何 ID、family、ID 文件或 shard selector 都产生 diagnostic 计划；诊断检查点和输出与正式验证 namespace 隔离，只有未经筛选且与 canonical 默认场景计划精确一致的运行可以调用正式发布边界。没有 v2 incumbent 时，发布还要求显式的一次性首基线动作及独立当前语义参考工件，并对 hard gates、收益保护、排列不变性和 provenance 失败关闭。
+
+正式写入前，prefix 与 universe 的共同场景记录必须逐条一致，排序不同不影响比较。读取 AB5 incumbent 时重算原生记录、门禁与发布评估并校验来源、固定参考和 L2 上下文；历史经济源码 SHA 无须等于后续读取程序的 HEAD。源工件真实性由发布时的 Git 与原始 ZIP 哈希验证保证，读取一致性检查不冒充外部签名。当前正式工件及派生回执位于 `artifacts/validation/`。
 
 `pyright quantfusion` 覆盖整个规范包。由于 pandas 本身未提供随包类型声明，配置不读取第三方库实现来推断类型；协作式 mixin 文件仅关闭无法从单文件推断的组合属性诊断，其余参数、返回值、可选值和导入检查继续生效。
 
@@ -159,10 +161,12 @@ canonical 仓库路径由 `quantfusion.config.paths` 提供。用户显式传入
 
 历史 22 股/983 工件属于不同 scenario/data/run fingerprint，不会自动迁移到当前计划。
 
+以下保留此前标准验收的原始失败记录，不是当前 AB5 基线状态；当前 accepted canonical 基线及明确例外见 `artifacts/validation/c6_release_receipt.json` 和 [AB5 发布说明](C6_AB5_RELEASE.md)。
+
 <!-- CURRENT_FORMAL_STRESS_RESULT:START -->
-完整计划已运行：`958/958`，唯一 scenario ID：`958`。工件状态为 `current_candidate`，acceptance 为 `rejected`，canonical 为 `false`；absolute hard gates passed=`False`，retained robustness gates passed=`False`。全场景最差最大回撤为 `-23.992778%`（`random-20260807-03-004`），17 股完整 prefix 的总收益为 `286.202912%`、最大回撤为 `-20.499296%`。当前候选：`artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json`，SHA-256：`63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c`；source revision：`acf4cccf4117edb35e6beb57aa2f9004476c8b93`。详细 gates 与 provenance 见 `artifacts/validation/formal_stress_958_acceptance_summary.json`。
+历史标准验收记录：完整计划已运行：`958/958`，唯一 scenario ID：`958`。工件状态为 `current_candidate`，acceptance 为 `rejected`，canonical 为 `false`；absolute hard gates passed=`False`，retained robustness gates passed=`False`。全场景最差最大回撤为 `-23.992778%`（`random-20260807-03-004`），17 股完整 prefix 的总收益为 `286.202912%`、最大回撤为 `-20.499296%`。历史候选：`artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json`，SHA-256：`63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c`；source revision：`acf4cccf4117edb35e6beb57aa2f9004476c8b93`。详细 gates 与 provenance 见 `artifacts/validation/formal_stress_958_acceptance_summary.json`。
 <!-- CURRENT_FORMAL_STRESS_RESULT:END -->
 <!-- CURRENT_FORMAL_STRESS_PLAN:END -->
 
 <!-- C6_BASELINE_REBUILD_META: {"reference_scenarios": 958, "cohort_scenarios": 765, "failures": 649, "boundaries": 110, "controls": 6} -->
-C6 基线兼容性重建保留旧 281 场景证据不变，并从唯一完整的当前 17 股/958 场景 rejected transition reference 确定性派生 765 个场景：649 个失败、110 个 17%—18% 边界和 6 个对照；未运行新回测，也未建立 accepted canonical 基线。
+历史 C6 基线兼容性重建保留旧 281 场景证据不变，并从当时唯一完整的 17 股/958 场景 rejected transition reference 确定性派生 765 个场景：649 个失败、110 个 17%—18% 边界和 6 个对照；该重建本身未运行新回测、未建立 accepted canonical 基线。当前 AB5 基线来自另行完成的正式经济运行及已授权派生验收，不改写这份历史重建。

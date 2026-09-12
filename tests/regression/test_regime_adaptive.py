@@ -201,11 +201,15 @@ class AdaptiveEngineTests(unittest.TestCase):
             indicator_state="warm",
         )
         self.assertEqual(result["deployment_policy"], "production_daily_replay")
-        self.assertAlmostEqual(result["total_return"], 5.308949754885, places=12)
-        self.assertAlmostEqual(result["max_drawdown"], -0.1834136674871038, places=12)
-        self.assertEqual(result["total_trades"], 24)
-        self.assertEqual(result["sleeve_fill_count"], 24)
-        self.assertEqual(result["date_symbol_side_count"], 5)
+        baseline = json.loads(
+            (ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text()
+        )["_adaptive_bull"]
+        self.assertEqual(baseline["end_date"], "2026-06-30")
+        self.assertAlmostEqual(result["total_return"], baseline["total_return"], places=12)
+        self.assertAlmostEqual(result["max_drawdown"], baseline["max_drawdown"], places=12)
+        self.assertEqual(result["total_trades"], baseline["total_trades"])
+        self.assertEqual(result["sleeve_fill_count"], baseline["sleeve_fill_count"])
+        self.assertEqual(result["date_symbol_side_count"], baseline["date_symbol_side_count"])
 
 
 class DynamicRouteStateMachineTests(unittest.TestCase):

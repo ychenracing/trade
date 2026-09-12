@@ -60,6 +60,13 @@ def predicate_failures(specs, rows):
     return {row['predicate_id'] for row in rows if not row['passed']}
 
 
+def residual_ids_for_candidate(failed_ids, candidate_id):
+    prefix = f'{candidate_id}::'
+    require(all(type(item) is str and item.startswith(prefix) for item in failed_ids),
+            'foreign candidate residual')
+    return [item.removeprefix(prefix) for item in failed_ids]
+
+
 def next_step(specs, base_rows, residuals, qualification, s_rows):
     """Apply P's five branches, never a highest-return or handpicked-case rule."""
     require(isinstance(residuals, list) and all(type(x) is str for x in residuals)
@@ -407,8 +414,7 @@ class Relay:
         specs = self.p['diagnostic_predicate_manifests']['L1_APPLICABLE_DIAGNOSTIC_PREDICATES']
         mdd = next(row for row in base['diagnostic_predicates'] if row['predicate_id'] == 'l1.mdd.noncanonical_18pct_screen')
         failed_ids = mdd['observed']['failed_item_ids']
-        require(all(x.startswith('C6-Base::') for x in failed_ids), 'non-Base residual')
-        residuals = [x.removeprefix('C6-Base::') for x in failed_ids]
+        residuals = residual_ids_for_candidate(failed_ids, base_claim['candidate_id'])
         q = s = q_claim = s_claim = None
         step = next_step(specs, base['diagnostic_predicates'], residuals, None, None)
         if step == 'QUALIFY':

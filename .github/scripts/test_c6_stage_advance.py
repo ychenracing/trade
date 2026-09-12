@@ -53,6 +53,18 @@ class PlanningTests(unittest.TestCase):
         self.rows[2]['passed'] = False
         self.assertEqual(self.plan(), 'BASE_REJECTED')
 
+    def test_residual_ids_follow_authenticated_base_candidate(self):
+        self.assertEqual(
+            relay.residual_ids_for_candidate(
+                ['C6-Base+AB5::synthetic'], 'C6-Base+AB5'
+            ),
+            ['synthetic'],
+        )
+        with self.assertRaises(ValueError):
+            relay.residual_ids_for_candidate(
+                ['C6-Base::synthetic'], 'C6-Base+AB5'
+            )
+
     def test_selection_commit_message_uses_current_execution_version(self):
         message = relay.selection_commit_message('BASE_SELECTED')
         self.assertEqual(message, 'Seal mechanical C6 v30 selection: BASE_SELECTED')
