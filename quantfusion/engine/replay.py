@@ -671,7 +671,7 @@ class RegimeAdaptiveBacktestEngine:
         route = boundary_route(data_dir, as_of=str(boundary.date()))
         regime = detect_regime(data_dir, as_of=str(boundary.date()))
         when = str(boundary.date())
-        if route == RegimeRoute.CASH:
+        if regime.regime == "unknown" or route == RegimeRoute.CASH:
             return DeploymentDecision(
                 name="cash_preservation",
                 boundary=when,
