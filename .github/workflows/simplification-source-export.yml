@@ -11,14 +11,14 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: bc95a329af272c09592af7ffa179726ce0eca499
+          ref: 24abb4706bd269cb5e1c23bb797cd0b417202c9e
           fetch-depth: 0
           persist-credentials: false
       - name: Export exact historical objects needed by retained evidence
         run: |
           set -eu
-          test "$(git rev-parse HEAD)" = bc95a329af272c09592af7ffa179726ce0eca499
-          test "$(git rev-parse HEAD^{tree})" = c740b0204036b091f8478fa450bc5eb0ea1d1857
+          test "$(git rev-parse HEAD)" = 24abb4706bd269cb5e1c23bb797cd0b417202c9e
+          test "$(git rev-parse HEAD^{tree})" = 2db23a481789061d3076e509e9740becc9cf783b
           mkdir -p "$RUNNER_TEMP/trade-source"
           git fetch --no-tags origin 4659a2b6d265f45256777da6a2fc25d1369308bd
           test "$(git rev-parse FETCH_HEAD)" = 4659a2b6d265f45256777da6a2fc25d1369308bd
