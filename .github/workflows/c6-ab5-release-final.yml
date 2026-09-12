@@ -9,7 +9,7 @@ permissions:
   pull-requests: read
   issues: read
 concurrency:
-  group: c6-ab5-derived-final-1bfa85dbce79
+  group: c6-ab5-derived-final-19af20b3f7f0
   cancel-in-progress: false
 defaults:
   run:
@@ -21,7 +21,7 @@ jobs:
       image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
     timeout-minutes: 30
     env:
-      DELIVERY_HEAD: 1bfa85dbce792daf947d44d980a4f6073efb5c51
+      DELIVERY_HEAD: 19af20b3f7f09ee71e805929cd8836a3e1ac2467
       ECONOMIC_SOURCE: 56e5743ff8999540f07270ca0ddd0b5c664d8033
       SOURCE_RUN_ID: '34638696991'
       SOURCE_ARTIFACT_ID: '10284452515'
@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 1bfa85dbce792daf947d44d980a4f6073efb5c51
+          ref: 19af20b3f7f09ee71e805929cd8836a3e1ac2467
           fetch-depth: 0
       - name: Authenticate owner authority, PR head and unchanged economic source
         env:
