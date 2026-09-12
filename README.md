@@ -118,10 +118,10 @@ python -m quantfusion.application.daily_scan --account account.json --end-date 2
 
 每个交易日收盘后按以下顺序执行：
 
-1. **数据刷新**：运行 `python -m quantfusion.application.daily_scan --end-date <TODAY>` 拉取最新日线并生成候选信号。
-2. **路由判断**：查看输出中的 `route` 字段（`trend` / `weak` / `cash`），确认今日走哪条路径。
-3. **候选审视**：检查 `candidates` 列表，关注排名、触发原因（`reasons`）和建议权重。
-4. **持仓建议**：若传入了 `--account`，查看 `actions` 中的持仓处置与非执行性买入筛选，结合实际账户人工决策。
+1. **运行扫描**：将 `<TODAY>` 替换为目标交易日，运行 `python -m quantfusion.application.daily_scan --end-date <TODAY>`；审视真实持仓时另传 `--account account.json`，并保证账户快照日期与目标日期一致。
+2. **区分工件**：不传账户时读取 `signals_<日期>.json`（`mode="simulation"`）；传入账户时读取 `account_signals_<日期>.json`（`mode="account_decision_support"`）。两者不是同一输出结构，也不能互相代替。
+3. **路由与信号**：模拟日扫查看 `deployment.current_decision.name`、`signals` 和 `pending_signals`，同时检查 `summary.buys_suppressed` 与 `blocked_signals`；真实账户查看 `deployment_decision.name`、`actions`、`buys_suppressed` 和 `buy_suppression_reasons`。具体字段见下节。
+4. **持仓建议**：模拟工件的 `held_shares` 来自回放账本，不是实际持仓。真实账户以 `actions` 中的持仓处置与非执行性买入筛选为依据，结合实际账户人工决策。
 5. **次日复核**：账户买入数量仅按收盘价估算；下一可交易日的开盘价、现金、涨跌停和人工状态仍须重新确认。
 
 ### 参数探索
@@ -156,15 +156,25 @@ python -m quantfusion.application.stress \
 
 ## 日扫信号与账户建议
 
-日扫输出（`daily_signals/` 目录）以 JSON 工件形式给出。每个扫描日先建立 `snapshots/<日期>/` 冻结目录；同日重跑必须通过 manifest 哈希边车、全部 CSV 内容哈希和精确文件集合校验，任何改写或额外证据文件都失败关闭。核心字段如下：
+输出默认位于 `daily_signals/`，可用 `--output-dir` 指定目录。先核对工件日期和 `mode`，再按对应结构读取；模拟日扫和真实账户建议不共享一套顶层信号字段。
 
-- `as_of`：信号生成日期（收盘后）。
-- `route`：外层路由结果——`trend`（趋势引擎）、`weak`（弱市龙头）或 `cash`（持有现金）。
-- `regime_state`：内部状态机状态——`TREND`、`TRANSITION`、`CHOPPY`。
-- `candidates`：候选股票列表，每只含 `symbol`、`score`、`target_weight`、`direction`、`reasons`（触发原因列表）。
-- `unavailable_symbols`：因数据缺失或陈旧而无法评估的股票（**不**表示"未入选"）。
-- `warmup_health`：预热健康契约（P0-1）——`READY` / `DEGRADED` / `NOT_READY` 三级状态、指标与参考篮就绪比例、新上市与陈旧股票清单及原因代码。`NOT_READY` 时输出不可作为正式交易信号，全部新增买入已失败关闭（`buys_suppressed=true`）；`DEGRADED` 时风险判断保留，仅显著提示。
-- `risk_opinion`：独立风险意见（P0-3）——风险等级与置信度、市场状态、健康牛市沉默标记、禁新开仓/冻结加仓语义、建议总敞口上限、最弱子行业簇、袖套共识与连续退化计数及原因代码。该意见与交易动作分离，只描述环境。
+### 模拟日扫：不传入账户
+
+读取 `signals_<日期>.json`，其中 `mode="simulation"`。扫描在生产回放前建立 `snapshots/<日期>/` 冻结目录；同日重跑必须通过 manifest 哈希边车、全部 CSV 内容哈希和精确文件集合校验，任何改写或额外证据文件都失败关闭。
+
+- `scan_date`：扫描请求的截止日期；正常信号工件的 `status` 为 `ok`。结果校验失败时可能另写 `signals_<日期>.error.json`，不可将旧成功工件误当成本次成功。
+- `deployment.current_decision`：当前时点的部署判断，读取 `name`、`boundary` 和 `reason`；`deployment.decision` 是回放返回的部署判断，二者不一致时检查 `deployment.current_route_buy_suppression`。不存在顶层 `route` 字段；`--deployment-mode` 的选项名也不等于部署判断的 `name`。
+- `signals`：逐股摘要，字段为 `code`、`name`、`signal`、`held_shares`、`strategies`、`industry` 和 `profile`；`held_shares` 来自模拟成交账本。这不是带排名或建议权重的 `candidates` 列表。
+- `pending_signals` / `blocked_signals`：未被日扫抑制的模拟挂单信号与被抑制的买入信号分别存放，包含 `direction`、`strategy_name`、`target_shares`、`reason`、`blocked` 和 `executable` 等字段。`executable` 表达日扫信号抑制状态，不保证下一交易日成交，也不是券商订单。
+- `summary.buys_suppressed`：本次模拟日扫是否抑制买入；结合 `summary.risk_state_identity_mismatch`、`summary.current_route_mismatch` 和 `summary.warmup_not_ready` 区分原因。
+- `deployment.requested_symbols` / `deployment.selected_symbols` / `deployment.unavailable_symbols`：回放返回的请求、入选和不可用股票集合，不能将未入选等同于数据不可用。
+- `warmup_health.warmup_status`：预热状态 `READY` / `DEGRADED` / `NOT_READY`。`NOT_READY` 时全部新增买入失败关闭，见 `summary.buys_suppressed`；`DEGRADED` 本身仅作提示，其他风险或连续性条件仍可能抑制买入。
+- `risk_opinion`：与交易动作分离的独立风险意见，包含风险等级与置信度、市场状态、健康牛市沉默标记、禁新开仓/冻结加仓语义、建议总敞口上限、最弱子行业簇、袖套共识与连续退化计数及原因代码，只描述环境。`portfolio` 记录模拟回放绩效及风险状态；`account_risk_budget` 必须是实际评估后的默认 AB5 回执，不能仅凭启用开关判断成功。
+- `risk_state_saved`：跨日显示与连续性检查状态是否保存，不代表买入获准。身份不匹配时保留旧状态并抑制买入；`latest_success.json` 是模拟日扫的成功工件索引，不是账户建议索引。
+
+### 真实账户建议：传入账户
+
+读取 `account_signals_<日期>.json`，其中 `mode="account_decision_support"`，`as_of` 为请求的建议日期。当前时点部署判断位于 `deployment_decision`，读取其 `name`、`boundary` 和 `reason`。账户模式不写模拟日扫的 `snapshots/<日期>/`、`risk_state.json` 或 `latest_success.json`，也不输出模拟 `signals`、`pending_signals`、`warmup_health` 或 `risk_opinion`；不能据此认为风险检查被关闭。
 
 当传入 `--account account.json` 时，输入必须是单一严格 v3 schema：根字段仅为 `schema_version`、`account_id`、`snapshot_date`、`cash`、`peak_equity` 和 `positions`；每个持仓必须提供 `shares`、`sellable_shares`、`avg_cost` 与 `entry_date`，可选 `highest_close`。未知字段、旧 schema、账户 ID 或快照日期不匹配都会在行情请求前失败。
 
@@ -197,9 +207,9 @@ python -m quantfusion.application.stress \
 
 风险订单在下一可交易开盘执行，跳空或连续跌停可能使实际损失超过阈值，因此以上数值均非收益保证。
 
-## 已验证基线
+## 历史趋势基线（非当前默认结果）
 
-初始资金 200 万元、2025-04-01 至 2026-07-20、前复权冻结数据、预热模式：
+以下保留历史 pre-C6 默认配置（源码 `0250163dbe1b234e96339f9059f9a2074f19cb06`）的原始结果：初始资金 200 万元、2025-04-01 至 2026-07-20、前复权冻结数据、预热模式。不得将其当作当前默认启用 AB5 的收益：
 
 | 股票数量 | 总收益 | 最大回撤 | 实际成交记录 | 日期/股票/方向桶 |
 |---:|---:|---:|---:|---:|
@@ -209,7 +219,7 @@ python -m quantfusion.application.stress \
 | 13 | 1232.5668% | -17.4636% | 219 | 106 |
 | 17 | 286.2029% | -20.4993% | 96 | 43 |
 
-上表为全部自动功能默认开启后的精确趋势基线。实际成交记录按每条袖套 `TradeRecord` 计数；去重桶不能证明券商端合单或净额。弱市生产回放、精确序列指纹与验证限制见 `docs/VALIDATION.md`。
+上表数值仅作历史对照，不是当前默认入口回归或 AB5 正式验收结果。当前默认入口回归、历史关闭预算的共享引擎回归和明确例外下的 AB5 正式基线分别记录在 [验证说明](docs/VALIDATION.md)，三者不可混用。实际成交记录按每条袖套 `TradeRecord` 计数；去重桶不能证明券商端合单或净额。
 
 ## 仓库结构
 
@@ -325,10 +335,11 @@ from quantfusion.engine import BacktestEngine, SleeveBacktestEngine
 | 路由结果为 `cash` | 指数数据缺失 / 陈旧 / 不可解析 | 检查 `data/regime/` 中的 `000300.csv` 与 `000682.csv` 是否最新 |
 | 候选列表为空 | 所有股票动量为负 / 数据不足 | 正常现象，弱市中持有现金是预期行为 |
 | 回测收益与基线不符 | 数据版本 / 参数配置不一致 | 使用 `data/market/` 冻结数据、`--indicator-state warm`、默认参数，核对 `SHA256SUMS` |
-| 账户建议为零买入 | 现金不足、候选证据不完整或实际截止日不一致 | 检查 `buys_suppressed`、`buy_suppression_reasons`、`unavailable_symbols` 和 `actions[].reason` |
+| 模拟日扫买入被抑制 | 风险状态身份不匹配、当前部署判断与回放不一致或预热未就绪 | 检查 `summary.buys_suppressed`、对应的三个原因字段及 `blocked_signals`；不要把模拟持仓当作真实账户 |
+| 账户建议为零买入 | 现金或 AB5 预算不足、候选证据不完整或实际截止日不一致 | 在 `account_signals_<日期>.json` 中检查 `buys_suppressed`、`buy_suppression_reasons`、`account_risk_budget`、`unavailable_symbols` 和 `actions[].reason` |
 | 日扫提示 `NOT_READY` 并抑制买入 | 预热健康契约失败关闭（指标历史不足或 regime 证据缺失） | 检查 `warmup_health.reasons`（如 `indicator_warmup_incomplete`、`regime_index_missing_or_stale`、`new_symbols_without_full_history`），补齐预热数据或延长回看窗口后重跑 |
 | 日扫提示 `DEGRADED` | 数据陈旧 / 新上市股票 / 参考篮不完整 | 风险判断保留，按 `warmup_health.reasons` 人工确认新增风险动作；刷新数据可消除 `regime_index_stale` 与 `stale_symbols` |
-| 测试失败 | 基线变更未同步 | 检查 `tests/fixtures/backtest_golden_metrics.json` 是否与代码一致；任何策略变更都必须更新基线并说明原因 |
+| 测试失败 | 行为回归、输入或环境差异，需定位实际原因 | 按失败用例检查输入、来源和实现；不得仅为通过测试改写 `tests/fixtures/backtest_golden_metrics.json`、放宽容差或更新冻结工件 |
 
 ## 优势
 
@@ -382,7 +393,7 @@ bandit -r quantfusion scripts -ll
 pip-audit --strict -r requirements-lock.txt
 ```
 
-CI 在每次推送时自动执行上述全部检查，并额外运行五组趋势基线回归（1/3/5/13/17 只股票池）：成交记录、卖出记录和日期/股票/方向桶等整数指标要求精确一致，总收益与最大回撤等浮点指标仅容忍严格的跨平台浮点求和顺序差异（`rel_tol=1e-9`，远小于任何真实行为漂移的量级）。任何策略、费用、数据或映射变更都必须更新基线并在 `docs/VALIDATION.md` 中说明变化原因。
+`ci.yml` 的触发入口是 `main`、`agent/**` 分支的 `push` 和 `pull_request`；其他没有 PR 的分支仅推送不会触发此 CI。工作流使用对应 Python 版本的锁文件，并额外运行五组趋势基线回归（1/3/5/13/17 只股票池）：成交记录、卖出记录和日期/股票/方向桶等整数指标要求精确一致，总收益与最大回撤等浮点指标仅容忍严格的跨平台浮点求和顺序差异（`rel_tol=1e-9`，远小于任何真实行为漂移的量级）。合法的策略、费用、数据或映射变更应按其任务合同完成验证、保留原始来源，再建立适用的新基线并在 `docs/VALIDATION.md` 中说明原因；不得通过改写冻结预期掩盖回归。
 
 <!-- CURRENT_FORMAL_STRESS_PLAN:START -->
 <!-- CURRENT_FORMAL_STRESS_PLAN_META: {"symbol_count": 17, "scenario_count": 958, "family_counts": {"prefix": 17, "leave_one_out": 17, "add_one": 24, "random_subset": 750, "permutation": 150}} -->
