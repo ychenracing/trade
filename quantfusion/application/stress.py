@@ -348,7 +348,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--candidate-id",
         choices=("C6-Base", "C6-Base+S", "C6-Base+AB5", "C6-Base+AB5+S"),
         default="C6-Base+AB5",
-        help="Exact candidate identity; only explicit AB5 identities enable the account budget",
+        help="Defaults to selected AB5; explicit historical Base identities keep their original configuration",
     )
     parser.add_argument("--ab5-release-acceptance", action="store_true",
                         help="Apply the explicit source-bound owner-approved AB5 release profile")

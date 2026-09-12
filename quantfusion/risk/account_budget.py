@@ -54,9 +54,14 @@ def account_budget_plan(
     sells provide buying credit. The caller supplies its existing weak-first
     order; the planner does not select alpha or invent account history.
     """
-    for symbol, shares, price in (*holdings, *buys):
-        require_int("account budget shares", shares, min_value=0)
-        require_finite("account budget price", price, min_value=0.000001)
+    # Preserve the native producer's Python scalars before summation. NumPy
+    # scalar sums can differ at the last bit, including downstream buy scales.
+    holdings, buys = (
+        [(symbol, require_int("account budget shares", shares, min_value=0),
+          require_finite("account budget price", price, min_value=0.000001))
+         for symbol, shares, price in rows]
+        for rows in (holdings, buys)
+    )
     if sorted(sell_order) != list(range(len(holdings))):
         raise ValueError("account budget sell order must cover every book once")
     receipt = account_budget_capacity(equity, peak, cfg, book_count)

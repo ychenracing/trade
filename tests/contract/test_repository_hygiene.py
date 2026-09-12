@@ -254,7 +254,7 @@ class RepositoryHygieneTests(unittest.TestCase):
         self.assertEqual(proof["expected_from_source"], "314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796")
         self.assertEqual(proof["expected_config"], {"account_risk_budget_enabled": True})
         self.assertEqual(proof["case_count"], 6)
-        self.assertEqual(proof["additional_replay_cases"], 1)
+        self.assertEqual(proof["additional_replay_cases"], 2)
         self.assertIs(proof["all_current_equal_frozen"], True)
         self.assertIs(proof["account_risk_budget_enabled"], True)
         self.assertEqual(proof["initial_capital"], 2_000_000)

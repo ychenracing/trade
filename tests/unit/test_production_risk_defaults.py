@@ -123,3 +123,17 @@ def test_daily_rejects_flag_without_actual_budget_evaluations():
     assert daily_support.validate_production_risk_result(result) == []
     result['risk_events'] = []
     assert daily_support.validate_production_risk_result(result)
+
+
+def test_shared_budget_preserves_native_scalar_arithmetic():
+    """Input normalization must preserve the original producer's float sum."""
+    import numpy as np
+    from quantfusion.risk.account_budget import account_budget_plan
+
+    cfg = default_engine_config()
+    native_buys = [('300308', 1, price) for price in (.1, .2, .3)]
+    wrapped_buys = [(code, shares, np.float64(price)) for code, shares, price in native_buys]
+    native, _ = account_budget_plan(100., 100., cfg, 3, [], native_buys, sell_order=[])
+    wrapped, _ = account_budget_plan(100., 100., cfg, 3, [], wrapped_buys, sell_order=[])
+    assert type(wrapped['requested_buy_gap_debit']) is float
+    assert wrapped == native
