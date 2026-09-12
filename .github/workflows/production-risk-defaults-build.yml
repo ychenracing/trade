@@ -30,33 +30,35 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796
+          ref: 799e120c501b3e12ddc9ed0a3855839f17a767ed
           path: source
           fetch-depth: 0
-      - name: Authenticate patch and save coherent feature checkpoint
+      - name: Continue exact checkpoint and repair annotation only
         run: |
           set -euo pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE/source"
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
           mkdir evidence
-          python - <<'PY'
-          import base64, hashlib, os, subprocess, zlib
-          from pathlib import Path
-          raw=zlib.decompress(base64.b64decode(''.join((Path('task/.github/production-defaults')/f'patch-{i}.b64').read_text().strip() for i in range(4)), validate=True))
-          assert hashlib.sha256(raw).hexdigest()==os.environ['PATCH_SHA256']
-          assert subprocess.check_output(['git','-C','source','rev-parse','HEAD'],text=True).strip()==os.environ['BASE']
-          assert subprocess.check_output(['git','-C','source','rev-parse','HEAD^{tree}'],text=True).strip()=='a2114c02b068ab9bf4c40e25ba74d84f290b19b7'
-          subprocess.run(['git','-C','source','apply','--check','--index','-'],input=raw,check=True)
-          subprocess.run(['git','-C','source','apply','--index','-'],input=raw,check=True)
-          Path('evidence/source.patch').write_bytes(raw)
-          PY
           cd source
+          test "$(git rev-parse HEAD)" = 799e120c501b3e12ddc9ed0a3855839f17a767ed
+          test "$(git ls-remote origin refs/heads/codex/production-risk-defaults | cut -f1)" = 799e120c501b3e12ddc9ed0a3855839f17a767ed
           git switch -c codex/production-risk-defaults
-          git diff --cached --check
-          git commit -m 'feat: apply selected risk budget by default across production entrypoints' -m 'User explicitly requested default activation everywhere. Shared AB5 formula unchanged; account snapshot consumes existing declared peak_equity. Historical diagnostic identities stay explicitly disabled. Local 266 targeted tests and 38 subtests passed before cloud verification. Native equivalence and new golden binding are pending, not claimed accepted.'
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('quantfusion/risk/account_budget.py')
+          s=p.read_text()
+          old='def account_budget_plan(\n    equity: float, peak: float, cfg: Mapping[str, Any], book_count: int,'
+          new='def account_budget_plan(\n    equity: float, peak: float, cfg: dict[str, Any], book_count: int,'
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
+          git diff --check
+          git add quantfusion/risk/account_budget.py
+          git commit -m 'fix: match shared budget config type to native board-limit API'
           git push origin HEAD:refs/heads/codex/production-risk-defaults
           git rev-parse HEAD > ../evidence/checkpoint-head.txt
+          git diff --binary "$BASE" HEAD > ../evidence/source.patch
           git worktree add --detach ../reference "$BASE"
       - name: Install unchanged locked dependencies
         working-directory: source
