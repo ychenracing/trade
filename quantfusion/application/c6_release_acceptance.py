@@ -11,7 +11,7 @@ from typing import Any
 from quantfusion.application.c6_contract import canonical_payload_hash
 from quantfusion.config.paths import PROJECT_ROOT
 
-ACCEPTANCE_REVISION = "C6_AB5_RETURN_EXCEPTIONS_20260911"
+ACCEPTANCE_REVISION = "C6_AB5_P90_185_EXCEPTION_20260912"
 RELAXATION_REVISION = "C6_ACCEPTANCE_RELAX15_20260911"
 AB5_CANDIDATE_ID = "C6-Base+AB5"
 AB5_BASE_SOURCE_REVISION = "4659a2b6d265f45256777da6a2fc25d1369308bd"
@@ -41,6 +41,12 @@ _KNOWN_ENVELOPES = {
         0.2110621724651241,
         1e-15,
         "AB5_KNOWN_MDD_ENVELOPE",
+    ),
+    "trade.random_p90_buckets": (
+        "<=",
+        185.0,
+        0.0,
+        "AB5_KNOWN_RANDOM_P90_185_ENVELOPE",
     ),
     "prefix.worst_adjacent_wealth": (
         ">=",
