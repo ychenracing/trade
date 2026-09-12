@@ -1,0 +1,14 @@
+{
+  "kind": "connected_github_authority_projection",
+  "repository": "ychenracing/trade",
+  "pr_number": 63,
+  "comment_id": 5579901968,
+  "comment_updated_at": "2026-09-12T02:42:48Z",
+  "retrieval": "authenticated GitHub.fetch connector; runner public GET rate-limited",
+  "author_association": "OWNER",
+  "expected_pr_head": "4a852d4401a71927b1407cf14d1b0b2febfe4fe6",
+  "acceptance_revision": "C6_AB5_P90_185_EXCEPTION_20260912",
+  "heartbeat_excerpt": "### C6_AB5_RANDOM_P90_185_EXCEPTION_20260912\nUser explicitly accepted **P90=185 is acceptable**. AB5 exact-source/data/reference envelope <=185 only; RELAX15 stays184, >185 and other new failures remain rejected.",
+  "merge_authority_revision": "C6_AB5_NORMAL_MERGE_AUTHORIZATION_20260912",
+  "scope": "Existing exact reviewed engineering and zero-replay derivation only. Original PR movement still requires current connector heartbeat recheck and expected HEAD guard."
+}
