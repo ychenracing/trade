@@ -8,6 +8,30 @@
 
 历史结果不代表未来收益。所有阈值均在收盘形成信号、下一可交易开盘执行；跳空、连续跌停和流动性不足仍可使实际回撤超过模型值。
 
+## 当前 AB5 正式基线
+
+`artifacts/validation/universe_stress.json`、`prefix_stress.json` 及 `c6_release_receipt.json`
+是当前明确例外下的已接受结果；完整覆盖 958/958 场景、17/17 前缀并引用已认证的 77/77 L2。
+原经济运行 `34638696991`、源码 `56e5743ff8999540f07270ca0ddd0b5c664d8033` 不变；
+当前验收身份为 `C6_AB5_P90_185_EXCEPTION_20260912`。本次仅重判已有事实，未重算任何经济场景。
+
+| 正式观测 | 结果 |
+| --- | ---: |
+| 全场景最差回撤 | -21.10621724651241% |
+| 全场景最差收益 | +32.86492456897505% |
+| 随机日期/股票/方向桶 P90 | 185 |
+| 全场景最多日期/股票/方向桶 | 220 |
+| prefix-05 财富保留率 | 72.3166270514689% |
+| 其他 prefix 最低财富保留率 | 33.223093416649163% |
+| 最差相邻 prefix 财富变化 | -45.57191766929257% |
+| 派生正式发布判据 | 10/10 |
+
+这不是原 18% 回撤线、160 个随机 P90 桶或全部原收益保护门通过。原生失败布尔值仍保留，
+只通过独立 `release_acceptance` 表示本次用户明确接受的有限例外；超出包络仍拒绝。
+原始 rejected JSON 单独保存在 `artifacts/validation/candidates/stress-56e5743ff8999540f07270ca0ddd0b5c664d8033-rejected.json`，
+与原已认证内容逐字节相同。五池共享引擎回归和未开启预算的默认研究结果不得冒充这份 AB5 正式结果。
+这些固定历史样本不代表未来收益或任意股票池的表现。具体定义和来源见 `C6_AB5_RELEASE.md`。
+
 ## C6 当前共享引擎回归
 
 2026-09-11 的只读核对运行 `34631177857` 在相同锁定环境分别重放旧 main、冻结 I_B42
@@ -80,7 +104,7 @@
 - robustness diagnostic：`add-one-05-688205` 相对 `prefix-05` 的终值财富变化为 `-0.23490347753273277`；这是 universe-expansion 路径敏感度，不是账户亏损或最大回撤，也不决定 absolute hard gate
 - 排列不变性：通过
 
-该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。合同 v2 将职责分开：`absolute_hard_gates` 检查全部正式场景 18% 回撤上限及账本正确性；`retained_robustness_hard_gates` 保留 9→10 和最差相邻前缀财富保护；`robustness_diagnostics` 完整报告 add-one 分布与配对变化；`promotion_gates` 只比较未来 v2 incumbent。整体接受要求两个 hard-gate family 同时通过。当前没有 v2 incumbent 时，普通运行使用 `no_incumbent_baseline` 失败关闭；只有显式首基线动作、精确 canonical 958、当前语义参考工件、两个 hard-gate family、收益、排列与 provenance 全部通过时才可建立一次初始基线。
+该候选没有更新 accepted canonical 路径，且不能被描述为当前策略已通过压力验收。合同 v2 将职责分开：`absolute_hard_gates` 检查全部正式场景 18% 回撤上限及账本正确性；`retained_robustness_hard_gates` 保留 9→10 和最差相邻前缀财富保护；`robustness_diagnostics` 完整报告 add-one 分布与配对变化；`promotion_gates` 只比较未来 v2 incumbent。原标准接受路径要求两个 hard-gate family 同时通过；本次 AB5 的有限例外由上方独立发布验收明确记录，不能扩展到其他候选。没有 v2 incumbent 时，普通运行使用 `no_incumbent_baseline` 失败关闭；只有显式首基线动作、精确 canonical 958、当前语义参考工件、两个 hard-gate family、收益、排列与 provenance 全部通过时才可建立一次初始基线。
 
 压力诊断可按精确 `scenario_id`、场景族、换行分隔的 `--scenario-ids-file` 或确定性 shard 执行。任何 selector 都使运行成为 diagnostic：只允许独立检查点、stdout 汇总和显式 diagnostic JSON，不能写正式 `prefix_stress.json` / `universe_stress.json`、更新 incumbent 或声明完整门禁通过。只有未经筛选且与 canonical 默认场景签名精确相等的 958 场景计划能够进入正式发布校验。
 
@@ -158,10 +182,12 @@
 
 历史 22 股/983 场景工件保持原字节与原哈希，只用于审计历史合同。它不构成当前计划的 incumbent、current candidate 或 canonical 证据。
 
+以下保留此前标准验收的原始失败记录，不是当前 AB5 基线状态；当前 accepted canonical 基线及明确例外见 `artifacts/validation/c6_release_receipt.json` 和 [AB5 发布说明](C6_AB5_RELEASE.md)。
+
 <!-- CURRENT_FORMAL_STRESS_RESULT:START -->
-完整计划已运行：`958/958`，唯一 scenario ID：`958`。工件状态为 `current_candidate`，acceptance 为 `rejected`，canonical 为 `false`；absolute hard gates passed=`False`，retained robustness gates passed=`False`。全场景最差最大回撤为 `-23.992778%`（`random-20260807-03-004`），17 股完整 prefix 的总收益为 `286.202912%`、最大回撤为 `-20.499296%`。当前候选：`artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json`，SHA-256：`63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c`；source revision：`acf4cccf4117edb35e6beb57aa2f9004476c8b93`。详细 gates 与 provenance 见 `artifacts/validation/formal_stress_958_acceptance_summary.json`。
+历史标准验收记录：完整计划已运行：`958/958`，唯一 scenario ID：`958`。工件状态为 `current_candidate`，acceptance 为 `rejected`，canonical 为 `false`；absolute hard gates passed=`False`，retained robustness gates passed=`False`。全场景最差最大回撤为 `-23.992778%`（`random-20260807-03-004`），17 股完整 prefix 的总收益为 `286.202912%`、最大回撤为 `-20.499296%`。历史候选：`artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json`，SHA-256：`63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c`；source revision：`acf4cccf4117edb35e6beb57aa2f9004476c8b93`。详细 gates 与 provenance 见 `artifacts/validation/formal_stress_958_acceptance_summary.json`。
 <!-- CURRENT_FORMAL_STRESS_RESULT:END -->
 <!-- CURRENT_FORMAL_STRESS_PLAN:END -->
 
 <!-- C6_BASELINE_REBUILD_META: {"reference_scenarios": 958, "cohort_scenarios": 765, "failures": 649, "boundaries": 110, "controls": 6} -->
-C6 基线兼容性重建保留旧 281 场景证据不变，并从唯一完整的当前 17 股/958 场景 rejected transition reference 确定性派生 765 个场景：649 个失败、110 个 17%—18% 边界和 6 个对照；未运行新回测，也未建立 accepted canonical 基线。
+历史 C6 基线兼容性重建保留旧 281 场景证据不变，并从当时唯一完整的 17 股/958 场景 rejected transition reference 确定性派生 765 个场景：649 个失败、110 个 17%—18% 边界和 6 个对照；该重建本身未运行新回测、未建立 accepted canonical 基线。当前 AB5 基线来自另行完成的正式经济运行及已授权派生验收，不改写这份历史重建。

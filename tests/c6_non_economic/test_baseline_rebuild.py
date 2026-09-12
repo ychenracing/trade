@@ -226,9 +226,11 @@ def test_rebuilt_baseline_identity_is_documented_consistently() -> None:
         '"controls": 6} -->'
     )
     statement = (
-        "C6 基线兼容性重建保留旧 281 场景证据不变，并从唯一完整的当前 17 股/958 "
-        "场景 rejected transition reference 确定性派生 765 个场景：649 个失败、110 "
-        "个 17%—18% 边界和 6 个对照；未运行新回测，也未建立 accepted canonical 基线。"
+        "历史 C6 基线兼容性重建保留旧 281 场景证据不变，并从当时唯一完整的 "
+        "17 股/958 场景 rejected transition reference 确定性派生 765 个场景："
+        "649 个失败、110 个 17%—18% 边界和 6 个对照；该重建本身未运行新回测、"
+        "未建立 accepted canonical 基线。当前 AB5 基线来自另行完成的正式经济运行"
+        "及已授权派生验收，不改写这份历史重建。"
     )
     for relative in ("README.md", "docs/ARCHITECTURE.md", "docs/VALIDATION.md"):
         text = (PROJECT_ROOT / relative).read_text(encoding="utf-8")

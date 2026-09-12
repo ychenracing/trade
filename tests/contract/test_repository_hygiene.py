@@ -213,12 +213,38 @@ class RepositoryHygieneTests(unittest.TestCase):
         for relative in expected:
             self.assertTrue((ROOT / relative).is_file(), msg=relative)
 
-    def test_formal_stress_artifacts_are_absent_without_accepted_baseline(self) -> None:
-        for name in ("prefix_stress.json", "universe_stress.json"):
-            self.assertFalse(
-                (ROOT / "artifacts" / "validation" / name).exists(),
-                msg=name,
-            )
+    def test_formal_stress_baseline_has_valid_native_release_evidence(self) -> None:
+        import hashlib
+        from quantfusion.application.c6_contract import canonical_payload_hash
+        from quantfusion.application.stress_artifacts import _load_incumbent
+
+        directory = ROOT / "artifacts" / "validation"
+        universe = _load_incumbent(directory / "universe_stress.json")
+        self.assertIsNotNone(universe)
+        prefix = json.loads((directory / "prefix_stress.json").read_text())
+        receipt = json.loads((directory / "c6_release_receipt.json").read_text())
+        self.assertIs(prefix["canonical"], True)
+        self.assertEqual(prefix["acceptance_status"], "accepted")
+        self.assertEqual(len(universe["results"]), 958)
+        self.assertEqual(len(prefix["results"]), 17)
+        self.assertEqual({r["scenario_id"]: r for r in prefix["results"]},
+                         {r["scenario_id"]: r for r in universe["results"]
+                          if r["scenario_type"] == "prefix"})
+        self.assertEqual(prefix["release_acceptance"], universe["release_acceptance"])
+        self.assertEqual(canonical_payload_hash(universe), receipt["published_payload_sha256"])
+        self.assertEqual(canonical_payload_hash(prefix), receipt["prefix_payload_sha256"])
+        self.assertEqual(receipt["receipt_id"], canonical_payload_hash(
+            {k: v for k, v in receipt.items() if k != "receipt_id"}))
+        for key in ("base_reruns", "L2_reruns", "official_reruns", "economic_replays"):
+            self.assertEqual(receipt[key], 0)
+        retained = directory / "candidates" / (
+            f"stress-{receipt['economic_source_revision']}-rejected.json")
+        self.assertEqual(hashlib.sha256(retained.read_bytes()).hexdigest(),
+                         receipt["source_rejected_payload_sha256"])
+        original = json.loads(retained.read_text())
+        self.assertEqual(original["results"], universe["results"])
+        self.assertEqual(original["acceptance_status"], "rejected")
+        self.assertIs(original["canonical"], False)
 
     def test_current_golden_is_bound_to_the_selected_frozen_source(self) -> None:
         payload = json.loads((ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text())

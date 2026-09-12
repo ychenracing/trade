@@ -335,7 +335,7 @@ def _expected_result_text(summary: dict[str, Any]) -> str:
     worst = summary["worst_all"]
     prefix = summary["prefix_17"]
     return (
-        "完整计划已运行：`958/958`，唯一 scenario ID：`958`。"
+        "历史标准验收记录：完整计划已运行：`958/958`，唯一 scenario ID：`958`。"
         f"工件状态为 `{summary['artifact_status']}`，"
         f"acceptance 为 `{summary['acceptance_status']}`，"
         f"canonical 为 `{str(summary['canonical']).lower()}`；"
@@ -346,7 +346,7 @@ def _expected_result_text(summary: dict[str, Any]) -> str:
         f"全场景最差最大回撤为 `{worst['max_drawdown']:.6%}`"
         f"（`{worst['scenario_id']}`），17 股完整 prefix 的总收益为 "
         f"`{prefix['total_return']:.6%}`、最大回撤为 "
-        f"`{prefix['max_drawdown']:.6%}`。当前候选："
+        f"`{prefix['max_drawdown']:.6%}`。历史候选："
         f"`{summary['candidate_path']}`，SHA-256："
         f"`{summary['candidate_sha256']}`；source revision："
         f"`{summary['source_revision']}`。详细 gates 与 provenance 见 "
@@ -549,10 +549,10 @@ def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
     assert candidate["robustness_diagnostics"] == (
         stress_metrics._robustness_diagnostics(results)
     )
-    incumbent = stress_artifacts._load_incumbent(
-        stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json"
-    )
-    assert incumbent is None
+    # Reconstruct this immutable historical run's no-incumbent context, not
+    # today's AB5 baseline. The current files have their own full receipt test.
+    assert candidate["promotion_gates"]["status"] == "no_incumbent_baseline"
+    incumbent = None
     assert candidate["promotion_gates"] == stress_metrics._promotion_gates(
         results,
         incumbent,
