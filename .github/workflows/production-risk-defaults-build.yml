@@ -5,7 +5,6 @@ on:
     paths: [.github/workflows/production-risk-defaults-build.yml]
 permissions:
   contents: write
-  actions: read
 concurrency:
   group: production-risk-defaults-build
   cancel-in-progress: false
@@ -15,121 +14,56 @@ defaults:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     container:
       image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
-    env:
-      BASE: 314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796
-      PATCH_SHA256: 38d0b70a50732d33fc75088c468ef2eccb42fb7d23227696948cb42aa6f287f1
-      PYTHONUNBUFFERED: '1'
     steps:
       - uses: actions/checkout@v4
         with:
-          path: task
-          persist-credentials: false
-      - uses: actions/checkout@v4
-        with:
-          ref: 7fa4ebcfd239c42fc17d7620f9136f9cd1df2d09
-          path: source
+          ref: fcedae979b99040f60d457c632ed615c4280b2f8
           fetch-depth: 0
-      - name: Authenticate saved reference results and comparison implementation
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir evidence
-          python - <<'PY'
-          import hashlib,io,json,os,urllib.request,zipfile
-          from pathlib import Path
-          url='https://api.github.com/repos/ychenracing/trade/actions/artifacts/10290554447/zip'
-          request=urllib.request.Request(url,headers={'Accept':'application/vnd.github+json'})
-          request.add_unredirected_header('Authorization','Bearer '+os.environ['GH_TOKEN'])
-          with urllib.request.urlopen(request, timeout=60) as response:
-              raw=response.read()
-          assert hashlib.sha256(raw).hexdigest()=='999ad89565296399ac370cc546f7d9f1e86145f561f32a4482e363219e417c19'
-          out=Path('reference-evidence');out.mkdir()
-          with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-              hashes=json.loads(archive.read('sha256.json'))
-              for name in hashes:
-                  content=archive.read(name)
-                  assert hashlib.sha256(content).hexdigest()==hashes[name]
-                  if name.endswith('-reference.json') or name=='comparison-driver.py':
-                      assert '/' not in name
-                      (out/name).write_bytes(content)
-          s=(out/'comparison-driver.py').read_text()
-          old="        case, kind = item\n        path = reference if kind == 'reference' else candidate"
-          new="        case, kind = item\n        if kind == 'reference':\n            value=json.loads((reference/f'{case}-reference.json').read_text())\n            (output/f'{case}-reference.json').write_text(json.dumps(value,sort_keys=True,indent=2)+'\\n')\n            return (case,kind),value\n        path = candidate"
-          assert s.count(old)==1
-          s=s.replace(old,new)
-          s=s.replace("'scope': 'orders/fills/equity/events/pending; no formal rerun',", "'scope': 'orders/fills/equity/events/pending; no formal rerun', 'reference_reuse': {'run_id':34672665568,'artifact_id':10290554447,'archive_sha256':'999ad89565296399ac370cc546f7d9f1e86145f561f32a4482e363219e417c19','reference_replays':0},")
-          compile(s,'comparison-driver.py','exec')
-          Path('evidence/comparison-driver.py').write_text(s)
-          PY
-      - name: Save exact minimal scalar correction checkpoint
+      - name: Correct the one obsolete README paragraph
         run: |
           set -euo pipefail
-          git config --global --add safe.directory "$GITHUB_WORKSPACE/source"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          test "$(git -C source ls-remote origin refs/heads/codex/production-risk-defaults | cut -f1)" = 7fa4ebcfd239c42fc17d7620f9136f9cd1df2d09
-          python - <<'PY'
-          import base64,hashlib,os,subprocess,zlib
-          from pathlib import Path
-          encoded=Path('task/.github/production-defaults/finish.patch.b64').read_text().strip()
-          encoded=encoded.replace('HY7TCbYsTSa96','HY7TCbYsTSb96')
-          raw=zlib.decompress(base64.b64decode(encoded,validate=True))
-          assert hashlib.sha256(raw).hexdigest()==os.environ['PATCH_SHA256']
-          subprocess.run(['git','-C','source','apply','--check','--index','-'],input=raw,check=True)
-          subprocess.run(['git','-C','source','apply','--index','-'],input=raw,check=True)
-          Path('evidence/source-correction.patch').write_bytes(raw)
-          PY
-          cd source
+          test "$(git ls-remote origin refs/heads/codex/production-risk-defaults | cut -f1)" = fcedae979b99040f60d457c632ed615c4280b2f8
           git switch -c codex/production-risk-defaults
-          git diff --cached --check
-          git commit -m 'fix: preserve native AB5 scalar arithmetic across production entrypoints' -m 'Synthetic RED reproduced NumPy sum divergence; normalize via existing validators before arithmetic. Account HWM/default contract unchanged. Native original references are reused, not rerun. Enabled regression expectations remain independently source bound.'
-          git push origin HEAD:refs/heads/codex/production-risk-defaults
-          git rev-parse HEAD > ../evidence/checkpoint-head.txt
-      - name: Install unchanged locked dependencies
-        working-directory: source
-        run: python -m pip install -r requirements-lock.txt
-      - name: Verify affected scalar and production boundaries
-        working-directory: source
-        run: |
-          set -euo pipefail
-          python -m compileall -q quantfusion tests
-          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion tests
-          pyright quantfusion
-          python -m pytest -q tests/unit/test_production_risk_defaults.py tests/c6_non_economic/test_account_risk_budget.py | tee ../evidence/scalar-tests.txt
-      - name: Compare corrected defaults to eight authenticated references without reference replay
-        run: python evidence/comparison-driver.py compare reference-evidence source evidence
-      - name: Validate independent goldens and publish tested feature tree
-        working-directory: source
-        run: |
-          set -euo pipefail
-          python -m pytest -q tests/contract/test_repository_hygiene.py tests/contract/test_architecture.py tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_weak_real_execution_matches_frozen_research_point | tee ../evidence/final-contract-tests.txt
-          git diff --check
-          git add tests/fixtures/backtest_golden_metrics.json docs/VALIDATION.md
-          git commit -m 'test: bind enabled production defaults to authenticated immutable references'
-          git push origin HEAD:refs/heads/codex/production-risk-defaults
-          git rev-parse HEAD > ../evidence/final-head.txt
-          git rev-parse HEAD^{tree} > ../evidence/final-tree.txt
-      - name: Preserve actual checkpoint and forensic evidence
-        if: always()
-        run: |
-          mkdir -p evidence
-          if git -C source rev-parse --verify refs/heads/codex/production-risk-defaults; then
-            git -C source bundle create "$GITHUB_WORKSPACE/evidence/verified.bundle" refs/heads/codex/production-risk-defaults
-            git -C source status --short > evidence/worktree-status.txt
-            git -C source diff --binary > evidence/uncommitted.patch
-          fi
           python - <<'PY'
           from pathlib import Path
-          import hashlib,json
-          root=Path('evidence')
-          (root/'sha256.json').write_text(json.dumps({p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file() and p.name!='sha256.json'},sort_keys=True,indent=2)+'\n')
+          import subprocess
+          p=Path('README.md');s=p.read_text()
+          old='''`C6-Base+AB5` 在连续账户和原生订单队列上增加账户风险预算，必须显式设置
+          `account_risk_budget_enabled=True`；普通日扫、真实账户时点建议和未指定该配置的研究命令
+          不会自动获得这套连续账户预算。F0/F1/U 正确性修复属于共享生产路径，不等于自动启用 AB5。'''
+          new='''`C6-Base+AB5` 在连续账户和原生订单队列上执行账户风险预算，正常回测和日扫默认启用。
+          真实账户时点建议默认复用同一预算规划器，使用快照中已声明的账户峰值，不伪造历史账本。
+          F0/F1/U 正确性修复与 AB5 预算共同进入默认生产路径；历史关闭预算对照保持明确隔离。'''
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          assert subprocess.check_output(['git','hash-object','README.md'],text=True).strip()=='44572771f3fefb30952f61f79dcd10f43d10a4e7'
+          assert subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()==['README.md']
           PY
+      - name: Install unchanged locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Verify current documentation and default risk controls
+        run: |
+          python -m pytest -q tests/contract/test_repository_hygiene.py::MarkdownConsistencyTests tests/unit/test_production_risk_defaults.py tests/c6_non_economic/test_account_risk_budget.py
+          git diff --check
+      - name: Publish verified documentation and record final feature identity
+        run: |
+          set -euo pipefail
+          git add README.md
+          git commit -m 'docs: make the default AB5 activation contract consistent'
+          git push origin HEAD:refs/heads/codex/production-risk-defaults
+          mkdir "$RUNNER_TEMP/default-final"
+          git rev-parse HEAD > "$RUNNER_TEMP/default-final/head.txt"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/default-final/tree.txt"
+          git bundle create "$RUNNER_TEMP/default-final/verified.bundle" refs/heads/codex/production-risk-defaults
+          git status --short > "$RUNNER_TEMP/default-final/status.txt"
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: production-risk-defaults-${{ github.run_id }}
-          path: evidence/
+          name: production-risk-defaults-final-${{ github.run_id }}
+          path: ${{ runner.temp }}/default-final/
           retention-days: 90
