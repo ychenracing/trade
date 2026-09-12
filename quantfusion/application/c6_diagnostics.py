@@ -172,11 +172,7 @@ def _l2_evaluate(
     from quantfusion.application.c6_contract import candidate_spec
     spec = candidate_spec(candidate_id)
     intervention = str(spec["intervention_id"])
-    cfg = (
-        {"account_risk_budget_enabled": True}
-        if spec["account_risk_budget_enabled"]
-        else None
-    )
+    cfg = {"account_risk_budget_enabled": spec["account_risk_budget_enabled"]}
     codes = [str(item) for item in scenario["symbols"]]
     with contextlib.redirect_stdout(io.StringIO()):
         result = ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL, cfg=cfg).run_c6_diagnostic(

@@ -515,6 +515,7 @@ class ArtifactStrictJSONTests(unittest.TestCase):
             "total_trades": 50,
             "risk_events": [],
             "pending_signals": [],
+                "account_risk_budget": {"enabled": True, "mechanism": "AB5", "status": "APPLIED"},
             "trades": [],
             "safe_mode_active": False,
         }

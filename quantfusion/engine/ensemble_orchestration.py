@@ -9,6 +9,7 @@ from quantfusion.execution.c6_receipts import order_receipt, reconcile_close_que
 # ruff: noqa: F401
 
 import contextlib
+from quantfusion.risk.account_budget import account_budget_status
 import copy
 import io
 import math
@@ -566,5 +567,7 @@ class EnsembleOrchestrationMixin:
             combined["_c6_fills"] = getattr(states[0].sleeve, "_c6_fills", [])
             combined["_c6_pending_path"] = pending_path
             combined["_c6_exposure_trace"] = self._c6_exposure_trace
+        combined["account_risk_budget"] = account_budget_status(
+            portfolio_risk_events, bool(self.cfg["account_risk_budget_enabled"]))
         self.last_result = combined
         return combined

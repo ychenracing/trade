@@ -11,6 +11,8 @@ from quantfusion.execution.c6_receipts import reconcile_close_queue
 # ruff: noqa: F401
 
 import math
+from types import SimpleNamespace
+from quantfusion.risk.account_budget import apply_account_risk_budget
 from dataclasses import replace
 from typing import Any, Callable, ClassVar
 
@@ -325,19 +327,49 @@ class CoreReplayLoopMixin:
     ) -> list[tuple[Signal, BaseStrategy]]:
         """Execute prior-close orders, then evaluate today's close."""
         self._start_trading_day()
-        if pending:
+        if pending and self.cfg["account_risk_budget_enabled"]:
+            # Standalone/forced-weak runs own one real book. Preserve the same
+            # retained defensive sell-wins boundary as the ensemble: an active
+            # winner owns this batch even when filled or deferred at the open.
+            defensive_books = {
+                (signal.symbol, signal.strategy_name)
+                for signal, strategy in pending
+                if signal.direction == "sell" and strategy is None
+            }
             pending = self._execute_pending_signals(
-                pending, data_map, date, date_to_pos
+                pending, data_map, date, date_to_pos, frozenset({"sell"})
             )
-        return self._evaluate_trading_day(
-            symbols_dict,
-            data_map,
-            indicator_map,
-            all_dates,
-            date_to_pos,
-            date,
-            pending,
+            retained = []
+            for signal, strategy in pending:
+                if signal.direction == "buy" and (signal.symbol, signal.strategy_name) in defensive_books:
+                    self._record_order_event(
+                        date=date.strftime("%Y-%m-%d"), signal=signal,
+                        event="blocked_retained_defensive_sell", state_index=0,
+                        sleeve_name=self.sleeve_name,
+                    )
+                    continue
+                retained.append((signal, strategy))
+            pending = self._execute_pending_signals(
+                retained, data_map, date, date_to_pos, frozenset({"buy"})
+            )
+        elif pending:
+            pending = self._execute_pending_signals(pending, data_map, date, date_to_pos)
+        pending = self._evaluate_trading_day(
+            symbols_dict, data_map, indicator_map, all_dates, date_to_pos, date, pending,
         )
+        if self.cfg["account_risk_budget_enabled"]:
+            assets = self._total_assets(data_map, date)
+            peak = max(
+                max(float(row["assets"]) for row in self.equity_curve),
+                float(getattr(getattr(self, "risk", None), "lifetime_peak_assets", 0.)),
+            )
+            scorer = getattr(self, "_allocation_scores", None)
+            scores = scorer(data_map, date) if scorer is not None else {}
+            state = SimpleNamespace(sleeve=self, data_map=data_map, pending=pending)
+            apply_account_risk_budget([state], date, assets, peak, self.cfg,
+                                      lambda symbol: float(scores.get(symbol, 0.)), self.risk_events)
+            pending = state.pending
+        return pending
 
     def run(
         self,

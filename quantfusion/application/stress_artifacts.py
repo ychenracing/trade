@@ -88,7 +88,7 @@ def _build_provenance(
     regime_data_dir: Path,
     *,
     source_revision: str,
-    candidate_id: str = "C6-Base",
+    candidate_id: str = "C6-Base+AB5",
 ) -> dict[str, Any]:
     candidate_spec(candidate_id)
     if len(source_revision) != 40 or any(
@@ -125,7 +125,7 @@ def _run_signature(
     regime_data_dir: Path,
     *,
     source_revision: str,
-    candidate_id: str = "C6-Base",
+    candidate_id: str = "C6-Base+AB5",
 ) -> str:
     return str(
         _build_provenance(

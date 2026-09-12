@@ -23,8 +23,6 @@ from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import MarketRegimeObservation, Signal
 from quantfusion.domain.rules import (
     floor_to_lot,
-    limit_pct_for_code,
-    require_finite,
     require_int,
 )
 from quantfusion.engine.core import CoreBacktestEngine
@@ -39,13 +37,10 @@ from quantfusion.execution.c6_receipts import begin_order, reconcile_close_queue
 from quantfusion.indicators.technical import Indicators
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager, RiskManager
-from quantfusion.risk.account_budget import account_budget_capacity
-from quantfusion.risk.overlay.models import RiskAction
-from quantfusion.config.overlay import RISK_ACTION_PRIORITY
+from quantfusion.risk.account_budget import apply_account_risk_budget
 from quantfusion.risk.overlay.adapter import (
     apply_cooldown_buy_gate,
     apply_risk_buy_gate,
-    apply_risk_actions,
 )
 from quantfusion.strategy.trend import BaseStrategy
 
@@ -712,118 +707,9 @@ class EnsembleAllocationMixin:
         self, states: list[_PreparedSleeveRun], date: pd.Timestamp,
         assets: float, peak: float, events: list[dict[str, Any]],
     ) -> None:
-        """Reduce close-known intents only; queued sells never fund new risk."""
-        date_str = date.strftime("%Y-%m-%d")
-        books, buys = [], []
-        book_ids = set()
-        costs = dict(self.cfg)
-        for state_index, state in enumerate(states):
-            for key in ("slippage", "commission_rate", "stamp_duty", "min_commission"):
-                costs[key] = max(costs[key], state.sleeve.cfg[key])
-            for symbol, positions in sorted(state.sleeve.positions.items()):
-                for strategy, position in sorted(positions.items()):
-                    shares = require_int("held shares", position.shares, min_value=0)
-                    if not shares:
-                        continue
-                    frame = state.data_map.get(symbol)
-                    if frame is None:
-                        raise ValueError("account budget requires every held mark")
-                    price = require_finite("held close", state.sleeve._latest_close_on_or_before(frame, date), min_value=0.000001)
-                    books.append((state_index, symbol, strategy, shares, price))
-                    book_ids.add((state_index, symbol, strategy))
-            for signal, strategy in state.pending:
-                if signal.direction == "buy":
-                    shares = require_int("pending buy shares", signal.target_shares, min_value=0)
-                    price = require_finite("pending buy price", signal.price, min_value=0.000001)
-                    if signal.signal_date is None or pd.Timestamp(signal.signal_date) > date:
-                        raise ValueError("account budget requires close-known buy intents")
-                    buys.append((state_index, signal, shares*price))
-                    if shares:
-                        book_ids.add((state_index, signal.symbol, signal.strategy_name))
-        receipt = account_budget_capacity(assets, peak, costs, len(book_ids))
-        gross = sum(shares*price for _, _, _, shares, price in books)
-        if gross > assets + 1e-8:
-            raise ValueError("account budget cannot certify leveraged/negative-cash books")
-        cap = receipt["gross_cap"]
-        requested = sum(value for _, _, value in buys)
-        buy_envelope_binding = cap < receipt["ordinary_gross_cap"] - 1e-8
-        buy_gross_scale = (
-            min(1., max(0., cap-gross)/requested)
-            if buy_envelope_binding and requested else 1.
-        )
-        variable_gap_cost = receipt["cost_rate"]
-        current_gap_debit = sum(
-            shares * price * (limit_pct_for_code(symbol, costs) + variable_gap_cost)
-            for _, symbol, _, shares, price in books
-        )
-        requested_buy_gap_debit = sum(
-            value * (limit_pct_for_code(signal.symbol, costs) + variable_gap_cost)
-            for _, signal, value in buys
-        )
-        buy_gap_scale = (
-            min(
-                1.,
-                max(0., receipt["remaining_loss_budget"] - current_gap_debit)
-                / requested_buy_gap_debit,
-            )
-            if buy_envelope_binding and requested_buy_gap_debit else 1.
-        )
-        buy_scale = min(buy_gross_scale, buy_gap_scale)
-        actions = []
-        score = self._overlay_allocation_score(states, date)
-        remaining_relief = max(0., gross-cap)
-        for state_index, symbol, strategy, shares, price in sorted(
-            books,
-            key=lambda book: (score(book[1]), book[1], book[0], book[2]),
-        ):
-            # Exhaust weaker books first and round only the one final partial
-            # reduction.  This avoids AB1's per-book rounding and winner churn.
-            reduction = min(
-                shares,
-                math.ceil(remaining_relief/price/100.)*100,
-            )
-            if not reduction:
-                continue
-            covered = any(signal.direction == "sell" and signal.symbol == symbol
-                          and signal.strategy_name == strategy and signal.target_shares >= reduction
-                          for signal, _ in states[state_index].pending)
-            if not covered:
-                actions.append(RiskAction(symbol, strategy, reduction, price, date_str,
-                                          "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
-                                          state_index=state_index))
-            remaining_relief = max(0., remaining_relief-reduction*price)
-        # Validate and plan the entire batch before changing any pending queue.
-        previous = [list(state.pending) for state in states]
-        clipped = 0
-        for state in states:
-            retained = []
-            for signal, strategy in state.pending:
-                if signal.direction == "buy" and buy_scale < 1.:
-                    quantity = floor_to_lot(signal.target_shares*buy_scale)
-                    clipped += signal.target_shares - quantity
-                    state.sleeve._record_order_event(
-                        date=date_str, signal=signal, event="account_budget_buy_reduced",
-                        authorized_shares=quantity, close_gross_cap=cap,
-                    )
-                    if not quantity:
-                        continue
-                    signal = replace(signal, target_shares=quantity)
-                retained.append((signal, strategy))
-            state.pending = retained
-        apply_risk_actions(actions, states, date_str=date_str, events=events,
-                           state_local_books=True)
-        for state, before in zip(states, previous):
-            reconcile_close_queue(state.sleeve, before, state.pending, date_str, "account_budget_envelope")
-        events.append({"date": date_str, "event": "account_budget_envelope",
-                       "mechanism": "AB5", "planned_not_filled": True, **receipt,
-                       "gross_before": gross,
-                       "buy_envelope_binding": buy_envelope_binding,
-                       "buy_gross_scale": buy_gross_scale,
-                       "current_gap_debit": current_gap_debit,
-                       "requested_buy_gap_debit": requested_buy_gap_debit,
-                       "buy_gap_scale": buy_gap_scale,
-                       "buy_scale": buy_scale,
-                       "buy_shares_removed": clipped, "new_reduction_orders": len(actions)})
+        """Apply the canonical budget once to the combined account, never per sleeve."""
+        apply_account_risk_budget(states, date, assets, peak, self.cfg,
+                                  self._overlay_allocation_score(states, date), events)
 
     def _execute_ensemble_open(
         self,

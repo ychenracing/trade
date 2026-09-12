@@ -175,12 +175,13 @@ class AdaptiveEngineTests(unittest.TestCase):
         # Internal sleeve cash flows are unitized instead of being counted as
         # investment PnL in sleeve risk/equity bases. Keep that corrected path
         # as the exact frozen regression.
-        self.assertAlmostEqual(result["total_return"], 0.49679034682374956, places=12)
-        self.assertAlmostEqual(
-            result["max_drawdown"], -0.17219488006814201, places=12
-        )
-        self.assertEqual(result["total_trades"], 18)
-        self.assertEqual(result["sleeve_fill_count"], 18)
+        baseline = json.loads(
+            (ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text()
+        )["_adaptive_weak"]
+        self.assertAlmostEqual(result["total_return"], baseline["total_return"], places=12)
+        self.assertAlmostEqual(result["max_drawdown"], baseline["max_drawdown"], places=12)
+        self.assertEqual(result["total_trades"], baseline["total_trades"])
+        self.assertEqual(result["sleeve_fill_count"], baseline["sleeve_fill_count"])
         replay = result["production_replay"]
         self.assertEqual(replay["engine"], "ProductionReplayEngine")
         self.assertGreater(len(replay["daily_journal"]), 200)

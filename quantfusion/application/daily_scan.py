@@ -419,6 +419,10 @@ def _run_main() -> int:
     # artifact to a SEPARATE file (signals_<date>.error.json) so the last
     # successful artifact (signals_<date>.json) is never overwritten.
     result_invalid_fields = _validate_result_fields(result)
+    budget_status = result.get("account_risk_budget") if isinstance(result, dict) else None
+    if (not isinstance(budget_status, dict) or budget_status.get("enabled") is not True
+            or budget_status.get("mechanism") != "AB5" or budget_status.get("status") != "APPLIED"):
+        result_invalid_fields.append("account_risk_budget: default AB5 was not evaluated")
     result_is_valid = len(result_invalid_fields) == 0
 
     if not result_is_valid:
@@ -433,7 +437,7 @@ def _run_main() -> int:
             "scan_date": end_date,
             "mode": "simulation",
             "status": "error",
-            "error": "回测结果包含非有限值或类型错误 — 信号不可用",
+            "error": "回测结果或默认账户风险预算未通过校验 — 信号不可用",
             "invalid_fields": result_invalid_fields,
             "risk_state_saved": False,
             "run_id": run_id,
@@ -810,6 +814,7 @@ def _run_main() -> int:
             ),
             "snapshot_schema_version": snapshot_manifest["schema_version"],
         },
+        "account_risk_budget": budget_status,
         "pending_signals": pending_serializable,
         "blocked_signals": blocked_serializable,
         "risk_state_saved": False,  # updated after state save

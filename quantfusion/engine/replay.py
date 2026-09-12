@@ -81,8 +81,7 @@ def c6_diagnostic_engine_config(
         raise ValueError(
             "AB5 requires its own evidence identity, not a frozen C6 Base/S run"
         )
-    if enabled:
-        out["account_risk_budget_enabled"] = True
+    out["account_risk_budget_enabled"] = enabled
     return out
 
 class ProductionRouteController:

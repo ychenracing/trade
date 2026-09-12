@@ -87,6 +87,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
                 "total_trades": 50,
                 "risk_events": [],
                 "pending_signals": [],
+                "account_risk_budget": {"enabled": True, "mechanism": "AB5", "status": "APPLIED"},
                 "trades": [],
                 "safe_mode_active": False,
             }
@@ -130,6 +131,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
                 "total_trades": 50,
                 "risk_events": [],
                 "pending_signals": [],
+                "account_risk_budget": {"enabled": True, "mechanism": "AB5", "status": "APPLIED"},
                 "trades": [],
                 "safe_mode_active": False,
             }
@@ -178,6 +180,7 @@ class LastGoodArtifactProtectionTests(unittest.TestCase):
             "total_trades": 50,
             "risk_events": [],
             "pending_signals": [],
+                "account_risk_budget": {"enabled": True, "mechanism": "AB5", "status": "APPLIED"},
             "trades": [],
             "safe_mode_active": False,
         }
@@ -325,6 +328,7 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
             "total_trades": 50,
             "risk_events": [],
             "pending_signals": [],
+                "account_risk_budget": {"enabled": True, "mechanism": "AB5", "status": "APPLIED"},
             "trades": [],
             "safe_mode_active": False,
         }
@@ -465,6 +469,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
             "total_trades": 50,
             "risk_events": [],
             "pending_signals": [],
+                "account_risk_budget": {"enabled": True, "mechanism": "AB5", "status": "APPLIED"},
             "trades": [],
             "safe_mode_active": False,
         }
@@ -588,6 +593,7 @@ class RunIdConsistencyTests(unittest.TestCase):
             "total_trades": 50,
             "risk_events": [],
             "pending_signals": [],
+                "account_risk_budget": {"enabled": True, "mechanism": "AB5", "status": "APPLIED"},
             "trades": [],
             "safe_mode_active": False,
         }
