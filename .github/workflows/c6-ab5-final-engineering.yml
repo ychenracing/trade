@@ -19,67 +19,52 @@ jobs:
       image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
     timeout-minutes: 10
     env:
-      EXPECTED_HEAD: 4a852d4401a71927b1407cf14d1b0b2febfe4fe6
       PYTHONUNBUFFERED: '1'
+      C6_TRANSFER: ${{ runner.temp }}/c6-integrity-transfer
+      C6_VERIFY_OUT: ${{ runner.temp }}/c6-integrity-evidence
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 4a852d4401a71927b1407cf14d1b0b2febfe4fe6
           fetch-depth: 0
-      - name: Preserve exact public source and frozen ancestry
+      - name: Authenticate reviewed batch and isolate original PR source
         run: |
           set -euo pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
-          test "$(git ls-remote origin refs/heads/codex/c6-causal-risk-closure-v11 | cut -f1)" = "$EXPECTED_HEAD"
-          mkdir -p "$RUNNER_TEMP/publication-integrity"
-          git branch publication-integrity-source HEAD
-          git bundle create "$RUNNER_TEMP/publication-integrity/source.bundle" --all
-          git show -s --format='%H %T %P' HEAD > "$RUNNER_TEMP/publication-integrity/head.txt"
-      - name: Install existing locked runtime
+          python - <<'PY'
+          import ast,base64,hashlib,json,os,pathlib,zlib
+          encoded=''.join(pathlib.Path(f'.github/c6-transfer/publication-integrity-{i}.b64').read_text().strip() for i in range(3))
+          assert hashlib.sha256(encoded.encode()).hexdigest()=='b522ef35f9b70fa495e0d1cf9000ab4b8517143be2bf7212f6f12feb1edd5823'
+          raw=zlib.decompress(base64.b64decode(encoded,validate=True))
+          assert hashlib.sha256(raw).hexdigest()=='0abd9f404e6de1ef01047d1cf0726b0abd2eedf75d0bb70d0fb7b5169301ce1b'
+          files=json.loads(raw)
+          assert set(files)=={'red.patch','green.patch','post.patch','publish.py','run.py'}
+          root=pathlib.Path(os.environ['C6_TRANSFER']); root.mkdir()
+          # The repository is public. Read its public heartbeat without a token;
+          # the helper's existing contents/actions permissions stay unchanged.
+          old="headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}"
+          assert files['run.py'].count(old)==1
+          files['run.py']=files['run.py'].replace(old,"headers={'Accept':'application/vnd.github+json'}")
+          for name,content in files.items():
+              (root/name).write_text(content)
+              if name.endswith('.py'): ast.parse(content)
+          PY
+          git switch --detach 4a852d4401a71927b1407cf14d1b0b2febfe4fe6
+          test -z "$(git status --porcelain)"
+      - name: Install unchanged locked runtime
         run: python -m pip install --require-hashes -r requirements-lock.txt
-      - name: Repair the test fixture and prove intended RED with valid positives
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          import subprocess
-          p=Path('tests/c6_non_economic/test_c6_publication_integrity.py')
-          old=p.read_text()
-          assert old.count('stress_metrics._initial_baseline_gates(rows, reference)')==1
-          text=old.replace('stress_metrics._initial_baseline_gates(rows, reference)', 'stress_metrics._initial_baseline_gates(rows, None)')
-          text+='''\n\ndef test_consistent_prefix_projection_accepts_independent_order() -> None:\n    scenarios, provenance, prefix, universe = _formal_candidate()\n    for rows in (prefix["results"], list(reversed(prefix["results"]))):\n        stress_artifacts._validate_publish_candidate(\n            {**prefix, "results": rows}, universe, scenarios=scenarios,\n            provenance=provenance, incumbent=None, initial_baseline_reference=None,\n        )\n'''
-          p.write_text(text)
-          result=subprocess.run(['python','-m','pytest','-q',str(p),'--junitxml='+str(Path(__import__('os').environ['RUNNER_TEMP'])/'publication-integrity/red.xml')],text=True,capture_output=True)
-          out=Path(__import__('os').environ['RUNNER_TEMP'])/'publication-integrity'
-          (out/'red.txt').write_text(result.stdout+result.stderr)
-          (out/'red.patch').write_bytes(subprocess.check_output(['git','diff','--',str(p)]))
-          print(result.stdout, result.stderr)
-          assert result.returncode==1
-          import xml.etree.ElementTree as ET
-          root=ET.parse(out/'red.xml').getroot()
-          failed=[case for case in root.iter('testcase') if case.find('failure') is not None]
-          assert {case.attrib['name'] for case in failed}=={
-              'test_publish_candidate_rejects_prefix_universe_record_disagreement',
-              'test_ab5_incumbent_requires_valid_release_assessment'}
-          assert all('DID NOT RAISE' in case.find('failure').attrib['message'] for case in failed)
-          assert any(case.attrib['name']=='test_consistent_prefix_projection_accepts_independent_order' and case.find('failure') is None for case in root.iter('testcase'))
-          PY
-      - name: Seal source and RED evidence
+      - name: Verify RED controls, repair, authenticate native evidence and publish candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python "$C6_TRANSFER/run.py"
+      - name: Preserve native integrity verification evidence
         if: always()
-        run: |
-          python - <<'PY'
-          import hashlib,json,os,pathlib,subprocess
-          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'publication-integrity'
-          files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file()}
-          receipt={'source_revision':os.environ['EXPECTED_HEAD'],'workflow_run_id':os.environ['GITHUB_RUN_ID'],'economic_replays':0,'sha256':files}
-          (out/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
-          print(json.dumps(receipt,sort_keys=True))
-          PY
-      - uses: actions/upload-artifact@v4
-        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: c6-publication-integrity-source-${{ github.run_id }}
-          path: ${{ runner.temp }}/publication-integrity/
+          name: c6-ab5-integrity-canonical-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/c6-integrity-evidence/*.txt
+            ${{ runner.temp }}/c6-integrity-evidence/*.xml
+            ${{ runner.temp }}/c6-integrity-evidence/*.json
+            ${{ runner.temp }}/c6-integrity-evidence/*.bundle
           if-no-files-found: error
           retention-days: 90
