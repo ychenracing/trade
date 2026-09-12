@@ -25,6 +25,11 @@ from quantfusion.account.snapshot import (
     load_account_snapshot_with_sha256,
 )
 from quantfusion.config.engine import default_engine_config
+from quantfusion.config.portfolio import PortfolioPolicy
+from quantfusion.domain.models import Signal
+from quantfusion.domain.rules import floor_to_lot, require_finite
+from quantfusion.engine.universe import SleeveBacktestEngine
+from quantfusion.risk.account_budget import plan_account_risk_budget
 from quantfusion.config.profiles import config_for_symbol, get_symbol_profile
 from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.config.weak import weak_regime_config
@@ -230,6 +235,74 @@ class AccountSignalEngine:
                 )
             )
         return candidates
+
+    @staticmethod
+    def _apply_account_budget(
+        snapshot: AccountSnapshot, prepared: dict[str, _PreparedMarket],
+        actions: list[dict[str, Any]], *, equity: float, as_of: str,
+    ) -> dict[str, Any]:
+        """Apply AB5 to actual aggregate holdings, never invent historical sleeves.
+
+        The required snapshot peak and today's complete valuation supply the
+        high-water mark. Only a newly observed high can increase that mark.
+        Recommendations remain indicative and bounded by known T+1 sellability.
+        """
+        cfg = default_engine_config()
+        for _, _, symbol_cfg, _ in prepared.values():
+            for key in ("slippage", "commission_rate", "stamp_duty", "min_commission"):
+                cfg[key] = max(cfg[key], symbol_cfg.get(key, cfg[key]))
+        peak = max(require_finite("peak_equity", snapshot.peak_equity, min_value=0.01), equity)
+        by_symbol = {a["symbol"]: a for a in actions if a.get("shares", 0) > 0}
+        books = [(0, p.symbol, "account_position", p.shares, by_symbol[p.symbol]["close"])
+                 for p in snapshot.positions]
+        buy_rows = [a for a in actions if a["action"] == "BUY_CANDIDATE"]
+        buys = [(0, Signal(a["symbol"], "account_candidate", "buy",
+                         target_shares=a["indicative_target_shares"], price=a["close"],
+                         signal_date=as_of), a["indicative_target_shares"]*a["close"])
+                for a in buy_rows]
+        frames = {symbol: market[0] for symbol, market in prepared.items()}
+        # Reuse the replay's causal laggard scores, without running a portfolio
+        # or assigning fictitious sleeve ownership to real positions.
+        scores = [SleeveBacktestEngine(peak, cfg=cfg, policy=PortfolioPolicy(),
+                                      allocation_lookbacks=lookbacks, sleeve_name="account_risk_score")
+                  ._allocation_scores(frames, pd.Timestamp(as_of))
+                  for lookbacks in PortfolioPolicy().allocation_horizons]
+
+        def score(symbol: str) -> float:
+            return sum(values.get(symbol, 0.) for values in scores)/len(scores)
+
+        receipt, reductions = plan_account_risk_budget(
+            equity, peak, cfg, books, buys, score, date_str=as_of,
+        )
+        for reduction in reductions:
+            row = by_symbol[reduction.symbol]
+            existing = int(row.get("recommended_shares", 0))+int(row.get("blocked_shares", 0))
+            desired = max(existing, reduction.shares)
+            executable = min(desired, row["sellable_shares"])
+            # Existing full-position advisories keep their original T+1
+            # semantics; a new partial reduction uses executable board lots.
+            if desired < row["shares"]:
+                executable = floor_to_lot(executable)
+            row.update(action="SELL" if row["action"] == "SELL" else "REDUCE_REVIEW",
+                       recommended_shares=executable, blocked_shares=desired-executable,
+                       execution_status=("EXECUTABLE" if executable == desired else
+                                         "PARTIALLY_T1_BLOCKED" if executable else "T1_BLOCKED"),
+                       reason=row["reason"]+"; account_budget_trim (close-known plan, not a fill)")
+        for row in buy_rows:
+            if receipt["buy_scale"] >= 1.:
+                continue
+            original = row["indicative_target_shares"]
+            quantity = floor_to_lot(original*receipt["buy_scale"])
+            row.update(indicative_target_shares=quantity,
+                       original_indicative_target_shares=original,
+                       target_weight=quantity*row["close"]/equity if equity else 0.,
+                       reason=row["reason"]+"; account_budget_buy_reduced; queued sells give no credit")
+            if not quantity:
+                row.update(action="BLOCKED", execution_status="RISK_BUDGET_BLOCKED")
+        return {"enabled": True, "mechanism": "AB5", "status": "APPLIED",
+                "scope": "actual_account_snapshot_books", "planned_not_filled": True,
+                "input_peak_equity": snapshot.peak_equity, **receipt,
+                "planned_reductions": [asdict(a) for a in reductions]}
 
     def run(
         self,
@@ -707,7 +780,19 @@ class AccountSignalEngine:
         estimated_equity: float | None = (
             snapshot.cash + priced_market_value if valuation_complete else None
         )
+        if valuation_complete and data_complete:
+            account_budget = self._apply_account_budget(
+                snapshot, prepared, actions, equity=snapshot.cash+priced_market_value, as_of=as_of,
+            )
+            if account_budget["buy_scale"] == 0.:
+                buys_suppressed = True
+                buy_suppression_reasons.append("ACCOUNT_RISK_BUDGET")
+        else:
+            account_budget = {"enabled": True, "mechanism": "AB5", "status": "NOT_READY",
+                              "reason": "incomplete account valuation or market evidence"}
+
         return {
+            "account_risk_budget": account_budget,
             "as_of": as_of,
             "mode": "account_decision_support",
             "account_id": snapshot.account_id,

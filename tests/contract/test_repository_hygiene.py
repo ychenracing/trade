@@ -246,19 +246,30 @@ class RepositoryHygieneTests(unittest.TestCase):
         self.assertEqual(original["acceptance_status"], "rejected")
         self.assertIs(original["canonical"], False)
 
-    def test_current_golden_is_bound_to_the_selected_frozen_source(self) -> None:
+    def test_current_golden_is_bound_to_independent_enabled_control(self) -> None:
+        import hashlib
         payload = json.loads((ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text())
         proof = payload["_source_binding"]
-        self.assertEqual(proof["expected_from_source"], "4659a2b6d265f45256777da6a2fc25d1369308bd")
-        self.assertEqual(proof["comparison_source"], "c8d46db65b4ae1e72884399cbcaeb7999f6c400b")
-        self.assertEqual(proof["case_count"], 6)
-        self.assertIs(proof["all_current_equal_frozen"], True)
-        self.assertIs(proof["account_risk_budget_enabled"], False)
+        source = ROOT / proof["proof_path"]
+        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), proof["proof_sha256"])
+        evidence = json.loads(source.read_text())
+        self.assertEqual(evidence["kind"], "same_runtime_default_matches_existing_explicit_ab5")
+        self.assertEqual(evidence["reference_main_revision"], "314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796")
+        self.assertEqual(evidence["reference_main_tree"], "a2114c02b068ab9bf4c40e25ba74d84f290b19b7")
+        self.assertEqual(evidence["control_tree"], evidence["reference_main_tree"])
+        self.assertEqual(evidence["control_checkout_revision"], proof["expected_from_source"])
+        self.assertEqual(evidence["control_config"], {"account_risk_budget_enabled": True})
+        self.assertEqual(evidence["candidate_config"], {})
+        self.assertEqual(evidence["control_cases"], evidence["default_cases"])
+        self.assertEqual(len(evidence["control_cases"]), 7)
+        self.assertEqual(proof["case_count"], 7)
+        self.assertIs(proof["account_risk_budget_enabled"], True)
         self.assertEqual(proof["initial_capital"], 2_000_000)
         self.assertEqual({key for key in payload if key.isdigit()}, {"1", "3", "5", "13", "17"})
-        self.assertEqual(len(proof["artifact_sha256"]), 64)
         self.assertEqual(len(proof["original_golden_sha256"]), 64)
-        self.assertEqual(payload["_adaptive_bull"]["source_revision"], proof["expected_from_source"])
+        for key, result in evidence["control_cases"].items():
+            expected = {**result, "source_revision": proof["expected_from_source"]}
+            self.assertEqual(payload[key], expected)
 
     def test_validation_script_reads_the_single_golden_metrics_source(self) -> None:
         validation_script = importlib.import_module("scripts.run_regime_validation")

@@ -200,7 +200,7 @@ def _run_with_market(
         patch.object(account_scan, "DualMAStrategy", _NoBuyStrategy),
         patch.object(account_scan, "ATRChannelStrategy", _NoBuyStrategy),
         patch.object(account_scan, "trend_candidate_score", return_value=0.9),
-        patch.object(account_scan, "default_engine_config", return_value={"max_positions": 6}),
+        patch.object(account_scan, "default_engine_config", return_value=account_scan.default_engine_config()),
     ):
         result = engine.run(
             snapshot,
@@ -597,7 +597,10 @@ def test_entry_before_loaded_window_without_peak_disables_peak_stop() -> None:
     )
 
     held = next(item for item in result["actions"] if item["symbol"] == "300308")
-    assert held["action"] == "HOLD"
+    # Missing position-peak history disables only that peak stop. The known
+    # account peak still requires the independently enabled account budget.
+    assert held["action"] == "REDUCE_REVIEW"
+    assert "account_budget_trim" in held["reason"]
     assert held["protective_stop"] == 85.0
     assert held["peak_close"] == 100.0
     assert held["peak_evidence_status"] == "PEAK_EVIDENCE_INCOMPLETE"

@@ -73,6 +73,7 @@ def default_engine_config() -> dict[str, Any]:
         "max_units": 20,
         "max_drawdown": 0.165,
         "daily_loss_limit": 0.06,
+        "account_risk_budget_enabled": True,
         "sector_guard_enabled": True,
         "sector_guard_min_symbols": 5,
         "sector_shock_return": -0.05,
@@ -211,8 +212,8 @@ def default_engine_config() -> dict[str, Any]:
 def validate_engine_config(cfg: Mapping[str, Any]) -> dict[str, Any]:
     """Validate one complete engine configuration and normalize containers."""
     out = dict(cfg)
-    # Optional research flag: absent preserves the exact existing profile facts.
-    allowed_keys = set(default_engine_config().keys()) | {"account_risk_budget_enabled"}
+    # Production defaults enable the budget; historical diagnostics pin their own boolean.
+    allowed_keys = set(default_engine_config().keys())
     unknown_keys = sorted(set(out) - allowed_keys)
     if unknown_keys:
         raise ValueError(

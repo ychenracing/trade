@@ -53,11 +53,11 @@ def test_budget_intervenes_before_18_percent_without_mutating_account():
     assert (state.sleeve.positions, state.sleeve.cash, vars(state.sleeve.risk)) == before
 
 
-def test_budget_bull_silent_and_disabled_by_default():
+def test_budget_bull_silent_and_enabled_by_default():
     engine, state, dates = fixture(cash=20000.)
     apply(engine, [state], dates, equity=100000.)
     assert not state.pending
-    assert default_engine_config().get('account_risk_budget_enabled', False) is False
+    assert default_engine_config()['account_risk_budget_enabled'] is True
 
 
 def test_budget_formula_has_fixed_two_session_and_fee_reserve():

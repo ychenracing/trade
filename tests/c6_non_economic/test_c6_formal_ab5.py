@@ -138,7 +138,7 @@ def test_formal_official_runner_accepts_only_explicit_candidate_identity() -> No
     )
     assert args.candidate_id == "C6-Base+AB5"
     legacy = parser.parse_args(["--source-revision", "a" * 40])
-    assert legacy.candidate_id == "C6-Base"
+    assert legacy.candidate_id == "C6-Base+AB5"
 
 
 def test_formal_checkpoint_signature_binds_actual_candidate(tmp_path) -> None:
