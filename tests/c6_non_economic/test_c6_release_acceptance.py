@@ -73,6 +73,28 @@ def test_exact_user_accepted_ab5_envelopes_pass_without_mutating_raw_rows() -> N
     validate_release_predicate_assessment(assessment, raw)
 
 
+def test_exact_user_accepted_random_p90_185_envelope_is_narrow() -> None:
+    assessment = _assess(
+        _payload(_predicate("l1.trade.random_p90_buckets", 185.0))
+    )
+
+    assert assessment["passed"] is True
+    assert assessment["predicate_results"][0]["release_threshold"] == {
+        "comparator": "<=",
+        "value": 185.0,
+        "tolerance": 0.0,
+    }
+    assert assessment["predicate_results"][0]["exception_applied"] == (
+        "AB5_KNOWN_RANDOM_P90_185_ENVELOPE"
+    )
+
+    outside = _assess(
+        _payload(_predicate("l1.trade.random_p90_buckets", 185.0000001))
+    )
+    assert outside["passed"] is False
+    assert outside["predicate_results"][0]["exception_applied"] is None
+
+
 def test_result_outside_known_ab5_envelope_fails_closed() -> None:
     raw = _payload(
         _predicate("l1.mdd.noncanonical_18pct_screen", 0.211062172465126)
