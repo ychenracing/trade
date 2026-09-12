@@ -2,20 +2,7 @@
 
 ## 设计目标
 
-本仓库采用单进程模块化单体。工程边界用于隔离变化原因，不改变策略参数、信号顺序、撮合顺序、组合核算、风险动作或生产回放语义。
-
-全部 Python 实现与公共导入位于 `quantfusion/`。根目录不保留历史模块名或重复命令行文件；工具统一通过 `python -m scripts.<模块名>` 启动。
-
-## 默认账户风险预算
-
-`risk/account_budget.py` 的纯计划函数同时服务回放与真实账户建议：只计算风险削减，不创建新资本分配器。
-普通回放把计划交给既有 `RiskAction`、挂单和下一可交易开盘执行；三袖套由合并账户统一评估，
-单账户或强制弱市路径在同一账户收盘评估，均保持先卖后买与同账本防御卖单否决回补。
-回放输出 `account_risk_budget`，只有真正完成预算评估才标记 `APPLIED`；日扫拒绝缺失回执的成功发布。
-真实账户建议只使用既有快照中的实际合计持仓、现金和 `peak_equity`，已观察到的新高只能提高峰值，
-不能降低旧峰值、重置回撤或虚构历史。计划与执行适配分离，卖出建议受可卖股数约束，未成交卖单不能给买入增加额度。
-数据不足输出 `NOT_READY` 并阻止新增风险，不把默认开启包装成数据充分或实际成交。
-历史研究消融显式使用自己的关闭配置；正常入口默认开启，不改变旧冻结身份、指标或门槛。
+本仓库采用单进程模块化单体。工程边界隔离变化原因，不凭文档整理改变策略参数、信号顺序、撮合顺序、组合核算、风险动作或生产回放语义。全部 Python 实现与公共导入位于 `quantfusion/`；根目录不保留历史模块名或重复命令行文件，独立工具通过 `python -m scripts.<模块名>` 启动。
 
 ## 单向依赖
 
@@ -30,13 +17,7 @@ flowchart TD
     APP --> STORAGE[快照、工件与状态存储]
 ```
 
-依赖方向由 `tests/contract/test_architecture.py` 自动守卫：
-
-- 历史根模块必须不存在，规范包禁止导入其旧名称；
-- 领域层禁止反向依赖引擎或应用层；
-- 跨子包禁止导入私有名称；
-- 规范模块导入图必须无环；
-- 根目录只保留文档与项目配置。
+`tests/contract/test_architecture.py` 守卫依赖方向：领域层不反向依赖引擎或应用；跨子包不导入私有名称；规范模块导入图无环；已删除的根模块及其旧名称导入不得恢复；根目录只保留文档与项目配置。
 
 ## 模块所有权
 
@@ -52,132 +33,145 @@ flowchart TD
 | `risk/` | 组合风控、治理证据和跨市场叠加层 | 应用流程和研究晋级 |
 | `regime/` | 指数证据与纯状态转换 | 持续账户和工件发布 |
 | `engine/` | 单袖套、组合引擎和生产逐日回放 | 命令行解析和研究搜索 |
-| `account/` | 严格同日账户快照、候选评分和非执行性数量估算 | 历史回测状态注入、账户账本和券商订单 |
+| `account/` | 严格同日账户快照、候选评分和非执行性数量估算 | 历史回测状态注入、跨日账户账本和券商订单 |
 | `research/` | 候选、走步评价、晋级门和研究工件 | 复制撮合或交易逻辑 |
-| `application/` | 回测、日扫、账户、优化和压力流程编排 | 重复领域实现 |
-| `io/` | 严格工件、连续状态和原子发布 | 策略与风险判断 |
+| `application/` | 回测、模拟日扫、账户建议、优化和压力流程编排 | 重复领域实现 |
+| `io/` | 严格工件、连续状态和原子文件发布 | 策略与风险判断 |
 
-## 执行事实源
+## 模拟与账户两条调用链
 
-回测、日扫、优化器、股票池验证和压力验证最终都调用规范引擎或 `ProductionReplayEngine`。研究层只产生候选配置和评价请求，不能复制信号、费用、涨跌停、成交量容量、T+1 或资金核算。
+模拟回测、模拟日扫、优化器和压力验证复用规范引擎或 `ProductionReplayEngine`。研究层只产生候选配置和评价请求，不复制信号、费用、涨跌停、成交量容量、T+1 或资金核算。生产回放的路由变化保留同一个模拟账户中的现金、持仓、挂单、袖套、峰值、风险锁和冷却，不在边界重新建账。
 
-公共代码直接从 `quantfusion.config`、`quantfusion.data`、`quantfusion.domain`、`quantfusion.engine`、`quantfusion.risk` 与 `quantfusion.application` 的当前模块导入。
+真实账户建议由 `application/account_scan.py` 消费严格同日快照，按单次请求的行情和指标评价持仓处置与买入候选。它不是“把真实持仓注入历史模拟”，不恢复历史挂单、冷却、路由计数或券商账本。其买入候选是收盘价下的人工复核数量，不是生产袖套净订单。
+
+公共代码从 `quantfusion.config`、`quantfusion.data`、`quantfusion.domain`、`quantfusion.engine`、`quantfusion.risk` 与 `quantfusion.application` 的当前模块导入，不恢复旧根模块 wrapper。
+
+## 默认账户风险预算
+
+`risk/account_budget.py` 的纯计划函数同时服务模拟回放与真实账户建议，只评价风险预算并生成削减计划，不创建新资本分配器。三袖套在合并账户上统一评价，单账户与强制弱市在其相应账户收盘评价；计划交给各自既有适配器，不复制执行引擎。
+
+回放使用 `RiskAction`、挂单和下一可交易日开盘执行，输出 `account_risk_budget`；只有实际完成评估才标记 `APPLIED`，模拟日扫拒绝缺少实际预算回执的正常发布。真实账户使用快照现金、实际持仓和 `peak_equity`，本次权益创新高只能提高计算峰值，不能降低原峰值、重置回撤或虚构历史。
+
+纯计划不改写账户账本，执行适配器保持先卖后买、同账本防御卖单否决回补和可卖数量限制。未成交的卖单不能增加买入额度。必要估值或市场证据不足时，账户回执为 `NOT_READY` 并抑制新增风险，不把开关开启等同于数据充分或实际成交。历史消融继续使用其明确关闭配置及原始证据身份，不把历史对照当作当前默认路径。
+
+预算公式、不同风险层的口径与恢复限制分别见实现及[使用说明](../README.md)。预算基准、交易触发线和正式验收目标不是同一概念。
 
 ## 状态所有权
 
-| 状态 | 所有者 | 生命周期 |
+| 状态 | 所有者 | 生命周期与边界 |
 |---|---|---|
-| 现金、持仓、挂单与成交 | 引擎 | 一次连续回放 |
-| 袖套、峰值、风险锁与冷却 | 引擎和风险层 | 路由切换时保留 |
-| 外层路由确认计数 | 状态机与生产回放 | 一次连续回放 |
-| 跨市场风险证据与动作 | 风险叠加层 | 每日更新并由适配器执行 |
-| 日扫连续风险状态 | 状态存储 | 成功工件发布后更新 |
-| 冻结行情证据 | 快照模块 | 同一交易日不可改写 |
-| 优化器候选与晋级证据 | 研究层 | 一次可续跑研究任务 |
+| 模拟现金、持仓、挂单与成交 | 引擎 | 一次连续回放；路由切换不重建 |
+| 袖套、风险峰值、锁与冷却 | 引擎和风险层 | 同一次回放中跨路由保留，恢复遵循各自政策 |
+| 外层路由确认计数 | 状态机与生产回放 | 按因果日期序列计算，不由报告改写 |
+| 跨市场风险证据与动作 | 风险叠加层和执行适配器 | 每日更新，执行权明确，避免与专用弱市重复动作 |
+| 模拟日扫 `risk_state.json` | 应用层状态存储 | 用于跨日显示和身份连续性核对，不作为重建历史回放的输入 |
+| 模拟冻结行情快照 | 快照模块 | 同一目标日期及其 manifest／哈希身份不可静默覆盖 |
+| 真实账户快照及历史峰值 | 使用者提供，账户入口校验 | 单次同日输入；本次估值创新高不自动写回输入文件 |
+| 账户本次行情和指标 | 账户应用内存 | 每股单次准备，供持仓、评分及数量计算复用 |
+| 优化器候选与晋级证据 | 研究层 | 一次来源绑定、可续跑的研究，不与日扫状态混用 |
 
-任何路由变化都不得重建账户、清空挂单、重置峰值或丢失冷却状态。
+账户建议不能通过复制模拟 `risk_state.json` 获得真实账户连续性。任何模式都不应以删除状态、降低历史峰值或修改身份字段作为解除真实风险的办法。
 
-## 风险动作边界
+## 风险动作与治理边界
 
-跨市场叠加层先生成不可变 `RiskAction`，再由适配器翻译成既有卖出信号并写入挂单队列：
+跨市场叠加层先生成不可变风险动作，再由适配器翻译成既有卖出信号并写入挂单队列：
 
 ```text
 RiskEvidence -> RiskPolicy -> RiskAction -> EngineAdapter -> pending signal
 ```
 
-政策层不再直接依赖挂单容器结构。适配器保持原有顺序、数量、原因、优先级和冷却语义。
+政策层不直接依赖挂单容器，适配器保持原有顺序、数量、原因、优先级和冷却语义。专用弱市／现金路径与叠加层的执行权不同，观察风险不意味着必须重复下达动作。
 
-## 日扫事务
+治理计算读取既有状态形成健康、共识和风险意见，不直接改写交易账本；独立 `risk_opinion` 也不直接产生交易。模拟日扫另外消费 `warmup_health`，当 `warmup_status=NOT_READY` 时抑制全部新增买入，`DEGRADED` 本身只提示。因而“治理输出完全不影响任何决策”不是准确描述。风险事件后续收益和校准窗口属于事后分析，不回流为当时的因果输入。
 
-日扫应用按照以下不可交换的顺序发布结果：
+## 机器结果与派生报告的发布
+
+### 模拟日扫
+
+`application/daily_scan.py` 的实际顺序如下，不能交换为先保存状态再验证结果：
 
 ```text
-验证请求与行情
+验证请求、风险状态身份和行情
   -> 冻结并校验证据快照
-  -> 运行生产回放
-  -> 验证严格结果结构
-  -> 写入本次信号工件
-  -> 写入连续风险状态
-  -> 原子更新 latest_success
+  -> 运行生产回放并校验结果、实际预算回执
+  -> 应用预热和当前路由等买入限制
+  -> 原子写入机器信号（risk_state_saved=false）
+  -> 身份匹配时保存连续性状态
+  -> 尽力回写信号中的保存状态
+  -> 无状态保存错误时尽力更新 latest_success.json
+  -> 生成终端中文阅读版和来源绑定的 Markdown
 ```
 
-前一步失败时不得发布后续状态。最后成功工件在新运行失败时必须保持可用。
+这不是多文件整体事务。快照、回放结果或序列化失败时不会进入正常信号与状态发布；部分路径尽力写独立 `.error.json`，但不保证每次失败都有回执文件。机器信号写入失败不会先提交新风险状态；风险状态保存失败则可能已有本次 JSON，命令返回失败，成功索引不推进，也不生成本次正常中文报告。
+
+状态标记回写与成功索引更新是尽力操作，不能仅凭文件存在或某个旧指针认定本次成功。索引可能仍保留旧 `run_id`，而同日机器文件已有新内容；应联合核对退出状态、文件身份、状态标记和终端错误。
+
+身份不匹配与写盘失败不同：前者保留原状态、抑制买入，但可发布仍能解释卖出信号的受限结果，成功索引也可能更新。不得将其写成完整正常买入判断，更不能通过删除原状态强行解除限制。
+
+### 真实账户建议
+
+```text
+读取账户文件的同一份字节并计算 SHA-256
+  -> 严格校验 schema、账户及请求日期
+  -> 准备指数与单次账户行情、指标
+  -> 评价持仓、候选、完整性与共享账户预算
+  -> 原子写入 account_signals_<日期>.json
+  -> 根据该 JSON 生成派生中文报告
+```
+
+账户入口不写模拟快照、`risk_state.json` 或 `latest_success.json`。合格的防御结果可以包含 `BLOCKED`、`DATA_ERROR`、`NOT_READY` 或全部禁止买入；JSON 保存成功不等于所有证据充分。已捕获异常返回失败，未捕获异常和各输出步骤不保证采用相同退出码，也没有统一的账户错误 JSON 协议。
+
+### 中文报告
+
+现有 `publish_daily_report` 只在相应原流程结束后读取已发布 JSON，并核对预期 `run_id` 或 `account_snapshot_sha256`。Markdown 文件名包含来源哈希前缀，正文记录完整 JSON 字节 SHA-256；报告不是新成功指针、券商订单或新的授权。
+
+报告解释已有记录，不重新计算策略、风险和数量；来自本次回放内存的补充事件单独标明日期和证明边界。派生报告生成或保存失败不回滚既有机器工件和状态。消费者不能通过删除旧报告、挑选一份好看的结果或只核对日期来认证本次运行。
 
 ## 显式数据上下文
 
-行情缓存目录通过 `cache_dir` 从应用请求逐层传入数据提供方。`DataFetcher` 不保留进程级可变缓存目录，因此并行任务和连续运行不会相互污染数据路径。
+行情缓存目录通过 `cache_dir` 从应用请求逐层传入提供方，不使用进程级可变缓存目录。不同任务需使用合适的独立运行路径，不能据此假定共享同一输出目录的并发写入已被自动协调。
 
-账户建议另有更窄的事实边界：只接受严格 v3 同日快照，并在单次请求内为每只股票冻结一份局部行情与指标。提供层标记的 stale 缓存、候选缺失或实际行情截止日不一致都会抑制全部新增买入；持仓卖出风险提示仍按可用证据独立产生。该边界不恢复挂单、冷却、路由或风险状态，不维护跨日账本，也不输出券商订单。
+真实账户中，提供层标记陈旧、必要候选缺失或实际行情截止日不一致会抑制新增买入，已有可用持仓的防御提示仍可能保留。默认自适应回放对不可观察的请求股票失败，显式研究过滤与弱市内部资格筛选另有边界，见[数据说明](../data/README.md)。
 
-## 仓库资产边界
+当前指数刷新会写入传入的 `regime_data_dir`，默认值仍指向冻结目录；日常命令应显式使用独立运行目录。状态机的 `boundary_route` 取最后一个可用指数日，不能保证两个指数同时陈旧时按请求日期关闭。格式校验、局部陈旧检查与请求日完整性不是同一保障，应按数据说明核对实际覆盖；文档没有修复这些独立实现缺口。
 
-规范代码与仓库资产分开管理：`quantfusion/` 只放可导入实现，`scripts/` 放可复现研究命令，`tests/` 按单元、契约、集成和经济回归分层。冻结股票行情位于 `data/market/`，路由证据位于 `data/regime/`，测试读取的黄金指标位于 `tests/fixtures/`，已审查批量结果位于 `artifacts/validation/`，账户输入样例位于 `examples/`。
+## 仓库资产与配置事实源
 
-canonical 仓库路径由 `quantfusion.config.paths` 提供。用户显式传入的数据路径始终按普通 `Path` 处理，不按目录名称映射到 canonical 路径；应用可以执行 `expanduser()` / `resolve()` 等常规规范化。运行缓存、日扫输出、优化器输出和压力检查点属于临时状态，受 `.gitignore` 隔离，不得混入冻结数据或已审查工件。根目录只保留文档与项目配置。
+规范代码位于 `quantfusion/`，研究工具位于 `scripts/`，测试按单元、契约、集成和经济回归分层。冻结股票与指数位于 `data/market/`、`data/regime/`，黄金预期位于 `tests/fixtures/`，已审查结果位于 `artifacts/validation/`，非真实账户样例位于 `examples/`。
 
-## 公共配置事实源
+规范仓库路径由 `quantfusion.config.paths` 提供，用户显式传入的数据目录按普通 `Path` 处理，不因名称映射到别的目录；应用可执行 `expanduser()`／`resolve()` 等常规规范化。运行缓存、日扫输出、优化结果和检查点不得混入冻结输入或已审查证据。
 
-- 引擎默认值与校验分别来自 `quantfusion.config.engine.default_engine_config()` 和 `validate_engine_config()`；
-- 组合政策来自 `quantfusion.config.portfolio.PortfolioPolicy`；
-- 风险叠加参数来自 `quantfusion.config.overlay`；
-- 路由与弱市参数来自 `quantfusion.config.regime` 和 `quantfusion.config.weak`；
-- 行业分类、符号路由和参数画像构造来自 `quantfusion.config.profiles`；
-- 固定股票名称和验证股票池来自 `quantfusion.config.universe`。
+| 配置职责 | 唯一来源 |
+|---|---|
+| 引擎默认值、合法逐股覆盖和校验 | `quantfusion.config.engine` 的 `default_engine_config()`、`PER_SYMBOL_OVERRIDE_KEYS`、`validate_engine_config()` |
+| 组合政策及校验 | `quantfusion.config.portfolio.PortfolioPolicy` |
+| 风险叠加 | `quantfusion.config.overlay` |
+| 路由与弱市 | `quantfusion.config.regime`、`quantfusion.config.weak` |
+| 行业分类、符号路由、参数画像构造 | `quantfusion.config.profiles` |
+| 股票名称、验证股票池 | `quantfusion.config.universe` |
 
-引擎与应用只读取以上公共来源，禁止复制默认值。
+引擎与应用读取这些来源，不复制默认值；`config/profiles.py` 组合引擎默认值，`engine.py` 不提供同名画像 wrapper。普通业务模块超过约一千行或单函数超过约一百二十行时审查其职责，而不是仅为达成行数目标拆分。日扫保留有序发布编排，其快照、信号、工件和状态支持实现分别承担职责。
 
-## 规模与类型约束
+`pyright quantfusion` 覆盖规范包。类型配置不读取第三方库实现推断 pandas 类型；协作式 mixin 仅关闭无法从单文件推断的组合属性诊断，其他参数、返回值、可选值和导入检查仍生效。
 
-普通业务模块超过约一千行或单函数超过约一百二十行时必须审查。`config/engine.py` 是默认值、可按标的单股覆盖字段与配置校验的唯一事实源；`config/profiles.py` 组合这些默认值并唯一拥有行业分类、符号路由和画像构造，engine 不提供同名 wrapper。`application/daily_scan.py` 保留不可交换的事务顺序编排，其快照、信号、工件和状态实现已拆出。
+## 压力与证据发布边界
 
-压力执行按四个直接职责分开：`application/stress_scenarios.py` 构造及选择计划，`stress_metrics.py` 计算汇总和门禁，`stress_artifacts.py` 校验检查点与控制发布，`stress.py` 只负责参数、编排和退出码。合同 v2 将所有正式场景 `abs(max_drawdown) <= 0.18` 与账本上限放在 absolute hard gates；9→10 与最差相邻前缀财富保护属于 retained robustness hard gates；add-one 相对终值及其配对回撤、成交、桶和锁变化只属于 robustness diagnostics；已有 incumbent 的相对非回归属于 promotion gates。原标准接受要求两个 hard-gate family 同时通过；当前 AB5 首基线则使用明确授权、来源绑定的独立 `release_acceptance` 评估，保留原门禁失败值，不修改策略风险触发线。任何 ID、family、ID 文件或 shard selector 都产生 diagnostic 计划；诊断检查点和输出与正式验证 namespace 隔离，只有未经筛选且与 canonical 默认场景计划精确一致的运行可以调用正式发布边界。没有 v2 incumbent 时，发布还要求显式的一次性首基线动作及独立当前语义参考工件，并对 hard gates、收益保护、排列不变性和 provenance 失败关闭。
+`stress_scenarios.py` 构造和选择计划，`stress_metrics.py` 计算指标及门禁，`stress_artifacts.py` 校验检查点与控制发布，`stress.py` 负责参数、编排和退出码。场景与验收的完整数量、历史结果、来源哈希及历史重建记录集中在[验证结果与证据](VALIDATION.md#formal-stress-evidence)，不在本文件复制。
 
-正式写入前，prefix 与 universe 的共同场景记录必须逐条一致，排序不同不影响比较。读取 AB5 incumbent 时重算原生记录、门禁与发布评估并校验来源、固定参考和 L2 上下文；历史经济源码 SHA 无须等于后续读取程序的 HEAD。源工件真实性由发布时的 Git 与原始 ZIP 哈希验证保证，读取一致性检查不冒充外部签名。当前正式工件及派生回执位于 `artifacts/validation/`。
+绝对风险门、扩展稳健性门、诊断统计和相对晋级门职责不同。任何 ID、family、ID 文件或 shard 选择都属于诊断，输出与正式发布隔离，不能更新 canonical 工件。未筛选的完整正式计划仍需实际满足其适用发布条件；AB5 的有限历史例外通过独立来源绑定的 `release_acceptance` 记录，不改写原生失败或策略触发线。
 
-`pyright quantfusion` 覆盖整个规范包。由于 pandas 本身未提供随包类型声明，配置不读取第三方库实现来推断类型；协作式 mixin 文件仅关闭无法从单文件推断的组合属性诊断，其余参数、返回值、可选值和导入检查继续生效。
+正式写入前，prefix 与 universe 的共同场景记录必须逐条相等，排序差异不影响比较。读取 AB5 incumbent 时重算已有记录、门禁与发布评估，并检查来源、固定参考和 L2 上下文；历史经济源码不必等于后来维护程序 HEAD。读取内部一致性不是数字签名，更不是重新认证全部外部原始对象。
+
+冻结历史恢复合同、发布说明和独立审计保留原始时点及证明职责。其恢复口吻不构成重启旧任务的授权；当前工作入口见[项目 brief](../.github/CHATGPT_PROJECT_BRIEF.md)。
 
 ## 扩展方式
 
-### 新增策略
+新增策略在 `strategy/` 实现信号，在 `config/` 提供唯一配置来源，通过引擎公开注册边界接入，不复制日扫、优化器撮合或账户存储。新增提供方在 `data/providers.py` 适配并复用列名、单位、日期和新鲜度契约，不让策略访问网络。
 
-在 `strategy/` 增加信号实现，在 `config/` 增加唯一默认来源，并通过引擎公开的策略注册边界接入。不得修改日扫工件、优化器撮合或账户存储。
+新增风险规则在 `risk/` 生成证据或不可变动作，需要成交时进入现有执行适配器；纯观测计算不改账户状态，应用层需要消费健康门时明确其独立职责。新增应用在 `application/` 组合公开服务，独立工具在 `scripts/` 以模块启动，根目录不增加 Python CLI，参数解析对象不传入领域层。
 
-### 新增行情提供方
+## 验证范围
 
-在 `data/providers.py` 增加提供方适配，并复用相同的列名、成交量单位、日期和新鲜度契约。不得让策略直接访问网络。
+验证范围由 [AGENTS.md](../AGENTS.md) 与当前任务的适用合同确定。先验证受影响范围；涉及相应经济行为或合同明确要求时，执行正式经济验收。纯文档变更不主动触发无关回测；当前 HEAD 仍须满足适用工程检查与仓库合并保护。
 
-### 新增风险规则
-
-在 `risk/` 产生证据或不可变动作；需要成交时通过执行适配器进入队列。纯观测规则不得修改账户状态。
-
-### 新增应用入口
-
-在 `application/` 组合现有公开服务；独立工具放入 `scripts/`，并只支持 `python -m scripts.<模块名>`。根目录不增加 Python 命令入口，参数解析对象不得传入领域层。
-
-## 验证层级
-
-- 小批次只运行改动文件编译、静态检查和受影响测试；
-- 阶段边界运行对应集成契约与最小经济哨兵；
-- 最终候选树集中运行完整测试、五股票池黄金回归、安全审计、依赖审计和正式压力矩阵。
-
-该分层避免对每个中间状态重复做昂贵证明，同时保证最终候选树获得完整工程与经济验证。
-
-<!-- CURRENT_FORMAL_STRESS_PLAN:START -->
-<!-- CURRENT_FORMAL_STRESS_PLAN_META: {"symbol_count": 17, "scenario_count": 958, "family_counts": {"prefix": 17, "leave_one_out": 17, "add_one": 24, "random_subset": 750, "permutation": 150}} -->
-## Formal stress 的当前边界
-
-当前计划计数：17 股；958 场景；prefix=17；leave-one-out=17；add-one=24；random-subset=750；permutation=150。
-
-日扫与 formal stress 读取同一个有序 17 股权威映射。场景生成器在该顺序上构造 958 个完整场景；诊断 selector、单场景、family 或 shard 运行永远不是 formal plan，不能发布 canonical 工件。正式发布同时校验计划完整性、scenario ID 唯一性、生产回放语义、provenance、absolute hard gates、retained robustness gates 和 promotion/initial-baseline 状态。
-
-历史 22 股/983 工件属于不同 scenario/data/run fingerprint，不会自动迁移到当前计划。
-
-以下保留此前标准验收的原始失败记录，不是当前 AB5 基线状态；当前 accepted canonical 基线及明确例外见 `artifacts/validation/c6_release_receipt.json` 和 [AB5 发布说明](C6_AB5_RELEASE.md)。
-
-<!-- CURRENT_FORMAL_STRESS_RESULT:START -->
-历史标准验收记录：完整计划已运行：`958/958`，唯一 scenario ID：`958`。工件状态为 `current_candidate`，acceptance 为 `rejected`，canonical 为 `false`；absolute hard gates passed=`False`，retained robustness gates passed=`False`。全场景最差最大回撤为 `-23.992778%`（`random-20260807-03-004`），17 股完整 prefix 的总收益为 `286.202912%`、最大回撤为 `-20.499296%`。历史候选：`artifacts/validation/candidates/stress-acf4cccf4117edb35e6beb57aa2f9004476c8b93-rejected.json`，SHA-256：`63ec19ab7cccd37ea140828c9e6423727044413bd425064bd580896d17cf927c`；source revision：`acf4cccf4117edb35e6beb57aa2f9004476c8b93`。详细 gates 与 provenance 见 `artifacts/validation/formal_stress_958_acceptance_summary.json`。
-<!-- CURRENT_FORMAL_STRESS_RESULT:END -->
-<!-- CURRENT_FORMAL_STRESS_PLAN:END -->
-
-<!-- C6_BASELINE_REBUILD_META: {"reference_scenarios": 958, "cohort_scenarios": 765, "failures": 649, "boundaries": 110, "controls": 6} -->
-历史 C6 基线兼容性重建保留旧 281 场景证据不变，并从当时唯一完整的 17 股/958 场景 rejected transition reference 确定性派生 765 个场景：649 个失败、110 个 17%—18% 边界和 6 个对照；该重建本身未运行新回测、未建立 accepted canonical 基线。当前 AB5 基线来自另行完成的正式经济运行及已授权派生验收，不改写这份历史重建。
+本文件不维护第二套固定“阶段／最终全矩阵”规则，不删减真正适用的 required checks，也不以文档或工程检查通过替代经济验收。CI 的实际 Python 版本覆盖和结果证据分类见验证说明。

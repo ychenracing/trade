@@ -232,10 +232,18 @@ def test_rebuilt_baseline_identity_is_documented_consistently() -> None:
         "未建立 accepted canonical 基线。当前 AB5 基线来自另行完成的正式经济运行"
         "及已授权派生验收，不改写这份历史重建。"
     )
-    for relative in ("README.md", "docs/ARCHITECTURE.md", "docs/VALIDATION.md"):
+    authority = (PROJECT_ROOT / "docs/VALIDATION.md").read_text(encoding="utf-8")
+    assert authority.count('<a id="formal-stress-evidence"></a>') == 1
+    assert marker in authority
+    assert statement in authority
+    for relative, target in (
+        ("README.md", "docs/VALIDATION.md#formal-stress-evidence"),
+        ("docs/ARCHITECTURE.md", "VALIDATION.md#formal-stress-evidence"),
+    ):
         text = (PROJECT_ROOT / relative).read_text(encoding="utf-8")
-        assert marker in text
-        assert statement in text
+        assert f"[验证结果与证据]({target})" in text
+        assert marker not in text
+        assert statement not in text
 
 
 def test_bound_official_runner_yields_only_after_incomplete_checkpoint(monkeypatch):

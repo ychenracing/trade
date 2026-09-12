@@ -1,114 +1,41 @@
-# Objective
+## 目标与验收
 
-<!-- 本 PR 最终解决什么问题？不要只描述修改了哪些文件。 -->
+说明用户目标、适用任务合同及可判定的完成条件。已有授权直接引用，不重复索要批准。
 
-# Acceptance Criteria
+## 范围与变更
 
-<!--
-保留明确的 AND/OR 逻辑、数值阈值和失败条件。
-未完成项保持未勾选，不得把计划写成已经通过。
--->
+说明改动路径、原因、明确不改动的内容，以及是否影响经济行为、默认参数、数据、执行语义、账户状态或证据身份。发现但未修复的独立实现缺口列入下方风险，不用文档修改冒充实现修复。
 
-- [ ]
+## 当前状态与恢复入口
 
-# Scope
+- 目标分支及实际 base SHA：
+- 工作分支及实际 PR HEAD SHA：
+- 本地、远端状态及最后回读的远端 SHA；不适用时说明：
+- 已完成且已验证的成果：
+- 尚未完成、未验证、失败或阻塞的事项：
+- 当前有效运行与恢复入口；没有时写明：
+- 下一步可执行动作及其已有授权范围：
 
-## Included
+动态状态直接更新本节，不叠加相互冲突的进度副本。测试合并提交、PR HEAD 与合并后的 main SHA 分别记录，不互相冒用。
 
--
+## 验证证据
 
-## Excluded
-
--
-
-# Non-Negotiable Constraints
-
-<!-- 本 PR 不得违反的业务、架构、安全、兼容性或数据完整性约束。 -->
-
--
-
-# Changes
-
-<!-- 按模块说明实际完成的改动。 -->
-
--
-
-# Current Verified State
-
-<!--
-只保留当前有效状态。更新时替换过期值，不无限追加历史。
-无法核验的字段写“Not verified”；仅在确实不适用时写“不适用”，不得猜测。
-流程遵循 AGENTS.md；普通任务不要求 bootstrap 提交、临时文件或 Issue。
-Head SHA 填已回读核验的远端提交；未推送的本地状态必须另行说明。
-只记录实际存在的可恢复提交，不为填写模板制造检查点。
--->
-
-- Base branch:
-- Base SHA:
-- Head branch:
-- Head SHA (verified remote):
-- Latest recoverable commit (if different from Head SHA):
-- Local state: Clean / Uncommitted changes / Not applicable / Not verified
-- Related issue (if applicable):
-- Last verified:
-
-# Completed and Verified
-
--
-
-# Remaining Work
-
-1.
-
-# Verification
-
-<!--
-只记录实际执行的命令或 GitHub workflow。
-未运行的检查必须写 Not run，不得写 Passed。
-区分本地验证、当前 HEAD 的 CI 和经济验收；复用证据写明来源与适用性。
-旧 SHA 的 CI 结果不得标成当前 HEAD 通过。
--->
-
-| Check | Command or Workflow | Result | Evidence |
+| 命令或检查 | 运行版本与环境 | 结果及来源 | 能证明的范围与未覆盖边界 |
 |---|---|---|---|
-| | | Not run | |
+| 填写实际执行项；未运行则明确标记 | 精确 SHA；适用时注明测试合并 SHA | 日志、run、工件或可复核结果 | 不将静态核对写成运行通过，不将工程检查写成经济接受 |
 
-# Risks and Unknowns
+验证范围由 `AGENTS.md` 与适用任务合同决定。先验证受影响范围；纯文档不主动触发无关回测，正常产生的适用工程检查及合并保护仍须满足。复用旧证据须说明实际来源与可复用范围。
 
-<!-- 未评估时保留 Not assessed；只在已评估且未发现时写 None known。 -->
+## 风险、未知项与剩余事项
 
-## Verified Risks
+保留真实失败、有限例外、未经独立认证的外部证据，以及仓库外配置或指令同步等未完成边界。不得通过改阈值、改冻结哈希、重标 accepted/canonical 或隐藏检查失败取得通过。
 
-- Not assessed
+## 合并就绪判断
 
-## Unknowns
+- [ ] 目标、范围与适用验收已满足；重要差异和风险已披露。
+- [ ] 验证对应当前实际版本；适用 checks、reviews、会话解决状态及仓库保护已核验。
+- [ ] 最新 base/head 和差异已核对，没有覆盖无关工作或未保全成果。
+- [ ] 当前任务已授权正常合并，未使用绕过保护或管理员覆盖。
+- [ ] PR 正文反映当前事实；合并后另核验实际 main 提交、内容及其检查状态。
 
-- Not assessed
-
-# Behavior and Data Contract Impact
-
-- [ ] Production behavior impact has been assessed and documented
-- [ ] Configuration semantic impact has been assessed and documented
-- [ ] Dependency impact has been assessed and documented
-- [ ] Data and schema contract impact has been assessed and documented
-
-# Next Action
-
--
-
-# Merge Readiness
-
-<!--
-技术就绪不等于已获合并授权；记录用户明确授权，不从实施请求自动推断。
-尚未授权合并不妨碍完成其余已授权工作，不需要为继续实施重复申请批准。
-合并前以 GitHub 当前现场核验冲突、required checks、required reviews 和保护规则。
--->
-
-- [ ] Explicit merge authorization is recorded
-- [ ] Acceptance criteria are satisfied
-- [ ] Required tests have passed
-- [ ] Required CI checks for the current HEAD have passed
-- [ ] No unresolved blocking review remains
-- [ ] No material correctness, security, or data-integrity issue remains
-- [ ] PR body reflects the latest verified state
-- [ ] Safe to merge
+未勾选的条件说明具体原因；创建 PR、推送或部分测试通过不等于整项任务完成。
