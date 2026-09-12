@@ -20,8 +20,6 @@ jobs:
     timeout-minutes: 10
     env:
       PYTHONUNBUFFERED: '1'
-      C6_TRANSFER: ${{ runner.temp }}/c6-integrity-transfer
-      C6_VERIFY_OUT: ${{ runner.temp }}/c6-integrity-evidence
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,6 +27,9 @@ jobs:
       - name: Authenticate reviewed batch and isolate original PR source
         run: |
           set -euo pipefail
+          export C6_TRANSFER="$RUNNER_TEMP/c6-integrity-transfer"
+          export C6_VERIFY_OUT="$RUNNER_TEMP/c6-integrity-evidence"
+          printf 'C6_TRANSFER=%s\nC6_VERIFY_OUT=%s\n' "$C6_TRANSFER" "$C6_VERIFY_OUT" >> "$GITHUB_ENV"
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           python - <<'PY'
           import ast,base64,hashlib,json,os,pathlib,zlib
@@ -39,8 +40,7 @@ jobs:
           files=json.loads(raw)
           assert set(files)=={'red.patch','green.patch','post.patch','publish.py','run.py'}
           root=pathlib.Path(os.environ['C6_TRANSFER']); root.mkdir()
-          # The repository is public. Read its public heartbeat without a token;
-          # the helper's existing contents/actions permissions stay unchanged.
+          # Read the public heartbeat without changing helper permissions.
           old="headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}"
           assert files['run.py'].count(old)==1
           files['run.py']=files['run.py'].replace(old,"headers={'Accept':'application/vnd.github+json'}")
