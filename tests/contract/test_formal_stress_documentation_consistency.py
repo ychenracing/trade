@@ -14,6 +14,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from quantfusion import config as qf
 from quantfusion.application import stress_artifacts, stress_metrics, stress_scenarios
 from quantfusion.config import daily
@@ -117,12 +119,56 @@ HEX_40 = re.compile(r"[0-9a-f]{40}")
 HEX_64 = re.compile(r"[0-9a-f]{64}")
 
 
+def _referenced_validation(text: str, *, path: Path, root: Path = ROOT) -> str:
+    """Resolve the exact local evidence link, including its real target anchor."""
+    targets = {
+        Path("README.md"): "docs/VALIDATION.md#formal-stress-evidence",
+        Path("docs/ARCHITECTURE.md"): "VALIDATION.md#formal-stress-evidence",
+    }
+    expected = targets[path]
+    links = re.findall(r"\[验证结果与证据\]\(([^)]+)\)", text)
+    assert links == [expected], (path, links)
+    relative, anchor = expected.split("#", 1)
+    target = (root / path.parent / relative).resolve()
+    assert target == (root / "docs/VALIDATION.md").resolve(), path
+    content = target.read_text(encoding="utf-8")
+    assert content.count(f'<a id="{anchor}"></a>') == 1, target
+    return content
+
+
 def _managed_block(text: str, start: str, end: str, *, path: Path) -> str:
+    if path in (Path("README.md"), Path("docs/ARCHITECTURE.md")):
+        assert start not in text and end not in text, path
+        text = _referenced_validation(text, path=path)
     assert text.count(start) == 1, path
     assert text.count(end) == 1, path
     _, rest = text.split(start, 1)
     block, _ = rest.split(end, 1)
     return block
+
+
+@pytest.mark.parametrize("path,target", [
+    (Path("README.md"), "docs/VALIDATION.md#formal-stress-evidence"),
+    (Path("docs/ARCHITECTURE.md"), "VALIDATION.md#formal-stress-evidence"),
+])
+def test_evidence_reference_requires_the_real_file_and_exact_anchor(tmp_path, path, target):
+    authority = tmp_path / "docs/VALIDATION.md"
+    authority.parent.mkdir()
+    content = '<a id="formal-stress-evidence"></a> 来源。\n'
+    authority.write_text(content, encoding="utf-8")
+    link = f"[验证结果与证据]({target})"
+    assert _referenced_validation(link, path=path, root=tmp_path) == content
+    for altered in ("", link + link, link.replace("VALIDATION", "MISSING"),
+                    link.replace("formal-stress-evidence", "missing-anchor")):
+        with pytest.raises(AssertionError):
+            _referenced_validation(altered, path=path, root=tmp_path)
+    for altered in ("只有来源文字，没有锚点。", content + content):
+        authority.write_text(altered, encoding="utf-8")
+        with pytest.raises(AssertionError):
+            _referenced_validation(link, path=path, root=tmp_path)
+    authority.unlink()
+    with pytest.raises(FileNotFoundError):
+        _referenced_validation(link, path=path, root=tmp_path)
 
 
 def _normalize_historical_22(text: str) -> str:

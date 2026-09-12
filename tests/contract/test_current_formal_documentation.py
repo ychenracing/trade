@@ -1,9 +1,15 @@
-# Current 17-symbol baseline and formal-stress documentation contracts.
+# Current plan and explicitly historical baseline documentation contracts.
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
+
+import pytest
+
+from quantfusion.config.engine import default_engine_config
+from quantfusion.config.portfolio import PortfolioPolicy
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -33,9 +39,60 @@ def _warm_result(name: str) -> dict[str, object]:
     return matches[0]
 
 
+def _declared_parameter_names(text: str, heading: str, label: str) -> set[str]:
+    """Inspect the declared list itself, not incidental mentions elsewhere."""
+    sections = re.findall(
+        rf"^## {re.escape(heading)}\n(.*?)(?=^## |\Z)",
+        text, flags=re.MULTILINE | re.DOTALL,
+    )
+    assert len(sections) == 1, heading
+    lists = re.findall(rf"^{re.escape(label)}：([^\n]+)$", sections[0], re.MULTILINE)
+    assert len(lists) == 1, label
+    names = re.findall(r"`([a-z][a-z0-9_]*)`", lists[0])
+    assert names and len(names) == len(set(names)), names
+    return set(names)
+
+
+def _assert_parameter_list(text: str, heading: str, label: str, expected: set[str]) -> None:
+    assert _declared_parameter_names(text, heading, label) == expected
+
+
+def test_declared_parameter_lists_cover_their_actual_complete_scope() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    _assert_parameter_list(readme, "默认策略参数", "策略参数", set(default_engine_config()))
+    _assert_parameter_list(readme, "组合策略参数", "组合参数", set(PortfolioPolicy.__dataclass_fields__))
+
+
+def test_incidental_parameter_mention_cannot_hide_a_declared_list_omission() -> None:
+    text = (
+        "开关 `account_risk_budget_enabled` 默认开启。\n"
+        "## 默认策略参数\n策略参数：`entry_period`。\n"
+        "## 其他\n这里再次提到 `account_risk_budget_enabled`。\n"
+    )
+    expected = {"entry_period", "account_risk_budget_enabled"}
+    with pytest.raises(AssertionError):
+        _assert_parameter_list(text, "默认策略参数", "策略参数", expected)
+    corrected = text.replace("策略参数：`entry_period`。", "策略参数：`entry_period`、`account_risk_budget_enabled`。")
+    _assert_parameter_list(corrected, "默认策略参数", "策略参数", expected)
+
+
+@pytest.mark.parametrize("text", [
+    "## 默认策略参数\n没有清单。\n",
+    "## 默认策略参数\n策略参数：`entry_period`、`entry_period`。\n",
+    "## 默认策略参数\n策略参数：`entry_period`。\n策略参数：`exit_period`。\n",
+    "## 默认策略参数\n策略参数：`entry_period`。\n## 默认策略参数\n策略参数：`entry_period`。\n",
+])
+def test_malformed_parameter_lists_are_rejected(text: str) -> None:
+    with pytest.raises(AssertionError):
+        _declared_parameter_names(text, "默认策略参数", "策略参数")
+
+
 def test_current_baseline_tables_match_the_frozen_artifact() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     validation = (ROOT / "docs/VALIDATION.md").read_text(encoding="utf-8")
+    assert "[验证结果与证据](docs/VALIDATION.md#formal-stress-evidence)" in readme
+    assert validation.count('<a id="formal-stress-evidence"></a>') == 1
+    assert "## 历史 pre-C6 生产趋势基线" in validation
     for name, label in UNIVERSES:
         item = _warm_result(name)
         row = (
@@ -44,7 +101,6 @@ def test_current_baseline_tables_match_the_frozen_artifact() -> None:
             f"{int(item['total_trades'])} | "
             f"{int(item['date_symbol_side_count'])} |"
         )
-        assert row in readme
         assert row in validation
 
 
@@ -73,6 +129,13 @@ def test_final_result_block_replaces_pending_text_after_publication() -> None:
     )
     if not summary.exists():
         return
+    validation = (ROOT / "docs/VALIDATION.md").read_text(encoding="utf-8")
+    assert "完整计划已运行：`958/958`" in validation
+    assert validation.count('<a id="formal-stress-evidence"></a>') == 1
+    links = {
+        "README.md": "docs/VALIDATION.md#formal-stress-evidence",
+        "docs/ARCHITECTURE.md": "VALIDATION.md#formal-stress-evidence",
+    }
     for relative in (
         "README.md",
         "docs/VALIDATION.md",
@@ -82,4 +145,5 @@ def test_final_result_block_replaces_pending_text_after_publication() -> None:
         assert (
             "完整 958 场景尚未在本次任务中形成最终工件" not in text
         )
-        assert "完整计划已运行：`958/958`" in text
+        if relative in links:
+            assert f"[验证结果与证据]({links[relative]})" in text
