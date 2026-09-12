@@ -1,0 +1,53 @@
+name: Restore default account risk delivery
+on:
+  push:
+    branches: [codex/default-account-risk-delivery]
+    paths: [.github/workflows/default-account-risk-delivery.yml]
+permissions:
+  contents: write
+concurrency:
+  group: default-account-risk-delivery
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: transport
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796
+          path: source
+          fetch-depth: 0
+      - name: Authenticate recovered bundle and publish original feature commit
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796
+          HEAD=75eb369edc43090bfa6af4206a697e0aab7c9504
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$BASE"
+          cat ../transport/.github/default-risk-transfer/part-0{0,1,2,3,4,5,6}.bundle > "$RUNNER_TEMP/default-risk.bundle"
+          test "$(wc -c < "$RUNNER_TEMP/default-risk.bundle")" = 28113
+          echo "193f1f6561f3e5af06da78f0c2040d6c3c754e9085fdf8c0758bcb7885a0ed1a  $RUNNER_TEMP/default-risk.bundle" | sha256sum -c -
+          git bundle verify "$RUNNER_TEMP/default-risk.bundle"
+          git fetch "$RUNNER_TEMP/default-risk.bundle" refs/heads/codex/default-account-risk
+          test "$(git rev-parse FETCH_HEAD)" = "$HEAD"
+          git checkout --detach "$HEAD"
+          test "$(git rev-parse HEAD^{tree})" = 131a8a56cb423118627336b1a7b15abcf68b4dbb
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --check "$BASE" HEAD
+          git diff --binary "$BASE" HEAD > "$RUNNER_TEMP/default-risk.patch"
+          echo "8fd1330d103f8272739c06eabf63e7371d9e5985a11f4fc585e5dc5559dfc2bd  $RUNNER_TEMP/default-risk.patch" | sha256sum -c -
+          test -z "$(git status --porcelain)"
+          git diff --stat "$BASE" HEAD
+          for REV in 4659a2b6d265f45256777da6a2fc25d1369308bd acf4cccf4117edb35e6beb57aa2f9004476c8b93; do
+            git cat-file -e "$REV^{commit}" || git fetch --no-tags origin "$REV"
+          done
+          git push origin HEAD:refs/heads/codex/default-account-risk
+          test "$(git ls-remote origin refs/heads/codex/default-account-risk | cut -f1)" = "$HEAD"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$BASE"
+          echo "Original commit $HEAD restored. Main unchanged. No economic replay. Full CI must run on the feature PR before main delivery." >> "$GITHUB_STEP_SUMMARY"
