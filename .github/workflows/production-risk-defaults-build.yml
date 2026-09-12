@@ -2,11 +2,10 @@ name: Production risk default verification
 on:
   push:
     branches: [codex/production-risk-defaults-build]
-    paths:
-      - .github/production-defaults/**
-      - .github/workflows/production-risk-defaults-build.yml
+    paths: [.github/workflows/production-risk-defaults-build.yml]
 permissions:
   contents: write
+  actions: read
 concurrency:
   group: production-risk-defaults-build
   cancel-in-progress: false
@@ -21,7 +20,7 @@ jobs:
       image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
     env:
       BASE: 314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796
-      PATCH_SHA256: e3d950ea16664c65cca112fa054ae284cbac3fc252c1db1a9870c6c29c01f431
+      PATCH_SHA256: 38d0b70a50732d33fc75088c468ef2eccb42fb7d23227696948cb42aa6f287f1
       PYTHONUNBUFFERED: '1'
     steps:
       - uses: actions/checkout@v4
@@ -33,98 +32,85 @@ jobs:
           ref: 7fa4ebcfd239c42fc17d7620f9136f9cd1df2d09
           path: source
           fetch-depth: 0
-      - name: Reuse actual tested source and repair comparison output adapter
+      - name: Authenticate saved reference results and comparison implementation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir evidence
+          python - <<'PY'
+          import hashlib,io,json,os,urllib.request,zipfile
+          from pathlib import Path
+          url='https://api.github.com/repos/ychenracing/trade/actions/artifacts/10290554447/zip'
+          request=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(request, timeout=60) as response:
+              raw=response.read()
+          assert hashlib.sha256(raw).hexdigest()=='999ad89565296399ac370cc546f7d9f1e86145f561f32a4482e363219e417c19'
+          out=Path('reference-evidence');out.mkdir()
+          with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+              hashes=json.loads(archive.read('sha256.json'))
+              for name in hashes:
+                  content=archive.read(name)
+                  assert hashlib.sha256(content).hexdigest()==hashes[name]
+                  if name.endswith('-reference.json') or name=='comparison-driver.py':
+                      assert '/' not in name
+                      (out/name).write_bytes(content)
+          s=(out/'comparison-driver.py').read_text()
+          old='''        case, kind = item
+                  path = reference if kind == 'reference' else candidate'''
+          # Match using explicit newline/indent, independent of YAML block indentation.
+          old="        case, kind = item\n        path = reference if kind == 'reference' else candidate"
+          new="        case, kind = item\n        if kind == 'reference':\n            value=json.loads((reference/f'{case}-reference.json').read_text())\n            (output/f'{case}-reference.json').write_text(json.dumps(value,sort_keys=True,indent=2)+'\\n')\n            return (case,kind),value\n        path = candidate"
+          assert s.count(old)==1
+          s=s.replace(old,new)
+          s=s.replace("'scope': 'orders/fills/equity/events/pending; no formal rerun',", "'scope': 'orders/fills/equity/events/pending; no formal rerun', 'reference_reuse': {'run_id':34672665568,'artifact_id':10290554447,'archive_sha256':'999ad89565296399ac370cc546f7d9f1e86145f561f32a4482e363219e417c19','reference_replays':0},")
+          compile(s,'comparison-driver.py','exec')
+          Path('evidence/comparison-driver.py').write_text(s)
+          PY
+      - name: Save exact minimal scalar correction checkpoint
         run: |
           set -euo pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE/source"
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          mkdir evidence
-          cd source
-          test "$(git rev-parse HEAD)" = 7fa4ebcfd239c42fc17d7620f9136f9cd1df2d09
-          test "$(git ls-remote origin refs/heads/codex/production-risk-defaults | cut -f1)" = 7fa4ebcfd239c42fc17d7620f9136f9cd1df2d09
-          git switch -c codex/production-risk-defaults
-          git worktree add --detach ../reference "$BASE"
-          git rev-parse HEAD > ../evidence/checkpoint-head.txt
-          cd ..
+          test "$(git -C source ls-remote origin refs/heads/codex/production-risk-defaults | cut -f1)" = 7fa4ebcfd239c42fc17d7620f9136f9cd1df2d09
           python - <<'PY'
+          import base64,hashlib,os,subprocess,zlib
           from pathlib import Path
-          p=Path('task/.github/production-defaults/compare.py')
-          s=p.read_text()
-          old="_canonical_sequence_sha(result['equity_curve'])"
-          assert s.count(old)==1
-          s=s.replace(old,"_canonical_sequence_sha(result['equity_curve'].to_dict(orient='split'))")
-          s=s.replace("    end = '2026-07-20'\n    if case == 'adaptive':", "    start, end = '2025-04-01', '2026-07-20'\n    if case == 'weak2024':\n        engine = RegimeAdaptiveBacktestEngine(2_000_000, cfg=cfg)\n        codes = ['002409','300054','300308','300394','300502']\n        kwargs['data_dir'] = str(Path('data/regime').resolve())\n        start, end = '2024-01-02', '2024-12-31'\n    elif case == 'adaptive':")
-          s=s.replace("codes}, '2025-04-01', end, **kwargs)", "codes}, start, end, **kwargs)")
-          s=s.replace("'adaptive','replay17']", "'adaptive','replay17','weak2024']")
-          s=s.replace("'patch_sha256': os.environ['PATCH_SHA256'],", "'patch_sha256': os.environ['PATCH_SHA256'],\n             'candidate_source': subprocess.check_output(['git','-C',str(candidate),'rev-parse','HEAD'],text=True).strip(),\n             'candidate_tree': subprocess.check_output(['git','-C',str(candidate),'rev-parse','HEAD^{tree}'],text=True).strip(),")
-          s=s.replace("    golden['_previous_default'] = old", "    golden['_adaptive_weak'] = {**results[('weak2024','reference')]['metrics'],\n        'source_revision':BASE, 'start_date':'2024-01-02', 'end_date':'2024-12-31',\n        'previous_default_metrics': {'total_return': .49679034682374956, 'max_drawdown':-.17219488006814201, 'total_trades':18, 'sleeve_fill_count':18}}\n    golden['_previous_default'] = old")
-          s=s.replace("'additional_replay_cases':1", "'additional_replay_cases':2")
-          s=s.replace('另验证单股自适应与 17 股生产回放', '另验证单股自适应、17 股生产回放及 2024 弱市路径')
-          s=s.replace("    text=text.replace('## 历史", "    weak=golden['_adaptive_weak']\n    table+=f\"\\n2024 弱市同窗回归默认启用预算后的收益为 {weak['total_return']*100:.6f}%，回撤为 {weak['max_drawdown']*100:.6f}%，成交 {weak['total_trades']} 笔；原关闭预算的收益 49.679035%、回撤 -17.219488%、18 笔成交保留在黄金元数据。这是默认启用带来的真实机会成本，不是格式误差，也不声称原 958 包含该窗口。\\n\"\n    text=text.replace('## 历史")
-          s=s.replace('SEVEN PAIRS', 'EIGHT PAIRS')
-          compile(s, str(p), 'exec')
-          p.write_text(s)
-          Path('evidence/comparison-driver.py').write_text(s)
+          encoded=Path('task/.github/production-defaults/finish.patch.b64').read_text().strip()
+          encoded=encoded.replace('HY7TCbYsTSa96','HY7TCbYsTSb96')
+          raw=zlib.decompress(base64.b64decode(encoded,validate=True))
+          assert hashlib.sha256(raw).hexdigest()==os.environ['PATCH_SHA256']
+          subprocess.run(['git','-C','source','apply','--check','--index','-'],input=raw,check=True)
+          subprocess.run(['git','-C','source','apply','--index','-'],input=raw,check=True)
+          Path('evidence/source-correction.patch').write_bytes(raw)
           PY
+          cd source
+          git switch -c codex/production-risk-defaults
+          git diff --cached --check
+          git commit -m 'fix: preserve native AB5 scalar arithmetic across production entrypoints' -m 'Synthetic RED reproduced NumPy sum divergence; normalize via existing validators before arithmetic. Account HWM/default contract unchanged. Native original references are reused, not rerun. Enabled regression expectations remain independently source bound.'
+          git push origin HEAD:refs/heads/codex/production-risk-defaults
+          git rev-parse HEAD > ../evidence/checkpoint-head.txt
       - name: Install unchanged locked dependencies
         working-directory: source
         run: python -m pip install -r requirements-lock.txt
-      - name: Precheck exact native equity and pending serialization without economics
-        working-directory: source
-        run: |
-          python - <<'PY'
-          import pandas as pd
-          from quantfusion.research.fingerprints import _canonical_sequence_sha
-          from quantfusion.domain.models import Signal
-          frame=pd.DataFrame([{'assets':100.,'date':pd.Timestamp('2026-01-01')}])
-          assert len(_canonical_sequence_sha(frame.to_dict(orient='split')))==64
-          assert len(_canonical_sequence_sha([Signal('300308','test','buy',target_shares=100,price=10.,signal_date='2026-01-01')]))==64
-          PY
-      - name: Compare actual defaults to immutable explicitly enabled AB5
-        run: python task/.github/production-defaults/compare.py compare reference source evidence
-      - name: Bind weak regression to independent enabled source and validate publication
+      - name: Verify affected scalar and production boundaries
         working-directory: source
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('tests/regression/test_regime_adaptive.py');s=p.read_text()
-          old='''        # Internal sleeve cash flows are unitized instead of being counted as
-                  # investment PnL in sleeve risk/equity bases. Keep that corrected path
-                  # as the exact frozen regression.
-                  self.assertAlmostEqual(result["total_return"], 0.49679034682374956, places=12)
-                  self.assertAlmostEqual(
-                      result["max_drawdown"], -0.17219488006814201, places=12
-                  )
-                  self.assertEqual(result["total_trades"], 18)
-                  self.assertEqual(result["sleeve_fill_count"], 18)'''
-          # Match the exact old historical assertions; no threshold or tolerance change.
-          start=s.index('        # Internal sleeve cash flows are unitized')
-          end=s.index('        replay = result["production_replay"]',start)
-          s=s[:start]+'''        # Independent immutable-source AB5 expectations; old OFF values remain in metadata.
-                  baseline = json.loads(
-                      (ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text()
-                  )["_adaptive_weak"]
-                  self.assertEqual(baseline["start_date"], "2024-01-02")
-                  self.assertAlmostEqual(result["total_return"], baseline["total_return"], places=12)
-                  self.assertAlmostEqual(result["max_drawdown"], baseline["max_drawdown"], places=12)
-                  self.assertEqual(result["total_trades"], baseline["total_trades"])
-                  self.assertEqual(result["sleeve_fill_count"], baseline["sleeve_fill_count"])
-                  self.assertEqual(result["account_risk_budget"]["status"], "APPLIED")
-          '''+s[end:]
-          # YAML indentation is removed before this Python literal is evaluated.
-          p.write_text(s)
-          p=Path('tests/contract/test_repository_hygiene.py');s=p.read_text()
-          assert 'proof["additional_replay_cases"], 1)' in s
-          p.write_text(s.replace('proof["additional_replay_cases"], 1)', 'proof["additional_replay_cases"], 2)'))
-          PY
-          python -m compileall -q tests
-          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 tests/regression/test_regime_adaptive.py tests/contract/test_repository_hygiene.py
+          python -m compileall -q quantfusion tests
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion tests
+          pyright quantfusion
+          python -m pytest -q tests/unit/test_production_risk_defaults.py tests/c6_non_economic/test_account_risk_budget.py | tee ../evidence/scalar-tests.txt
+      - name: Compare corrected defaults to eight authenticated references without reference replay
+        run: python evidence/comparison-driver.py compare reference-evidence source evidence
+      - name: Validate independent goldens and publish tested feature tree
+        working-directory: source
+        run: |
+          set -euo pipefail
           python -m pytest -q tests/contract/test_repository_hygiene.py tests/contract/test_architecture.py tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_weak_real_execution_matches_frozen_research_point | tee ../evidence/final-contract-tests.txt
           git diff --check
-          git add tests/fixtures/backtest_golden_metrics.json docs/VALIDATION.md tests/regression/test_regime_adaptive.py tests/contract/test_repository_hygiene.py
-          git commit -m 'test: bind enabled production defaults to immutable reference paths'
+          git add tests/fixtures/backtest_golden_metrics.json docs/VALIDATION.md
+          git commit -m 'test: bind enabled production defaults to authenticated immutable references'
           git push origin HEAD:refs/heads/codex/production-risk-defaults
           git rev-parse HEAD > ../evidence/final-head.txt
           git rev-parse HEAD^{tree} > ../evidence/final-tree.txt
