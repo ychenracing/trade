@@ -1,0 +1,33 @@
+name: Simplification source export
+on:
+  push:
+    branches: [codex/trade-simplification-source-export-20260912]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: bc95a329af272c09592af7ffa179726ce0eca499
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export exact baseline without running project code
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = bc95a329af272c09592af7ffa179726ce0eca499
+          test "$(git rev-parse HEAD^{tree})" = c740b0204036b091f8478fa450bc5eb0ea1d1857
+          mkdir -p "$RUNNER_TEMP/trade-source"
+          git bundle create "$RUNNER_TEMP/trade-source/trade.bundle" HEAD
+          git bundle verify "$RUNNER_TEMP/trade-source/trade.bundle"
+          cd "$RUNNER_TEMP/trade-source"
+          sha256sum trade.bundle > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trade-simplification-baseline
+          path: ${{ runner.temp }}/trade-source/
+          retention-days: 7
+          if-no-files-found: error
