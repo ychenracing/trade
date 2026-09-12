@@ -14,34 +14,23 @@ jobs:
           ref: bc95a329af272c09592af7ffa179726ce0eca499
           fetch-depth: 0
           persist-credentials: false
-      - name: Export baseline, retained source, and hash-locked static tools
+      - name: Export exact historical objects needed by retained evidence
         run: |
           set -eu
           test "$(git rev-parse HEAD)" = bc95a329af272c09592af7ffa179726ce0eca499
           test "$(git rev-parse HEAD^{tree})" = c740b0204036b091f8478fa450bc5eb0ea1d1857
-          mkdir -p "$RUNNER_TEMP/trade-source/tools"
-          git fetch --no-tags origin acf4cccf4117edb35e6beb57aa2f9004476c8b93
-          test "$(git rev-parse FETCH_HEAD)" = acf4cccf4117edb35e6beb57aa2f9004476c8b93
+          mkdir -p "$RUNNER_TEMP/trade-source"
+          git fetch --no-tags origin 4659a2b6d265f45256777da6a2fc25d1369308bd
+          test "$(git rev-parse FETCH_HEAD)" = 4659a2b6d265f45256777da6a2fc25d1369308bd
+          git cat-file -e 4659a2b6d265f45256777da6a2fc25d1369308bd:artifacts/diagnostics/c6-preregistration.json
           git bundle create "$RUNNER_TEMP/trade-source/trade.bundle" HEAD FETCH_HEAD
           git bundle verify "$RUNNER_TEMP/trade-source/trade.bundle"
-          python3 - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-          text = Path('requirements-lock.txt').read_text()
-          blocks = re.split(r'(?m)(?=^[A-Za-z0-9][A-Za-z0-9_.-]*==)', text)
-          selected = [b for b in blocks if re.match(r'^(ruff|pyright|nodeenv)==', b)]
-          if len(selected) != 3:
-              raise SystemExit('expected exactly three locked static-tool entries')
-          Path(os.environ['RUNNER_TEMP'], 'trade-source', 'static-tools.lock').write_text(''.join(selected))
-          PY
-          python3 -m pip download --only-binary=:all: --require-hashes --no-deps -r "$RUNNER_TEMP/trade-source/static-tools.lock" -d "$RUNNER_TEMP/trade-source/tools"
           cd "$RUNNER_TEMP/trade-source"
-          sha256sum trade.bundle static-tools.lock tools/* > SHA256SUMS
+          sha256sum trade.bundle > SHA256SUMS
           cat SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: trade-simplification-tools-and-source
+          name: trade-simplification-preregistration-source
           path: ${{ runner.temp }}/trade-source/
           retention-days: 7
           if-no-files-found: error
