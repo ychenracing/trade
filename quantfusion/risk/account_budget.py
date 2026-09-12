@@ -55,6 +55,7 @@ def plan_account_risk_budget(
     Existing/queued sells provide no buying credit. Callers retain their own
     execution adapter and must not treat these close-known plans as fills.
     """
+    cfg = dict(cfg)
     book_ids = {(state, symbol, strategy) for state, symbol, strategy, shares, _ in books if shares}
     book_ids.update((state, signal.symbol, signal.strategy_name)
                     for state, signal, _ in buys if signal.target_shares)
