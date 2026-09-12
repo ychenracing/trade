@@ -316,6 +316,9 @@ class AccountSignalSellabilityTests(unittest.TestCase):
 
     def test_console_prefers_recommended_quantity_and_status(self) -> None:
         result = {
+            "mode": "account_decision_support",
+            "as_of": self.AS_OF,
+            "snapshot_date": self.AS_OF,
             "estimated_equity": 1_000.0,
             "unpriced_symbols": [],
             "deployment_decision": {"name": "cash_preservation"},
@@ -342,13 +345,13 @@ class AccountSignalSellabilityTests(unittest.TestCase):
         }
         output = io.StringIO()
         with (
+            TemporaryDirectory() as directory,
             patch.object(
                 account_scan,
                 "load_account_snapshot_with_sha256",
                 return_value=(self._snapshot(40), "0" * 64),
             ),
             patch.object(account_scan.AccountSignalEngine, "run", return_value=result),
-            patch.object(account_scan, "atomic_json"),
             contextlib.redirect_stdout(output),
         ):
             exit_code = account_scan.run_account_scan(
@@ -357,18 +360,18 @@ class AccountSignalSellabilityTests(unittest.TestCase):
                 end_date=self.AS_OF,
                 cache_dir="unused",
                 regime_data_dir="unused",
-                output_dir="unused",
+                output_dir=directory,
             )
 
+            payload = json.loads((Path(directory) / f"account_signals_{self.AS_OF}.json").read_text())
+            self.assertEqual(payload["actions"][0]["recommended_shares"], 40)
+            self.assertEqual(payload["actions"][0]["execution_status"], "PARTIALLY_T1_BLOCKED")
+            self.assertIsNone(payload["actions"][1]["recommended_shares"])
+            self.assertEqual(payload["actions"][1]["execution_status"], "SELLABLE_UNKNOWN")
         self.assertEqual(exit_code, 0)
-        self.assertIn(
-            "recommended_shares=40 | execution_status=PARTIALLY_T1_BLOCKED",
-            output.getvalue(),
-        )
-        self.assertIn(
-            "recommended_shares=UNKNOWN | execution_status=SELLABLE_UNKNOWN",
-            output.getvalue(),
-        )
+        self.assertIn("建议卖出／减仓 40 股", output.getvalue())
+        self.assertIn("买入后次日才能卖", output.getvalue())
+        self.assertIn("可卖股数未知，不能据此确定卖出数量", output.getvalue())
 
 
 if __name__ == "__main__":

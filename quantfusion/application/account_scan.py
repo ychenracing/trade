@@ -10,6 +10,7 @@ from typing import Any, cast
 
 import pandas as pd
 
+from quantfusion.application.daily_report import publish_daily_report
 from quantfusion.account.models import (
     AccountPosition,
     AccountSnapshot,
@@ -850,33 +851,7 @@ def run_account_scan(
         print(f"Account signal scan failed: {exc}")
         return 1
 
-    print("=" * 72)
-    print("  Real-account decision support")
-    print("=" * 72)
-    print(f"  As of: {end_date}")
-    if result["estimated_equity"] is None:
-        print(
-            "  Estimated equity: unavailable "
-            f"(unpriced holdings: {', '.join(result['unpriced_symbols'])})"
-        )
-    else:
-        print(f"  Estimated equity: {result['estimated_equity']:,.0f}")
-    print(f"  Route: {result['deployment_decision']['name']}")
-    for action in result["actions"]:
-        summary = f"  {action['symbol']} {action['name']}: {action['action']}"
-        if action.get("action") == "BUY_CANDIDATE":
-            summary += (
-                f" | indicative_target_shares="
-                f"{action.get('indicative_target_shares', 0)}"
-                f" | execution_status={action['execution_status']}"
-            )
-        elif "execution_status" in action:
-            recommended = action.get("recommended_shares")
-            displayed = "UNKNOWN" if recommended is None else str(recommended)
-            summary += (
-                f" | recommended_shares={displayed}"
-                f" | execution_status={action['execution_status']}"
-            )
-        print(f"{summary} | {action['reason']}")
-    print(f"  Artifact: {output}")
+    publish_daily_report(output, symbols=symbols,
+                         expected_identity=("account_snapshot_sha256", snapshot_sha256))
+    print(f"机器结果已保存：{output}")
     return 0
