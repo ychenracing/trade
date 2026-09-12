@@ -1,0 +1,105 @@
+name: Production risk default verification
+on:
+  push:
+    branches: [codex/production-risk-defaults-build]
+    paths:
+      - .github/production-defaults/**
+      - .github/workflows/production-risk-defaults-build.yml
+permissions:
+  contents: write
+concurrency:
+  group: production-risk-defaults-build
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: python@sha256:581429e3df12d76e6af4be5ab7d0e7fc2013eb57dc23d2de691411c8efdbb970
+    env:
+      BASE: 314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796
+      PATCH_SHA256: e3d950ea16664c65cca112fa054ae284cbac3fc252c1db1a9870c6c29c01f431
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: task
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 314254fe04a5fc8bc0fd9bc91bb3a2c2ed5af796
+          path: source
+          fetch-depth: 0
+      - name: Authenticate patch and save coherent feature checkpoint
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/source"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          mkdir evidence
+          python - <<'PY'
+          import base64, hashlib, os, subprocess, zlib
+          from pathlib import Path
+          raw=zlib.decompress(base64.b64decode(''.join((Path('task/.github/production-defaults')/f'patch-{i}.b64').read_text().strip() for i in range(4)), validate=True))
+          assert hashlib.sha256(raw).hexdigest()==os.environ['PATCH_SHA256']
+          assert subprocess.check_output(['git','-C','source','rev-parse','HEAD'],text=True).strip()==os.environ['BASE']
+          assert subprocess.check_output(['git','-C','source','rev-parse','HEAD^{tree}'],text=True).strip()=='a2114c02b068ab9bf4c40e25ba74d84f290b19b7'
+          subprocess.run(['git','-C','source','apply','--check','--index','-'],input=raw,check=True)
+          subprocess.run(['git','-C','source','apply','--index','-'],input=raw,check=True)
+          Path('evidence/source.patch').write_bytes(raw)
+          PY
+          cd source
+          git switch -c codex/production-risk-defaults
+          git diff --cached --check
+          git commit -m 'feat: apply selected risk budget by default across production entrypoints' -m 'User explicitly requested default activation everywhere. Shared AB5 formula unchanged; account snapshot consumes existing declared peak_equity. Historical diagnostic identities stay explicitly disabled. Local 266 targeted tests and 38 subtests passed before cloud verification. Native equivalence and new golden binding are pending, not claimed accepted.'
+          git push origin HEAD:refs/heads/codex/production-risk-defaults
+          git rev-parse HEAD > ../evidence/checkpoint-head.txt
+          git worktree add --detach ../reference "$BASE"
+      - name: Install unchanged locked dependencies
+        working-directory: source
+        run: python -m pip install -r requirements-lock.txt
+      - name: Native affected tests and static checks before comparison
+        working-directory: source
+        run: |
+          set -euo pipefail
+          python -m compileall -q quantfusion tests
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion tests
+          pyright quantfusion
+          python -m pytest -q tests/unit/test_production_risk_defaults.py tests/unit/test_account_truth_boundary.py tests/unit/test_config_profiles.py tests/unit/test_stress_scenarios.py tests/integration tests/c6_non_economic/test_account_risk_budget.py tests/c6_non_economic/test_c6_formal_ab5.py tests/c6_non_economic/test_c6_release_acceptance.py tests/c6_non_economic/test_c6_release_publication.py | tee ../evidence/targeted-tests.txt
+      - name: Compare actual defaults to immutable explicitly enabled AB5
+        run: python task/.github/production-defaults/compare.py compare reference source evidence
+      - name: Validate independent golden binding and publish tested feature tree
+        working-directory: source
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/contract/test_repository_hygiene.py tests/contract/test_architecture.py | tee ../evidence/final-contract-tests.txt
+          git diff --check
+          git add tests/fixtures/backtest_golden_metrics.json docs/VALIDATION.md
+          git commit -m 'test: bind production defaults to independently replayed enabled AB5'
+          git push origin HEAD:refs/heads/codex/production-risk-defaults
+          git rev-parse HEAD > ../evidence/final-head.txt
+          git rev-parse HEAD^{tree} > ../evidence/final-tree.txt
+      - name: Preserve actual checkpoint and forensic evidence
+        if: always()
+        run: |
+          mkdir -p evidence
+          if git -C source rev-parse --verify refs/heads/codex/production-risk-defaults; then
+            git -C source bundle create "$GITHUB_WORKSPACE/evidence/verified.bundle" refs/heads/codex/production-risk-defaults
+            git -C source status --short > evidence/worktree-status.txt
+            git -C source diff --binary > evidence/uncommitted.patch
+          fi
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          root=Path('evidence')
+          (root/'sha256.json').write_text(json.dumps({p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file() and p.name!='sha256.json'},sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-risk-defaults-${{ github.run_id }}
+          path: evidence/
+          retention-days: 90
