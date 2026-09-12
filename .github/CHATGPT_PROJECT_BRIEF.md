@@ -1,150 +1,55 @@
 # ChatGPT Project Brief
 
-> 本文件只保存长期稳定、仓库级的信息。当前任务、临时分支、SHA、测试状态和执行进度应保存在当前 Pull Request 正文中。
+> 本文件只保存长期稳定的项目定位、领域边界与恢复导航。当前任务、分支、SHA、测试状态、风险和剩余工作维护在匹配 Pull Request 的正文，不在仓库中另建动态状态副本。
 
-## 1. Project
+## 项目定位
 
-- 项目名称：Quant Fusion A股科技趋势决策系统
-- GitHub 仓库：`ychenracing/trade`
-- 默认分支：`main`
-- 技术栈：Python、pandas、pytest、Ruff、Pyright
-- 系统定位：面向 A 股 AI 硬件、光通信和半导体产业链的日线量化研究与人工决策支持项目。
-- 执行边界：用于收盘后回测、组合验证、信号扫描和账户持仓审视；不连接券商、不自动下单，也不承诺未来收益。
+- 项目：Quant Fusion A 股科技趋势决策系统，仓库 `ychenracing/trade`，默认分支 `main`。
+- 技术栈：Python、pandas、pytest、Ruff、Pyright；单进程模块化单体，唯一规范实现位于 `quantfusion/`。
+- 用途：面向 AI 硬件、光通信和半导体产业链的日线研究、组合验证、收盘后信号扫描与真实账户人工审视。
+- 非目标：连接券商、自动下单、托管账户、保证未来收益，或用日线模型声称重现真实盘中路径。
 
-## 2. Purpose and Non-Goals
+## 领域边界
 
-Quant Fusion 提供冻结行情、趋势与弱市策略、组合回放、风险治理、参数研究、账户建议、严格 JSON 工件和持续集成门禁。信号在收盘后形成，最早在后续可交易日开盘执行。
+信号在收盘后形成，模拟成交最早发生在后续可交易日开盘；真实账户结果只是人工复核建议。研究与模拟应用复用规范引擎的信号、撮合、费用和资金核算，不能建立第二套交易语义。
 
-长期非目标：
+生产回放的路由切换保持既有持仓、现金、挂单、峰值、风险锁与冷却状态。风险政策先产生不可变动作，再经执行适配器进入既有队列。真实账户快照走独立的时点建议路径，不注入历史回放，也不因此获得跨日券商账本恢复能力。
 
-- 自动托管账户或自动下单；
-- 将回测结果解释为未来收益保证；
-- 使用分钟级模型重现盘中路径；
-- 在行情、指数、映射或认证证据不可信时继续交易决策；
-- 让研究层复制规范引擎的撮合、费用、交易规则或资金核算。
+缺失映射、行情或证据时，应遵守适用的失败关闭合同。实现存在缺口时如实记录实际行为与要求的差异，不用文案将其写成已修复。股票不足历史时的处理因入口而异，不能把弱市内部筛选或显式研究过滤推广为默认容错；具体范围见[数据说明](../data/README.md)。
 
-## 3. Architecture and Module Boundaries
+模拟日扫依次进行输入检查、冻结证据、生产回放、结果校验、机器工件写入、状态保存和成功索引更新；这些文件不是一个可整体回滚的事务。账户建议不走模拟状态发布链。两条路径的中文报告都是机器结果之后的派生说明，不是订单或新的授权。精确顺序与失败边界见[架构说明](../docs/ARCHITECTURE.md)。
 
-仓库采用单进程模块化单体，规范实现位于 `quantfusion/`：
+固定行情、黄金预期和正式证据与缓存、日扫输出、研究检查点分开。日常扫描显式指定独立的 `--regime-data-dir`，不刷新冻结 `data/regime`。指数刷新状态和旧路由不能替代请求日的数据完整性核对。
 
-- `domain/`、`config/`、`data/`、`indicators/`：领域模型、配置事实源与画像构造、行情契约和无副作用指标。
-- `strategy/`、`execution/`、`portfolio/`：信号、稳定撮合规则和组合状态边界。
-- `risk/`、`regime/`：组合风控、治理证据、跨市场叠加和纯路由状态转换。
-- `engine/`：单袖套、组合引擎和持续账户生产回放。
-- `account/`、`application/`、`io/`：账户建议、流程编排、严格工件和原子状态发布。
-- `research/`：候选配置、走步评价、晋级门和研究证据。
-- 根目录：只放项目文档与配置，不提供 Python import 或 CLI surface。
-- `scripts/`：只通过 `python -m scripts.<模块名>` 启动的可复现研究与验证命令。
-- `tests/`：单元、契约、集成和经济回归测试。
+正式压力计划与 ID、family、shard 等诊断选择严格隔离。只有精确正式计划及其适用验收满足发布条件时才可发布 canonical 工件；诊断、Actions 成功或一次文件写入成功都不等于正式经济接受。有限历史例外只属于其绑定的候选与证据。
 
-依赖方向、无环导入、私有名称边界，以及根目录不得包含 Python 实现或入口，均由架构契约测试守卫。
+## 事实源与职责
 
-## 4. Non-Negotiable Constraints
+| 要核对的事项 | 入口 |
+|---|---|
+| 工程流程、授权边界、渐进验证与合并原则 | [AGENTS.md](../AGENTS.md) 与当前任务的有效合同 |
+| 如何准备输入、运行、读报告与安全排错 | [README.md](../README.md)；功能与参数再核对当前源码、解析器和测试 |
+| 模块、状态所有权、因果顺序与输出分支 | [ARCHITECTURE.md](../docs/ARCHITECTURE.md) |
+| 证据类型、历史结果、来源及有限例外 | [VALIDATION.md](../docs/VALIDATION.md) 与其引用的原始工件、冻结合同和授权 |
+| 配置默认值、校验与画像 | `quantfusion/config/`；`engine.py` 管理默认值及校验，`profiles.py` 管理行业分类、符号路由与画像构造 |
+| 数据格式、单位、冻结与运行输入隔离 | [data/README.md](../data/README.md)、清单与读取器 |
+| 实际 CI 覆盖和执行条件 | [ci.yml](workflows/ci.yml)、对应锁文件及实时 checks |
+| 当前分支、SHA、PR、reviews、执行状态 | 实时 GitHub；匹配 PR 正文作为恢复索引，不代替实时核验 |
 
-- 只处理日线数据，保持收盘后决策与后续可交易日开盘执行的因果边界。
-- 默认对未映射股票、缺失或陈旧指数、不可解析数据和证据不足情况 fail-closed。
-- 回测、日扫、优化和压力验证必须复用规范引擎，不得复制交易语义。
-- 路由变化不得重建账户、清空挂单、重置峰值或丢失风险锁与冷却状态。
-- 风险政策先产生不可变动作，再经执行适配器进入既有挂单队列。
-- 压力诊断的 ID/family/shard 选择与正式计划严格隔离；只有精确 canonical 正式计划可发布，且计数语义只使用 `trade_records`。
-- 日扫必须按验证输入、冻结证据、生产回放、验证结果、发布工件、发布状态、更新成功指针的顺序执行；前一步失败不得发布后续状态。
-- 行情缓存目录必须通过显式上下文传递，避免并行或连续运行互相污染。
-- 冻结行情、黄金指标和已审查验证工件不得与临时缓存、日扫输出或研究检查点混用。
-- 参数、费用、映射、参考篮子或冻结数据变化必须重新通过适用的完整回归。
-- 账户建议仅供人工决策，实际执行必须考虑流动性、涨跌停、交易规则和个人风险承受能力。
+`domain/`、`config/`、`data/`、`indicators/` 提供领域、配置、行情与指标；`strategy/`、`execution/`、`portfolio/` 管理信号、执行和组合；`risk/`、`regime/` 管理风险与路由；`engine/` 负责模拟账本；`account/`、`application/`、`io/` 负责账户建议、编排和发布；`research/` 负责研究选择与证据。根目录不提供 Python 实现或 CLI；独立工具只通过 `python -m scripts.<模块名>` 启动。详细路径清单不在本文件重复维护。
 
-## 5. Authoritative Sources
+## 恢复当前工作
 
-- 项目定位、使用边界、命令和仓库结构：`README.md`
-- 模块边界、依赖方向、状态所有权和扩展规则：`docs/ARCHITECTURE.md`
-- 长期验证结论与经济基线：`docs/VALIDATION.md`
-- 渐进式验证约定：`AGENTS.md`
-- 规范实现：`quantfusion/`
-- 配置事实源：`quantfusion/config/`；其中 `engine.py` 拥有默认值与校验，`profiles.py` 拥有行业分类、符号路由与参数画像构造。
-- 测试与契约：`tests/`
-- 冻结行情与数据说明：`data/`、`data/README.md`
-- 持续集成：`.github/workflows/ci.yml`
-- 依赖定义：`requirements.txt`、`requirements-dev.txt`、`requirements-lock*.txt`
+先读取适用的 `AGENTS.md`，再读取本文件与当前任务直接相关的文档、源码、配置和测试。搜索匹配的开放 PR 与远端分支；存在匹配工作时原地继续，并核对实际 base/head、checks、reviews、未提交或未推送成果。普通单 PR 任务不强制新建 Issue。
 
-## 6. Standard Commands
+当前动态状态维护在匹配 PR 正文。`PROJECT_STATE.md` 不是必须存在的恢复入口；存在时核对其实际职责，不存在时继续使用本文件和匹配 PR，不为满足旧指令创建第二份状态源。不要根据旧聊天猜测当前状态，也不默认加载全部聊天、Git 历史、日志或工件。
 
-以下命令由 README 和 CI workflow 支持：
+[冻结历史恢复合同](../docs/C6_RECOVERY_CONTRACT.md) 用于来源审计，原路径、完整字节和绑定哈希保持不变。阅读它不构成重新启动旧任务或覆盖当前授权的依据；合法续作须先核验当前 GitHub 状态及适用的有效任务合同。[发布说明](../docs/C6_AB5_RELEASE.md) 和[账本审计](../docs/C6_AB5_RELEASE_AUDIT.md) 保留各自历史时点及证明范围，其中旧的待办口吻不是当前任务队列。
 
-```bash
-python -m pip install -r requirements-dev.txt
-python -m compileall -q .
-ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
-python -m pytest -q
-pyright quantfusion
-bandit -r quantfusion scripts -ll
-pip-audit --strict -r requirements-lock.txt
-```
+## 验证与完成
 
-CI 使用锁定依赖，具体检查及其执行条件以 `.github/workflows/ci.yml` 为准。昂贵回测、基准和模拟遵循 `AGENTS.md` 的风险驱动渐进验证和适用验收合同，不机械套用固定层级。
+验证范围、证据复用和完成标准遵循 `AGENTS.md` 与适用任务合同；先验证受影响范围。纯文档变更不主动启动无关回测、正式压力矩阵或历史恢复任务。涉及相应经济行为或合同明确要求时执行适用经济验收，当前 HEAD 仍须满足工程检查及仓库合并保护。
 
-## 7. Important Paths
+测试、类型、安全和精确五池回归的实际设置以 workflow 为准，Python 版本的覆盖差异见验证说明。工程检查、经济验收、合并条件分别报告，未运行或未核验项不得写成通过。保存成果使用正常提交与推送并回读 SHA；不重写共享历史、强推、丢弃未知工作、覆盖无关任务或绕过保护。
 
-- `quantfusion/`：规范模块化实现。
-- `quantfusion/config/`：引擎、组合、风险、路由和股票池的公共配置事实源。
-- `scripts/`：以模块方式执行的批量回测、数据下载和篮子验证工具。
-- `quantfusion/application/stress.py`、`stress_scenarios.py`、`stress_metrics.py`、`stress_artifacts.py`：压力编排、场景选择、指标门禁和工件发布边界。
-- `tests/unit/`：领域、引擎、状态机、风险、账户和研究单元测试。
-- `tests/contract/`：架构、失败关闭、数据和仓库契约。
-- `tests/integration/`：日扫与发布事务集成契约。
-- `tests/regression/`：引擎、路由、叠加层和经济序列回归。
-- `tests/fixtures/`：测试读取的黄金基线。
-- `data/market/`、`data/regime/`：冻结行情与路由证据。
-- `artifacts/validation/`：已审查验证工件。
-- `examples/`：不含真实账户信息的输入样例。
-- `docs/ARCHITECTURE.md`、`docs/VALIDATION.md`：架构与验证权威文档。
-
-## 8. CI and Acceptance Entry Points
-
-`.github/workflows/ci.yml` 在 Pull Request 上运行：
-
-- Python 测试矩阵：安装对应锁文件、编译、Ruff 和 pytest。
-- 规范包类型检查：`pyright quantfusion`。
-- 安全与依赖检查：Bandit 和 pip-audit。
-- 精确回测回归：在前置门通过后核验冻结股票池的整数指标、浮点指标和经济序列指纹。
-
-验证范围、证据复用和完成标准遵循 `AGENTS.md` 与本次任务的适用验收合同；不因里程碑、换对话或交接机械扩测或重跑。工程检查、经济验收和合并条件分别报告，未运行或未核验项明确标记，不得当作通过。
-
-## 9. Prohibited Actions
-
-- 不得连接券商、自动下单或把建议表述为收益保证。
-- 不得绕过失败关闭、严格映射、行情新鲜度、冻结数据哈希或因果执行边界。
-- 不得让研究层复制信号、费用、涨跌停、成交量容量、T+1 或资金核算。
-- 不得在路由切换时重置账户、持仓、挂单、峰值、风险锁或冷却状态。
-- 不得绕过日扫的不可交换事务发布顺序。
-- 不得把真实账户信息、凭据、密钥、缓存或临时运行工件提交到仓库。
-- 不得在根目录重新增加 Python API/CLI，或让规范包依赖已删除的根模块名。
-- 不得无依据修改黄金基线、冻结行情、验证工件或配置事实源。
-- 不得擅自改写 Git 历史、force push、丢弃未知工作或覆盖无关改动。
-- 不得根据旧聊天猜测当前分支、SHA、PR 或 CI 状态。
-
-## 10. Context Loading Protocol
-
-1. 新开发任务可以直接使用自然语言提出，不要求预先填写固定 Prompt。
-2. 仓库任务先读取适用的 `AGENTS.md`，再按任务需要读取本文件和相关权威文档。
-3. 实施前搜索匹配的开放 PR 和远端分支；仅在相关时读取 Issue。
-4. 如果存在匹配工作，从现有现场原地继续。
-5. 当前动态任务状态默认维护在 Pull Request 正文。
-6. 不强制普通单 PR 任务创建 Issue。
-7. 优先读取目标代码、直接调用者、相关测试和直接相关配置。
-8. 只有证据不足、状态冲突或影响范围扩大时才扩大读取。
-9. 不默认加载完整仓库、完整聊天、完整日志或全部 GitHub Actions 历史。
-10. 长对话交接在可用时按需使用 `conversation-continuity-guard`；技能缺失不阻断任务，仍须保存可恢复状态并核验 GitHub 当前现场。
-
-## 11. References
-
-- `README.md`
-- `AGENTS.md`
-- `docs/ARCHITECTURE.md`
-- `docs/VALIDATION.md`
-- `quantfusion/`
-- `scripts/`
-- `tests/`
-- `data/README.md`
-- `.github/workflows/ci.yml`
-- `requirements-dev.txt`
-- `requirements-lock.txt`
+禁止提交真实账户信息、凭据、密钥或临时运行工件；禁止用删除状态、降低峰值、放宽新鲜度或改写冻结证据来消除真实风险。技能提供方法，不增加权限、重复审批或额外停止条件。
