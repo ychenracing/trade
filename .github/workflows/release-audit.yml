@@ -1,0 +1,51 @@
+name: Release audit
+on:
+  push:
+    branches: [maintenance/current-release]
+    paths: [.github/workflows/release-audit.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect tracked source and terminology
+        run: |
+          python - <<'PY'
+          import pathlib, re, subprocess
+          paths = subprocess.check_output(['git', 'ls-files'], text=True).splitlines()
+          brand = re.compile(r'chatgpt|codex|openai|\bglm\b|\bgpt[-_\d]|claude|gemini|qwen|deepseek|copilot|\bAI\b|人工智能|大模型', re.I)
+          history = re.compile(r'\b(?:C[1-6]|v\d+|phase\s*\d+)\b|历史版本|改造记录|版本历史|变更历史|CHANGELOG|changelog|旧版|旧版本|原版本|版本演进|历史改造', re.I)
+          print('=== DOCUMENTS AND INSTRUCTIONS ===')
+          for p in paths:
+              if p.lower().endswith('.md') or pathlib.Path(p).name in ('pyproject.toml','setup.cfg','setup.py'):
+                  print(p)
+          for title, pattern in [('BRAND',brand),('HISTORY',history)]:
+              print('=== '+title+' ===')
+              for p in paths:
+                  if p == '.github/workflows/release-audit.yml':
+                      continue
+                  try:
+                      text=pathlib.Path(p).read_text(encoding='utf-8')
+                  except (UnicodeError, OSError):
+                      continue
+                  matches=[(n,s) for n,s in enumerate(text.splitlines(),1) if pattern.search(s)]
+                  if pattern.search(p) or matches:
+                      print('FILE',p,'MATCHES',len(matches))
+                      limit=2 if p.startswith(('data/','artifacts/')) else 35
+                      for n,s in matches[:limit]: print(str(n)+': '+s[:350])
+          print('=== SOURCE TREE ===')
+          for p in paths:
+              if not p.startswith(('data/','artifacts/')): print(p)
+          PY
+      - name: Package exact source for local inspection
+        run: git archive --format=tar.gz HEAD > /tmp/trade-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-source
+          path: /tmp/trade-source.tar.gz
+          retention-days: 3
