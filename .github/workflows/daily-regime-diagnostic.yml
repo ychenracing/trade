@@ -16,7 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: bf99003c95e02de3407a342ec174795c3b356f9e
           fetch-depth: 0
       - name: Export exact source for offline native verification
         run: |
@@ -25,7 +24,7 @@ jobs:
           git rev-parse HEAD > .audit-export/source-sha.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: snapshot-audit-source-bf99003
+          name: input-boundaries-red-source
           path: .audit-export/
           retention-days: 7
       - uses: actions/setup-python@v5
@@ -35,5 +34,5 @@ jobs:
           cache-dependency-path: requirements-lock.txt
       - name: Install locked dependencies
         run: python -m pip install -r requirements-lock.txt
-      - name: Verify existing snapshot fix and affected boundaries
-        run: python -m pytest -q tests/integration tests/unit/test_unified_universe.py tests/unit/test_default_account_budget.py tests/contract/test_fail_closed_boundaries.py
+      - name: Reproduce input boundary defects
+        run: python -m pytest -q tests/integration/test_input_evidence_boundaries.py
