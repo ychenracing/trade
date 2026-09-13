@@ -15,14 +15,17 @@ jobs:
           ref: 3ae3bce0b4d5c7d3ec2f6a5ebb3c3fe53a103acb
           fetch-depth: 0
           persist-credentials: false
-      - name: Bundle verified source
+      - name: Bundle verified source and retained contract source
         run: |
+          git fetch --no-tags origin acf4cccf4117edb35e6beb57aa2f9004476c8b93
+          git update-ref refs/audit/retained acf4cccf4117edb35e6beb57aa2f9004476c8b93
           mkdir -p audit-export
-          git bundle create audit-export/trade.bundle HEAD
+          git bundle create audit-export/trade.bundle HEAD refs/audit/retained
           git rev-parse HEAD > audit-export/source-sha.txt
+          git rev-parse refs/audit/retained > audit-export/retained-source-sha.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: input-audit-source-3ae3bce
+          name: input-audit-source-with-retained
           path: audit-export/
           if-no-files-found: error
           retention-days: 7
