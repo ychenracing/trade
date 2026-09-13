@@ -1,6 +1,7 @@
 """Read-only diagnostics use causal dates, native fills, and explicit gaps."""
 
 from copy import deepcopy
+import hashlib
 
 import pandas as pd
 import pytest
@@ -92,3 +93,60 @@ def test_first_divergence_includes_prior_continuous_cash():
     assert result["first_trade_divergence"] == "2025-04-03"
     assert result["before"]["13"]["cash"] == 2_000_000. - 10010.
     assert result["before"]["13"]["holdings"] == {"300308": 100}
+
+
+def test_sell_advice_uses_calendar_and_does_not_assert_human_fill():
+    action = {"symbol": "300308", "action": "SELL", "recommended_shares": 100}
+    result = diagnostic._sell_availability(action, _prices(), "2025-04-03", load_calendar(), "2025-07-20")
+    assert result["next_session"] == "2025-04-07"
+    assert result["status"] == "OPEN_PRICE_REVIEW_ONLY"
+    assert result["actual_human_fill"] == "UNKNOWN"
+
+
+def test_recovery_receipt_cannot_authorize_earlier_same_day_buy():
+    events = [
+        dict(date="2025-04-01", event="account_budget_envelope", buy_scale=0., gross_before=100., gross_cap=50.),
+        dict(date="2025-04-02", event="account_budget_envelope", buy_scale=1., gross_before=0., gross_cap=100.),
+    ]
+    trades = [dict(date=day, direction="buy") for day in ("2025-04-02", "2025-04-03")]
+    episode = diagnostic.risk_attribution(dict(risk_events=events, trades=trades))["episodes"][0]
+    assert episode["release_date"] == "2025-04-02"
+    assert episode["first_buy_after_release"] == "2025-04-03"
+
+
+def _saved_advice():
+    frame, calendar, day = _prices(), load_calendar(), "2025-04-01"
+    observed = frame.loc[frame.index <= pd.Timestamp(day)]
+    advice = {
+        "mode": "account_decision_support", "as_of": day, "snapshot_date": day, "requested_as_of": day,
+        "account_code_sha256": diagnostic.account_source_sha(),
+        "engine_config_sha256": diagnostic.canonical_sequence_sha(diagnostic.default_engine_config()),
+        "account_snapshot_sha256": "0" * 64,
+        "scan_dates": {"calendar_sha256": calendar.sha256, "requested_as_of": day,
+                       "required_evidence_date": day, "next_trading_date": "2025-04-02"},
+        "market_evidence": {"300308": {"frame_sha256": hashlib.sha256(observed.to_csv(index=True).encode()).hexdigest(),
+            "config_sha256": diagnostic.canonical_sequence_sha(diagnostic.symbol_config("300308")), "evidence_date": day}},
+    }
+    return advice, {"300308": frame}, calendar
+
+
+def test_saved_market_identity_positive_does_not_certify_private_snapshot():
+    advice, frames, calendar = _saved_advice()
+    result = diagnostic.advice_identity(advice, frames, calendar)
+    assert result["status"] == "MARKET_CODE_CONFIG_VERIFIED"
+    assert result["actual_human_fill"] == "UNKNOWN"
+    assert "not supplied" in result["snapshot_bytes"]
+
+
+@pytest.mark.parametrize("field", ["snapshot_date", "requested_as_of", "required_evidence_date", "next_trading_date", "market_evidence_date"])
+def test_saved_advice_inconsistent_dates_are_rejected(field):
+    advice, frames, calendar = _saved_advice()
+    if field == "market_evidence_date":
+        advice["market_evidence"]["300308"]["evidence_date"] = "2025-03-31"
+    elif field in {"required_evidence_date", "next_trading_date"}:
+        advice["scan_dates"][field] = "2025-03-31"
+    else:
+        advice[field] = "2025-03-31"
+    result = diagnostic.advice_identity(advice, frames, calendar)
+    assert result["status"] == "IDENTITY_UNVERIFIED"
+    assert result["missing_or_mismatched"]
