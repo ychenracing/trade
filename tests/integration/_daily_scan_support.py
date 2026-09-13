@@ -13,11 +13,6 @@ import unittest
 from collections import namedtuple
 from dataclasses import dataclass
 from pathlib import Path
-
-import pandas as pd
-
-from quantfusion.config.paths import REGIME_DATA_DIR
-from quantfusion.config.regime import REGIME_INDEX_FILES
 from unittest.mock import patch
 
 from quantfusion.application import daily_scan as dss
@@ -50,27 +45,28 @@ VALID_RISK_STATE = {
 }
 
 
-def synthetic_regime_dir(root: str | Path, end_date: str = "2026-07-30") -> Path:
-    """Create explicit synthetic index evidence for non-market-data tests.
+def regime_evidence_dir(root: str, as_of: str = "2026-07-30") -> Path:
+    """Synthetic, date-complete indices for mocked orchestration tests only.
 
-    These integration tests exercise artifact/state mechanics rather than index
-    acquisition. Keep the retained history and append only a synthetic target
-    row so the production trading-session gate is still exercised instead of
-    being patched out.
+    Frozen market files remain unchanged. Construct independent prices on
+    sourced exchange sessions so transaction tests reach their injected faults
+    without bypassing the production coverage or stale-data checks.
     """
-    target = Path(root) / "_synthetic_regime"
-    target.mkdir(parents=True, exist_ok=True)
-    target_stamp = pd.Timestamp(end_date)
+    import pandas as pd
+
+    from quantfusion.config.regime import REGIME_INDEX_FILES
+    from quantfusion.data.sessions import load_calendar
+
+    sessions = [day for day in load_calendar().sessions if day <= as_of][-160:]
+    if not sessions or sessions[-1] != as_of:
+        raise ValueError("synthetic fixture requires a covered exchange session")
+    directory = Path(root) / "synthetic_regime"
+    directory.mkdir(exist_ok=True)
+    close = pd.Series([100. + i * .01 for i in range(len(sessions))],
+                      index=pd.to_datetime(sessions))
+    frame = pd.DataFrame({"open": close, "close": close, "high": close + 1.,
+                          "low": close - 1., "volume": 1_000_000.})
+    frame.index.name = "date"
     for code in REGIME_INDEX_FILES.values():
-        source = pd.read_csv(Path(REGIME_DATA_DIR) / f"{code}.csv")
-        source["date"] = pd.to_datetime(source["date"], errors="raise")
-        source = source.loc[source["date"] <= target_stamp].copy()
-        if source.empty:
-            raise ValueError(f"retained index fixture does not cover history for {end_date}")
-        if not source["date"].eq(target_stamp).any():
-            row = source.iloc[-1].copy()
-            row["date"] = target_stamp
-            source = pd.concat([source, row.to_frame().T], ignore_index=True)
-        source["date"] = pd.to_datetime(source["date"]).dt.strftime("%Y-%m-%d")
-        source.to_csv(target / f"{code}.csv", index=False)
-    return target
+        frame.to_csv(directory / f"{code}.csv")
+    return directory
