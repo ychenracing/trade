@@ -61,7 +61,7 @@ def regime_evidence_dir(root: str, as_of: str = "2026-07-30") -> Path:
     if not sessions or sessions[-1] != as_of:
         raise ValueError("synthetic fixture requires a covered exchange session")
     directory = Path(root) / "synthetic_regime"
-    directory.mkdir(exist_ok=True)
+    directory.mkdir(parents=True, exist_ok=True)
     close = pd.Series([100. + i * .01 for i in range(len(sessions))],
                       index=pd.to_datetime(sessions))
     frame = pd.DataFrame({"open": close, "close": close, "high": close + 1.,
