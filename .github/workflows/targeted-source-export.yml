@@ -14,16 +14,72 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements-lock.txt
-      - run: pip install -r requirements-lock.txt
+      - run: pip install -q -r requirements-lock.txt
       - name: Exact-source affected validation
         run: |
           git rev-parse HEAD
-          python -m pytest -q tests/unit/test_trading_sessions.py tests/integration/test_trading_day_coverage.py
-          python -m pytest -q tests/unit/test_decision_diagnostics.py
+          python -m pytest -q tests/unit/test_trading_sessions.py tests/integration/test_trading_day_coverage.py tests/unit/test_decision_diagnostics.py
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 scripts/decision_diagnostics.py tests/unit/test_decision_diagnostics.py
+  diagnostics:
+    needs: affected
+    if: contains(github.event.head_commit.message, '[diagnostics]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [score, replay13, replay17, replay17-no-budget, weak5, weak5-no-budget]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - run: pip install -q -r requirements-lock.txt
+      - name: Bounded read-only diagnostic
+        env:
+          DIAGNOSTIC_TASK: ${{ matrix.task }}
+        run: |
+          git rev-parse HEAD
+          python -m scripts.decision_diagnostics --task "$DIAGNOSTIC_TASK" --output "$RUNNER_TEMP/diagnostics"
+          git diff --exit-code
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: decision-${{ matrix.task }}-${{ github.sha }}
+          path: ${{ runner.temp }}/diagnostics
+          if-no-files-found: warn
+  combine:
+    needs: diagnostics
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - run: pip install -q -r requirements-lock.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: decision-*-${{ github.sha }}
+          path: ${{ runner.temp }}/diagnostics
+          merge-multiple: true
+      - run: python -m scripts.decision_diagnostics --task summarize --output "$RUNNER_TEMP/diagnostics"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: decision-complete-${{ github.sha }}
+          path: ${{ runner.temp }}/diagnostics
+          if-no-files-found: error
