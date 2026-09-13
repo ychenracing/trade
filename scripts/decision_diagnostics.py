@@ -10,6 +10,7 @@ from bisect import bisect_right
 from collections import Counter, defaultdict
 import contextlib
 from dataclasses import asdict
+from datetime import date
 import hashlib
 import io
 import json
@@ -215,22 +216,42 @@ def score_summary(rows: list[dict]) -> dict:
 
 
 def advice_identity(advice: dict, frames: dict[str, pd.DataFrame], calendar: TradingCalendar) -> dict:
-    """Verify current code/config/calendar and observed market prefixes only."""
+    """Verify current code/config/calendar, causal dates and market prefixes only."""
     bad = []
     for key, value in {"account_code_sha256": account_source_sha(),
                        "engine_config_sha256": canonical_sequence_sha(default_engine_config())}.items():
         if advice.get(key) != value:
             bad.append(key)
-    if advice.get("scan_dates", {}).get("calendar_sha256") != calendar.sha256:
+    dates = advice.get("scan_dates", {})
+    if dates.get("calendar_sha256") != calendar.sha256:
         bad.append("calendar_sha256")
     evidence, day = advice.get("market_evidence", {}), advice.get("as_of")
+    if advice.get("mode") != "account_decision_support":
+        bad.append("mode")
     if not evidence:
         bad.append("market_evidence")
-    if not day:
+    try:
+        valid_day = isinstance(day, str) and date.fromisoformat(day).isoformat() == day
+    except ValueError:
+        valid_day = False
+    if not valid_day:
         bad.append("as_of")
     if not advice.get("account_snapshot_sha256"):
         bad.append("account_snapshot_sha256")
-    if day:
+    required = None
+    if valid_day:
+        position = bisect_right(calendar.sessions, day)
+        if not calendar.coverage_start <= day <= calendar.coverage_end or not 0 < position < len(calendar.sessions):
+            bad.append("calendar_coverage")
+        else:
+            required = calendar.sessions[position-1]
+            for key, expected in {"requested_as_of": day, "required_evidence_date": required,
+                                  "next_trading_date": calendar.sessions[position]}.items():
+                if dates.get(key) != expected:
+                    bad.append(f"scan_dates:{key}")
+        for key in ("snapshot_date", "requested_as_of"):
+            if advice.get(key) != day:
+                bad.append(key)
         start = pd.Timestamp(day)-pd.Timedelta(days=700)
         for code, entry in evidence.items():
             frame = frames.get(code)
@@ -238,12 +259,14 @@ def advice_identity(advice: dict, frames: dict[str, pd.DataFrame], calendar: Tra
                 bad.append(f"market:{code}")
                 continue
             observed = frame.loc[(frame.index >= start) & (frame.index <= pd.Timestamp(day))]
-            if hashlib.sha256(observed.to_csv(index=True).encode()).hexdigest() != entry.get("frame_sha256"):
+            if (observed.empty or hashlib.sha256(observed.to_csv(index=True).encode()).hexdigest() != entry.get("frame_sha256")
+                    or entry.get("evidence_date") != required
+                    or observed.index[-1].strftime("%Y-%m-%d") != required):
                 bad.append(f"market:{code}")
             if canonical_sequence_sha(symbol_config(code)) != entry.get("config_sha256"):
                 bad.append(f"config:{code}")
     return {"status": "IDENTITY_UNVERIFIED" if bad else "MARKET_CODE_CONFIG_VERIFIED",
-            "missing_or_mismatched": sorted(bad),
+            "missing_or_mismatched": sorted(set(bad)),
             "snapshot_bytes": "hash recorded; original private snapshot not supplied to label evaluator",
             "index_bytes": "saved hashes retained; original dated index files not re-certified",
             "actual_human_fill": "UNKNOWN"}
@@ -251,16 +274,24 @@ def advice_identity(advice: dict, frames: dict[str, pd.DataFrame], calendar: Tra
 
 def _sell_availability(action: dict, frame: pd.DataFrame | None, day: str,
                        calendar: TradingCalendar, cutoff: str) -> dict:
-    next_day = calendar.next_session(day)
+    position = bisect_right(calendar.sessions, day)
+    next_day = calendar.sessions[position] if 0 < position < len(calendar.sessions) else None
     result = {"symbol": action["symbol"], "next_session": next_day,
               "recommended_shares": action.get("recommended_shares"),
               "actual_human_fill": "UNKNOWN", "status": "IMMATURE"}
+    if next_day is None or not calendar.coverage_start <= day <= calendar.coverage_end:
+        result["status"] = "CALENDAR_OUT_OF_RANGE"
+        return result
     if next_day > cutoff:
         return result
-    if frame is None or pd.Timestamp(next_day) not in frame.index:
+    previous_day = calendar.sessions[position-1]
+    if (frame is None or frame.index.has_duplicates or not frame.index.is_monotonic_increasing
+            or not pd.to_datetime([previous_day, next_day]).isin(frame.index).all()):
         result["status"] = "MISSING_DATA"
         return result
-    if float(frame.loc[pd.Timestamp(next_day), "volume"]) <= 0:
+    values = [frame.loc[pd.Timestamp(next_day), "volume"], frame.loc[pd.Timestamp(next_day), "open"],
+              frame.loc[pd.Timestamp(previous_day), "close"]]
+    if not all(0 < float(value) < float("inf") for value in values):
         result["status"] = "UNVERIFIED_SESSION"
         return result
     quantity = action.get("recommended_shares")
@@ -382,8 +413,11 @@ def risk_attribution(result: dict) -> dict:
     for episode in episodes:
         records = episode.pop("records")
         start, end, release = records[0]["date"], records[-1]["date"], episode["release_date"]
-        first_buy = next((t["date"] for t in trades if release and t["date"] >= release and t["direction"] == "buy"), None)
-        episode.update(start=start, last_binding_date=end, binding_sessions=len(records), first_buy_after_release=first_buy,
+        # Release is known at this close, after any same-day opening buy.
+        buy_dates = [t["date"] for t in trades if release and t["date"] > release and t["direction"] == "buy"]
+        first_buy = min(buy_dates) if buy_dates else None
+        episode.update(start=start, last_binding_date=end, binding_sessions=len({r["date"] for r in records}),
+            binding_receipts=len(records), first_buy_after_release=first_buy,
             first_receipt=records[0], last_receipt=records[-1], blocked_buy_shares=sum(r.get("buy_shares_removed", 0) for r in records),
             other_risk_events=dict(Counter(e["event"] for e in result.get("risk_events", []) if start <= e["date"] <= end and e["event"] != "account_budget_envelope")))
     reductions = [t for t in trades if t["direction"] == "sell" and "account_budget_trim" in t.get("reason", "")]
