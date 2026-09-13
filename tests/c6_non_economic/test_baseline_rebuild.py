@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -219,7 +220,7 @@ def test_rebuilt_evidence_matches_the_frozen_derivation() -> None:
     }
 
 
-def test_rebuilt_baseline_identity_is_documented_consistently() -> None:
+def test_rebuilt_baseline_identity_remains_auditable_outside_current_docs() -> None:
     marker = (
         '<!-- C6_BASELINE_REBUILD_META: {"reference_scenarios": 958, '
         '"cohort_scenarios": 765, "failures": 649, "boundaries": 110, '
@@ -234,8 +235,14 @@ def test_rebuilt_baseline_identity_is_documented_consistently() -> None:
     )
     authority = (PROJECT_ROOT / "docs/VALIDATION.md").read_text(encoding="utf-8")
     assert authority.count('<a id="formal-stress-evidence"></a>') == 1
-    assert marker in authority
-    assert statement in authority
+    archived = subprocess.run(
+        ["git", "cat-file", "blob", "e53449792f9d2b18e89197a84208fab5b7958ccb"],
+        cwd=PROJECT_ROOT, check=True, capture_output=True, text=True,
+    ).stdout
+    assert marker in archived
+    assert statement in archived
+    assert marker not in authority
+    assert statement not in authority
     for relative, target in (
         ("README.md", "docs/VALIDATION.md#formal-stress-evidence"),
         ("docs/ARCHITECTURE.md", "VALIDATION.md#formal-stress-evidence"),
