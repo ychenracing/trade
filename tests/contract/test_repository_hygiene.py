@@ -27,6 +27,7 @@ EXPECTED_MARKDOWN = {
     Path("AGENTS.md"),
     Path("README.md"),
     Path("docs/ARCHITECTURE.md"),
+    Path("docs/DECISION_DIAGNOSTICS.md"),
     Path("docs/VALIDATION.md"),
     Path("docs/C6_RECOVERY_CONTRACT.md"),
     Path("docs/C6_AB5_RELEASE.md"),
