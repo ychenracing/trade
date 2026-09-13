@@ -12,21 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: be849701f7e4dbcbc19fd698676e844257e25980
+          ref: d5a5728f9035f2fa8386fdc826b9140ff2247b23
           fetch-depth: 0
           persist-credentials: false
-      - name: Bundle exact integration sources
+      - name: Bundle exact source and original historical contracts
         run: |
           git fetch --no-tags origin acf4cccf4117edb35e6beb57aa2f9004476c8b93
           git update-ref refs/audit/retained acf4cccf4117edb35e6beb57aa2f9004476c8b93
-          git fetch --no-tags origin 6ecdf498460b3d6c2fd5166d268704a550dc2497
-          git update-ref refs/audit/current-main 6ecdf498460b3d6c2fd5166d268704a550dc2497
+          git fetch --no-tags origin 4659a2b6d265f45256777da6a2fc25d1369308bd
+          git update-ref refs/audit/preregistration 4659a2b6d265f45256777da6a2fc25d1369308bd
           mkdir -p audit-export
-          git bundle create audit-export/trade.bundle HEAD refs/audit/retained refs/audit/current-main
+          git bundle create audit-export/trade.bundle HEAD refs/audit/retained refs/audit/preregistration
           git rev-parse HEAD > audit-export/source-sha.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: input-audit-integration-source
+          name: input-audit-final-source-and-contracts
           path: audit-export/
           if-no-files-found: error
           retention-days: 7
