@@ -1,0 +1,46 @@
+name: Materialize documentation contracts
+on:
+  push:
+    branches: [maintenance/release-doc-contracts]
+    paths: [.github/workflows/materialize-doc-contracts.yml]
+permissions:
+  contents: read
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply exact reviewed test changes
+        run: |
+          python - <<'PY'
+          import ast, hashlib, json, subprocess
+          from pathlib import Path
+          payload = json.loads(r'''{"tests/c6_non_economic/test_baseline_rebuild.py":{"sha256":"d7e121d564a82b00ae68322561f4cd68ed91658a51cee24321cd097c33ea85cd","edits":[[135,135,"import subprocess\n"],[9476,9549,"def test_rebuilt_baseline_identity_remains_auditable_outside_current_docs() -> None:\n"],[10179,10244,"    archived = subprocess.run(\n        [\"git\", \"cat-file\", \"blob\", \"e53449792f9d2b18e89197a84208fab5b7958ccb\"],\n        cwd=PROJECT_ROOT, check=True, capture_output=True, text=True,\n    ).stdout\n    assert marker in archived\n    assert statement in archived\n    assert marker not in authority\n    assert statement not in authority\n"]]},"tests/contract/test_current_formal_documentation.py":{"sha256":"ebb01c662990c0b2eb411241af444dce184f80306481c976cd0d56777b301103","edits":[[0,75,"# Current product documentation and immutable research-source contracts.\n"],[134,134,"import subprocess\n"],[476,476,"\n\ndef _retained_validation() -> str:\n    \"\"\"Read the original documentation object without republishing its ledger.\"\"\"\n    return subprocess.run(\n        [\"git\", \"cat-file\", \"blob\", \"e53449792f9d2b18e89197a84208fab5b7958ccb\"],\n        cwd=ROOT, check=True, capture_output=True, text=True,\n    ).stdout\n"],[3042,3112,"def test_retained_research_tables_match_the_frozen_artifact() -> None:\n"],[3397,3444,"    archived = _retained_validation()\n    assert \"## 历史 pre-C6 生产趋势基线\" in archived\n"],[3644,3644,"            f\"{int(item['total_trades'])} | \"\n            f\"{int(item['date_symbol_side_count'])} |\"\n        )\n        assert row in archived\n\n\ndef test_current_baseline_tables_match_the_frozen_golden() -> None:\n    validation = (ROOT / \"docs/VALIDATION.md\").read_text(encoding=\"utf-8\")\n    golden = json.loads((ROOT / \"tests/fixtures/backtest_golden_metrics.json\").read_text())\n    assert \"## 当前默认配置回归\" in validation\n    assert \"tests/fixtures/backtest_golden_metrics.json\" in validation\n    assert \"account_risk_budget_enabled=True\" in validation\n    for _, label in UNIVERSES:\n        item = golden[label]\n        row = (\n            f\"| {label} | {float(item['total_return']):.6%} | \"\n            f\"{float(item['max_drawdown']):.6%} | \"\n"],[4573,4617,"    assert \"历史 22 股完整 983 场景\" in _retained_validation()\n    assert \"历史 22 股完整 983 场景\" not in validation\n"]]},"tests/contract/test_formal_stress_documentation_consistency.py":{"sha256":"cd0aa638ab89505c58ecb6b35be768e5c7b294ad6b201d0de4a5742da64f77cf","edits":[[16763,16840,"def test_recorded_958_summary_candidate_and_archived_docs_are_one_contract() -> None:\n"],[23921,23974,"    # The retained rejected run is audited against its immutable documentation,\n    # not substituted for the live baseline displayed to users.\n    archived = subprocess.run(\n        [\"git\", \"cat-file\", \"blob\", \"e53449792f9d2b18e89197a84208fab5b7958ccb\"],\n        cwd=ROOT, check=True, capture_output=True, text=True,\n    ).stdout\n    result_block = _managed_block(\n        archived, CURRENT_RESULT_START, CURRENT_RESULT_END, path=Path(\"docs/VALIDATION.md\"),\n    )\n    assert result_block.strip() == _expected_result_text(summary)\n\n\ndef test_current_result_block_matches_native_baseline_and_release_receipt() -> None:\n    from quantfusion.application.c6_contract import canonical_payload_hash\n\n    directory = ROOT / \"artifacts/validation\"\n    current = stress_artifacts._load_incumbent(directory / \"universe_stress.json\")\n    assert current is not None\n    receipt = _load_json(directory / \"c6_release_receipt.json\")\n    assert canonical_payload_hash(current) == receipt[\"published_payload_sha256\"]\n    assert current[\"source_revision\"] == receipt[\"economic_source_revision\"]\n    assert current[\"acceptance_status\"] == receipt[\"acceptance_status\"] == \"accepted\"\n    assert current[\"canonical\"] is receipt[\"canonical\"] is True\n    results = current[\"results\"]\n    unique_ids = {str(item[\"scenario_id\"]) for item in results}\n    count = current[\"scenario_count\"]\n    assert len(results) == len(unique_ids) == count == receipt[\"official_scenario_count\"] == 958\n    worst = min(float(item[\"max_drawdown\"]) for item in results)\n    expected_result = (\n        f\"当前正式基线：完整计划已运行：`{len(results)}/{count}`，\"\n        f\"唯一 scenario ID：`{len(unique_ids)}`；\"\n        f\"acceptance 为 `{current['acceptance_status']}`，\"\n        f\"canonical 为 `{str(current['canonical']).lower()}`。\"\n        \"接受依据为来源绑定的有限例外，不表示原生硬门全部通过。\"\n        f\"全场景最差最大回撤为 `{worst:.6%}`；\"\n        f\"经济源码：`{current['source_revision']}`。\"\n        \"完整记录与发布回执分别见 `artifacts/validation/universe_stress.json`、\"\n        \"`artifacts/validation/c6_release_receipt.json`。\"\n    )\n"]]}}''')
+          def git(*args):
+              return subprocess.check_output(['git', *args], text=True).strip()
+          for relative, spec in payload.items():
+              assert relative.startswith('tests/') and '..' not in Path(relative).parts
+              path = Path(relative)
+              text = path.read_text(encoding='utf-8')
+              assert hashlib.sha256(text.encode()).hexdigest() == spec['sha256'], relative
+              end = len(text)
+              for start, stop, value in reversed(spec['edits']):
+                  assert 0 <= start <= stop <= end
+                  text = text[:start] + value + text[stop:]
+                  end = start
+              ast.parse(text)
+              path.write_text(text, encoding='utf-8')
+          Path('.github/workflows/materialize-doc-contracts.yml').unlink()
+          subprocess.run(['git', 'add', '-A'], check=True)
+          subprocess.run(['git', 'diff', '--cached', '--check'], check=True)
+          expected_tree = 'bfd03df03267110263d8020374bf02808881cda3'
+          assert git('write-tree') == expected_tree
+          subprocess.run(['git', '-c', 'user.name=ychenracing', '-c', 'user.email=ychenracing@users.noreply.github.com', 'commit', '-m', 'test: separate current documentation from immutable evidence audit'], check=True)
+          subprocess.run(['git', 'push', 'origin', 'HEAD:refs/heads/maintenance/release-doc-contracts'], check=True)
+          print(json.dumps({'commit':git('rev-parse','HEAD'),'tree':expected_tree}))
+          PY
