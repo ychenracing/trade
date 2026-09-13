@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "status": "preregistered_before_production_implementation",
+  "pr": 21,
+  "base_revision": "aaa136fb6c9cf65d6abafde5b1707df4d7297cf4",
+  "bootstrap_revision": "ea02112152eaef42786fdd428181affa8cf711c1",
+  "mechanism_id": "C4-ex-ante-drawdown-budget-with-underwater-hysteresis",
+  "source_evidence": {
+    "path": "artifacts/diagnostics/18pct-drawdown-root-cause.json",
+    "sha256": "eabde710c19e4d33d76d44ccc1ba8e242085119046f36cb8d7653958436f2830",
+    "source_revision": "f01b305df5f818fb10bc9033167a8207ffd10c54",
+    "data_fingerprint": "8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40",
+    "scenario_signature": "1b1d6e46dbe2e37529621c989dd92a2583ec68be4a5e78f3d0c23a36f8ec893d",
+    "scenario_count": 281,
+    "classification": {
+      "failure": "abs(max_drawdown) > 0.18",
+      "boundary": "0.17 < abs(max_drawdown) <= 0.18",
+      "control": "abs(max_drawdown) <= 0.17",
+      "counts": {
+        "failure": 152,
+        "boundary": 123,
+        "control": 6
+      }
+    }
+  },
+  "read_only_mechanism_analysis": {
+    "availability": {
+      "peak_previous_day": {
+        "gross_exposure": false,
+        "symbol_count": false,
+        "largest_group_share": false,
+        "stop_or_atr_adverse_loss": false,
+        "lifetime_drawdown_cushion": false,
+        "reason": "The retained compact artifact stores the peak snapshot but not the preceding daily row or position history."
+      },
+      "peak_day": {
+        "gross_exposure": true,
+        "symbol_count": true,
+        "largest_group_share": true,
+        "stop_or_atr_adverse_loss": false,
+        "lifetime_drawdown_cushion": true,
+        "reason": "Assets, cash, position value, and the maximum-drawdown peak are retained; position stops and ATR history are not."
+      },
+      "first_warning_previous_day": {
+        "gross_exposure": false,
+        "symbol_count": false,
+        "largest_group_share": false,
+        "stop_or_atr_adverse_loss": false,
+        "lifetime_drawdown_cushion": false,
+        "reason": "The retained compact artifact stores the first warning snapshot but not its preceding daily row or position history."
+      },
+      "first_warning_day": {
+        "gross_exposure": true,
+        "symbol_count": true,
+        "largest_group_share": true,
+        "stop_or_atr_adverse_loss": false,
+        "lifetime_drawdown_cushion": true,
+        "reason": "The warning snapshot and maximum-drawdown peak assets are retained; position stops and ATR history are not."
+      }
+    },
+    "observed_peak_features": {
+      "failure": {
+        "gross_exposure_median": 0.9445112777067943,
+        "held_symbol_count_median": 2.0,
+        "largest_group_symbol_share_median": 0.6666666666666666
+      },
+      "boundary": {
+        "gross_exposure_median": 0.917485576423282,
+        "held_symbol_count_median": 3.0,
+        "largest_group_symbol_share_median": 0.6666666666666666
+      },
+      "control": {
+        "gross_exposure_median": 0.9991905262642571,
+        "held_symbol_count_median": 3.5,
+        "largest_group_symbol_share_median": 0.5833333333333333
+      }
+    },
+    "prior_observable_separation": {
+      "peak_symbol_count_at_most_2": {
+        "failure": "81/152",
+        "boundary": "39/123",
+        "control": "0/6"
+      },
+      "peak_exposure_at_least_0_94": {
+        "failure": "87/152",
+        "boundary": "31/123",
+        "control": "5/6",
+        "interpretation": "Gross exposure alone cannot distinguish failures from healthy high-return paths."
+      },
+      "peak_symbol_count_at_most_2_and_exposure_at_least_0_90": {
+        "failure": "67/152",
+        "boundary": "18/123",
+        "control": "0/6",
+        "interpretation": "Concentration adds useful separation but cannot cover the whole failure cohort by itself."
+      }
+    },
+    "historical_trough_loss_avoidance_lower_bound": {
+      "definition": "For each failure, max(0, 0.82 * peak_assets - trough_assets). This is an accounting lower bound, not a claim that a causal strategy can capture it exactly.",
+      "needed_peak_fraction": {
+        "p10": 0.0015194987256584986,
+        "median": 0.008731378884318595,
+        "p90": 0.022241300303305015,
+        "maximum": 0.03223148024066248
+      },
+      "minimum_fraction_of_peak_to_trough_loss_that_must_be_avoided": {
+        "p10": 0.008370935800412472,
+        "median": 0.04626336673285526,
+        "p90": 0.1099734373159314,
+        "maximum": 0.15186945972441607
+      },
+      "worst_case": {
+        "scenario_id": "random-20260807-03-030",
+        "max_drawdown": -0.2122314802406625,
+        "currency_loss_to_avoid": 242585.16918059066,
+        "peak_fraction_to_avoid": 0.03223148024066248,
+        "fraction_of_observed_loss_to_avoid": 0.15186945972441607
+      }
+    },
+    "conclusion": "A static gross cap is rejected by the controls. A single causal rule remains testable only if it uses stop/ATR loss, treats same-group books as correlated, and tightens monotonically with lifetime-peak cushion. The missing prior-day stop/ATR history prevents an ex-ante proof from the compact artifact, so feasibility must be decided by the preregistered ladder rather than parameter search."
+  },
+  "runtime_call_path": [
+    "Each sleeve generates close-known signals and updates effective position stops.",
+    "The route controller may add migration orders after the sleeve close decisions.",
+    "The merged-account risk manager updates the lifetime peak without resetting it on cycle rearm.",
+    "C4 evaluates all held books and pending buys after the close, before any next-session open execution.",
+    "C4 emits immutable next-open risk sells and clips or removes pending buys; existing ADV, fees, slippage, limits, sell priority, and T+1 handling remain authoritative."
+  ],
+  "formula": {
+    "drawdown_floor": "0.82 * lifetime_peak_assets",
+    "remaining_drawdown_cushion": "max(current_assets - drawdown_floor, 0)",
+    "available_budget": "max(min(0.175 * lifetime_peak_assets, remaining_drawdown_cushion - execution_buffer), 0)",
+    "book_adverse_loss": "shares * max(max(cost_basis_price - effective_stop, 0), 1.0 * causal_atr)",
+    "group_adverse_loss": "sum(book_adverse_loss for books in the same risk group)",
+    "projected_adverse_loss": "largest_group_adverse_loss + 0.50 * sum(other_group_adverse_losses)",
+    "proposed_trade_gate": "projected_adverse_loss(after proposed buy/add) <= available_budget",
+    "reduction_fraction": "max(0, 1 - available_budget / projected_adverse_loss)",
+    "notes": [
+      "Same-group books receive no diversification credit; one-symbol and one-group portfolios remain fully constrained.",
+      "The 50% residual-group charge is a transparent stress credit, not covariance estimation.",
+      "Existing positions use cost basis plus the effective stop/ATR known at the close; proposed orders use their signal price and signal-date stop/ATR. Mark appreciation alone is excluded from invested risk because lifetime-peak cushion already accounts for the accrued equity.",
+      "One causal ATR is the existing position-sizing loss unit. The effective stop already captures any wider committed loss; the strategy's 6-ATR layered trailing-stop distance is not reused as an additional gap shock.",
+      "A proposed order with missing or non-finite stop/ATR evidence is rejected. An existing book with missing evidence is charged its full marked value.",
+      "Risk sells use the existing next-executable-open queue; no intraday fill or daily-OHLC interpolation is introduced."
+    ]
+  },
+  "fixed_parameters": {
+    "max_account_drawdown": 0.18,
+    "base_account_risk_budget_peak_fraction": 0.175,
+    "adverse_atr_multiple": 1.0,
+    "other_group_loss_weight": 0.5,
+    "constraint_entry_ratio": 1.0,
+    "constraint_release_ratio": 0.8,
+    "minimum_reentry_cooldown_trading_days": 5,
+    "recovery_confirmation_days": 3,
+    "minimum_drawdown_recovery": 0.02,
+    "normal_state_drawdown_exit": 0.05,
+    "configurations": {
+      "balanced": {
+        "execution_buffer_peak_fraction": 0.005
+      },
+      "conservative": {
+        "execution_buffer_peak_fraction": 0.0075
+      }
+    },
+    "configuration_difference": "Only execution_buffer_peak_fraction differs."
+  },
+  "pre_l1_correction": {
+    "status": "corrected before the first remote production-code checkpoint and formal L1 batch",
+    "from": "6.0 * causal_atr floor",
+    "to": "1.0 * causal_atr floor plus the effective-stop distance",
+    "reason": "The 6-ATR value belongs to the existing layered trailing-stop distance. Reusing it as a separate adverse gap double-charged the same risk and violated the winner-appreciation invariant. A targeted prefix regression exposed the mismatch; no formal L1 batch or configuration search was used."
+  },
+  "state_machine": {
+    "normal_to_constrained": "Enter when projected_adverse_loss exceeds available_budget or the existing account warning becomes active.",
+    "constrained_actions": [
+      "Cancel ordinary pending buys, adds, and route-migration buys while the existing account warning is active.",
+      "Queue one proportional risk reduction when projected loss exceeds budget and cushion or causal stop/ATR risk has worsened; price appreciation alone is not a reduction trigger.",
+      "Do not duplicate an equal or stronger pending risk sell while ADV capacity is completing the prior reduction."
+    ],
+    "constrained_to_recovering": "After at least five trading days, require three consecutive closes with no account warning, projected-loss ratio <= 0.8, and drawdown recovered by at least 0.02 from the constrained-state maximum.",
+    "recovering_reentry": "Authorize at most the adverse-loss capacity left by available_budget. Capacity increases monotonically with lifetime-peak cushion; it never jumps to ordinary full risk merely because a cycle lock rearmed.",
+    "recovering_to_normal": "Require three consecutive closes with no warning, projected-loss ratio <= 0.8, and lifetime drawdown <= 0.05.",
+    "invariants": [
+      "lifetime_peak_assets is monotone and is never reset by route, sleeve, cycle lock, or rearm",
+      "warning state cannot increase projected adverse loss",
+      "no negative cash or short position is introduced",
+      "all symbols, dates, scenarios, and seeds use the same rule"
+    ]
+  },
+  "configuration_selection_rule": "Evaluate both preregistered configurations together at L1. Discard any configuration that misses a hard gate. If both pass, retain balanced. If only one passes, retain that one. If neither passes, stop before L2. No intermediate value may be introduced.",
+  "validation_ladder": {
+    "L1": {
+      "synthetic_contracts": [
+        "lifetime peak survives cycle rearm and route changes",
+        "remaining cushion arithmetic",
+        "single-symbol, single-group, and multi-group budgeting",
+        "warning prevents risk-increasing buy/add",
+        "winner appreciation alone never queues a trim",
+        "worsening stop/ATR risk queues a next-open reduction",
+        "underwater re-entry grows monotonically with cushion",
+        "hysteresis prevents cycles",
+        "no negative cash, shorts, duplicate orders/fills, same-day sale of a new buy, or future data",
+        "688205 follows the exact generic path"
+      ],
+      "decisive_scenarios": [
+        "random-20260807-03-030",
+        "prefix-01",
+        "prefix-02",
+        "prefix-03",
+        "prefix-05",
+        "add-one-05-688205",
+        "random-20260827-16-050",
+        "permutation-20260807-001"
+      ]
+    },
+    "L2": "Run the exact retained 281 failure/boundary/control cohort once.",
+    "L3": "Run affected fixed families and preregistered deterministic random shards only after L2 passes.",
+    "L4": "Run the exact canonical 983 once for the stable final candidate only after L3 passes."
+  },
+  "decision_gates": {
+    "all_evaluated_max_drawdown_at_most": 0.18,
+    "prefix_05_wealth_ratio_at_least": 0.99,
+    "other_prefix_worst_wealth_ratio_at_least": 0.95,
+    "worst_total_return_delta_at_least": -0.02,
+    "worst_add_one_diagnostic_delta_at_least": -0.03
+  },
+  "prohibitions": {
+    "core_alpha_change": false,
+    "remove_or_special_case_688205": false,
+    "scenario_seed_universe_data_or_cost_change": false,
+    "execution_or_accounting_change": false,
+    "intraday_ohlc_interpolation": false,
+    "parameter_grid": false,
+    "case_specific_patch": false
+  }
+}
