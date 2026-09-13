@@ -1,0 +1,41 @@
+{
+  "kind": "no_waiver_joint_source_inventory",
+  "schema_version": 1,
+  "base_main_revision": "b7be8011d71b477c8ca3942d97830e67d0e0407c",
+  "base_main_tree": "7ab528a8afd9f28b66529eeb39444d94a7261c00",
+  "economic_source_revision": "56e5743ff8999540f07270ca0ddd0b5c664d8033",
+  "economic_source_tree": "44e84d8976329cb874dee67d9b573d6fd5b52469",
+  "economic_candidate_id": "C6-Base+AB5",
+  "formal_run": 34638696991,
+  "formal_artifact_id": 10284452515,
+  "formal_zip_sha256_verified": "4aa197fe25e627cb8f3877e0c6e3c61ef5fd4067ad2ddcd27ae7ad1f1e23f5a3",
+  "engineering_artifact_id": 10279012393,
+  "engineering_zip_sha256_verified": "481ab5c090e754c84dd943a4863afa8ad73e89d0419e1872f87430a5dfbc8c0a",
+  "formal_identity": {
+    "start_date": "2025-04-01",
+    "end_date": "2026-07-20",
+    "initial_capital": 2000000.0,
+    "engine": "ProductionReplayEngine",
+    "deployment_policy": "production_daily_replay",
+    "scenario_count": 958,
+    "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "source_fingerprint": "89b19838b35f4070dfc0d2c2fa9844344c275941dc64228c5127dd66352d0d08",
+    "run_signature": "3e4cb13685e7ff50abb27f6d2d7687cb4e1ca0ebece9c9383d174671cc870b68"
+  },
+  "verified_recovery_facts": [
+    "Both downloaded artifact archives match the GitHub artifact SHA256 digests.",
+    "formal-checkpoint.json contains 958 results bound to economic_source_revision, not current main.",
+    "The native-validation/formal_stress_958_acceptance_summary.json inside the same archive refers to acf4cccf4117edb35e6beb57aa2f9004476c8b93, not AB5.",
+    "The retained engineering artifact contains a complete Git bundle for economic_source_revision."
+  ],
+  "not_yet_established": [
+    "Exact current-main economic equivalence and targeted replay",
+    "Complete original-wealth-reference and accepted-incumbent identity binding",
+    "New candidate implementation, causal diagnosis and joint acceptance",
+    "External diagnostic preregistration before candidate selection"
+  ],
+  "new_candidate_accepted": false,
+  "waivers_permitted": false,
+  "historical_receipts_modified": false
+}

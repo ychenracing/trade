@@ -1,0 +1,40 @@
+name: No-waiver source recovery
+
+on:
+  push:
+    branches: [feat/no-waiver-joint-optimization]
+    paths: [.github/workflows/no-waiver-source-snapshot.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: no-waiver-source-recovery
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Preserve exact source for an offline research workspace
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source-recovery"
+          test "$(git rev-parse b7be8011d71b477c8ca3942d97830e67d0e0407c^{tree})" = 7ab528a8afd9f28b66529eeb39444d94a7261c00
+          git bundle create "$RUNNER_TEMP/source-recovery/source.bundle" HEAD
+          git rev-parse HEAD > "$RUNNER_TEMP/source-recovery/HEAD.txt"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/source-recovery/TREE.txt"
+          git ls-tree -r HEAD > "$RUNNER_TEMP/source-recovery/files.txt"
+          cd "$RUNNER_TEMP/source-recovery"
+          sha256sum source.bundle HEAD.txt TREE.txt files.txt > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: no-waiver-source-${{ github.run_id }}
+          path: ${{ runner.temp }}/source-recovery/
+          retention-days: 30
+          if-no-files-found: error
