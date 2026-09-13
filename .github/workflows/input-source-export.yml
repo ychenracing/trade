@@ -1,0 +1,28 @@
+name: Input audit source export
+on:
+  push:
+    branches: [audit/input-source-export-20260913]
+    paths: [.github/workflows/input-source-export.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 3ae3bce0b4d5c7d3ec2f6a5ebb3c3fe53a103acb
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bundle verified source
+        run: |
+          mkdir -p audit-export
+          git bundle create audit-export/trade.bundle HEAD
+          git rev-parse HEAD > audit-export/source-sha.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: input-audit-source-3ae3bce
+          path: audit-export/
+          if-no-files-found: error
+          retention-days: 7
