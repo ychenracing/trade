@@ -27,6 +27,11 @@ class AccountSignalSellabilityTests(unittest.TestCase):
     HELD = "300308"
     OTHER = "300502"
     AS_OF = "2026-02-01"
+
+    def setUp(self) -> None:
+        # These policy tests already isolate stock and route acquisition.
+        self.enterContext(patch.object(account_scan, "index_coverage", return_value={}))
+
     @staticmethod
     def _frame(*, close: float) -> pd.DataFrame:
         dates = pd.bdate_range("2025-09-01", periods=100)

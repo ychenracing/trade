@@ -114,16 +114,18 @@ def test_unknown_calendar_rejects_before_loading(scan_inputs, tmp_path, capsys):
     assert not scan_inputs.calls
 
 
-def _account(inputs, tmp_path):
+def _account(tmp_path):
     snapshot = AccountSnapshot(3, "synthetic", "2026-09-12", 2_000_000.,
                                2_000_000., ())
     path = tmp_path / "synthetic_account.json"
-    path.write_text(json.dumps(asdict(snapshot)), encoding="utf-8")
+    # The domain model stores a tuple; the public v3 input requires a mapping.
+    payload = {**asdict(snapshot), "positions": {}}
+    path.write_text(json.dumps(payload), encoding="utf-8")
     return path, snapshot
 
 
 def test_account_real_route_positive_and_identified(scan_inputs, tmp_path):
-    path, snapshot = _account(scan_inputs, tmp_path)
+    path, snapshot = _account(tmp_path)
     result = account_scan.AccountSignalEngine(
         cache_dir=str(scan_inputs.cache), regime_data_dir=str(scan_inputs.regime)
     ).run(snapshot, dss.SYMBOLS, as_of="2026-09-12", expected_account_id="synthetic")
@@ -138,7 +140,7 @@ def test_account_real_route_positive_and_identified(scan_inputs, tmp_path):
 
 
 def test_account_missing_index_preserves_success_artifact(scan_inputs, tmp_path, capsys):
-    path, _ = _account(scan_inputs, tmp_path)
+    path, _ = _account(tmp_path)
     (scan_inputs.regime / "000300.csv").unlink()
     scan_inputs.output.mkdir()
     output = scan_inputs.output / "account_signals_2026-09-12.json"
@@ -154,7 +156,7 @@ def test_account_missing_index_preserves_success_artifact(scan_inputs, tmp_path,
 
 
 def test_account_all_stocks_lagging_blocks_new_risk(scan_inputs, tmp_path):
-    _, snapshot = _account(scan_inputs, tmp_path)
+    _, snapshot = _account(tmp_path)
     for symbol in set(dss.SYMBOLS) | set(dss.qf.PortfolioPolicy().regime_symbols):
         scan_inputs.failures[symbol] = "lagging"
     result = account_scan.AccountSignalEngine(

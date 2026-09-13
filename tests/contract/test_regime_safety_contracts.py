@@ -61,6 +61,8 @@ class UnknownEvidenceTests(unittest.TestCase):
             regime_data_dir="regime",
         )
         with (
+            # Isolate unknown route evidence; acquisition rejection has its own integration test.
+            patch("quantfusion.application.account_scan.index_coverage", return_value={}),
             patch.object(
                 contracts,
                 "refresh_regime_indices",
