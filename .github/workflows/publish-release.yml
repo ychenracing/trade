@@ -76,7 +76,9 @@ jobs:
           assert os.environ["GITHUB_REF"] == "refs/heads/maintenance/publish-1.0.0"
           assert git("rev-parse", "HEAD").decode().strip() == MAIN
           assert api("git/ref/heads/main")["object"]["sha"] == MAIN
-          assert tree(MAIN) == tree(CANDIDATE) == tree(TESTED) == TREE
+          tested_commit = api("git/commits/" + TESTED)
+          assert tree(MAIN) == tree(CANDIDATE) == tested_commit["tree"]["sha"] == TREE
+          assert [p["sha"] for p in tested_commit["parents"]] == [BASE, CANDIDATE]
           pull = api("pulls/100")
           assert pull["merged"] and pull["merge_commit_sha"] == MAIN
           assert pull["head"]["sha"] == CANDIDATE
