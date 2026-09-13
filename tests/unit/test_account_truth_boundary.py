@@ -175,6 +175,9 @@ def _run_with_market(
         "trail_atr_mult": 4.0,
     }
     with (
+        # This helper isolates account policy with mocked market/regime inputs.
+        # Real index/calendar acquisition is exercised in integration tests.
+        patch.object(account_scan, "index_coverage", return_value={}),
         patch.object(
             account_scan.data_contracts,
             "refresh_regime_indices",
@@ -262,6 +265,7 @@ def test_matching_identity_and_date_are_written_to_result() -> None:
         regime_data_dir="unused",
     )
     with (
+        patch.object(account_scan, "index_coverage", return_value={}),
         patch.object(
             account_scan.data_contracts,
             "refresh_regime_indices",
@@ -534,6 +538,7 @@ def test_real_weak_route_reuses_one_frozen_frame_per_symbol() -> None:
         return frame
 
     with (
+        patch.object(account_scan, "index_coverage", return_value={}),
         patch.object(
             account_scan.data_contracts,
             "refresh_regime_indices",

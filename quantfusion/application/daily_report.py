@@ -52,6 +52,13 @@ _REASONS = {
     "LEADER_EVIDENCE_INCOMPLETE": "强势股筛选依据不完整",
     "LEADER_REQUESTED_SYMBOLS_MISMATCH": "请求股票与筛选依据中的股票不一致",
     "INCONSISTENT_EVIDENCE_DATE": "股票行情的实际截止日期不一致",
+    "TRADING_DAY_COVERAGE": "缺少应覆盖交易日的日线，或无法核验停牌；不能按节假日处理",
+    "INDEX_EVIDENCE_UNAVAILABLE": "固定指数证据缺失、无效或未覆盖目标交易日",
+    "CALENDAR_OUT_OF_RANGE": "请求超出已核验交易日历范围，不能推定开市日期",
+    "CALENDAR_UNAVAILABLE": "交易日历不可用或来源范围无法核验",
+    "FUTURE_EVIDENCE": "行情观测晚于请求截止日期，不能用于本次决策",
+    "CLOSE_NOT_READY": "上海时区当日完整收盘数据尚未就绪",
+    "PROVIDER_STALE_OR_AGE": "数据源标记陈旧或已超过原有自然日容忍范围",
     "required account evidence is incomplete": "真实账户判断所需数据不完整",
     "actual market evidence dates are inconsistent": "股票行情的实际截止日期不一致",
     "provider-marked stale": "数据源已标记行情陈旧",
@@ -158,6 +165,22 @@ def _overview(data: dict[str, Any], account: bool, traces: list[str]) -> list[st
              "仅供人工复核。信号不代表已成交；最早在下一可交易日复核价格、现金、可卖股数和交易限制。",
              "", "## 先看结论", "",
              f"市场判断：{_ROUTES.get(str(decision.get('name', '')), '未提供可识别的市场判断，请核对原始记录')}。"]
+    dates = data.get("scan_dates")
+    if isinstance(dates, dict) and dates:
+        market_dates = ({code: entry.get("evidence_date") for code, entry in data.get("market_evidence", {}).items()}
+                        if account else data.get("actual_evidence_dates", {}))
+        indices = data.get("index_evidence", {}) if account else data.get("deployment", {}).get("index_evidence", {})
+        observed = "、".join(sorted({_text(value) for value in market_dates.values()})) or "未提供"
+        index_dates = "、".join(sorted({_text(entry.get("evidence_date")) for entry in indices.values()})) or "未提供"
+        lines.extend([
+            f"请求截止日期：{_text(dates.get('requested_as_of'))}；应覆盖交易日：{_text(dates.get('required_evidence_date'))}。",
+            f"实际股票行情日期：{observed}；实际指数日期：{index_dates}。",
+            f"下一可交易日：{_text(dates.get('next_trading_date'))}；市场时区：{_text(dates.get('market_timezone'))}。",
+            f"已记录日历覆盖范围：{_text(dates.get('calendar_coverage_start'))} 至 {_text(dates.get('calendar_coverage_end'))}；范围之外不能推定开市。",
+        ])
+        _trace(traces, "交易日与证据日期", dates)
+    else:
+        lines.append("未记录交易日覆盖校验，不能从旧报告推定已通过；本页不重新计算或补认证日期。")
     if decision.get("reason"):
         lines.append(f"判断依据：{_explain(decision['reason'])}。")
         _trace(traces, "市场判断", decision)

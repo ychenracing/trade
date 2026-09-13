@@ -40,6 +40,10 @@ def _decision(*, leaders: tuple[str, ...]) -> DeploymentDecision:
 class AccountFailClosedTests(unittest.TestCase):
     """验证账户不完整时不会产生新增风险敞口。"""
 
+    def setUp(self) -> None:
+        # Keep the existing isolated account-data scenarios independent of I/O.
+        self.enterContext(patch.object(account_scan, "index_coverage", return_value={}))
+
     @staticmethod
     def _snapshot(
         *, entry_date: str = "2025-09-01"

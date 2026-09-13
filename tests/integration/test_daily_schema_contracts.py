@@ -5,8 +5,6 @@ from __future__ import annotations
 
 # ruff: noqa: F401
 
-from quantfusion.config.paths import REGIME_DATA_DIR
-
 from ._daily_scan_support import (
     FakeSignal,
     FakeTrade,
@@ -16,6 +14,7 @@ from ._daily_scan_support import (
     json,
     os,
     patch,
+    regime_evidence_dir,
     subprocess,
     sys,
     tempfile,
@@ -540,7 +539,7 @@ class ArtifactStrictJSONTests(unittest.TestCase):
                 "quantfusion.application.daily_scan",
                 "--output-dir", tmpdir,
                 "--end-date", "2026-07-30",
-                "--regime-data-dir", str(REGIME_DATA_DIR),
+                "--regime-data-dir", str(regime_evidence_dir(tmpdir)),
             ]):
                 return dss.main()
 

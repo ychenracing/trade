@@ -129,7 +129,7 @@ def test_missing_required_data_never_shrinks_the_universe(
 
 @pytest.mark.parametrize("kind", ["stale", "lagging"])
 @pytest.mark.parametrize("allow_stale", [False, True])
-def test_reference_freshness_uses_the_same_simulation_override(
+def test_reference_stale_or_missing_target_session_always_fails_closed(
     monkeypatch, tmp_path, kind, allow_stale
 ):
     _, captured, _, _ = _scan(
@@ -138,12 +138,12 @@ def test_reference_freshness_uses_the_same_simulation_override(
         dates={"688008": "2026-09-10"} if kind == "lagging" else {},
         allow_stale=allow_stale,
     )
-    if allow_stale:
-        with pytest.raises(ReplayInputsLoaded):
-            dss.main()
-    else:
-        assert dss.main() == 1
-        assert captured == {}
+    # The current input contract deliberately does not let --allow-stale
+    # authorize new risk from provider-stale evidence or a missing required
+    # trading-session bar. The flag remains accepted for compatibility with
+    # its narrower natural-age role, but these two conditions fail closed.
+    assert dss.main() == 1
+    assert captured == {}
 
 
 def test_incomplete_existing_snapshot_is_rejected_without_rewriting(monkeypatch, tmp_path):

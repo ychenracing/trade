@@ -335,6 +335,8 @@ class AccountEngineTests(unittest.TestCase):
             regime_data_dir="regime",
         )
         with (
+            # Isolate this existing unpriced-holding scenario from index I/O.
+            patch("quantfusion.application.account_scan.index_coverage", return_value={}),
             patch.object(
                 contracts,
                 "refresh_regime_indices",

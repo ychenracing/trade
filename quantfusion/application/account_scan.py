@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 from dataclasses import asdict
 from datetime import date
@@ -20,6 +21,7 @@ from quantfusion.account.service import (
     compute_target_shares,
     target_weight_for,
     trend_candidate_score,
+    trend_candidate_components,
 )
 from quantfusion.account.snapshot import (
     EXPECTED_DATA_ERRORS,
@@ -36,10 +38,12 @@ from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.config.weak import weak_regime_config
 from quantfusion.data import contracts as data_contracts
 from quantfusion.data.providers import DataFetcher
+from quantfusion.data.sessions import DEFAULT_CALENDAR_FILE, resolve_scan_dates, require_frame_coverage, index_coverage
 from quantfusion.domain.models import BarContext
 from quantfusion.engine.replay import RegimeAdaptiveBacktestEngine
 from quantfusion.indicators.technical import Indicators
 from quantfusion.io.artifacts import atomic_json
+from quantfusion.research.fingerprints import account_source_sha, canonical_sequence_sha
 from quantfusion.strategy.trend import (
     ATRChannelStrategy,
     DualMAStrategy,
@@ -57,10 +61,11 @@ _PreparedMarket = tuple[
 class AccountSignalEngine:
     """基于真实持仓生成时点建议，不伪造实盘历史收益曲线。"""
 
-    def __init__(self, *, cache_dir: str, regime_data_dir: str) -> None:
+    def __init__(self, *, cache_dir: str, regime_data_dir: str, calendar_file: str | Path = DEFAULT_CALENDAR_FILE) -> None:
         """绑定股票缓存目录和固定指数证据目录。"""
         self.cache_dir = cache_dir
         self.regime_data_dir = regime_data_dir
+        self.calendar_file = calendar_file
 
     def _frame(self, code: str, as_of: str) -> pd.DataFrame:
         """加载截至指定日期的新鲜行情，并拒绝未来或陈旧观测。"""
@@ -98,6 +103,7 @@ class AccountSignalEngine:
                 f"latest market data is stale: {observed.date()} "
                 f"(as of {boundary.date()})"
             )
+        require_frame_coverage(frame, resolve_scan_dates(as_of, calendar_file=self.calendar_file), code)
         return frame
 
     @staticmethod
@@ -233,6 +239,9 @@ class AccountSignalEngine:
                     target_shares=0,
                     stop_price=stop_price,
                     reasons=tuple(triggers),
+                    score_components=tuple(trend_candidate_components(
+                        frame, indicators, i, close, len(triggers), industry_rs,
+                    ).items()),
                 )
             )
         return candidates
@@ -336,6 +345,7 @@ class AccountSignalEngine:
         # The route decision and all later account advice share this one local
         # market snapshot.  In particular, weak-route leader selection must not
         # read a second, independently changing view of the same symbols.
+        scan_dates = resolve_scan_dates(as_of, calendar_file=self.calendar_file)
         prepared: dict[str, _PreparedMarket] = {}
         market_errors: dict[str, str] = {}
 
@@ -382,6 +392,7 @@ class AccountSignalEngine:
             end_date=as_of,
             strict=False,
         )
+        checked_indices = index_coverage(self.regime_data_dir, scan_dates)
         decision = RegimeAdaptiveBacktestEngine().decide_current(
             symbols,
             as_of=as_of,
@@ -672,6 +683,8 @@ class AccountSignalEngine:
         valuation_complete = not unpriced_symbols
         buys_suppressed = not data_complete or not valuation_complete
         selected_candidates: list[PointInTimeSignal] = []
+        ranked: list[PointInTimeSignal] = []
+        slots_left = 0
         held_codes = set(held)
         route_candidates = (
             tuple(symbols)
@@ -792,7 +805,37 @@ class AccountSignalEngine:
             account_budget = {"enabled": True, "mechanism": "AB5", "status": "NOT_READY",
                               "reason": "incomplete account valuation or market evidence"}
 
+        advice_by_symbol = {row["symbol"]: row for row in actions}
+        selected_codes = {candidate.symbol for candidate in selected_candidates}
+        candidate_diagnostics = []
+        for rank, candidate in enumerate(ranked, 1):
+            advice = advice_by_symbol.get(candidate.symbol, {})
+            candidate_diagnostics.append({
+                "symbol": candidate.symbol, "rank": rank, "score": candidate.score,
+                "score_components": dict(candidate.score_components),
+                "confirmation_count": len(candidate.reasons),
+                "selected_for_slots": candidate.symbol in selected_codes,
+                "slot_constraint": "SELECTED" if candidate.symbol in selected_codes else "POSITION_SLOTS",
+                "indicative_target_shares": advice.get("indicative_target_shares", 0),
+                "constraint_reason": advice.get("reason", "POSITION_SLOTS"),
+                "execution_status": advice.get("execution_status", "POSITION_SLOTS"),
+            })
+        market_identity = {
+            code: {"evidence_date": value[1],
+                   "frame_sha256": hashlib.sha256(value[0].to_csv(index=True).encode()).hexdigest(),
+                   "config_sha256": canonical_sequence_sha(value[2])}
+            for code, value in sorted(prepared.items())
+        }
+        if index_coverage(self.regime_data_dir, scan_dates) != checked_indices:
+            raise ValueError("INDEX_EVIDENCE_CHANGED: account input changed during scan")
         return {
+            "scan_dates": scan_dates,
+            "candidate_diagnostics": candidate_diagnostics,
+            "candidate_slots": slots_left,
+            "account_code_sha256": account_source_sha(),
+            "engine_config_sha256": canonical_sequence_sha(default_engine_config()),
+            "market_evidence": market_identity,
+            "index_evidence": checked_indices,
             "account_risk_budget": account_budget,
             "as_of": as_of,
             "mode": "account_decision_support",
@@ -808,6 +851,7 @@ class AccountSignalEngine:
             "evidence_date": evidence_date,
             "data_complete": data_complete,
             "unavailable_symbols": unavailable_symbols,
+            "market_data_errors": dict(sorted(required_market_errors.items())),
             "buys_suppressed": buys_suppressed,
             "buy_suppression_reasons": buy_suppression_reasons,
             "peak_equity": snapshot.peak_equity,
@@ -831,6 +875,7 @@ def run_account_scan(
     regime_data_dir: str,
     output_dir: str,
     expected_account_id: str = "main",
+    calendar_file: str | Path = DEFAULT_CALENDAR_FILE,
 ) -> int:
     """运行账户扫描，写入工件并返回适合脚本调用的退出码。"""
     try:
@@ -838,6 +883,7 @@ def run_account_scan(
         result = AccountSignalEngine(
             cache_dir=cache_dir,
             regime_data_dir=regime_data_dir,
+            calendar_file=calendar_file,
         ).run(
             snapshot,
             symbols,

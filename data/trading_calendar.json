@@ -1,0 +1,114 @@
+{
+  "market": "SSE_SZSE_A_SHARES",
+  "timezone": "Asia/Shanghai",
+  "reviewed_on": "2026-09-13",
+  "coverage_start": "2024-01-01",
+  "coverage_end": "2026-12-31",
+  "basis": "Exchange annual closure notices plus the exchanges' regular Monday-Friday sessions; adjustment weekends remain closed. No extrapolation; add reviewed notices to extend coverage.",
+  "years": {
+    "2024": {
+      "sources": [
+        "https://www.sse.com.cn/disclosure/announcement/general/c/c_20231226_5733939.shtml",
+        "https://www.szse.cn/disclosure/notice/t20231226_605108.html"
+      ],
+      "closed": [
+        [
+          "01-01",
+          "01-01"
+        ],
+        [
+          "02-09",
+          "02-17"
+        ],
+        [
+          "04-04",
+          "04-06"
+        ],
+        [
+          "05-01",
+          "05-05"
+        ],
+        [
+          "06-10",
+          "06-10"
+        ],
+        [
+          "09-15",
+          "09-17"
+        ],
+        [
+          "10-01",
+          "10-07"
+        ]
+      ]
+    },
+    "2025": {
+      "sources": [
+        "https://www.sse.com.cn/disclosure/announcement/general/c/c_20241223_10767108.shtml",
+        "https://investor.szse.cn/disclosure/notice/general/t20241223_611283.html"
+      ],
+      "closed": [
+        [
+          "01-01",
+          "01-01"
+        ],
+        [
+          "01-28",
+          "02-04"
+        ],
+        [
+          "04-04",
+          "04-06"
+        ],
+        [
+          "05-01",
+          "05-05"
+        ],
+        [
+          "05-31",
+          "06-02"
+        ],
+        [
+          "10-01",
+          "10-08"
+        ]
+      ]
+    },
+    "2026": {
+      "sources": [
+        "https://www.sse.com.cn/disclosure/announcement/general/c/c_20251222_10802507.shtml",
+        "https://investor.szse.cn/disclosure/notice/general/t20251222_618087.html"
+      ],
+      "closed": [
+        [
+          "01-01",
+          "01-03"
+        ],
+        [
+          "02-15",
+          "02-23"
+        ],
+        [
+          "04-04",
+          "04-06"
+        ],
+        [
+          "05-01",
+          "05-05"
+        ],
+        [
+          "06-19",
+          "06-21"
+        ],
+        [
+          "09-25",
+          "09-27"
+        ],
+        [
+          "10-01",
+          "10-07"
+        ]
+      ]
+    }
+  }
+}

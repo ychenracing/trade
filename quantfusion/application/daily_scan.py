@@ -36,6 +36,12 @@ from quantfusion.config.daily import (
 )
 from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.data import contracts as market_data_contracts
+from quantfusion.data.sessions import (
+    DEFAULT_CALENDAR_FILE,
+    index_coverage,
+    require_frame_coverage,
+    resolve_scan_dates,
+)
 from quantfusion.data.snapshot import (
     materialize_frozen_snapshot,
     sha256_file,
@@ -74,7 +80,7 @@ def _run_main() -> int:
     parser.add_argument(
         "--end-date",
         default="",
-        help="Backtest end date YYYY-MM-DD (default: today)",
+        help="Backtest end date YYYY-MM-DD (default: today in Asia/Shanghai)",
     )
     parser.add_argument(
         "--cache-dir",
@@ -89,8 +95,12 @@ def _run_main() -> int:
     parser.add_argument(
         "--allow-stale",
         action="store_true",
-        help="Simulation-only override for stale cached data. Account decision "
-        "support always rejects provider-marked stale data.",
+        help="Does not override mandatory trading-session coverage or provider-stale rejection.",
+    )
+    parser.add_argument(
+        "--calendar-file",
+        default=str(DEFAULT_CALENDAR_FILE),
+        help="Reviewed, finite SSE/SZSE session-calendar JSON input.",
     )
     parser.add_argument(
         "--account",
@@ -127,14 +137,19 @@ def _run_main() -> int:
     parser.add_argument(
         "--reset-risk-state",
         action="store_true",
-        help="Delete risk_state.json before running. Use this when you "
-        "intentionally change symbol set, start date, or configuration to "
-        "establish a new risk-state identity without buy suppression.",
+        help="Establish a new simulation risk-state identity after a successful "
+        "validated run. The previous file is retained on failure; this is not "
+        "a release of an existing real-account risk lock.",
     )
     args = parser.parse_args()
 
     end_date = args.end_date or _today_str()
     start_date = args.start_date or START_DATE
+    try:
+        scan_dates = resolve_scan_dates(end_date, calendar_file=args.calendar_file)
+    except (OSError, ValueError, TypeError) as exc:
+        print(f"  ✗ 交易日证据未就绪: {exc}")
+        return 1
 
     # Real holdings use a separate point-in-time engine. They are never
     # passed to the replay engine, so account advice cannot create
@@ -148,37 +163,24 @@ def _run_main() -> int:
             regime_data_dir=args.regime_data_dir,
             output_dir=args.output_dir,
             expected_account_id=args.account_id,
+            calendar_file=args.calendar_file,
         )
 
-    # --reset-risk-state: delete the old risk state file before running.
-    # This runs only after the --account check passes, so the user cannot
-    # accidentally lose state while trying to use a disabled mode.
+    # A requested new simulation identity is only an in-memory choice here.
+    # Never delete the last risk state before data, replay and publication
+    # succeed. The existing atomic state writer replaces it after the artifact.
     if args.reset_risk_state:
-        state_file = Path(args.output_dir) / "risk_state.json"
-        if state_file.exists():
-            try:
-                state_file.unlink()
-                print(f"  ℹ 已删除旧风险状态: {state_file}")
-            except OSError as exc:
-                print(f"  ✗ 删除风险状态文件失败: {exc}")
-                return 1
-        else:
-            print(f"  ℹ 无旧风险状态可删除: {state_file}")
-
-    # ── Resolve capital ──
-    if args.capital > 0:
-        capital = args.capital
+        prev_risk, risk_error = None, None
+        print("  ℹ 新研究身份的风险状态仅在验证和结果写入成功后原子替换。")
     else:
-        capital = INITIAL_CAPITAL
-
-    # ── Load previous run's risk state for continuity ──
-    prev_risk, risk_error = _load_prev_risk_state(args.output_dir, end_date)
+        prev_risk, risk_error = _load_prev_risk_state(args.output_dir, end_date)
     if risk_error:
         print(f"  ✗ {risk_error}")
         print("  风险状态文件损坏 — 拒绝继续运行以防止丢失终态锁定状态。")
         print("  请先保留原文件，核对内容、权限和账户身份；不要删除风险状态来绕过锁定。")
         return 1
 
+    capital = args.capital if args.capital > 0 else INITIAL_CAPITAL
     mode_label = "模拟模式"
     print("=" * 72)
     print(f"  {_scan_title()}")
@@ -186,6 +188,8 @@ def _run_main() -> int:
     print(f"  运行模式:   {mode_label}")
     print(f"  标的数量:   {len(SYMBOLS)}")
     print(f"  回测区间:   {start_date} → {end_date}")
+    print(f"  应覆盖交易日: {scan_dates['required_evidence_date']}")
+    print(f"  下一可交易日: {scan_dates['next_trading_date']}")
     print(f"  初始资金:   ¥{capital:,.0f}")
     if prev_risk:
         print(f"  上次扫描:   {prev_risk.get('scan_date', '?')}")
@@ -205,17 +209,17 @@ def _run_main() -> int:
     index_refresh = market_data_contracts.refresh_regime_indices(
         args.regime_data_dir, end_date=end_date, strict=False
     )
+    try:
+        index_coverage(args.regime_data_dir, scan_dates)
+    except (OSError, ValueError, TypeError) as exc:
+        print(f"  ✗ 指数证据不完整，拒绝生成新信号: {exc}")
+        return 1
 
-    # ── Pre-screen: skip symbols with no data (e.g. not yet listed) ──
-    # The engine loads all symbols at once and raises on any failure, so we
-    # probe each symbol individually and build a tradable universe.
+    # Preserve the explicit pre-listing exception, not silent universe shrinkage.
     tradable: dict[str, str] = {}
     snapshot_frames: dict[str, pd.DataFrame] = {}
-    skipped: list[tuple[str, str, str]] = []  # (code, name, reason)
-    # Use a start date ~400 days before start_date for the probe so the
-    # engine has enough warmup history for indicator calculation.
-    # (400 calendar days ≈ 13 months, slightly more than the 365-day
-    # warmup_calendar_days used by the engine, to ensure coverage.)
+    actual_evidence_dates: dict[str, str] = {}
+    skipped: list[tuple[str, str, str]] = []
     probe_start_ts = cast(
         pd.Timestamp, pd.Timestamp(start_date) - pd.Timedelta(days=400)
     )
@@ -223,7 +227,7 @@ def _run_main() -> int:
 
     print("  正在检查标的可交易性...")
     print("-" * 72)
-    stale_symbols: list[tuple[str, str, str]] = []  # (code, name, last_cache_date)
+    stale_symbols: list[tuple[str, str, str]] = []
     fatal_data_errors: list[tuple[str, str, str]] = []
     known_listing_dates = {"688825": "2026-07-27"}
     # Signal-only regime references share the frozen market-data directory,
@@ -242,6 +246,7 @@ def _run_main() -> int:
                 data_age = (pd.Timestamp(end_date).normalize() - observed).days
                 if pd.isna(observed) or data_age < 0:
                     raise ValueError("market data has an invalid or future observation")
+                actual_evidence_dates[code] = require_frame_coverage(df, scan_dates, code)
                 if code in SYMBOLS:
                     tradable[code] = name
                 snapshot_frames[code] = df.copy()
@@ -288,56 +293,25 @@ def _run_main() -> int:
             print(f"    {code} {name}: {reason}")
     print("-" * 72)
 
-    # ── Fail-closed: refuse to produce signals on stale data ──
-    if stale_symbols and not args.allow_stale:
+    # Session coverage and the original natural-day/provider checks are
+    # independent. An override cannot turn stale inputs into trade advice.
+    if stale_symbols:
         print("=" * 72)
-        print("  ✗ 数据过期 — 拒绝生成信号 (fail-closed)")
+        print("  ✗ PROVIDER_STALE_OR_AGE: 数据过期 — 拒绝生成信号 (fail-closed)")
         print("=" * 72)
         for code, name, last_date in stale_symbols:
             print(f"    {code} {name}: 缓存截止 {last_date}（网络获取失败或超过日期容忍）")
-        print()
-        print("  信号可能不反映最新交易日，已中止扫描。")
-        print("  如需强制使用缓存数据，请添加 --allow-stale 参数。")
-        print("  ⚠ 使用过期数据生成的信号不可用于实盘决策。")
+        if args.allow_stale:
+            print("  --allow-stale 不覆盖提供方 stale 标记或交易日完整性要求。")
         return 1
-    elif stale_symbols and args.allow_stale:
-        print("─" * 72)
-        print("  ⚠ 数据过期警告 (--allow-stale 已启用)")
-        print("─" * 72)
-        for code, name, last_date in stale_symbols:
-            print(f"  {code} {name}: 缓存截止 {last_date}（网络获取失败或超过日期容忍）")
-        print("  信号可能不反映最新交易日，请勿直接用于实盘决策。")
-        print()
 
     if not tradable:
         print("  错误: 没有可交易的标的，退出。")
         return 1
 
-    # Check the same trade/reference frames that will be frozen, without a
-    # second mutable fetch that could disagree with the snapshot inputs.
-    data_end_dates: dict[str, list[str]] = {}
-    for code, df in snapshot_frames.items():
-        end = str(pd.Timestamp(cast(Any, df.index[-1])).date())
-        data_end_dates.setdefault(end, []).append(code)
-    if len(data_end_dates) > 1 and not args.allow_stale:
-        latest_common = max(data_end_dates.keys())
-        lagging = sorted(d for d in data_end_dates if d < latest_common)
-        if lagging:
-            print("  ⚠ 数据截止日期不一致:")
-            for d in sorted(data_end_dates):
-                count = len(data_end_dates[d])
-                marker = " ← 滞后" if d in lagging else ""
-                print(f"    {d}: {count} 只标的{marker} ({', '.join(data_end_dates[d])})")
-            print("  ⚠ 标的间数据截止日不一致，信号可能基于不完整信息。")
-            print("  建议检查数据源或等待数据更新后重试。")
-            print("  ✗ 数据不一致 — 拒绝生成信号 (fail-closed)")
-            print("  如需强制运行，请添加 --allow-stale 参数。")
-            return 1
-
     # Freeze the exact stock and index bytes before either the current-route
-    # decision or the requested replay. Same-day reruns reuse this directory
-    # only after checking the hashed manifest, every CSV hash, and the absence
-    # of extra evidence files.
+    # decision or replay. The calendar identity is part of this new input;
+    # an old manifest is never retroactively certified.
     run_id = _generate_run_id(end_date)
     snapshot_dir = Path(args.output_dir) / "snapshots" / end_date
     try:
@@ -347,6 +321,7 @@ def _run_main() -> int:
             regime_data_dir=args.regime_data_dir,
             frames=snapshot_frames,
             end_date=end_date,
+            scan_dates=scan_dates,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"  ✗ 冻结数据快照失败: {exc}")
@@ -358,13 +333,8 @@ def _run_main() -> int:
     snapshot_regime_dir = snapshot_dir / "regime_data"
     print(f"  冻结数据快照: {snapshot_dir}")
 
-    # ── Validate FILE risk state identity to prevent cross-contamination ──
-    # Identity uses stable fields only (symbol set + count + config
-    # fingerprint including start date, indicator state, capital, and
-    # warmup days). Cash/capital is included because different capital
-    # means different position sizing and risk exposure.
-    # When the identity does not match, buy signals are suppressed (fail-closed)
-    # to prevent entering new positions without verified risk-state continuity.
+    # Risk-state continuity identifies the account/replay, independently of
+    # the dated immutable market-evidence identity in the snapshot manifest.
     config_fingerprint = (
         f"start={start_date}|indicator=warm"
         f"|capital={capital}|warmup=365|deployment={args.deployment_mode}"
@@ -400,7 +370,7 @@ def _run_main() -> int:
     )
     print(f"  当前点位路由: {current_decision.name} (边界 {current_decision.boundary})")
 
-    print("  正在运行回测，请稍候...")
+    print("  正在运行回测...")
     print("-" * 72)
 
     # risk_state is not passed to the engine. Each requested replay rebuilds
@@ -419,12 +389,7 @@ def _run_main() -> int:
         leader_data_dir=str(snapshot_market_dir),
     )
 
-    # ── Validate result IMMEDIATELY after engine.run() ──────────────
-    # This must happen BEFORE any printing or formatting, because None,
-    # string, or missing fields would cause TypeError/KeyError in f-string
-    # format specifiers (e.g. {:,.0f}). If invalid, we write an error
-    # artifact to a SEPARATE file (signals_<date>.error.json) so the last
-    # successful artifact (signals_<date>.json) is never overwritten.
+    # Validate before formatting, publishing, or replacing the old risk state.
     result_invalid_fields = _validate_result_fields(result)
     budget_status = result.get("account_risk_budget") if isinstance(result, dict) else None
     if (not isinstance(budget_status, dict) or budget_status.get("enabled") is not True
@@ -433,10 +398,7 @@ def _run_main() -> int:
     result_is_valid = len(result_invalid_fields) == 0
 
     if not result_is_valid:
-        # Result is invalid — do NOT save risk state, do NOT overwrite
-        # the last successful artifact. Write an error artifact to a
-        # separate .error.json file so downstream consumers can detect
-        # the failure without losing the last good signals.
+        # Keep the last successful artifact and risk state intact.
         output_dir = Path(args.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         error_file = output_dir / f"signals_{end_date}.error.json"
@@ -470,16 +432,14 @@ def _run_main() -> int:
                 except OSError:
                     pass
         except (OSError, ValueError):
-            pass  # Best-effort error artifact write
+            pass
         print(f"  ✗ 回测结果无效: {', '.join(result_invalid_fields)}")
         print(f"  ✗ 错误信号文件已保存: {error_file}")
         print("  信号不可用 — 请检查数据完整性后重试。")
         print("  (上次成功的信号文件未被覆盖)")
         return 1
 
-    # ── Warmup health contract (2026-08-16 报告 P0-1) ─────────────────
-    # NOT_READY: 输出不得作为正式交易信号 → 抑制买入（fail-closed）。
-    # DEGRADED: 风险判断保留，仅显著提示（不抑制信号）。
+    # NOT_READY suppresses buys. DEGRADED preserves valid risk opinions.
     warmup_health = result.get("warmup_health") or {}
     warmup_status = str(warmup_health.get("warmup_status", "UNKNOWN"))
     risk_opinion = result.get("risk_opinion")
@@ -498,7 +458,6 @@ def _run_main() -> int:
             + "; ".join(warmup_health.get("reasons", []) or ["unknown"])
             + ") — 风险判断保留，新增风险动作建议人工确认。")
 
-    # ── Extract latest pending signals ───────────────────────────────
     pending = result.get("pending_signals", [])
     replay_decision = result.get("deployment_decision", {})
     current_selected = (
@@ -518,27 +477,17 @@ def _run_main() -> int:
         suppress_buys = True
         print("  ⚠ 当前路由与历史回放起点路由不同，所有新增买入已失败关闭。")
         print("    卖出信号仍保留；真实持仓请使用 --account 点位引擎。")
-    # Group by symbol: collect all pending signals per symbol
     symbol_signals: dict[str, list[Any]] = defaultdict(list)
     for sig in pending:
         symbol_signals[sig.symbol].append(sig)
 
-    # Reconstruct current positions from trade ledger
     sim_positions = _extract_positions(result.get("trades", []))
-
-    # ── Build per-symbol signal summary ──────────────────────────────
-    # Determine the latest signal for each symbol
-    # Priority: pending buy/sell > holding position > no position
     symbol_names = {code: name for code, name in SYMBOLS.items()}
     rows: list[dict[str, Any]] = []
-
-    # Build a set of skipped codes for quick lookup
     skipped_codes = {code for code, _, _ in skipped}
 
     for code in sorted(SYMBOLS.keys()):
         name = symbol_names[code]
-
-        # If the stock was skipped (no data), mark as "不可交易"
         if code in skipped_codes:
             rows.append({
                 "code": code,
@@ -553,20 +502,14 @@ def _run_main() -> int:
 
         sigs = symbol_signals.get(code, [])
         held_shares = sim_positions.get(code, 0)
-
         if sigs:
-            # Use the extracted suppression function for testability and
-            # consistent behavior between display and artifact.
-            signal_label, strategies, _ = _apply_buy_suppression(
-                sigs, suppress_buys
-            )
+            signal_label, strategies, _ = _apply_buy_suppression(sigs, suppress_buys)
         elif held_shares > 0:
             signal_label = "持有"
             strategies = "—"
         else:
             signal_label = "观望"
             strategies = "—"
-
         rows.append({
             "code": code,
             "name": name,
@@ -577,21 +520,16 @@ def _run_main() -> int:
             "profile": qf.get_symbol_profile(code, "default"),
         })
 
-    # Keep machine summary counts independent from the reading report.
     buy_count = sell_count = hold_count = wait_count = untradeable_count = 0
     suppressed_buy_count = 0
     for row in rows:
         if "买入已抑制" in row["signal"]:
-            # Mixed signal with buys suppressed — only the sell part
-            # remains visible (buy suppression removes buy labels and
-            # appends "[买入已抑制]" to the remaining sell signals).
             suppressed_buy_count += 1
             if "卖出" in row["signal"]:
                 sell_count += 1
             else:
                 wait_count += 1
         elif "风险状态不匹配" in row["signal"]:
-            # Pure buy suppressed — count as wait
             suppressed_buy_count += 1
             wait_count += 1
         elif "买入" in row["signal"]:
@@ -606,28 +544,17 @@ def _run_main() -> int:
             hold_count += 1
 
     guard = result.get("sector_guard_active", False)
-
-    # ── Build artifact and pre-serialize to detect nested NaN ───────
-    # The artifact is pre-serialized (allow_nan=False) to detect NaN/Inf
-    # in nested structures (pending_signals, risk_events) BEFORE writing
-    # to disk. If nested NaN is found, an error artifact is written to
-    # .error.json and no risk state is saved.
-    # The actual artifact file is written to disk FIRST, then risk state
-    # is saved — this is the artifact-first transaction ordering.
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"signals_{end_date}.json"
-
-    # Serialize pending signals — blocked buys are separated into a
-    # dedicated ``blocked_signals`` list so ``pending_signals`` only
-    # contains executable signals.
     pending_serializable, blocked_serializable = _serialize_pending_signals(
         pending, suppress_buys
     )
 
-    # Build artifact with risk_state_saved placeholder (updated after save)
     artifact: dict[str, Any] = {
         "scan_date": end_date,
+        "scan_dates": scan_dates,
+        "actual_evidence_dates": actual_evidence_dates,
         "mode": "simulation",
         "status": "ok",
         "run_id": run_id,
@@ -657,12 +584,8 @@ def _run_main() -> int:
             "sharpe": float(result["sharpe"]),
             "total_trades": int(result["total_trades"]),
             "sell_trades": int(result.get("sell_trades", 0)),
-            "date_symbol_side_count": int(
-                result.get("date_symbol_side_count", 0)
-            ),
-            "date_symbol_sell_side_count": int(
-                result.get("date_symbol_sell_side_count", 0)
-            ),
+            "date_symbol_side_count": int(result.get("date_symbol_side_count", 0)),
+            "date_symbol_sell_side_count": int(result.get("date_symbol_sell_side_count", 0)),
             "sector_guard_active": bool(guard),
             "safe_mode_active": bool(result.get("safe_mode_active", False)),
             "terminal_risk_lock": bool(result.get("terminal_risk_lock", False)),
@@ -678,31 +601,25 @@ def _run_main() -> int:
             "selected_symbols": result.get("selected_symbols", sorted(tradable)),
             "unavailable_symbols": result.get("unavailable_symbols", []),
             "snapshot_directory": str(snapshot_dir),
-            "snapshot_manifest_sha256": _sha256_file(
-                snapshot_dir / "manifest.json"
-            ),
+            "snapshot_manifest_sha256": _sha256_file(snapshot_dir / "manifest.json"),
             "snapshot_schema_version": snapshot_manifest["schema_version"],
+            "index_evidence": snapshot_manifest.get("index_evidence", {}),
         },
         "account_risk_budget": budget_status,
         "pending_signals": pending_serializable,
         "blocked_signals": blocked_serializable,
-        "risk_state_saved": False,  # updated after state save
+        "risk_state_saved": False,
     }
     if prev_risk:
         artifact["previous_risk_state"] = prev_risk
 
-    # Pre-serialize artifact to detect nested NaN BEFORE writing to disk.
-    # allow_nan=False ensures strict JSON (ECMA-404) — NaN/Infinity
-    # tokens are rejected at serialization time. If this succeeds, the
-    # artifact is safe to write to disk.
+    # Strict serialization precedes all successful publication/state writes.
     try:
         artifact_content = json.dumps(
             artifact, ensure_ascii=False, indent=2, default=str,
             allow_nan=False,
         ) + "\n"
     except ValueError as exc:
-        # Nested NaN detected — do NOT save risk state. Write error
-        # artifact to .error.json so the last success file is preserved.
         error_file = output_dir / f"signals_{end_date}.error.json"
         error_artifact = {
             "scan_date": end_date,
@@ -737,21 +654,7 @@ def _run_main() -> int:
         print("  风险状态未保存 — 上次成功的信号文件未被覆盖。")
         return 1
 
-    # ── Write artifact to disk FIRST (artifact-first transaction) ──
-    # The artifact is written BEFORE risk state is saved. This ensures
-    # that if the artifact write fails, no risk state has been committed
-    # — preventing state/artifact inconsistency. If the risk state save
-    # subsequently fails, the artifact already exists on disk with
-    # ``risk_state_saved: false``, which correctly reflects the state.
-    # The artifact is then updated (best-effort) with the actual
-    # ``risk_state_saved`` status.
-    artifact["risk_state_saved"] = False
-    artifact_content = json.dumps(
-        artifact, ensure_ascii=False, indent=2, default=str,
-        allow_nan=False,
-    ) + "\n"
-
-    # ── Write artifact file (atomic) ─────────────────────────────────
+    # Artifact-first transaction: failed artifact writes cannot replace state.
     artifact_fd, artifact_tmp = tempfile.mkstemp(
         dir=str(output_dir), prefix=".signals_", suffix=".tmp"
     )
@@ -771,9 +674,6 @@ def _run_main() -> int:
         print("  风险状态未保存 — 无状态/产物不一致。")
         return 1
 
-    # ── Save risk state AFTER successful artifact write ─────────────
-    # Now that the artifact is safely on disk, save the risk state.
-    # Both artifact and risk state share the same run_id for traceability.
     risk_state_saved = False
     risk_state_save_error = ""
     if not risk_identity_mismatch:
@@ -790,11 +690,7 @@ def _run_main() -> int:
         except (OSError, ValueError, TypeError) as exc:
             risk_state_save_error = str(exc)
 
-    # ── Update artifact with actual risk_state_saved status ─────────
-    # Best-effort re-write of the artifact with the final
-    # risk_state_saved status. This re-serialization is guaranteed not
-    # to fail because we only changed a bool and optionally added a
-    # string error message — no new NaN sources.
+    # Best-effort update: false remains truthful if the update itself fails.
     if risk_state_saved or risk_state_save_error:
         artifact["risk_state_saved"] = risk_state_saved
         if risk_state_save_error:
@@ -819,12 +715,10 @@ def _run_main() -> int:
                 except OSError:
                     pass
         except (OSError, ValueError):
-            pass  # Best-effort update — artifact already has the signals
+            pass
 
-    # ── Update latest_success.json pointer ───────────────────────────
-    # Publish only after the artifact and continuity-state transaction has
-    # succeeded. Identity mismatch intentionally preserves the prior state
-    # and remains a successful, sell-capable scan, so it may publish.
+    # Publish the success pointer only after the continuity transaction.
+    # Identity mismatch deliberately retains the old state and valid sells.
     if not risk_state_save_error:
         try:
             pointer = {"file": output_file.name, "run_id": run_id,
@@ -843,9 +737,8 @@ def _run_main() -> int:
                 except OSError:
                     pass
         except OSError:
-            pass  # Best-effort pointer file
+            pass
 
-    # Print final save status
     if risk_state_saved:
         print(f"  结果已保存: {output_file}")
         print(f"  风险状态已保存: {Path(args.output_dir) / 'risk_state.json'}")
@@ -860,7 +753,6 @@ def _run_main() -> int:
             print("  跨日终态锁未保存属于运行失败 — 请检查磁盘空间和权限后重试。")
     print()
 
-    # Risk state save failure is a runtime error.
     if risk_state_save_error:
         return 1
     publish_daily_report(output_file, replay=result, expected_identity=("run_id", run_id))

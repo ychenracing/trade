@@ -107,3 +107,13 @@ def replay_source_sha() -> str:
 def optimizer_source_sha() -> str:
     """Fingerprint all research code plus its application entry point."""
     return _source_sha((PACKAGE / "research", PACKAGE / "application" / "optimizer.py"))
+
+
+def account_source_sha() -> str:
+    """Bind saved suggestions to their actual account and economic call graph."""
+    return _source_sha((*ECONOMIC_SOURCE_PATHS, PACKAGE / "account",
+                        PACKAGE / "application" / "account_scan.py"))
+
+
+# Public serialization contract for account evidence identities.
+canonical_sequence_sha = _canonical_sequence_sha
