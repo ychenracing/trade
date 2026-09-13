@@ -267,7 +267,7 @@ class SymbolRoutingTests(unittest.TestCase):
         )
         # fine-grained technology sub-industry profiles. 688256 (寒武纪) is
         # a chip-design / domestic-compute name, so it resolves to the
-        # fine-grained ``chip_design`` profile (previously ``domestic_design``).
+        # fine-grained ``chip_design`` profile.
         self.assertEqual(SYMBOL_PROFILES[code], "chip_design")
         self.assertEqual(
             config_for_symbol(code, name=name),
@@ -984,7 +984,7 @@ class NewFeatureTests(unittest.TestCase):
 
         fine-grained technology sub-industry profiles. 300308 (中际旭创) is
         an optical-module name, so it resolves to the fine-grained
-        ``optical_module`` profile (previously the coarse ``overseas_optical``).
+        ``optical_module`` profile.
         """
         result = engine_api.get_symbol_profile("300308")
         self.assertEqual(result, "optical_module")

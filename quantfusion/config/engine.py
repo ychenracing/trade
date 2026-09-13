@@ -199,9 +199,9 @@ def default_engine_config() -> dict[str, Any]:
         # ON: each fine sub-industry profile (optical module, chip design,
         # equipment, test, material, packaging, ...) is pulled part-way back
         # toward its coarse parent for the permitted parameters
-        # (max single-symbol weight, ATR multiple, risk budget), so a thin
-        # sub-industry sample cannot over-fit a single stock or a single bull
-        # run. 0.0 converges fully to the coarse parent, 1.0 keeps the fine
+        # (max single-symbol weight, ATR multiple, risk budget). This reduces
+        # parameter separation for thin samples; it does not eliminate
+        # overfitting. 0.0 converges fully to the coarse parent, 1.0 keeps the fine
         # override unchanged. Default 0.5. Entry/exit periods, profit
         # protection, pyramid add-on and regime parameters are shared through
         # the hierarchy and are never shrunk.

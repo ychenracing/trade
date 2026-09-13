@@ -517,8 +517,8 @@ class EnsembleOrchestrationMixin:
             }
         )
         # ── 风险治理输出──────
-        # 全部为附加字段：不进入任何决策路径，仅随结果自动输出，供生产
-        # 契约（warmup 分级）、独立风险意见消费方与事后校准使用。
+        # 此处只附加观测结果，不修改本次回放的交易状态。
+        # 日扫应用另行消费 warmup 健康门；独立风险意见与事后校准不直接生成订单。
         combined["warmup_health"] = warmup_health.as_dict()
         combined["risk_opinion"] = (
             last_opinion.as_dict() if last_opinion is not None else None
