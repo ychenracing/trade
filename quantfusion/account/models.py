@@ -47,3 +47,4 @@ class PointInTimeSignal:
     stop_price: float | None
     reasons: tuple[str, ...]
     blocked_reason: str | None = None
+    score_components: tuple[tuple[str, float], ...] = ()
