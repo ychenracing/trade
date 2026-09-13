@@ -1,5 +1,6 @@
 """Offline advice identity and account-capacity behavior, without human fills."""
 
+from bisect import bisect_right
 from dataclasses import replace
 import hashlib
 import json
@@ -18,16 +19,27 @@ from tests.unit.test_account_truth_boundary import (
 
 
 def _identified_advice(frame, day="2025-04-01"):
+    calendar = load_calendar()
+    position = bisect_right(calendar.sessions, day)
+    required = calendar.sessions[position - 1]
+    next_trading = calendar.sessions[position]
     prefix = frame.loc[(frame.index >= pd.Timestamp(day)-pd.Timedelta(days=700)) & (frame.index <= pd.Timestamp(day))]
     return {
-        "as_of": day, "mode": "account_decision_support",
+        "as_of": day, "snapshot_date": day, "requested_as_of": day,
+        "mode": "account_decision_support",
         "account_snapshot_sha256": hashlib.sha256(b"synthetic-account").hexdigest(),
         "account_code_sha256": account_source_sha(),
         "engine_config_sha256": canonical_sequence_sha(diagnostic.default_engine_config()),
-        "scan_dates": {"calendar_sha256": load_calendar().sha256},
+        "scan_dates": {
+            "calendar_sha256": calendar.sha256,
+            "requested_as_of": day,
+            "required_evidence_date": required,
+            "next_trading_date": next_trading,
+        },
         "market_evidence": {"300308": {
             "frame_sha256": hashlib.sha256(prefix.to_csv(index=True).encode()).hexdigest(),
             "config_sha256": canonical_sequence_sha(diagnostic.symbol_config("300308")),
+            "evidence_date": required,
         }},
         "candidate_diagnostics": [{"symbol": "300308", "score": .5,
             "score_components": {"momentum": .25}, "confirmation_count": 1,
