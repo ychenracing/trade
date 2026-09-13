@@ -1,0 +1,77 @@
+name: Final release wording review
+on:
+  push:
+    branches: [maintenance/release-final-review]
+    paths: [.github/workflows/release-final-review.yml]
+permissions:
+  contents: write
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply bounded wording corrections and verify executable identity
+        run: |
+          python - <<'PY'
+          import ast
+          import json
+          import subprocess
+          from pathlib import Path
+          base = '0c514b14f84fccf3a59b7b147904cd73a2853e9f'
+          workflow = '.github/workflows/release-final-review.yml'
+          def git(*args):
+              return subprocess.check_output(['git', *args], text=True).strip()
+          assert git('rev-parse', 'HEAD^') == base
+          assert git('diff', '--name-only', base, 'HEAD').splitlines() == [workflow]
+          edits = {
+              'quantfusion/engine/ensemble_orchestration.py': [
+                  ('        # 全部为附加字段：不进入任何决策路径，仅随结果自动输出，供生产\n        # 契约（warmup 分级）、独立风险意见消费方与事后校准使用。',
+                   '        # 此处只附加观测结果，不修改本次回放的交易状态。\n        # 日扫应用另行消费 warmup 健康门；独立风险意见与事后校准不直接生成订单。')
+              ],
+              'quantfusion/config/engine.py': [
+                  ('        # (max single-symbol weight, ATR multiple, risk budget), so a thin\n        # sub-industry sample cannot over-fit a single stock or a single bull\n        # run. 0.0 converges fully to the coarse parent, 1.0 keeps the fine',
+                   '        # (max single-symbol weight, ATR multiple, risk budget). This reduces\n        # parameter separation for thin samples; it does not eliminate\n        # overfitting. 0.0 converges fully to the coarse parent, 1.0 keeps the fine')
+              ],
+              'tests/regression/test_quant_fusion.py': [
+                  ('``chip_design`` profile (previously ``domestic_design``).', '``chip_design`` profile.'),
+                  ('``optical_module`` profile (previously the coarse ``overseas_optical``).', '``optical_module`` profile.')
+              ],
+              'docs/DECISION_DIAGNOSTICS.md': [
+                  ('和 账户风险预算 阈值没有因诊断改变', '和账户风险预算阈值均由生产路径决定，诊断只读取这些结果'),
+                  ('的 账户风险预算 反事实', '的账户风险预算反事实'),
+                  ('不改变 账户风险预算 阈值', '不改变账户风险预算阈值')
+              ]
+          }
+          class WithoutDocstrings(ast.NodeTransformer):
+              def generic_visit(self, node):
+                  super().generic_visit(node)
+                  if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                      if node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str):
+                          node.body = node.body[1:]
+                  return node
+          def executable(text):
+              return ast.dump(WithoutDocstrings().visit(ast.parse(text)), include_attributes=False)
+          for name, replacements in edits.items():
+              path = Path(name)
+              before = path.read_text(encoding='utf-8')
+              assert before == subprocess.check_output(['git', 'show', base + ':' + name]).decode('utf-8'), name
+              after = before
+              for old, new in replacements:
+                  assert after.count(old) == 1, (name, old)
+                  after = after.replace(old, new)
+              if path.suffix == '.py':
+                  assert executable(before) == executable(after), name
+              assert after.endswith('\n'), name
+              path.write_text(after, encoding='utf-8')
+          Path(workflow).unlink()
+          subprocess.run(['git', 'add', '--', workflow, *edits], check=True)
+          subprocess.run(['git', 'diff', '--cached', '--check'], check=True)
+          changed = set(git('diff', '--cached', '--name-only', base).splitlines())
+          assert changed == set(edits), changed
+          subprocess.run(['git', '-c', 'user.name=ychenracing', '-c', 'user.email=ychenracing@users.noreply.github.com', 'commit', '-m', 'docs: align governance and parameter-risk explanations'], check=True)
+          subprocess.run(['git', 'push', 'origin', 'HEAD:refs/heads/maintenance/release-final-review'], check=True)
+          print(json.dumps({'source': git('rev-parse', 'HEAD'), 'tree': git('rev-parse', 'HEAD^{tree}'), 'changed_files': sorted(changed), 'executable_ast_equal': True, 'temporary_workflow_absent': not Path(workflow).exists()}))
+          PY
