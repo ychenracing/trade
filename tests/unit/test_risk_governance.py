@@ -1,4 +1,4 @@
-"""风险治理层单元测试（P0-1/P0-2/P0-3/P1-1/P1-2）。
+"""风险治理层单元测试。
 
 覆盖预热健康契约分级、风险事件校准指标、独立风险意见语义、
 风险篮覆盖置信度与袖套共识证据，以及 overlay 新增的覆盖度审计接口。
@@ -39,7 +39,7 @@ def _calendar(
 
 
 class WarmupHealthTests(unittest.TestCase):
-    """P0-1: READY / DEGRADED / NOT_READY 三级契约。"""
+    """READY / DEGRADED / NOT_READY 三级契约。"""
 
     def test_full_history_fresh_reference_is_ready(self) -> None:
         calendar = _calendar()
@@ -146,7 +146,7 @@ class WarmupHealthTests(unittest.TestCase):
 
 
 class RiskEventCalibrationTests(unittest.TestCase):
-    """P0-2: 风险事件分类器的 precision / recall / lead time / 机会成本。"""
+    """风险事件分类器的 precision / recall / lead time / 机会成本。"""
 
     def test_perfect_alert_detects_shock_with_lead_time(self) -> None:
         # 60 日平稳 -> 警报(等级1，5日) -> 10 日内下跌 20% -> 恢复走平
@@ -236,7 +236,7 @@ class RiskEventCalibrationTests(unittest.TestCase):
 
 
 class RiskOpinionTests(unittest.TestCase):
-    """P0-3: 独立风险意见对象语义。"""
+    """独立风险意见对象语义。"""
 
     def _coverage(self, confidence: float = 0.9) -> rg.BasketCoverage:
         return rg.BasketCoverage(
@@ -311,7 +311,7 @@ class RiskOpinionTests(unittest.TestCase):
 
 
 class BasketCoverageTests(unittest.TestCase):
-    """P1-2: 风险篮覆盖置信度。"""
+    """风险篮覆盖置信度。"""
 
     def test_full_coverage_confidence_is_one(self) -> None:
         coverage = rg.basket_coverage_confidence(
@@ -346,7 +346,7 @@ class BasketCoverageTests(unittest.TestCase):
 
 
 class SleeveAgreementTests(unittest.TestCase):
-    """P1-1: 三袖套分歧证据（纯观测，不新增状态机）。"""
+    """三袖套分歧证据（纯观测，不新增状态机）。"""
 
     def test_consensus_counts_and_deployment(self) -> None:
         snap = rg.compute_sleeve_agreement(
@@ -411,7 +411,7 @@ class SleeveAgreementTests(unittest.TestCase):
 
 
 class OverlayCoverageAccessorTests(unittest.TestCase):
-    """P1-2: overlay 覆盖度审计接口（纯读取，不影响决策）。"""
+    """overlay 覆盖度审计接口（纯读取，不影响决策）。"""
 
     def test_initial_coverage_metrics_are_empty(self) -> None:
         overlay = CrossMarketOverlay()

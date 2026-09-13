@@ -98,7 +98,7 @@ class OverlayEvidenceMixin:
         return None
 
     def coverage_metrics(self) -> dict[str, Any]:
-        """Return the latest risk-basket coverage measurement (2026-08-16 P1-2).
+        """Return the latest risk-basket coverage measurement.
 
         Pure audit accessor: exposes how much of the independent risk basket
         and how many sub-industries were actually observed on the last graded
@@ -595,30 +595,17 @@ class OverlayEvidenceMixin:
     def _layered_protection(
         self, state, symbol: str, pos, date: pd.Timestamp, drawdown: float
     ) -> tuple[float, str]:
-        """Compute the layered protection line and its binding trigger (P0-1).
+        """Compute the highest armed protection line and its binding trigger.
 
-        Each protection line has its OWN independent trigger semantics (report
-        P0-1). The old implementation required ``peak_drawdown >= 28%`` for ALL
-        lines, which neutered the cost-absolute / ATR-chandelier / profit-tier
-        protections and made the "layered" stop behave like a fixed 28%
-        catastrophe stop. That unified peak-drawdown gate is removed: an armed
-        line now exits as soon as the close breaks IT.
+        The catastrophe floor is always armed. Cost and ATR protections also
+        require sector-risk level >= 1 and account drawdown reaching
+        ``LAYERED_ARM_PORTFOLIO_DRAWDOWN``. Profit-tier giveback additionally
+        requires confirmed sector-risk level >= 2. Only armed lines compete;
+        a close below the highest line generates the corresponding exit.
 
-        Arm rules (matching report P0-1, plus a bull-silent account-drawdown
-        gate so normal bull pull-backs are never cut):
-          - catastrophe (28% peak-drawdown floor): ALWAYS armed;
-          - cost-absolute (18% below entry): armed once the early sector-risk
-            layer warns (level >= 1) AND the account is off peak by
-            ``LAYERED_ARM_PORTFOLIO_DRAWDOWN``;
-          - ATR chandelier (held peak - ATR): armed once market risk warns
-            (level >= 1) AND the account is off peak by the same gate;
-          - profit-tier giveback (peak-price giveback): armed only on a
-            confirmed shock (level >= 2) AND off peak by the same gate.
-
-        In a clean bull (level 0, or account at/near its peak) only the
-        catastrophe floor is armed, so a normal 20% leader pull-back is never
-        cut (golden-metric bull-silent). The binding line is whichever armed
-        line is highest (earliest trigger).
+        Near the account high-water mark or at risk level 0, tighter lines
+        remain inactive. These trigger conditions do not guarantee a maximum
+        realized loss: subsequent execution still depends on the native matcher.
         """
         entry = float(pos.entry_price)
         peak_close = max(
@@ -627,7 +614,7 @@ class OverlayEvidenceMixin:
         if entry <= 0:
             return 0.0, "none"
 
-        # 4) Sector catastrophe floor (the original 28% peak-drawdown line).
+        # 4) Sector catastrophe floor (configured held-peak drawdown line).
         #    This is always armed and is the effective protection in a clean bull.
         sector_stop = peak_close * (1.0 - self.catastrophe_stop_pct)
 
@@ -684,11 +671,8 @@ class OverlayEvidenceMixin:
                 max(MIN_LAYERED_STOP_PCT, giveback),
             )
             profit_stop = peak_close * (1.0 - giveback)
-            # Looseness floor: giveback is already clamped below by
-            # MIN_LAYERED_STOP_PCT (L888), so the stop can never sit tighter
-            # than a ~14% pull-back from peak. This keeps a 300%+ winner from
-            # being cut on a shallow pull-back that would harm bull returns
-            # (report P0-1 ablation "若保护线设置过紧损害牛市收益").
+            # The lower giveback bound prevents the profit-tier line from
+            # tightening beyond MIN_LAYERED_STOP_PCT below the held peak.
 
         # Binding line = the highest armed line (earliest trigger).
         candidates = (
@@ -730,15 +714,11 @@ class OverlayEvidenceMixin:
 
     @staticmethod
     def _atr_at(frame: pd.DataFrame, loc: int) -> float:
-        """ATR (Wilder) at ``loc``, reusing the ensemble's unified ``Indicators.atr``.
+        """Return causal Wilder ATR from the shared indicator implementation.
 
-        Report P0-2: the old overlay ATR used a SINGLE fixed previous close
-        (``close.iloc[loc - 1]``) compared against every day's high/low in the
-        window, which distorted the true range. The correct implementation
-        uses each day's OWN previous close (``close.shift(1)``); the core
-        ``Indicators.atr`` already does exactly this, so we reuse it instead of
-        re-implementing a divergent ATR. Only data up to ``loc`` is used (no
-        future leakage).
+        True range uses each day's own previous close. The value at ``loc``
+        depends only on the prefix through that row; missing or invalid input
+        produces an unavailable observation, not a fabricated ATR.
         """
         try:
             atr_series = Indicators.atr(frame, period=20, method="wilder")
@@ -807,7 +787,7 @@ class OverlayEvidenceMixin:
 
         A sub-basket is stressed when its equal-weight 3-day return is at or
         below ``RISK_SUB_FAST_RETURN_SHOCK`` AND the majority of its observed
-        names declined. Report 4.7/4.8: only sub-baskets the user ACTUALLY holds
+        names declined. only sub-baskets the user ACTUALLY holds
         are considered, so (e.g.) an equipment-only stress never trims an
         optical-heavy book. This is additive evidence only — it can raise the
         graded risk level but never adds a new exit switch on its own.

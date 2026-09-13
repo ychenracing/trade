@@ -468,7 +468,7 @@ def _recorded_source_fingerprint(revision: str) -> str:
     return digest.hexdigest()
 
 
-def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
+def test_recorded_958_summary_candidate_and_archived_docs_are_one_contract() -> None:
     summary_path = (
         ROOT / "artifacts/validation/formal_stress_958_acceptance_summary.json"
     )
@@ -635,7 +635,45 @@ def test_recorded_958_summary_candidate_and_docs_are_one_contract() -> None:
     assert candidate.get("rejection_reasons", []) == expected_reasons
     assert summary["rejection_reasons"] == expected_reasons
 
-    expected_result = _expected_result_text(summary)
+    # The retained rejected run is audited against its immutable documentation,
+    # not substituted for the live baseline displayed to users.
+    archived = subprocess.run(
+        ["git", "cat-file", "blob", "e53449792f9d2b18e89197a84208fab5b7958ccb"],
+        cwd=ROOT, check=True, capture_output=True, text=True,
+    ).stdout
+    result_block = _managed_block(
+        archived, CURRENT_RESULT_START, CURRENT_RESULT_END, path=Path("docs/VALIDATION.md"),
+    )
+    assert result_block.strip() == _expected_result_text(summary)
+
+
+def test_current_result_block_matches_native_baseline_and_release_receipt() -> None:
+    from quantfusion.application.c6_contract import canonical_payload_hash
+
+    directory = ROOT / "artifacts/validation"
+    current = stress_artifacts._load_incumbent(directory / "universe_stress.json")
+    assert current is not None
+    receipt = _load_json(directory / "c6_release_receipt.json")
+    assert canonical_payload_hash(current) == receipt["published_payload_sha256"]
+    assert current["source_revision"] == receipt["economic_source_revision"]
+    assert current["acceptance_status"] == receipt["acceptance_status"] == "accepted"
+    assert current["canonical"] is receipt["canonical"] is True
+    results = current["results"]
+    unique_ids = {str(item["scenario_id"]) for item in results}
+    count = current["scenario_count"]
+    assert len(results) == len(unique_ids) == count == receipt["official_scenario_count"] == 958
+    worst = min(float(item["max_drawdown"]) for item in results)
+    expected_result = (
+        f"当前正式基线：完整计划已运行：`{len(results)}/{count}`，"
+        f"唯一 scenario ID：`{len(unique_ids)}`；"
+        f"acceptance 为 `{current['acceptance_status']}`，"
+        f"canonical 为 `{str(current['canonical']).lower()}`。"
+        "接受依据为来源绑定的有限例外，不表示原生硬门全部通过。"
+        f"全场景最差最大回撤为 `{worst:.6%}`；"
+        f"经济源码：`{current['source_revision']}`。"
+        "完整记录与发布回执分别见 `artifacts/validation/universe_stress.json`、"
+        "`artifacts/validation/c6_release_receipt.json`。"
+    )
     for relative in CURRENT_DOCUMENTS:
         text = (ROOT / relative).read_text(encoding="utf-8")
         result_block = _managed_block(

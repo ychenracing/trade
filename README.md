@@ -1,12 +1,14 @@
 # Quant Fusion A股科技趋势决策系统
 
+当前版本：`1.0.0`。源码以 `main` 为唯一维护入口；功能、优势和使用限制见[发布说明](docs/RELEASE.md)。
+
 ## 项目定位与使用边界
 
-Quant Fusion 面向 A 股 AI 硬件、光通信和半导体产业链，提供日线研究、组合回放、收盘后扫描和真实账户人工决策支持。不连接券商、不自动下单、不托管账户，也不保证未来收益。全部 Python 实现位于 `quantfusion/`，工具以 `python -m scripts.<模块名>` 运行。
+Quant Fusion 面向 A 股算力硬件、光通信和半导体产业链，提供日线研究、组合回放、收盘后扫描和真实账户人工决策支持。不连接券商、不自动下单、不托管账户，也不保证未来收益。全部 Python 实现位于 `quantfusion/`，工具以 `python -m scripts.<模块名>` 运行。
 
 信号只使用收盘及以前可见的数据，模拟订单最早在后续可交易日开盘执行。跳空、连续跌停、流动性和人工执行偏差都可能使实际损失超过触发线。模拟持仓不是真实持仓；真实账户快照不注入历史回放。
 
-已有 AB5 正式基线是在明确例外下接受的历史结果：最差回撤 **21.106217%**，随机日期/股票/方向桶 P90 为 **185**，部分股票池的财富保留和相邻扩展明显退化；不是原 18% 等全部标准通过。工程回归、有限例外下的正式接受和历史 rejected 结果不可混用，完整来源集中在[验证结果与证据](docs/VALIDATION.md#formal-stress-evidence)。
+账户风险预算正式基线是在明确例外下接受的历史结果：最差回撤 **21.106217%**，随机日期/股票/方向桶 P90 为 **185**，部分股票池的财富保留和相邻扩展明显退化；不表示 18% 等全部标准通过。工程回归、有限例外下的正式接受和被拒候选结果不可混用，完整来源集中在[验证结果与证据](docs/VALIDATION.md#formal-stress-evidence)。
 
 ## 快速开始
 
@@ -20,9 +22,9 @@ python -m quantfusion.application.daily_scan --help
 
 以下多行命令使用 shell 的反斜杠续行；在不支持该续行形式的终端中合并成一行即可。所有 `YYYY-MM-DD` 都须先替换为已完成收盘、且输入确实覆盖的目标交易日，不要原样执行占位符。
 
-### 冻结历史复现
+### 冻结数据回放
 
-以下是**历史示例**：五股、初始资金 200 万元、2025-04-01 至 2026-07-20、前复权冻结输入和预热指标。使用现行默认配置回放这段历史，不等于复现旧 pre-C6 配置或重新认证 AB5 正式验收。
+以下回放使用固定研究样本：五股、初始资金 200 万元、2025-04-01 至 2026-07-20、前复权冻结输入和预热指标。命令使用当前默认配置；示例窗口不表示当天信号，也不构成新的完整正式验收。
 
 ```bash
 python -m quantfusion.application.backtest_cli \
@@ -34,7 +36,7 @@ python -m quantfusion.application.backtest_cli \
 
 输入由仓库冻结数据与配置提供，先按[数据说明](data/README.md)核对清单和哈希。该入口是 `BacktestEngine` 趋势回测，打印终端报告，并由现有报告保存函数写入 `--save-dir`；它没有 `--regime-data-dir` 参数，不生成当天的账户建议或模拟日扫 `signals` 工件。`--no-plot` 关闭绘图，不关闭回测或结果保存。
 
-旧源码的历史结果必须同时匹配其源码、数据、配置、窗口和场景身份；仅使用同一日期并不能恢复旧结果。不要为追上旧表格改默认参数或覆盖黄金预期。
+比较结果须同时匹配源码、数据、配置、窗口和场景身份；不得为匹配业绩表修改默认参数或覆盖黄金预期。
 
 ### 日常人工决策支持
 
@@ -89,7 +91,7 @@ python -m quantfusion.application.daily_scan \
 | `summary.buys_suppressed` | 结合 `risk_state_identity_mismatch`、`current_route_mismatch`、`warmup_not_ready` 判断本次为什么不允许新增买入。 |
 | `warmup_health.warmup_status` | `NOT_READY` 抑制全部新增买入；`DEGRADED` 本身仅提示，不覆盖其他限制，也不证明数据完全适用。 |
 | `risk_opinion`、`portfolio` | 前者是独立环境意见，后者记录模拟绩效和风险状态；两者都不能单独替代最终信号限制。 |
-| `account_risk_budget` | 必须有实际评估的 AB5 回执，不能只凭启用开关为真判断成功。 |
+| `account_risk_budget` | 必须有实际评估的账户预算回执，不能只凭启用开关为真判断成功。 |
 | `deployment.requested_symbols`、`selected_symbols`、`unavailable_symbols` | 区分请求、入选与数据不可用集合；未入选不是缺失数据的同义词。 |
 | `risk_state_saved`、`latest_success.json` | 前者披露状态保存，后者是模拟结果索引，不是账户建议索引或买入授权。索引中的文件、日期、`run_id` 必须与实际 JSON 对得上。 |
 
@@ -134,9 +136,9 @@ python -m quantfusion.application.daily_scan \
 | 弱市龙头：专用弱市账本 | 建仓成本与持仓价格峰值；22% 灾难止损、5 ATR 初始保护、80 个交易日时间条件和盈利后 3 ATR 吊灯来自 `config/regime.py`、`config/weak.py` 及 `strategy/weak.py`。 | 按真实触发原因退出；恢复受原因对应冷却、探仓与连续确认条件约束，不是统一等十天即可买回。 |
 | 跨市场叠加保护：其拥有执行权的模拟账本 | 独立风险篮证据、单股成本／峰值和账户回撤联合判断；成本、吊灯、分层回吐与灾变保护适用条件不同，见 `config/overlay.py` 与 `risk/overlay/`。 | 风险升级限制加仓／新开仓并产生减仓动作；风险回落、趋势健康和冷却共同决定恢复。专用弱市／现金路径持有执行权时不重复执行风险动作。 |
 | 袖套及合并账户回撤控制：模拟回放 | 周期风险峰值与终身峰值分开；趋势 `PortfolioPolicy`、弱市配置及合并账户按规模／参考篮完整度收紧的政策不同。 | 预警、确认、减仓或终态锁依各自政策；普通再武装与集中账户的较长再武装不是同一计数。路由切换不重置峰值、锁、挂单或冷却。 |
-| AB5 账户风险预算：合并回放、单账户回放、真实账户建议 | 同一账户连续高水位，预算基准为 `0.82 × peak`，另计两日规划压力与退出成本；公式唯一来源为 `risk/account_budget.py`。这不是保证实盘最大亏损 18%。 | 计算允许总敞口、裁剪买入并计划减仓；每次使用当时真实权益重新评价余额，未成交卖出不能增加买入额度，其他风险锁仍有效。真实账户使用可卖数量，回放使用既有成交队列。 |
+| 账户风险预算：合并回放、单账户回放、真实账户建议 | 同一账户连续高水位，预算基准为 `0.82 × peak`，另计两日规划压力与退出成本；公式唯一来源为 `risk/account_budget.py`。这不是保证实盘最大亏损 18%。 | 计算允许总敞口、裁剪买入并计划减仓；每次使用当时真实权益重新评价余额，未成交卖出不能增加买入额度，其他风险锁仍有效。真实账户使用可卖数量，回放使用既有成交队列。 |
 | 真实账户单股建议：真实持仓 | 快照成本、建仓后行情及可证实的持仓峰值；来源为 `application/account_scan.py`。 | 生成 `SELL`、`REDUCE_REVIEW` 等人工建议；峰值证据不足时披露并停用依赖该证据的保护，不伪造袖套或完整历史状态。 |
-| 正式验收指标：固定历史场景，不是交易触发器 | 全场景最大回撤、财富、成交桶、排列和来源检查以适用合同为准；原 18% 目标与 AB5 有限历史例外分别保存。 | 决定证据能否按合同发布，不直接下单；通过例外接受不代表原阈值全满足，也不自动豁免未来候选。 |
+| 正式验收指标：固定历史场景，不是交易触发器 | 全场景最大回撤、财富、成交桶、排列和来源检查以适用合同为准；18% 目标与账户预算有限例外分别保存。 | 决定证据能否按合同发布，不直接下单；通过例外接受不代表原阈值全满足，也不自动豁免未来候选。 |
 
 ATR 是价格波动尺度，不是百分比。所有计划只使用当时已知信息；收盘触发与下一可交易日成交之间存在风险，实际亏损不是触发阈值的绝对上限。
 
@@ -150,7 +152,7 @@ ATR 是价格波动尺度，不是百分比。所有计划只使用当时已知�
 
 底层回放在指数缺失、不可解析或某评价日证据不足时存在现金防御路径；当前日决策拒绝 `unknown` 指数证据。模拟日扫和账户建议入口另行强制校验请求应覆盖的交易日：任一必要指数缺少该交易日记录即失败关闭，旧自然日容忍范围和 `--allow-stale` 均不能绕过该检查；不能把输入失败等同于已经生成有效现金建议。股票缺失处理仍按入口区分，见数据说明。
 
-子行业参数收缩 `subindustry_shrinkage=0.5` 将允许细分的最大单股权重、ATR 倍数和风险预算向粗粒度父画像收缩；入场／出场周期、盈利保护、加仓与路由参数沿层级共享，不因为本次文档说明而改变。
+子行业参数收缩 `subindustry_shrinkage=0.5` 将允许细分的最大单股权重、ATR 倍数和风险预算向粗粒度父画像收缩；入场／出场周期、盈利保护、加仓与路由参数沿层级共享，不按个股单独调参。
 
 ## 风险治理观测层
 
@@ -158,7 +160,7 @@ ATR 是价格波动尺度，不是百分比。所有计划只使用当时已知�
 
 预热统计逐股历史、风险篮实际可观察范围和指数状态；不能把新上市股票与成熟股票视为同等证据。独立意见描述等级、置信度、市场环境、建议敞口与原因，最终仍须看应用层限制与实际信号。共识和覆盖不足是观察证据，不自动等于买入或卖出。
 
-`risk_event_calibration` 的 1/3/5/10/20 日结果与 L1 冻结机会成本是事后分析，不可回填为当时决策输入。随回放输出的字段包括 `warmup_health`、`risk_opinion`、`sleeve_agreement`、`risk_governance_series`、`risk_event_calibration`；历史零漂移对照只能证明其当时覆盖的输入与身份，不代表任何未来修改自动无行为影响。
+`risk_event_calibration` 的 1/3/5/10/20 日结果与 L1 冻结机会成本是事后分析，不可回填为当时决策输入。随回放输出的字段包括 `warmup_health`、`risk_opinion`、`sleeve_agreement`、`risk_governance_series`、`risk_event_calibration`；观测层不直接修改交易账本；其应用层健康门和实际消费路径仍须分别核验。
 
 ## 默认策略参数
 
@@ -166,7 +168,7 @@ ATR 是价格波动尺度，不是百分比。所有计划只使用当时已知�
 
 策略参数：`entry_period`、`exit_period`、`adx_threshold`、`adx_period`、`atr_period`、`rsi_period`、`ma_short`、`ma_long`、`atr_multiplier`、`trail_atr_mult`、`channel_mult`、`channel_lower_mult`、`risk_pct`、`hard_stop`、`strategy_weight`、`max_symbol_weight`、`max_total_weight`、`max_units`、`max_drawdown`、`daily_loss_limit`、`account_risk_budget_enabled`、`sector_guard_enabled`、`sector_guard_min_symbols`、`sector_shock_return`、`sector_shock_breadth`、`sector_shock_ma`、`sector_shock_window`、`sector_shock_confirmations`、`sector_recovery_ma`、`sector_recovery_breadth`、`sector_recovery_confirmations`、`symbol_level_sell_veto`、`momentum_lookback`、`max_positions`、`group_min_slots`、`fusion_single_scale`、`fusion_double_scale`、`fusion_triple_scale`、`profit_lock_activation`、`profit_lock_giveback`、`reversal_break_giveback`、`reversal_exit_period`、`reversal_loss_cut`、`reversal_turtle_enabled`、`reversal_dual_ma_enabled`、`reversal_atr_channel_enabled`、`combined_group_weight_limits`、`liquidate_on_circuit_breaker`、`strict_unmapped`、`commission_rate`、`stamp_duty`、`slippage`、`min_commission`、`max_pending_buy_days`、`pyramid_add_atr`、`pyramid_risk_decay`、`atr_method`、`limit_price_epsilon`、`per_symbol_limit_pct`、`st_symbols`、`risk_free_rate`、`market_regime_enabled`、`regime_ewi_lookback`、`regime_breadth_ma_long`、`regime_adx_trend`、`regime_adx_choppy`、`regime_hurst_window`、`regime_hurst_trend`、`regime_hurst_choppy`、`regime_vol_lookback`、`regime_vol_extreme_pct`、`regime_ewi_slope_trend`、`regime_ewi_slope_choppy`、`regime_score_trend`、`regime_score_choppy`、`regime_choppy_confirmations`、`regime_trend_confirmations`、`regime_recovery_confirmations`、`regime_min_state_hold`、`regime_transition_scale`、`regime_transition_pyramid_scale`、`regime_transition_trim_confirmations`、`regime_trend_to_transition_confirmations`、`regime_choppy_exit_ratio`、`regime_transition_exit_ratio`、`enable_cm_overlay`、`cm_overlay_shock_trim`、`cm_independent_risk_basket`、`cm_trend_health_protection`、`cm_risk_continuous_confirm_days`、`cm_risk_level2_drawdown`、`cm_risk_level3_drawdown`、`cm_risk_severe_direct_return`、`dynamic_sleeve_weights`、`transition_fast_weight`、`transition_base_weight`、`transition_slow_weight`、`choppy_fast_weight`、`choppy_base_weight`、`choppy_slow_weight`、`adaptive_max_positions`、`transition_max_positions`、`choppy_max_positions`、`sticky_candidates`、`adaptive_sticky_candidates`、`sticky_min_score_gap`、`sticky_confirm_days`、`sticky_cycle_days`、`sticky_rotated_cooldown_days`、`concentrated_account_rearm_days`、`incomplete_reference_max_total_weight`、`established_expansion_min_score`、`subindustry_shrinkage`。
 
-`account_risk_budget_enabled=True` 为当前默认；实际预算以回执为准，历史对照显式关闭时必须保留自己的证据身份。`strict_unmapped=True` 拒绝未映射标的。周期和确认数通常以交易观测或计数为单位，ATR 倍数是无量纲倍数，收益／回撤／权重为比例，金额按资金口径、数量按股；每一项仍须核对其校验与消费路径，不把名称带 `days` 的所有字段都推定为自然日。
+`account_risk_budget_enabled=True` 为当前默认；实际预算以回执为准，研究对照显式关闭时必须保留独立证据身份。`strict_unmapped=True` 拒绝未映射标的。周期和确认数通常以交易观测或计数为单位，ATR 倍数是无量纲倍数，收益／回撤／权重为比例，金额按资金口径、数量按股；每一项仍须核对其校验与消费路径，不把名称带 `days` 的所有字段都推定为自然日。
 
 研究代码通过现有引擎的 `cfg` 和合法的 `per_symbol_config` 覆盖；逐股允许字段以 `PER_SYMBOL_OVERRIDE_KEYS` 为准，未知字段拒绝。普通日扫没有一个任意注入全套策略 JSON 的参数，也不能把这些 Python 配置键直接当成 CLI 选项。日扫路径与起点来自 `config/daily.py`，公开 CLI 覆盖范围以 `--help` 和解析器为准。
 
@@ -199,7 +201,7 @@ python -m quantfusion.application.stress --source-revision <verified-40-char-SHA
   --diagnostic-output artifacts/diagnostics/add-one-05-688072.json
 ```
 
-完整正式计划、初始基线／晋级门、历史失败和有限例外的数值与来源只在验证说明及原始证据中维护。诊断写入独立 checkpoint 和显式 diagnostic 输出，不得搬入 canonical 路径冒充正式接受。仅在适用合同要求时运行未筛选的正式矩阵，不能把旧恢复合同当作重启旧任务的授权。
+完整正式计划、初始基线／晋级门和有限例外的数值与来源只在验证说明及原始证据中维护。诊断写入独立 checkpoint 和显式 diagnostic 输出，不得搬入 canonical 路径冒充正式接受。仅在适用合同要求时运行未筛选的正式矩阵，不能把证据文件当作新的执行授权。
 
 ## 仓库结构与文档职责
 
@@ -210,10 +212,10 @@ python -m quantfusion.application.stress --source-revision <verified-40-char-SHA
 | `tests/unit/`、`contract/`、`integration/`、`regression/` | 分别覆盖单元、契约、集成和经济回归；具体文件见架构与验证入口。 |
 | `data/market/`、`data/regime/` | 只读冻结输入，不是日常更新目录。 |
 | `tests/fixtures/`、`artifacts/validation/` | 黄金预期与已审查证据；保留来源，不因文档整理而重新封存。 |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | 模块、状态、因果及发布边界，不重复历史成绩表。 |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | 模块、状态、因果及发布边界，不重复回归成绩表。 |
 | [VALIDATION.md](docs/VALIDATION.md) | 证据分类、适用范围、完整结果及来源索引，不代替实时 PR/checks。 |
 | [data/README.md](data/README.md) | 文件格式、单位、冻结完整性与运行数据准备。 |
-| [AGENTS.md](AGENTS.md)、[项目 brief](.github/CHATGPT_PROJECT_BRIEF.md) | 工程流程与恢复导航；动态状态在匹配 PR 正文。 |
+| [AGENTS.md](AGENTS.md)、[项目 brief](.github/PROJECT_BRIEF.md) | 工程流程与恢复导航；动态状态在匹配 PR 正文。 |
 
 运行输出、缓存、优化结果和压力检查点不是正式证据的同义词。`daily_signals/`、`data_cache/`、`optimizer_output/` 等默认生成物不提交；真实账户文件也不入库。已审查工件的发布走既有校验与来源绑定，不能靠手工复制到 `artifacts/validation/` 获得接受身份。
 
@@ -237,7 +239,7 @@ python -m quantfusion.application.stress --source-revision <verified-40-char-SHA
 
 ## 缺点和已知限制
 
-科技历史样本有幸存者偏差与事后关注偏差，前复权数据可能重述，日线模型无法证明盘中成交路径。AB5 历史接受包含明确的回撤、成交桶及财富保护例外；默认预算在历史弱市对照中有机会成本，不能宣称全部窗口收益改善。日常指数使用独立运行目录，冻结输入受写保护；当前日决策拒绝 `unknown` 证据，入口另行强制校验交易日覆盖。日历范围有限，覆盖合格也不能替代预热、账户估值、风险状态及实际可执行性判断。
+科技历史样本有幸存者偏差与事后关注偏差，前复权数据可能重述，日线模型无法证明盘中成交路径。正式基线接受包含明确的回撤、成交桶及财富保护例外；默认预算在弱市研究对照中有机会成本，不能宣称全部窗口收益改善。日常指数使用独立运行目录，冻结输入受写保护；当前日决策拒绝 `unknown` 证据，入口另行强制校验交易日覆盖。日历范围有限，覆盖合格也不能替代预热、账户估值、风险状态及实际可执行性判断。
 
 ## 适用行情
 
@@ -253,7 +255,7 @@ python -m quantfusion.application.stress --source-revision <verified-40-char-SHA
 
 ## 还能继续提升的方向
 
-优先解决已证实影响日常安全使用的独立实现缺口，并用受影响范围的测试验证；后续策略研究需同时评价收益、回撤、稳定性、换手与成本，不围绕一个历史失败反复调参。本页不授权额外策略、配置、报告或 CI 改造。
+优先解决已证实影响日常安全使用的独立实现缺口，并用受影响范围的测试验证；后续策略研究需同时评价收益、回撤、稳定性、换手与成本，不围绕一个历史失败反复调参。策略与验收调整须明确其范围、比较条件和风险。
 
 ## 开发验证
 

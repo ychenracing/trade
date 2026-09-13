@@ -1,4 +1,4 @@
-"""Validate that the fixed regime basket still represents the AI sector.
+"""Validate that the fixed regime basket still represents the technology sector.
 
 Checks:
 1. Basket internal correlation (should be > 0.3 for coherent sector)

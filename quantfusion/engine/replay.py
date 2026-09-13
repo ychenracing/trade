@@ -660,8 +660,7 @@ class RegimeAdaptiveBacktestEngine:
         """Make a point-in-time route decision from data through ``as_of``.
 
         This is the CURRENT-day route used by
-        ``quantfusion.application.daily_scan`` and the account engine (report
-        3.3/3.4 "历史和账户使用同一状态机"). It is driven
+        ``quantfusion.application.daily_scan`` and the account engine ("历史和账户使用同一状态机"). It is driven
         by the same low-frequency daily state machine as the audited
         ``route_sequence``, so the label the user sees each day matches the
         route that drives the decision. It fails closed to CASH on stale or
@@ -974,9 +973,9 @@ class RegimeAdaptiveBacktestEngine:
         result["requested_symbols"] = sorted(symbols_dict)
         result["selected_symbols"] = list(executed_symbols)
         result["unavailable_symbols"] = list(unavailable_symbols)
-        # Report 3.3/3.4: emit the auditable daily route sequence so the
+        # emit the auditable daily route sequence so the
         # daily replay, the current-day account route and the report all
-        # share the same state machine (P0-4 "历史和账户使用同一状态机").
+        # share the same state machine ("历史和账户使用同一状态机").
         try:
             route_seq = simulate_route_sequence(
                 evidence_dir, start_date=start_date, end_date=end_date

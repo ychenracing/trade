@@ -307,7 +307,7 @@ SYMBOL_GROUPS: Mapping[str, str] = MappingProxyType({
 })
 
 SYMBOL_PROFILES: Mapping[str, str] = MappingProxyType({
-    # Report 4.6: fine-grained AI sub-industry profiles. Each mapped symbol
+    # Fine-grained technology sub-industry profiles. Each mapped symbol
     # resolves to its sub-industry profile so volatility / trend-persistence
     # parameters match the actual business (optical module vs component,
     # memory interface, chip design, equipment, test & measurement,
@@ -373,18 +373,11 @@ def config_for_symbol(
 ) -> dict[str, Any]:
     """Resolve the built-in parameter profile for a symbol.
 
-    Report 4.6: fine-grained AI sub-industry profiles are resolved first so
-    an optical-module, memory-interface, equipment, test & measurement,
-    material, foundry, or packaging name gets its own trend parameters.
-    Unmapped/non-AI names fall back to the coarse overseas/domestic set and
-    finally to the default or semiconductor config.
-
-    Report P1-2: a fine sub-industry profile is returned through
-    hierarchical shrinkage toward its coarse parent (``shrinkage`` in [0, 1],
-    default ``DEFAULT_SUBINDUSTRY_SHRINKAGE``) so a thin sub-industry sample
-    does not over-fit a single stock or a single bull run. Coarse profiles
-    (semiconductor / overseas / domestic group / overseas optical) are the
-    sample-validated global reference and are returned unchanged.
+    Mapped symbols use their fine-grained industry profile. Unmapped symbols
+    use the semiconductor or default configuration selected by classification.
+    Fine-grained overrides are shrunk toward their declared parent for the
+    permitted risk and sizing parameters. This limits parameter separation;
+    it does not establish out-of-sample profitability or eliminate overfitting.
     """
     profile = SYMBOL_PROFILES.get(code)
     if profile is None:
@@ -393,8 +386,8 @@ def config_for_symbol(
             if classify_symbol(code, name=name) == "semiconductor"
             else default_engine_config()
         )
-    # Fine-grained sub-industry profile (report 4.6): apply hierarchical
-    # shrinkage toward its coarse parent (report P1-2).
+    # Fine-grained sub-industry profile: apply hierarchical
+    # shrinkage toward its coarse parent.
     sub_cfg = _PROFILE_FACTORIES[profile]()
     parent_cfg = _PROFILE_PARENTS[profile]()
     factor = DEFAULT_SUBINDUSTRY_SHRINKAGE if shrinkage is None else shrinkage
@@ -435,10 +428,10 @@ _PROFILE_FACTORIES: dict[str, Callable[[], dict[str, Any]]] = {
 def _shrink_subindustry(
     sub_cfg: dict[str, Any], parent_cfg: dict[str, Any], shrinkage: float
 ) -> dict[str, Any]:
-    """Pull fine sub-industry overrides toward the coarse parent (P1-2).
+    """Pull fine sub-industry overrides toward the coarse parent.
 
     Applies ``effective = parent + shrinkage * (sub - parent)`` to the
-    report's allowable parameters only. ``shrinkage`` in [0, 1]: 0.0
+    SHRINKABLE_PARAMS allowlist only. ``shrinkage`` in [0, 1]: 0.0
     converges fully to the coarse parent, 1.0 keeps the fine override.
     Non-shrinkable keys are copied verbatim so the validated trend
     structure (entry/exit, profit protection, pyramid, regime) is shared.

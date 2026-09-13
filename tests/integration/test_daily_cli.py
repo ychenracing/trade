@@ -48,7 +48,7 @@ class CLIArgumentTests(unittest.TestCase):
     def test_scan_title_matches_current_universe(self) -> None:
         self.assertEqual(
             dss._scan_title(),
-            f"AI 板块 {len(dss.SYMBOLS)} 标的每日信号扫描",
+            f"科技板块 {len(dss.SYMBOLS)} 标的每日信号扫描",
         )
 
     def test_no_duplicate_codes(self) -> None:

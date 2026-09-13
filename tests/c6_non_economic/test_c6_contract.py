@@ -172,8 +172,13 @@ def test_frozen_preregistration_version_matches_authority_branch() -> None:
         assert recovery["old_P"] == "d3181f504de319daa9efa366e1f1faf727eab011"
         assert recovery["economic_hypotheses_changed"] is False
         assert recovery["governing_contract_path"] == "docs/C6_RECOVERY_CONTRACT.md"
-        contract = REPOSITORY / recovery["governing_contract_path"]
-        assert hashlib.sha256(contract.read_bytes()).hexdigest() == (
+        # The governing document is archived, not reissued as a current manual.
+        # Its immutable blob must still match the original frozen full-byte hash.
+        contract = subprocess.run(
+            ["git", "cat-file", "blob", "634571eb1e944f17bc05d75267c718de7597ac31"],
+            cwd=REPOSITORY, check=True, capture_output=True,
+        ).stdout
+        assert hashlib.sha256(contract).hexdigest() == (
             recovery["governing_contract_sha256"]
         )
     assert len(preregistration["run_templates"]["binding_specs"]) == 7

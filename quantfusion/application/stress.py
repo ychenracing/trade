@@ -631,7 +631,7 @@ def main() -> int:
     gates = stress_metrics._absolute_hard_gates(results)
     retained_gates = stress_metrics._retained_robustness_hard_gates(results)
     robustness = stress_metrics._robustness_diagnostics(results)
-    # 2026-08-16 报告 P0-4: 在覆盖正式工件之前加载既有基线，评估强制晋级门。
+    # 在覆盖正式工件之前加载既有基线，评估强制晋级门。
     incumbent_path = stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json"
     incumbent = stress_artifacts._load_incumbent(incumbent_path)
     initial_baseline_reference = (

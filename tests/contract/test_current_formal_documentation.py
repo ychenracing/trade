@@ -1,9 +1,10 @@
-# Current plan and explicitly historical baseline documentation contracts.
+# Current product documentation and immutable research-source contracts.
 
 from __future__ import annotations
 
 import json
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,14 @@ UNIVERSES = (
     ("13_symbols", "13"),
     ("17_symbols", "17"),
 )
+
+
+def _retained_validation() -> str:
+    """Read the original documentation object without republishing its ledger."""
+    return subprocess.run(
+        ["git", "cat-file", "blob", "e53449792f9d2b18e89197a84208fab5b7958ccb"],
+        cwd=ROOT, check=True, capture_output=True, text=True,
+    ).stdout
 
 
 def _warm_result(name: str) -> dict[str, object]:
@@ -87,17 +96,35 @@ def test_malformed_parameter_lists_are_rejected(text: str) -> None:
         _declared_parameter_names(text, "默认策略参数", "策略参数")
 
 
-def test_current_baseline_tables_match_the_frozen_artifact() -> None:
+def test_retained_research_tables_match_the_frozen_artifact() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     validation = (ROOT / "docs/VALIDATION.md").read_text(encoding="utf-8")
     assert "[验证结果与证据](docs/VALIDATION.md#formal-stress-evidence)" in readme
     assert validation.count('<a id="formal-stress-evidence"></a>') == 1
-    assert "## 历史 pre-C6 生产趋势基线" in validation
+    archived = _retained_validation()
+    assert "## 历史 pre-C6 生产趋势基线" in archived
     for name, label in UNIVERSES:
         item = _warm_result(name)
         row = (
             f"| {label} | {float(item['total_return']):.4%} | "
             f"{float(item['max_drawdown']):.4%} | "
+            f"{int(item['total_trades'])} | "
+            f"{int(item['date_symbol_side_count'])} |"
+        )
+        assert row in archived
+
+
+def test_current_baseline_tables_match_the_frozen_golden() -> None:
+    validation = (ROOT / "docs/VALIDATION.md").read_text(encoding="utf-8")
+    golden = json.loads((ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text())
+    assert "## 当前默认配置回归" in validation
+    assert "tests/fixtures/backtest_golden_metrics.json" in validation
+    assert "account_risk_budget_enabled=True" in validation
+    for _, label in UNIVERSES:
+        item = golden[label]
+        row = (
+            f"| {label} | {float(item['total_return']):.6%} | "
+            f"{float(item['max_drawdown']):.6%} | "
             f"{int(item['total_trades'])} | "
             f"{int(item['date_symbol_side_count'])} |"
         )
@@ -119,7 +146,8 @@ def test_current_plan_wording_is_not_mixed_with_historical_983_evidence() -> Non
     assert "983 场景计划能够进入正式发布校验" not in validation
     assert "add-one-05-688072" in readme
     assert "当前 17 只交易股票" in data_readme
-    assert "历史 22 股完整 983 场景" in validation
+    assert "历史 22 股完整 983 场景" in _retained_validation()
+    assert "历史 22 股完整 983 场景" not in validation
 
 
 def test_final_result_block_replaces_pending_text_after_publication() -> None:

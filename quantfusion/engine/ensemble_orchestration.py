@@ -120,7 +120,7 @@ class EnsembleOrchestrationMixin:
         )
 
     def _load_overlay_risk_frames(self, request: _RunRequest) -> dict[str, pd.DataFrame]:
-        """Load a point-in-time AI risk basket independently of the trade pool."""
+        """Load a point-in-time technology risk basket independently of the trade pool."""
         if (
             not bool(self.cfg.get("cm_independent_risk_basket", True))
             or not request.data_dir
@@ -244,12 +244,8 @@ class EnsembleOrchestrationMixin:
                 }
             )
         cm_overlay_peak = 0.0
-        # ── 风险治理观测层（2026-08-16 报告 P0-1/P0-2/P0-3/P1-1/P1-2）───
-        # 纯观测与输出：warmup 健康契约、逐日袖套共识、风险篮覆盖置信度、
-        # 独立风险意见与事后风险事件校准。只读取、不修改、不参与任何交易
-        # 决策状态，因此对既有回测路径是零行为漂移的（golden 指标不变）。
-        # 注：本段 P0/P1 编号指 2026-08-16 报告，与旧注释中 2026-08-07
-        # 报告的编号体系（如 P0-4 灾变冷却、P1-2 子行业收缩）不同。
+        # 风险治理只读取回放状态，输出预热、共识、覆盖、意见和事后校准。
+        # 此处不改写交易状态；日扫应用另行消费预热健康门以限制新增买入。
         import quantfusion.risk.governance as rg
         from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
 
@@ -268,8 +264,8 @@ class EnsembleOrchestrationMixin:
             if diagnostic is not None:
                 pending_path.append({"date": date.strftime("%Y-%m-%d"),
                                      "pending": [[dict(vars(signal)) for signal, _ in state.pending] for state in states]})
-            # P0-4: pass the overlay so it can hard-block re-entry buys
-            # for any symbol still in catastrophe cooldown (report P0-4).
+            # Pass the overlay so it can hard-block re-entry buys
+            # for any symbol still in catastrophe cooldown.
             self._execute_ensemble_open(states, date, idx, cm_overlay)
             for state in states:
                 state.pending = state.sleeve._evaluate_trading_day(
@@ -520,9 +516,9 @@ class EnsembleOrchestrationMixin:
                 "c6_s_evidence": getattr(cm_overlay, "c6_s_evidence", None) if cm_overlay is not None else None,
             }
         )
-        # ── 风险治理输出（2026-08-16 报告 P0-1/P0-2/P0-3/P1-1/P1-2）──────
-        # 全部为附加字段：不进入任何决策路径，仅随结果自动输出，供生产
-        # 契约（warmup 分级）、独立风险意见消费方与事后校准使用。
+        # ── 风险治理输出──────
+        # 此处只附加观测结果，不修改本次回放的交易状态。
+        # 日扫应用另行消费 warmup 健康门；独立风险意见与事后校准不直接生成订单。
         combined["warmup_health"] = warmup_health.as_dict()
         combined["risk_opinion"] = (
             last_opinion.as_dict() if last_opinion is not None else None

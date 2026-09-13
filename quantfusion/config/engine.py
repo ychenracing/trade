@@ -176,7 +176,7 @@ def default_engine_config() -> dict[str, Any]:
         "adaptive_max_positions": True,
         "transition_max_positions": 4,
         "choppy_max_positions": 3,
-        # Report P1-3: sticky candidates for large pools. Default ON: a
+        # Sticky candidates for large pools. Default ON: a
         # held symbol is retained until it stops qualifying, and a new name
         # only replaces one when it clearly beats the weakest held symbol,
         # reducing daily-rank churn (fee/slippage + selling winners). Set to
@@ -195,13 +195,13 @@ def default_engine_config() -> dict[str, Any]:
         # signal can react to an overnight gap.
         "incomplete_reference_max_total_weight": 0.85,
         "established_expansion_min_score": 0.80,
-        # Report P1-2: hierarchical sub-industry parameter shrinkage. Default
+        # Hierarchical sub-industry parameter shrinkage. Default
         # ON: each fine sub-industry profile (optical module, chip design,
         # equipment, test, material, packaging, ...) is pulled part-way back
-        # toward its coarse parent for the report's "allowable" parameters
-        # (max single-symbol weight, ATR multiple, risk budget), so a thin
-        # sub-industry sample cannot over-fit a single stock or a single bull
-        # run. 0.0 converges fully to the coarse parent, 1.0 keeps the fine
+        # toward its coarse parent for the permitted parameters
+        # (max single-symbol weight, ATR multiple, risk budget). This reduces
+        # parameter separation for thin samples; it does not eliminate
+        # overfitting. 0.0 converges fully to the coarse parent, 1.0 keeps the fine
         # override unchanged. Default 0.5. Entry/exit periods, profit
         # protection, pyramid add-on and regime parameters are shared through
         # the hierarchy and are never shrunk.
@@ -378,7 +378,7 @@ def _validate_numeric_config(out: dict) -> None:
         min_value=-0.99,
         max_value=1.0,
     )
-    # Report P1-2: sub-industry shrinkage factor must stay in [0, 1].
+    # Sub-industry shrinkage factor must stay in [0, 1].
     out["subindustry_shrinkage"] = _require_finite(
         "subindustry_shrinkage",
         out.get("subindustry_shrinkage", 0.5),

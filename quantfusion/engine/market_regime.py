@@ -470,12 +470,9 @@ class MarketRegimeMixin:
         reduction is queued via ``_generate_regime_reduction_signals`` to
         actively cut exposure — not merely block new entries.
 
-        The volatility fast-path was removed: in AI super-cycle markets,
-        ``vol_percentile`` frequently hits 1.0 during V-shaped corrections
-        (every new high sets the rank to 1.0), which blocked entries even in
-        TREND state and reduced returns by ~20%.  The state machine's
-        multi-day confirmation mechanism is sufficient to detect sustained
-        choppy markets without blocking trend entries on temporary vol spikes.
+        Entry permission follows the confirmed state, rather than using an
+        isolated volatility-percentile spike as a second veto. Transition
+        scaling and state confirmation remain separate controls.
         """
         regime_enabled = bool(self.cfg.get("market_regime_enabled", True))
 

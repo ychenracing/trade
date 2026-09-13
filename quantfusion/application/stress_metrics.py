@@ -238,7 +238,7 @@ def _transition_reference_by_id(
 def _initial_baseline_gates(
     results: list[dict[str, Any]], reference: dict[str, Any] | None
 ) -> dict[str, Any]:
-    """Protect retained economics while establishing contract v2 once."""
+    """Protect retained economics when establishing the current contract."""
     if reference is None:
         return {
             "status": "no_transition_reference",
@@ -306,12 +306,9 @@ def _initial_baseline_gates(
     }
 
 
-# ── 2026-08-16 报告 P0-4: promotion gates vs the incumbent formal stress artifact ──
-# 任何 cross-market / risk 改动晋级前，除绝对硬门外，还必须相对既有正式
-# universe stress 基线满足以下"不大幅恶化"契约（2026-08-16 报告 P0-4 建议门槛
-# 方向：固定牛市财富 ≥99%、random DD P90 不恶化、worst DD 不显著恶化、false
-# risk action 数不增加、date/symbol/side 桶不明显增加）。注意：此处 P0-4 指
-# 2026-08-16 报告，与 2026-08-07 旧报告中的 P0-4（灾变冷却阻断再入场）不同。
+# 相对晋级门与绝对硬门独立：候选还须相对可比正式基线满足财富、
+# 回撤分位、最差结果、成交桶、风险动作和排列约束。下列容忍值属于
+# 既有验收合同，不是日常交易触发线，也不能用诊断子集代替完整验收。
 PROMOTION_PREFIX_WEALTH_RATIO = 0.99
 PROMOTION_DD_P90_TOLERANCE = 0.005
 PROMOTION_DD_P95_TOLERANCE = 0.005

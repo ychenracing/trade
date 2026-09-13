@@ -18,7 +18,7 @@ class IndexTrend:
 
 
 class RegimeRoute(Enum):
-    """Daily dynamic outer route (report 3.3).
+    """Daily dynamic outer route.
 
     The route is a state machine that persists across trading days and only
     switches on confirmed, causally-available evidence so a clean bull stays in

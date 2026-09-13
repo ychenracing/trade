@@ -72,11 +72,11 @@ _validate_risk_state = validate_risk_state
 
 
 def _scan_title() -> str:
-    return f"AI 板块 {len(SYMBOLS)} 标的每日信号扫描"
+    return f"科技板块 {len(SYMBOLS)} 标的每日信号扫描"
 
 
 def _run_main() -> int:
-    parser = argparse.ArgumentParser(description="Daily AI-sector signal scan")
+    parser = argparse.ArgumentParser(description="Daily technology-sector signal scan")
     parser.add_argument(
         "--end-date",
         default="",

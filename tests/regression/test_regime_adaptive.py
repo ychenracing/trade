@@ -214,7 +214,7 @@ class AdaptiveEngineTests(unittest.TestCase):
 
 
 class DynamicRouteStateMachineTests(unittest.TestCase):
-    """Report 3.3/3.4: the daily route state machine is low-frequency,
+    """The daily route state machine is low-frequency,
     causally consistent, and shared by the current-day decision and the
     audited ``route_sequence``."""
 
