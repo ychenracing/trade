@@ -7,9 +7,13 @@ import time
 from pathlib import Path
 from typing import ClassVar
 
+import numpy as np
 import pandas as pd
 
-from quantfusion.data.contracts import OPTIONAL_COLUMNS, REQUIRED_OHLC_COLUMNS
+from quantfusion.data.contracts import (
+    OPTIONAL_COLUMNS, REQUIRED_OHLC_COLUMNS, _atomic_csv, _atomic_json,
+    is_frozen_data_directory,
+)
 from quantfusion.domain.rules import A_SHARE_LOT_SIZE, SYMBOL_RE, parse_dates
 
 try:
@@ -102,25 +106,22 @@ class DataFetcher:
         except (OSError, json.JSONDecodeError):
             return False
         return (
-            payload.get("schema_version") == DataFetcher._CACHE_SCHEMA_VERSION
+            isinstance(payload, dict)
+            and type(payload.get("schema_version")) is int
+            and payload.get("schema_version") == DataFetcher._CACHE_SCHEMA_VERSION
             and payload.get("volume_unit") == "shares"
         )
 
     @staticmethod
-    def _write_cache_contract(cache_path: Path) -> None:
-        """Persist the unit contract next to an atomically replaceable cache."""
-        meta_path = DataFetcher._cache_contract_path(cache_path)
-        meta_path.write_text(
-            json.dumps(
-                {
-                    "schema_version": DataFetcher._CACHE_SCHEMA_VERSION,
-                    "volume_unit": "shares",
-                },
-                sort_keys=True,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+    def _write_cache_contract(cache_path: Path, *, query_start: str | None = None) -> None:
+        """Persist units and the queried history boundary without partial writes."""
+        payload: dict[str, int | str] = {
+            "schema_version": DataFetcher._CACHE_SCHEMA_VERSION,
+            "volume_unit": "shares",
+        }
+        if query_start is not None:
+            payload["query_start"] = query_start
+        _atomic_json(payload, DataFetcher._cache_contract_path(cache_path))
 
     @staticmethod
     def _exchange_symbol(symbol: str) -> str:
@@ -271,13 +272,28 @@ class DataFetcher:
             print(msg, file=sys.stderr, flush=True)
 
         cache_path = Path(cache_dir).expanduser() / f"{symbol}.csv"
+        if is_frozen_data_directory(cache_path.parent):
+            raise ValueError("Cannot use frozen evidence as a writable cache; use data_dir")
         start_ts = pd.Timestamp(start_date)
         end_ts = pd.Timestamp(end_date)
         if cache_path.is_file() and DataFetcher._cache_has_share_volume_contract(cache_path):
             cached = DataFetcher._normalize_columns(pd.read_csv(cache_path))
             last_cached = cached.index[-1]
+            metadata = json.loads(DataFetcher._cache_contract_path(cache_path).read_text(encoding="utf-8"))
+            query_start = metadata.get("query_start", cached.index[0].strftime("%Y-%m-%d"))
+            covered_start = pd.Timestamp(query_start)
+            if covered_start is pd.NaT:
+                raise ValueError("Invalid cache query_start")
+            if start_ts < covered_start:
+                # Re-query one consistent adjusted history instead of joining
+                # an old short cache to a differently adjusted earlier prefix.
+                full_end = max(end_ts, last_cached).strftime("%Y-%m-%d")
+                combined = DataFetcher.fetch_stock_data(symbol, start_date, full_end)
+                _atomic_csv(combined.reset_index(), cache_path)
+                DataFetcher._write_cache_contract(cache_path, query_start=start_date)
+                return combined[(combined.index >= start_ts) & (combined.index <= end_ts)].copy()
             fetch_start = (last_cached + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-            if fetch_start > end_date:
+            if fetch_start > end_date or pd.bdate_range(fetch_start, end_date).empty:
                 _log(
                     f"  [Cache] {symbol}: cache up to date "
                     f"({last_cached.strftime('%Y-%m-%d')}), no fetch needed"
@@ -306,8 +322,8 @@ class DataFetcher:
                     combined.attrs["_cache_last_date"] = str(last_cached.date())
                 else:
                     combined.attrs["_stale"] = False
-            combined.to_csv(cache_path)
-            DataFetcher._write_cache_contract(cache_path)
+            _atomic_csv(combined.reset_index(), cache_path)
+            DataFetcher._write_cache_contract(cache_path, query_start=query_start)
             return combined[(combined.index >= start_ts) & (combined.index <= end_ts)].copy()
         if cache_path.is_file():
             _log(
@@ -318,8 +334,8 @@ class DataFetcher:
         _log(f"  [Cache] {symbol}: no cache file, full fetch {start_date} ~ {end_date}")
         df = DataFetcher.fetch_stock_data(symbol, start_date, end_date)
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(cache_path)
-        DataFetcher._write_cache_contract(cache_path)
+        _atomic_csv(df.reset_index(), cache_path)
+        DataFetcher._write_cache_contract(cache_path, query_start=start_date)
         return df
 
     @staticmethod
@@ -396,10 +412,14 @@ class DataFetcher:
             raise ValueError(
                 f"Market data contains an unparseable price; sample:\n{bad}"
             )
+        if not np.isfinite(out[required].to_numpy(dtype=float)).all():
+            raise ValueError("Market data prices must be finite")
         if (out[required] <= 0).any().any():
             raise ValueError("Market data contains a non-positive price")
         if out["volume"].isna().any():
             out["volume"] = out["volume"].fillna(0.0)
+        if not np.isfinite(out["volume"].to_numpy(dtype=float)).all():
+            raise ValueError("Market data volume must be finite")
         if (out["volume"] < 0).any():
             raise ValueError("Market data contains negative volume")
         if (out["high"] < out[["open", "close"]].max(axis=1)).any():
