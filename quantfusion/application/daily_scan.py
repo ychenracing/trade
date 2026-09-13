@@ -588,6 +588,7 @@ def _run_main() -> int:
         elif "风险状态不匹配" in row["signal"]:
             # Pure buy suppressed — count as wait
             suppressed_buy_count += 1
+            wait_count += 1
         elif "买入" in row["signal"]:
             buy_count += 1
         elif "卖出" in row["signal"]:
@@ -726,7 +727,7 @@ def _run_main() -> int:
                     pass
         except (OSError, ValueError):
             pass
-        print(f"  ✗ 信号文件序列化失败: {exc}")
+        print(f"  ✗ 信号文件序列化失败 (嵌套非有限值): {exc}")
         print(f"  ✗ 错误信号文件已保存: {error_file}")
         print("  风险状态未保存 — 上次成功的信号文件未被覆盖。")
         return 1
@@ -786,7 +787,7 @@ def _run_main() -> int:
 
     # ── Update artifact with actual risk_state_saved status ─────────
     # Best-effort re-write of the artifact with the final
-    # ``risk_state_saved`` status. This re-serialization is guaranteed not
+    # risk_state_saved status. This re-serialization is guaranteed not
     # to fail because we only changed a bool and optionally added a
     # string error message — no new NaN sources.
     if risk_state_saved or risk_state_save_error:
