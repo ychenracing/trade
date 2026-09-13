@@ -146,7 +146,7 @@ class CatastropheStopTests(unittest.TestCase):
         self.assertEqual(snapshot["outer_route"], "weak")
 
     def test_fail_closed_when_material_unmapped_holdings(self) -> None:
-        """报告 P1-5：持仓含大量未映射子行业标的时，集中度风控失败关闭。"""
+        """持仓含大量未映射子行业标的时，集中度风控失败关闭。"""
         # 300308 与 300502 同属 optical 簇；999999 未映射到任何子行业。
         frame1 = _frame(100.0)
         frame2 = _frame(50.0)
@@ -178,7 +178,7 @@ class CatastropheStopTests(unittest.TestCase):
         )
 
     def test_ignores_negligible_unmapped_tail(self) -> None:
-        """报告 P1-5：未映射持仓占比很小（< 5%）时仍正常裁剪集中簇。"""
+        """未映射持仓占比很小（< 5%）时仍正常裁剪集中簇。"""
         frame1 = _frame(100.0)
         frame2 = _frame(50.0)
         frame3 = _frame(80.0)
@@ -313,7 +313,7 @@ def _volatile_frame(closes: list[float]) -> pd.DataFrame:
 
 
 class CooldownBlocksBuysTests(unittest.TestCase):
-    """报告 P0-4：灾变冷却必须阻断所有买入路径，而非仅抑制重复退出。"""
+    """灾变冷却必须阻断所有买入路径，而非仅抑制重复退出。"""
 
     def _make_state(self, symbol: str, direction: str, shares: int = 100) -> _State:
         frame = _frame(70.0)
@@ -364,7 +364,7 @@ class _Signal:
 
 
 class LayeredStopIndependentTriggerTests(unittest.TestCase):
-    """报告 P0-1：分层止损各保护线独立触发，不再被 28% 峰值回撤统一门槛抵消。"""
+    """分层止损各保护线独立触发，不再被 28% 峰值回撤统一门槛抵消。"""
 
     def _run(
         self, pos_peak: float, pos_entry: float, price: float, risk_level: int,
@@ -425,7 +425,7 @@ class LayeredStopIndependentTriggerTests(unittest.TestCase):
 
 
 class AtrReuseTests(unittest.TestCase):
-    """报告 P0-2：叠加层 ATR 复用统一 Indicators.atr（逐日前收盘价），与手工一致。"""
+    """叠加层 ATR 复用统一 Indicators.atr（逐日前收盘价），与手工一致。"""
 
     def test_atr_matches_manual_wilder_shift(self) -> None:
         """``_atr_at`` 与统一 ``Indicators.atr``（逐日前收盘价）样本一致。"""
@@ -538,7 +538,7 @@ class IndependentRiskBasketTests(unittest.TestCase):
 
 
 class _RiskSignal:
-    """Overlay-style sell signal (strategy is None) for P1-1 consolidation tests."""
+    """Overlay-style sell signal (strategy is None) for same-day consolidation tests."""
 
     def __init__(self, symbol: str, strategy_name: str, direction: str,
                  target_shares: int, reason: str) -> None:
@@ -550,7 +550,7 @@ class _RiskSignal:
 
 
 class UnifiedRiskPriorityTests(unittest.TestCase):
-    """报告 P1-1：多个风险机制同一天对同一标的下单时，只保留最高优先级动作。"""
+    """多个风险机制同一天对同一标的下单时，只保留最高优先级动作。"""
 
     def _state(self, sells: list) -> _State:
         state = _State(_Sleeve({}), {})

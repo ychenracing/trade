@@ -98,7 +98,7 @@ def simulate_route_sequence(
         any_trending = any(trending_flags)
 
         hold_days += 1
-        # Explicit state-transition table (report P0-3). The direction of every
+        # Explicit state-transition table. The direction of every
         # transition is now correct: a TRANSITION_TO_WEAK confirms WEAK only on
         # SUSTAINED weakness (`not any_trending`), never on trend repair; CASH
         # recovers to TRANSITION_TO_TREND (or a WEAK observation state) on
@@ -129,7 +129,7 @@ def simulate_route_sequence(
             else:
                 # Mixed evidence (one index strong, one weak): the weak
                 # transition is NOT sustained, so reset the confirmation streak.
-                # Confirmation must be consecutive (report 3.3 "避免状态抖动"),
+                # Confirmation must be consecutive ("避免状态抖动"),
                 # otherwise a run of weak days interrupted by a strong day could
                 # still accumulate to ROUTE_CONFIRM_DAYS and drift to WEAK.
                 confirm_count = 0

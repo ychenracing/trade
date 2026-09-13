@@ -265,7 +265,7 @@ class SymbolRoutingTests(unittest.TestCase):
             SYMBOL_GROUPS[code],
             "domestic_semiconductor",
         )
-        # Report 4.6: fine-grained AI sub-industry profiles. 688256 (寒武纪) is
+        # fine-grained technology sub-industry profiles. 688256 (寒武纪) is
         # a chip-design / domestic-compute name, so it resolves to the
         # fine-grained ``chip_design`` profile (previously ``domestic_design``).
         self.assertEqual(SYMBOL_PROFILES[code], "chip_design")
@@ -297,7 +297,7 @@ class SymbolRoutingTests(unittest.TestCase):
 
 
 class SubindustryShrinkageTests(unittest.TestCase):
-    """财报 P1-2：子行业参数以层级收缩拉向粗粒度父画像。"""
+    """子行业参数以层级收缩拉向粗粒度父画像。"""
 
     def test_shrinkage_is_enabled_by_default_and_validated(self) -> None:
         self.assertEqual(
@@ -338,7 +338,7 @@ class SubindustryShrinkageTests(unittest.TestCase):
     def test_non_shrinkable_params_are_not_refined_by_shrinkage(self) -> None:
         # entry/exit periods, profit protection, pyramid and regime params are
         # shared through the hierarchy and must never be shrunk toward a raw
-        # global default (report P1-2 "不建议独立调整").
+        # global default (not adjusted independently).
         self.assertEqual(
             SHRINKABLE_PARAMS,
             frozenset({"max_symbol_weight", "atr_multiplier", "trail_atr_mult", "risk_pct"}),
@@ -982,7 +982,7 @@ class NewFeatureTests(unittest.TestCase):
     def test_get_symbol_profile_returns_known_code(self) -> None:
         """get_symbol_profile returns the correct profile for a known symbol.
 
-        Report 4.6: fine-grained AI sub-industry profiles. 300308 (中际旭创) is
+        fine-grained technology sub-industry profiles. 300308 (中际旭创) is
         an optical-module name, so it resolves to the fine-grained
         ``optical_module`` profile (previously the coarse ``overseas_optical``).
         """

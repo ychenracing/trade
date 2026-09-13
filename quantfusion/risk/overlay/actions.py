@@ -64,7 +64,7 @@ class OverlayActionMixin:
         self, states: list, prices: dict[str, float], date_str: str,
         scoring_fn, drawdown: float,
     ) -> tuple[RiskAction, ...]:
-        """Trim weakest non-core holdings at risk Level 2/3 (P1-1).
+        """Trim weakest non-core holdings at risk Level 2/3.
 
         Level 2 requires ``drawdown >= RISK_LEVEL2_DRAWDOWN`` and Level 3
         requires ``drawdown >= RISK_LEVEL3_DRAWDOWN``; if the portfolio is not
@@ -85,7 +85,7 @@ class OverlayActionMixin:
         if not shares_by_symbol:
             return ()
         trim_count = 1 if self._risk_level == 2 else 2
-        # Bull-silent bear or relevance guard (report 4.7/4.8): a graded trim
+        # Bull-silent bear or relevance guard: a graded trim
         # only targets holdings that belong to the SAME sub-industry that is
         # currently under structured stress. If no sub-basket is stressed
         # (e.g. a broad total-basket break only), the trim falls back to the
@@ -102,7 +102,7 @@ class OverlayActionMixin:
             eligible,
             key=lambda sym: (scoring_fn(sym) if scoring_fn else 0.0, sym),
         )
-        # Report 4.1: "减少最弱的非核心仓" and "保留最强1-2只或现金". Only the
+        # "减少最弱的非核心仓" and "保留最强1-2只或现金". Only the
         # single weakest name is trimmed at Level 2; at Level 3 the two weakest
         # are trimmed. Core (strongest) names are always preserved.
         trims = ranked[: trim_count]
@@ -200,7 +200,7 @@ class OverlayActionMixin:
         self, states: list, prices: dict[str, float], date_str: str,
         scoring_fn, drawdown: float, assets: float,
     ) -> tuple[RiskAction, ...]:
-        """Trim an over-concentrated sub-industry cluster (report 4.8 / P1-5).
+        """Trim an over-concentrated sub-industry cluster.
 
         Bull-silent by design: it only acts when (a) one sub-industry cluster
         accounts for more than ``CONCENTRATION_CAP`` of the book, (b) the
@@ -211,7 +211,7 @@ class OverlayActionMixin:
         ``CONCENTRATION_MAX_TRIM_RATIO`` of that name. This reduces same-sector
         synchronous losses without ever cutting a leader in a clean bull.
 
-        Report P1-5 — concentration is computed on the REAL account net
+        Concentration is computed on the REAL account net
         exposure, not on per-sleeve books:
           - each symbol is counted exactly once (positions are aggregated by
             symbol into ``value_by_symbol``, so the same name held across
@@ -242,7 +242,7 @@ class OverlayActionMixin:
             strats.setdefault(symbol, []).append((state, strat_name, pos))
         if not value_by_symbol or assets <= 0:
             return ()
-        # P1-5: a held symbol we cannot map to any sub-industry makes the
+        # A held symbol we cannot map to any sub-industry makes the
         # cluster coverage incomplete. Fail closed (do not trim) when that
         # unmapped weight is MATERIAL, so we never trim on a partial / wrong
         # concentration picture; a negligible unmapped tail is ignored. The

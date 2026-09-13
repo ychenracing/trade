@@ -1,26 +1,9 @@
-"""风险治理层：预热健康契约、风险意见对象、风险事件校准与篮覆盖置信度。
+"""风险治理层：预热健康、独立风险意见、袖套共识和事后风险事件校准。
 
-本模块落实《trade 深度评估与长板强化改造报告》(2026-08-16) 的 P0-1/P0-2/
-P0-3 与 P1-1/P1-2，全部为纯函数/纯数据结构，默认随引擎自动输出，不改变
-任何交易决策路径（P0-4 晋级门在 ``quantfusion.application.stress`` 中实现）。
-
-注：本文件中的 P0/P1 编号均指 2026-08-16 报告；仓库旧注释（2026-08-07
-报告）使用另一套编号（如 P0-4=灾变冷却阻断再入场、P1-2=子行业参数收缩），
-两套体系互不相干，以报告日期区分：
-
-- P0-1 Warmup Health Contract：``assess_warmup_health`` 输出
-  READY/DEGRADED/NOT_READY 三级预热健康报告；
-- P0-2 Risk Event Classifier：``calibrate_risk_events`` 事后计算每次风险
-  事件的 1/3/5/10/20 日结果与 Precision/Recall/Lead time 等校准指标，
-  并附 P1-3 所需的 L1 冻结加仓机会成本度量；
-- P0-3 独立风险意见对象：``RiskOpinion`` 与 ``build_risk_opinion`` 生成与
-  交易动作分离的标准风险意见；
-- P1-1 Sleeve 分歧证据：``compute_sleeve_agreement`` 输出组合级袖套共识
-  与持续退化计数（只作证据，不新增状态机）；
-- P1-2 Risk Basket Coverage Confidence：``basket_coverage_confidence``
-  根据风险篮观察覆盖度计算风险置信度。
-
-所有输出均为 JSON 可序列化的普通 Python 数据（经 ``as_dict``）。
+本模块读取既有状态，输出可序列化的观测数据，不直接修改交易账本或生成订单。
+应用层独立消费预热健康门：NOT_READY 会抑制新增买入，不能把纯观测实现
+误解为其输出永远不被决策入口使用。风险事件的后续收益和机会成本只用于
+事后研究，不回填到当时可见的信号。风险篮覆盖不足通过置信度及原因披露。
 """
 
 from __future__ import annotations
@@ -31,40 +14,40 @@ from typing import Any, Iterable, Sequence, cast
 import numpy as np
 import pandas as pd
 
-# P0-1: 一只股票被认为"指标就绪"所需的最少预热交易日数。最长指标窗口为
+# 一只股票被认为"指标就绪"所需的最少预热交易日数。最长指标窗口为
 # 弱市 240 日动量与 120 日相对强度，240 个交易日覆盖全部指标需求。
 REQUIRED_WARMUP_TRADING_DAYS = 240
 
-# P0-1: 外层路由指数 (000300/000682) 判定"新鲜"的最大陈旧自然日数，与
+# 外层路由指数 (000300/000682) 判定"新鲜"的最大陈旧自然日数，与
 # quantfusion.config.regime.MAX_EVIDENCE_STALENESS_DAYS 保持一致。
 WARMUP_STALENESS_DAYS = 10
 
-# P0-1: 分级阈值。指标就绪比例低于该值时整体判为 NOT_READY。
+# 分级阈值。指标就绪比例低于该值时整体判为 NOT_READY。
 NOT_READY_INDICATOR_RATIO = 0.5
 
-# P0-2: 判定"已实现冲击"(realized shock) 的前瞻窗口与回撤阈值。阈值与
+# 判定"已实现冲击"(realized shock) 的前瞻窗口与回撤阈值。阈值与
 # overlay 的 L2 账户回撤门槛 (RISK_LEVEL2_DRAWDOWN=0.08) 对齐。
 SHOCK_HORIZON_DAYS = 20
 SHOCK_DRAWDOWN = 0.08
 
-# P0-2: 警报前瞻评估窗口（事件结果表）。
+# 警报前瞻评估窗口（事件结果表）。
 EVENT_OUTCOME_HORIZONS = (1, 3, 5, 10, 20)
 
-# P0-2: 相邻已实现冲击日合并为同一 episode 的最大间隔交易日。
+# 相邻已实现冲击日合并为同一 episode 的最大间隔交易日。
 SHOCK_EPISODE_MERGE_DAYS = 5
 
-# P1-2: 风险置信度三因子权重（观察成分比例 / 行业覆盖 / 持仓映射匹配）。
+# 风险置信度三因子权重（观察成分比例 / 行业覆盖 / 持仓映射匹配）。
 COVERAGE_WEIGHT_OBSERVED = 0.45
 COVERAGE_WEIGHT_INDUSTRY = 0.35
 COVERAGE_WEIGHT_HELD = 0.20
 
-# P1-2: 风险置信度低于该值时，意见对象标记 low_basket_coverage。
+# 风险置信度低于该值时，意见对象标记 low_basket_coverage。
 LOW_COVERAGE_CONFIDENCE = 0.60
 
-# P0-3: 各风险等级对应的建议总敞口上限（与 overlay trim 比例互为补数）。
+# 各风险等级对应的建议总敞口上限（与 overlay trim 比例互为补数）。
 GROSS_CAP_BY_LEVEL = {0: 1.0, 1: 1.0, 2: 0.70, 3: 0.50}
 
-# P1-1: 组合级 sleeve 共识连续下降多少日后在意见中标记风险证据。
+# 组合级 sleeve 共识连续下降多少日后在意见中标记风险证据。
 SLEEVE_CONSENSUS_DECLINE_DAYS = 3
 
 
@@ -85,7 +68,7 @@ def _natural_days_stale(frame: pd.DataFrame, end_ts: pd.Timestamp) -> int:
 
 @dataclass(frozen=True)
 class WarmupHealthReport:
-    """P0-1 预热健康报告：回测/生产运行的数据预热质量契约。
+    """预热健康报告：回测/生产运行的数据预热质量契约。
 
     生产规则：
     - ``NOT_READY``：禁止把输出当成正式交易信号；
@@ -139,7 +122,7 @@ def assess_warmup_health(
     required_days: int = REQUIRED_WARMUP_TRADING_DAYS,
     staleness_days: int = WARMUP_STALENESS_DAYS,
 ) -> WarmupHealthReport:
-    """评估一次运行的预热健康状态（P0-1 Warmup Health Contract）。
+    """评估一次运行的预热健康状态（Warmup Health Contract）。
 
     逐股票统计回测开始日之前的可用交易日数；新上市（预热不足）股票不会
     静默获得与成熟股票相同的置信度，而是把整体状态降级为 DEGRADED。
@@ -232,7 +215,7 @@ def assess_warmup_health(
 
 @dataclass(frozen=True)
 class BasketCoverage:
-    """P1-2 风险篮覆盖度：观察成分、行业覆盖与持仓映射匹配。"""
+    """风险篮覆盖度：观察成分、行业覆盖与持仓映射匹配。"""
 
     observed: int
     total_basket: int
@@ -269,7 +252,7 @@ def basket_coverage_confidence(
     held_symbols: Iterable[str],
     symbol_sub_industry: dict[str, str],
 ) -> BasketCoverage:
-    """根据风险篮覆盖度计算当日风险置信度（P1-2）。
+    """根据风险篮覆盖度计算当日风险置信度。
 
     置信度 = 0.45 × 观察成分比例 + 0.35 × 行业覆盖比例 + 0.20 × 持仓
     子行业映射比例。覆盖不足时置信度下降，上层据此降低风险意见强度而
@@ -300,7 +283,7 @@ def basket_coverage_confidence(
 
 @dataclass(frozen=True)
 class RiskOpinion:
-    """P0-3 独立风险意见对象：与具体买卖订单分离的标准风险判断。
+    """独立风险意见对象：与具体买卖订单分离的标准风险判断。
 
     该对象回答"当前风险环境如何"，供人工决策或其他系统作为独立风险
     裁判意见消费；不直接驱动任何交易动作。
@@ -359,7 +342,7 @@ def build_risk_opinion(
     blocks_new_entries: bool | None = None,
     blocks_pyramiding: bool | None = None,
 ) -> RiskOpinion:
-    """从 overlay 状态与覆盖度证据构建当日独立风险意见（P0-3）。
+    """从 overlay 状态与覆盖度证据构建当日独立风险意见。
 
     ``blocks_new_entries`` / ``blocks_pyramiding`` 缺省时按 overlay 的分级
     语义推导（level>=2 禁新开仓、level>=1 冻结加仓），与实际执行行为
@@ -410,7 +393,7 @@ def build_risk_opinion(
     )
 
 
-# ── P0-2: Risk Event Classifier ──────────────────────────────────────────
+# ── Risk Event Classifier ──────────────────────────────────────────
 
 
 def _forward_max_drawdown(assets: np.ndarray) -> np.ndarray:
@@ -482,7 +465,7 @@ def calibrate_risk_events(
     basket_daily_returns: Sequence[float] | None = None,
     shock_drawdown: float = SHOCK_DRAWDOWN,
 ) -> dict[str, Any]:
-    """事后校准风险事件分类器（P0-2 Risk Event Classifier）。
+    """事后校准风险事件分类器（Risk Event Classifier）。
 
     输入逐日资产与逐日风险等级序列，独立检测"已实现冲击"（未来 20 日
     组合回撤超过阈值），然后对每次 L1/L2/L3 警报计算 1/3/5/10/20 日的
@@ -529,7 +512,7 @@ def calibrate_risk_events(
                 fp_followup_returns.append(
                     float(arr[horizon_end] / arr[start] - 1.0)
                 )
-        # P1-3: 峰值停留在 L1（冻结加仓但未升级 L2/L3）的警报段，
+        # 峰值停留在 L1（冻结加仓但未升级 L2/L3）的警报段，
         # 记录警报结束后 20 日组合收益 —— 若普遍为正，说明冻结加仓
         # 多数落在牛市正常回踩上，存在机会成本。
         if level_peak == 1 and end + 1 < n:
@@ -611,7 +594,7 @@ def calibrate_risk_events(
         "l1_escalation_precision": (
             round(escalated / l1_total, 4) if l1_total else None
         ),
-        # P1-3: L1 冻结加仓的机会成本度量（警报结束后 20 日收益中位数，
+        # L1 冻结加仓的机会成本度量（警报结束后 20 日收益中位数，
         # 正值越大说明越多 L1 只是牛市正常回踩）。
         "l1_only_episode_count": l1_total,
         "l1_only_median_post_return_20d": (
@@ -629,12 +612,12 @@ def calibrate_risk_events(
     }
 
 
-# ── P1-1: Sleeve agreement evidence ──────────────────────────────────────
+# ── Sleeve agreement evidence ──────────────────────────────────────
 
 
 @dataclass(frozen=True)
 class SleeveAgreementSnapshot:
-    """P1-1 三袖套分歧证据：某日的跨袖套共识度量。
+    """三袖套分歧证据：某日的跨袖套共识度量。
 
     纯观测证据，不驱动交易。``mean_consensus`` 是每只被持有股票的平均
     持有袖套数（0~1 归一），``decline_streak`` 度量 3→2→1 的持续退化，
@@ -676,7 +659,7 @@ def compute_sleeve_agreement(
     previous_consensus: float | None = None,
     previous_streak: int = 0,
 ) -> SleeveAgreementSnapshot:
-    """计算某日三袖套共识快照（P1-1 sleeve disagreement evidence）。
+    """计算某日三袖套共识快照（sleeve disagreement evidence）。
 
     输入每个袖套当日持有的股票集合与资产/现金，输出组合级共识指标；
     与前一日共识比较得到连续退化天数（3→2→1 的持续时间代理）。

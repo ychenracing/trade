@@ -29,8 +29,7 @@ from quantfusion.strategy.trend import BaseStrategy
 class PositiveMomentumHoldStrategy(BaseStrategy):
     """Hold a causal positive-leader entry, then protect gains, with re-entry.
 
-    Unlike the original one-shot entry, this strategy may RE-ENTER after a full
-    exit (report 3.5): a per-reason trading-day cooldown filters repeated
+    The strategy may re-enter after a full exit: a per-reason trading-day cooldown filters repeated
     bottom-fishing, and the first re-entry is a small probe (30% of target)
     that is only scaled up toward the full target once a confirm condition is
     met. This captures V-shaped repairs and a second true reversal without
@@ -73,7 +72,7 @@ class PositiveMomentumHoldStrategy(BaseStrategy):
         return floor_to_lot(ctx.current_assets * weight / float(ctx.df["close"].iloc[ctx.i]))
 
     def _reentry_ok(self, ctx: BarContext) -> bool:
-        """Re-entry gates (report 3.5): momentum repaired, trend restored."""
+        """Re-entry gates: momentum repaired, trend restored."""
         closes = self._closes(ctx)
         i = ctx.i
         if i < 60 or len(closes) < 61:
@@ -126,7 +125,7 @@ class PositiveMomentumHoldStrategy(BaseStrategy):
         return True
 
     def _finalize_exit(self, ctx: BarContext) -> None:
-        """Record an exit and set the re-entry cooldown (report 3.5)."""
+        """Record an exit and set the re-entry cooldown."""
         reason = self._pending_exit_reason or "portfolio_risk"
         self._exit_reason = reason
         self._exit_bar = ctx.i

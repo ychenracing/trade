@@ -107,7 +107,7 @@ class EnsembleAllocationMixin:
         states: list[_PreparedSleeveRun],
         overlay_frames: dict[str, pd.DataFrame],
     ) -> Any:
-        """2026-08-16 报告 P0-1：评估本次运行的预热健康契约（READY/DEGRADED/NOT_READY）。
+        """评估本次运行的预热健康契约（READY/DEGRADED/NOT_READY）。
 
         - 指标就绪度按交易池逐股统计（cold 运行历史为 0 → NOT_READY）；
         - 参考篮就绪度按独立 23 股风险篮实际可观察帧统计；
@@ -161,7 +161,7 @@ class EnsembleAllocationMixin:
         risk_level_curve: list[int],
         overlay_frames: dict[str, pd.DataFrame],
     ) -> dict[str, Any]:
-        """2026-08-16 报告 P0-2：事后校准本次运行的风险事件分类器。
+        """事后校准本次运行的风险事件分类器。
 
         组合逐日资产来自聚合权益曲线；风险等级来自 overlay 逐日采样；
         风险篮逐日收益按等权篮计算。日历长度不一致时显式返回
@@ -706,7 +706,7 @@ class EnsembleAllocationMixin:
 
         ``cm_overlay`` (the cross-market overlay) is passed so that its
         catastrophe-cooldown table can hard-block any pending buy for a symbol
-        that just exited via a layered/catastrophe stop (report P0-4). The block
+        that just exited via a layered/catastrophe stop. The block
         runs after sells are executed and before buys are authorized, so re-entry
         across all three trend sleeves is suppressed for the full cooldown.
         """

@@ -29,6 +29,6 @@ Follow the current task's scope and acceptance criteria within platform permissi
 
 ## trade entry points and boundaries
 
-When architecture or command context is needed, consult `.github/CHATGPT_PROJECT_BRIEF.md`; use `README.md`, `docs/ARCHITECTURE.md`, `docs/VALIDATION.md`, `tests/` and `.github/workflows/ci.yml` for the affected contract. `quantfusion/` is the sole implementation; scripts run as modules rather than root-level Python APIs.
+When architecture or command context is needed, consult `.github/PROJECT_BRIEF.md`; use `README.md`, `docs/ARCHITECTURE.md`, `docs/VALIDATION.md`, `tests/` and `.github/workflows/ci.yml` for the affected contract. `quantfusion/` is the sole implementation; scripts run as modules rather than root-level Python APIs.
 
 This is daily-bar research and manual decision support, not broker automation. Preserve close-to-next-tradable-open causality, account/risk state across routing, fail-closed inputs and transactional publication. Diagnostic stress subsets are not canonical acceptance evidence. Do not change frozen risk thresholds, scenarios, metrics, data or evidence identities merely to obtain passing results; economic changes require the current task's explicit scope and applicable acceptance.

@@ -151,11 +151,9 @@ def select_positive_momentum_leaders(
             ).dropna()
         except (OSError, RuntimeError, ValueError):
             continue
-        # Report P0-5: a symbol only needs the SHORT emerging-window history to
-        # be considered (the old hard `len(closes) < LEADER_LOOKBACK + 1`
-        # continue blocked every genuinely new leader). A mature channel still
-        # requires the full 240-day history and positive 240-day momentum; an
-        # emerging channel requires only short-horizon momentum + breakout.
+        # A symbol only needs the SHORT emerging-window history to
+        # be considered. Mature candidates require full long-horizon history;
+        # emerging candidates instead use short-horizon momentum and breakout.
         if len(closes) < EMERGING_MIN_DAYS:
             continue
         observed_date = _normalized_timestamp(str(closes.index[-1]))
@@ -166,15 +164,15 @@ def select_positive_momentum_leaders(
 
         # Mature-channel gate: needs the full 240-day history and positive
         # long-horizon momentum. Symbols that fail this gate are STILL eligible
-        # for the emerging channel (report P0-5).
+        # for the emerging channel.
         has_mature_history = len(closes) >= LEADER_LOOKBACK + 1
         momentum_240 = 0.0
         if has_mature_history:
             momentum_240 = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
         is_mature = has_mature_history and math.isfinite(momentum_240) and momentum_240 > 0
 
-        # Multi-factor scoring (report 4.5: mature + emerging dual channel).
-        # Both channels are scored against a FIXED AI reference pool (not the
+        # Multi-factor scoring (mature + emerging dual channel).
+        # Both channels are scored against a FIXED technology reference pool (not the
         # caller's pool) so adding/removing a symbol never changes an unchanged
         # symbol's score.
         # 60-day momentum
@@ -190,8 +188,8 @@ def select_positive_momentum_leaders(
             momentum_20 = 0.0
 
         # Emerging-channel gate: short history + positive short-horizon momentum
-        # + a real breakout setup (price near its 20-day high). This replaces the
-        # old 240-day requirement for NEW leaders (report P0-5).
+        # + a real breakout setup (price near its 20-day high). Mature and emerging
+        # history requirements are evaluated independently.
         if len(closes) >= 20:
             high20 = float(closes.iloc[-20:].max())
             breakout_quality = close / high20 if high20 > 0 else 0.0
@@ -245,7 +243,7 @@ def select_positive_momentum_leaders(
                 volume_expansion = max(0.0, min(2.0, cur_vol / avg_vol))
 
         # Mature-leader channel: long-horizon strength + relative strength +
-        # resilience + trend repair (report 4.5).
+        # resilience + trend repair.
         mature_score = (
             0.25 * max(0.0, momentum_240)
             + 0.25 * max(0.0, rs_120)
@@ -255,7 +253,7 @@ def select_positive_momentum_leaders(
         )
         # Emerging-leader channel: short-horizon momentum + breakout quality +
         # volume expansion + trend repair, so new market leaders are captured
-        # even when they have no long 240-day history (report 4.5/P0-5).
+        # even when they have no long 240-day history.
         emerging_score = (
             0.30 * momentum_60
             + 0.25 * momentum_20
@@ -269,7 +267,7 @@ def select_positive_momentum_leaders(
         if math.isfinite(weak_score):
             observations.append((weak_score, code, is_mature))
     ranked = sorted(observations, key=lambda item: (-item[0], item[1]))
-    # Report P0-5: cap how many EMERGING-ONLY (immature) leaders enter the
+    # Cap how many EMERGING-ONLY (immature) leaders enter the
     # selection so short-history names never crowd out the mature core.
     selected_codes: list[str] = []
     emerging_selected = 0

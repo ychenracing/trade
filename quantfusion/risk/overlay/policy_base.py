@@ -90,7 +90,7 @@ class OverlayPolicyMixin:
         self.level3_drawdown = float(level3_drawdown)
         self.severe_direct_return = float(severe_direct_return)
         # Industry-concentration / correlation-cluster guard is ON by default
-        # (bull-silent report 4.8): only trims an over-concentrated cluster
+        # (active only under portfolio risk): only trims an over-concentrated cluster
         # while the portfolio is off peak and declining.
         self.enable_concentration_guard = True
         self._catastrophe_cooldown: dict[str, int] = {}  # symbol -> expiry pos
@@ -99,12 +99,12 @@ class OverlayPolicyMixin:
         self._last_warning_pos = -10**9  # last trading pos a Level 1 warning fired
         self._assets_history: list[float] = []  # recent portfolio asset values
         # The sub-industry basket that is currently under structured stress (if
-        # any). Report 4.7/4.8: a Level 2/3 trim is restricted to holdings in
+        # any). A Level 2/3 trim is restricted to holdings in
         # this same sub-industry so an equipment-only stress never cuts an
         # optical winner the user holds (bull-silent relevance guard).
         self._stressed_sub: str | None = None
         # Whether the risk level has RECOVERED to 0 since the last warning.
-        # Report 4.1 "预警后再次冲击" means warning -> recovery -> RE-shock; a
+        # A repeated shock means warning -> recovery -> RE-shock; a
         # trim must not fire on the same continuous shock that first warned.
         self._recovered_since_warning = False
         self._continuous_stress_days = 0
@@ -115,7 +115,7 @@ class OverlayPolicyMixin:
         # bans on top of the dedicated weak-market strategy.
         self._outer_defensive_mode = False
         self._outer_route: str | None = None
-        # 2026-08-16 报告 P1-2: latest basket coverage measurement (governance audits).
+        # Latest basket coverage measurement (governance audits).
         self._last_metrics: dict[str, Any] = {}
         self._last_metrics_date: pd.Timestamp | None = None
         self.events: list[dict[str, Any]] = []
@@ -196,7 +196,7 @@ class OverlayPolicyMixin:
         if len(self._assets_history) > RISK_TRIM_FAST_DAYS + 1:
             del self._assets_history[0]
 
-        # 0) Multi-evidence early sector-risk layer (P1-1). It only *records*
+        # 0) Multi-evidence early sector-risk layer. It only *records*
         #    the risk level and applies Level 2/3 trims (gated on portfolio
         #    drawdown); the layered stop uses the level to arm tighter
         #    profit-tier lines on a confirmed shock.
@@ -240,7 +240,7 @@ class OverlayPolicyMixin:
         if self._outer_defensive_mode:
             return ()
 
-        # 1) Layered catastrophe stops (P0-1, replacing the fixed 28%).
+        # 1) Layered catastrophe stops.
         # Two passes so every sleeve's position in a crashing symbol is exited
         # on the same day: first determine which symbols qualify, then sell all
         # positions in them. The cooldown only gates FUTURE re-entry, never the
@@ -290,7 +290,7 @@ class OverlayPolicyMixin:
             })
 
         # 2) Early sector-risk Level 2/3 graded trims of the weakest non-core
-        #    holdings (P1-1). Core (highest-scoring) names are preserved, and
+        #    holdings. Core (highest-scoring) names are preserved, and
         #    the trim only arms once the portfolio is genuinely off its peak.
         if self.enable_early_sector_risk and self._risk_level >= 2:
             actions.extend(
@@ -324,7 +324,7 @@ class OverlayPolicyMixin:
         elif self._risk_level == 0 or not transition_confirmed:
             self._transition_trim_active = False
 
-        # 2b) Industry-concentration / correlation-cluster guard (report 4.8).
+        # 2b) Industry-concentration / correlation-cluster guard.
         #     Bull-silent: only trims an over-concentrated sub-industry cluster
         #     when the portfolio is off peak AND currently declining. Additive
         #     to the graded trim above (different trigger: concentration, not
@@ -352,7 +352,7 @@ class OverlayPolicyMixin:
     ) -> None:
         """Grade the daily early sector-risk level (0/1/2/3).
 
-        This is deliberately LOW-FREQUENCY and graded (report 4.1): a warning
+        This is deliberately LOW-FREQUENCY and graded: a warning
         (Level 1) only *records* state and never trims; a trim only arms at
         Level 2/3 AND once the portfolio is genuinely off its peak. In a clean
         bull the account is almost never deep off peak, so the layer stays
@@ -361,7 +361,7 @@ class OverlayPolicyMixin:
         """
         previous = self._risk_level
         metrics = self._basket_metrics(states, date)
-        # 2026-08-16 报告 P1-2: keep the latest basket coverage measurement
+        # Keep the latest basket coverage measurement
         # for governance audits (risk confidence) without altering any decision below.
         self._last_metrics = dict(metrics)
         self._last_metrics_date = date
