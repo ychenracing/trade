@@ -14,6 +14,7 @@ from typing import Any
 import pandas as pd
 
 from quantfusion.config.regime import REGIME_INDEX_FILES
+from quantfusion.data.sessions import index_coverage
 
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
@@ -90,6 +91,7 @@ def _materialize_frozen_snapshot(
     regime_data_dir: str | Path,
     frames: dict[str, pd.DataFrame],
     end_date: str,
+    scan_dates: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Create once or strictly reuse one same-day production evidence snapshot."""
     target = Path(snapshot_dir)
@@ -99,6 +101,10 @@ def _materialize_frozen_snapshot(
             raise ValueError("frozen snapshot end date does not match this scan")
         if manifest.get("symbols") != sorted(frames):
             raise ValueError("frozen snapshot symbol universe does not match this scan")
+        if scan_dates is not None and manifest.get("scan_dates") != scan_dates:
+            raise ValueError("frozen snapshot calendar identity differs or was never certified")
+        if scan_dates is not None:
+            index_coverage(target / "regime_data", scan_dates)
         for code, frame in frames.items():
             dates = pd.read_csv(target / "market_data" / f"{code}.csv", usecols=["date"])
             frozen_dates = pd.DatetimeIndex(pd.to_datetime(dates["date"], errors="raise"))
@@ -125,6 +131,7 @@ def _materialize_frozen_snapshot(
             if not source.is_file():
                 raise ValueError(f"missing frozen regime evidence for {code}")
             shutil.copyfile(source, regime_target / source.name)
+        checked_indices = index_coverage(regime_target, scan_dates) if scan_dates is not None else None
         evidence = []
         for path in sorted(temporary.rglob("*.csv")):
             evidence.append(
@@ -141,6 +148,9 @@ def _materialize_frozen_snapshot(
             "deployment_policy": "production_daily_replay",
             "evidence": evidence,
         }
+        if scan_dates is not None:
+            manifest["scan_dates"] = scan_dates
+            manifest["index_evidence"] = checked_indices
         manifest_bytes = (
             json.dumps(manifest, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
         ).encode("utf-8")
