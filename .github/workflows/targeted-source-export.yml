@@ -1,0 +1,30 @@
+name: Targeted source export
+
+on:
+  push:
+    branches: [codex/targeted-input-diagnostics]
+    paths: [.github/workflows/targeted-source-export.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export tracked source and history without checkout credentials
+        run: |
+          mkdir -p /tmp/trade-validation-source
+          git bundle create /tmp/trade-validation-source/source.bundle --all
+          git rev-parse HEAD HEAD^{tree} > /tmp/trade-validation-source/identity.txt
+          sha256sum /tmp/trade-validation-source/source.bundle >> /tmp/trade-validation-source/identity.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: targeted-validation-source
+          path: /tmp/trade-validation-source/
+          retention-days: 3
