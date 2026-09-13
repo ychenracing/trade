@@ -14,6 +14,7 @@ from datetime import date
 import hashlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import statistics
@@ -457,6 +458,34 @@ def pool_divergence(smaller: dict, larger: dict) -> dict:
         "interpretation": "observed first divergence and continuous ledgers; pool size also changes existing effective policy; not a single-contributor causal proof"}
 
 
+def replay_evidence(result: dict) -> dict:
+    """Retain unavailable regime indicators without inventing finite values.
+
+    Only known NaN indicator observations get explicit nulls plus a lossless
+    location/type receipt. Money, prices, other fields and infinities remain
+    strict. A transformed series never receives the native series fingerprint.
+    """
+    series = [dict(row) for row in result.get("regime_state_series", [])]
+    gaps = []
+    for index, row in enumerate(series):
+        for field in ("hurst", "vol_percentile"):
+            value = row.get(field)
+            if isinstance(value, float) and math.isnan(value):
+                gaps.append({"index": index, "date": row.get("date"),
+                             "field": field, "original": "NaN"})
+                row[field] = None
+    records = plain({**{key: result.get(key, []) for key in (
+        "trades", "order_events", "risk_events", "fusion_events", "pending_signals")},
+        "regime_state_series": series})
+    fingerprints = economic_sequence_fingerprints(
+        {**result, "regime_state_series": []} if gaps else result)
+    if gaps:
+        fingerprints.update(regime_state_series_sha256=None, regime_state_count=len(series))
+    return {"records": records, "fingerprints": fingerprints,
+            "regime_observation_gaps": gaps,
+            "fingerprint_status": "PARTIAL_MISSING_REGIME_OBSERVATIONS" if gaps else "COMPLETE"}
+
+
 def run_replay(task: str, output: Path, market_dir: Path, regime_dir: Path, calendar_file: Path) -> dict:
     weak = task.startswith("weak5")
     count = 5 if weak else 13 if task == "replay13" else 17
@@ -468,7 +497,8 @@ def run_replay(task: str, output: Path, market_dir: Path, regime_dir: Path, cale
         result = (ProductionReplayEngine(CAPITAL, cfg=config).run(names, start, end,
                     data_dir=str(market_dir), regime_data_dir=str(regime_dir), indicator_state="warm") if weak else
                   BacktestEngine(CAPITAL, cfg=config).run(names, start, end, data_dir=str(market_dir), indicator_state="warm"))
-    records = plain({key: result.get(key, []) for key in ("trades", "order_events", "risk_events", "fusion_events", "regime_state_series", "pending_signals")})
+    evidence = replay_evidence(result)
+    records = evidence["records"]
     records["equity_curve"] = plain(result["equity_curve"].reset_index().to_dict("records"))
     records["effective_portfolio_policy"] = result.get("effective_portfolio_policy")
     records["production_replay"] = plain(result.get("production_replay"))
@@ -478,7 +508,7 @@ def run_replay(task: str, output: Path, market_dir: Path, regime_dir: Path, cale
     report = {"scope": SCOPE, "identity": identity(market_dir, regime_dir, calendar_file),
         "run": {"symbols": list(codes), "config_override": config, "start": start, "end": end,
                 "engine": "ProductionReplayEngine" if weak else "BacktestEngine", "initial_state": "empty continuous canonical replay"},
-        "metrics": plain(metrics), "fingerprints": economic_sequence_fingerprints(result), "records": records,
+        "metrics": plain(metrics), **evidence,
         "risk_attribution": risk_attribution(records), "canonical": False, "production_change": "NONE"}
     atomic_json(report, output / f"{task}.json")
     return {"task": task, "metrics": report["metrics"], "binding_episodes": len(report["risk_attribution"]["episodes"])}
