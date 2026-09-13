@@ -225,13 +225,20 @@ def _run_main() -> int:
     stale_symbols: list[tuple[str, str, str]] = []  # (code, name, last_cache_date)
     fatal_data_errors: list[tuple[str, str, str]] = []
     known_listing_dates = {"688825": "2026-07-27"}
-    for code, name in SYMBOLS.items():
+    # Signal-only regime references share the frozen market-data directory,
+    # but must never enter the trade pool, report rows or risk-state identity.
+    regime_symbols = qf.PortfolioPolicy().regime_symbols
+    data_symbols = dict(SYMBOLS)
+    for code in regime_symbols:
+        data_symbols.setdefault(code, "市场状态参考")
+    for code, name in data_symbols.items():
         try:
             df = qf.DataFetcher.load_stock_data(
                 code, probe_start, end_date, data_dir=None, cache_dir=args.cache_dir
             )
             if df is not None and not df.empty:
-                tradable[code] = name
+                if code in SYMBOLS:
+                    tradable[code] = name
                 snapshot_frames[code] = df.copy()
                 stale = df.attrs.get("_stale", False)
                 if stale:
@@ -242,17 +249,17 @@ def _run_main() -> int:
                     print(f"  ✓ {code} {name}: {len(df)} 条数据")
             else:
                 listing = known_listing_dates.get(code)
-                if listing and cast(pd.Timestamp, pd.Timestamp(listing)) > cast(
+                if code not in regime_symbols and listing and cast(pd.Timestamp, pd.Timestamp(listing)) > cast(
                     pd.Timestamp, pd.Timestamp(end_date)
                 ):
                     skipped.append((code, name, f"尚未上市 ({listing})"))
                     print(f"  ✗ {code} {name}: 尚未上市 ({listing})")
                 else:
                     fatal_data_errors.append((code, name, "返回空数据"))
-                    print(f"  ✗ {code} {name}: 预期可交易但返回空数据")
+                    print(f"  ✗ {code} {name}: 必需行情返回空数据")
         except Exception as exc:
             listing = known_listing_dates.get(code)
-            if listing and cast(pd.Timestamp, pd.Timestamp(listing)) > cast(
+            if code not in regime_symbols and listing and cast(pd.Timestamp, pd.Timestamp(listing)) > cast(
                 pd.Timestamp, pd.Timestamp(end_date)
             ):
                 skipped.append((code, name, f"尚未上市 ({listing})"))
@@ -261,8 +268,11 @@ def _run_main() -> int:
                 fatal_data_errors.append((code, name, str(exc)[:160]))
                 print(f"  ✗ {code} {name}: 数据获取失败 — {str(exc)[:60]}")
 
-    if fatal_data_errors and not args.allow_stale:
-        print("  ✗ 预期可交易标的数据失败，拒绝缩小股票池后继续运行。")
+    missing_references = set(regime_symbols) - snapshot_frames.keys()
+    # Stale evidence is an explicit simulation override, not permission to
+    # omit required trading or reference inputs.
+    if missing_references or fatal_data_errors:
+        print("  ✗ 必需交易或参考标的数据失败，拒绝缺失参考篮子或缩小股票池后继续运行。")
         for code, name, reason in fatal_data_errors:
             print(f"    {code} {name}: {reason}")
         return 1
@@ -300,21 +310,12 @@ def _run_main() -> int:
         print("  错误: 没有可交易的标的，退出。")
         return 1
 
-    # ── Data freshness cross-check: verify all stocks have data ending on same date ──
-    # P1 fix: ensure no stock is silently lagging behind the others
+    # Check the same trade/reference frames that will be frozen, without a
+    # second mutable fetch that could disagree with the snapshot inputs.
     data_end_dates: dict[str, list[str]] = {}
-    for code in tradable:
-        try:
-            df = qf.DataFetcher.load_stock_data(
-                code, probe_start, end_date, data_dir=None, cache_dir=args.cache_dir
-            )
-            if df is not None and not df.empty:
-                end = str(pd.Timestamp(cast(Any, df.index[-1])).date())
-                data_end_dates.setdefault(end, []).append(code)
-        except Exception:
-            # Best-effort probe: a single symbol failing to load here only
-            # omits it from the freshness comparison, never aborts the scan.
-            pass
+    for code, df in snapshot_frames.items():
+        end = str(pd.Timestamp(cast(Any, df.index[-1])).date())
+        data_end_dates.setdefault(end, []).append(code)
     if len(data_end_dates) > 1 and not args.allow_stale:
         latest_common = max(data_end_dates.keys())
         lagging = sorted(d for d in data_end_dates if d < latest_common)
@@ -323,7 +324,7 @@ def _run_main() -> int:
             for d in sorted(data_end_dates):
                 count = len(data_end_dates[d])
                 marker = " ← 滞后" if d in lagging else ""
-                print(f"    {d}: {count} 只标的{marker}")
+                print(f"    {d}: {count} 只标的{marker} ({', '.join(data_end_dates[d])})")
             print("  ⚠ 标的间数据截止日不一致，信号可能基于不完整信息。")
             print("  建议检查数据源或等待数据更新后重试。")
             print("  ✗ 数据不一致 — 拒绝生成信号 (fail-closed)")
@@ -347,6 +348,8 @@ def _run_main() -> int:
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"  ✗ 冻结数据快照失败: {exc}")
         print("  数据证据不可追溯 — 拒绝生成信号 (fail-closed)")
+        if snapshot_dir.exists():
+            print("  请保留原快照和风险状态；独立复现可指定新的 --output-dir，勿改写冻结证据。")
         return 1
     snapshot_market_dir = snapshot_dir / "market_data"
     snapshot_regime_dir = snapshot_dir / "regime_data"

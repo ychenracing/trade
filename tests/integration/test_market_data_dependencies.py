@@ -109,7 +109,7 @@ def test_daily_scan_freezes_references_without_trading_them(monkeypatch, tmp_pat
     assert captured["as_of"] == "2026-09-11"
 
 
-@pytest.mark.parametrize("code", ["688008", "300308"])
+@pytest.mark.parametrize("code", ["688008", "300308", "688256"])
 @pytest.mark.parametrize("failure", ["empty", "error"])
 @pytest.mark.parametrize("allow_stale", [False, True])
 def test_missing_required_data_never_shrinks_the_universe(
