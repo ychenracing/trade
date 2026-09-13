@@ -95,14 +95,11 @@ def _materialize_frozen_snapshot(
         market_target.mkdir()
         regime_target.mkdir()
         for code, frame in sorted(frames.items()):
-            source = Path(cache_dir).expanduser() / f"{code}.csv"
+            # Freeze the validated acquisition, not a mutable cache reread.
             destination = market_target / f"{code}.csv"
-            if source.is_file():
-                shutil.copyfile(source, destination)
-            else:
-                persisted = frame.copy()
-                persisted.index.name = "date"
-                persisted.to_csv(destination, index=True)
+            persisted = frame.copy()
+            persisted.index.name = "date"
+            persisted.to_csv(destination, index=True)
         for code in sorted(REGIME_INDEX_FILES.values()):
             source = Path(regime_data_dir).expanduser() / f"{code}.csv"
             if not source.is_file():

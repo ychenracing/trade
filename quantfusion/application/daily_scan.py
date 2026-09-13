@@ -269,7 +269,9 @@ def _run_main() -> int:
                 print(f"  ✗ {code} {name}: 数据获取失败 — {str(exc)[:60]}")
 
     missing_references = set(regime_symbols) - snapshot_frames.keys()
-    if missing_references or (fatal_data_errors and not args.allow_stale):
+    # Stale evidence is an explicit simulation override, not permission to
+    # omit required trading or reference inputs.
+    if missing_references or fatal_data_errors:
         print("  ✗ 必需交易或参考标的数据失败，拒绝缺失参考篮子或缩小股票池后继续运行。")
         for code, name, reason in fatal_data_errors:
             print(f"    {code} {name}: {reason}")

@@ -57,7 +57,8 @@ def test_current_entry_points_share_one_ordered_universe() -> None:
     assert tuple(daily.SYMBOLS) == EXPECTED_SYMBOLS
     assert daily.SYMBOLS == SYMBOL_NAMES
     assert tuple(EXECUTION_PRIORITY) == EXPECTED_SYMBOLS
-    assert tuple(DOWNLOAD_SYMBOLS) == EXPECTED_SYMBOLS
+    # Market-data dependencies include the fixed signal-only reference.
+    assert tuple(DOWNLOAD_SYMBOLS) == (*EXPECTED_SYMBOLS, "688008")
     assert tuple(SYMBOL_NAME_TABLE) == EXPECTED_SYMBOLS
     assert tuple(BACKTEST_DEFAULTS) == EXPECTED_SYMBOLS[:5]
 
