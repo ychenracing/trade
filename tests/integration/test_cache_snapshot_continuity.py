@@ -124,3 +124,12 @@ def test_published_snapshots_are_read_only_for_cache_and_indices(tmp_path):
         root / "regime_data", end_date=pd.Timestamp.today().strftime("%Y-%m-%d"))
     assert all(item["status"] == "frozen_read_only" for item in result["indices"].values())
     assert all(p.read_bytes() == content for p, content in before.items())
+
+
+@pytest.mark.parametrize("unit", ["us", "ms", "s"])
+def test_same_dates_at_different_precision_are_reusable(tmp_path, unit):
+    kwargs = _snapshot_inputs(tmp_path)
+    manifest = snapshot.materialize_frozen_snapshot(**kwargs)
+    frame = kwargs["frames"]["300308"]
+    frame.index = frame.index.as_unit(unit)
+    assert snapshot.materialize_frozen_snapshot(**kwargs) == manifest

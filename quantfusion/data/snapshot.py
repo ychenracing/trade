@@ -102,7 +102,8 @@ def _materialize_frozen_snapshot(
         for code, frame in frames.items():
             dates = pd.read_csv(target / "market_data" / f"{code}.csv", usecols=["date"])
             frozen_dates = pd.DatetimeIndex(pd.to_datetime(dates["date"], errors="raise"))
-            if not frozen_dates.equals(pd.DatetimeIndex(frame.index)):
+            requested_dates = pd.DatetimeIndex(frame.index)
+            if len(frozen_dates) != len(requested_dates) or not (frozen_dates == requested_dates).all():
                 raise ValueError(f"frozen snapshot date coverage differs for {code}")
         return manifest
 

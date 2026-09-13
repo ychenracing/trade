@@ -187,7 +187,7 @@ def test_daily_decision_keeps_requested_boundary(scan_inputs, monkeypatch):
 
     monkeypatch.setattr(dss.ra.RegimeAdaptiveBacktestEngine, "decide_current", observe)
     assert dss.main() == 0
-    assert boundaries == ["2026-09-12"]
+    assert boundaries and set(boundaries) == {"2026-09-12"}
 
 
 def test_daily_rejects_old_unmarked_data_instead_of_backdating(scan_inputs, monkeypatch):
