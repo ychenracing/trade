@@ -12,10 +12,11 @@ from pathlib import Path
 import pandas as pd
 
 from quantfusion.config.paths import MARKET_DATA_DIR
+from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.universe import SYMBOL_NAMES
 
 
-DEFAULT_SYMBOLS = tuple(SYMBOL_NAMES)
+DEFAULT_SYMBOLS = tuple(dict.fromkeys((*SYMBOL_NAMES, *PortfolioPolicy().regime_symbols)))
 
 
 def _market_id(symbol: str) -> str:
