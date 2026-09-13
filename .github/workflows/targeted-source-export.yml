@@ -8,6 +8,25 @@ permissions:
   contents: read
 
 jobs:
+  source-export:
+    if: contains(github.event.head_commit.message, '[source-export]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export exact source without credentials
+        run: |
+          mkdir -p "$RUNNER_TEMP/source"
+          git bundle create "$RUNNER_TEMP/source/source.bundle" HEAD
+          git rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/source/identity.txt"
+          sha256sum "$RUNNER_TEMP/source/source.bundle" >> "$RUNNER_TEMP/source/identity.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-${{ github.sha }}
+          path: ${{ runner.temp }}/source
+          if-no-files-found: error
   affected:
     runs-on: ubuntu-latest
     timeout-minutes: 10
