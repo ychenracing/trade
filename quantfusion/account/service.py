@@ -10,14 +10,14 @@ from quantfusion.account.models import AccountSnapshot, PointInTimeSignal
 from quantfusion.domain.rules import floor_to_lot
 
 
-def _trend_candidate_score(
+def trend_candidate_components(
     frame: pd.DataFrame,
     indicators: dict[str, pd.Series],
     index: int,
     close: float,
     trigger_count: int,
     industry_relative_strength: float = 0.0,
-) -> float:
+) -> dict[str, float]:
     """计算买入排序分：多确认优先，辅以风险调整动量与趋势持续性。
 
     权重与报告一致：35% 多策略确认、25% 风险调整动量、10% 突破质量、
@@ -25,7 +25,7 @@ def _trend_candidate_score(
     分数用于决定有限现金与持仓槽位分配顺序，不直接放大仓位。
     """
     if not math.isfinite(close) or close <= 0:
-        return 0.0
+        return dict.fromkeys(("confirmation", "momentum", "breakout", "persistence", "liquidity", "industry"), 0.)
     confirmation = trigger_count / 3.0
     atr_series = indicators.get("atr")
     atr = float(atr_series.iloc[index]) if atr_series is not None else float("nan")
@@ -63,15 +63,27 @@ def _trend_candidate_score(
         avg = float(frame["volume"].iloc[index - 20: index].mean())
         if math.isfinite(cur) and math.isfinite(avg) and avg > 0:
             volume_quality = max(0.0, min(1.0, cur / avg))
-    score = (
-        0.35 * confirmation
-        + 0.25 * max(0.0, min(1.0, risk_adjusted_momentum / 0.5))
-        + 0.10 * quality
-        + 0.10 * trend_persistence
-        + 0.05 * volume_quality
-        + 0.15 * max(0.0, min(1.0, industry_relative_strength))
-    )
-    return score if math.isfinite(score) else 0.0
+    return {
+        "confirmation": 0.35 * confirmation,
+        "momentum": 0.25 * max(0.0, min(1.0, risk_adjusted_momentum / 0.5)),
+        "breakout": 0.10 * quality,
+        "persistence": 0.10 * trend_persistence,
+        "liquidity": 0.05 * volume_quality,
+        "industry": 0.15 * max(0.0, min(1.0, industry_relative_strength)),
+    }
+
+
+def _trend_candidate_score(
+    frame: pd.DataFrame, indicators: dict[str, pd.Series], index: int,
+    close: float, trigger_count: int, industry_relative_strength: float = 0.,
+) -> float:
+    """Return the unchanged, ordered sum of the shared weighted factor terms."""
+    parts = trend_candidate_components(frame, indicators, index, close, trigger_count,
+                                        industry_relative_strength)
+    # Do not use sum(): Python 3.12 compensated summation changes old tie values.
+    score = (parts["confirmation"] + parts["momentum"] + parts["breakout"]
+             + parts["persistence"] + parts["liquidity"] + parts["industry"])
+    return score if math.isfinite(score) else 0.
 
 
 def _target_weight_for(trigger_count: int) -> float:
@@ -134,4 +146,5 @@ __all__ = [
     "floor_to_lot",
     "target_weight_for",
     "trend_candidate_score",
+    "trend_candidate_components",
 ]

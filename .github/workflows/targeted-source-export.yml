@@ -2,29 +2,46 @@ name: Targeted source export
 
 on:
   push:
-    branches: [codex/targeted-input-diagnostics]
+    branches: [codex/targeted-decision-inputs]
     paths: [.github/workflows/targeted-source-export.yml]
 
 permissions:
   contents: read
 
 jobs:
-  source:
+  export:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Export tracked source and history without checkout credentials
+      - name: Fetch retained formal source and create a portable bundle
         run: |
-          mkdir -p /tmp/trade-validation-source
-          git bundle create /tmp/trade-validation-source/source.bundle --all
-          git rev-parse HEAD HEAD^{tree} > /tmp/trade-validation-source/identity.txt
-          sha256sum /tmp/trade-validation-source/source.bundle >> /tmp/trade-validation-source/identity.txt
+          mkdir -p "$RUNNER_TEMP/targeted-export"
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+          revision = json.loads(Path('artifacts/validation/formal_stress_958_acceptance_summary.json').read_text())['source_revision']
+          if re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+              raise SystemExit('invalid retained source revision')
+          subprocess.run(['git', 'fetch', '--no-tags', 'origin', revision], check=True)
+          subprocess.run(['git', 'update-ref', 'refs/retained-source/validation', revision], check=True)
+          output = Path(os.environ['RUNNER_TEMP']) / 'targeted-export'
+          bundle = output / 'retained-source.bundle'
+          subprocess.run(['git', 'bundle', 'create', str(bundle), 'refs/retained-source/validation'], check=True)
+          receipt = {'retained_revision': revision, 'bundle_sha256': hashlib.sha256(bundle.read_bytes()).hexdigest()}
+          (output / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
+          print(json.dumps(receipt, indent=2))
+          PY
       - uses: actions/upload-artifact@v4
         with:
-          name: targeted-validation-source
-          path: /tmp/trade-validation-source/
-          retention-days: 3
+          name: retained-validation-source
+          path: ${{ runner.temp }}/targeted-export
+          retention-days: 7
+          if-no-files-found: error
