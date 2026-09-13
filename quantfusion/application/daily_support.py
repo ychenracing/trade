@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from datetime import date
+from quantfusion.data.sessions import market_now
 from typing import Any
 
 def _today_str() -> str:
-    return date.today().strftime("%Y-%m-%d")
+    return market_now().date().isoformat()
 
 
 def _validate_result_fields(result: Any) -> list[str]:
