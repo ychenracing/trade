@@ -106,7 +106,7 @@ def test_daily_scan_freezes_references_without_trading_them(monkeypatch, tmp_pat
     market = output / "snapshots" / "2026-09-12" / "market_data"
     assert {path.stem for path in market.glob("*.csv")} == required
     assert calls == Counter({code: 1 for code in required})
-    assert captured["as_of"] == "2026-09-11"
+    assert captured["as_of"] == "2026-09-12"
 
 
 @pytest.mark.parametrize("code", ["688008", "300308", "688256"])

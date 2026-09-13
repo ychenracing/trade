@@ -34,6 +34,7 @@ from quantfusion.config.daily import (
     START_DATE,
     SYMBOLS,
 )
+from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.data import contracts as market_data_contracts
 from quantfusion.data.snapshot import (
     materialize_frozen_snapshot,
@@ -237,12 +238,16 @@ def _run_main() -> int:
                 code, probe_start, end_date, data_dir=None, cache_dir=args.cache_dir
             )
             if df is not None and not df.empty:
+                observed = pd.Timestamp(cast(Any, df.index[-1])).normalize()
+                data_age = (pd.Timestamp(end_date).normalize() - observed).days
+                if pd.isna(observed) or data_age < 0:
+                    raise ValueError("market data has an invalid or future observation")
                 if code in SYMBOLS:
                     tradable[code] = name
                 snapshot_frames[code] = df.copy()
-                stale = df.attrs.get("_stale", False)
+                stale = df.attrs.get("_stale", False) or data_age > MAX_EVIDENCE_STALENESS_DAYS
                 if stale:
-                    last_date = df.attrs.get("_cache_last_date", "?")
+                    last_date = df.attrs.get("_cache_last_date", str(observed.date()))
                     stale_symbols.append((code, name, str(last_date)))
                     print(f"  ⚠ {code} {name}: {len(df)} 条数据 (缓存过期，截止 {last_date})")
                 else:
@@ -269,8 +274,6 @@ def _run_main() -> int:
                 print(f"  ✗ {code} {name}: 数据获取失败 — {str(exc)[:60]}")
 
     missing_references = set(regime_symbols) - snapshot_frames.keys()
-    # Stale evidence is an explicit simulation override, not permission to
-    # omit required trading or reference inputs.
     if missing_references or fatal_data_errors:
         print("  ✗ 必需交易或参考标的数据失败，拒绝缺失参考篮子或缩小股票池后继续运行。")
         for code, name, reason in fatal_data_errors:
@@ -291,7 +294,7 @@ def _run_main() -> int:
         print("  ✗ 数据过期 — 拒绝生成信号 (fail-closed)")
         print("=" * 72)
         for code, name, last_date in stale_symbols:
-            print(f"    {code} {name}: 缓存截止 {last_date}（网络获取失败）")
+            print(f"    {code} {name}: 缓存截止 {last_date}（网络获取失败或超过日期容忍）")
         print()
         print("  信号可能不反映最新交易日，已中止扫描。")
         print("  如需强制使用缓存数据，请添加 --allow-stale 参数。")
@@ -302,7 +305,7 @@ def _run_main() -> int:
         print("  ⚠ 数据过期警告 (--allow-stale 已启用)")
         print("─" * 72)
         for code, name, last_date in stale_symbols:
-            print(f"  {code} {name}: 缓存截止 {last_date}（网络获取失败）")
+            print(f"  {code} {name}: 缓存截止 {last_date}（网络获取失败或超过日期容忍）")
         print("  信号可能不反映最新交易日，请勿直接用于实盘决策。")
         print()
 
@@ -391,7 +394,7 @@ def _run_main() -> int:
 
     current_decision = ra.RegimeAdaptiveBacktestEngine(capital).decide_current(
         tradable,
-        as_of=max(data_end_dates) if data_end_dates else end_date,
+        as_of=end_date,
         data_dir=snapshot_regime_dir,
         leader_data_dir=snapshot_market_dir,
     )

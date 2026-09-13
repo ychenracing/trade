@@ -5,6 +5,8 @@ from __future__ import annotations
 
 # ruff: noqa: F401
 
+from quantfusion.config.paths import REGIME_DATA_DIR
+
 from ._daily_scan_support import (
     FakeSignal,
     FakeTrade,
@@ -111,6 +113,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
                     "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
+                    "--regime-data-dir", str(REGIME_DATA_DIR),
                 ]):
                     exit_code = dss.main()
 
@@ -153,6 +156,7 @@ class SaveFailureExitCodeTests(unittest.TestCase):
                     "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
+                    "--regime-data-dir", str(REGIME_DATA_DIR),
                 ]):
                     exit_code = dss.main()
 
@@ -203,6 +207,7 @@ class LastGoodArtifactProtectionTests(unittest.TestCase):
                 "quantfusion.application.daily_scan",
                 "--output-dir", tmpdir,
                 "--end-date", "2026-07-30",
+                "--regime-data-dir", str(REGIME_DATA_DIR),
             ]):
                 return dss.main()
 
@@ -351,6 +356,7 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
                 "quantfusion.application.daily_scan",
                 "--output-dir", tmpdir,
                 "--end-date", "2026-07-30",
+                "--regime-data-dir", str(REGIME_DATA_DIR),
             ]):
                 return dss.main()
 
@@ -445,6 +451,7 @@ class NestedNaNAndTransactionTests(unittest.TestCase):
                     "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
+                    "--regime-data-dir", str(REGIME_DATA_DIR),
                 ]):
                     exit_code = dss.main()
 
@@ -493,6 +500,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
                 "quantfusion.application.daily_scan",
                 "--output-dir", tmpdir,
                 "--end-date", end_date,
+                "--regime-data-dir", str(REGIME_DATA_DIR),
             ]):
                 return dss.main()
 
@@ -526,6 +534,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
                     "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
+                    "--regime-data-dir", str(REGIME_DATA_DIR),
                 ]):
                     exit_code = dss.main()
 
@@ -557,6 +566,7 @@ class ArtifactFirstTransactionTests(unittest.TestCase):
                     "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
+                    "--regime-data-dir", str(REGIME_DATA_DIR),
                 ]):
                     exit_code = dss.main()
 
@@ -618,6 +628,7 @@ class RunIdConsistencyTests(unittest.TestCase):
                     "quantfusion.application.daily_scan",
                     "--output-dir", tmpdir,
                     "--end-date", "2026-07-30",
+                    "--regime-data-dir", str(REGIME_DATA_DIR),
                 ]):
                     exit_code = dss.main()
 

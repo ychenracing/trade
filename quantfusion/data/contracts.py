@@ -11,6 +11,8 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
+from quantfusion.config import paths
+
 try:
     import akshare as ak  # pyright: ignore[reportMissingImports]
 except ImportError:
@@ -21,6 +23,15 @@ INDEX_SYMBOLS = {"000300": "csi000300", "000682": "csi000682"}
 REQUIRED_OHLC_COLUMNS = ("open", "close", "high", "low")
 OPTIONAL_COLUMNS = ("volume",)
 _REQUIRED_PRICE_COLUMNS = REQUIRED_OHLC_COLUMNS
+
+
+def is_frozen_data_directory(data_dir: str | Path) -> bool:
+    """Keep retained research data and published daily snapshots read-only."""
+    root = Path(data_dir).expanduser().resolve()
+    return any(
+        root.is_relative_to(base.resolve())
+        for base in (paths.MARKET_DATA_DIR, paths.REGIME_DATA_DIR)
+    ) or any((parent / "manifest.sha256").is_file() for parent in (root, *root.parents))
 
 
 def _atomic_csv(frame: pd.DataFrame, path: Path) -> None:
@@ -148,7 +159,8 @@ def refresh_regime_indices(
     end_timestamp = cast(pd.Timestamp, end_timestamp).normalize()
 
     # 历史回放必须使用冻结快照，只有接近当前日期的日扫才访问外部接口。
-    if end_timestamp < (
+    read_only = is_frozen_data_directory(root)
+    if read_only or end_timestamp < (
         pd.Timestamp.today().normalize() - pd.Timedelta(days=2)
     ):
         missing: list[str] = []
@@ -156,7 +168,8 @@ def refresh_regime_indices(
             existing = root / f"{code}.csv"
             available = existing.is_file()
             status["indices"][code] = {
-                "status": "frozen_historical" if available else "unavailable"
+                "status": ("frozen_read_only" if read_only else "frozen_historical")
+                if available else "unavailable"
             }
             if not available:
                 missing.append(code)

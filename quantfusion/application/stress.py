@@ -461,9 +461,12 @@ def main() -> int:
             )
     data_dir = Path(args.data_dir).expanduser().resolve()
     regime_data_dir = Path(args.regime_data_dir).expanduser().resolve()
+    required_stock = sorted(
+        set(stress_scenarios.ORDERED_CODES) | set(qf.PortfolioPolicy().regime_symbols)
+    )
     missing_stock = [
         code
-        for code in stress_scenarios.ORDERED_CODES
+        for code in required_stock
         if not (data_dir / f"{code}.csv").is_file()
     ]
     missing_regime = [
