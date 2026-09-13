@@ -9,11 +9,11 @@ permissions:
   pull-requests: read
 concurrency:
   group: publish-trade-1.0.0
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   publish:
     if: github.repository == 'ychenracing/trade' && github.event.deleted == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python - <<'PYCODE'
+          python3 - <<'PYCODE'
           import ast
           import hashlib
           import json
