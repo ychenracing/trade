@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "status": "rejected_after_valid_measurement",
+  "source_revision": "90c862528c321693d17424edcafd090824107d78",
+  "source_fingerprint": "f08d4a2976abb470ef4658df416a17845f561be4f43e151c8f20065e9d391d93",
+  "data_fingerprint": "8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40",
+  "scenario_signature": "aa319abaad035649d108c8af0c12d3affea3124574e81ebea9d2de8f827cda73",
+  "scenario_ids": [
+    "prefix-01",
+    "prefix-02",
+    "prefix-03",
+    "prefix-05",
+    "add-one-05-688205",
+    "random-20260807-03-030",
+    "permutation-20260807-001",
+    "random-20260827-16-050"
+  ],
+  "old_evidence_disposition": {
+    "status": "superseded_for_decision",
+    "economic_results_remain_valid_for_exact_old_implementation": true,
+    "product_infeasibility_conclusion_invalidated": true,
+    "reasons": [
+      "adverse-loss measure compared mark-to-market cushion with cost-basis loss",
+      "cash-recovery unit test did not reproduce the real soft-alert integration"
+    ]
+  },
+  "correctness_hypotheses": {
+    "mark_to_exit_measurement": "verified_and_fixed",
+    "soft_alert_cash_deadlock": "verified_and_fixed",
+    "core_alpha_changed": false,
+    "symbol_688205_changed_or_special_cased": false,
+    "execution_boundary_changed": false
+  },
+  "old_balanced": {
+    "worst_max_drawdown": -0.2129024473970307,
+    "drawdown_failures": [
+      "prefix-02",
+      "add-one-05-688205",
+      "random-20260807-03-030"
+    ],
+    "prefix_05_wealth_retention": 0.9002352703914537,
+    "other_prefix_worst_wealth_retention": 0.5559973294662444,
+    "wealth_retention_p10": 0.4863484183949506,
+    "wealth_retention_median": 0.8573905873817258,
+    "worst_total_return_gate_delta": 0.06745629165375,
+    "add_one_diagnostic": -0.724778067196762,
+    "add_one_diagnostic_delta": -0.4898745896640292,
+    "median_sharpe_delta": -0.05976513822221241,
+    "median_calmar_delta": -3.0069047461111644,
+    "trade_records": 1066,
+    "date_symbol_side_buckets": 460,
+    "risk_action_records": 332,
+    "cash_days": 749,
+    "median_average_exposure": 0.4368871126857412,
+    "median_peak_exposure": 0.9991752734505455,
+    "cycle_locks": 8,
+    "reentry_records": 412,
+    "constrained_days": 841,
+    "recovering_days": 125,
+    "state_transitions": 39
+  },
+  "corrected_balanced": {
+    "worst_max_drawdown": -0.1724797922322574,
+    "drawdown_failures": [],
+    "prefix_05_wealth_retention": 0.226276060629744,
+    "other_prefix_worst_wealth_retention": 0.2918988363119521,
+    "wealth_retention_p10": 0.2722120036072897,
+    "wealth_retention_median": 0.4886413655585048,
+    "worst_total_return_gate_delta": 0.03675037228937539,
+    "add_one_diagnostic": 0.6419241990399216,
+    "add_one_diagnostic_delta": 0.8768276765726544,
+    "median_sharpe_delta": -0.15909951827714774,
+    "median_calmar_delta": -10.710251754952434,
+    "trade_records": 643,
+    "date_symbol_side_buckets": 263,
+    "risk_action_records": 228,
+    "cash_days": 612,
+    "median_average_exposure": 0.3567653872518075,
+    "median_peak_exposure": 0.9981506163959393,
+    "cycle_locks": 2,
+    "reentry_records": 230,
+    "constrained_days": 1934,
+    "recovering_days": 49,
+    "state_transitions": 24
+  },
+  "hard_gates": {
+    "all_evaluated_max_drawdown_at_most_0_18": true,
+    "prefix_05_wealth_ratio_at_least_0_99": false,
+    "other_prefix_worst_wealth_ratio_at_least_0_95": false,
+    "worst_total_return_delta_at_least_minus_0_02": true,
+    "add_one_worst_diagnostic_delta_at_least_minus_0_03": true
+  },
+  "all_hard_gates_pass": false,
+  "per_scenario": [
+    {
+      "scenario_id": "prefix-01",
+      "reference": {
+        "total_return": 5.308949754885001,
+        "max_drawdown": -0.1834136674871038,
+        "sharpe": 3.2061091353019706,
+        "calmar": 18.234772272416887
+      },
+      "old_balanced": {
+        "total_return": 3.9954130070137497,
+        "max_drawdown": -0.1550008015212737,
+        "sharpe": 3.171468000213293,
+        "calmar": 16.816183972465996
+      },
+      "corrected_balanced": {
+        "total_return": 3.2220052359325004,
+        "max_drawdown": -0.14115092046166403,
+        "sharpe": 3.2341992839549643,
+        "calmar": 15.258704602972797
+      },
+      "corrected_wealth_retention": 0.669208885783789,
+      "cash_days": 46,
+      "average_exposure": 0.46061561469183004,
+      "peak_exposure": 0.7848545618143794,
+      "risk_actions": 17,
+      "state_transitions": 2,
+      "reentry_records": 3
+    },
+    {
+      "scenario_id": "prefix-02",
+      "reference": {
+        "total_return": 6.244891154865128,
+        "max_drawdown": -0.18998415088010956,
+        "sharpe": 3.177560094994359,
+        "calmar": 20.271106814486444
+      },
+      "old_balanced": {
+        "total_return": 3.028140134378626,
+        "max_drawdown": -0.18578970222824015,
+        "sharpe": 2.756093273908308,
+        "calmar": 10.968035334451377
+      },
+      "corrected_balanced": {
+        "total_return": 2.5622137368107496,
+        "max_drawdown": -0.14521404865917245,
+        "sharpe": 3.0078276742780465,
+        "calmar": 12.079388585380348
+      },
+      "corrected_wealth_retention": 0.49168630151450005,
+      "cash_days": 33,
+      "average_exposure": 0.4252830076472791,
+      "peak_exposure": 0.9923458704428414,
+      "risk_actions": 35,
+      "state_transitions": 7,
+      "reentry_records": 27
+    },
+    {
+      "scenario_id": "prefix-03",
+      "reference": {
+        "total_return": 10.593889691663627,
+        "max_drawdown": -0.16815250478566787,
+        "sharpe": 3.6863803366154326,
+        "calmar": 36.02753759670465
+      },
+      "old_balanced": {
+        "total_return": 9.737847967543125,
+        "max_drawdown": -0.16715621951721327,
+        "sharpe": 3.6597805988311904,
+        "calmar": 33.7368500682864
+      },
+      "corrected_balanced": {
+        "total_return": 2.38424290932575,
+        "max_drawdown": -0.16324228289271125,
+        "sharpe": 2.8525923922708443,
+        "calmar": 10.069703016546846
+      },
+      "corrected_wealth_retention": 0.2918988363119521,
+      "cash_days": 32,
+      "average_exposure": 0.2882477668563359,
+      "peak_exposure": 0.9983694179938711,
+      "risk_actions": 29,
+      "state_transitions": 7,
+      "reentry_records": 36
+    },
+    {
+      "scenario_id": "prefix-05",
+      "reference": {
+        "total_return": 12.263702428603752,
+        "max_drawdown": -0.15634939634465247,
+        "sharpe": 3.871976853626051,
+        "calmar": 43.860705002470475
+      },
+      "old_balanced": {
+        "total_return": 10.94045274220588,
+        "max_drawdown": -0.15511316675474943,
+        "sharpe": 3.7870877122703037,
+        "calmar": 40.13758303866639
+      },
+      "corrected_balanced": {
+        "total_return": 2.0012583349096253,
+        "max_drawdown": -0.16466571984094475,
+        "sharpe": 2.684755463820213,
+        "calmar": 8.516279345242241
+      },
+      "corrected_wealth_retention": 0.226276060629744,
+      "cash_days": 183,
+      "average_exposure": 0.2661175200152735,
+      "peak_exposure": 0.9984750794187932,
+      "risk_actions": 20,
+      "state_transitions": 4,
+      "reentry_records": 27
+    },
+    {
+      "scenario_id": "add-one-05-688205",
+      "reference": {
+        "total_return": 9.148012603165377,
+        "max_drawdown": -0.17055024124812426,
+        "sharpe": 3.4757515757499187,
+        "calmar": 31.350480049764254
+      },
+      "old_balanced": {
+        "total_return": 2.286274482255626,
+        "max_drawdown": -0.2129024473970307,
+        "sharpe": 2.511914045559718,
+        "calmar": 7.433390250279484
+      },
+      "corrected_balanced": {
+        "total_return": 3.927838687658375,
+        "max_drawdown": -0.14168447391662498,
+        "sharpe": 3.327284959911936,
+        "calmar": 18.12169476896548
+      },
+      "corrected_wealth_retention": 0.4855964296025095,
+      "cash_days": 32,
+      "average_exposure": 0.4436426033802346,
+      "peak_exposure": 0.9979318147980073,
+      "risk_actions": 30,
+      "state_transitions": 1,
+      "reentry_records": 31
+    },
+    {
+      "scenario_id": "random-20260807-03-030",
+      "reference": {
+        "total_return": 1.96450796262025,
+        "max_drawdown": -0.2122314802406625,
+        "sharpe": 2.4231239932977964,
+        "calmar": 6.496921260527075
+      },
+      "old_balanced": {
+        "total_return": 2.361678560365876,
+        "max_drawdown": -0.18501588850779532,
+        "sharpe": 2.8272383697645473,
+        "calmar": 8.80861882617975
+      },
+      "corrected_balanced": {
+        "total_return": 2.3255874938238748,
+        "max_drawdown": -0.1724797922322574,
+        "sharpe": 2.9177365721720796,
+        "calmar": 9.318164133547715
+      },
+      "corrected_wealth_retention": 1.121800830274875,
+      "cash_days": 32,
+      "average_exposure": 0.27134734742901917,
+      "peak_exposure": 0.9997122296157415,
+      "risk_actions": 13,
+      "state_transitions": 1,
+      "reentry_records": 22
+    },
+    {
+      "scenario_id": "permutation-20260807-001",
+      "reference": {
+        "total_return": 10.527670351088624,
+        "max_drawdown": -0.15384225392744566,
+        "sharpe": 3.7168910709086327,
+        "calmar": 39.169692211504234
+      },
+      "old_balanced": {
+        "total_return": 8.389816671429749,
+        "max_drawdown": -0.17284247643430153,
+        "sharpe": 3.5621960525942904,
+        "calmar": 28.729775323976476
+      },
+      "corrected_balanced": {
+        "total_return": 4.517919097148501,
+        "max_drawdown": -0.1397910885145552,
+        "sharpe": 3.3364898327418127,
+        "calmar": 20.775949086309936
+      },
+      "corrected_wealth_retention": 0.47866732211226115,
+      "cash_days": 31,
+      "average_exposure": 0.5195543358190006,
+      "peak_exposure": 0.9992441126259773,
+      "risk_actions": 30,
+      "state_transitions": 1,
+      "reentry_records": 53
+    },
+    {
+      "scenario_id": "random-20260827-16-050",
+      "reference": {
+        "total_return": 2.031964254274,
+        "max_drawdown": -0.17680568094250992,
+        "sharpe": 2.7580670444829622,
+        "calmar": 8.042272785775957
+      },
+      "old_balanced": {
+        "total_return": 2.031964254274,
+        "max_drawdown": -0.17680568094250992,
+        "sharpe": 2.7580670444829622,
+        "calmar": 8.042272785775957
+      },
+      "corrected_balanced": {
+        "total_return": 2.0572353626181252,
+        "max_drawdown": -0.16396171332990012,
+        "sharpe": 2.8269515529996037,
+        "calmar": 8.770364731618686
+      },
+      "corrected_wealth_retention": 1.0083348965306902,
+      "cash_days": 223,
+      "average_exposure": 0.22936906354331052,
+      "peak_exposure": 0.9080819981908711,
+      "risk_actions": 34,
+      "state_transitions": 1,
+      "reentry_records": 31
+    }
+  ],
+  "remaining_failure": {
+    "drawdown_control": "passed for all eight scenarios",
+    "failed_dimensions": [
+      "prefix_05_wealth_ratio_at_least_0_99",
+      "other_prefix_worst_wealth_ratio_at_least_0_95"
+    ],
+    "classification": "retention_and_return_cost_from_overconstraint",
+    "one_session_adverse_move_floor_indicated": false,
+    "reason": "the corrected mark-to-exit measure now acts before the observed shocks and passes the drawdown gate; the remaining failure is excessive loss of healthy-path exposure and compounding, not an unobserved pre-close shock envelope",
+    "new_product_mechanism_required_to_continue": true
+  },
+  "decision": {
+    "selected_configuration": null,
+    "run_L2": false,
+    "run_L3": false,
+    "run_exact_983": false,
+    "merge_production_C4": false,
+    "next": "remove or isolate disabled production C4; retain exact research evidence"
+  },
+  "integrity": {
+    "c4-l1-balanced.json": "c1650a9e8c81e7fcdf5f1ab7e023ec51c28aacc97026fa601d3325d73bf1f37c",
+    "c4-l1-conservative.json": "91335d176ef871f093f3a43b836ad10f3da048d153a624867a52528d73fa8206",
+    "c4-l1-assessment.json": "4ea8b8bfa7f9ba510bd90e10eaa40a989ee99425553f9bb97b036cf5a4d2f89a",
+    "c4-risk-measure-review.json": "2f6e5fc0a3b3f88f165cb2b00ef20cc4553fbdf1a06df4913c6f0ab69798d5f2",
+    "c4-l1a-corrected.json": "a904c383e7bbe00fce0ceb7e70026cc9987e2dbc34ee965e61b1dcf2933cd4bd",
+    "c4-l1b-balanced-corrected.json": "c9a77544d64ca49cff5153b921a42751e1dd20dc880d6f9539494a810b47038f"
+  }
+}
