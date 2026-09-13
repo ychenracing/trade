@@ -17,41 +17,31 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install the existing locked validation environment
-        run: python -m pip install --require-hashes -r requirements-lock.txt
-      - name: Export tracked source and Python installation without credentials
+      - name: Fetch retained formal source and create a portable bundle
         run: |
           mkdir -p "$RUNNER_TEMP/targeted-export"
-          git bundle create "$RUNNER_TEMP/targeted-export/trade.bundle" --all
           python - <<'PY'
           import hashlib
           import json
           import os
+          import re
           import subprocess
-          import sys
-          import tarfile
           from pathlib import Path
-          out = Path(os.environ['RUNNER_TEMP']) / 'targeted-export'
-          with tarfile.open(out / 'python312.tar.gz', 'w:gz') as archive:
-              archive.add(sys.base_prefix, arcname='python312')
-          files = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file()}
-          receipt = {
-              'source_revision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
-              'source_tree': subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
-              'python': sys.version,
-              'requirements_sha256': hashlib.sha256(Path('requirements-lock.txt').read_bytes()).hexdigest(),
-              'files_sha256': files,
-          }
-          (out / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
+          revision = json.loads(Path('artifacts/validation/formal_stress_958_acceptance_summary.json').read_text())['source_revision']
+          if re.fullmatch(r'[0-9a-f]{40}', revision) is None:
+              raise SystemExit('invalid retained source revision')
+          subprocess.run(['git', 'fetch', '--no-tags', 'origin', revision], check=True)
+          subprocess.run(['git', 'update-ref', 'refs/retained-source/validation', revision], check=True)
+          output = Path(os.environ['RUNNER_TEMP']) / 'targeted-export'
+          bundle = output / 'retained-source.bundle'
+          subprocess.run(['git', 'bundle', 'create', str(bundle), 'refs/retained-source/validation'], check=True)
+          receipt = {'retained_revision': revision, 'bundle_sha256': hashlib.sha256(bundle.read_bytes()).hexdigest()}
+          (output / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
           print(json.dumps(receipt, indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: targeted-source-and-runtime
+          name: retained-validation-source
           path: ${{ runner.temp }}/targeted-export
           retention-days: 7
-          compression-level: 0
           if-no-files-found: error
