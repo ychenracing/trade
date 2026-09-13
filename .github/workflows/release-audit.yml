@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Retain immutable verification sources
+      - name: Retain current release candidate and immutable verification sources
         run: |
           python - <<'PY'
           import json, re, subprocess
