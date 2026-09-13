@@ -26,3 +26,4 @@ jobs:
         run: |
           git rev-parse HEAD
           python -m pytest -q tests/unit/test_trading_sessions.py tests/integration/test_trading_day_coverage.py
+          python -m pytest -q tests/unit/test_decision_diagnostics.py

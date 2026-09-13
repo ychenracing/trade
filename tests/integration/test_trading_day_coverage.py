@@ -3,6 +3,7 @@
 from dataclasses import asdict
 from datetime import datetime
 import json
+import shutil
 import sys
 from zoneinfo import ZoneInfo
 
@@ -118,16 +119,25 @@ def _account(tmp_path):
     snapshot = AccountSnapshot(3, "synthetic", "2026-09-12", 2_000_000.,
                                2_000_000., ())
     path = tmp_path / "synthetic_account.json"
-    # The domain model stores a tuple; the public v3 input requires a mapping.
     payload = {**asdict(snapshot), "positions": {}}
     path.write_text(json.dumps(payload), encoding="utf-8")
     return path, snapshot
 
 
+def _account_index_dir(inputs):
+    # Retain the shared loader's strict frozen-directory assertion. Account
+    # mode reads its supplied index directory directly, unlike simulation.
+    target = inputs.output / "snapshots" / "account" / "regime_data"
+    target.mkdir(parents=True)
+    for source in inputs.regime.glob("*.csv"):
+        shutil.copy2(source, target / source.name)
+    return str(target)
+
+
 def test_account_real_route_positive_and_identified(scan_inputs, tmp_path):
     path, snapshot = _account(tmp_path)
     result = account_scan.AccountSignalEngine(
-        cache_dir=str(scan_inputs.cache), regime_data_dir=str(scan_inputs.regime)
+        cache_dir=str(scan_inputs.cache), regime_data_dir=_account_index_dir(scan_inputs)
     ).run(snapshot, dss.SYMBOLS, as_of="2026-09-12", expected_account_id="synthetic")
     assert result["data_complete"]
     assert result["valuation_complete"]
@@ -160,7 +170,7 @@ def test_account_all_stocks_lagging_blocks_new_risk(scan_inputs, tmp_path):
     for symbol in set(dss.SYMBOLS) | set(dss.qf.PortfolioPolicy().regime_symbols):
         scan_inputs.failures[symbol] = "lagging"
     result = account_scan.AccountSignalEngine(
-        cache_dir=str(scan_inputs.cache), regime_data_dir=str(scan_inputs.regime)
+        cache_dir=str(scan_inputs.cache), regime_data_dir=_account_index_dir(scan_inputs)
     ).run(snapshot, dss.SYMBOLS, as_of="2026-09-12", expected_account_id="synthetic")
     assert result["buys_suppressed"]
     assert not any(row["action"] == "BUY_CANDIDATE" for row in result["actions"])
