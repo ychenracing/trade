@@ -46,19 +46,6 @@ class TradingCalendar:
     sha256: str
     sources: tuple[str, ...]
 
-    def next_session(self, day: str) -> str:
-        """Return the first sourced trading session strictly after ``day``."""
-        _day(day)
-        if not self.coverage_start <= day <= self.coverage_end:
-            raise ValueError(
-                f'CALENDAR_OUT_OF_RANGE: {day}; '
-                f'{self.coverage_start}..{self.coverage_end}'
-            )
-        index = bisect_right(self.sessions, day)
-        if index >= len(self.sessions):
-            raise ValueError('CALENDAR_OUT_OF_RANGE: next session is unknown')
-        return self.sessions[index]
-
 
 def load_calendar(path: str | Path = DEFAULT_CALENDAR_FILE) -> TradingCalendar:
     """Validate explicit annual source coverage; never extrapolate weekdays."""
