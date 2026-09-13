@@ -1,0 +1,30 @@
+name: Daily regime snapshot diagnostic
+
+on:
+  push:
+    branches: [fix/daily-scan-regime-snapshot-20260913]
+    paths:
+      - quantfusion/application/daily_scan.py
+      - tests/integration/test_daily_regime_snapshot.py
+      - .github/workflows/daily-regime-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Reproduce and verify daily regime snapshot contract
+        run: python -m pytest -q tests/integration/test_daily_regime_snapshot.py -x
+      - name: Verify affected daily and risk-boundary contracts
+        run: python -m pytest -q tests/integration tests/unit/test_unified_universe.py tests/unit/test_default_account_budget.py tests/contract/test_fail_closed_boundaries.py
