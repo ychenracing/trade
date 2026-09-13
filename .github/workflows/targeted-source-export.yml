@@ -24,8 +24,11 @@ jobs:
       - name: Exact-source affected validation
         run: |
           git rev-parse HEAD
-          python -m pytest -q tests/unit/test_trading_sessions.py tests/integration/test_trading_day_coverage.py tests/unit/test_decision_diagnostics.py
-          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 scripts/decision_diagnostics.py tests/unit/test_decision_diagnostics.py
+          python -m pytest -q tests/unit/test_trading_sessions.py tests/integration/test_trading_day_coverage.py tests/unit/test_decision_diagnostics.py tests/integration/test_saved_advice_diagnostics.py tests/unit/test_account_truth_boundary.py tests/unit/test_account_signal_sellability.py tests/contract/test_fail_closed_boundaries.py tests/contract/test_regime_safety_contracts.py tests/regression/test_system_boundaries.py
+          python -m compileall -q quantfusion scripts tests
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .
+          pyright quantfusion
+          bandit -r quantfusion scripts -ll
   diagnostics:
     needs: affected
     if: contains(github.event.head_commit.message, '[diagnostics]')
