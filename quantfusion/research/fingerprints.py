@@ -113,3 +113,7 @@ def account_source_sha() -> str:
     """Bind saved suggestions to their actual account and economic call graph."""
     return _source_sha((*ECONOMIC_SOURCE_PATHS, PACKAGE / "account",
                         PACKAGE / "application" / "account_scan.py"))
+
+
+# Public serialization contract for account evidence identities.
+canonical_sequence_sha = _canonical_sequence_sha
