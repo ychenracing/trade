@@ -1,15 +1,14 @@
-name: Targeted source export
+name: Targeted input validation
 
 on:
   push:
-    branches: [codex/targeted-decision-inputs]
-    paths: [.github/workflows/targeted-source-export.yml]
+    branches: [codex/targeted-input-diagnostics]
 
 permissions:
   contents: read
 
 jobs:
-  export:
+  affected:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -17,31 +16,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Fetch retained formal source and create a portable bundle
-        run: |
-          mkdir -p "$RUNNER_TEMP/targeted-export"
-          python - <<'PY'
-          import hashlib
-          import json
-          import os
-          import re
-          import subprocess
-          from pathlib import Path
-          revision = json.loads(Path('artifacts/validation/formal_stress_958_acceptance_summary.json').read_text())['source_revision']
-          if re.fullmatch(r'[0-9a-f]{40}', revision) is None:
-              raise SystemExit('invalid retained source revision')
-          subprocess.run(['git', 'fetch', '--no-tags', 'origin', revision], check=True)
-          subprocess.run(['git', 'update-ref', 'refs/retained-source/validation', revision], check=True)
-          output = Path(os.environ['RUNNER_TEMP']) / 'targeted-export'
-          bundle = output / 'retained-source.bundle'
-          subprocess.run(['git', 'bundle', 'create', str(bundle), 'refs/retained-source/validation'], check=True)
-          receipt = {'retained_revision': revision, 'bundle_sha256': hashlib.sha256(bundle.read_bytes()).hexdigest()}
-          (output / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
-          print(json.dumps(receipt, indent=2))
-          PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/setup-python@v5
         with:
-          name: retained-validation-source
-          path: ${{ runner.temp }}/targeted-export
-          retention-days: 7
-          if-no-files-found: error
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - run: pip install -r requirements-lock.txt
+      - name: Exact-source affected validation
+        run: |
+          git rev-parse HEAD
+          python -m pytest -q tests/unit/test_trading_sessions.py tests/integration/test_trading_day_coverage.py
