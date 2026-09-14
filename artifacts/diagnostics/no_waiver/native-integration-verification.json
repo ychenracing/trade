@@ -1,0 +1,28 @@
+{
+  "source_revision": "056d055ad82af0181a4bfba5b4ba429a028d3a37",
+  "native_tests": "..................................................................................................................... [ 75%]\n......................................                                   [100%]\n155 passed, 27 subtests passed in 10.42s\n",
+  "ci_failures": {
+    "run": 34795006669,
+    "python311": "3 failed, 1050 passed, 1 deselected, 288 subtests passed",
+    "python312": "3 failed, 1051 passed, 293 subtests passed",
+    "causes": [
+      "stale default candidate assertion",
+      "two account CLI tests implicitly use wall-clock date before close readiness"
+    ]
+  },
+  "targeted_fixes": "......................                                                   [100%]\n22 passed in 16.11s\n",
+  "local_environment": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "pytest": "9.1.1",
+    "ruff": "0.16.1",
+    "formal_locked": false
+  },
+  "historical_object": {
+    "commit": "4659a2b6d265f45256777da6a2fc25d1369308bd",
+    "blob": "c5ae5df6753cf29d67a4b152139b14faa4470c86",
+    "git_sha_verified": true
+  },
+  "joint_acceptance": false
+}
