@@ -1,0 +1,30 @@
+name: No-waiver validation tools
+
+on:
+  push:
+    branches: [feat/no-waiver-joint-optimization]
+    paths: [.github/workflows/no-waiver-validation-tools.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  tools:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preserve test tools for the offline workspace
+        run: |
+          mkdir -p "$RUNNER_TEMP/test-tools"
+          python -m pip download --only-binary=:all: --dest "$RUNNER_TEMP/test-tools" pytest==9.1.1 ruff==0.16.1
+          cd "$RUNNER_TEMP/test-tools"
+          sha256sum *.whl > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: no-waiver-test-tools-${{ github.run_id }}
+          path: ${{ runner.temp }}/test-tools/
+          retention-days: 7
+          if-no-files-found: error

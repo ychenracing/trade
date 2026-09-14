@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
-from quantfusion.application import stress_metrics, stress_scenarios
+from quantfusion.application import native_joint, stress_metrics, stress_scenarios
 from quantfusion.application.c6_contract import candidate_spec
 from quantfusion.config.paths import PROJECT_ROOT, VALIDATION_ARTIFACT_DIR
 
@@ -88,9 +88,10 @@ def _build_provenance(
     regime_data_dir: Path,
     *,
     source_revision: str,
-    candidate_id: str = "C6-Base+AB5",
+    candidate_id: str = native_joint.CANDIDATE_ID,
 ) -> dict[str, Any]:
-    candidate_spec(candidate_id)
+    if candidate_id != native_joint.CANDIDATE_ID:
+        candidate_spec(candidate_id)
     if len(source_revision) != 40 or any(
         character not in "0123456789abcdef" for character in source_revision
     ):
@@ -125,7 +126,7 @@ def _run_signature(
     regime_data_dir: Path,
     *,
     source_revision: str,
-    candidate_id: str = "C6-Base+AB5",
+    candidate_id: str = native_joint.CANDIDATE_ID,
 ) -> str:
     return str(
         _build_provenance(
@@ -450,6 +451,12 @@ def _rejection_reasons(
             for name, passed in promotion.get("checks", {}).items()
             if not passed and name != "permutation_invariant"
         )
+    if universe_artifact.get("candidate_id") == native_joint.CANDIDATE_ID and incumbent is not None:
+        reasons.extend(
+            {"gate_family": "initial_baseline_gates", "gate": str(name)}
+            for name, passed in universe_artifact["initial_baseline_gates"].get("checks", {}).items()
+            if not passed
+        )
     return reasons
 
 
@@ -475,13 +482,22 @@ def _publish_formal_artifacts(
         raise ValueError(
             "Formal publication requires the exact canonical scenario plan"
         )
-    if incumbent is not None and (
+    native = provenance.get("candidate_id") == native_joint.CANDIDATE_ID
+    if native:
+        if (ab5_release_acceptance or ab5_release_evidence is not None
+                or "release_acceptance" in prefix_artifact
+                or "release_acceptance" in universe_artifact):
+            raise ValueError("Native candidates cannot use historical release waivers")
+        if establish_initial_baseline:
+            raise ValueError("Native promotion is not initial baseline establishment")
+        native_joint.validate_references(provenance, initial_baseline_reference, incumbent)
+    if not native and incumbent is not None and (
         establish_initial_baseline or initial_baseline_reference is not None
     ):
         raise ValueError(
             "Cannot establish an initial baseline when a current-contract incumbent exists"
         )
-    if incumbent is None and (
+    if not native and incumbent is None and (
         establish_initial_baseline != (initial_baseline_reference is not None)
     ):
         raise ValueError(
@@ -509,6 +525,14 @@ def _publish_formal_artifacts(
         and universe_artifact["retained_robustness_hard_gates"]["passed"]
         and route_accepted
     )
+    if native:
+        # References were authenticated above; each gate was recomputed by the
+        # existing validator. Never replace these conjunctions with a release assessor.
+        assert initial_baseline_reference is not None and incumbent is not None
+        proof = native_joint.receipt(universe_artifact, initial_baseline_reference, incumbent)
+        accepted = accepted and proof["passed"]
+        prefix_artifact = {**prefix_artifact, "native_joint_acceptance": proof}
+        universe_artifact = {**universe_artifact, "native_joint_acceptance": proof}
     if ab5_release_acceptance:
         from quantfusion.application.c6_release_acceptance import (
             release_formal_assessment,
