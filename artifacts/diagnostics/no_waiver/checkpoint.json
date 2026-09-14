@@ -1,0 +1,30 @@
+{
+  "kind": "research_checkpoint_not_promotion",
+  "patch_base_revision": "7948ce719d3c2f0889de8e3b743bcea16cb67ded",
+  "base_source_fingerprint": "482241bdd831e5aea9811348d6746848b7a04da628f7792c7cc44360c78ef0d8",
+  "native_gates": {
+    "preservation": "native-gates.patch contains the implemented publication changes and regression tests. Apply with git apply in an isolated checkout of patch_base_revision; it is not yet integrated into this branch's production modules.",
+    "red_green": "12 initial new tests observed failing then passing; four additional historical-formal-route tests observed failing then passing.",
+    "latest_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest -q tests/unit/test_native_joint_acceptance.py tests/unit/test_stress_scenarios.py tests/c6_non_economic/test_c6_release_acceptance.py tests/c6_non_economic/test_c6_release_publication.py tests/c6_non_economic/test_c6_publication_integrity.py tests/unit/test_default_account_budget.py -k 'not test_l2_add_one_uses_difference_of_minima_from_the_frozen_contract'",
+    "latest_result": {"passed":154,"deselected":1,"subtests_passed":27},
+    "excluded_test": "test_l2_add_one_uses_difference_of_minima_from_the_frozen_contract",
+    "excluded_reason": "Missing historical Git object 4659a2b6d265f45256777da6a2fc25d1369308bd:artifacts/diagnostics/c6-preregistration.json in downloaded history. This same test fails on unchanged baseline; no numeric expectation was weakened.",
+    "limitations": ["Not new economic acceptance", "Not full engineering/locked-environment verification", "Historical private assessors are preserved; native default and supported formal CLI cannot use historical waiver promotion"]
+  },
+  "diagnostic_candidate_status": "Every economic mechanism measured so far is rejected for joint acceptance. No financial default promoted.",
+  "candidate_registry": [
+    {"id":"A-independent-buy-gap","source_fingerprint":"bd91fc7a59edff70e65aaeafbee4e19ffe8d02efeadf4b0db29e892237cdd0ea"},
+    {"id":"B-held-gap-reduction","source_fingerprint":"ac9d531383b8343a8419e4c7a5a568f10306b2cf36953adfd6dc1bd9c3b31fdf"},
+    {"id":"C-uniform-account-policy","source_fingerprint":"bb2f073f599126a044d063ed7e4a8473716dd3a4d546f14a12a30a2368426f84"},
+    {"id":"D-diagnostic-old-cash-order","source_fingerprint":"53e94f6a84b32a42ea5ff417efa8a9d720abcc04f9e62336d69eb4c0f877fa45"},
+    {"id":"E-fixed-allocation-horizons","source_fingerprint":"1fbb62ea4c495deca8e0b55c786ee553562d274aab655ee353420f951d385830"},
+    {"id":"AR-1.65","source_fingerprint":"3519f2497a5da0b0b1b565a991901fb678c4b77390c950b1d422a3e2bb0a9260"},
+    {"id":"AR-2.0","source_fingerprint":"046e2266715d977f5b33b76300a06a75d3c6a953792170b1d074b093c5c80048"},
+    {"id":"AR-2.0+C+E","source_fingerprint":"79d2a3c03556e30f8ff1e213c2cfe2e16624dc4fae470d30f79864a7e71d35fa"}
+  ],
+  "external_diagnostics": "preregistered; not run or viewed",
+  "new_full_958_candidate": "not run; diagnosed candidates fail wealth/native gates already",
+  "economic_patch_and_full_record_preservation": "Pending the following checkpoint; current economic patches and raw replay records remain local and must not be represented as remotely preserved yet.",
+  "next_distinct_mechanism": "Inspect actual risk reduction followed by cross-day repurchase. Reuse existing causal risk/admission state; test evidence-driven re-entry hysteresis without delaying safety exits, resetting lifetime peak, clearing locks, or inventing sales.",
+  "work_is_complete": false
+}
