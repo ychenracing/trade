@@ -1,0 +1,49 @@
+{
+  "status": "NOT_MET",
+  "default_promoted": false,
+  "kind": "source-bound read-only causal-boundary attribution",
+  "frozen_contract": "artifacts/diagnostics/no_waiver_joint_freeze.json",
+  "reference_revision": "86fd22448b9aad9d5e6194c0c065c40d56d7bddd",
+  "reference_fingerprint": "5e94ba6a8be97c10ae94e8363b22477a22a2318cf030d529c9886248303098aa",
+  "research_revision": "4e33931bfdfaa0b11c7cdbe076c89eabe2535b76",
+  "research_patch": "artifacts/diagnostics/no_waiver/decision-preservation/rejected-confirmation-removal.patch",
+  "research_fingerprint": "a22f14c2f1e47b5bcc70618b4af07c074aa90b97e9e72321575fdf54a1a75c83",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "local_runtime": "Python 3.13.5, diagnostic only",
+  "observer_tests": "Intended RED 2 failed/1 passed, then GREEN 3 passed. Original method called once; exception propagated; snapshots detached. Two prefix13 economic outputs exactly match their respective retained metrics.",
+  "pending_exit_question_resolved": {
+    "scenario": "prefix-13",
+    "symbol": "300308",
+    "original_pending_source_close": "2025-11-17",
+    "original_pending_reason": "regime choppy reduction",
+    "original_unexecutable_remainders": {"base:atr_channel": 50, "slow:atr_channel": 70},
+    "later_exit_close": "2026-02-06",
+    "close": 539.01,
+    "atr_stop": 542.9534443767627,
+    "emitted_full_exits": {"base:atr_channel": 3200, "slow:atr_channel": 2100},
+    "finding": "Both strategy.position pointers match live ledger positions. The full valid ATR exits are generated, then suppressed in _collect_strategy_signals because _pending_has_sell sees old sublot remainders. They never reach fusion or February9 fills. The retained reference holds those 5300 shares until June29 sector liquidation. This is not an observer-before-execution illusion.",
+    "correctness_boundary": "Current research/PR causal.py already releases unexecutable partial-sell sublots and absent-position residuals. Keep that correction. Never reinstate a stale queue to recover reference wealth. Original frozen denominator and all gates remain unchanged.",
+    "paired_research": "a22 emits full ATR exits for fast/base/slow 500/800/800 shares on February6; all survive collection and fusion. The smaller remaining position is an earlier path difference, not evidence that the same 5300-share counterfactual was executed.",
+    "earlier_entry_difference": "June24 ATR entry in original: base4500/fast2900/slow2900 (10300 total). In a22: base2100/fast1100/slow2100 (5300 total). Earlier admission/allocation plus later risk reductions must be attributed separately from suppressed exits."
+  },
+  "prefix01": {
+    "original": {"wealth": 6.308949754885001, "max_drawdown": -0.1834136674871038, "buckets": 5},
+    "research": {"wealth": 4.928538056569, "max_drawdown": -0.12468509293898083, "buckets": 7},
+    "first_reference_breach": "2025-10-14",
+    "last_prior_close": "2025-10-13",
+    "observed_upstream_difference": "Both enter identical June6 ATR/Turtle quantities. a22 sells 6600 of 11400 aggregate shares on September5 after the September4 account-budget signal, well before the October14 reference breach. This avoids breach but sacrifices subsequent trend participation; no threshold or automatic restoration change is authorized by this observation alone."
+  },
+  "prefix13": {
+    "reference": {"wealth": 13.325668002613376, "max_drawdown": -0.17463578943651512, "buckets": 106, "new_local_raw_sha256": "36c6a7b259d39a45391262e72ffd9ac8e21615daba995b662c7857bd489ed675"},
+    "research": {"wealth": 9.735642598311378, "max_drawdown": -0.1661416509857568, "buckets": 130, "new_local_raw_sha256": "acc6ce04986f3b7bfca3015e7781133b35cdf0afc69f054a8ec138eb7bd98b18"}
+  },
+  "preservation": {
+    "old_82_group_archive_recovered": false,
+    "prior_continuation_originals_recovered": false,
+    "local_boundary_raw_remote_saved": false,
+    "hosted_workflow": ".github/workflows/no-waiver-boundary-study.yml",
+    "hosted_status": "pending exact run and artifact verification",
+    "hosted_identity_boundary": "Hosted locked-Python3.12 traces are new source-bound executions, not transfers of local Python3.13 originals. Preserve actual raw files, hashes, observer source, patch and dependencies. Verify outputs before using them. They remain diagnostic and do not replace full acceptance."
+  },
+  "next": "Complete pre-breach executable action attribution; follow early capacity and legitimate post-exit re-entry. Implement only a distinct, evidence-supported coordinated decision hypothesis, jointly assessing wealth/drawdown/buckets. Preserve newly arriving branch work; do not repeat rejected cash-order, fresh-add or unified-selection variants."
+}
