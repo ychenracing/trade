@@ -1,0 +1,57 @@
+{
+  "status": "NOT_MET",
+  "canonical": false,
+  "default_promoted": false,
+  "original_pr": 101,
+  "observed_parent": "8dfc9337b5fa14827cb95174aa7b803bd7671f7d",
+  "base_commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "base_source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "columns": ["scenario_id", "wealth_including_principal", "signed_max_drawdown", "date_symbol_side_buckets"],
+  "studies": {
+    "preloss": {
+      "commit": "1f044f0a06d07daf742a4537e36eff89489a2caf",
+      "source_fingerprint": "895ce27fee8777e0b55fd7c5813f41d5ffbf6a6b611e19ed218c257ddc56b020",
+      "hypothesis": "Use the existing current-book group-gap scenario versus unchanged remaining loss budget to recognize concentrated cross-industry shock before the realized daily-loss trigger, and cover that existing stress scenario in the reduction plan.",
+      "tests": "RED 2 failed / 1 passed; GREEN 103 focused passed before economics; compile and diff check passed.",
+      "rows": [["prefix-01",5.446291097410751,-0.14777032215742228,8],["prefix-03",8.146993785794502,-0.1265102029482931,85],["prefix-05",13.400704098509003,-0.1414475791664596,95],["prefix-06",11.53930390355488,-0.1385767272620829,87],["prefix-07",11.042669999679003,-0.13775005623777853,112],["prefix-11",11.876706272377128,-0.14665259214125353,117],["prefix-13",9.048512485651377,-0.15749058517271464,137],["prefix-15",8.12978423788463,-0.15749058517271464,157],["random-20260817-03-027",7.562706561213253,-0.1500095857013049,91]],
+      "decision": "REJECTED_JOINT. Earlier recognition and strengthened existing-alarm severity had distinct effects; 13/15 wealth deteriorated. First timed-out invocation completed two cases; resumed unchanged identity skipped those completed originals, not a rerun."
+    },
+    "preloss-timing": {
+      "commit": "ea21b4b954e21f4748a5c0826869ff33e01ecc6e",
+      "source_fingerprint": "7e69936839f9f243083a635c67d791ce418b7378d0a1d16881897aed98515dbb",
+      "hypothesis": "Separate early recognition from existing-alarm severity: use group-gap relief only before the native realized daily-loss trigger; retain original severity once that trigger already applies.",
+      "tests": "RED 1 failed / 3 passed; GREEN 104 focused passed before economics; compile and diff check passed.",
+      "rows": [["prefix-01",5.5218390210175,-0.14777032215742228,6],["prefix-03",7.018521535589125,-0.1665235849670392,99],["prefix-05",13.796735085329127,-0.15400039978585942,90],["prefix-06",10.80584103216,-0.15249310693089987,101],["prefix-07",11.957128591508127,-0.14671023122266383,100],["prefix-11",12.523164750826004,-0.1477061630303614,115],["prefix-13",10.480179719647255,-0.15145875483212992,125],["prefix-15",10.730754512598503,-0.15145875483212992,121],["random-20260817-03-027",7.638286270395501,-0.1692496900973578,91]],
+      "decision": "REJECTED_JOINT. 01/15 wealth improves but 13 loses its necessary wealth pass. The unchanged rows confirm component isolation, not acceptance."
+    },
+    "symbol-target": {
+      "commit": "b056466345c313a9fff00af8c005d1e29601492e",
+      "tree": "11f78f397bb0a7ba75638cb00313ed0f048823d9",
+      "hypothesis": "On the timing candidate, pool simultaneous same-symbol strategy proposals into one maximum scaled incremental unit using the existing pro-rata lot allocator; keep native vote scaling, single proposals, late-joiner protection and mandatory exits.",
+      "tests": "RED 3 failed / 1 passed; GREEN 108 focused passed before economics. One prior research-only two-vote sizing test changed explicitly for this discretionary design, not a frozen gate. Compile and diff check passed; Ruff unavailable locally.",
+      "rows": [["prefix-01",5.5218390210175,-0.14777032215742228,6],["prefix-03",7.437718984289499,-0.16360411147147805,89],["prefix-05",3.970026579006501,-0.1788969142079442,62],["prefix-06",5.783561907072874,-0.1736144214470835,114],["prefix-07",13.320778047766503,-0.1394386728979244,108],["prefix-11",11.370137016896628,-0.1554037797059693,127],["prefix-13",9.669087462733627,-0.1616024941012267,146],["prefix-15",8.512853058114503,-0.1616024941012267,168],["random-20260817-03-027",7.498590373728378,-0.15935806315397028,98]],
+      "decision": "REJECTED_JOINT. Simple maximum-unit pooling underinvests profitable joint participation; 05/06 wealth falls sharply. Do not promote the favorable 07 row or splice candidates."
+    }
+  },
+  "attribution": {
+    "prefix01": "At 2025-09-02 close, equity 5171530.8632 versus peak 5423470.8632 was below the 6% realized alarm, but known cross-group shock and existing group-gap debit exceeded available loss headroom. New real reductions execute September3: 400 shares per ATR/Turtle sleeve book, versus original September5 reductions of1100. This is an actual causal-node/fill observation; no hindsight production branch or additive counterfactual claim.",
+    "component_separation": "The first preloss variant also increased September3 reductions for03/13 where the old alarm already applied. The second restores that original severity. Its first13/15 divergence instead follows October30 close: equity10097305.452457251, peak10376581.452457251, group gap1880116.3948; October31 earlier reductions precede the original November3 exit and alter later account allocation. Earlier detection alone is not guaranteed to preserve wealth."
+  },
+  "original_packet": {
+    "provider": "Owner-authorized connected Google Drive",
+    "file_id": "1IBT4lAl2m2v8qfyKR7vyOvhZW46iq6mu",
+    "url": "https://drive.google.com/file/d/1IBT4lAl2m2v8qfyKR7vyOvhZW46iq6mu/view",
+    "name": "TRADE_PR101_PRELOSS_AND_SYMBOL_ORIGINALS.tar.gz",
+    "bytes": 2842121,
+    "sha256": "20e12ef4b43a3548277162b314b647cac19c270ef0d58ce34b384f5affd42c0d",
+    "verified_file_members": 89,
+    "new_complete_raw_replays": 27,
+    "uploaded_and_raw_readback_verified": true,
+    "bundle_sha256": "95d73c4cea8361b0aa1db9fa9be87a1bfe8d7ca03f6e3d4a6c5a9ee3708da543",
+    "restore": "Fetch through Google_Drive.fetch(download_raw_file=true,include_base64=false), verify complete SHA256 and evidence/manifest.json members. evidence/research.bundle contains the three exact commits, prerequisite af2389b already retained. Verify/fetch the bundle and restore the needed commit in an isolated worktree. evidence/research-record.json has full source/data identities, independent complete patches relative to af2389b, hypotheses, test outputs and raw checksums. Do not chain those complete patches or promote any rejected source.",
+    "github_raw_storage": false
+  },
+  "boundary": "All27 cases are new diagnostic continuous production replays in Python3.13.5, not locked-runtime/full qualification or canonical acceptance. Existing exact8dfc933 CI34877313793 was verified completed/success before this new evidence commit; new HEAD CI is separate. No threshold, seed, data, denominator, fee/lot/T+1/ADV/stop/execution contract, risk peak or history was changed. Historical82-group/1217-file and unrelated earlier27 raw gaps remain unfilled.",
+  "next": "Retain af2389b as a rejected comparison, not a required economic foundation. Use the new paired traces to target economic holding/allocation decisions rather than repeat equivalent preloss thresholds or maximum-unit filters. One final default candidate must still satisfy all17 native prefix relations and the full applicable958/qualification before normal merge."
+}
