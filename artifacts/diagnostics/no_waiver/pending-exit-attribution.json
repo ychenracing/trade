@@ -1,0 +1,32 @@
+{
+  "status": "DIAGNOSIS_VERIFIED_NOT_ACCEPTANCE",
+  "default_promoted": false,
+  "source_preservation": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/rejected-upstream-source.json.zlib",
+    "bytes": 4570,
+    "git_blob": "848d75a2a17af3424360814baeaad81c9c0f89d7",
+    "sha256": "9178c7ee4152f3aa2e73ec3a35ea5bf1c5e28f26ee02af1100b6634be6e2c469",
+    "decode": "json.loads(zlib.decompress(path.read_bytes()))",
+    "contents": "Exact patches relative to 4e33931 and separate added tests for entry-channel-separation, early-trend-breakdown, failed-entry-structure and universe-independent-profile. Apply only in a separate research checkout. Each patch includes the already-retained common confirmation reversal; do not apply that twice. All four mechanisms rejected and withdrawn."
+  },
+  "reference": {
+    "revision": "86fd22448b9aad9d5e6194c0c065c40d56d7bddd",
+    "source_fingerprint": "5e94ba6a8be97c10ae94e8363b22477a22a2318cf030d529c9886248303098aa",
+    "scenario": "prefix-13",
+    "raw_sha256": "b0a3cc2839cd2e04a3f8ab77b36298e3f0e5ced06c8e99b2412a2e583b25302e",
+    "new_raw_path": "/mnt/data/trade-evidence/pending-exit-reference/prefix-13.pkl",
+    "raw_remote_saved": false,
+    "observer_invariance": "New read-only pending/collection/open/sell observer reproduces exact total return, maximum drawdown, buckets, every trade and complete equity curve of the previously verified original prefix13 replay. Observer unit tests: 3 passed, with expected failing capture test observed first."
+  },
+  "observed_base_sleeve_chain": {
+    "symbol": "300308",
+    "strategy": "atr_channel",
+    "stale_signal": {"direction":"sell","target_shares":50,"price":127.13875674499998,"reason":"regime choppy reduction","signal_date":"2025-11-17"},
+    "2026-02-06_open": {"open_price":547.11,"open_limit_blocked":false,"held_shares":3200,"actual_sold":0,"cash_changed":false},
+    "2026-02-06_close": {"close":539.01,"stop_loss":542.9534443767627,"strategy_emitted_full_exit_shares":3200,"stale_pending_retained":true,"collector_returned_300308_signals":[]},
+    "cause": "The historical executor requeues a remaining 50-share partial target even after a zero fill. The collector suppresses the later full strategy exit because an exact-book sell is already pending. The 50-share reduction cannot execute under the board-lot rule and persists for months. This is not a forecast-based choice to hold the profitable trend."
+  },
+  "correctness_boundary": "The current implementation already releases an unexecutable partial sublot (remaining <100 and remaining <current_shares) while retaining legally blocked or executable sell obligations. The fix entered history in commit 314254f. Do not reintroduce the bug to recover reference wealth. No frozen denominator, threshold, pending rights, lot, T+1 or execution semantics are changed by this diagnosis.",
+  "next_measurement": "One isolated reference replay with only the existing sublot-release correction will quantify this specific correctness effect. It is diagnostic, not a new wealth denominator, accepted candidate, or additive reconstruction of final returns.",
+  "remaining": "Full new raw archives still require remote preservation. Current accepted status remains NOT_MET; PR remains Draft and main must not merge."
+}
