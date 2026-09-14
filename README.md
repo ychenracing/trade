@@ -201,7 +201,7 @@ python -m quantfusion.application.stress --source-revision <verified-40-char-SHA
   --diagnostic-output artifacts/diagnostics/add-one-05-688072.json
 ```
 
-完整正式计划、初始基线／晋级门和有限例外的数值与来源只在验证说明及原始证据中维护。诊断写入独立 checkpoint 和显式 diagnostic 输出，不得搬入 canonical 路径冒充正式接受。仅在适用合同要求时运行未筛选的正式矩阵，不能把证据文件当作新的执行授权。
+正式 CLI 默认使用 `native-default`：同一候选须同时通过原始财富参考与 incumbent 保护，不能使用历史有限例外晋级。当前保留的历史 accepted 工件不代表新原生门已通过，具体数值与来源见验证说明及原始证据。诊断写入独立 checkpoint 和显式 diagnostic 输出，不得搬入 canonical 路径冒充正式接受。仅在适用合同要求时运行未筛选的正式矩阵，不能把证据文件当作新的执行授权。
 
 ## 仓库结构与文档职责
 
