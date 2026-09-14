@@ -1,0 +1,188 @@
+{
+  "diagnostic_noncanonical": true,
+  "formula": "A_i=max(original_wealth_i*(0.99 if i=5 else 0.95), incumbent_wealth_i*0.99); L_i=max(A_i, L_(i-1)*(0.90 if i=10 else 0.70))",
+  "strict_constraint": "W_10/W_09 - 1 > -0.10, without tolerance, also when A_10 dominates the propagated minimum",
+  "tolerances": "Displayed nominal bounds do not absorb gate tolerances; original/promotion/adjacent comparisons retain existing 1e-12 tolerance, strict 09->10 has none. Use actual candidate predecessor wealth when assessing a candidate.",
+  "rows": [
+    {
+      "scenario_id": "prefix-01",
+      "original_wealth": 6.308949754885001,
+      "incumbent_wealth": 5.243497434140125,
+      "original_minimum": 5.993502267140751,
+      "incumbent_minimum": 5.191062459798724,
+      "own_minimum": 5.993502267140751,
+      "propagated_minimum": 5.993502267140751,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-02",
+      "original_wealth": 7.244891154865128,
+      "incumbent_wealth": 4.166592049282376,
+      "original_minimum": 6.882646597121871,
+      "incumbent_minimum": 4.124926128789553,
+      "own_minimum": 6.882646597121871,
+      "propagated_minimum": 6.882646597121871,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-03",
+      "original_wealth": 11.593889691663627,
+      "incumbent_wealth": 6.718186501630001,
+      "original_minimum": 11.014195207080444,
+      "incumbent_minimum": 6.651004636613701,
+      "own_minimum": 11.014195207080444,
+      "propagated_minimum": 11.014195207080444,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-04",
+      "original_wealth": 11.202060218092125,
+      "incumbent_wealth": 5.702048335032128,
+      "original_minimum": 10.641957207187518,
+      "incumbent_minimum": 5.645027851681807,
+      "own_minimum": 10.641957207187518,
+      "propagated_minimum": 10.641957207187518,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-05",
+      "original_wealth": 12.707227042345128,
+      "incumbent_wealth": 9.189437988796127,
+      "original_minimum": 12.580154771921677,
+      "incumbent_minimum": 9.097543608908166,
+      "own_minimum": 12.580154771921677,
+      "propagated_minimum": 12.580154771921677,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-06",
+      "original_wealth": 12.9580647799,
+      "incumbent_wealth": 7.728154769539129,
+      "original_minimum": 12.310161540905,
+      "incumbent_minimum": 7.650873221843738,
+      "own_minimum": 12.310161540905,
+      "propagated_minimum": 12.310161540905,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-07",
+      "original_wealth": 4.000054304397751,
+      "incumbent_wealth": 4.20628644060925,
+      "original_minimum": 3.8000515891778632,
+      "incumbent_minimum": 4.164223576203157,
+      "own_minimum": 4.164223576203157,
+      "propagated_minimum": 8.6171130786335,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-08",
+      "original_wealth": 4.010996053991501,
+      "incumbent_wealth": 4.20628644060925,
+      "original_minimum": 3.8104462512919253,
+      "incumbent_minimum": 4.164223576203157,
+      "own_minimum": 4.164223576203157,
+      "propagated_minimum": 6.031979155043449,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-09",
+      "original_wealth": 3.9083755606000006,
+      "incumbent_wealth": 4.677594937776629,
+      "original_minimum": 3.7129567825700005,
+      "incumbent_minimum": 4.630818988398863,
+      "own_minimum": 4.630818988398863,
+      "propagated_minimum": 4.630818988398863,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-10",
+      "original_wealth": 12.065578382742878,
+      "incumbent_wealth": 4.404517316873373,
+      "original_minimum": 11.462299463605733,
+      "incumbent_minimum": 4.360472143704639,
+      "own_minimum": 11.462299463605733,
+      "propagated_minimum": 11.462299463605733,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-11",
+      "original_wealth": 12.043343401792502,
+      "incumbent_wealth": 4.001171228865376,
+      "original_minimum": 11.441176231702876,
+      "incumbent_minimum": 3.961159516576722,
+      "own_minimum": 11.441176231702876,
+      "propagated_minimum": 11.441176231702876,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-12",
+      "original_wealth": 11.920037854401377,
+      "incumbent_wealth": 4.3426781219296275,
+      "original_minimum": 11.324035961681307,
+      "incumbent_minimum": 4.299251340710331,
+      "own_minimum": 11.324035961681307,
+      "propagated_minimum": 11.324035961681307,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-13",
+      "original_wealth": 13.325668002613376,
+      "incumbent_wealth": 4.703662538498253,
+      "original_minimum": 12.659384602482707,
+      "incumbent_minimum": 4.65662591311327,
+      "own_minimum": 12.659384602482707,
+      "propagated_minimum": 12.659384602482707,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-14",
+      "original_wealth": 13.325668002613376,
+      "incumbent_wealth": 5.284704382655625,
+      "original_minimum": 12.659384602482707,
+      "incumbent_minimum": 5.231857338829069,
+      "own_minimum": 12.659384602482707,
+      "propagated_minimum": 12.659384602482707,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-15",
+      "original_wealth": 11.848730176784128,
+      "incumbent_wealth": 4.661834551697004,
+      "original_minimum": 11.256293667944922,
+      "incumbent_minimum": 4.615216206180034,
+      "own_minimum": 11.256293667944922,
+      "propagated_minimum": 11.256293667944922,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-16",
+      "original_wealth": 3.8620291194196263,
+      "incumbent_wealth": 6.93522575880963,
+      "original_minimum": 3.668927663448645,
+      "incumbent_minimum": 6.865873501221534,
+      "own_minimum": 6.865873501221534,
+      "propagated_minimum": 7.879405567561445,
+      "strict_at_propagated_minimum": false
+    },
+    {
+      "scenario_id": "prefix-17",
+      "original_wealth": 3.8620291194196263,
+      "incumbent_wealth": 8.937340455326881,
+      "original_minimum": 3.668927663448645,
+      "incumbent_minimum": 8.847967050773612,
+      "own_minimum": 8.847967050773612,
+      "propagated_minimum": 8.847967050773612,
+      "strict_at_propagated_minimum": false
+    }
+  ],
+  "references": [
+    {
+      "path": "artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json",
+      "sha256": "ffe023ae48de50225870c220d37208d1d1ee6c26ba6905a470093562153decbe"
+    },
+    {
+      "path": "artifacts/validation/universe_stress.json",
+      "sha256": "f7111b99f0516149a44491658ba3b04ed08d71b9a11a21d0b41f42a1bf3771c8"
+    }
+  ]
+}
