@@ -26,13 +26,18 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/source-recovery"
           test "$(git rev-parse b7be8011d71b477c8ca3942d97830e67d0e0407c^{tree})" = 7ab528a8afd9f28b66529eeb39444d94a7261c00
-          # Include the preserved native-gate patch and research freeze at current HEAD.
+          # Verify the retained rejected snapshot without promoting its source.
+          research_bundle=artifacts/diagnostics/no_waiver/decision-preservation/research-source.bundle
+          test "$(git hash-object "$research_bundle")" = 293c08e630e92ee9afc3ab20e5c5b62e185ba7eb
+          test "$(wc -c < "$research_bundle")" -eq 3440840
+          git bundle verify "$research_bundle"
+          git bundle list-heads "$research_bundle" > "$RUNNER_TEMP/source-recovery/RESEARCH_HEADS.txt"
           git bundle create "$RUNNER_TEMP/source-recovery/source.bundle" HEAD
           git rev-parse HEAD > "$RUNNER_TEMP/source-recovery/HEAD.txt"
           git rev-parse HEAD^{tree} > "$RUNNER_TEMP/source-recovery/TREE.txt"
           git ls-tree -r HEAD > "$RUNNER_TEMP/source-recovery/files.txt"
           cd "$RUNNER_TEMP/source-recovery"
-          sha256sum source.bundle HEAD.txt TREE.txt files.txt > SHA256SUMS
+          sha256sum source.bundle HEAD.txt TREE.txt files.txt RESEARCH_HEADS.txt > SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
           name: no-waiver-source-${{ github.run_id }}
