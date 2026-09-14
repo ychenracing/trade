@@ -1,0 +1,39 @@
+{
+  "status": "NOT_MET",
+  "promoted": false,
+  "verified_pr_head": "0a2413727fa22ccd2387b7777f6df4ddf987b21c",
+  "verified_main": "b7be8011d71b477c8ca3942d97830e67d0e0407c",
+  "restored_source": "4e33931bfdfaa0b11c7cdbe076c89eabe2535b76",
+  "restored_tree": "c521380be962794e536117c0a97b155b1dc06935",
+  "verified_restored_source_fingerprint": "81bc89fe85e557d57fccad34adfb39bd580c01619bcdafb0cb68f9b51be25fe4",
+  "verified_bundle_blob": "293c08e630e92ee9afc3ab20e5c5b62e185ba7eb",
+  "raw_archive_gap": {
+    "groups": 82,
+    "files": 1217,
+    "recovered": false,
+    "observation": "Old /workspace/scratch/955da6250feb directory exists but is empty. No original research/archive directories found in available /workspace or /tmp search. Originals were not reconstructed."
+  },
+  "early_archives": {
+    "artifacts/diagnostics/no_waiver/reference-attribution-20260914.tar.gz": {
+      "sha256": "afd4a97cc01788d31cde25f11221acebda10dad68a3f2d1c18b10187569eed32",
+      "bytes": 252132
+    },
+    "artifacts/diagnostics/no_waiver/control-decisions-20260914.tar.gz": {
+      "sha256": "c415e165f33022d7a8cb3719542f83dbadbbd14c6e76c69fda6769a1c35d284a",
+      "bytes": 1726495
+    },
+    "artifacts/diagnostics/no_waiver/synchronized-decisions-20260914.tar.gz": {
+      "sha256": "e1636e78c9f5a3353dc3d5206b67be27f3796ab2019bae894f49a42a46fe8c92",
+      "bytes": 1690719
+    }
+  },
+  "early_archive_verification": "All three full archive hashes and all 41 declared member hashes matched.",
+  "live_runs": "No in-progress GitHub Actions runs and no local research replay observed during recovery.",
+  "new_research": {
+    "change": "Reverse only rejected level2/minimum-held shock confirmation variant; retain snapshot for research, no default promotion. Remove two tests enforcing the rejected discretionary design.",
+    "source_fingerprint": "a22f14c2f1e47b5bcc70618b4af07c074aa90b97e9e72321575fdf54a1a75c83",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "python": "3.12.14",
+    "reason_for_new_traces": "Missing original traces for prefix01/03/13/15 and current pre-breach path prevent direct upstream attribution. Minimal new continuous production replays are explicitly new evidence."
+  }
+}

@@ -1,0 +1,66 @@
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index 87f71ed..d259022 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -12,7 +12,6 @@ from quantfusion.domain.rules import floor_to_lot, limit_pct_for_code, require_f
+ from quantfusion.domain.models import Signal
+ from quantfusion.config.overlay import (
+     RISK_ACTION_PRIORITY,
+-    SHOCK_MIN_HELD,
+     SYMBOL_SUB_INDUSTRY,
+ )
+ from quantfusion.execution.c6_receipts import reconcile_close_queue
+@@ -131,8 +130,7 @@ def plan_account_risk_budget(
+     drawdown = max(0., (peak - equity) / peak)
+     shock_trigger = (
+         bool(candidates)
+-        and held_symbol_count >= SHOCK_MIN_HELD
+-        and drawdown >= float(cfg['cm_risk_level2_drawdown'])
++        and drawdown >= float(cfg['daily_loss_limit'])
+         and len(shocked_groups) >= 2
+         and max(candidates.values()) >= abs(float(cfg['cm_risk_severe_direct_return']))
+         and dominant_group_fraction >= 1. - float(cfg['sector_shock_breadth'])
+diff --git a/tests/unit/test_observed_shock_budget.py b/tests/unit/test_observed_shock_budget.py
+index f98fc91..d561cb5 100644
+--- a/tests/unit/test_observed_shock_budget.py
++++ b/tests/unit/test_observed_shock_budget.py
+@@ -75,39 +75,6 @@ def test_broad_but_nonsevere_pullback_preserves_established_books():
+     assert actions == []
+ 
+ 
+-def test_external_shock_waits_for_level2_account_drawdown_confirmation():
+-    """A normal drawdown must not liquidate still-valid trends on basket noise."""
+-    cfg = default_engine_config()
+-    books = [
+-        (0, '300308', 'atr_channel', 4_000, 100.),
+-        (0, '300502', 'turtle_breakout', 4_000, 100.),
+-    ]
+-    receipt, actions = budget.plan_account_risk_budget(
+-        930_000., 1_000_000., cfg, books, [], lambda _: 1.,
+-        date_str='2025-09-02',
+-        stress_by_symbol={'300308': .20, '603986': .10},
+-        preserve_strategy_valid_holdings=True,
+-    )
+-
+-    assert receipt['observed_shock_confirmed'] is False
+-    assert actions == []
+-
+-
+-def test_external_basket_shock_does_not_proxy_a_single_symbol_book():
+-    """A one-symbol book remains governed by its own trend and account state."""
+-    cfg = default_engine_config()
+-    books = [(0, '300308', 'atr_channel', 4_000, 100.)]
+-    receipt, actions = budget.plan_account_risk_budget(
+-        880_000., 1_000_000., cfg, books, [], lambda _: 1.,
+-        date_str='2025-09-04',
+-        stress_by_symbol={'300308': .20, '603986': .10},
+-        preserve_strategy_valid_holdings=True,
+-    )
+-
+-    assert receipt['observed_shock_confirmed'] is False
+-    assert actions == []
+-
+-
+ def test_confirmed_shock_episode_blocks_reentry_until_evidence_clears():
+     cfg = default_engine_config()
+     signal = Signal('300394', 'turtle_breakout', 'buy', 1000, 200.,
