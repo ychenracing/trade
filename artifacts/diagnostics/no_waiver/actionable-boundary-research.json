@@ -1,0 +1,42 @@
+{
+  "status": "NOT_MET",
+  "promoted": false,
+  "research_base_revision": "4e33931bfdfaa0b11c7cdbe076c89eabe2535b76",
+  "research_base_fingerprint": "a22f14c2f1e47b5bcc70618b4af07c074aa90b97e9e72321575fdf54a1a75c83",
+  "restore_base": "Apply the retained rejected-confirmation-removal.patch exactly once to 4e33931, then the trend-only patch below. This is rejected research, never an accepted default.",
+  "hypothesis": "Require a fresh prior-window breakout before Turtle additions so released capital cannot reuse a stale filled entry/add level after retracement. Retain mandatory sells, ledger corrections and portfolio risk. Cost: missed additions inside an otherwise valid trend range.",
+  "distinction": "Changes signal evidence for additional exposure, not account-budget thresholds, cash order, unlocks or restoration flags.",
+  "observed_motivation": "In the retained control random-20260817-03-027 trace on September3, the 300394/300502 closes 145.79/263.36 were below prior Donchian highs 159.89/285.79, but old add anchors still produced new pyramid buys. Source and raw identities are those of control-decisions-20260914, not the distinct original reference or Q/R snapshots.",
+  "patch": "diff --git a/quantfusion/strategy/trend.py b/quantfusion/strategy/trend.py\nindex e05fd0c..3e7f44b 100644\n--- a/quantfusion/strategy/trend.py\n+++ b/quantfusion/strategy/trend.py\n@@ -237,6 +237,8 @@ class TurtleBreakoutStrategy(BaseStrategy):\n                 return self._make_sell_signal(ctx, f\"Donchian exit@{lower:.2f}\")\n             if (\n                 pos.units < max_units\n+                # An old filled add level is not fresh evidence after retracement.\n+                and close > upper\n                 and not _has_unresolved_limit_advance(ctx, pos, close, cfg)\n             ):\n                 add_gap = atr_val * float(cfg.get(\"pyramid_add_atr\", 0.5))\n",
+  "tests_path": "tests/unit/test_actionable_pyramid_evidence.py",
+  "tests_source": "\"\"\"Additional exposure requires renewed breakout evidence, not an old fill anchor.\"\"\"\nimport pandas as pd\n\nfrom quantfusion.config.engine import default_engine_config\nfrom quantfusion.domain.models import BarContext, Position\nfrom quantfusion.strategy.trend import TurtleBreakoutStrategy\n\n\ndef _case(close=124., upper=132., stop=80.):\n    cfg = default_engine_config()\n    cfg.update(trail_atr_mult=10., reversal_turtle_enabled=False)\n    strategy = TurtleBreakoutStrategy(cfg)\n    dates = pd.bdate_range(end='2026-04-10', periods=45)\n    frame = pd.DataFrame({'close': [130.] * 44 + [close],\n                          'high': [131.] * 44 + [close + 1]}, index=dates)\n    indicators = {name: pd.Series(value, index=dates) for name, value in {\n        'atr': 8., 'adx': 40., 'donchian_upper': upper, 'donchian_lower': 90.,\n        'ma_short': 115., 'ma_long': 100., 'reversal_low': 100.,\n    }.items()}\n    strategy.position = Position('300001', strategy.name, 1200, 100., '2026-01-05',\n        stop_loss=stop, highest_since_entry=133., highest_close_since_entry=132.,\n        units=1, last_buy_date='2026-01-05', last_add_price=100.)\n    return strategy, BarContext(44, frame, 2e6, indicators, '300001', '2026-04-10')\n\n\ndef test_old_fill_gain_does_not_reuse_a_failed_breakout_for_more_exposure():\n    strategy, ctx = _case()\n    assert strategy.on_bar(ctx) is None\n    assert strategy.position.shares == 1200\n    assert strategy.position.units == 1\n\n\ndef test_fresh_prior_range_breakout_still_allows_a_causal_add():\n    strategy, ctx = _case(close=134.)\n    signal = strategy.on_bar(ctx)\n    assert signal is not None and signal.direction == 'buy'\n    assert signal.signal_date == ctx.date\n    assert strategy.position.units == 1\n\n\ndef test_add_confirmation_cannot_delay_an_existing_stop():\n    strategy, ctx = _case(stop=130.)\n    signal = strategy.on_bar(ctx)\n    assert signal is not None and signal.direction == 'sell'\n    assert signal.target_shares == 1200\n    assert strategy.position.stop_loss >= 130.\n",
+  "verification": "Test fixture first corrected to avoid an unrelated limit-sized daily jump. Then expected RED: 1 failed, 2 passed. GREEN: 98 passed in new tests and the six prior affected test modules; git diff --check passed. These are not full qualification.",
+  "identity": {
+    "source_revision": "4e33931bfdfaa0b11c7cdbe076c89eabe2535b76",
+    "source_fingerprint": "d251838bf8ec76b50a3a07e3bfbb8e5e27b8505a990fcc5ebff9a59cd4a7179d",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {},
+    "diagnostic_noncanonical": true,
+    "allow_publication": false,
+    "python": "3.13.5"
+  },
+  "columns": ["scenario_id", "wealth_including_principal", "signed_max_drawdown", "date_symbol_side_buckets"],
+  "rows": [
+    ["prefix-01",4.928538056569,-0.12468509293898083,7],
+    ["prefix-03",7.098203633529002,-0.15708832989622623,90],
+    ["prefix-13",10.539903038000253,-0.16589971873481416,119],
+    ["prefix-15",7.533189201095877,-0.1734620912465628,159],
+    ["random-20260817-03-027",7.819308542895377,-0.15996326628160795,82]
+  ],
+  "raw_hashes": {
+    "prefix-01.pkl":"4d75053e1242584a7709de3d155d512788e26b8ab3a67f082821e7b4151f1efc",
+    "prefix-03.pkl":"056b7085db1f1341c165a079dc9604f6b2c80d14dabdade1ca14dabf4b272fc6",
+    "prefix-13.pkl":"3c7b67bc85dac1405d7d5f5568f8d783dcac3ad9a630657fc23b35f0ea4c3bac",
+    "prefix-15.pkl":"05956ea9744b6a34bbec56bf0e2472d871f2b509dcb4b885c8acd7884d0ddcc7",
+    "random-20260817-03-027.pkl":"a31e9ef33ee8375b0fb67337c277415fa2cd7271e7f1fabdc73b9a9fa4e3fed3"
+  },
+  "raw_remote_saved": false,
+  "raw_local_root": "/mnt/data/trade-actionable-evidence/fresh-breakout-add",
+  "verdict": "REJECTED_JOINT. Prefix13 improves wealth, drawdown and buckets, but prefix15 wealth declines and buckets rise. No default source changed. Do not promote the prefix13 benefit in isolation. Investigate the cross-scenario allocation effect before another structural decision, not a threshold scan.",
+  "preservation_limit": "Exact candidate patch, tests, summary metrics and source/data/raw identities are saved here; complete new raw replay files are not yet remotely preserved. The old 82-group gap and other continuation's raw gaps are not claimed recovered."
+}
