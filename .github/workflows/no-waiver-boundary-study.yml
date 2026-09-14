@@ -5,8 +5,9 @@ on:
     branches: [feat/no-waiver-joint-optimization]
     paths:
       - .github/workflows/no-waiver-boundary-study.yml
-      - artifacts/diagnostics/no_waiver/boundary_replay.py
-      - tests/unit/test_boundary_observer.py
+      - artifacts/diagnostics/no_waiver/growth-source-edits.json
+      - artifacts/diagnostics/no_waiver/restore_growth.py
+      - artifacts/diagnostics/no_waiver/growth_contract_tests.py
 
 permissions:
   contents: read
@@ -19,10 +20,6 @@ jobs:
   trace:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        source: [reference, reversal]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,49 +30,47 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements-lock.txt
-      - name: Install existing locked dependencies and check observer
+      - name: Install locked dependencies and verify existing observer
         run: |
           set -euo pipefail
           python -m pip install -r requirements-lock.txt
           python -m pytest -q tests/unit/test_boundary_observer.py
-          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 artifacts/diagnostics/no_waiver/boundary_replay.py tests/unit/test_boundary_observer.py
-      - name: Recover source without changing production files
-        env:
-          SOURCE: ${{ matrix.source }}
+      - name: Restore rejected signal-qualified candidate, not default source
         run: |
           set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/boundary-evidence"
           bundle=artifacts/diagnostics/no_waiver/decision-preservation/research-source.bundle
           test "$(git hash-object "$bundle")" = 293c08e630e92ee9afc3ab20e5c5b62e185ba7eb
           git bundle verify "$bundle"
           git fetch "$bundle" HEAD
           test "$(git rev-parse 4e33931bfdfaa0b11c7cdbe076c89eabe2535b76^{tree})" = c521380be962794e536117c0a97b155b1dc06935
-          if [ "$SOURCE" = reference ]; then
-            git worktree add --detach "$RUNNER_TEMP/replay-source" 86fd22448b9aad9d5e6194c0c065c40d56d7bddd
-          else
-            git worktree add --detach "$RUNNER_TEMP/replay-source" 4e33931bfdfaa0b11c7cdbe076c89eabe2535b76
-            git -C "$RUNNER_TEMP/replay-source" apply "$GITHUB_WORKSPACE/artifacts/diagnostics/no_waiver/decision-preservation/rejected-confirmation-removal.patch"
-          fi
-      - name: New read-only boundary traces, never formal acceptance
-        env:
-          SOURCE: ${{ matrix.source }}
+          git worktree add --detach "$RUNNER_TEMP/replay-source" 4e33931bfdfaa0b11c7cdbe076c89eabe2535b76
+          python -m artifacts.diagnostics.no_waiver.restore_growth artifacts/diagnostics/no_waiver/growth-source-edits.json "$RUNNER_TEMP/replay-source" artifacts/diagnostics/no_waiver/growth_contract_tests.py
+          test "$(sha256sum "$RUNNER_TEMP/replay-source/tests/unit/test_evidence_qualified_growth.py" | cut -d' ' -f1)" = d4a386f43e65ffa70102ead6f370bc727ae2319bcd9ae9a70ea8cbd437e8faaf
+          git rev-parse HEAD > "$RUNNER_TEMP/boundary-evidence/host-HEAD.txt"
+          cp artifacts/diagnostics/no_waiver/{boundary_replay.py,growth-source-edits.json,growth_contract_tests.py,growth-attribution.json,restore_growth.py} requirements-lock.txt "$RUNNER_TEMP/boundary-evidence/"
+          python -m pip freeze > "$RUNNER_TEMP/boundary-evidence/dependencies.txt"
+          cd "$RUNNER_TEMP/replay-source"
+          python -m pytest -q tests/unit/test_evidence_qualified_growth.py tests/unit/test_observed_shock_budget.py tests/unit/test_event_transition_selection.py tests/unit/test_atr_trend_readmission.py tests/unit/test_risk_sell_strategy_state.py tests/c6_non_economic/test_account_risk_budget.py tests/c6_non_economic/test_c6_fixed_reference_admission.py | tee "$RUNNER_TEMP/boundary-evidence/tests.log"
+          git diff --check
+      - name: New locked-runtime raw evidence, never canonical acceptance
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/boundary-evidence"
-          git rev-parse HEAD > "$RUNNER_TEMP/boundary-evidence/observer-owner-HEAD.txt"
-          cp artifacts/diagnostics/no_waiver/boundary_replay.py tests/unit/test_boundary_observer.py requirements-lock.txt "$RUNNER_TEMP/boundary-evidence/"
-          python -m pip freeze > "$RUNNER_TEMP/boundary-evidence/dependencies.txt"
-          if [ "$SOURCE" = reference ]; then
-            fingerprint=5e94ba6a8be97c10ae94e8363b22477a22a2318cf030d529c9886248303098aa
-            scenarios='prefix-01 prefix-13'
-          else
-            fingerprint=a22f14c2f1e47b5bcc70618b4af07c074aa90b97e9e72321575fdf54a1a75c83
-            scenarios='prefix-01 prefix-13 random-20260817-03-027'
-          fi
-          python -m artifacts.diagnostics.no_waiver.boundary_replay --root "$RUNNER_TEMP/replay-source" --out "$RUNNER_TEMP/boundary-evidence/raw" --source-fingerprint "$fingerprint" --ids $scenarios 2>&1 | tee "$RUNNER_TEMP/boundary-evidence/replay.log"
+          python -m artifacts.diagnostics.no_waiver.boundary_replay --root "$RUNNER_TEMP/replay-source" --out "$RUNNER_TEMP/boundary-evidence/raw" --source-fingerprint 4406d18738b1542171fe2e56390a2a8078846e317a3ee88f1956b2d8ab6812d0 --ids prefix-01 prefix-03 prefix-05 prefix-13 prefix-15 random-20260817-03-027 2>&1 | tee "$RUNNER_TEMP/boundary-evidence/replay.log"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'boundary-evidence'
+          expected = {row[0]: row[1:] for row in json.loads((root/'growth-attribution.json').read_text())['rows']}
+          actual = json.loads((root/'raw/results.json').read_text())
+          comparisons = [{'scenario': row['scenario_id'], 'exact_metrics_match': [row['wealth'], row['max_drawdown'], row['buckets']] == expected[row['scenario_id']]} for row in actual]
+          (root/'replication.json').write_text(json.dumps({'canonical':False,'status':'NOT_MET','comparisons':comparisons},indent=2)+'\n')
+          assert len(actual) == len(expected) and all(x['exact_metrics_match'] for x in comparisons)
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: no-waiver-boundaries-${{ matrix.source }}-${{ github.run_id }}
+          name: no-waiver-growth-${{ github.run_id }}
           path: ${{ runner.temp }}/boundary-evidence/
           retention-days: 90
           if-no-files-found: error
