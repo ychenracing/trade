@@ -83,5 +83,41 @@
     "new_raw_count": 21,
     "formal_958": "not started: all new mechanisms already fail diagnostic wealth/safety gates",
     "external": "not run or viewed"
+  },
+  "structural_recovery": {
+    "work_complete": false,
+    "default_economic_changes_promoted": false,
+    "requirements": "joint-prefix-wealth-requirements.json",
+    "results": "structural-recovery-results.json",
+    "new_raw_records": 40,
+    "candidate_names": [
+      "funded-o",
+      "policy-book-q",
+      "target-r",
+      "open-s",
+      "open-order-t"
+    ],
+    "all_five_rejected": true,
+    "known_ci_failure": "Resolved unregistered diagnostic Markdown by preserving text inside existing research JSON. Did not weaken hygiene test.",
+    "ci_repair_commit": "5c5c3ea800670f35dbdcecb4ddea40fcf5a190d0",
+    "known_safe_merge": false,
+    "economic_findings": [
+      "Zero-cash intent interference reproduced (1900 -> 900 funded shares) and removed in isolated research.",
+      "Funded allocation alone failed to recover joint wealth.",
+      "Cycle-policy floor avoided prefix07 early lock but did not recover required wealth.",
+      "Partial strategic target restoration improved Q prefix05 from7.35678 to8.51171, below12.58015.",
+      "After-sell authorization and execution-order alignment still failed, including known random drawdown21.1062%."
+    ],
+    "implementation_limits": [
+      "Open S/T research not qualified for standalone/manual advice and all open-eligibility boundaries.",
+      "No failed research patch is promoted to production source.",
+      "No full958 or external12 rerun on already-rejected subsets."
+    ],
+    "merge_protection_observed": {
+      "main": "b7be8011d71b477c8ca3942d97830e67d0e0407c",
+      "protected": false,
+      "ruleset_21902708": "disabled",
+      "does_not_waive_user_acceptance": true
+    }
   }
 }
