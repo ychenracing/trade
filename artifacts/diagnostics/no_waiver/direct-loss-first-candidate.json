@@ -1,6 +1,6 @@
 {
   "kind": "direct_loss_first_systemic_shock_research_candidate",
-  "status": "AWAITING_LOCKED_ECONOMICS",
+  "status": "PARTIAL_MECHANISM_SUPPORTED_NOT_JOINT",
   "canonical": false,
   "default_promoted": false,
   "preregistration_comment": 5675341926,
@@ -71,5 +71,14 @@
     ],
     "purpose": "Cover the primary wealth gap, protected prefixes, 06->07 and 07->08 adjacency, production17, mechanism-relevant 01/15, and the retained known-random risk path before any 958 expansion.",
     "not_acceptance": "This batch is diagnostic/noncanonical. A favorable batch is necessary evidence only and does not replace full-prefix, 958, qualification, original/incumbent or repository protection acceptance."
+  },
+  "locked_result": {
+    "path": "artifacts/diagnostics/no_waiver/direct-loss-first-result.json",
+    "sha256": "32d6ae5085e4c4ce66d2c21185477a13caefd415fdaf7be36a4b3171b6fd52a0",
+    "workflow_run_id": 34936324660,
+    "artifact_id": 10383399142,
+    "artifact_sha256": "4d7e6a430a618155d00c17a0e25be00008ed3b94d637353866a2dd04801eff40",
+    "drive_file_id": "1m_IXkZeMooZtXfOpdIjqaOpUKArtRzAy",
+    "decision": "retain_component_no_958_alone_redirect_major_wealth_gap"
   }
 }

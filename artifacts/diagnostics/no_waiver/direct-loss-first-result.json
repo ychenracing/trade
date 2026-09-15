@@ -1,0 +1,133 @@
+{
+  "kind": "direct_loss_first_locked_early_result",
+  "status": "PARTIAL_MECHANISM_SUPPORTED_NOT_JOINT",
+  "canonical": false,
+  "default_promoted": false,
+  "host_commit": "d322a1e61fcfee66015f095dccc18fff817c95e8",
+  "source_fingerprint": "b17bb382bb854262ad970838fedd8a98be3b3496f2e9a2be5c6ec973a7c3121a",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "locked_run": {
+    "workflow_run_id": 34936324660,
+    "artifact_id": 10383399142,
+    "artifact_name": "direct-loss-first-34936324660",
+    "artifact_bytes": 1055241,
+    "artifact_sha256": "4d7e6a430a618155d00c17a0e25be00008ed3b94d637353866a2dd04801eff40",
+    "artifact_expires_at": "2026-12-14T06:18:04Z",
+    "summary_sha256": "fa73e1c53a02fcc9f2662dfd3995183d0b45c7a665bbeb048c5ac6e9d78a8bd6",
+    "results_sha256": "d0fd8e5f5c889e07694de714e10cd461b49f62c4c313578ebc4e7d66481e3f15",
+    "red_tests_sha256": "77ff660e68282ffd0c9da4c3aa23b6d3207b8c5a0ef837c0937778e5ba752440",
+    "green_tests_sha256": "d8fa18cfacd1e59cc588a358e90569200c9621adb0dfdcd73a9a3db2a609a34f",
+    "drive_backup": {
+      "file_id": "1m_IXkZeMooZtXfOpdIjqaOpUKArtRzAy",
+      "name": "TRADE_PR101_DIRECT_LOSS_FIRST_RUN_34936324660.zip",
+      "bytes": 1055241,
+      "sha256": "4d7e6a430a618155d00c17a0e25be00008ed3b94d637353866a2dd04801eff40",
+      "raw_readback_verified": true
+    }
+  },
+  "tests": {
+    "red": "2 expected failures on exact C before source patch",
+    "green": "89 passed, 6 subtests passed in locked Python 3.12 runner"
+  },
+  "scenarios": {
+    "prefix-01": {
+      "wealth": 4.928538056569,
+      "required_wealth": 5.993502267140751,
+      "wealth_gate": false,
+      "raw_sha256": "1d01a51666a31c3922599ffb8df5394cfef528c1da0e2776c84e3bace80c0762",
+      "parent_wealth": 4.928538056569,
+      "wealth_delta_vs_parent": 0.0
+    },
+    "prefix-03": {
+      "wealth": 6.980929787136749,
+      "required_wealth": 11.014195207080444,
+      "wealth_gate": false,
+      "raw_sha256": "b97bf8c653aa36372c21beb0ef0fdb2851a3922a3ab871dd0be8de1c80f15c00",
+      "parent_wealth": 7.018521535589125,
+      "wealth_delta_vs_parent": -0.03759174845237556
+    },
+    "prefix-05": {
+      "wealth": 13.704754138122127,
+      "required_wealth": 12.580154771921677,
+      "wealth_gate": true,
+      "raw_sha256": "d444d3325a3972cf7202645429431bf490cf1525842184fc36bb85291a5312a9",
+      "parent_wealth": 13.796735085329127,
+      "wealth_delta_vs_parent": -0.09198094720700034
+    },
+    "prefix-06": {
+      "wealth": 11.266665997923,
+      "required_wealth": 12.310161540905,
+      "wealth_gate": false,
+      "raw_sha256": "275bf847704201716b2bf965798fee303d3e0aa7cdecc7874ec152241d28af52",
+      "parent_wealth": 10.80584103216,
+      "wealth_delta_vs_parent": 0.4608249657630008
+    },
+    "prefix-07": {
+      "wealth": 11.540198051080502,
+      "required_wealth": 8.6171130786335,
+      "wealth_gate": true,
+      "raw_sha256": "933d4b26f4ab7b3114f0b259f3027287559ad450117462e8ba67d3ff30f3941b",
+      "parent_wealth": 11.957128591508127,
+      "wealth_delta_vs_parent": -0.4169305404276251
+    },
+    "prefix-08": {
+      "wealth": 9.313481124690126,
+      "required_wealth": 6.031979155043449,
+      "wealth_gate": true,
+      "raw_sha256": "d300c14f85c92d7b25525563c1e7acb8f64e3cae0d8403e42f7429f86019f3e9"
+    },
+    "prefix-13": {
+      "wealth": 13.422915323504629,
+      "required_wealth": 12.659384602482707,
+      "wealth_gate": true,
+      "raw_sha256": "d68825d4274fb0b8d24cfa1ffbe9e420c12e3ff350a99f3f917969321140df8f",
+      "parent_wealth": 13.954479489677876,
+      "wealth_delta_vs_parent": -0.5315641661732471
+    },
+    "prefix-15": {
+      "wealth": 10.318526304996126,
+      "required_wealth": 11.256293667944922,
+      "wealth_gate": false,
+      "raw_sha256": "db76faf90989109d003c403570c747274bc1af195958ccfea90fd0d39d476fa1",
+      "parent_wealth": 10.113589352165878,
+      "wealth_delta_vs_parent": 0.2049369528302485
+    },
+    "prefix-17": {
+      "wealth": 11.194244202966377,
+      "required_wealth": 8.847967050773612,
+      "wealth_gate": true,
+      "raw_sha256": "3e13ec239399cd5f6719e7b36f195802a843af1898f77adf111475ba37d88b51"
+    }
+  },
+  "adjacency": {
+    "prefix06_to_07": 1.0242779943248452,
+    "prefix06_to_07_gate": true,
+    "prefix07_to_08": 0.8070469053880848,
+    "prefix07_to_08_gate": true
+  },
+  "known_random": {
+    "scenario_id": "random-20260817-03-027",
+    "wealth": 7.607986477275001,
+    "max_drawdown": -0.16054244510593793,
+    "max_drawdown_magnitude": 0.16054244510593793,
+    "max_drawdown_gate_18pct": true,
+    "date_symbol_side_buckets": 92,
+    "bucket_gate_160": true,
+    "raw_sha256": "54b73e59b3c6cc3d5cd5cfd174df1d9d801bd500e92013d35896318eb89f7811"
+  },
+  "decision": {
+    "supported_evidence": [
+      "07->08 adjacent wealth retention is 0.8070469053880848, above the frozen 0.70 floor.",
+      "prefix06 wealth improves versus retained exact C by about 0.460825x and prefix15 by about 0.204937x.",
+      "prefix05, prefix13 and production17 satisfy their tested frozen wealth floors; the retained known-random path stays below 18% drawdown with 92 buckets."
+    ],
+    "joint_failures": [
+      "prefix01 wealth 4.928538056569 < 5.993502267140751.",
+      "prefix03 wealth 6.980929787136749 < 11.014195207080444 and is about 0.037592x below retained exact C.",
+      "prefix06 wealth 11.266665997923 < 12.310161540905.",
+      "prefix15 wealth 10.318526304996126 < 11.256293667944922."
+    ],
+    "route": "Preserve direct-loss-first as a complementary stability/risk-allocation component. Do not promote it, do not launch full958 for this component alone, and do not tune neighboring loss thresholds or fractions. Redirect the main research line to a distinct mechanism with evidence capable of closing the large early wealth gaps, especially prefix01/prefix03 and residual prefix06/prefix15. Combine this component only if a later mechanism has complementary causal evidence and the same source can be run continuously from the formal start."
+  },
+  "acceptance": "NOT_MET; early locked diagnostics are not full-prefix, formal random P90, full958, qualification, incumbent/original-complete or repository-protection acceptance."
+}
