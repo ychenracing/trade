@@ -1,0 +1,75 @@
+{
+  "kind": "direct_loss_first_systemic_shock_research_candidate",
+  "status": "AWAITING_LOCKED_ECONOMICS",
+  "canonical": false,
+  "default_promoted": false,
+  "preregistration_comment": 5675341926,
+  "boundary_review_comment": 5675409852,
+  "parent_source": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "tree": "c1b2b89c559ab84a52213ef59fdb3bd2f4265d06",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975"
+  },
+  "candidate": {
+    "source_fingerprint": "b17bb382bb854262ad970838fedd8a98be3b3496f2e9a2be5c6ec973a7c3121a",
+    "source_patch": "artifacts/diagnostics/no_waiver/direct-loss-first-source.patch",
+    "source_patch_sha256": "5355e8ba40afb3bae778e9c2ac8d7406fc61f75e10194012399d38ae3ec839e1",
+    "tests_patch": "artifacts/diagnostics/no_waiver/direct-loss-first-tests.patch",
+    "tests_patch_sha256": "5b625befac45171af253a8797b0c7e38566dfe80f7594141225d7779bf5c26a6"
+  },
+  "raw_boundary_recovery": {
+    "packet_drive_id": "1zcB2jhtgyW3ft7N8d7WWs6ial6kFp46G",
+    "packet_bytes": 15025863,
+    "packet_sha256": "b9ec2c1b1dcd077226aa3eb51293970d1f1099b8bc80a751ab916f9ce0085f1d",
+    "prefix03_raw_sha256": "0e3276fff3358c7900901b63d95b7a7e348b0f4d952e6409705436ce58ea42b6",
+    "date": "2025-09-02",
+    "observed_shock_candidates": {
+      "300308": 0.10403598808844972,
+      "300502": 0.10403598808844972,
+      "300394": 0.10403598808844972,
+      "688008": 0.0711175616835994,
+      "603986": 0.0711175616835994
+    },
+    "shocked_group_count": 2,
+    "observed_shock_confirmed": true,
+    "resolution": "The earlier boundary summary listed the three held optical names, while the raw event also contains the two unheld memory reference names. The full event is therefore consistent with exact-C's two-group confirmation rule."
+  },
+  "mechanism": {
+    "unchanged": [
+      "daily_loss_limit and every frozen risk threshold",
+      "cross-group shock confirmation",
+      "group-propagated stress used for systemic reserve and gross cap",
+      "required account-level gross/stress relief",
+      "close-known planning versus next-open fills",
+      "cash and pending-sell accounting"
+    ],
+    "change": "Keep each symbol's own close-known loss identity separate from propagated group stress. Once the existing shock is confirmed, allocate the unchanged required relief pro-rata to held direct-hit books first; allocate only residual relief to non-hit books if direct-hit capacity is insufficient.",
+    "snapshot_qualification": "AccountSignalEngine uses the same prepared close-known frames for propagated stress and direct-hit identity; it does not invent sleeve history."
+  },
+  "local_tdd": {
+    "red": {
+      "replay_boundary": "exact C confirmed two groups but pro-rata reduced non-hit 300308 and direct hits alone did not fund required relief",
+      "snapshot_boundary": "exact C snapshot account budget omitted observed shock evidence and reported observed_shock_confirmed=false"
+    },
+    "green": "89 passed, 6 subtests passed across observed-shock, replay account-budget, snapshot sellability/truth and fail-closed tests in the complete exact-C repository",
+    "git_diff_check": "PASS"
+  },
+  "locked_runner_preregistration": {
+    "red_then_green": true,
+    "early_scenarios": [
+      "prefix-01",
+      "prefix-03",
+      "prefix-05",
+      "prefix-06",
+      "prefix-07",
+      "prefix-08",
+      "prefix-13",
+      "prefix-15",
+      "prefix-17",
+      "random-20260817-03-027"
+    ],
+    "purpose": "Cover the primary wealth gap, protected prefixes, 06->07 and 07->08 adjacency, production17, mechanism-relevant 01/15, and the retained known-random risk path before any 958 expansion.",
+    "not_acceptance": "This batch is diagnostic/noncanonical. A favorable batch is necessary evidence only and does not replace full-prefix, 958, qualification, original/incumbent or repository protection acceptance."
+  }
+}

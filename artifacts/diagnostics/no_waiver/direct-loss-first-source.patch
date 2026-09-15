@@ -1,0 +1,190 @@
+diff --git a/quantfusion/application/account_scan.py b/quantfusion/application/account_scan.py
+index c26f1c1..59eded0 100644
+--- a/quantfusion/application/account_scan.py
++++ b/quantfusion/application/account_scan.py
+@@ -32,7 +32,11 @@ from quantfusion.config.portfolio import PortfolioPolicy
+ from quantfusion.domain.models import Signal
+ from quantfusion.domain.rules import floor_to_lot, require_finite
+ from quantfusion.engine.universe import SleeveBacktestEngine
+-from quantfusion.risk.account_budget import plan_account_risk_budget
++from quantfusion.risk.account_budget import (
++    observed_direct_losses,
++    observed_shock_stress,
++    plan_account_risk_budget,
++)
+ from quantfusion.config.profiles import config_for_symbol, get_symbol_profile
+ from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
+ from quantfusion.config.weak import weak_regime_config
+@@ -281,8 +285,13 @@ class AccountSignalEngine:
+         def score(symbol: str) -> float:
+             return sum(values.get(symbol, 0.) for values in scores)/len(scores)
+ 
++        evidence_date = pd.Timestamp(as_of)
+         receipt, reductions = plan_account_risk_budget(
+             equity, peak, cfg, books, buys, score, date_str=as_of,
++            stress_by_symbol=observed_shock_stress(frames, evidence_date, cfg),
++            direct_loss_by_symbol=observed_direct_losses(
++                frames, evidence_date, cfg,
++            ),
+         )
+         for reduction in reductions:
+             row = by_symbol[reduction.symbol]
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index d259022..5cd7df3 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -53,6 +53,7 @@ def plan_account_risk_budget(
+     buys: Sequence[tuple[int, Signal, float]],
+     score: Callable[[str], float], *, date_str: str,
+     stress_by_symbol: Mapping[str, float] | None = None,
++    direct_loss_by_symbol: Mapping[str, float] | None = None,
+     shock_episode_active: bool = False,
+     shock_floor: float = 0.,
+     preserve_strategy_valid_holdings: bool = False,
+@@ -80,6 +81,19 @@ def plan_account_risk_budget(
+     if gross > equity + 1e-8:
+         raise ValueError("account budget cannot certify leveraged/negative-cash books")
+     candidates = dict(stress_by_symbol or {})
++    direct_losses = dict(direct_loss_by_symbol or {})
++    if any(
++        not isinstance(symbol, str)
++        or not symbol
++        or not math.isfinite(float(loss))
++        or float(loss) < float(cfg['daily_loss_limit'])
++        or symbol not in candidates
++        or float(loss) > float(candidates[symbol]) + 1e-12
++        for symbol, loss in direct_losses.items()
++    ):
++        raise ValueError(
++            'direct-loss evidence must be close-known shocked symbols at or above daily loss limit'
++        )
+     if type(shock_episode_active) is not bool:
+         raise ValueError('shock episode state must be boolean')
+     if type(preserve_strategy_valid_holdings) is not bool:
+@@ -294,27 +308,54 @@ def plan_account_risk_budget(
+     if reduction_suspended:
+         pass
+     elif shock_confirmed and gross:
+-        # A systemic shock against a concentrated account is not evidence that
+-        # the lowest short-horizon rank is the one trend to abandon. Reduce
+-        # every live book by the same fraction so no surviving winner loses its
+-        # strategy state merely because of a brittle cross-sectional tie-break.
++        # Keep group-propagated stress for shock confirmation and the required
++        # account-level relief, but do not lose the identity of holdings that
++        # actually breached the close-known daily-loss threshold. When those
++        # direct-hit books can fund the same required relief, source it there
++        # before touching correlated holdings that did not themselves breach.
+         retain_scale = min(
+             1.,
+             cap / gross,
+             receipt['remaining_loss_budget'] / held_stress if held_stress else 1.,
+         )
++        required_relief = gross * (1. - retain_scale)
+         ordered_books = sorted(books, key=lambda book: (book[1], book[0], book[2]))
+-        reductions = [min(book[3], math.ceil(book[3] * (1. - retain_scale) / 100.) * 100)
+-                      for book in ordered_books]
+-        for (state, symbol, strategy, shares, price), reduction in zip(
+-            ordered_books, reductions, strict=True,
+-        ):
+-            if reduction:
++
++        def append_pro_rata_relief(
++            cohort: Sequence[tuple[int, str, str, int, float]], target: float,
++        ) -> float:
++            cohort_gross = sum(shares * price for _, _, _, shares, price in cohort)
++            if not cohort_gross or target <= 0.:
++                return 0.
++            fraction = min(1., target / cohort_gross)
++            planned = 0.
++            for state, symbol, strategy, shares, price in cohort:
++                reduction = min(
++                    shares, math.ceil(shares * fraction / 100.) * 100,
++                )
++                if not reduction:
++                    continue
+                 actions.append(RiskAction(
+                     symbol, strategy, reduction, price, date_str,
+                     "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
+                     state_index=state,
+                 ))
++                planned += reduction * price
++            return planned
++
++        if direct_losses:
++            direct_books = [book for book in ordered_books if book[1] in direct_losses]
++            residual_books = [book for book in ordered_books if book[1] not in direct_losses]
++            direct_capacity = sum(
++                shares * price for _, _, _, shares, price in direct_books
++            )
++            planned_relief = append_pro_rata_relief(
++                direct_books, min(required_relief, direct_capacity),
++            )
++            residual_relief = max(0., required_relief - planned_relief)
++            append_pro_rata_relief(residual_books, residual_relief)
++        else:
++            append_pro_rata_relief(ordered_books, required_relief)
+     elif risk_alert_active:
+         for state, symbol, strategy, shares, price in sorted(
+             books, key=lambda book: (book[1], book[0], book[2]),
+@@ -582,16 +623,11 @@ def plan_account_risk_budget(
+             "buy_scale": min(buy_scales, default=base_buy_scale)}, actions
+ 
+ 
+-def observed_shock_stress(
++def observed_direct_losses(
+     frames: Mapping[str, pd.DataFrame], date: pd.Timestamp, cfg: Mapping[str, Any],
+ ) -> dict[str, float]:
+-    """Reserve board shock exposure after an observed industry-member selloff.
+-
+-    The two completed return observations match the budget's two-session
+-    planning horizon. Future bars never enter the calculation. This is a
+-    planning estimate, not a guarantee that a later sell can execute.
+-    """
+-    shocked: dict[str, float] = {}
++    """Return symbols whose own close-known loss breached the existing limit."""
++    direct: dict[str, float] = {}
+     for symbol, frame in frames.items():
+         closes = frame.loc[frame.index <= date, 'close'].tail(3)
+         if len(closes) < 3:
+@@ -600,8 +636,23 @@ def observed_shock_stress(
+             raise ValueError('observed shock requires finite positive closes')
+         loss = max(0., -float(closes.pct_change().min()))
+         if loss >= float(cfg['daily_loss_limit']):
+-            group = SYMBOL_SUB_INDUSTRY.get(symbol, symbol)
+-            shocked[group] = max(shocked.get(group, 0.), loss)
++            direct[symbol] = loss
++    return direct
++
++
++def observed_shock_stress(
++    frames: Mapping[str, pd.DataFrame], date: pd.Timestamp, cfg: Mapping[str, Any],
++) -> dict[str, float]:
++    """Reserve board shock exposure after an observed industry-member selloff.
++
++    The two completed return observations match the budget's two-session
++    planning horizon. Future bars never enter the calculation. This is a
++    planning estimate, not a guarantee that a later sell can execute.
++    """
++    shocked: dict[str, float] = {}
++    for symbol, loss in observed_direct_losses(frames, date, cfg).items():
++        group = SYMBOL_SUB_INDUSTRY.get(symbol, symbol)
++        shocked[group] = max(shocked.get(group, 0.), loss)
+     return {symbol: shocked[SYMBOL_SUB_INDUSTRY.get(symbol, symbol)]
+             for symbol in frames
+             if SYMBOL_SUB_INDUSTRY.get(symbol, symbol) in shocked}
+@@ -901,10 +952,13 @@ def apply_account_risk_budget(
+                     proven_early_dual_book_ids.add(book_id)
+                 buys.append((state_index, signal, shares*price))
+                 buy_slots.append((state_index, pending_index))
++    shock_frames = {
++        symbol: frame for state in states for symbol, frame in state.data_map.items()
++    }
+     receipt, planned_actions = plan_account_risk_budget(
+         assets, peak, costs, books, buys, score, date_str=date_str,
+-        stress_by_symbol=observed_shock_stress(
+-            {symbol: frame for state in states for symbol, frame in state.data_map.items()}, date, costs),
++        stress_by_symbol=observed_shock_stress(shock_frames, date, costs),
++        direct_loss_by_symbol=observed_direct_losses(shock_frames, date, costs),
+         shock_episode_active=bool(next((event.get('shock_episode_active', False)
+             for event in reversed(events)
+             if event.get('event') == 'account_budget_envelope'), False)),
