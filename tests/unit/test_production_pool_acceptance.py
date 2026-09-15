@@ -112,4 +112,6 @@ def test_owner_turnover_revision_keeps_old_result_visible(count, passed):
     row['date_symbol_side_count'] = count
     result = production_pool.assess(rows, original, incumbent)
     assert result['absolute_hard_gates']['passed'] is passed
+    if passed:
+        assert result['promotion_gates']['passed'] is True
     assert result['original_contract_assessment']['absolute_hard_gates']['passed'] is False

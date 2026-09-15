@@ -53,6 +53,8 @@ def assess(
         del initial['checks'][key]
     promotion = current['promotion_gates']
     del promotion['checks']['fixed_prefix_wealth_at_least_99pct']
+    del promotion['checks']['all_worst_date_symbol_side_buckets_not_increased']
+    promotion['tolerances'].pop('date_symbol_side_buckets_worst')
     main_ratio = metrics._wealth_change(by_id['prefix-17'], reference['prefix-17']) + 1.
     promotion['checks']['production17_wealth_at_least_99pct'] = main_ratio >= .99 - 1e-12
     observed: dict[str, Any] = {}

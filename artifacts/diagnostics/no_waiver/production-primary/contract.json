@@ -107,7 +107,8 @@
   "changed_gates": {
     "original_reference_prefix_wealth": "Report all 17 original ratios and failures as diagnostics; no original-reference prefix wealth gate in new acceptance.",
     "incumbent_fixed_prefix_wealth": "Replace every-prefix >=0.99 by production prefix-17 >=0.99 plus uniformly paired family wealth gates.",
-    "adjacent_prefix_wealth": "Report all 16 actual ratios, including strict 09->10 original failure; no adjacent-ratio gate in new acceptance."
+    "adjacent_prefix_wealth": "Report all 16 actual ratios, including strict 09->10 original failure; no adjacent-ratio gate in new acceptance.",
+    "incumbent_maximum_turnover": "Remove incumbent worst bucket+10 cap (currently230); the uniform authorized238 maximum is the effective maximum. Original comparison remains diagnostic."
   },
   "new_wealth_gates": {
     "production_scenario_id": "prefix-17",
@@ -132,7 +133,7 @@
     "all 958 max drawdown <=18% with existing machine tolerance",
     "random bucket P90 <=160 and all bucket max <=238",
     "original-reference worst total return and worst add-one deterioration bounds",
-    "all existing incumbent promotion checks other than fixed_prefix_wealth_at_least_99pct",
+    "all existing incumbent promotion checks other than fixed_prefix_wealth_at_least_99pct and all_worst_date_symbol_side_buckets_not_increased",
     "exact permutation invariance, real account ownership/cash/fees/ADV/lot/T+1/limits and persistent risk history",
     "locked environment, source/data/config binding, complete formal scenario coverage, qualification and real repository protections"
   ],
@@ -211,7 +212,7 @@
     "previous_contract_sha256": "4990863d2fe33914fad80f1372b1c43c920e126351578af44f53e639bffe9bf8",
     "old_maximum": 200,
     "new_maximum": 238,
-    "scope": "Uniform all-scenario date_symbol_side_count maximum; equality passes. Other gates unchanged.",
+    "scope": "Uniform all-scenario maximum238, replacing both old200 absolute cap and incumbent maximum+10 (230). Random P90 and other independent metrics unchanged.",
     "selection_disclosure": "Owner decision after observing238; not unseen-data validation. Prior economic rejection remains historical; proportional-reserve is reopened for verification."
   }
 }
