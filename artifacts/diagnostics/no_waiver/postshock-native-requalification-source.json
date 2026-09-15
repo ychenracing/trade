@@ -1,0 +1,36 @@
+{
+  "kind": "postshock_native_requalification_source_preservation",
+  "status": "IMPLEMENTED_ECONOMICS_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "preregistration": "artifacts/diagnostics/no_waiver/alpha-loss-postshock-native-requalification.json",
+  "base": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773"
+  },
+  "candidate": {
+    "commit": "4e9adf8a22b111d791d54ce1604dde6b25906874",
+    "tree": "b9a82b035b3eaba053a648901733b82ad1a6767c",
+    "source_fingerprint": "f2f75f611acc02ee5c3e5d644da8492045986d3de7a12fe5d7fe8ee3d174e9f6",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {}
+  },
+  "verification": {
+    "red": "Exact C failed test_confirmed_shock_reduced_pyramid_returns_to_native_budget_after_episode: expected no categorical block but observed shock_reduced_pyramid_buy_indexes=[0].",
+    "green": "93 affected tests passed; python compileall and git diff --check passed.",
+    "runtime": "Python3.13.5 local diagnostic; not locked final qualification."
+  },
+  "mechanism": "Confirmed systemic-shock reductions still block all new risk during the live shock episode. After the episode is no longer active, a later native Turtle pyramid proposal is no longer categorically forced to zero solely because its live book was previously shock-reduced; the unchanged current account gross/gap/shock budget determines its size. Crowded-portfolio shock-reduced veto remains unchanged. No prior quantity restoration or synthetic order.",
+  "production_patch_sha256": "516ba5ba1c0abc8da20d440dd5096a57357927d2c18dc96a6217e360b26912df",
+  "production_patch": "diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py\nindex d259022..977d2f4 100644\n--- a/quantfusion/risk/account_budget.py\n+++ b/quantfusion/risk/account_budget.py\n@@ -467,8 +467,11 @@ def plan_account_risk_budget(\n             (state, signal.symbol, signal.strategy_name) in shock_reduced_books\n             and 'pyramid' in str(signal.reason).lower()\n             and (\n-                (state, signal.symbol, signal.strategy_name)\n-                in confirmed_shock_reduced_books\n+                (\n+                    shock_episode\n+                    and (state, signal.symbol, signal.strategy_name)\n+                    in confirmed_shock_reduced_books\n+                )\n                 or (state, signal.symbol, signal.strategy_name)\n                 in crowded_shock_reduced_books\n             )\n",
+  "tests_patch_sha256": "db6bf326ca738c545b11be1e70587cae397a5854a90c34c834448e04a3dfabfe",
+  "tests_patch_summary": "Replaces the obsolete permanent-veto expectations with explicit active-episode blocking, keeps crowded-book blocking, adds an inactive-episode native-budget test, and changes the engine-level historical shock-trim test to allow a later native pyramid without erasing the recorded shock-reduced identity.",
+  "incremental_bundle": {
+    "prerequisite": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "bytes": 1461,
+    "sha256": "21a6d7c239cb0dc426a3df34a6e0d53840504729f432cf2724a2a60a4ffeb2a9",
+    "encoding": "base64",
+    "content": "IyB2MiBnaXQgYnVuZGxlCi1hZjIzODliODgzOTQ5YTU1ZGVkNmU4YTQyOGYzZThlMjM1M2UzYzI3IHJlc2VhcmNoOiB3aXRoZHJhdyByZWplY3RlZCBlc3RhYmxpc2hlZC1vbmx5IHJlc3RyaWN0aW9uIHdpdGhvdXQgcHJvbW90aW9uCjRlOWFkZjhhMjJiMTExZDc5MWQ1NGNlMTYwNGRkZTZiMjU5MDY4NzQgSEVBRAoKUEFDSwAAAAIAAAAKkRF4nJ2Ly2rDMBBF9/qK2ZcUW6NnKCW/MpJuatHaMrISyN/Xy657OZtz4I4OUIoSdJrYJoYkmSyLMyFOs2dOQUuZxXnns9qlYxskd80hphA4mijWFhSHIEaHOyNAs2Vw1l7JYyyt0ysv2Lrkun3Rxx+5zY7fc1s/afYhGustG3qbzqmzrnUM/OusOg5Iz8uVjtx20LG0/H3pKI+MQvury1oLPTEanfzUJwh7PVqB+gXqDFUs9QPBsricVZq4SlIhPvWf2zvS9CZdBnicATUAyv+UBZQFsHoBFHgdLM9CpazboghBL9s+cO6AkNzak44B8hQWDkoCO8IcrAIYLbkTMiqNXmIjtERCFLfwAjWTgeoKsWlmGvtkPWnAkw+bCUUpeJwBIADf/4EEgQSwygEU0PAdjpijDkjblE8o/j4W2roQms+T3gEj5psOcP4B3mHA8L/WFvS8ePn+H4x+gnFHhEp4nDvGeIxxgoPI9Fp95/7wGp1r3ConBYM/N3Wteak6MaQIALnDDMn+A9JZAiDZhr2Lh+qxX3KGIbSjBV7UeJwBPgDB/9LlAqTmArCjU5PTXxGTYAUEkyB7BpP1ShSTXpQIk8pQMJM/VBGTQJIGk0OMGZNgFASTMF4Ok0yUFrMQVMJeNw8YWfMD3k7NPRdL7eX7uGx1n8GIKElkN254nAEzAMz/gQKBApA9FCPt4NSZu13FMk/hO7vGnpOlE+UrkVGcFE4IN9MPjiRrbdTybkyUYu03U2XpYn8X//8B80mKa25jn/gN8+e+rU1Sa0dt0h94nHvA/oB9grKI8crcn15Zj4x4X3lWTup7/im/6HbsRvOVzADm7w7//gsLem9tOmFkrzMnxJM2UKmmqUUSUHic2/WccfVzxg2TI+sTc3Lyy4vjcxJLUovi8xJLMstS4wsqixJzM1PiE9NAgsUZ+cnZ8akFmcX5KanxyTmpiUXFGppWXApAoKSk5KiQlpmTk5qiAFanUFKUmauQkp9arJCXX6JQkFqUm5iXmleSU6lQllqSrwC2RwFij0JqWSZLSmpe8uTzlgab/aJaWJgT81ImB+QqM9naTrZzkNv8Ps6KcfKLeIPJUQl8jLGTF2jIbN6SwCYMAIfBRx/xAue/2rqDNfp/6RLxFB58IQJEkM/meJwBIQDe/6UOpQ6wwAQU8Hr4nS9D+XOot+fAwwli6corXiaz1ARRAhwxEED6F9Vhy135K55DhnDATFILrEb/fuggeJxdzs9LAkEUwHFWSDI0TNCOvjZFhRQhCPUWUnmODt2mcefZLs7+YGZW8BCd+gveyVOHDkGHMPwnOvWXBHXpGm2WEM3pzTt83+fj3rqZW/PBDp1sFekzl/FE7KBg0VRx3xOMB4KNFGqXKU+P643eBiTPtu0zF0F6EwTths4YMPJ0KJKf8aSEoUx2GoahcUFhFCvH5RohicEyBt8xemr26aKaX5TtbIrOc6V0u1PrQZseCnUKjjJ0O0gv2hVlWe3FXfW0RXazSO+5NF1V1q9XPoUmVoFmJmQBN4mHDWNxiYbxkUHFfll/3IfghH4k0aD4R/djbSAIDUSofB5gYOQUJmhC4CB5UoOfC8CFWNmpbE+tLs3sfXppHdBst0/Z/F6qW6PHQnntmEuNBJVXGjRK9NzYpl51czm/dYpfVveDtfIILlckjkVjEKUVjMnEnZe6VPDG" 
+  },
+  "economics": "UNRUN; source is preserved before the preregistered continuous batch."
+}
