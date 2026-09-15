@@ -1,0 +1,21 @@
+{
+  "archive_name": "TRADE_PR101_DEPLOYMENT_EXTERNAL_ORIGINALS.tar.gz",
+  "bytes": 4235452,
+  "sha256": "c26862a8f139f9cf243b5826e9fd229db6533daeb2904d45241749d3be16b8e5",
+  "local_original": "/workspace/scratch/bf273963828a/TRADE_PR101_DEPLOYMENT_EXTERNAL_ORIGINALS.tar.gz",
+  "remote_file_reference": {
+    "id": "1HAyK4DjbgWyubExZqizMBQaTEYkDmdB8",
+    "size_verified": true,
+    "content_readback": "Provider checksum not exposed; independent Git multipart copy supplies content-addressed verification."
+  },
+  "git_multipart": {
+    "directory": "artifacts/diagnostics/no_waiver/production-primary/acceptance-verification/deployment-originals",
+    "manifest_sha256": "fec29a027843bfad2c172d70d55d65e99145aaa360d691648680c459561887a0",
+    "parts": 130,
+    "part_bytes": 32768,
+    "all_provider_blob_ids_match_local_git_objects": true,
+    "local_reconstruction_sha256_matches": true,
+    "final_remote_tree_and_ref": "Verify at containing commit; created unreferenced blobs alone are not a complete backup."
+  },
+  "scope": "18 raw replay ledgers, exact-source incremental Git bundle, runners, identities, costs, cross-window results and engineering logs. Final958 originals are a separate forthcoming archive."
+}

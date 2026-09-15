@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 
-from quantfusion.application import stress_artifacts, stress_scenarios
+from quantfusion.application import native_joint, stress_artifacts, stress_scenarios
 from quantfusion.application.c6_contract import canonical_payload_hash
 
 
@@ -129,6 +130,24 @@ def read_tables(directory):
     return payload
 
 
+def export_native(directory, output):
+    """Validate native acceptance before atomically replacing the export."""
+    artifact = read_tables(directory)
+    if (
+        artifact.get("candidate_id") != native_joint.CANDIDATE_ID
+        or "native_joint_acceptance" not in artifact
+    ):
+        raise ValueError("Export requires a native candidate and its receipt")
+    output = Path(output)
+    with tempfile.TemporaryDirectory(dir=output.parent) as temporary:
+        candidate = Path(temporary) / "candidate.json"
+        candidate.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n")
+        if stress_artifacts._load_incumbent(candidate) != artifact:
+            raise ValueError("Export did not validate as an accepted native artifact")
+        candidate.replace(output)
+    return artifact
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -136,10 +155,7 @@ if __name__ == "__main__":
     parser.add_argument("directory", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
-    artifact = read_tables(args.directory)
-    args.output.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n")
-    if stress_artifacts._load_incumbent(args.output) != artifact:
-        raise ValueError("Export did not validate as an accepted artifact")
+    artifact = export_native(args.directory, args.output)
     print(
         f"Verified {len(artifact['results'])} scenarios: "
         f"{canonical_payload_hash(artifact)}"
