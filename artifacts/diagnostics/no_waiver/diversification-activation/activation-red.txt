@@ -1,0 +1,40 @@
+.....F                                                                   [100%]
+=================================== FAILURES ===================================
+________ test_zero_native_capacity_cannot_bootstrap_simultaneous_entry _________
+
+    def test_zero_native_capacity_cannot_bootstrap_simultaneous_entry() -> None:
+        cfg = default_engine_config()
+        policy = PortfolioPolicy(allocation_mode="single")
+        sleeve = SleeveBacktestEngine(
+            1_000_000.0, cfg=cfg, policy=policy,
+            allocation_lookbacks=policy.single_lookbacks, sleeve_name="test",
+        )
+        data_map = {code: _frame() for code in ("300308", "300502")}
+        sleeve.symbol_names = {code: code for code in data_map}
+        date = data_map["300308"].index[-1]
+        strategies = {code: TurtleBreakoutStrategy(cfg) for code in data_map}
+        held = Position("300502", "turtle_breakout", 60_000, 10.0, "2026-01-02")
+        sleeve.positions = {"300502": {held.strategy_name: held}}
+        strategies["300502"].position = held
+        sleeve.cash = 400_000.0
+        pending = [
+            (Signal(code, strategy.name, "buy", target_shares=80_000,
+                    price=10.0, atr=0.0,
+                    signal_date=(date - pd.offsets.BDay(1)).strftime("%Y-%m-%d")),
+             strategy)
+            for code, strategy in strategies.items()
+        ]
+        sleeve._execute_pending_signals(
+            pending, data_map, date,
+            {day: i for i, day in enumerate(data_map["300308"].index)},
+        )
+        # B already consumes its native 60% ceiling; its raw signal is not a
+        # second executable demand and must not create its own extra capacity.
+>       assert not any(t.symbol == "300502" for t in sleeve.trades)
+E       assert not True
+E        +  where True = any(<generator object test_zero_native_capacity_cannot_bootstrap_simultaneous_entry.<locals>.<genexpr> at 0x7ff3062724d0>)
+
+tests/unit/test_simultaneous_native_buy_funding.py:215: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/test_simultaneous_native_buy_funding.py::test_zero_native_capacity_cannot_bootstrap_simultaneous_entry
+1 failed, 5 passed in 0.39s

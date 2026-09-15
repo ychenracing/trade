@@ -1,0 +1,46 @@
+{
+  "status": "SOURCE_VERIFIED_ECONOMICS_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "base_source": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "supersedes": "093fdf283acdecdfc44f3b3018aaa9bfdc72c583",
+  "source_revision": "44a0cd52b093e84f0fb07d0b493a68e291f72258",
+  "source_fingerprint": "f11e83def9e6ebb8d5427133adf9f7b4001e6eb5d843f110ee2e99bfc8331cc4",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "cfg_overrides": {},
+  "mechanism": "Derive the activation set from positive native capacities after existing slots, aggregate exposure and real cash/fee constraints, before lifting any symbol ceiling. Only that native fundable set can receive the simultaneous endpoint. No native score/admission contract changed.",
+  "tests": {
+    "red": "1 expected failure, 5 passed",
+    "green": "43 passed"
+  },
+  "predeclared_economics": [
+    "prefix-01",
+    "prefix-03",
+    "prefix-05",
+    "random-20260817-03-027"
+  ],
+  "decision_rule": "Original four-path rule in diversification-aware-buy-funding.json unchanged. No 958 or next protected batch when rejected.",
+  "qualification_note": "Native score order still determines admission when slots bind; funding order independence is conditional on the admitted set, not an unconditional admission invariance claim.",
+  "files": {
+    "activation-green.txt": {
+      "bytes": 99,
+      "sha256": "c70d45e857bb09b0d0a0104d4d17025b5a411f8a1143d328caa3c63cc85a5814"
+    },
+    "activation-red.txt": {
+      "bytes": 2234,
+      "sha256": "69ab0d926938964b2ca907db728d26bc8b5a1f1c0430893439415aa0522057ba"
+    },
+    "activation-source.bundle": {
+      "bytes": 11714,
+      "sha256": "4f2c1572ce09e4521963ace2ad2c6bb70018993e05cdfa54fc8e100510c24e3a"
+    },
+    "activation-source.patch": {
+      "bytes": 29338,
+      "sha256": "669ffe36c240989ec81210c6f2809efede5f97d64f342bad24266d3334535636"
+    },
+    "original-source.tar.gz": {
+      "bytes": 15831,
+      "sha256": "099a3175f78e11f3eee9922c20ca94a51007079642d692444497d89cca049b06"
+    }
+  }
+}
