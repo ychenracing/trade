@@ -1,0 +1,118 @@
+{
+  "kind": "alpha_loss_causal_ledger_and_staged_shock_boundary_review",
+  "status": "NOT_MET",
+  "canonical": false,
+  "default_promoted": false,
+  "observed_pr_head": "78f3b0aa48e5de4e676f25f955841de3546dec33",
+  "base_main": "b7be8011d71b477c8ca3942d97830e67d0e0407c",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "retained_c": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+    "prefix01_wealth": 4.928538056569,
+    "prefix01_floor": 5.993502267140751,
+    "prefix01_floor_gap": 1.064964210571751,
+    "prefix03_wealth": 7.018521535589125,
+    "prefix03_floor": 11.014195207080444,
+    "prefix03_floor_gap": 3.9956736714913195
+  },
+  "historical_strong_comparison": {
+    "source_fingerprint": "5e94ba6a8be97c10ae94e8363b22477a22a2318cf030d529c9886248303098aa",
+    "prefix01_wealth": 6.308949754885001,
+    "prefix01_max_drawdown": -0.1834136674871038,
+    "prefix01_drawdown_excess_percentage_points_vs_18pct": 0.3413667487103811,
+    "boundary": "Historical strong wealth demonstrates available alpha but is not admissible as the final policy because its prefix01 max drawdown exceeds the frozen 18% gate."
+  },
+  "dominant_loss_attribution": {
+    "prefix01": {
+      "symbol": "300308",
+      "historical_net_contribution": 10617899.50977,
+      "retained_c_net_contribution": 7857076.1131380005,
+      "lost_net_contribution": 2760823.396631999,
+      "structural_observation": "Single-symbol prefix01 rules out universe competition as the main loss. Retained C executes six 1100-share ATR/Turtle shock trims at the 2025-09-05 open after the 2025-09-04 close decision."
+    },
+    "prefix03": {
+      "historical_wealth": 11.593889691663627,
+      "retained_c_wealth": 7.018521535589125,
+      "final_asset_gap": 9150736.312149003,
+      "net_contribution_gap_by_symbol": {
+        "300308": 6086596.3498794995,
+        "300394": 2195454.782872499,
+        "300502": 868685.1793969981
+      },
+      "gap_share_300308": 0.6651558811257596,
+      "300308_atr_contribution_lost": 5198755.0000155
+    },
+    "interpretation": "The main remaining alpha deficit is continuity of already-profitable high-contribution 300308 ATR/Turtle exposure around systemic-risk deleveraging. Entry sizing and cross-symbol allocation are real secondary effects, but existing isolated experiments show they are too small or unstable to close the primary gap."
+  },
+  "isolated_family_effects": {
+    "minimum_board_lot_seed_anchor": {
+      "evidence_commit": "a1ce6fd7c4ce105c1d67956c8a69da50f29cfd16",
+      "prefix01_delta_vs_c": 0.0,
+      "prefix03_delta_vs_c": 0.43854982655612673,
+      "prefix03_floor_gap_closed_fraction": 0.10975616694754885,
+      "fatal_result": "prefix07_to_08=0.3737508636835632<0.70",
+      "classification": "real early-entry sizing loss, insufficient and unstable; family rejected"
+    },
+    "direct_loss_first_relief": {
+      "evidence_commit": "d79cff636b3a73ae5f53e25b08902375c5f8bac8",
+      "prefix01_delta_vs_c": 0.0,
+      "prefix03_delta_vs_c": -0.03759174845237556,
+      "prefix06_delta_vs_c": 0.4608249657630008,
+      "prefix15_delta_vs_c": 0.2049369528302485,
+      "classification": "useful complementary risk/allocation evidence, but does not restore primary alpha"
+    },
+    "postshock_native_requalification": {
+      "evidence_commit": "086795d3537d0fa34ef9c75fcec544d703b46b91",
+      "prefix01_delta_vs_c": -0.919063049779874,
+      "prefix03_delta_vs_c": -0.2539865534841246,
+      "prefix01_trade_count_c": 36,
+      "prefix01_trade_count_candidate": 70,
+      "classification": "late re-entry adds churn and worsens both primary witnesses; family rejected"
+    },
+    "state_sparse_shock_relief": {
+      "evidence_commit": "d39f143a114f711e886aa8c1f1bbe206d402a20e",
+      "prefix01_delta_vs_c": 0.12082010908362584,
+      "prefix01_floor_gap_closed_fraction": 0.11344992431131629,
+      "prefix03_delta_vs_c": 0.03389298504787508,
+      "protected_prefix13_wealth": 10.905145662283877,
+      "protected_prefix13_floor": 12.659384602482707,
+      "classification": "book-state distribution matters modestly but is not the dominant alpha source; protected13 failure rejects nearby sparsity/order variants"
+    }
+  },
+  "current_staged_candidate": {
+    "index_commit": "78f3b0aa48e5de4e676f25f955841de3546dec33",
+    "candidate_commit": "cd312cb0067ca5e8db36ce4d6aaeb25f4f70e500",
+    "tree": "4ba17d10eed61f1dc01295f210baa2fa94a7547a",
+    "source_fingerprint": "f3a61f377f136b0f83074b4ac79513f63c4125ec21014e0256e18631be19c3e1",
+    "preregistration_comment": 5677455229,
+    "economic_state": "UNRUN_AT_REVIEW",
+    "why_high_information": "Unlike rejected selection, re-entry, direct-loss allocation and book-sparsity families, this candidate changes the timing of the severe systemic multiplier while still using the existing ordinary two-session relief on the first close. That directly addresses the single-symbol holding-continuity witness without removing risk relief."
+  },
+  "pre_economics_correctness_review": {
+    "result": "CONTRACT_DRIFT_REQUIRES_RESOLUTION_BEFORE_ECONOMICS",
+    "preregistered_rule": "If the same close-known severe trigger remains true on a later close while the shock episode is active, escalate then to the existing severe systemic stress calculation. Queued first-stage sells create no credit.",
+    "implemented_rule": "shock_persisted is true only when shock_trigger && shock_episode_active && bool(shock_reduced_books); therefore severe escalation additionally requires at least one first-stage fill identity.",
+    "exact_patch_expression": "shock_persisted = shock_trigger and shock_episode_active and bool(shock_reduced_books)",
+    "consequence_when_severe_persists_before_any_first_stage_fill": "shock_persisted=false; reduction_suspended=true; this planner schedules no incremental severe relief on that close. Existing first-stage pending sells may remain elsewhere, but they do not cover the additional severe amount and are not risk credit.",
+    "deterministic_fixture_from_preserved_tests": {
+      "ordinary_first_stage_planned_shares": 3600,
+      "severe_total_required_shares_with_original_books": 6600,
+      "incremental_severe_shares_after_first_stage_fills": 3000,
+      "unplanned_incremental_shares_if_severe_persists_before_any_fill": 3000
+    },
+    "missing_red_case": "Run the same persistent-severe fixture with shock_episode_active=true, severe trigger still present, zero shock_reduced_book_ids, and the first-stage sells still pending/unfilled. The policy must remain fail-closed and must not silently defer the additional severe requirement merely because fills have not occurred.",
+    "scope_note": "This is a state-transition/correctness blocker for the candidate identity, not evidence that the staged timing hypothesis is economically false. Do not infer a market-path occurrence from this deterministic boundary alone."
+  },
+  "decision": {
+    "main_research_direction": "Keep the staged severe-timing hypothesis as the highest-information active alpha test, but correct or explicitly reconcile its fill-gated escalation with the preregistered fail-closed contract before economic interpretation.",
+    "excluded_nearby_work": [
+      "no more minimum-lot threshold/multiple scans",
+      "no post-shock re-entry variants",
+      "no state-sparsity/order/fraction variants",
+      "no direct-loss threshold/fraction tuning"
+    ],
+    "next_after_boundary": "If the exact staged source passes the missing pending/unfilled persistent-severe state transition, run only its already preregistered continuous paths and evaluate primary01/03, protected05/13/17,06/07/08 adjacency and known-random risk. If it fails that correctness boundary, fix the engineering semantics under the same preregistered economic mechanism before any replay; do not compensate with a new gate or parameter."
+  },
+  "acceptance": "NOT_MET; no new economic run, no full958, no formal random P90, no production promotion and no merge claim."
+}
