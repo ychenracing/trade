@@ -134,6 +134,7 @@ def test_complete_native_w_group_passes_real_record_consumer(prereg, synthetic_m
     rows = [diagnostic._l1_evaluate((v, scenario, "DEFAULT")) for v in variants]
     diagnostic._attach_interventions(rows)
     for row in rows:
+        bound.validate_wire_value(row["intervention_601869"], {"$ref": "#/$defs/intervention_result"}, prereg["schema_catalog"]["definitions"])
         bound.validate_wire_value(row, {"$ref": "#/$defs/evaluation_record"}, prereg["schema_catalog"]["definitions"])
     assert len(rows) == 6
     diagnostic._attribution(rows)

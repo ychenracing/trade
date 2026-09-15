@@ -663,8 +663,6 @@ class EnsembleAllocationMixin:
             receipt.update(
                 allowed_symbols=sorted(allowed),
                 existing_symbols=sorted(existing),
-                event_transition_candidates=sorted(transition_candidates),
-                admitted_event_transition_symbols=sorted(admitted_transitions),
                 candidate_capacity=candidate_capacity,
                 maximum_positions=maximum,
             )

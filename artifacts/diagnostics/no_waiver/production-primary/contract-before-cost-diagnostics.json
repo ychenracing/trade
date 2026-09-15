@@ -6,7 +6,7 @@
     "approved_proposal": "Prioritize production pool; explicitly bound subset degradation; retain original contract outcomes; compare retained C and the existing state-sparse candidate; modify causal holding/risk mechanisms only when needed; verify one source before normal PR101 merge.",
     "scope": "ychenracing/trade original PR101 only; no live trading, other repositories, automations or protection bypass"
   },
-  "status": "FROZEN_WITH_EXPLICIT_OWNER_ACCEPTANCE_REVISION",
+  "status": "FROZEN_WITH_EXPLICIT_OWNER_TURNOVER_AMENDMENT",
   "original_contract": {
     "path": "artifacts/diagnostics/no_waiver_joint_freeze.json",
     "sha256": "3cfe2fdd58b8f833515f38ab1313b0d2f80f7272b6c84fb70753dc97e7bf7184",
@@ -77,7 +77,7 @@
     },
     "max_order_adv_ratio": 0.005,
     "trade_count_semantics": "trade_records",
-    "turnover_gate_field": "diagnostic_only: date_symbol_side_count",
+    "turnover_gate_field": "date_symbol_side_count",
     "guards": [
       "_absolute_hard_gates",
       "_retained_robustness_hard_gates",
@@ -102,14 +102,13 @@
     },
     "waivers_permitted": false,
     "execution_semantics": "Existing close-known signals, next executable open, original board limits/T+1/ADV/fee/lot/account-state rules; planned sells never count as fills.",
-    "guard_semantics": "Inherited limits below describe original diagnostics only except18% absolute drawdown. new_wealth_gates and retained_gates are the sole effective table."
+    "guard_semantics": "The guards named in this inherited formal block are reported in full; changed_gates/new_wealth_gates/retained_gates above define the effective production-primary acceptance."
   },
   "changed_gates": {
     "original_reference_prefix_wealth": "Report all 17 original ratios and failures as diagnostics; no original-reference prefix wealth gate in new acceptance.",
     "incumbent_fixed_prefix_wealth": "Replace every-prefix >=0.99 by production prefix-17 >=0.99 plus uniformly paired family wealth gates.",
     "adjacent_prefix_wealth": "Report all 16 actual ratios, including strict 09->10 original failure; no adjacent-ratio gate in new acceptance.",
-    "incumbent_maximum_turnover": "Remove incumbent worst bucket+10 cap (currently230); the uniform authorized238 maximum is the effective maximum. Original comparison remains diagnostic.",
-    "all_other_relative_economics": "All historical prefix, adjacency, original worst return, add-one, relative drawdown, turnover and risk-action predicates are diagnostics only; no independent veto."
+    "incumbent_maximum_turnover": "Remove incumbent worst bucket+10 cap (currently230); the uniform authorized238 maximum is the effective maximum. Original comparison remains diagnostic."
   },
   "new_wealth_gates": {
     "production_scenario_id": "prefix-17",
@@ -121,36 +120,42 @@
       "random_subset",
       "permutation"
     ],
-    "each_family_paired_wealth_ratio_min": 0.65,
-    "each_family_paired_wealth_ratio_p10_min": 0.85,
-    "each_family_paired_wealth_ratio_median_min": 0.95,
+    "each_family_paired_wealth_ratio_min": 0.7,
+    "each_family_paired_wealth_ratio_p10_min": 0.9,
+    "each_family_paired_wealth_ratio_median_min": 1.0,
     "formula": "(1 + candidate.total_return)/(1 + pinned_incumbent.total_return), paired by exact scenario ID, type and ordered symbols",
     "quantiles": "Existing stress_metrics._quantile linear interpolation, evaluated separately within each of the five families; no pooling or optional family.",
     "tolerance": 1e-12,
-    "rationale": "Explicit owner economic tradeoff; one effective table, no rolling relaxation.",
-    "lost_protection": "Up to35% paired terminal wealth loss in worst subset,15% at P10,5% at median; no independent turnover/risk-action or old relative-return/drawdown veto. Historical failures preserved. This is informed policy adjustment, not unseen validation."
+    "rationale": "Production economics have priority. The median scenario in every family must retain incumbent wealth; lower-decile deterioration is bounded at 10%, with a 30% absolute paired terminal-wealth loss ceiling. These are explicit policy choices, not estimates of future safety or scientifically optimal constants.",
+    "lost_protection": "No guarantee of retaining 99%/95% of the original reference per prefix or 99% of the incumbent per prefix. Up to 30% paired terminal-wealth loss is allowed in an individual stress case. Adding a symbol may reduce wealth by more than the old adjacent limits; all such cliffs must remain visible."
   },
   "retained_gates": [
-    "all958 max drawdown <=18% with existing metric and tolerance",
-    "production prefix-17 paired incumbent wealth >=99%; each family minimum>=65%,P10>=85%,median>=95%",
-    "exact permutation invariance and all data, causal, account, execution correctness",
-    "source/data/config binding, complete formal coverage, qualification and repository protections"
+    "all 958 max drawdown <=18% with existing machine tolerance",
+    "random bucket P90 <=160 and all bucket max <=238",
+    "original-reference worst total return and worst add-one deterioration bounds",
+    "all existing incumbent promotion checks other than fixed_prefix_wealth_at_least_99pct and all_worst_date_symbol_side_buckets_not_increased",
+    "exact permutation invariance, real account ownership/cash/fees/ADV/lot/T+1/limits and persistent risk history",
+    "locked environment, source/data/config binding, complete formal scenario coverage, qualification and real repository protections"
   ],
   "selection": {
     "candidates": [
       {
-        "name": "proportional-reserve",
-        "source_revision": "af0d060b11926cc45cd446a0a74103322cb00fe0"
+        "name": "retained-C",
+        "source_revision": "af2389b883949a55ded6e8a428f3e8e2353e3c27"
+      },
+      {
+        "name": "state-sparse",
+        "source_revision": "0bedf24808aa81faca03a7e23cd6a9bfa9d67a6f"
       }
     ],
     "historical_visibility": "Existing diagnostic outcomes have already been viewed. This is a disclosed acceptance redesign and reuse of failed original-contract candidates, not unseen validation or a claim of original success.",
-    "reuse": "Verify source/data/config equivalence; complete958 on same candidate, preserving original evidence identities.",
+    "reuse": "Recover hashes/source identities. Reuse existing compatible rows. Fill missing prefixes first; then LOO/add-one and a bounded preregistered random risk screen. Full958 only for a stable candidate without known necessary failures.",
     "ranking": "Among candidates surviving necessary gates, prefer higher production prefix-17 wealth, then lower drawdown, then fewer date/symbol/side buckets. New core changes require event-level cause and protected paths."
   },
   "external_diagnostics": {
     "declared_before_local_candidate_replays": true,
     "first_remote_record": "After initial A/B diagnosis; before any external evaluation or final candidate selection",
-    "status": "Previously viewed for other sources; complete same registered paired diagnostics on proportional-reserve; not unseen.",
+    "status": "not_run",
     "windows": [
       [
         "2024-07-01",
@@ -209,19 +214,5 @@
     "new_maximum": 238,
     "scope": "Uniform all-scenario maximum238, replacing both old200 absolute cap and incumbent maximum+10 (230). Random P90 and other independent metrics unchanged.",
     "selection_disclosure": "Owner decision after observing238; not unseen-data validation. Prior economic rejection remains historical; proportional-reserve is reopened for verification."
-  },
-  "acceptance_revision": {
-    "date": "2026-09-15",
-    "authority": "Explicit owner implementation prompt: sole effective table; 65% minimum,85% P10,95% median; turnover and old relative economics diagnostic only.",
-    "previous_contract_path": "contract-before-cost-diagnostics.json",
-    "previous_contract_sha256": "c52e0ec67b7fa4e64d68bec87eab5851eca55256693801fc77ebeaababb787f8",
-    "already_observed": {
-      "formal_rows": 24,
-      "required": 958,
-      "main_wealth": 9.610542744515504,
-      "loo300502_wealth_ratio": 0.6710768091436762,
-      "loo300502_buckets": 283
-    },
-    "lost_protection": "Up to35% paired terminal wealth loss in worst subset,15% at P10,5% at median; no independent turnover/risk-action or old relative-return/drawdown veto. Historical failures preserved. This is informed policy adjustment, not unseen validation."
   }
 }

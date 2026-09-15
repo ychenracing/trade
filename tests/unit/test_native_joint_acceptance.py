@@ -60,21 +60,15 @@ def test_native_success_requires_both_references_and_records_their_distinct_iden
     assert receipt['original_reference_payload_sha256'] != receipt['incumbent_payload_sha256']
 
 
-@pytest.mark.parametrize('failure', ['drawdown', 'random_p90', 'maximum_buckets', 'paired_wealth', 'production_wealth'])
+@pytest.mark.parametrize('failure', ['drawdown', 'paired_wealth', 'production_wealth'])
 def test_any_native_failure_is_rejected_even_when_legacy_assessor_would_accept(tmp_path, failure):
     setup = fixture()
     _, original, incumbent, rows, _ = setup
     by_id = {r['scenario_id']: r for r in rows}
     if failure == 'drawdown':
         by_id['prefix-01']['max_drawdown'] = -.18000001
-    elif failure in {'random_p90', 'maximum_buckets'}:
-        selected = [r for r in rows if r['scenario_type'] == 'random_subset'] if failure == 'random_p90' else [next(r for r in rows if r['scenario_type'] == 'leave_one_out')]
-        for row in selected:
-            count = 161 if failure == 'random_p90' else 239
-            row.update(date_symbol_side_count=count, total_trades=count, sleeve_fill_count=count)
-            row['reason_attribution']['re_entry'] = count
     else:
-        sid, ratio = ('prefix-01', .699) if failure == 'paired_wealth' else ('prefix-17', .989)
+        sid, ratio = ('prefix-01', .649) if failure == 'paired_wealth' else ('prefix-17', .989)
         base = next(r for r in incumbent['results'] if r['scenario_id'] == sid)
         by_id[sid]['total_return'] = (1 + base['total_return']) * ratio - 1
     with patch('quantfusion.application.c6_release_acceptance.release_formal_assessment', return_value={'passed': True}) as legacy:

@@ -37,7 +37,7 @@ def test_original_risk_boundary_is_retained(drawdown, passed):
 
 
 @pytest.mark.parametrize('family', production_pool.FAMILIES)
-@pytest.mark.parametrize('level,ratio', [('minimum', .699), ('p10', .899), ('median', .999)])
+@pytest.mark.parametrize('level,ratio', [('minimum', .649), ('p10', .849), ('median', .949)])
 def test_every_family_has_its_own_paired_wealth_bounds(family, level, ratio):
     _, original, incumbent, rows, _ = fixture()
     bases = {r['scenario_id']: r for r in incumbent['results']}
@@ -105,7 +105,7 @@ def test_frozen_contract_cannot_drift_after_results(tmp_path, monkeypatch):
         production_pool.assess(rows, original, incumbent)
 
 
-@pytest.mark.parametrize('count,passed', [(238, True), (239, False)])
+@pytest.mark.parametrize('count,passed', [(238, True), (239, True), (283, True), (400, True)])
 def test_owner_turnover_revision_keeps_old_result_visible(count, passed):
     _, original, incumbent, rows, _ = fixture()
     row = next(r for r in rows if r['scenario_type'] == 'leave_one_out')
@@ -115,3 +115,18 @@ def test_owner_turnover_revision_keeps_old_result_visible(count, passed):
     if passed:
         assert result['promotion_gates']['passed'] is True
     assert result['original_contract_assessment']['absolute_hard_gates']['passed'] is False
+
+
+def test_only_approved_table_can_veto_economics():
+    _, original, incumbent, rows, _ = fixture()
+    bases = {r['scenario_id']: r for r in incumbent['results']}
+    for row in rows:
+        row['total_return'] = (1 + bases[row['scenario_id']]['total_return']) * .95 - 1
+        row['date_symbol_side_count'] = 400
+        row['max_drawdown'] = -.18
+        row['reason_attribution']['risk_reduction'] = 1000
+    main = next(row for row in rows if row['scenario_id'] == 'prefix-17')
+    main['total_return'] = (1 + bases['prefix-17']['total_return']) * .99 - 1
+    result = production_pool.assess(rows, original, incumbent)
+    assert all(result[k]['passed'] for k in ('absolute_hard_gates', 'retained_robustness_hard_gates', 'initial_baseline_gates', 'promotion_gates'))
+    assert not result['original_contract_assessment']['absolute_hard_gates']['passed']

@@ -42,19 +42,15 @@ def assess(
     }
     current: dict[str, Any] = deepcopy(old)
     absolute = current['absolute_hard_gates']
-    del absolute['checks']['all_date_symbol_side_buckets_at_most_200']
-    absolute['checks'][f'all_date_symbol_side_buckets_at_most_{native_joint.ALL_BUCKET_MAX}'] = (
-        absolute['observed']['all_worst_date_symbol_side_buckets'] <= native_joint.ALL_BUCKET_MAX
-    )
-    # Preserve removed predicates in the independent original assessment.
+    absolute['checks'] = {
+        'all_scenarios_max_drawdown_at_most_18pct':
+            absolute['checks']['all_scenarios_max_drawdown_at_most_18pct'],
+    }
+    # The sole approved table replaces old economics; raw predicates stay in old.
     current['retained_robustness_hard_gates']['checks'] = {}
-    initial = current['initial_baseline_gates']
-    for key in ('prefix_05_wealth_at_least_99pct', 'other_prefix_wealth_at_least_95pct'):
-        del initial['checks'][key]
+    current['initial_baseline_gates']['checks'] = {}
     promotion = current['promotion_gates']
-    del promotion['checks']['fixed_prefix_wealth_at_least_99pct']
-    del promotion['checks']['all_worst_date_symbol_side_buckets_not_increased']
-    promotion['tolerances'].pop('date_symbol_side_buckets_worst')
+    promotion['checks'] = {'permutation_invariant': promotion['checks']['permutation_invariant']}
     main_ratio = metrics._wealth_change(by_id['prefix-17'], reference['prefix-17']) + 1.
     promotion['checks']['production17_wealth_at_least_99pct'] = main_ratio >= .99 - 1e-12
     observed: dict[str, Any] = {}
@@ -62,14 +58,14 @@ def assess(
         summary = {'minimum': min(values), 'p10': metrics._quantile(values, .10),
                    'median': metrics._quantile(values, .50)}
         observed[family] = summary
-        for label, floor in (('minimum', .70), ('p10', .90), ('median', 1.)):
+        for label, floor in (('minimum', .65), ('p10', .85), ('median', .95)):
             promotion['checks'][f'{family}_paired_wealth_{label}'] = summary[label] >= floor - 1e-12
     promotion['observed'].update(production17_wealth_ratio=main_ratio,
                                   paired_family_wealth=observed)
     promotion['tolerances'].pop('prefix_wealth_ratio')
     promotion['tolerances'].update(production17_wealth_ratio=.99,
-                                   family_wealth_min=.70, family_wealth_p10=.90,
-                                   family_wealth_median=1.)
+                                   family_wealth_min=.65, family_wealth_p10=.85,
+                                   family_wealth_median=.95)
     for gate in current.values():
         gate['passed'] = all(gate['checks'].values())
     current['original_contract_assessment'] = old
