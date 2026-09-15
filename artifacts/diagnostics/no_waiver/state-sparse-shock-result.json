@@ -1,0 +1,42 @@
+{
+  "kind": "state_sparse_systemic_shock_relief_result",
+  "status": "REJECTED_JOINT",
+  "canonical": false,
+  "default_promoted": false,
+  "source": {
+    "commit": "0bedf24808aa81faca03a7e23cd6a9bfa9d67a6f",
+    "tree": "77d54c61c8d590ca4150ac0bded3068b26b6b874",
+    "source_fingerprint": "1f39c7ded9dfc9f26fa2fc7b4382d9fc2ee745b5b5f2eeb7e709f048c1a4730f",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {}
+  },
+  "rows": {
+    "prefix-01": {"wealth": 5.049358165652626, "max_drawdown": -0.12468509293898083, "buckets": 17, "trades": 43, "required_wealth": 5.993502267140751, "wealth_gate": false, "raw_sha256": "637a25a592aa191ff84d157eb498a7cc57a0d136333b2b4a0756ba5c543a9270"},
+    "prefix-03": {"wealth": 7.052414520637, "max_drawdown": -0.1643000091597694, "buckets": 100, "trades": 307, "required_wealth": 11.014195207080444, "wealth_gate": false, "raw_sha256": "71d319d4513149f18affc08193a26ef39b2ef22d99d51f3d85515f49929400af"},
+    "prefix-05": {"wealth": 13.738253047485127, "max_drawdown": -0.1581763648971148, "buckets": 94, "trades": 244, "required_wealth": 12.580154771921677, "wealth_gate": true, "raw_sha256": "d975bc53c7b41b556f22c3aa309e598172f48caa551d351b0ec51f655f2fa628"},
+    "prefix-06": {"wealth": 10.985601374313877, "max_drawdown": -0.15510614245765442, "buckets": 104, "trades": 267, "required_wealth": 12.310161540905, "wealth_gate": false, "raw_sha256": "c451a6f47dae92d95935c76c5d13ea27dd8f5176c17fdd0187a55cb7461af0b9"},
+    "prefix-07": {"wealth": 8.049899689026256, "max_drawdown": -0.13725573470465638, "buckets": 142, "trades": 438, "required_wealth": 8.6171130786335, "wealth_gate": false, "raw_sha256": "2d4fd640b5d1898c85a3da355b38b111109990fad5a866040ea65c1a72c882da"},
+    "prefix-08": {"wealth": 8.083382709671252, "max_drawdown": -0.1347747526668881, "buckets": 123, "trades": 354, "required_wealth": 6.031979155043449, "wealth_gate": true, "raw_sha256": "7c5ced9a7c74ff29bf80eea191c15222bc7f6b0039cb3d71f5b9f735a5981e18"},
+    "prefix-13": {"wealth": 10.905145662283877, "max_drawdown": -0.15614799355324488, "buckets": 151, "trades": 377, "required_wealth": 12.659384602482707, "wealth_gate": false, "raw_sha256": "72c60dcb3c42faf663ce0360e689bdca6ddab990bf372874a3bbf8c33bfe37e4"},
+    "prefix-17": {"wealth": 12.661872692516253, "max_drawdown": -0.15868635223100086, "buckets": 111, "trades": 322, "required_wealth": 8.847967050773612, "wealth_gate": true, "raw_sha256": "5f7605ce0cb254f14e71997211e0bc12b12e455924dc36a9313b70eb71b38c20"},
+    "random-20260817-03-027": {"wealth": 7.716799067559501, "max_drawdown": -0.15917766023180097, "buckets": 91, "trades": 311, "raw_sha256": "bcc75686324e280c735688f87166ecd872c494ff8955aee53b7f936261f774d6"}
+  },
+  "adjacency": {"prefix06_to_07": 0.7327682313185176, "prefix07_to_08": 1.0041594332772419},
+  "decision": {
+    "conclusion": "REJECTED_JOINT",
+    "prefix01_delta_vs_retained_c": 0.12082010908362584,
+    "prefix03_delta_vs_retained_c": 0.03389298504787508,
+    "prefix03_delta_vs_rejected_seed_anchor": -0.40465684150825165,
+    "reason": "State sparsity mildly improves prefix01 and repairs07->08 stability, but does not recover prefix03 beyond the already rejected seed-anchor and materially damages protected prefix13. This is loss redistribution through funded-book state, not robust alpha restoration. No neighboring sparsity/order/fraction variant is justified."
+  },
+  "raw_packet": {
+    "provider": "ChatGPT file Library",
+    "path": "/trade-pr101/TRADE_PR101_STATE_SPARSE_SHOCK_REJECTED.tar.gz",
+    "file_id": "file_00000000b7bc81f698046db0713c5912",
+    "library_file_id": "libfile_2def157107b481919d1a68029245f902",
+    "bytes": 898014,
+    "sha256": "23a87c6ed9a6e09bb447a042c8a194dff277e9f3d9faf04d779b4616f41a8063",
+    "member_count": 22
+  },
+  "next": "Do not tune state-sparse shock relief. Preserve the stronger attribution: prefix01/prefix03 alpha loss is predominantly high-contribution 300308 ATR holding exposure. The next mechanism must act on holding/exit coordination using close-known strength evidence while preserving required aggregate risk relief and original risk state; avoid re-entry/quantity restoration and arbitrary book-order choices."
+}
