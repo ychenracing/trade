@@ -25,7 +25,7 @@
       "scenario_count": 958,
       "acceptance_status": "rejected",
       "canonical": false,
-      "role": "Original wealth denominator and original-return/add-one protections. The historical qualification reference uses these same file bytes; this equality was verified, not assumed."
+      "role": "Immutable original-contract denominator retained only for historical diagnostic comparisons; no active relative economic veto."
     },
     "incumbent": {
       "path": "artifacts/validation/universe_stress.json",
@@ -38,7 +38,7 @@
       "scenario_count": 958,
       "acceptance_status": "accepted",
       "canonical": true,
-      "role": "Separate incumbent promotion protections; accepted with historical exceptions, not a replacement original denominator."
+      "role": "Fixed paired terminal-wealth denominator for the current production99% and five-family65/85/95 rules; historical accepted-with-exceptions status is not a current acceptance witness."
     },
     "B1": "Scientific correctness control only; not an acceptance denominator"
   },
@@ -108,7 +108,7 @@
     "original_reference_prefix_wealth": "Report all 17 original ratios and failures as diagnostics; no original-reference prefix wealth gate in new acceptance.",
     "incumbent_fixed_prefix_wealth": "Replace every-prefix >=0.99 by production prefix-17 >=0.99 plus uniformly paired family wealth gates.",
     "adjacent_prefix_wealth": "Report all 16 actual ratios, including strict 09->10 original failure; no adjacent-ratio gate in new acceptance.",
-    "incumbent_maximum_turnover": "Remove incumbent worst bucket+10 cap (currently230); the uniform authorized238 maximum is the effective maximum. Original comparison remains diagnostic.",
+    "incumbent_maximum_turnover": "All incumbent-relative and absolute turnover or risk-action limits, including230/238, are diagnostic only. No independent cost/workload veto remains.",
     "all_other_relative_economics": "All historical prefix, adjacency, original worst return, add-one, relative drawdown, turnover and risk-action predicates are diagnostics only; no independent veto."
   },
   "new_wealth_gates": {

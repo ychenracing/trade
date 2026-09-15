@@ -13,7 +13,7 @@
   },
   "mechanism2": {
     "name": "observed-gap-reserve",
-    "status": "REGISTERED_BEFORE_RUN",
+    "status": "REJECTED_MAIN_AND_SUBSET_WEALTH",
     "change": "Keep shock state unchanged. When recent close-known shock evidence exists, use existing grouped held-gap debit to size the same proportional reserve before alert; credit only real holdings/cash. Unlike old all-times B-held-gap, no extra reserve in periods without observed shock evidence; unlike mechanism1, no new shock episode or doubled-drawdown categorical liquidation.",
     "causal_witness": {
       "scenario": "random-20260807-03-035",
@@ -33,7 +33,181 @@
       "random-20260807-03-039",
       "random-20260807-03-043",
       "random-20260807-05-005"
-    ]
+    ],
+    "source": "a02482f0e7035653db11e599f701d4698627441a",
+    "main_wealth": 7.500542925926753
   },
-  "next_after_two": "Do not add an automatic third mechanism; finish registered validation and reassess with explicit evidence."
+  "next_after_two": "Both mechanisms rejected under unchanged current economic table; no automatic third trial. Complete running958 and preserve goal reassessment.",
+  "completed_comparisons": {
+    "broad-shock": {
+      "identity": {
+        "source_revision": "07d4245082335858ffd3fb9a1e4aba178d9015bf",
+        "source_fingerprint": "ed31eed2bf597242fcc4d32d78aa36d60c245674103c58c76505adb760f3e177",
+        "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+        "diagnostic_noncanonical": true,
+        "scenario_ids": [
+          "prefix-17",
+          "leave-one-out-300502",
+          "leave-one-out-603986",
+          "add-one-05-002384",
+          "random-20260807-03-035",
+          "random-20260807-03-039",
+          "random-20260807-03-043",
+          "random-20260807-05-005"
+        ]
+      },
+      "status": "REJECTED_ECONOMICS; DIAGNOSTIC_EIGHT_ONLY",
+      "results": [
+        {
+          "scenario_id": "prefix-17",
+          "wealth": 5.540082685923879,
+          "mdd": 0.16106864675826355,
+          "buckets": 227,
+          "sha256": "83e8fff7e5d8b963a575fdccacce3aa7a81f95fec4eb62ff249bbf8949911fe3",
+          "paired_wealth_ratio": 0.6198804570124494
+        },
+        {
+          "scenario_id": "leave-one-out-300502",
+          "wealth": 5.120888986994378,
+          "mdd": 0.1400487640919463,
+          "buckets": 304,
+          "sha256": "9cb6eb52414370a74222a6873de1d5c4c52a08ed99c0669c8ec8d5c41601a96f",
+          "paired_wealth_ratio": 0.6904839259015433
+        },
+        {
+          "scenario_id": "leave-one-out-603986",
+          "wealth": 6.203673219191378,
+          "mdd": 0.16054253870718957,
+          "buckets": 276,
+          "sha256": "c1498d4a6e7343e54e5f8b538e6c1441ce77ae74285613928ab38b3b84ca508e",
+          "paired_wealth_ratio": 0.6658963190026947
+        },
+        {
+          "scenario_id": "add-one-05-002384",
+          "wealth": 10.022823417549878,
+          "mdd": 0.14127563324438228,
+          "buckets": 160,
+          "sha256": "d31ab77eaf3aebbbd3e0d28610e725bf6423b0f6978d11ee84dd4f4f6f3a2162",
+          "paired_wealth_ratio": 0.9274828419959837
+        },
+        {
+          "scenario_id": "random-20260807-03-035",
+          "wealth": 2.746470597803876,
+          "mdd": 0.1654268730691318,
+          "buckets": 105,
+          "sha256": "47eef6e448a13ee9177543c5cf93bd4537d4ae78978b5a7945647bb9065609c7",
+          "paired_wealth_ratio": 1.4120072657152154
+        },
+        {
+          "scenario_id": "random-20260807-03-039",
+          "wealth": 6.070426345922127,
+          "mdd": 0.1580322044538878,
+          "buckets": 77,
+          "sha256": "a42eb62ebe9b07810ec54ce7651ea3757038527893a35ee4a92bbe1ff8599baa",
+          "paired_wealth_ratio": 1.8536256438191934
+        },
+        {
+          "scenario_id": "random-20260807-03-043",
+          "wealth": 4.645432589722,
+          "mdd": 0.15463747938738348,
+          "buckets": 84,
+          "sha256": "aaf08363f16aadc1285d5dd57c0a00ba347c612e64a70afe97d6451c95e2a051",
+          "paired_wealth_ratio": 1.1178547025452632
+        },
+        {
+          "scenario_id": "random-20260807-05-005",
+          "wealth": 3.279430789041877,
+          "mdd": 0.16196276885415997,
+          "buckets": 132,
+          "sha256": "5a4ba68c0e8e30d6fcc8b40efaaef609c05a90f9167e540a3e7ed6f034cfb024",
+          "paired_wealth_ratio": 0.719410472449025
+        }
+      ]
+    },
+    "gap-reserve": {
+      "identity": {
+        "source_revision": "a02482f0e7035653db11e599f701d4698627441a",
+        "source_fingerprint": "11c25491be5b91b10d28fa55f8e5e5a27d11a21ddac850193d51ede71368ab11",
+        "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+        "diagnostic_noncanonical": true,
+        "scenario_ids": [
+          "prefix-17",
+          "leave-one-out-300502",
+          "leave-one-out-603986",
+          "add-one-05-002384",
+          "random-20260807-03-035",
+          "random-20260807-03-039",
+          "random-20260807-03-043",
+          "random-20260807-05-005"
+        ]
+      },
+      "status": "REJECTED_ECONOMICS; DIAGNOSTIC_EIGHT_ONLY",
+      "results": [
+        {
+          "scenario_id": "prefix-17",
+          "wealth": 7.500542925926753,
+          "mdd": 0.14677618021039118,
+          "buckets": 328,
+          "sha256": "aba3a09c9d773b1a5f5e532de46fd739adc1f3ff1f4e8921ddfa313fa1df4ae0",
+          "paired_wealth_ratio": 0.8392365674574073
+        },
+        {
+          "scenario_id": "leave-one-out-300502",
+          "wealth": 4.77390521140263,
+          "mdd": 0.1324659922272206,
+          "buckets": 421,
+          "sha256": "97128550a8a4fd7ff70f944ca6dbb822be74f17673cf1e81b908dba174de75bf",
+          "paired_wealth_ratio": 0.6436977682239968
+        },
+        {
+          "scenario_id": "leave-one-out-603986",
+          "wealth": 4.957267609042128,
+          "mdd": 0.16392936655244125,
+          "buckets": 318,
+          "sha256": "3835a664da9c489c0334402b1138325850c065b19ca1c6ab66a495b6d950fe06",
+          "paired_wealth_ratio": 0.5321083391305251
+        },
+        {
+          "scenario_id": "add-one-05-002384",
+          "wealth": 10.457358099750508,
+          "mdd": 0.12618451470808095,
+          "buckets": 206,
+          "sha256": "c014c4678dcd15ac310cb2b24c650186a0f96a42840cc885280bce6820b43019",
+          "paired_wealth_ratio": 0.9676934139279976
+        },
+        {
+          "scenario_id": "random-20260807-03-035",
+          "wealth": 2.539739529835752,
+          "mdd": 0.1473730881664793,
+          "buckets": 124,
+          "sha256": "0f59765abfc1e43ac10f9b8367344e8e6b47b0ea001c986c342573e9fdfc382a",
+          "paired_wealth_ratio": 1.305723306129604
+        },
+        {
+          "scenario_id": "random-20260807-03-039",
+          "wealth": 4.6709898970760015,
+          "mdd": 0.13931120291041088,
+          "buckets": 103,
+          "sha256": "d666b7b212d9bdcbb3aceafe973d9e878bc012ff8152c17adefb43ddf066d2de",
+          "paired_wealth_ratio": 1.4263028923918553
+        },
+        {
+          "scenario_id": "random-20260807-03-043",
+          "wealth": 4.095305385400502,
+          "mdd": 0.1514685243169788,
+          "buckets": 104,
+          "sha256": "e65e52a021fb254b8082261e776a8dd23ee893bdd553da53b8bf10a8841295db",
+          "paired_wealth_ratio": 0.985474720601393
+        },
+        {
+          "scenario_id": "random-20260807-05-005",
+          "wealth": 2.527737073410626,
+          "mdd": 0.16312323205170431,
+          "buckets": 170,
+          "sha256": "5336357a8aa889059e748e1abfbd356c427ef7ad24e06d7d1f1f6ccdfffad9a7",
+          "paired_wealth_ratio": 0.5545110231585476
+        }
+      ]
+    }
+  }
 }

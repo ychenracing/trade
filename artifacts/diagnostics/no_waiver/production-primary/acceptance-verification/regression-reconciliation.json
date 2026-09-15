@@ -1,0 +1,83 @@
+{
+  "source_revision": "d152b1948ea90b74c366a7a6059ee12659a47e86",
+  "purpose": "Authorized changed strategy regression only, NOT financial acceptance or replacement incumbent. Preserve old bytes before installing proposed expectations.",
+  "cases": [
+    {
+      "case": "1",
+      "raw_sha256": "0b545bfdb4b73b82537ef76e152502e5ebc332bb20356e0c4f563a7852a74d20",
+      "old_wealth": 5.243497434140125,
+      "current_wealth": 4.928538056569,
+      "old_mdd": -0.14485830844644382,
+      "current_mdd": -0.12468509293898078,
+      "cash_reconciled": true,
+      "equity_reconciled": true,
+      "close_to_execution_causality": true
+    },
+    {
+      "case": "13",
+      "raw_sha256": "7b645b2d9b508efd40971ac3a6e39a41b69b9b3eb67ec1d3a47c99eed91450e6",
+      "old_wealth": 4.703662538498253,
+      "current_wealth": 8.478371386054251,
+      "old_mdd": -0.1730168953035033,
+      "current_mdd": -0.15733628648998244,
+      "cash_reconciled": true,
+      "equity_reconciled": true,
+      "close_to_execution_causality": true
+    },
+    {
+      "case": "17",
+      "raw_sha256": "1a305dc0e5c75218757be0fa5ede278b96c277912c2b978bc8a3a1d8bd1cbb37",
+      "old_wealth": 8.937340455326881,
+      "current_wealth": 9.610542744515504,
+      "old_mdd": -0.16872315265587953,
+      "current_mdd": -0.1510497842846994,
+      "cash_reconciled": true,
+      "equity_reconciled": true,
+      "close_to_execution_causality": true
+    },
+    {
+      "case": "3",
+      "raw_sha256": "ca7ec67879743fd7119a059dde860cd23b408d78dd3878e1a82da32090feec49",
+      "old_wealth": 6.718186501630001,
+      "current_wealth": 7.707950188316254,
+      "old_mdd": -0.15803331365513246,
+      "current_mdd": -0.16162524913761778,
+      "cash_reconciled": true,
+      "equity_reconciled": true,
+      "close_to_execution_causality": true
+    },
+    {
+      "case": "5",
+      "raw_sha256": "3dc69259cf382ac7deac0b9b22f8ae2df2a1129ffc1fe27a71329fa56d052d9f",
+      "old_wealth": 9.189437988796127,
+      "current_wealth": 8.984486994216379,
+      "old_mdd": -0.1588155645868333,
+      "current_mdd": -0.14088269299346945,
+      "cash_reconciled": true,
+      "equity_reconciled": true,
+      "close_to_execution_causality": true
+    },
+    {
+      "case": "_adaptive_bull",
+      "raw_sha256": "62ef40a07df9ddf76a8543a5f7b9e77fa4df529ef764b29fbd9f5abce6285717",
+      "old_wealth": 5.243497434140125,
+      "current_wealth": 4.928538056569,
+      "old_mdd": -0.14485830844644382,
+      "current_mdd": -0.12468509293898078,
+      "cash_reconciled": true,
+      "equity_reconciled": true,
+      "close_to_execution_causality": true
+    },
+    {
+      "case": "_adaptive_weak",
+      "raw_sha256": "2e0ba3b11ae01d57189f344301831d621591e4c1cc7ea1de3b252d86834f54e4",
+      "old_wealth": 1.0272046980625,
+      "current_wealth": 1.046818793520625,
+      "old_mdd": -0.1580512942988764,
+      "current_mdd": -0.15402745127769102,
+      "cash_reconciled": true,
+      "equity_reconciled": true,
+      "close_to_execution_causality": true
+    }
+  ]
+}

@@ -252,9 +252,13 @@ class RepositoryHygieneTests(unittest.TestCase):
         self.assertEqual(original["acceptance_status"], "rejected")
         self.assertIs(original["canonical"], False)
 
-    def test_current_golden_is_bound_to_independent_enabled_control(self) -> None:
+    def test_historical_golden_is_bound_to_independent_enabled_control(self) -> None:
         import hashlib
-        payload = json.loads((ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text())
+        current = json.loads((ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text())
+        binding = current["_source_binding"]
+        prior = ROOT / binding["prior_golden_path"]
+        self.assertEqual(hashlib.sha256(prior.read_bytes()).hexdigest(), binding["prior_golden_sha256"])
+        payload = json.loads(prior.read_text())
         proof = payload["_source_binding"]
         source = ROOT / proof["proof_path"]
         self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), proof["proof_sha256"])
@@ -276,6 +280,35 @@ class RepositoryHygieneTests(unittest.TestCase):
         for key, result in evidence["control_cases"].items():
             expected = {**result, "source_revision": proof["expected_from_source"]}
             self.assertEqual(payload[key], expected)
+
+    def test_current_golden_is_bound_to_reconciled_strategy_revision(self) -> None:
+        import hashlib
+
+        current = json.loads((ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text())
+        binding = current["_source_binding"]
+        self.assertEqual(binding["kind"], "authorized_strategy_regression_refresh")
+        self.assertEqual(binding["economic_acceptance"], "NOT_MET")
+        source = ROOT / binding["proof_path"]
+        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), binding["proof_sha256"])
+        evidence = json.loads(source.read_text())
+        self.assertEqual(evidence["source_revision"], binding["measured_source_revision"])
+        prior = ROOT / binding["prior_golden_path"]
+        self.assertEqual(hashlib.sha256(prior.read_bytes()).hexdigest(), binding["prior_golden_sha256"])
+        historical = json.loads(prior.read_text())
+        expected_cases = {"1", "3", "5", "13", "17", "_adaptive_bull", "_adaptive_weak"}
+        self.assertEqual({row["case"] for row in evidence["cases"]}, expected_cases)
+        self.assertEqual(len(evidence["cases"]), len(expected_cases))
+        for row in evidence["cases"]:
+            key = row["case"]
+            with self.subTest(case=key):
+                self.assertEqual(current[key]["source_revision"], binding["measured_source_revision"])
+                self.assertAlmostEqual(1 + current[key]["total_return"], row["current_wealth"], places=12)
+                self.assertAlmostEqual(current[key]["max_drawdown"], row["current_mdd"], places=12)
+                self.assertAlmostEqual(1 + historical[key]["total_return"], row["old_wealth"], places=12)
+                self.assertAlmostEqual(historical[key]["max_drawdown"], row["old_mdd"], places=12)
+                self.assertRegex(row["raw_sha256"], r"^[0-9a-f]{64}$")
+                for check in ("cash_reconciled", "equity_reconciled", "close_to_execution_causality"):
+                    self.assertIs(row[check], True, check)
 
     def test_validation_script_reads_the_single_golden_metrics_source(self) -> None:
         validation_script = importlib.import_module("scripts.run_regime_validation")

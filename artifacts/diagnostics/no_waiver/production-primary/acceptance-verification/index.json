@@ -1,10 +1,10 @@
 {
-  "status": "NOT_MET; FORMAL_RUNNING; TWO_BOUNDED_MECHANISMS_REGISTERED",
+  "status": "NOT_MET; FORMAL_RUNNING; TWO_MECHANISMS_REJECTED; GOAL_REASSESSED",
   "economic_source_revision": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
   "economic_source_fingerprint": "0032862f2829cac84c9d13cab6076ffe21e4348c85c0a3ac200f6f3db160fe7e",
   "equivalent_remote_source": "5242d4d5e0455a1cfd3c4a053e2e94d08b5fe8e4",
   "exact_tree_equivalence": "75ad8f6184c9412f077aa3497b80db10b29127cf",
-  "formal_completed_at_checkpoint": 276,
+  "formal_completed_at_checkpoint": 636,
   "formal_required": 958,
   "latest_observed_worst_mdd": -0.19357897406694738,
   "first24_exactly_reproduced": true,
@@ -17,9 +17,13 @@
   "tests": {
     "first_full": "1181 passed,13 failed,3 errors,306 subtests",
     "missing_observer_files": "Recovered exact historical blobs;9 tests pass",
-    "remaining_full_failures": "5 economic fingerprint subtests and2 regime historical scalar expectations; do not blindly regenerate while candidate unsettled",
+    "remaining_full_failures": "NONE_IN_EXECUTED_FULL_PYTEST; historical failure log preserved",
     "acceptance_and_recovery": "76 passed",
-    "pyright": "0 errors"
+    "pyright": "0 errors,0 warnings",
+    "acceptance_after_contract_wording_cleanup": "67 passed; changed wording only, no threshold changes",
+    "final_full": "1209 passed,318 subtests passed in284.37s; --no-cov; source/test tree corresponding to this checkpoint",
+    "ruff": "Affected source/tests E/F/W check passed; no claim on unrelated pre-existing style rules",
+    "remote_ci": "NOT_VERIFIED_FOR_THIS_HEAD"
   },
   "raw_preservation": {
     "file_id": "19PqbsZYtHqRwvqWGN_eDuUtCvBDWdehg",
@@ -37,5 +41,9 @@
     "formal_log": "/workspace/scratch/f9bafb398fc2/formal-958.txt",
     "research": "../bounded-followup.json",
     "do_not_duplicate_running_replays": true
-  }
+  },
+  "goal_reassessment": "goal-reassessment.json",
+  "additional_raw_preservation": "bounded-raw-receipt.json",
+  "research_status": "Both mechanisms rejected for economic losses, no bucket veto. No third trial authorized by evidence.",
+  "contract_wording_cleanup": "Removed stale statement that238 remained effective; active rule unchanged, no standalone turnover/risk-action veto."
 }
