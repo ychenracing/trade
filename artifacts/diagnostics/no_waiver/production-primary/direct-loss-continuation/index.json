@@ -281,14 +281,15 @@
     "identity_limitation": "Candidate engine is integrated direct-loss3cf078e, but acceptance-only working changes were present at launch. Recorded source fingerprint b5814b differs from clean formal65b35d. These external diagnostics are NOT qualification of a clean final source or of subsequent architecture/acceptance edits."
   },
   "engineering": {
-    "review": "Independent review identified frozen-incumbent and full17/16 disclosure gaps; five new counterexamples RED, fixes GREEN, reviewer confirmed closure. First-contract writer owns unified final acceptance integration. Local patch and logs retained locally, not a competing implementation claim.",
-    "focused_tests": "83 passed before final shared integration;121 passed+27subtests and one preexisting generated-log hygiene failure in additional affected suite. No full-suite PASS.",
-    "static": "Local reviewed code ruff passes;pyright0errors. Subsequent final integration requires its own checks.",
+    "review": "Unified first-contract implementation completed in trade-evidence after peer integration stalled in conflicts. Independent review confirmed fixed denominator, all17/16 diagnostics and publication/reload recomputation. Additional frozen-loader recursion counterexample reproduced and repaired by authenticating payload before generic dispatch.",
+    "focused_tests": "Final unified acceptance/scenario/preflight/architecture/hygiene selection:134 passed,27 subtests in8.65s. Separate small architecture/hygiene repair selection:40 passed. Counts overlap; no full-suite PASS.",
+    "static": "Final local Ruff passes; Pyright0errors/0warnings. Remote899c7a Pyright log confirmed the old production_pool dict value-type error; typed current mapping repairs it.",
     "full_suite": "Two broader attempts terminated without complete result; existing economic goldens not changed to disguise unqualified source."
   },
   "coordination": {
     "first_writer_comment": "https://github.com/ychenracing/trade/pull/101#issuecomment-5681505858",
-    "readback": "Reuse peer C41/sparse90 and failed alert/residual batches; do not rerun or overwrite their preserved originals. Peer owns acceptance integration; this writer owns these direct-loss/material/raw evidence and small architecture/hygiene repairs."
+    "readback": "Peer C41/sparse90 and alert/residual diagnostics remain separate rejected evidence. Do not rerun or overwrite originals.",
+    "integration": "After interrupted peer merge remained conflicted atb627925 for~20minutes, this writer finished single production_pool-based integration; peer reload-receipt requirement reused. No competing legacy comparator is active."
   },
   "next_boundary": {
     "goal_complete": false,

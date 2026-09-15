@@ -296,7 +296,7 @@ def _validate_publish_candidate(
         if initial_baseline_reference is None or incumbent is None:
             raise ValueError("Production-pool comparison requires both references")
         revised = production_pool.assess(results, initial_baseline_reference, incumbent)
-        for key in ("economic_contract", "original_contract_assessment"):
+        for key in ("economic_contract", "original_contract_assessment", "original_contract_diagnostics"):
             if universe_artifact.get(key) != revised[key]:
                 raise ValueError(f"Stress candidate changed: {key}")
     expected_absolute_gates = (revised["absolute_hard_gates"] if revised is not None
@@ -342,6 +342,26 @@ def _load_incumbent(path: Path) -> dict[str, Any] | None:
     stress_metrics._current_incumbent_by_id(payload)
     if payload.get("candidate_id") == "C6-Base+AB5" or "release_acceptance" in payload:
         _validate_ab5_incumbent(payload)
+    if (payload.get("candidate_id") == native_joint.CANDIDATE_ID
+            or "native_joint_acceptance" in payload or "economic_contract" in payload):
+        if (payload.get("candidate_id") != native_joint.CANDIDATE_ID
+                or "native_joint_acceptance" not in payload):
+            raise ValueError("Native incumbent requires its original acceptance receipt")
+        original = native_joint.load_original_reference()
+        incumbent = native_joint.load_incumbent_reference()
+        native_joint.validate_references(payload, original, incumbent)
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=50, permutation_samples=50, seeds=stress_scenarios.DEFAULT_SEEDS,
+        )
+        provenance = {field: payload.get(field) for field in (*PROVENANCE_FIELDS, "candidate_id")}
+        _validate_publish_candidate(
+            {**payload, "results": [row for row in payload["results"] if row["scenario_type"] == "prefix"]},
+            payload, scenarios=scenarios, provenance=provenance, incumbent=incumbent,
+            initial_baseline_reference=original,
+        )
+        expected = native_joint.receipt(payload, original, incumbent)
+        if payload["native_joint_acceptance"] != expected or expected["passed"] is not True:
+            raise ValueError("Native accepted artifact has an invalid receipt")
     return payload
 
 

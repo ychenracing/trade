@@ -498,7 +498,7 @@ def main() -> int:
     if native and formal_plan_complete:
         native_joint.validate_references(
             provenance, native_joint.load_original_reference(),
-            stress_artifacts._load_incumbent(stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json"),
+            native_joint.load_incumbent_reference(),
         )
     release_l2_evidence = None
     if args.ab5_release_acceptance:
@@ -646,7 +646,8 @@ def main() -> int:
     robustness = stress_metrics._robustness_diagnostics(results)
     # 在覆盖正式工件之前加载既有基线，评估强制晋级门。
     incumbent_path = stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json"
-    incumbent = stress_artifacts._load_incumbent(incumbent_path)
+    incumbent = (native_joint.load_incumbent_reference() if native
+                 else stress_artifacts._load_incumbent(incumbent_path))
     initial_baseline_reference = (
         stress_artifacts._load_initial_baseline_reference(
             Path(args.initial_baseline_reference).expanduser().resolve()

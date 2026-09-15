@@ -1,0 +1,30 @@
+{
+  "kind": "unified_acceptance_verification",
+  "base_remote": "899c7a48f93dfad70d5e529678e2bc77415d263f",
+  "tests": {
+    "passed": 134,
+    "subtests_passed": 27,
+    "seconds": 8.65,
+    "selection": [
+      "native_joint_acceptance",
+      "production_pool_acceptance",
+      "stress_scenarios",
+      "stress_reference_preflight",
+      "architecture",
+      "markdown_whitelist",
+      "generated_file_hygiene"
+    ]
+  },
+  "ruff": "PASS",
+  "pyright": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "review": "Independent read-only review; frozen-loader recursion found, reproduced RED and repaired; reviewer confirmed closure.",
+  "effective_contract_sha256": "4990863d2fe33914fad80f1372b1c43c920e126351578af44f53e639bffe9bf8",
+  "frozen_incumbent_git_blob": "4692e4a0e39b3abb52c0fe350290333663b574e2",
+  "no_large_upload": "Frozen reference reuses existing Git object; no binary/archive transfer.",
+  "economic_acceptance": "NOT_MET",
+  "full_formal_qualification": false,
+  "merge_permitted": false
+}

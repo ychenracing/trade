@@ -5,7 +5,7 @@
     "owner_request": "任意修改包括但不限于核心策略、风险策略、风险阈值；按照主池优先、明确子池退化边界的建议直接实施",
     "observed_pr_head": "30a155b45b9266a537326b11158b0374c81b3ab1"
   },
-  "status": "FROZEN_BEFORE_NEW_REPLAYS",
+  "status": "SUPERSEDED_CONCURRENT_DUPLICATE",
   "old_contract": "artifacts/diagnostics/no_waiver_joint_freeze.json",
   "old_contract_status": "NOT_MET",
   "old_contract_sha256": "3cfe2fdd58b8f833515f38ab1313b0d2f80f7272b6c84fb70753dc97e7bf7184",
@@ -302,5 +302,7 @@
       "incumbent_wealth": 8.937340455326881,
       "new_direct_floor": 9.83107450085957
     }
-  ]
+  ],
+  "superseded_by": "artifacts/diagnostics/no_waiver/production-primary/contract.json",
+  "concurrency_correction": "4848c1f preceded this contract but was missed between initial30a155b read and checkpoint. Use the first remote freeze, not whichever policy passes new results. All later proposal numbers retained as history, not effective limits."
 }
