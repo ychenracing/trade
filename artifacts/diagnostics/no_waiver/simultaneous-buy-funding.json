@@ -1,0 +1,45 @@
+{
+  "kind": "simultaneous_native_buy_funding_research",
+  "status": "SOURCE_PRESERVED_ECONOMICS_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "preregistration_comment": 5679569326,
+  "observed_parent": "e17e6af56fb9e1fce55ae27501d4e8e56c74457e",
+  "base_source": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "entry_capacity_reference": {
+    "reported_source": "9d45678bd542e3ba28d524a54cb8ac4924b52ede",
+    "reported_fingerprint": "49a95af9eb6911c87befb7e39fd0f64eee65b3bac8fce0286fdcf6b67153445c",
+    "local_equivalent_reconstruction": "4be775ae13a9815aac23b1607e4f2d3e7bc8d5b0",
+    "cfg_overrides": {"max_symbol_weight": 1.0}
+  },
+  "candidate_source": {
+    "commit": "1c00e37af08cf230cf658eda8678e51812be182a",
+    "tree": "6b013579658d28c7191bd9b682aa69f077bec513",
+    "source_fingerprint": "a47c545a15356bdb623b7b10f660f4fd9ee3a79a394a26119663315c87511fff",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975"
+  },
+  "mechanism": "After native sells, gates and admission, coordinate all executable same-open native buy batches within one funded sleeve. Compute each symbol's existing requested/exposure/ADV ceiling without serial cash consumption; enforce native total/group exposure as simultaneous aggregate constraints; divide only actual sleeve cash across remaining symbol batches proportional to their native capped demand with deterministic board-lot/fee reconciliation. Existing holdings are never sold or retargeted; queued sale proceeds receive no cash credit; same-symbol strategy ownership remains native pro-rata.",
+  "engineering": {
+    "red": "Two causal tests failed on the entry-capacity reconstruction: reversing native symbol ranking moved cash between 300308/300502; under a shared 50% group cap it changed the entire funded symbol.",
+    "green_target": "3 passed",
+    "focused": "14 passed, 37 deselected",
+    "account_budget": "34 passed",
+    "compileall": "PASS",
+    "diff_check": "PASS",
+    "ruff": "UNAVAILABLE_LOCALLY"
+  },
+  "source_packet": {
+    "provider": "ChatGPT file Library",
+    "path": "/trade-pr101/TRADE_PR101_SIMULTANEOUS_BUY_SOURCE.tar.gz",
+    "file_id": "file_00000000fcb8822fa469a5e481be8556",
+    "library_file_id": "libfile_dbd333e0597881919f98f5171c9bd081",
+    "bytes": 12511,
+    "sha256": "22d6b9bbc9aa2a6d1d967153d02ad87bfdd1aee35cefb2ac2dfa7137b767ffeb",
+    "bundle_bytes": 5272,
+    "bundle_sha256": "fd34583847095e3d649b5a30f7bc638a4d7f3499408bd3d40c58fd70f2c3bf93",
+    "patch_sha256": "ac09fb4b019d54fd6b4387dd18327462c6c74a69f08d550cc6c1aa1c1dafbe66"
+  },
+  "predeclared_economics": ["prefix-01", "prefix-03", "prefix-05", "random-20260817-03-027"],
+  "decision_rule": "Reject without expansion if prefix01 does not retain the entry-capacity gain with DD<=18%, prefix03 does not materially improve over entry-capacity 6.7947313409 toward retained C/floor, prefix05 falls below 12.5801547719, or known-random DD exceeds18%/buckets160. No demand-weight, fraction, score, ticker or ordering scan. Expand to 06/07/08/13/17 and then full958 only if these four survive.",
+  "unverified": "Economic replay, formal random P90, full958, locked qualification, production promotion, exact-current-HEAD CI and merge are not yet established."
+}
