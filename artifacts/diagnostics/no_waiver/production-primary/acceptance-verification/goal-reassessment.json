@@ -1,0 +1,491 @@
+{
+  "kind": "goal_feasibility_reassessment",
+  "created_at": "2026-09-15T16:36:40.022001+00:00",
+  "authority": "User requested serious reassessment of WorkBuddy report and whether prolonged optimization pursues an unsupported goal. No further acceptance relaxation authorized or applied.",
+  "status": "CURRENT_CANDIDATE_NOT_MET; FEASIBILITY_NOT_ESTABLISHED; NO_NEW_STRATEGY_TRIALS",
+  "workbuddy_report": {
+    "title": "PR101_契约修订建议.md",
+    "local_path": "/workspace/scratch/9458ec66450b/PR101_contract_report.md",
+    "sha256": "a2ee523b5dda09a888b0ab6f9b1a451ec22ceac0e0208ac6f82915990c236be4",
+    "bytes": 11039,
+    "read_in_full": true
+  },
+  "conclusions": [
+    "Business objective of useful production-pool return with controlled risk/cost is reasonable; feasibility of the particular joint historical table remains unproven.",
+    "The incumbent is not a feasible witness under the current18% all-scenario rule. Its historical waiver cannot establish present acceptance.",
+    "Finite failed candidates cannot prove mathematical impossibility or identify the complete attainable risk-return frontier.",
+    "Repeated local overlay changes now show material wealth-risk tradeoffs; do not describe remaining failure as one isolated edge case or promise eventual delivery through more tuning.",
+    "Current formal run and registered diagnostics finish as evidence; no automatic third mechanism, no new thresholds, and no merge while economics or qualification fails."
+  ],
+  "report_claim_review": [
+    {
+      "claim": "Two reference points establish the Pareto frontier and prove impossibility",
+      "verdict": "UNSUPPORTED",
+      "reason": "No exhaustive feasible strategy set or attainable-risk lower bound is supplied."
+    },
+    {
+      "claim": "Old propagated joint wealth lower bounds are fake because no production recursion implements them",
+      "verdict": "INCORRECT",
+      "reason": "Old candidate predicates jointly require W_i>=A_i and W_i>=0.7*W_previous (strict0.9 at09->10), implying L_i=max(A_i,ratio*L_previous). Necessary, not sufficient, is a valid rejection bound. These predicates are now diagnostic because the owner revised the contract."
+    },
+    {
+      "claim": "Common market event implies no strategy defect",
+      "verdict": "UNSUPPORTED",
+      "reason": "Common exposure and constrained execution explain correlated failures; response timing and allocation can still be deficient. The observed fixes carry material opportunity costs."
+    },
+    {
+      "claim": "All17 stocks rose, proving ex-post selection; individual688300 drawdown proves6->7 wealth collapse cause",
+      "verdict": "NOT_PROVEN_BY_THOSE_STATISTICS",
+      "reason": "Selection provenance and paired trading/cash attribution are required; membership changes also change allocation and entry decisions."
+    },
+    {
+      "claim": "Proposed contract has an already verified passing incumbent and only single-cause bounded engineering tasks",
+      "verdict": "NOT_ESTABLISHED",
+      "reason": "Report retains160/200 buckets against incumbent185/220; optional105% aggregate wealth also fails incumbent. Coupled wealth/risk/turnover cannot be assumed separable."
+    }
+  ],
+  "fixed_incumbent": {
+    "source_revision": "56e5743ff8999540f07270ca0ddd0b5c664d8033",
+    "scenario_count": 958,
+    "mdd_failures": 152,
+    "maximum_drawdown": 0.2110621724651241,
+    "production_wealth": 8.937340455326881
+  },
+  "current_formal_snapshot": {
+    "source_revision": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
+    "checkpoint_sha256": "ad68ae4e8646b459078d85a91fa16d29a64f4e2b860d014726d33421b42a34b8",
+    "snapshot_path": "/workspace/scratch/f9bafb398fc2/goal-review-formal-snapshot.json",
+    "completed": 600,
+    "required": 958,
+    "families": {
+      "prefix": {
+        "count": 17,
+        "required": 17,
+        "complete": true,
+        "wealth_minimum": 0.9399333400030975,
+        "wealth_p10": 0.9932886027794671,
+        "wealth_median": 1.604322734471246,
+        "maximum_drawdown": 0.1640509125954827
+      },
+      "leave_one_out": {
+        "count": 17,
+        "required": 17,
+        "complete": true,
+        "wealth_minimum": 0.6710768091436762,
+        "wealth_p10": 0.9012519663551061,
+        "wealth_median": 1.1897355693201193,
+        "maximum_drawdown": 0.1654353768498381
+      },
+      "add_one": {
+        "count": 24,
+        "required": 24,
+        "complete": true,
+        "wealth_minimum": 0.7841562683962799,
+        "wealth_p10": 1.1211658788879684,
+        "wealth_median": 1.68181188010763,
+        "maximum_drawdown": 0.15733628648998246
+      },
+      "random_subset": {
+        "count": 492,
+        "required": 750,
+        "complete": false,
+        "wealth_minimum": 0.35692399250170204,
+        "wealth_p10": 0.8984151682795917,
+        "wealth_median": 1.277665610294449,
+        "maximum_drawdown": 0.19357897406694738
+      },
+      "permutation": {
+        "count": 50,
+        "required": 150,
+        "complete": false,
+        "wealth_minimum": 1.0753246776883583,
+        "wealth_p10": 1.0753246776883583,
+        "wealth_median": 1.0753246776883583,
+        "maximum_drawdown": 0.15104978428469945
+      }
+    },
+    "mdd_failures": [
+      {
+        "id": "random-20260807-03-035",
+        "mdd": 0.18384223665239732
+      },
+      {
+        "id": "random-20260807-03-039",
+        "mdd": 0.19357897406694738
+      },
+      {
+        "id": "random-20260807-03-041",
+        "mdd": 0.1898200194767277
+      },
+      {
+        "id": "random-20260807-05-009",
+        "mdd": 0.18991669215975734
+      },
+      {
+        "id": "random-20260807-05-026",
+        "mdd": 0.18637477593778692
+      },
+      {
+        "id": "random-20260817-05-006",
+        "mdd": 0.19110311487760032
+      },
+      {
+        "id": "random-20260817-05-024",
+        "mdd": 0.18926698627207447
+      },
+      {
+        "id": "random-20260817-12-047",
+        "mdd": 0.19036560241159775
+      },
+      {
+        "id": "random-20260817-12-049",
+        "mdd": 0.18006224841742285
+      }
+    ],
+    "wealth_minimum_failures": [
+      {
+        "id": "random-20260807-08-020",
+        "paired_wealth_ratio": 0.35692399250170204
+      },
+      {
+        "id": "random-20260807-12-015",
+        "paired_wealth_ratio": 0.4513893084701966
+      },
+      {
+        "id": "random-20260817-12-030",
+        "paired_wealth_ratio": 0.5501708991778747
+      },
+      {
+        "id": "random-20260817-08-043",
+        "paired_wealth_ratio": 0.5570198129861923
+      },
+      {
+        "id": "random-20260807-15-022",
+        "paired_wealth_ratio": 0.5770595123910519
+      },
+      {
+        "id": "random-20260817-15-016",
+        "paired_wealth_ratio": 0.5770595123910519
+      },
+      {
+        "id": "random-20260807-03-043",
+        "paired_wealth_ratio": 0.5850540049541931
+      },
+      {
+        "id": "random-20260817-03-042",
+        "paired_wealth_ratio": 0.5850540049541931
+      },
+      {
+        "id": "random-20260817-12-019",
+        "paired_wealth_ratio": 0.5905607451556169
+      },
+      {
+        "id": "random-20260817-15-040",
+        "paired_wealth_ratio": 0.6232618914388803
+      },
+      {
+        "id": "random-20260807-05-005",
+        "paired_wealth_ratio": 0.6301525474912653
+      },
+      {
+        "id": "random-20260807-15-036",
+        "paired_wealth_ratio": 0.6327561853212036
+      },
+      {
+        "id": "random-20260817-15-027",
+        "paired_wealth_ratio": 0.6457774808820994
+      }
+    ],
+    "coverage": "INCOMPLETE; no finalP10/median claim for incompletefamilies",
+    "qualification": "Current causality-fixed source differs; original replay identity retained, not relabeled."
+  },
+  "bounded_research": {
+    "broad-shock": {
+      "identity": {
+        "source_revision": "07d4245082335858ffd3fb9a1e4aba178d9015bf",
+        "source_fingerprint": "ed31eed2bf597242fcc4d32d78aa36d60c245674103c58c76505adb760f3e177",
+        "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+        "diagnostic_noncanonical": true,
+        "scenario_ids": [
+          "prefix-17",
+          "leave-one-out-300502",
+          "leave-one-out-603986",
+          "add-one-05-002384",
+          "random-20260807-03-035",
+          "random-20260807-03-039",
+          "random-20260807-03-043",
+          "random-20260807-05-005"
+        ]
+      },
+      "status": "REJECTED_ECONOMICS; DIAGNOSTIC_EIGHT_ONLY",
+      "results": [
+        {
+          "scenario_id": "prefix-17",
+          "wealth": 5.540082685923879,
+          "mdd": 0.16106864675826355,
+          "buckets": 227,
+          "sha256": "83e8fff7e5d8b963a575fdccacce3aa7a81f95fec4eb62ff249bbf8949911fe3",
+          "paired_wealth_ratio": 0.6198804570124494
+        },
+        {
+          "scenario_id": "leave-one-out-300502",
+          "wealth": 5.120888986994378,
+          "mdd": 0.1400487640919463,
+          "buckets": 304,
+          "sha256": "9cb6eb52414370a74222a6873de1d5c4c52a08ed99c0669c8ec8d5c41601a96f",
+          "paired_wealth_ratio": 0.6904839259015433
+        },
+        {
+          "scenario_id": "leave-one-out-603986",
+          "wealth": 6.203673219191378,
+          "mdd": 0.16054253870718957,
+          "buckets": 276,
+          "sha256": "c1498d4a6e7343e54e5f8b538e6c1441ce77ae74285613928ab38b3b84ca508e",
+          "paired_wealth_ratio": 0.6658963190026947
+        },
+        {
+          "scenario_id": "add-one-05-002384",
+          "wealth": 10.022823417549878,
+          "mdd": 0.14127563324438228,
+          "buckets": 160,
+          "sha256": "d31ab77eaf3aebbbd3e0d28610e725bf6423b0f6978d11ee84dd4f4f6f3a2162",
+          "paired_wealth_ratio": 0.9274828419959837
+        },
+        {
+          "scenario_id": "random-20260807-03-035",
+          "wealth": 2.746470597803876,
+          "mdd": 0.1654268730691318,
+          "buckets": 105,
+          "sha256": "47eef6e448a13ee9177543c5cf93bd4537d4ae78978b5a7945647bb9065609c7",
+          "paired_wealth_ratio": 1.4120072657152154
+        },
+        {
+          "scenario_id": "random-20260807-03-039",
+          "wealth": 6.070426345922127,
+          "mdd": 0.1580322044538878,
+          "buckets": 77,
+          "sha256": "a42eb62ebe9b07810ec54ce7651ea3757038527893a35ee4a92bbe1ff8599baa",
+          "paired_wealth_ratio": 1.8536256438191934
+        },
+        {
+          "scenario_id": "random-20260807-03-043",
+          "wealth": 4.645432589722,
+          "mdd": 0.15463747938738348,
+          "buckets": 84,
+          "sha256": "aaf08363f16aadc1285d5dd57c0a00ba347c612e64a70afe97d6451c95e2a051",
+          "paired_wealth_ratio": 1.1178547025452632
+        },
+        {
+          "scenario_id": "random-20260807-05-005",
+          "wealth": 3.279430789041877,
+          "mdd": 0.16196276885415997,
+          "buckets": 132,
+          "sha256": "5a4ba68c0e8e30d6fcc8b40efaaef609c05a90f9167e540a3e7ed6f034cfb024",
+          "paired_wealth_ratio": 0.719410472449025
+        }
+      ]
+    },
+    "gap-reserve": {
+      "identity": {
+        "source_revision": "a02482f0e7035653db11e599f701d4698627441a",
+        "source_fingerprint": "11c25491be5b91b10d28fa55f8e5e5a27d11a21ddac850193d51ede71368ab11",
+        "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+        "diagnostic_noncanonical": true,
+        "scenario_ids": [
+          "prefix-17",
+          "leave-one-out-300502",
+          "leave-one-out-603986",
+          "add-one-05-002384",
+          "random-20260807-03-035",
+          "random-20260807-03-039",
+          "random-20260807-03-043",
+          "random-20260807-05-005"
+        ]
+      },
+      "status": "REJECTED_ECONOMICS; DIAGNOSTIC_EIGHT_ONLY",
+      "results": [
+        {
+          "scenario_id": "prefix-17",
+          "wealth": 7.500542925926753,
+          "mdd": 0.14677618021039118,
+          "buckets": 328,
+          "sha256": "aba3a09c9d773b1a5f5e532de46fd739adc1f3ff1f4e8921ddfa313fa1df4ae0",
+          "paired_wealth_ratio": 0.8392365674574073
+        },
+        {
+          "scenario_id": "leave-one-out-300502",
+          "wealth": 4.77390521140263,
+          "mdd": 0.1324659922272206,
+          "buckets": 421,
+          "sha256": "97128550a8a4fd7ff70f944ca6dbb822be74f17673cf1e81b908dba174de75bf",
+          "paired_wealth_ratio": 0.6436977682239968
+        },
+        {
+          "scenario_id": "leave-one-out-603986",
+          "wealth": 4.957267609042128,
+          "mdd": 0.16392936655244125,
+          "buckets": 318,
+          "sha256": "3835a664da9c489c0334402b1138325850c065b19ca1c6ab66a495b6d950fe06",
+          "paired_wealth_ratio": 0.5321083391305251
+        },
+        {
+          "scenario_id": "add-one-05-002384",
+          "wealth": 10.457358099750508,
+          "mdd": 0.12618451470808095,
+          "buckets": 206,
+          "sha256": "c014c4678dcd15ac310cb2b24c650186a0f96a42840cc885280bce6820b43019",
+          "paired_wealth_ratio": 0.9676934139279976
+        },
+        {
+          "scenario_id": "random-20260807-03-035",
+          "wealth": 2.539739529835752,
+          "mdd": 0.1473730881664793,
+          "buckets": 124,
+          "sha256": "0f59765abfc1e43ac10f9b8367344e8e6b47b0ea001c986c342573e9fdfc382a",
+          "paired_wealth_ratio": 1.305723306129604
+        },
+        {
+          "scenario_id": "random-20260807-03-039",
+          "wealth": 4.6709898970760015,
+          "mdd": 0.13931120291041088,
+          "buckets": 103,
+          "sha256": "d666b7b212d9bdcbb3aceafe973d9e878bc012ff8152c17adefb43ddf066d2de",
+          "paired_wealth_ratio": 1.4263028923918553
+        },
+        {
+          "scenario_id": "random-20260807-03-043",
+          "wealth": 4.095305385400502,
+          "mdd": 0.1514685243169788,
+          "buckets": 104,
+          "sha256": "e65e52a021fb254b8082261e776a8dd23ee893bdd553da53b8bf10a8841295db",
+          "paired_wealth_ratio": 0.985474720601393
+        },
+        {
+          "scenario_id": "random-20260807-05-005",
+          "wealth": 2.527737073410626,
+          "mdd": 0.16312323205170431,
+          "buckets": 170,
+          "sha256": "5336357a8aa889059e748e1abfbd356c427ef7ad24e06d7d1f1f6ccdfffad9a7",
+          "paired_wealth_ratio": 0.5545110231585476
+        }
+      ]
+    }
+  },
+  "evidence_limits": [
+    "958 scenarios reuse the same market window and overlapping pools; they are not958 independent market histories.",
+    "The formal and registered external windows have already informed research; neither is claimed wholly unseen.",
+    "18% is a finite historical acceptance line, not a guarantee on future accounts under close-known/next-executable-open, price gaps, T+1 and liquidity constraints.",
+    "The current99% production floor is a historical wealth-retention preference; no evidence establishes it as the economically optimal cost for a universal18% scenario cap.",
+    "Observed main wealth9.61054 and DD15.105% are meaningful progress but cannot compensate for family or risk failures under the unchanged currenttable."
+  ],
+  "research_context": {
+    "paper": "The Probability of Backtest Overfitting",
+    "authors": "Bailey, Borwein, Lopez de Prado, Zhu",
+    "url": "https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf",
+    "use": "Supports risk of repeated model selection on fixed data, not an estimate of this projectPBO."
+  },
+  "target_provenance": {
+    "all_scenario_18pct": {
+      "commit": "aaa136fb6c9cf65d6abafde5b1707df4d7297cf4",
+      "pr": "https://github.com/ychenracing/trade/pull/20",
+      "date": "2026-09-03",
+      "authority": "Explicit owner product target; no located utility/risk-model feasibility derivation.",
+      "correction": "cee1620 on2026-08-08 used16.8025% for worst add-one wealth drop, not observed drawdown; former drawdown gates were20%/22%/22.5%."
+    },
+    "ordered17_pool": {
+      "commit": "88690b2cb1db8803c8f6cc48f774eebe9db40b9e",
+      "pr": "https://github.com/ychenracing/trade/pull/22",
+      "date": "2026-09-03",
+      "evidence": "Owner-selected pool fixed after2026-07-20 replay end; no located point-in-time selection rule proving preselection. This does not prove the owner selected by future return."
+    },
+    "prefix6_to7_confounder": "Original86fd224 and incumbent-era b7be801 engine/universe.py changes account alert/confirmed/emergency policy from14/18/20 at3-6 stocks to12/14/18 at7-8, alongside stock membership. Individual688300 MDD cannot isolate cause of portfolio terminal wealth change."
+  },
+  "observed_plan_dependence": {
+    "rows": 958,
+    "distinct_unordered_pools": 734,
+    "market_windows": 1,
+    "interpretation": "Different ordered pools and duplicate subsets remain required coverage, but do not create independent market observations."
+  },
+  "decision": "Do not assume eventual joint success. Finish existingformal and independent correctness verification, preserve result and rejected research, keep originalPR unmerged when NOT_MET, no automatic third strategy mechanism or rolling relaxation.",
+  "final_formal_result": {
+    "path": "formal-final-assessment.json",
+    "completed": 958,
+    "status": "NOT_MET",
+    "mdd_failure_count": 13,
+    "minimum_wealth_failure_count": 15,
+    "families": {
+      "prefix": {
+        "count": 17,
+        "paired_wealth_minimum": 0.9399333400030975,
+        "paired_wealth_p10": 0.9932886027794671,
+        "paired_wealth_median": 1.604322734471246,
+        "maximum_drawdown": 0.1640509125954827,
+        "drawdown_failures": 0,
+        "wealth_minimum_failures": 0,
+        "buckets_maximum": 223,
+        "buckets_p90": 218.0,
+        "fill_records_total": 9207,
+        "risk_reduction_fill_records_total": 4870,
+        "sector_liquidation_fill_records_total": 415
+      },
+      "leave_one_out": {
+        "count": 17,
+        "paired_wealth_minimum": 0.6710768091436762,
+        "paired_wealth_p10": 0.9012519663551061,
+        "paired_wealth_median": 1.1897355693201193,
+        "maximum_drawdown": 0.1654353768498381,
+        "drawdown_failures": 0,
+        "wealth_minimum_failures": 0,
+        "buckets_maximum": 283,
+        "buckets_p90": 244.40000000000003,
+        "fill_records_total": 12816,
+        "risk_reduction_fill_records_total": 6922,
+        "sector_liquidation_fill_records_total": 505
+      },
+      "add_one": {
+        "count": 24,
+        "paired_wealth_minimum": 0.7841562683962799,
+        "paired_wealth_p10": 1.1211658788879684,
+        "paired_wealth_median": 1.68181188010763,
+        "maximum_drawdown": 0.15733628648998246,
+        "drawdown_failures": 0,
+        "wealth_minimum_failures": 0,
+        "buckets_maximum": 218,
+        "buckets_p90": 196.79999999999998,
+        "fill_records_total": 13187,
+        "risk_reduction_fill_records_total": 6736,
+        "sector_liquidation_fill_records_total": 638
+      },
+      "random_subset": {
+        "count": 750,
+        "paired_wealth_minimum": 0.35692399250170204,
+        "paired_wealth_p10": 0.8978910866920712,
+        "paired_wealth_median": 1.2657291823791557,
+        "maximum_drawdown": 0.19357897406694738,
+        "drawdown_failures": 13,
+        "wealth_minimum_failures": 15,
+        "buckets_maximum": 306,
+        "buckets_p90": 222.0,
+        "fill_records_total": 359662,
+        "risk_reduction_fill_records_total": 180278,
+        "sector_liquidation_fill_records_total": 16539
+      },
+      "permutation": {
+        "count": 150,
+        "paired_wealth_minimum": 1.0753246776883583,
+        "paired_wealth_p10": 1.0753246776883583,
+        "paired_wealth_median": 1.0753246776883583,
+        "maximum_drawdown": 0.15104978428469945,
+        "drawdown_failures": 0,
+        "wealth_minimum_failures": 0,
+        "buckets_maximum": 190,
+        "buckets_p90": 190.0,
+        "fill_records_total": 96750,
+        "risk_reduction_fill_records_total": 50400,
+        "sector_liquidation_fill_records_total": 4350
+      }
+    },
+    "interpretation": "Four families pass current economics; randomP10/median pass. Severe relative wealth loss is concentrated in15/750 random cases, while13 random cases breach18%. Neither broad failure nor a joint pass. Scenario counts are not future failure probabilities."
+  },
+  "final_decision": "No further strategy trial or contract relaxation in this round; preserve verified engineering work and complete formal rejection. Keep originalPR Draft/unmerged. Feasibility unproven; do not promise eventual success by patching."
+}

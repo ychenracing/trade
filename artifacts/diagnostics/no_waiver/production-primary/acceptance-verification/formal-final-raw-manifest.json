@@ -1,0 +1,55 @@
+{
+  "kind": "completed_formal958_and_final_verification_originals",
+  "members": {
+    "formal-958.json": {
+      "bytes": 976186,
+      "sha256": "202b61cc6115d8c1df3e4017cbf5a60f769875332a03e3f0e416c75e0e79d257"
+    },
+    "formal-958.txt": {
+      "bytes": 26753,
+      "sha256": "aaf81bc2167172b915c3debce6d3d700b5c36274e66b42097f5a343804478200"
+    },
+    "formal-final-assessment.json": {
+      "bytes": 21776,
+      "sha256": "c130634a14086eadda1da8f1d85a99b8af5a9027020c33635fbd4a0e1e664965"
+    },
+    "formal-runtime-identity.json": {
+      "bytes": 776,
+      "sha256": "eac1695ef8aeae74052844f9e58fdda167c5096c9b6076c06a1537a6d0c50853"
+    },
+    "close_formal_evidence.py": {
+      "bytes": 5077,
+      "sha256": "4c48df598ba152e6a09d694bdbbe230f7c5017eaf6a1fa46f9579689c27ddefd"
+    },
+    "archive_final_evidence.py": {
+      "bytes": 2995,
+      "sha256": "79edf70b8603f5c5fb675292796c5af3d80907ad0c1c3a4acb210edb5f7d0726"
+    },
+    "pr101-regression-source.bundle": {
+      "bytes": 19091,
+      "sha256": "4ef0e659ea74b763c4d611e7eef312852783086e838cc6323bc3d23ddf0c23d7"
+    },
+    "workload-summary-expanded.json": {
+      "bytes": 8344,
+      "sha256": "5a06596beab75cf63c61ad6d58b547d41a905a511f7daf39ea5fa6fff863f3b0"
+    },
+    "full-tests-final.txt": {
+      "bytes": 1472,
+      "sha256": "0f81a46028f823ed7347640fd167ebcfda2fc23eb63b4bbc442663dd91dcc1f7"
+    },
+    "pyright-final.txt": {
+      "bytes": 37,
+      "sha256": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
+    },
+    "ruff-final.txt": {
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    "formal/stress-67cbb3bc27551298b7370b7a15b7fa9dbab89b3d-rejected.json": {
+      "bytes": 1014922,
+      "sha256": "162b3aa045f374302563e5b8469ffa59e2eb733b841218e58598f8342e9c228e"
+    }
+  },
+  "source_bundle_prerequisite": "d152b1948ea90b74c366a7a6059ee12659a47e86 in preceding bounded archive",
+  "status": "NOT_MET; no further strategy changes"
+}

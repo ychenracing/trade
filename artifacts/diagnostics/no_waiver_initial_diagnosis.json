@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "kind": "no_waiver_initial_diagnosis",
+  "baseline_code_revision": "7948ce719d3c2f0889de8e3b743bcea16cb67ded",
+  "baseline_code_fingerprint": "482241bdd831e5aea9811348d6746848b7a04da628f7792c7cc44360c78ef0d8",
+  "baseline_verification": {
+    "focused_unit_tests": "36 passed: tests/unit/test_default_account_budget.py and tests/c6_non_economic/test_account_risk_budget.py",
+    "replayed_count": 23,
+    "replayed_ids": ["prefix-01","prefix-02","prefix-03","prefix-04","prefix-05","prefix-06","prefix-07","prefix-08","prefix-09","prefix-10","prefix-11","prefix-12","prefix-13","prefix-14","prefix-15","prefix-16","prefix-17","random-20260817-03-027","random-20260807-12-040","random-20260807-15-038","random-20260817-15-015","add-one-05-300604","add-one-05-002384"],
+    "exactly_equal_incumbent_fields": ["total_return","max_drawdown","total_trades","date_symbol_side_count","sleeve_fill_count","reason_attribution","terminal_risk_lock"],
+    "mismatches": [],
+    "full_958_current_source_replay": false,
+    "worst_probe_seconds": 13.364086799,
+    "worst_raw_result_sha256": "79a5d750ad5d667075e344041710f09cfc4a2c18c8905461cead94ce072c6d57"
+  },
+  "confirmed_causal_observations": [
+    {"path":"random-20260817-03-027","date":"2025-09-02","observation":"Gross cap binds and three reduction orders are planned; original held gap debit still exceeds remaining budget.","remaining_loss_budget":865425.414609191,"current_gap_debit":1717899.4770000002},
+    {"path":"random-20260817-03-027","date":"2025-09-03","observation":"After actual sales, generic gross cap stops binding. Held gap debit remains over budget, yet buy_gap_scale is 1 and new buys are authorized.","remaining_loss_budget":1082028.1739481902,"current_gap_debit":1515082.786,"requested_buy_gap_debit":1118317.662,"buy_gap_scale":1.0},
+    {"path":"prefix-06 vs prefix-07","date":"2025-07-31","observation":"First fill divergence: one 100-share fast atr_channel lot buys added 688300 instead of 300394. First equity difference is 693.318, not the eventual wealth cliff."},
+    {"path":"prefix-07","date":"2025-09-09","observation":"The 7-8-name account policy confirms a cycle lock at 14% after two sessions; actual drawdown is 14.658921109%. Last fill is 2025-09-10 and the account remains locked. The 3-6-name policy uses an 18% confirmation threshold."},
+    {"path":"prefix-11","date":"2026-03-18","observation":"A distinct 17.5% account confirmation locks at 17.531857684%; this is not the 6-to-7 selection-threshold story."},
+    {"path":"add-one-05-300604","observation":"No terminal/persistent account lock at end; last fill 2026-06-29. Mean daily cash fraction 0.634 versus prefix-05 0.421. Lock alone cannot explain this cliff."}
+  ],
+  "candidate_metric_columns": ["scenario_id","terminal_wealth_including_principal","maximum_drawdown_severity","date_symbol_side_count"],
+  "A": {
+    "source_fingerprint":"bd91fc7a59edff70e65aaeafbee4e19ffe8d02efeadf4b0db29e892237cdd0ea",
+    "boundary_tests":"RED 2 failed/2 passed; GREEN 4 passed",
+    "metrics":[["random-20260817-03-027",4.539284332828751,0.18602769572487143,86],["prefix-05",5.094761376296627,0.17480402801047773,119],["prefix-06",4.7633999003625,0.17480402801047773,134],["prefix-07",3.2569647836304996,0.17462585942329964,36],["prefix-11",3.4449442174407507,0.17555241070014496,114],["add-one-05-300604",3.7889087078282504,0.17480402801047773,126]],
+    "joint_status":"rejected: worst-path drawdown still above18%, original and incumbent wealth protections fail"
+  },
+  "B": {
+    "source_fingerprint":"ac9d531383b8343a8419e4c7a5a568f10306b2cf36953adfd6dc1bd9c3b31fdf",
+    "boundary_tests":"RED 2 failed/4 passed; GREEN 6 passed",
+    "metrics":[["random-20260817-03-027",4.103209252377002,0.16084821981833264,152],["prefix-05",3.596151188612626,0.16141700836917314,216],["prefix-06",4.011696823541752,0.15427325527367042,214],["prefix-07",2.884817672617876,0.1511516443748514,102],["prefix-11",3.1263627163477516,0.17093855177523945,206],["add-one-05-300604",3.3612510710560017,0.16915539373780644,212]],
+    "joint_status":"rejected: wealth losses and >200 buckets despite lower diagnostic drawdowns"
+  },
+  "next_distinct_hypotheses": ["Isolate account-policy dependence on catalog size from the first actual allocation fork.","Trace original-reference vs current capital allocation/re-entry before changing selection.","Test whether pre-allocation proportional clipping of unfunded competing buy intents causes avoidable winner starvation."],
+  "new_default_promoted":false,
+  "historical_artifacts_or_gates_modified":false
+}

@@ -101,7 +101,7 @@ def test_formal_ab5_l1_uses_binding_candidate_without_changing_scenarios() -> No
     assert tasks[-1][0] == "C6-Base+AB5"
 
 
-def test_formal_ab5_witness_reproduces_locked_path_and_budget_orders() -> None:
+def test_current_ab5_witness_reconciles_metrics_and_causal_budget_orders() -> None:
     scenario = next(
         item
         for item in stress_scenarios._multi_seed_scenarios(
@@ -121,24 +121,35 @@ def test_formal_ab5_witness_reproduces_locked_path_and_budget_orders() -> None:
     ]
 
     assert result["variant_id"] == "C6-Base+AB5"
-    assert result["official_metrics"]["max_drawdown"] == pytest.approx(
-        -0.17796519775099098
-    )
-    assert result["official_metrics"]["total_return"] == pytest.approx(
-        2.6051501539157518
-    )
-    assert len(budget_orders) == 32
+    # C6 labels select interventions, not a checkout of historical source.
+    # PR101 changed holding/risk allocation; check today's path independently.
+    values = [row["equity"] for row in result["equity_series"]]
+    peak = values[0]
+    worst = 0.
+    for value in values:
+        peak = max(peak, value)
+        worst = min(worst, value / peak - 1.)
+    assert result["official_metrics"]["max_drawdown"] == pytest.approx(worst)
+    assert result["official_metrics"]["total_return"] == pytest.approx(values[-1] / 2_000_000 - 1.)
+    assert result["official_metrics"]["total_trades"] == len(result["fills"])
+    assert budget_orders
     assert budget_orders[0]["decision_timestamp"] == "2025-09-04"
+    for order in budget_orders:
+        assert order["side"] == "SELL"
+        assert 0 <= order["filled_shares"] <= order["authorized_shares"]
+        if order["filled_shares"]:
+            assert order["execution_timestamp"] > order["decision_timestamp"]
 
 
-def test_formal_official_runner_accepts_only_explicit_candidate_identity() -> None:
+
+def test_formal_runner_defaults_native_and_retains_explicit_historical_identity() -> None:
     parser = stress.build_argument_parser()
     args = parser.parse_args(
         ["--source-revision", "a" * 40, "--candidate-id", "C6-Base+AB5"]
     )
     assert args.candidate_id == "C6-Base+AB5"
-    legacy = parser.parse_args(["--source-revision", "a" * 40])
-    assert legacy.candidate_id == "C6-Base+AB5"
+    default = parser.parse_args(["--source-revision", "a" * 40])
+    assert default.candidate_id == "native-default"
 
 
 def test_formal_checkpoint_signature_binds_actual_candidate(tmp_path) -> None:

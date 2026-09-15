@@ -1,0 +1,26 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_______ test_formal_ab5_witness_reproduces_locked_path_and_budget_orders _______
+tests/c6_non_economic/test_c6_formal_ab5.py:124: in test_formal_ab5_witness_reproduces_locked_path_and_budget_orders
+    assert result["official_metrics"]["max_drawdown"] == pytest.approx(
+E   assert -0.16579136512258807 == -0.17796519775099098 ± 1.8e-07
+E     
+E     comparison failed
+E     Obtained: -0.16579136512258807
+E     Expected: -0.17796519775099098 ± 1.8e-07
+___________ test_complete_native_w_group_passes_real_record_consumer ___________
+tests/c6_non_economic/test_c6_recovery_boundaries.py:137: in test_complete_native_w_group_passes_real_record_consumer
+    bound.validate_wire_value(row, {"$ref": "#/$defs/evaluation_record"}, prereg["schema_catalog"]["definitions"])
+quantfusion/application/c6_bound_run.py:1328: in validate_wire_value
+    validate_wire_value(value, target, definitions, label, depth + 1)
+quantfusion/application/c6_bound_run.py:1396: in validate_wire_value
+    validate_wire_value(nested, child, definitions, f"{label}.{key}", depth + 1)
+quantfusion/application/c6_bound_run.py:1342: in validate_wire_value
+    _raise(f"{label}: no unique permitted wire schema variant")
+quantfusion/application/c6_bound_run.py:125: in _raise
+    raise error
+E   quantfusion.application.c6_bound_run.BoundRunError: $.intervention_601869: no unique permitted wire schema variant
+=========================== short test summary info ============================
+FAILED tests/c6_non_economic/test_c6_formal_ab5.py::test_formal_ab5_witness_reproduces_locked_path_and_budget_orders
+FAILED tests/c6_non_economic/test_c6_recovery_boundaries.py::test_complete_native_w_group_passes_real_record_consumer
+2 failed in 42.92s

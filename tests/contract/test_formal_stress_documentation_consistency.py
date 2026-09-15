@@ -647,7 +647,7 @@ def test_recorded_958_summary_candidate_and_archived_docs_are_one_contract() -> 
     assert result_block.strip() == _expected_result_text(summary)
 
 
-def test_current_result_block_matches_native_baseline_and_release_receipt() -> None:
+def test_historical_baseline_matches_its_release_receipt() -> None:
     from quantfusion.application.c6_contract import canonical_payload_hash
 
     directory = ROOT / "artifacts/validation"
@@ -662,17 +662,56 @@ def test_current_result_block_matches_native_baseline_and_release_receipt() -> N
     unique_ids = {str(item["scenario_id"]) for item in results}
     count = current["scenario_count"]
     assert len(results) == len(unique_ids) == count == receipt["official_scenario_count"] == 958
+
+
+def test_current_result_block_matches_deployment_and_release_receipt(tmp_path: Path) -> None:
+    from quantfusion.application import native_joint
+    from quantfusion.application.c6_contract import canonical_payload_hash
+    from scripts.release_tables import export_native
+
+    directory = ROOT / "artifacts/validation"
+    tables = directory / "deployment-release"
+    current = export_native(tables, tmp_path / "deployment.json")
+    receipt = _load_json(directory / "deployment-release-receipt.json")
+    assert current["candidate_id"] == native_joint.CANDIDATE_ID
+    assert receipt["status"] == "ECONOMICS_AND_QUALIFICATION_MET"
+    assert canonical_payload_hash(current) == receipt["payload_sha256"]
+    for field in ("source_revision", "source_fingerprint", "data_fingerprint", "scenario_count",
+                  "native_joint_acceptance"):
+        assert current[field] == receipt[field], field
+    assert hashlib.sha256((tables / "index.json").read_bytes()).hexdigest() == receipt["tables_index_sha256"]
+    qualification_path = (
+        ROOT / "artifacts/diagnostics/no_waiver/production-primary/acceptance-verification"
+        / "deployment-qualification.json"
+    )
+    assert hashlib.sha256(qualification_path.read_bytes()).hexdigest() == receipt["qualification_sha256"]
+    qualification = _load_json(qualification_path)
+    assert qualification["status"] == "EXTERNAL_COST_SOURCE_QUALIFIED"
+    for field in ("source_fingerprint", "data_fingerprint"):
+        assert qualification["identity"][field] == current[field], field
+    assert receipt["old_contract_status"] == receipt["previous_production_contract_status"] == "NOT_MET"
+    assert not all(gate["passed"] for gate in current["original_contract_assessment"].values())
+    assert not all(current["original_contract_diagnostics"]["previous_production_contract_checks"].values())
+    assert current["acceptance_status"] == "accepted" and current["canonical"] is True
+    results = current["results"]
+    unique_ids = {str(item["scenario_id"]) for item in results}
+    count = current["scenario_count"]
+    assert len(results) == len(unique_ids) == count == 958
+    assert Counter(item["scenario_type"] for item in results) == Counter(EXPECTED_FAMILIES)
+    main = next(item for item in results if item["scenario_id"] == "prefix-17")
     worst = min(float(item["max_drawdown"]) for item in results)
     expected_result = (
-        f"当前正式基线：完整计划已运行：`{len(results)}/{count}`，"
+        f"当前正式候选：完整计划已运行：`{len(results)}/{count}`，"
         f"唯一 scenario ID：`{len(unique_ids)}`；"
         f"acceptance 为 `{current['acceptance_status']}`，"
         f"canonical 为 `{str(current['canonical']).lower()}`。"
-        "接受依据为来源绑定的有限例外，不表示原生硬门全部通过。"
-        f"全场景最差最大回撤为 `{worst:.6%}`；"
+        "接受依据为固定17股部署范围合同，原合同结果仍为 `NOT_MET`。"
+        f"主池财富为 `{1 + main['total_return']:.6f}` 倍，"
+        f"最大回撤为 `{main['max_drawdown']:.6%}`；"
+        f"全场景最差最大回撤为 `{worst:.6%}`。"
         f"经济源码：`{current['source_revision']}`。"
-        "完整记录与发布回执分别见 `artifacts/validation/universe_stress.json`、"
-        "`artifacts/validation/c6_release_receipt.json`。"
+        "完整指标与发布回执分别见 `artifacts/validation/deployment-release/index.json`、"
+        "`artifacts/validation/deployment-release-receipt.json`。"
     )
     for relative in CURRENT_DOCUMENTS:
         text = (ROOT / relative).read_text(encoding="utf-8")

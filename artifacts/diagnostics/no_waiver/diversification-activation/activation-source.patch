@@ -1,0 +1,729 @@
+diff --git a/quantfusion/config/engine.py b/quantfusion/config/engine.py
+index 3abb2c4..c6c5576 100644
+--- a/quantfusion/config/engine.py
++++ b/quantfusion/config/engine.py
+@@ -69,6 +69,7 @@ def default_engine_config() -> dict[str, Any]:
+         "hard_stop": 0.15,
+         "strategy_weight": 0.98,
+         "max_symbol_weight": 0.6,
++        "account_alert_max_symbol_weight": 0.6,
+         "max_total_weight": 1.0,
+         "max_units": 20,
+         "max_drawdown": 0.165,
+@@ -336,7 +337,7 @@ def _validate_numeric_config(out: dict) -> None:
+         "risk_pct",
+         "hard_stop",
+         "strategy_weight",
+-        "max_symbol_weight",
++        "account_alert_max_symbol_weight",
+         "max_drawdown",
+         "daily_loss_limit",
+         "profit_lock_activation",
+@@ -347,6 +348,10 @@ def _validate_numeric_config(out: dict) -> None:
+         out[key] = _require_positive(
+             key, out.get(key), max_value=1.0, inclusive_max=False
+         )
++    out["max_symbol_weight"] = _require_positive(
++        "max_symbol_weight", out.get("max_symbol_weight"),
++        max_value=1.0, inclusive_max=True,
++    )
+     out["max_total_weight"] = _require_positive(
+         "max_total_weight",
+         out.get("max_total_weight"),
+diff --git a/quantfusion/engine/causal.py b/quantfusion/engine/causal.py
+index 942968e..83f9f82 100644
+--- a/quantfusion/engine/causal.py
++++ b/quantfusion/engine/causal.py
+@@ -279,6 +279,57 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
+             **details,
+         )
+ 
++    def _effective_entry_symbol_weight(
++        self,
++        signal: Signal,
++        strategy: BaseStrategy,
++        data_map: dict[str, pd.DataFrame] | None,
++    ) -> float:
++        """Use the unlevered endpoint only when diversification is executable now."""
++        native = float(strategy.cfg.get("max_symbol_weight", 1.0))
++        diversified = float(self.cfg.get("max_symbol_weight", native))
++        # A strategy-specific stricter cap is an explicit strategy contract, not the
++        # portfolio diversification ceiling this mechanism is allowed to lift.
++        if not math.isclose(native, diversified):
++            return native
++        universe_size = len(self.symbol_names) if self.symbol_names else (
++            len(data_map) if data_map is not None else 0
++        )
++        if universe_size == 1:
++            return 1.0
++        simultaneous = getattr(self, "_simultaneous_entry_symbols", frozenset())
++        if signal.symbol in simultaneous:
++            return 1.0
++        return native
++
++    def _position_limit_config(
++        self,
++        strategy_cfg: dict[str, Any],
++        signal: Signal,
++        data_map: dict[str, pd.DataFrame] | None,
++        date: pd.Timestamp | None,
++    ) -> dict[str, Any]:
++        """Mirror the close-known diversification rule in the final risk check."""
++        del date
++        native = float(strategy_cfg.get("max_symbol_weight", 1.0))
++        diversified = float(self.cfg.get("max_symbol_weight", native))
++        if not math.isclose(native, diversified):
++            effective = native
++        else:
++            universe_size = len(self.symbol_names) if self.symbol_names else (
++                len(data_map) if data_map is not None else 0
++            )
++            if universe_size == 1:
++                effective = 1.0
++            else:
++                simultaneous = getattr(self, "_simultaneous_entry_symbols", frozenset())
++                effective = 1.0 if signal.symbol in simultaneous else native
++        if math.isclose(effective, native):
++            return strategy_cfg
++        out = dict(strategy_cfg)
++        out["max_symbol_weight"] = effective
++        return out
++
+     def _remaining_buy_capacity(
+         self,
+         signal: Signal,
+@@ -303,7 +354,9 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
+ 
+         symbol_value = position_value(signal.symbol)
+         total_value = sum(position_value(code) for code in self.positions)
+-        symbol_cap = float(strategy.cfg.get("max_symbol_weight", 1.0))
++        symbol_cap = self._effective_entry_symbol_weight(
++            signal, strategy, data_map
++        )
+         capacities = [
+             current_assets * symbol_cap - symbol_value,
+             current_assets * float(self.cfg.get("max_total_weight", 1.0)) - total_value,
+@@ -412,15 +465,12 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
+         del symbol, direction, data_map, date
+         return None
+ 
+-    def _buy_batch_capacity(
+-        self,
+-        items: list[tuple[Signal, BaseStrategy]],
+-        data_map: dict[str, pd.DataFrame],
+-        date: pd.Timestamp,
+-    ) -> int:
+-        """Return the shared cash, exposure, and liquidity capacity for one symbol."""
++    def _validated_buy_batch_request(
++        self, items: list[tuple[Signal, BaseStrategy]]
++    ) -> tuple[Signal, int, float]:
++        """Validate one symbol batch and return its request and execution price."""
+         if not items:
+-            return 0
++            raise ValueError("A buy batch cannot be empty")
+         signal = items[0][0]
+         if any(item[0].symbol != signal.symbol for item in items[1:]):
+             raise ValueError("A buy batch must contain exactly one symbol")
+@@ -433,11 +483,19 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
+         execution_price = float(signal.price) * (
+             1.0 + float(self.cfg.get("slippage", 0.001))
+         )
+-        if requested <= 0 or execution_price <= 0:
++        return signal, requested, execution_price
++
++    def _buy_batch_non_cash_capacity(
++        self,
++        items: list[tuple[Signal, BaseStrategy]],
++        data_map: dict[str, pd.DataFrame],
++        date: pd.Timestamp,
++    ) -> int:
++        """Return a symbol batch ceiling before cash competes across symbols."""
++        if not items:
+             return 0
+-        if signal.symbol not in self.positions and len(self.positions) >= int(
+-            self.cfg.get("max_positions", 6)
+-        ):
++        signal, requested, execution_price = self._validated_buy_batch_request(items)
++        if requested <= 0 or execution_price <= 0:
+             return 0
+         # All production strategies for one symbol currently share a validated
+         # config. Taking the minimum still preserves safety if a future caller
+@@ -447,10 +505,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
+             for item_signal, strategy in items
+         )
+         exposure_shares = _floor_to_lot(exposure_value / execution_price)
+-        cash_shares = self._cash_affordable_batch_capacity(
+-            items, requested, execution_price
+-        )
+-        capacities = [requested, exposure_shares, cash_shares]
++        capacities = [requested, exposure_shares]
+         adv_capacity = self._remaining_adv_capacity(
+             signal.symbol, "buy", data_map, date
+         )
+@@ -458,6 +513,28 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
+             capacities.append(adv_capacity)
+         return max(min(capacities), 0)
+ 
++    def _buy_batch_capacity(
++        self,
++        items: list[tuple[Signal, BaseStrategy]],
++        data_map: dict[str, pd.DataFrame],
++        date: pd.Timestamp,
++    ) -> int:
++        """Return the shared cash, exposure, and liquidity capacity for one symbol."""
++        if not items:
++            return 0
++        signal, requested, execution_price = self._validated_buy_batch_request(items)
++        if requested <= 0 or execution_price <= 0:
++            return 0
++        if signal.symbol not in self.positions and len(self.positions) >= int(
++            self.cfg.get("max_positions", 6)
++        ):
++            return 0
++        non_cash = self._buy_batch_non_cash_capacity(items, data_map, date)
++        cash_shares = self._cash_affordable_batch_capacity(
++            items, requested, execution_price
++        )
++        return max(min(non_cash, cash_shares), 0)
++
+     def _cash_affordable_batch_capacity(
+         self,
+         items: list[tuple[Signal, BaseStrategy]],
+@@ -500,15 +577,216 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
+                 high = midpoint - 1
+         return low * A_SHARE_LOT_SIZE
+ 
++    def _buy_batch_cost(
++        self, items: list[tuple[Signal, BaseStrategy]], capacity: int
++    ) -> float:
++        """Return exact cash cost for a same-symbol proportional board-lot batch."""
++        if capacity <= 0:
++            return 0.0
++        _, _, execution_price = self._validated_buy_batch_request(items)
++        commission_rate = float(self.cfg.get("commission_rate", 0.00025))
++        min_commission = float(self.cfg.get("min_commission", 0.0))
++        allocations = self._allocate_lots_pro_rata(items, capacity)
++        return float(
++            sum(
++                shares * execution_price
++                + max(shares * execution_price * commission_rate, min_commission)
++                for shares in allocations
++                if shares > 0
++            )
++        )
++
++    def _capacity_for_buy_budget(
++        self,
++        items: list[tuple[Signal, BaseStrategy]],
++        ceiling: int,
++        budget: float,
++    ) -> int:
++        """Largest board-lot capacity whose exact per-strategy fees fit budget."""
++        ceiling = _floor_to_lot(ceiling)
++        if ceiling <= 0 or budget <= 0:
++            return 0
++        for capacity in range(ceiling, -1, -A_SHARE_LOT_SIZE):
++            if self._buy_batch_cost(items, capacity) <= budget + 1e-9:
++                return capacity
++        return 0
++
++    def _scale_symbol_capacities_to_value_limit(
++        self,
++        buy_batches: dict[str, list[tuple[Signal, BaseStrategy]]],
++        capacities: dict[str, int],
++        symbols: list[str],
++        limit_value: float,
++    ) -> None:
++        """Proportionally fit simultaneous symbol demand beneath one value cap."""
++        symbols = [symbol for symbol in symbols if capacities.get(symbol, 0) > 0]
++        if not symbols or limit_value <= 0:
++            for symbol in symbols:
++                capacities[symbol] = 0
++            return
++        prices = {
++            symbol: self._validated_buy_batch_request(buy_batches[symbol])[2]
++            for symbol in symbols
++        }
++        demand_values = {
++            symbol: capacities[symbol] * prices[symbol] for symbol in symbols
++        }
++        total_demand = sum(demand_values.values())
++        if total_demand <= limit_value + 1e-9:
++            return
++        targets = {
++            symbol: limit_value * demand_values[symbol] / total_demand
++            for symbol in symbols
++        }
++        for symbol in symbols:
++            capacities[symbol] = min(
++                capacities[symbol],
++                _floor_to_lot(targets[symbol] / prices[symbol]),
++            )
++        used = sum(capacities[symbol] * prices[symbol] for symbol in symbols)
++        while True:
++            feasible = [
++                symbol
++                for symbol in symbols
++                if capacities[symbol] + A_SHARE_LOT_SIZE
++                <= _floor_to_lot(demand_values[symbol] / prices[symbol])
++                and used + A_SHARE_LOT_SIZE * prices[symbol] <= limit_value + 1e-9
++            ]
++            if not feasible:
++                break
++            symbol = min(
++                feasible,
++                key=lambda code: (
++                    -(targets[code] - capacities[code] * prices[code]),
++                    code,
++                ),
++            )
++            capacities[symbol] += A_SHARE_LOT_SIZE
++            used += A_SHARE_LOT_SIZE * prices[symbol]
++
++    def _simultaneous_buy_capacities(
++        self,
++        buy_batches: dict[str, list[tuple[Signal, BaseStrategy]]],
++        data_map: dict[str, pd.DataFrame],
++        date: pd.Timestamp,
++    ) -> dict[str, int]:
++        """Allocate one pre-buy cash snapshot across simultaneous symbol demands."""
++        if not buy_batches:
++            return {}
++        capacities = {
++            symbol: self._buy_batch_non_cash_capacity(items, data_map, date)
++            for symbol, items in buy_batches.items()
++        }
++
++        # Preserve the existing admission gate: already-held symbols do not consume
++        # a new slot; new symbols use the deterministic order already established by
++        # the native pending-order sort before cash funding is coordinated.
++        slots = max(int(self.cfg.get("max_positions", 6)) - len(self.positions), 0)
++        for symbol in buy_batches:
++            if symbol in self.positions or capacities[symbol] <= 0:
++                continue
++            if slots <= 0:
++                capacities[symbol] = 0
++            else:
++                slots -= 1
++
++        prices = self._execution_mark_prices(data_map, date)
++        current_assets = self._total_assets_at_prices(prices)
++
++        def position_value(code: str) -> float:
++            price = prices.get(code, 0.0)
++            return float(
++                sum(pos.shares * price for pos in self.positions.get(code, {}).values())
++            )
++
++        # Existing total and group exposure limits apply to the simultaneous set as
++        # aggregate constraints, so no symbol can consume room merely by executing
++        # first. Symbol-specific limits are already included in each non-cash cap.
++        current_total_value = sum(position_value(code) for code in self.positions)
++        total_room = max(
++            current_assets * float(self.cfg.get("max_total_weight", 1.0))
++            - current_total_value,
++            0.0,
++        )
++        self._scale_symbol_capacities_to_value_limit(
++            buy_batches, capacities, list(buy_batches), total_room
++        )
++
++        grouped: dict[str, list[str]] = {}
++        for symbol in buy_batches:
++            group = self.risk.symbol_groups.get(symbol)
++            if group:
++                grouped.setdefault(group, []).append(symbol)
++        for group, symbols in grouped.items():
++            group_value = sum(
++                position_value(code)
++                for code in self.positions
++                if self.risk.symbol_groups.get(code) == group
++            )
++            group_room = max(
++                current_assets * float(self.risk.group_weight_limits.get(group, 1.0))
++                - group_value,
++                0.0,
++            )
++            self._scale_symbol_capacities_to_value_limit(
++                buy_batches, capacities, symbols, group_room
++            )
++
++        full_costs = {
++            symbol: self._buy_batch_cost(buy_batches[symbol], capacities[symbol])
++            for symbol in buy_batches
++        }
++        total_cost = sum(full_costs.values())
++        if total_cost <= self.cash + 1e-9:
++            return capacities
++        if self.cash <= 0 or total_cost <= 0:
++            return {symbol: 0 for symbol in buy_batches}
++
++        targets = {
++            symbol: self.cash * full_costs[symbol] / total_cost
++            for symbol in buy_batches
++        }
++        ceilings = dict(capacities)
++        for symbol, items in buy_batches.items():
++            capacities[symbol] = self._capacity_for_buy_budget(
++                items, ceilings[symbol], targets[symbol]
++            )
++
++        used = sum(
++            self._buy_batch_cost(buy_batches[symbol], capacities[symbol])
++            for symbol in buy_batches
++        )
++        while True:
++            candidates: list[tuple[float, str, float]] = []
++            for symbol, items in buy_batches.items():
++                next_capacity = capacities[symbol] + A_SHARE_LOT_SIZE
++                if next_capacity > ceilings[symbol]:
++                    continue
++                current_cost = self._buy_batch_cost(items, capacities[symbol])
++                next_cost = self._buy_batch_cost(items, next_capacity)
++                incremental = next_cost - current_cost
++                if incremental <= 0 or used + incremental > self.cash + 1e-9:
++                    continue
++                deficit = targets[symbol] - current_cost
++                candidates.append((-deficit, symbol, incremental))
++            if not candidates:
++                break
++            _, symbol, incremental = min(candidates)
++            capacities[symbol] += A_SHARE_LOT_SIZE
++            used += incremental
++        return capacities
++
+     def _execute_buy_batch(
+         self,
+         items: list[tuple[Signal, BaseStrategy]],
+         date_str: str,
+         data_map: dict[str, pd.DataFrame],
+         date: pd.Timestamp,
++        capacity: int | None = None,
+     ) -> None:
+         """Execute same-symbol confirmations from one shared proportional budget."""
+-        capacity = self._buy_batch_capacity(items, data_map, date)
++        if capacity is None:
++            capacity = self._buy_batch_capacity(items, data_map, date)
+         allocations = self._allocate_lots_pro_rata(items, capacity)
+         for (signal, strategy), allocated in zip(items, allocations, strict=True):
+             if allocated <= 0:
+@@ -657,8 +935,38 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
+                 if order is not None and sold == 0 and order["status"] == "pending":
+                     order.update(status="cancelled" if release_sublot or current_shares == 0 else "blocked",
+                                  blocked_reason="unexecutable_sublot" if release_sublot else "position_absent" if current_shares == 0 else "execution_checks")
+-        for items in buy_batches.values():
+-            self._execute_buy_batch(items, date_str, data_map, date)
++        if len(buy_batches) <= 1:
++            for items in buy_batches.values():
++                self._execute_buy_batch(items, date_str, data_map, date)
++        else:
++            previous_simultaneous = getattr(
++                self, "_simultaneous_entry_symbols", frozenset()
++            )
++            self._simultaneous_entry_symbols = frozenset()
++            try:
++                # Establish fundable demand under native caps before lifting any
++                # cap. A blocked batch must not create its own activation right.
++                capacities = self._simultaneous_buy_capacities(
++                    buy_batches, data_map, date
++                )
++                native_symbols = frozenset(
++                    symbol for symbol, capacity in capacities.items() if capacity > 0
++                )
++                if len(native_symbols) > 1:
++                    self._simultaneous_entry_symbols = native_symbols
++                    capacities = self._simultaneous_buy_capacities(
++                        buy_batches, data_map, date
++                    )
++                for symbol in sorted(buy_batches):
++                    self._execute_buy_batch(
++                        buy_batches[symbol],
++                        date_str,
++                        data_map,
++                        date,
++                        capacity=capacities.get(symbol, 0),
++                    )
++            finally:
++                self._simultaneous_entry_symbols = previous_simultaneous
+         retained = self._dedupe_pending_signals(unexecuted)
+         retained_ids = {id(signal) for signal, _ in retained}
+         for signal, _ in unexecuted:
+diff --git a/quantfusion/engine/execution_flow.py b/quantfusion/engine/execution_flow.py
+index 9612674..353565e 100644
+--- a/quantfusion/engine/execution_flow.py
++++ b/quantfusion/engine/execution_flow.py
+@@ -170,6 +170,17 @@ class CoreExecutionMixin:
+         """Allow audit-capable engines to explain a rejected buy."""
+         del date, signal, event, details
+ 
++    def _position_limit_config(
++        self,
++        strategy_cfg: dict[str, Any],
++        signal: Signal,
++        data_map: dict[str, pd.DataFrame] | None,
++        date: pd.Timestamp | None,
++    ) -> dict[str, Any]:
++        """Return the config used by the final position-limit check."""
++        del signal, data_map, date
++        return strategy_cfg
++
+     def _execute_buy(
+         self,
+         signal: Signal,
+@@ -259,13 +270,16 @@ class CoreExecutionMixin:
+                     available_cash=float(self.cash),
+                 )
+                 return False
++        position_limit_cfg = self._position_limit_config(
++            strategy_cfg, signal, data_map, date
++        )
+         if not self.risk.check_position_limits(
+             signal.symbol,
+             self.positions,
+             current_assets,
+             buy_value,
+             current_prices,
+-            position_cfg=strategy_cfg,
++            position_cfg=position_limit_cfg,
+         ):
+             self._record_buy_rejection(
+                 date=date_str,
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index d259022..e793726 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -254,7 +254,8 @@ def plan_account_risk_budget(
+         if dominant_symbol is not None and equity else 0.
+     )
+     symbol_limit = require_finite(
+-        'max_symbol_weight', cfg['max_symbol_weight'], min_value=0., max_value=1.,
++        'account_alert_max_symbol_weight', cfg['account_alert_max_symbol_weight'],
++        min_value=0., max_value=1.,
+     )
+     daily_loss_limit = require_finite(
+         'daily_loss_limit', cfg['daily_loss_limit'], min_value=0.000001,
+diff --git a/tests/unit/test_simultaneous_native_buy_funding.py b/tests/unit/test_simultaneous_native_buy_funding.py
+new file mode 100644
+index 0000000..9190ca0
+--- /dev/null
++++ b/tests/unit/test_simultaneous_native_buy_funding.py
+@@ -0,0 +1,219 @@
++"""Simultaneous funding must not turn symbol ranking into a cash-allocation rule."""
++
++from __future__ import annotations
++
++from collections.abc import Mapping
++
++import pandas as pd
++
++from quantfusion.config.engine import default_engine_config
++from quantfusion.domain.models import Position, Signal
++from quantfusion.engine.universe import SleeveBacktestEngine
++from quantfusion.config.portfolio import PortfolioPolicy
++from quantfusion.strategy.trend import TurtleBreakoutStrategy
++
++
++def _frame(price: float = 10.0) -> pd.DataFrame:
++    dates = pd.bdate_range("2026-01-02", periods=25)
++    return pd.DataFrame(
++        {
++            "open": price,
++            "close": price,
++            "high": price,
++            "low": price,
++            "volume": 10_000_000.0,
++        },
++        index=dates,
++    )
++
++
++def _run_two_symbol_funding(
++    scores: Mapping[str, float], *, group_limit: float | None = None
++) -> tuple[dict[str, int], float]:
++    cfg = default_engine_config()
++    cfg["max_symbol_weight"] = 1.0
++    cfg["max_positions"] = 6
++    policy = PortfolioPolicy(allocation_mode="single")
++    sleeve = SleeveBacktestEngine(
++        1_000_000.0,
++        cfg=cfg,
++        policy=policy,
++        allocation_lookbacks=policy.single_lookbacks,
++        sleeve_name="test",
++    )
++    if group_limit is not None:
++        sleeve.risk.symbol_groups = {"300308": "optical", "300502": "optical"}
++        sleeve.risk.group_weight_limits = {"optical": group_limit}
++    data_map = {"300308": _frame(), "300502": _frame()}
++    date = next(iter(data_map.values())).index[-1]
++    date_to_pos = {d: i for i, d in enumerate(next(iter(data_map.values())).index)}
++    strategies = {
++        code: TurtleBreakoutStrategy(cfg)
++        for code in data_map
++    }
++    pending = [
++        (
++            Signal(
++                code,
++                strategies[code].name,
++                "buy",
++                target_shares=80_000,
++                signal_date=(date - pd.offsets.BDay(1)).strftime("%Y-%m-%d"),
++                price=10.0,
++                atr=0.0,
++            ),
++            strategies[code],
++        )
++        for code in data_map
++    ]
++    sleeve._allocation_scores = lambda *_args, **_kwargs: dict(scores)
++    sleeve._execute_pending_signals(pending, data_map, date, date_to_pos)
++    shares = {code: 0 for code in data_map}
++    for trade in sleeve.trades:
++        if trade.direction == "buy":
++            shares[trade.symbol] += trade.shares
++    return shares, sleeve.cash
++
++
++def test_multi_symbol_cash_funding_is_independent_of_symbol_ranking() -> None:
++    first, first_cash = _run_two_symbol_funding({"300308": 2.0, "300502": 1.0})
++    second, second_cash = _run_two_symbol_funding({"300308": 1.0, "300502": 2.0})
++
++    assert first == second
++    assert first_cash == second_cash
++    assert first["300308"] > 0
++    assert first["300502"] > 0
++
++
++def test_multi_symbol_group_capacity_is_order_invariant_and_never_exceeded() -> None:
++    first, _ = _run_two_symbol_funding(
++        {"300308": 2.0, "300502": 1.0}, group_limit=0.50
++    )
++    second, _ = _run_two_symbol_funding(
++        {"300308": 1.0, "300502": 2.0}, group_limit=0.50
++    )
++
++    assert first == second
++    # 10.01 execution price after 0.1% slippage. The native group ceiling is 500k.
++    assert sum(first.values()) * 10.01 <= 500_000.0 + 1e-9
++
++
++def test_one_symbol_path_keeps_native_behavior() -> None:
++    cfg = default_engine_config()
++    cfg["max_symbol_weight"] = 1.0
++    policy = PortfolioPolicy(allocation_mode="single")
++    sleeve = SleeveBacktestEngine(
++        1_000_000.0,
++        cfg=cfg,
++        policy=policy,
++        allocation_lookbacks=policy.single_lookbacks,
++        sleeve_name="test",
++    )
++    frame = _frame()
++    date = frame.index[-1]
++    date_to_pos = {d: i for i, d in enumerate(frame.index)}
++    strategy = TurtleBreakoutStrategy(cfg)
++    signal = Signal(
++        "300308",
++        strategy.name,
++        "buy",
++        target_shares=20_000,
++        signal_date=(date - pd.offsets.BDay(1)).strftime("%Y-%m-%d"),
++        price=10.0,
++        atr=0.0,
++    )
++    expected = sleeve._buy_batch_capacity([(signal, strategy)], {"300308": frame}, date)
++
++    sleeve._execute_pending_signals(
++        [(signal, strategy)], {"300308": frame}, date, date_to_pos
++    )
++
++    assert sum(t.shares for t in sleeve.trades if t.direction == "buy") == expected
++
++
++def _run_single_pending_in_universe(symbols: tuple[str, ...]) -> int:
++    cfg = default_engine_config()
++    cfg["max_positions"] = 6
++    policy = PortfolioPolicy(allocation_mode="single")
++    sleeve = SleeveBacktestEngine(
++        1_000_000.0,
++        cfg=cfg,
++        policy=policy,
++        allocation_lookbacks=policy.single_lookbacks,
++        sleeve_name="test",
++    )
++    dates = pd.bdate_range("2026-01-02", periods=25)
++    data_map = {
++        code: pd.DataFrame(
++            {
++                "open": 10.0,
++                "close": 10.0,
++                "high": 10.0,
++                "low": 10.0,
++                "volume": 100_000_000.0,
++            },
++            index=dates,
++        )
++        for code in symbols
++    }
++    date = dates[-1]
++    date_to_pos = {d: i for i, d in enumerate(dates)}
++    strategy = TurtleBreakoutStrategy(cfg)
++    signal = Signal(
++        symbols[0],
++        strategy.name,
++        "buy",
++        target_shares=80_000,
++        signal_date=(date - pd.offsets.BDay(1)).strftime("%Y-%m-%d"),
++        price=10.0,
++        atr=0.0,
++    )
++    sleeve._execute_pending_signals(
++        [(signal, strategy)], data_map, date, date_to_pos
++    )
++    return sum(t.shares for t in sleeve.trades if t.direction == "buy")
++
++
++def test_single_symbol_universe_can_use_unlevered_entry_endpoint() -> None:
++    assert _run_single_pending_in_universe(("300308",)) == 80_000
++
++
++def test_multi_symbol_universe_single_demand_keeps_diversified_entry_cap() -> None:
++    shares = _run_single_pending_in_universe(("300308", "300502"))
++    assert shares <= 60_000
++    assert shares > 0
++
++
++def test_zero_native_capacity_cannot_bootstrap_simultaneous_entry() -> None:
++    cfg = default_engine_config()
++    policy = PortfolioPolicy(allocation_mode="single")
++    sleeve = SleeveBacktestEngine(
++        1_000_000.0, cfg=cfg, policy=policy,
++        allocation_lookbacks=policy.single_lookbacks, sleeve_name="test",
++    )
++    data_map = {code: _frame() for code in ("300308", "300502")}
++    sleeve.symbol_names = {code: code for code in data_map}
++    date = data_map["300308"].index[-1]
++    strategies = {code: TurtleBreakoutStrategy(cfg) for code in data_map}
++    held = Position("300502", "turtle_breakout", 60_000, 10.0, "2026-01-02")
++    sleeve.positions = {"300502": {held.strategy_name: held}}
++    strategies["300502"].position = held
++    sleeve.cash = 400_000.0
++    pending = [
++        (Signal(code, strategy.name, "buy", target_shares=80_000,
++                price=10.0, atr=0.0,
++                signal_date=(date - pd.offsets.BDay(1)).strftime("%Y-%m-%d")),
++         strategy)
++        for code, strategy in strategies.items()
++    ]
++    sleeve._execute_pending_signals(
++        pending, data_map, date,
++        {day: i for i, day in enumerate(data_map["300308"].index)},
++    )
++    # B already consumes its native 60% ceiling; its raw signal is not a
++    # second executable demand and must not create its own extra capacity.
++    assert not any(t.symbol == "300502" for t in sleeve.trades)
++    assert any(t.symbol == "300308" for t in sleeve.trades)
++    assert sleeve.cash >= 0
++    assert cfg["max_symbol_weight"] == 0.6
++    assert not getattr(sleeve, "_simultaneous_entry_symbols", frozenset())

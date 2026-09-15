@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "archive_name": "TRADE_PR101_DEPLOYMENT_FORMAL_ORIGINALS.tar.gz",
+  "bytes": 169590,
+  "sha256": "394bd263742ed22861bf704ab89cb338fffcff7ea6a9e0d284a33dd9ed35afa4",
+  "chunk_size": 32768,
+  "parts": [
+    {
+      "name": "part-0000.bin",
+      "offset": 0,
+      "bytes": 32768,
+      "sha256": "1933f5ece35e3d37f8255cf696d805f7b7632af4aae7af1ae71f33b4051d6630",
+      "git_blob": "2434836307cacd1b5398f940c5f45e129dd32c52"
+    },
+    {
+      "name": "part-0001.bin",
+      "offset": 32768,
+      "bytes": 32768,
+      "sha256": "1746d9cd12ef31cc316bed699865ea033aad5110b64ab48fc114230b719da613",
+      "git_blob": "22dcdac632ae5fd5062bcab236ba86bedb402210"
+    },
+    {
+      "name": "part-0002.bin",
+      "offset": 65536,
+      "bytes": 32768,
+      "sha256": "f0ccdb3e9b8a9b2cbccd2c1a726de4d0a38f0a310a649bc1e609dc0268957324",
+      "git_blob": "f663be92f25654da9e7f7816c8768ecb9d226f17"
+    },
+    {
+      "name": "part-0003.bin",
+      "offset": 98304,
+      "bytes": 32768,
+      "sha256": "4988ee8fbc225970689414a505b8be62505ab2d334efc13787066c4e028b7ca3",
+      "git_blob": "09b9ce3b140b5aa23133c2c4bcc3eaaa9f02c4fc"
+    },
+    {
+      "name": "part-0004.bin",
+      "offset": 131072,
+      "bytes": 32768,
+      "sha256": "ab997f225e7d25f748c6ba408f7e2212fdce8b49a6a5855f51956bb53f91f208",
+      "git_blob": "d070c5aec5de780e9b78de2bda327eace91abbb8"
+    },
+    {
+      "name": "part-0005.bin",
+      "offset": 163840,
+      "bytes": 5750,
+      "sha256": "0379d93fc20ede4f8acc4098be97a581bc01142868080fe1d24ac9d2c0d20af5",
+      "git_blob": "fc60b1898be18c0d72cf86f47243874bbe099f19"
+    }
+  ],
+  "reconstruction": "Concatenate parts in manifest order; verify each length/SHA256 and final length/SHA256 before extracting. Never treat a partial set as complete."
+}

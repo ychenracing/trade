@@ -1,0 +1,185 @@
+{
+  "status": "REJECTED_JOINT",
+  "hypothesis": "Apply the existing slower time-series trend contract consistently, independent of candidate count. Actual retained snapshots show same300308 uses entry30/exit20/trail10/hardstop25% at01 versus8/3/4/15% at03/05. Holding continuity can change by adding an unrelated universe member. Remove the <=2 switch and use the already-defined time-series contract for all counts. No target-rebalancing code included; this is core trend behavior, not an allocation coefficient scan.",
+  "base": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "source_revision": "52a7bb792f293c7dbf323ac7c350c5e8ff9c204b",
+  "source_fingerprint": "51168a1039a87ede98437fb48fdecad8a105fbb166da1f5ce492c3d0011d24b1",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "cfg_overrides": {
+    "max_symbol_weight": 1.0
+  },
+  "scope": "Isolated C+separated alert capacity source. cfg max_symbol_weight1.0; identical economic targets, data, true cash/fees/T+1 and existing risk authority. Full single-strategy universe behavior is intentionally redesigned under new user scope. Research only; no golden fixture migration or default promotion.",
+  "tests": "38 focused tests passed; affected-file Ruff passes after behavior-neutral preexisting import-order repair; diff check passed.",
+  "scenario_ids": [
+    "prefix-01",
+    "prefix-03",
+    "prefix-05",
+    "random-20260817-03-027"
+  ],
+  "decision_rule": "First4 discriminator; any fatal wealth/risk/turnover failure rejects without further expansion. No adjacent period/trailing-multiplier sweeps.",
+  "source_patch": "diff --git a/quantfusion/config/engine.py b/quantfusion/config/engine.py\nindex 3abb2c4..c6c5576 100644\n--- a/quantfusion/config/engine.py\n+++ b/quantfusion/config/engine.py\n@@ -69,6 +69,7 @@ def default_engine_config() -> dict[str, Any]:\n         \"hard_stop\": 0.15,\n         \"strategy_weight\": 0.98,\n         \"max_symbol_weight\": 0.6,\n+        \"account_alert_max_symbol_weight\": 0.6,\n         \"max_total_weight\": 1.0,\n         \"max_units\": 20,\n         \"max_drawdown\": 0.165,\n@@ -336,7 +337,7 @@ def _validate_numeric_config(out: dict) -> None:\n         \"risk_pct\",\n         \"hard_stop\",\n         \"strategy_weight\",\n-        \"max_symbol_weight\",\n+        \"account_alert_max_symbol_weight\",\n         \"max_drawdown\",\n         \"daily_loss_limit\",\n         \"profit_lock_activation\",\n@@ -347,6 +348,10 @@ def _validate_numeric_config(out: dict) -> None:\n         out[key] = _require_positive(\n             key, out.get(key), max_value=1.0, inclusive_max=False\n         )\n+    out[\"max_symbol_weight\"] = _require_positive(\n+        \"max_symbol_weight\", out.get(\"max_symbol_weight\"),\n+        max_value=1.0, inclusive_max=True,\n+    )\n     out[\"max_total_weight\"] = _require_positive(\n         \"max_total_weight\",\n         out.get(\"max_total_weight\"),\ndiff --git a/quantfusion/engine/universe.py b/quantfusion/engine/universe.py\nindex f66c113..586d19e 100644\n--- a/quantfusion/engine/universe.py\n+++ b/quantfusion/engine/universe.py\n@@ -13,15 +13,16 @@ from quantfusion.engine.ensemble import EnsembleBacktestEngine, EnsembleSleeveBa\n from quantfusion.config.portfolio import PortfolioPolicy\n from quantfusion.risk.managers import RiskManager\n \n-_EnsembleBacktestEngine = EnsembleBacktestEngine\n-_EnsembleSleeveBacktestEngine = EnsembleSleeveBacktestEngine\n-_require_int = require_int\n from quantfusion.engine.ensemble_allocation import EnsembleAllocationMixin\n from quantfusion.engine.ensemble_orchestration import EnsembleOrchestrationMixin\n from quantfusion.engine.market_regime import MarketRegimeMixin\n from quantfusion.engine.universe_risk import UniverseRiskMixin\n from quantfusion.engine.universe_selection import UniverseSelectionMixin\n \n+_EnsembleBacktestEngine = EnsembleBacktestEngine\n+_EnsembleSleeveBacktestEngine = EnsembleSleeveBacktestEngine\n+_require_int = require_int\n+\n \n class _UniverseInvariantSleeveMixin(\n     MarketRegimeMixin, UniverseSelectionMixin, UniverseRiskMixin\n@@ -75,7 +76,7 @@ class BacktestEngine(\n     ENGINE_LABEL = \"Quant Fusion\"\n     SLEEVE_ENGINE_CLASS = SleeveBacktestEngine\n \n-    _SINGLE_ASSET_TREND_OVERRIDES: ClassVar[dict[str, Any]] = {\n+    _TREND_OVERRIDES: ClassVar[dict[str, Any]] = {\n         \"entry_period\": 30,\n         \"exit_period\": 20,\n         \"trail_atr_mult\": 10.0,\n@@ -242,13 +243,11 @@ class BacktestEngine(\n         per-sleeve=10 (candidate breadth), portfolio=6 (concentration).\n \n         Small universes are naturally bounded by their own symbol count.\n-        Very small universes (<=2) still use the slower time-series\n-        trend contract, which is a strategy-logic switch (no cross-sectional\n-        information) rather than a parameter change.\n+        The same time-series trend contract applies to incumbents regardless\n+        of how many other candidates are available for allocation.\n         \"\"\"\n         sleeve_cfg = dict(self._ensemble_user_cfg)\n-        if tradable_count <= 2:\n-            sleeve_cfg.update(self._SINGLE_ASSET_TREND_OVERRIDES)\n+        sleeve_cfg.update(self._TREND_OVERRIDES)\n         sleeve_cfg[\"max_positions\"] = 10\n         if tradable_count >= 5 and not self._runtime_reference_complete:\n             exposure_cap = float(\ndiff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py\nindex d259022..e793726 100644\n--- a/quantfusion/risk/account_budget.py\n+++ b/quantfusion/risk/account_budget.py\n@@ -254,7 +254,8 @@ def plan_account_risk_budget(\n         if dominant_symbol is not None and equity else 0.\n     )\n     symbol_limit = require_finite(\n-        'max_symbol_weight', cfg['max_symbol_weight'], min_value=0., max_value=1.,\n+        'account_alert_max_symbol_weight', cfg['account_alert_max_symbol_weight'],\n+        min_value=0., max_value=1.,\n     )\n     daily_loss_limit = require_finite(\n         'daily_loss_limit', cfg['daily_loss_limit'], min_value=0.000001,\ndiff --git a/tests/unit/test_entry_capacity_separation.py b/tests/unit/test_entry_capacity_separation.py\nnew file mode 100644\nindex 0000000..af1f22e\n--- /dev/null\n+++ b/tests/unit/test_entry_capacity_separation.py\n@@ -0,0 +1,43 @@\n+\"\"\"Entry concentration may change without disabling account alert reductions.\"\"\"\n+\n+import pytest\n+\n+from quantfusion.config.engine import default_engine_config, validate_engine_config\n+from quantfusion.risk.account_budget import plan_account_risk_budget\n+from quantfusion.risk.managers import RiskManager\n+\n+\n+def test_full_cash_entry_endpoint_is_valid_but_leverage_is_not():\n+    cfg = default_engine_config()\n+    cfg['max_symbol_weight'] = 1.0\n+    assert validate_engine_config(cfg)['max_symbol_weight'] == 1.0\n+    cfg['max_symbol_weight'] = 1.001\n+    with pytest.raises(ValueError):\n+        validate_engine_config(cfg)\n+\n+\n+def test_entry_capacity_does_not_change_existing_book_alert_reductions():\n+    cfg = default_engine_config()\n+    books = [(0, '300308', 'turtle_breakout', 8000, 10.0)]\n+    kwargs = dict(date_str='2026-01-05', preserve_strategy_valid_holdings=True,\n+                  risk_alert_active=True)\n+    receipt, actions = plan_account_risk_budget(\n+        90000., 100000., cfg, books, [], lambda _: 1., **kwargs)\n+    assert actions\n+    cfg['max_symbol_weight'] = 1.0\n+    expanded_receipt, expanded_actions = plan_account_risk_budget(\n+        90000., 100000., cfg, books, [], lambda _: 1., **kwargs)\n+    assert expanded_actions == actions\n+    assert expanded_receipt['gross_cap'] == receipt['gross_cap']\n+    assert expanded_receipt['remaining_loss_budget'] == receipt['remaining_loss_budget']\n+\n+\n+def test_entry_endpoint_still_obeys_total_and_group_exposure():\n+    cfg = default_engine_config()\n+    cfg['max_symbol_weight'] = 1.0\n+    risk = RiskManager(cfg)\n+    assert risk.check_position_limits('300308', {}, 100000., 90000.)\n+    assert not risk.check_position_limits('300308', {}, 100000., 100001.)\n+    risk.symbol_groups = {'300308': 'sector'}\n+    risk.group_weight_limits = {'sector': .5}\n+    assert not risk.check_position_limits('300308', {}, 100000., 50001.)\ndiff --git a/tests/unit/test_universe_independent_trend.py b/tests/unit/test_universe_independent_trend.py\nnew file mode 100644\nindex 0000000..2a1002d\n--- /dev/null\n+++ b/tests/unit/test_universe_independent_trend.py\n@@ -0,0 +1,10 @@\n+\"\"\"Adding an unrelated candidate must not change an incumbent's trend clock.\"\"\"\n+\n+from quantfusion.engine.universe import BacktestEngine\n+\n+\n+def test_candidate_count_does_not_switch_the_underlying_trend_strategy():\n+    engine = BacktestEngine(cfg={'max_symbol_weight': 1.0})\n+    reference = engine._runtime_sleeve_cfg(1)\n+    for count in (2, 3, 5, 7, 8, 13, 17):\n+        assert engine._runtime_sleeve_cfg(count) == reference\n",
+  "source_bundle_base64": "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",
+  "source_bundle_sha256": "71eb9d77cb9f26936fe0f7fae9842d748dd67ff43adf392a0ba6f5e4df6cf798",
+  "results": {
+    "identity": {
+      "source_revision": "52a7bb792f293c7dbf323ac7c350c5e8ff9c204b",
+      "source_fingerprint": "51168a1039a87ede98437fb48fdecad8a105fbb166da1f5ce492c3d0011d24b1",
+      "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+      "cfg_overrides": {
+        "max_symbol_weight": 1.0
+      },
+      "diagnostic_noncanonical": true,
+      "allow_publication": false,
+      "scenario_ids": [
+        "prefix-01",
+        "prefix-03",
+        "prefix-05",
+        "random-20260817-03-027"
+      ],
+      "workers": 3,
+      "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]"
+    },
+    "results": [
+      {
+        "scenario_id": "prefix-01",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308"
+        ],
+        "symbol_count": 1,
+        "total_return": 6.646319064391125,
+        "max_drawdown": -0.13383996280132063,
+        "sharpe": 3.6981572987077507,
+        "calmar": 30.367380178386757,
+        "total_trades": 36,
+        "sleeve_fill_count": 36,
+        "date_symbol_side_count": 7,
+        "max_concurrent_symbols": 1,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 9,
+          "re_entry": 3,
+          "risk_reduction": 15,
+          "strategy_exit": 0,
+          "sector_liquidation": 9,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "prefix-03",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308",
+          "300502",
+          "300394"
+        ],
+        "symbol_count": 3,
+        "total_return": 3.8857341734389994,
+        "max_drawdown": -0.16454958161275557,
+        "sharpe": 3.0138600554474215,
+        "calmar": 15.455725929265517,
+        "total_trades": 207,
+        "sleeve_fill_count": 207,
+        "date_symbol_side_count": 66,
+        "max_concurrent_symbols": 3,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 34,
+          "re_entry": 71,
+          "risk_reduction": 80,
+          "strategy_exit": 3,
+          "sector_liquidation": 19,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "prefix-05",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986"
+        ],
+        "symbol_count": 5,
+        "total_return": 3.8379899471432504,
+        "max_drawdown": -0.17773258949126908,
+        "sharpe": 3.0223085353174954,
+        "calmar": 14.153810539213236,
+        "total_trades": 207,
+        "sleeve_fill_count": 207,
+        "date_symbol_side_count": 64,
+        "max_concurrent_symbols": 5,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 48,
+          "re_entry": 54,
+          "risk_reduction": 81,
+          "strategy_exit": 0,
+          "sector_liquidation": 24,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "random-20260817-03-027",
+        "scenario_type": "random_subset",
+        "seed": 20260817,
+        "sample_size": 3,
+        "symbols": [
+          "300394",
+          "300408",
+          "300502"
+        ],
+        "symbol_count": 3,
+        "total_return": 3.6110406312037497,
+        "max_drawdown": -0.17685182213072806,
+        "sharpe": 3.0207644277831487,
+        "calmar": 13.47705296184278,
+        "total_trades": 166,
+        "sleeve_fill_count": 166,
+        "date_symbol_side_count": 53,
+        "max_concurrent_symbols": 3,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 27,
+          "re_entry": 62,
+          "risk_reduction": 50,
+          "strategy_exit": 9,
+          "sector_liquidation": 18,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      }
+    ]
+  },
+  "conclusion": "Consistent slower trend behavior retains01gain and reduces03/05buckets to66/64, but03wealth4.885734 and05wealth4.837990 fail materially. Turnover reduction does not recover alpha. No adjacent trend-parameter scan, remaining protection/full958 expansion or default promotion.",
+  "raw_archive": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/consistent-trend-rejected.tar.gz",
+    "bytes": 320214,
+    "sha256": "d86f9480ae6dfa156fb0707bfdbd1a22dc02fb78e8cd6c9c6ac280d42c2f8e8d",
+    "members": {
+      "identity.json": "27e4ad301520a1371fdb139094c90589b560a7a2c88465e6708926d67f49c4a9",
+      "prefix-01.json": "5f1d7164961c4656f79a27f50f2ca83cdf5154bc59d4ddc030428136d8d10b5a",
+      "prefix-01.pkl": "da848013ddb964103d35e8b51555b8d8c63688264407963c64d87acac4834108",
+      "prefix-03.json": "3fa5f23832961f4ceee8375553c15e1acebd00e3b215591222e2aa93ce89b791",
+      "prefix-03.pkl": "0523a2f9c21b7896d8d698421fcbe4017cfe66b666c05465473d80ff53428e85",
+      "prefix-05.json": "0ad718fa36a47432067e45dfeecfa389ba8840cdc9af7ed652e22a9e2d9c818e",
+      "prefix-05.pkl": "9a13c825a87cc127338bd5e32cff267a23c041fb8a6bb6022b6e532b33577925",
+      "random-20260817-03-027.json": "ec4d61e5d27e5304ba065f799e6ee439981a3714c6a9c73f9dc2cd9acf2386d2",
+      "random-20260817-03-027.pkl": "983f3fdaffe0732f4f812688edbde893f9f0c2ff022352f72463e49c81db0d1a",
+      "results.json": "e09ac54fccba053f347009458e753c602f441cac780a89fb8166163ffc35d757"
+    }
+  }
+}

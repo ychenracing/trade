@@ -1,0 +1,53 @@
+{
+  "kind": "diversification_available_entry_capacity_research",
+  "status": "REJECTED_JOINT_AFTER_NATIVE_ACTIVATION_AND_TRADABLE_BINDING_FIXES",
+  "canonical": false,
+  "default_promoted": false,
+  "preregistration_comment": 5679834828,
+  "base_source": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "superseded_engineering_source": {
+    "commit": "f80d166b67755e51dfb198787c5ff3089268795d",
+    "tree": "1e44f8196e50ed26fcb4b9753ea7c361457a3e62",
+    "source_fingerprint": "e12658990ddadf0506495fea6365ed21d480f1e1dd33a4ff9731ec9d6e893e5a",
+    "reason": "The first implementation keyed the single-symbol endpoint to len(data_map). Production data_map contains reference/market frames beyond requested tradable symbols, so prefix01 did not receive the preregistered one-symbol endpoint. Its four-path replay is therefore not an economic test of the intended mechanism and is retained only as invalid engineering-drift evidence."
+  },
+  "mechanism": "Retain the existing diversified entry ceiling by default. Lift only the existing standard portfolio diversification ceiling to the unlevered endpoint when the requested tradable universe contains one symbol or when multiple symbols genuinely compete in the same-open native buy set. Explicit strategy-specific stricter symbol caps remain binding. Simultaneous multi-symbol demand is coordinated with actual cash and native total/group/ADV constraints. Existing holdings are not sold or retargeted and queued sells create no funding credit.",
+  "engineering": {
+    "initial_red": "On top of simultaneous funding, a genuine one-symbol requested universe still stopped near the native diversified cap instead of the unlevered endpoint.",
+    "first_fix_regression": "The initial fix incorrectly lifted an explicitly stricter strategy-specific 20% cap; corrected before any valid economics so only the existing standard diversified ceiling is liftable.",
+    "production_binding_fix": "The next pre-economic audit found data_map includes non-requested reference/market frames. The single-symbol discriminator is now bound to engine.symbol_names (requested tradable universe), falling back to data_map only in direct unit fixtures.",
+    "targeted": "5 passed",
+    "execution_control": "11 passed, 37 deselected",
+    "account_budget": "16 passed",
+    "compileall": "PASS",
+    "diff_check": "PASS",
+    "ruff": "UNAVAILABLE_LOCALLY"
+  },
+  "source_packet": {
+    "provider": "ChatGPT file Library",
+    "path": "/trade-pr101/TRADE_PR101_DIVERSIFICATION_BUY_SOURCE_CORRECTED.tar.gz",
+    "file_id": "file_00000000722c81f58aac083bce5fd810",
+    "library_file_id": "libfile_00258da079e48191ac4bfb35abcc3fd0",
+    "bytes": 15831,
+    "sha256": "099a3175f78e11f3eee9922c20ca94a51007079642d692444497d89cca049b06",
+    "bundle_bytes": 7487,
+    "bundle_sha256": "505ec3c5157bccc49a6cdceeb74cb98e04ddf34f36deadbcc8e64f66546226c8",
+    "patch_sha256": "700874dc6dac208e82944a558c848c28c41aeffac7700850da7dc54cc354a955"
+  },
+  "predeclared_economics": [
+    "prefix-01",
+    "prefix-03",
+    "prefix-05",
+    "random-20260817-03-027"
+  ],
+  "decision_rule": "prefix01 must retain the entry-capacity gain with DD<=18%; prefix03 must materially retain the simultaneous-funding improvement; prefix05 must reach 12.5801547719; known-random DD<=18% and buckets<=160. If any fail jointly, reject without 06/07/08/13/17 or 958 and without activation-count/cap/fraction scans.",
+  "unverified": "Final source1e51ec4 is rejected on prefix03; its four exact rows and all original bytes are indexed in continuation_index. No full958, formal random P90, qualification or default promotion.",
+  "continuation_index": "artifacts/diagnostics/no_waiver/diversification-activation/index.json",
+  "candidate_source_historical": {
+    "commit": "093fdf283acdecdfc44f3b3018aaa9bfdc72c583",
+    "tree": "7cfb2cad31cbea2b388068310327ddd9b693e503",
+    "source_fingerprint": "b8974c82c02a8eff373653a1858afe1a2a0b199c86d4216c241332212ecdba2d",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {}
+  }
+}

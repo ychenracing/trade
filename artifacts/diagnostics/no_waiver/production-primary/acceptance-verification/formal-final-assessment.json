@@ -1,0 +1,716 @@
+{
+  "status": "NOT_MET",
+  "formal_completed": 958,
+  "source": {
+    "stress_contract_version": 2,
+    "source_revision": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
+    "candidate_id": "native-default",
+    "source_fingerprint": "0032862f2829cac84c9d13cab6076ffe21e4348c85c0a3ac200f6f3db160fe7e",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+    "run_signature": "e4b3c8fb98ea54210430869438a3f6655204cad86c2de05e66eeddd64920c4ad",
+    "scenario_count": 958,
+    "start_date": "2025-04-01",
+    "end_date": "2026-07-20",
+    "initial_capital": 2000000.0,
+    "engine": "ProductionReplayEngine",
+    "deployment_policy": "production_daily_replay"
+  },
+  "checkpoint_signature": "e4b3c8fb98ea54210430869438a3f6655204cad86c2de05e66eeddd64920c4ad",
+  "checkpoint_sha256": "202b61cc6115d8c1df3e4017cbf5a60f769875332a03e3f0e416c75e0e79d257",
+  "formal_artifact": {
+    "path": "/workspace/scratch/bf273963828a/trade-turnover/artifacts/validation/candidates/stress-67cbb3bc27551298b7370b7a15b7fa9dbab89b3d-rejected.json",
+    "bytes": 1014922,
+    "sha256": "162b3aa045f374302563e5b8469ffa59e2eb733b841218e58598f8342e9c228e",
+    "acceptance_status": "rejected",
+    "canonical": false
+  },
+  "validation": "Exact958 ID/type/ordered-pool coverage and plan signature; checkpoint/formal artifact provenance and rows equal; recomputed current and original assessments equal producer output.",
+  "current_contract_sha256": "e8351d98a0c3846da33b0bd1f288610818ee6ee95dfd62ba30ccfcb05e7a4a7f",
+  "current_contract_assessment": {
+    "absolute_hard_gates": {
+      "passed": false,
+      "checks": {
+        "all_scenarios_max_drawdown_at_most_18pct": false
+      },
+      "observed": {
+        "worst_scenario_id": "random-20260807-03-039",
+        "all_worst_drawdown": -0.19357897406694738,
+        "random_p90_date_symbol_side_buckets": 222.0,
+        "all_worst_date_symbol_side_buckets": 306.0
+      }
+    },
+    "retained_robustness_hard_gates": {
+      "passed": true,
+      "checks": {},
+      "observed": {
+        "prefix_9_to_10_wealth_change": 0.014502521911601729,
+        "worst_adjacent_wealth_change": -0.1812405951558731
+      }
+    },
+    "initial_baseline_gates": {
+      "status": "compared",
+      "applicable": true,
+      "passed": true,
+      "checks": {},
+      "observed": {
+        "prefix_05_wealth_ratio": 0.707037575096186,
+        "other_prefix_wealth_ratio_min": 0.5772256922950249,
+        "worst_total_return": 0.3351524812290001,
+        "reference_worst_total_return": 0.11669640869812548,
+        "worst_add_one_wealth_change": -0.16273092327216265,
+        "reference_worst_add_one_wealth_change": -0.7145312965039285
+      }
+    },
+    "promotion_gates": {
+      "baseline": "incumbent_universe_stress",
+      "permutation_invariance": {
+        "checked_groups": 3,
+        "worst_deviation": 0.0,
+        "invariant": true
+      },
+      "status": "compared",
+      "incumbent_scenario_count": 958,
+      "shared_scenario_count": 958,
+      "tolerances": {
+        "dd_p90": 0.005,
+        "dd_p95": 0.005,
+        "worst_dd": 0.01,
+        "worst_return": 0.02,
+        "add_one_wealth": 0.03,
+        "date_symbol_side_buckets_p90": 5.0,
+        "date_symbol_side_buckets_worst": 10.0,
+        "risk_action_median": 2.0,
+        "production17_wealth_ratio": 0.99,
+        "family_wealth_min": 0.65,
+        "family_wealth_p10": 0.85,
+        "family_wealth_median": 0.95
+      },
+      "passed": false,
+      "checks": {
+        "permutation_invariant": true,
+        "production17_wealth_at_least_99pct": true,
+        "prefix_paired_wealth_minimum": true,
+        "prefix_paired_wealth_p10": true,
+        "prefix_paired_wealth_median": true,
+        "leave_one_out_paired_wealth_minimum": true,
+        "leave_one_out_paired_wealth_p10": true,
+        "leave_one_out_paired_wealth_median": true,
+        "add_one_paired_wealth_minimum": true,
+        "add_one_paired_wealth_p10": true,
+        "add_one_paired_wealth_median": true,
+        "random_subset_paired_wealth_minimum": false,
+        "random_subset_paired_wealth_p10": true,
+        "random_subset_paired_wealth_median": true,
+        "permutation_paired_wealth_minimum": true,
+        "permutation_paired_wealth_p10": true,
+        "permutation_paired_wealth_median": true
+      },
+      "observed": {
+        "prefix_wealth_ratio_min": 0.9399333400030975,
+        "random_dd_p90": 0.1712106342372403,
+        "random_dd_p95": 0.1750004277173724,
+        "random_worst_return": 0.3351524812290001,
+        "random_date_symbol_side_buckets_p90": 222.0,
+        "random_risk_action_orders_median": 248.0,
+        "all_worst_dd": -0.19357897406694738,
+        "all_worst_date_symbol_side_buckets": 306.0,
+        "leave_one_out_worst_return": 3.976958496005879,
+        "worst_add_one_wealth_change": -0.16273092327216265,
+        "production17_wealth_ratio": 1.0753246776883583,
+        "paired_family_wealth": {
+          "prefix": {
+            "minimum": 0.9399333400030975,
+            "p10": 0.9932886027794671,
+            "median": 1.604322734471246
+          },
+          "leave_one_out": {
+            "minimum": 0.6710768091436762,
+            "p10": 0.9012519663551061,
+            "median": 1.1897355693201193
+          },
+          "add_one": {
+            "minimum": 0.7841562683962799,
+            "p10": 1.1211658788879684,
+            "median": 1.68181188010763
+          },
+          "random_subset": {
+            "minimum": 0.35692399250170204,
+            "p10": 0.8978910866920712,
+            "median": 1.2657291823791557
+          },
+          "permutation": {
+            "minimum": 1.0753246776883583,
+            "p10": 1.0753246776883583,
+            "median": 1.0753246776883583
+          }
+        }
+      }
+    }
+  },
+  "original_contract_assessment": {
+    "absolute_hard_gates": {
+      "passed": false,
+      "checks": {
+        "all_scenarios_max_drawdown_at_most_18pct": false,
+        "random_p90_date_symbol_side_buckets_at_most_160": false,
+        "all_date_symbol_side_buckets_at_most_200": false
+      },
+      "observed": {
+        "worst_scenario_id": "random-20260807-03-039",
+        "all_worst_drawdown": -0.19357897406694738,
+        "random_p90_date_symbol_side_buckets": 222.0,
+        "all_worst_date_symbol_side_buckets": 306.0
+      }
+    },
+    "retained_robustness_hard_gates": {
+      "passed": true,
+      "checks": {
+        "prefix_9_to_10_wealth_above_minus_10pct": true,
+        "worst_adjacent_wealth_at_least_minus_30pct": true
+      },
+      "observed": {
+        "prefix_9_to_10_wealth_change": 0.014502521911601729,
+        "worst_adjacent_wealth_change": -0.1812405951558731
+      }
+    },
+    "initial_baseline_gates": {
+      "status": "compared",
+      "applicable": true,
+      "passed": false,
+      "checks": {
+        "prefix_05_wealth_at_least_99pct": false,
+        "other_prefix_wealth_at_least_95pct": false,
+        "worst_total_return_not_worse_by_0_02": true,
+        "worst_add_one_diagnostic_not_worse_by_0_03": true
+      },
+      "observed": {
+        "prefix_05_wealth_ratio": 0.707037575096186,
+        "other_prefix_wealth_ratio_min": 0.5772256922950249,
+        "worst_total_return": 0.3351524812290001,
+        "reference_worst_total_return": 0.11669640869812548,
+        "worst_add_one_wealth_change": -0.16273092327216265,
+        "reference_worst_add_one_wealth_change": -0.7145312965039285
+      }
+    },
+    "promotion_gates": {
+      "baseline": "incumbent_universe_stress",
+      "permutation_invariance": {
+        "checked_groups": 3,
+        "worst_deviation": 0.0,
+        "invariant": true
+      },
+      "status": "compared",
+      "incumbent_scenario_count": 958,
+      "shared_scenario_count": 958,
+      "tolerances": {
+        "prefix_wealth_ratio": 0.99,
+        "dd_p90": 0.005,
+        "dd_p95": 0.005,
+        "worst_dd": 0.01,
+        "worst_return": 0.02,
+        "add_one_wealth": 0.03,
+        "date_symbol_side_buckets_p90": 5.0,
+        "date_symbol_side_buckets_worst": 10.0,
+        "risk_action_median": 2.0
+      },
+      "passed": false,
+      "checks": {
+        "permutation_invariant": true,
+        "fixed_prefix_wealth_at_least_99pct": false,
+        "random_dd_p90_not_worse": true,
+        "random_dd_p95_not_worse": true,
+        "random_worst_return_not_worse": true,
+        "random_date_symbol_side_buckets_p90_not_increased": false,
+        "random_risk_actions_not_increased": false,
+        "all_worst_dd_not_significantly_worse": true,
+        "all_worst_date_symbol_side_buckets_not_increased": false,
+        "leave_one_out_worst_return_not_worse": true,
+        "add_one_discontinuity_not_worse": true
+      },
+      "observed": {
+        "prefix_wealth_ratio_min": 0.9399333400030975,
+        "random_dd_p90": 0.1712106342372403,
+        "random_dd_p95": 0.1750004277173724,
+        "random_worst_return": 0.3351524812290001,
+        "random_date_symbol_side_buckets_p90": 222.0,
+        "random_risk_action_orders_median": 248.0,
+        "all_worst_dd": -0.19357897406694738,
+        "all_worst_date_symbol_side_buckets": 306.0,
+        "leave_one_out_worst_return": 3.976958496005879,
+        "worst_add_one_wealth_change": -0.16273092327216265
+      }
+    }
+  },
+  "original_contract_diagnostics": {
+    "prefix_wealth": [
+      {
+        "scenario_id": "prefix-01",
+        "wealth_ratio": 0.781197861459088,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-02",
+        "wealth_ratio": 0.5772256922950249,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-03",
+        "wealth_ratio": 0.6648286634862943,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-04",
+        "wealth_ratio": 0.6522968462524924,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-05",
+        "wealth_ratio": 0.707037575096186,
+        "minimum": 0.99,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-06",
+        "wealth_ratio": 0.741042831232752,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-07",
+        "wealth_ratio": 2.824356655515542,
+        "minimum": 0.95,
+        "passed": true
+      },
+      {
+        "scenario_id": "prefix-08",
+        "wealth_ratio": 2.601051218901389,
+        "minimum": 0.95,
+        "passed": true
+      },
+      {
+        "scenario_id": "prefix-09",
+        "wealth_ratio": 2.5237203426613055,
+        "minimum": 0.95,
+        "passed": true
+      },
+      {
+        "scenario_id": "prefix-10",
+        "wealth_ratio": 0.8293588874931683,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-11",
+        "wealth_ratio": 0.8776550369152,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-12",
+        "wealth_ratio": 0.8687173598166639,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-13",
+        "wealth_ratio": 0.6362436302924181,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-14",
+        "wealth_ratio": 0.6362436302924181,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-15",
+        "wealth_ratio": 0.6919497165753229,
+        "minimum": 0.95,
+        "passed": false
+      },
+      {
+        "scenario_id": "prefix-16",
+        "wealth_ratio": 2.427747393545191,
+        "minimum": 0.95,
+        "passed": true
+      },
+      {
+        "scenario_id": "prefix-17",
+        "wealth_ratio": 2.48846977776277,
+        "minimum": 0.95,
+        "passed": true
+      }
+    ],
+    "adjacent_wealth": [
+      {
+        "from": "prefix-01",
+        "to": "prefix-02",
+        "wealth_ratio": 0.8485147653258419,
+        "wealth_change": -0.1514852346741581,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-02",
+        "to": "prefix-03",
+        "wealth_ratio": 1.8431529725072031,
+        "wealth_change": 0.8431529725072031,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-03",
+        "to": "prefix-04",
+        "wealth_ratio": 0.947991148524557,
+        "wealth_change": -0.052008851475442985,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-04",
+        "to": "prefix-05",
+        "wealth_ratio": 1.2295610654991056,
+        "wealth_change": 0.2295610654991056,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-05",
+        "to": "prefix-06",
+        "wealth_ratio": 1.0687845636568842,
+        "wealth_change": 0.06878456365688423,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-06",
+        "to": "prefix-07",
+        "wealth_ratio": 1.1765271895016325,
+        "wealth_change": 0.1765271895016325,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-07",
+        "to": "prefix-08",
+        "wealth_ratio": 0.9234549503493684,
+        "wealth_change": -0.07654504965063158,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-08",
+        "to": "prefix-09",
+        "wealth_ratio": 0.9454452372030694,
+        "wealth_change": -0.05455476279693061,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-09",
+        "to": "prefix-10",
+        "wealth_ratio": 1.0145025219116017,
+        "wealth_change": 0.014502521911601729,
+        "checks": {
+          "at_least_minus_30pct": true,
+          "above_minus_10pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-10",
+        "to": "prefix-11",
+        "wealth_ratio": 1.0562829537918175,
+        "wealth_change": 0.05628295379181747,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-11",
+        "to": "prefix-12",
+        "wealth_ratio": 0.9796821953076577,
+        "wealth_change": -0.020317804692342345,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-12",
+        "to": "prefix-13",
+        "wealth_ratio": 0.8187594048441269,
+        "wealth_change": -0.1812405951558731,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-13",
+        "to": "prefix-14",
+        "wealth_ratio": 1.0,
+        "wealth_change": 0.0,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-14",
+        "to": "prefix-15",
+        "wealth_ratio": 0.9670165547464722,
+        "wealth_change": -0.03298344525352781,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-15",
+        "to": "prefix-16",
+        "wealth_ratio": 1.1435961775575363,
+        "wealth_change": 0.1435961775575363,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      },
+      {
+        "from": "prefix-16",
+        "to": "prefix-17",
+        "wealth_ratio": 1.0250118214024346,
+        "wealth_change": 0.02501182140243463,
+        "checks": {
+          "at_least_minus_30pct": true
+        },
+        "passed": true
+      }
+    ]
+  },
+  "families": {
+    "prefix": {
+      "count": 17,
+      "paired_wealth_minimum": 0.9399333400030975,
+      "paired_wealth_p10": 0.9932886027794671,
+      "paired_wealth_median": 1.604322734471246,
+      "maximum_drawdown": 0.1640509125954827,
+      "drawdown_failures": 0,
+      "wealth_minimum_failures": 0,
+      "buckets_maximum": 223,
+      "buckets_p90": 218.0,
+      "fill_records_total": 9207,
+      "risk_reduction_fill_records_total": 4870,
+      "sector_liquidation_fill_records_total": 415
+    },
+    "leave_one_out": {
+      "count": 17,
+      "paired_wealth_minimum": 0.6710768091436762,
+      "paired_wealth_p10": 0.9012519663551061,
+      "paired_wealth_median": 1.1897355693201193,
+      "maximum_drawdown": 0.1654353768498381,
+      "drawdown_failures": 0,
+      "wealth_minimum_failures": 0,
+      "buckets_maximum": 283,
+      "buckets_p90": 244.40000000000003,
+      "fill_records_total": 12816,
+      "risk_reduction_fill_records_total": 6922,
+      "sector_liquidation_fill_records_total": 505
+    },
+    "add_one": {
+      "count": 24,
+      "paired_wealth_minimum": 0.7841562683962799,
+      "paired_wealth_p10": 1.1211658788879684,
+      "paired_wealth_median": 1.68181188010763,
+      "maximum_drawdown": 0.15733628648998246,
+      "drawdown_failures": 0,
+      "wealth_minimum_failures": 0,
+      "buckets_maximum": 218,
+      "buckets_p90": 196.79999999999998,
+      "fill_records_total": 13187,
+      "risk_reduction_fill_records_total": 6736,
+      "sector_liquidation_fill_records_total": 638
+    },
+    "random_subset": {
+      "count": 750,
+      "paired_wealth_minimum": 0.35692399250170204,
+      "paired_wealth_p10": 0.8978910866920712,
+      "paired_wealth_median": 1.2657291823791557,
+      "maximum_drawdown": 0.19357897406694738,
+      "drawdown_failures": 13,
+      "wealth_minimum_failures": 15,
+      "buckets_maximum": 306,
+      "buckets_p90": 222.0,
+      "fill_records_total": 359662,
+      "risk_reduction_fill_records_total": 180278,
+      "sector_liquidation_fill_records_total": 16539
+    },
+    "permutation": {
+      "count": 150,
+      "paired_wealth_minimum": 1.0753246776883583,
+      "paired_wealth_p10": 1.0753246776883583,
+      "paired_wealth_median": 1.0753246776883583,
+      "maximum_drawdown": 0.15104978428469945,
+      "drawdown_failures": 0,
+      "wealth_minimum_failures": 0,
+      "buckets_maximum": 190,
+      "buckets_p90": 190.0,
+      "fill_records_total": 96750,
+      "risk_reduction_fill_records_total": 50400,
+      "sector_liquidation_fill_records_total": 4350
+    }
+  },
+  "main": {
+    "wealth": 9.610542744515504,
+    "incumbent_wealth": 8.937340455326881,
+    "paired_wealth": 1.0753246776883583,
+    "max_drawdown": 0.15104978428469945,
+    "fill_records": 645,
+    "buckets": 190
+  },
+  "failing_mdd_rows": [
+    {
+      "id": "random-20260807-03-035",
+      "mdd": 0.18384223665239732
+    },
+    {
+      "id": "random-20260807-03-039",
+      "mdd": 0.19357897406694738
+    },
+    {
+      "id": "random-20260807-03-041",
+      "mdd": 0.1898200194767277
+    },
+    {
+      "id": "random-20260807-05-009",
+      "mdd": 0.18991669215975734
+    },
+    {
+      "id": "random-20260807-05-026",
+      "mdd": 0.18637477593778692
+    },
+    {
+      "id": "random-20260817-05-006",
+      "mdd": 0.19110311487760032
+    },
+    {
+      "id": "random-20260817-05-024",
+      "mdd": 0.18926698627207447
+    },
+    {
+      "id": "random-20260817-12-047",
+      "mdd": 0.19036560241159775
+    },
+    {
+      "id": "random-20260817-12-049",
+      "mdd": 0.18006224841742285
+    },
+    {
+      "id": "random-20260827-03-031",
+      "mdd": 0.18384223665239732
+    },
+    {
+      "id": "random-20260827-05-016",
+      "mdd": 0.18991414727621495
+    },
+    {
+      "id": "random-20260827-08-020",
+      "mdd": 0.18805043561629073
+    },
+    {
+      "id": "random-20260827-08-031",
+      "mdd": 0.18676953115412004
+    }
+  ],
+  "failing_wealth_minimum_rows": [
+    {
+      "id": "random-20260807-08-020",
+      "ratio": 0.35692399250170204
+    },
+    {
+      "id": "random-20260827-08-003",
+      "ratio": 0.41153079950080085
+    },
+    {
+      "id": "random-20260807-12-015",
+      "ratio": 0.4513893084701966
+    },
+    {
+      "id": "random-20260817-12-030",
+      "ratio": 0.5501708991778747
+    },
+    {
+      "id": "random-20260817-08-043",
+      "ratio": 0.5570198129861923
+    },
+    {
+      "id": "random-20260807-15-022",
+      "ratio": 0.5770595123910519
+    },
+    {
+      "id": "random-20260817-15-016",
+      "ratio": 0.5770595123910519
+    },
+    {
+      "id": "random-20260807-03-043",
+      "ratio": 0.5850540049541931
+    },
+    {
+      "id": "random-20260817-03-042",
+      "ratio": 0.5850540049541931
+    },
+    {
+      "id": "random-20260817-12-019",
+      "ratio": 0.5905607451556169
+    },
+    {
+      "id": "random-20260817-15-040",
+      "ratio": 0.6232618914388803
+    },
+    {
+      "id": "random-20260807-05-005",
+      "ratio": 0.6301525474912653
+    },
+    {
+      "id": "random-20260807-15-036",
+      "ratio": 0.6327561853212036
+    },
+    {
+      "id": "random-20260817-15-027",
+      "ratio": 0.6457774808820994
+    },
+    {
+      "id": "random-20260827-15-030",
+      "ratio": 0.6457774808820994
+    }
+  ],
+  "limits": [
+    "Formal runs bind67cbb3b, not the later future-bar causality fix or diagnostic documentation changes; no result identity relabeling.",
+    "Complete finite historical coverage does not establish unseen market generalization or future18% loss guarantee.",
+    "Risk-related formal counts refer to filled trade reason attribution; detailed risk-event/action-ID logs are separately reported for four retained workload replays.",
+    "No economic acceptance, release qualification or remoteCI success follows from engineering test pass."
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "comparison_base": "b7be8011d71b477c8ca3942d97830e67d0e0407c",
+  "candidate_identity": {
+    "source_revision": "3cf078e08b6e6ccf9658ddfce7eea078a1f28607",
+    "source_fingerprint": "b5814b012e7afe59e1d51c3b5819af7a37687cc4c199b1917699cbe866bf8931",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "canonical": false,
+    "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]"
+  },
+  "diagnostic_not_hard_gate": true,
+  "completely_unseen": false,
+  "rows": [
+    {
+      "id": "2024-07-01_all_adverse",
+      "wealth_ratio": 1.003867422062893,
+      "mdd_change": 0.00047025288684093836,
+      "bucket_ratio": 0.42105263157894735,
+      "passed": true
+    },
+    {
+      "id": "2024-07-01_all_normal",
+      "wealth_ratio": 1.0042224733112968,
+      "mdd_change": 0.00019508615235816484,
+      "bucket_ratio": 0.42105263157894735,
+      "passed": true
+    },
+    {
+      "id": "2024-07-01_300308_adverse",
+      "wealth_ratio": 1.003867422062893,
+      "mdd_change": 0.00047025288684093836,
+      "bucket_ratio": 0.42105263157894735,
+      "passed": true
+    },
+    {
+      "id": "2024-07-01_300308_normal",
+      "wealth_ratio": 1.0042224733112968,
+      "mdd_change": 0.00019508615235816484,
+      "bucket_ratio": 0.42105263157894735,
+      "passed": true
+    },
+    {
+      "id": "2024-07-01_300502_adverse",
+      "wealth_ratio": 0.9819545044290819,
+      "mdd_change": -0.0031963185489291,
+      "bucket_ratio": 0.5555555555555556,
+      "passed": false
+    },
+    {
+      "id": "2024-07-01_300502_normal",
+      "wealth_ratio": 0.9817882657070313,
+      "mdd_change": -0.006283838374223111,
+      "bucket_ratio": 0.5789473684210527,
+      "passed": false
+    },
+    {
+      "id": "2025-01-02_all_normal",
+      "wealth_ratio": 1.0043410631439877,
+      "mdd_change": -0.004095482004403184,
+      "bucket_ratio": 1.0,
+      "passed": true
+    },
+    {
+      "id": "2025-01-02_all_adverse",
+      "wealth_ratio": 1.0174403862298191,
+      "mdd_change": -0.003972303969509483,
+      "bucket_ratio": 0.8214285714285714,
+      "passed": true
+    },
+    {
+      "id": "2025-01-02_300308_adverse",
+      "wealth_ratio": 1.0174403862298191,
+      "mdd_change": -0.003972303969509483,
+      "bucket_ratio": 0.8214285714285714,
+      "passed": true
+    },
+    {
+      "id": "2025-01-02_300308_normal",
+      "wealth_ratio": 1.0043410631439877,
+      "mdd_change": -0.004095482004403184,
+      "bucket_ratio": 1.0,
+      "passed": true
+    },
+    {
+      "id": "2025-01-02_300502_normal",
+      "wealth_ratio": 0.9970292694627105,
+      "mdd_change": 0.0018214376561383194,
+      "bucket_ratio": 1.2,
+      "passed": false
+    },
+    {
+      "id": "2025-01-02_300502_adverse",
+      "wealth_ratio": 1.0135325329858598,
+      "mdd_change": -0.0007923136263620623,
+      "bucket_ratio": 1.0909090909090908,
+      "passed": false
+    }
+  ]
+}

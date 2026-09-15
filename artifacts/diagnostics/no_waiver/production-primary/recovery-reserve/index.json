@@ -1,0 +1,116 @@
+{
+  "kind": "bounded_recovery_reserve_research",
+  "status": "NOT_MET",
+  "canonical": false,
+  "merge_permitted": false,
+  "base": "739ddc60f837f9ca283a7995ef57173f9a22eb16",
+  "effective_contract": "../contract.json",
+  "variants": [
+    {
+      "name": "proportional-reserve",
+      "source": {
+        "source_revision": "af0d060b11926cc45cd446a0a74103322cb00fe0",
+        "source_fingerprint": "a1ee31d5b36424b954c39b38dc0aefbb25683c28e4c71d631ab8ce717714586c",
+        "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+        "cfg_overrides": {},
+        "diagnostic_noncanonical": true,
+        "allow_publication": false,
+        "scenario_ids": [
+          "prefix-17",
+          "leave-one-out-603986",
+          "add-one-05-002384"
+        ],
+        "workers": 3,
+        "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]"
+      },
+      "patch": "proportional-reserve.patch",
+      "patch_sha256": "914617a793e13330e05da6b8ecd8845dd2965261468080d6bbb35f20a65469f4",
+      "results": "proportional-reserve-results.json",
+      "status": "REJECTED_NECESSARY_GATE",
+      "tests": {
+        "passed": 38,
+        "scope": [
+          "tests/unit/test_proportional_reserve_research.py",
+          "tests/c6_non_economic/test_account_risk_budget.py"
+        ],
+        "red_before_change": true,
+        "full_ci_pass_claimed": false
+      }
+    },
+    {
+      "name": "reserve-admission",
+      "source": {
+        "source_revision": "e1e79b0154f3a05c8a8bf82f1a5c7ee5fbead3b1",
+        "source_fingerprint": "50104b642a77505995ba6d6b2223203b579b3e0d4abdb6c04aa21dd308c77d8f",
+        "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+        "cfg_overrides": {},
+        "diagnostic_noncanonical": true,
+        "allow_publication": false,
+        "scenario_ids": [
+          "prefix-17",
+          "leave-one-out-603986",
+          "add-one-05-002384"
+        ],
+        "workers": 3,
+        "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]"
+      },
+      "patch": "reserve-admission.patch",
+      "patch_sha256": "faa685f0fb0af3fda1a7298e0e015069d96f4a58821127da19495f75e96b7476",
+      "results": "reserve-admission-results.json",
+      "status": "REJECTED_NECESSARY_GATE",
+      "tests": {
+        "passed": 39,
+        "scope": [
+          "tests/unit/test_proportional_reserve_research.py",
+          "tests/c6_non_economic/test_account_risk_budget.py"
+        ],
+        "red_before_change": true,
+        "full_ci_pass_claimed": false
+      }
+    },
+    {
+      "name": "reserve-lots",
+      "source": {
+        "source_revision": "2ca1ad403343b95969688da7b2061a6f4aafc1db",
+        "source_fingerprint": "8e3e4c93b8ee71f25d2ec78f7dd6d34a5feede4320bafc655dc86ded149d2b93",
+        "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+        "cfg_overrides": {},
+        "diagnostic_noncanonical": true,
+        "allow_publication": false,
+        "scenario_ids": [
+          "prefix-17",
+          "leave-one-out-603986",
+          "add-one-05-002384"
+        ],
+        "workers": 3,
+        "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]"
+      },
+      "patch": "reserve-lots.patch",
+      "patch_sha256": "1bdc60ec443b610e8d0dde7e6771a5ad485d8cb28c49c79b96ba13a184cdf3ea",
+      "results": "reserve-lots-results.json",
+      "status": "REJECTED_NECESSARY_GATE",
+      "tests": {
+        "passed": 39,
+        "scope": [
+          "tests/unit/test_proportional_reserve_research.py",
+          "tests/c6_non_economic/test_account_risk_budget.py"
+        ],
+        "red_before_change": true,
+        "full_ci_pass_claimed": false
+      }
+    }
+  ],
+  "causal_findings": [
+    "Both failed baselines breach the lifetime18percent floor on the initial liquidation cycle; remaining buy budget is zero thereafter. Shorter rearm cannot undo that breach or restore a positive budget.",
+    "Single-day6percent stress first triggers too late in the LOO baseline; it is not run as a candidate.",
+    "Proportional two-session reserve reductions preserve the three screened wealth floors and drawdown bound, but LOO bucket count238 fails200.",
+    "Blocking same-plan quality admission removes a real profitable opportunity: LOO wealth5.2397583661/buckets215. This rejected variant is not a production fix.",
+    "A nonmutating observer exactly matches proportional baseline wealth/DD/buckets and identifies96 excess planned orders/19 symbol-dates from independent ceiling rounding.",
+    "Largest-remainder account rounding is a third implementation variant of reserve allocation, not a parameter scan. Mainwealth12.0572216349 improves; LOOwealth5.7754117422/buckets221 still fails. No cross-source row selection."
+  ],
+  "scope_limit": "Two mechanism investigations: reserve reduction allocation (including lot correction) and coordinated buy admission; three economic implementation variants, three paths each; one nonmutating LOO observation. No958 expansion because every source fails a necessary gate.",
+  "next_evidence_needed": "Investigate pooled entry allocation under binding account/group budgets: exact cash-ledger differences in two opportunities explain4.8976m of the5.0522m LOO loss from lot rounding. Early Jan13 entry is reduced to zero and Mar9 entry is delayed/small; receipts show different live gross-cap headroom and alert state. These are attribution/entry-path observations, not a causal counterfactual or permission for stock/date exceptions. Preserve lifecycle admission and risk floor together. No more rounding/rearm/threshold parameter scans.",
+  "originals": "Separate recovery archive and raw-preservation-receipt.json; old archives do not cover new12raws.",
+  "causal_detail": "causal-attribution.json",
+  "entry_evidence": "opportunity-entry-evidence.json"
+}

@@ -47,3 +47,6 @@ This is daily-bar research and manual decision support, not broker automation. P
 - A partial local file, downloaded archive reference or created Git blob is not completion. Verify the final local file or extracted target, and for uploads verify the final tree/commit/ref or storage manifest plus reconstructed byte identity before claiming preservation.
 - Large-file transfer must not unnecessarily block independent implementation or validation, but required originals remain incomplete until their download/upload and integrity verification succeeds. Never fabricate evidence, weaken acceptance or call a summary/hash a backup.
 - Apply this rule to current task instructions, project briefs and handoffs. It supersedes blanket `no large uploads` or one-shot-download directions without changing task goals, authorization or evidence contracts. Do not create or modify scheduled tasks without explicit scheduling authorization.
+
+- Keep Git changes limited to explicit necessary source, tests, concise results and recovery metadata. Inspect outgoing objects and reuse unchanged large references; do not indiscriminately add working directories or rewrite history.
+- Record each original’s local path, remote location, byte count, content hash and actual verification status. Use one writer per branch and verify the final remote SHA.

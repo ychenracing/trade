@@ -1,0 +1,73 @@
+{
+  "status": "NOT_MET",
+  "canonical": false,
+  "default_promoted": false,
+  "base_research_commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "base_source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+  "base_restore": "Use late-joiner-preservation.json: restore4e33931, apply the retained rejected-confirmation-removal.patch once and its joiner_patch. Verify base fingerprint. Each implementation patch below is relative to this same base, not to another experiment. All three experiments are rejected; do not promote or combine their best rows.",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "locked_base_verification": {
+    "host_sha": "84eace683bd621e8e2df05bfa4370eea356c213a",
+    "run_id": 34872873940,
+    "artifact_id": 10359718368,
+    "zip_sha256": "a84f8067115706c7944d8ef51102e363a9dad320809901fb50d2c6f6552c04c6",
+    "verified_members": 13,
+    "tests": "100 passed in1.50s; changed-file Ruff and diff check passed",
+    "exact_metrics": "prefix03 and prefix13 wealth, drawdown and buckets exactly reproduce the saved base candidate under repository-locked Python3.12 dependencies. This is not full qualification or economic acceptance.",
+    "raw_preservation": "The two newly generated locked-runtime originals are in this GitHub Actions artifact and the complete remote packet below. They are not replacements for the earlier local originals."
+  },
+  "remote_original_packet": {
+    "provider": "Google Drive via authorized plugin",
+    "file_id": "1e304F2E9wvAbH_fw4lcWFo0CY3X5BFki",
+    "url": "https://drive.google.com/file/d/1e304F2E9wvAbH_fw4lcWFo0CY3X5BFki/view",
+    "name": "TRADE_PR101_CONTINUED_RESEARCH_ORIGINALS.tar.gz",
+    "bytes": 1594765,
+    "sha256": "1bce26fe8c84e65428a936808c2d540de2cdace5534deb4cc6f7c9bdd82ed95d",
+    "uploaded_and_read_back": true,
+    "manifest_members_verified": 75,
+    "new_local_continuous_replays": 13,
+    "additional_locked_runtime_replays": 2,
+    "contents": "Exact source-records.json, full implementation/test patches, two incremental Git bundles, three hypotheses, failing and passing test outputs, all13 local raw pickle results/identities/digests, opportunity observations and both locked-runtime raw results. Read evidence/packet-manifest.json and verify every file before use.",
+    "restore": "Fetch the Drive URL with download_raw_file=true, include_base64=false. Verify complete archive digest and75 file digests. Incremental Git bundles require af2389b from the first original packet referenced in late-joiner-preservation.json. These are transferred originals, not regenerated substitutes.",
+    "github_blob_storage": false
+  },
+  "columns": ["scenario_id", "wealth_including_principal", "signed_max_drawdown", "date_symbol_side_buckets"],
+  "experiments": {
+    "pullback": {
+      "commit": "e0998907e81b297eff8106475803914cc565dfdc",
+      "tree": "3540bb2dc8099504da878232e4e0785dc86c3b86",
+      "source_fingerprint": "fa40f62d2d07f4af838529028b575beaa9568a9a1cac9e7d5cfda0d81e605406",
+      "hypothesis": "Permit a fresh price recross above a rising short MA while short MA remains above long MA and RSI>50, without changing existing position exits. Six absent-DualMA opportunity nodes were found in the saved prefix01 trajectory, but they did not prove profitable execution.",
+      "tests": "Expected missing-entry failures observed first;122 focused tests passed before economics.",
+      "rows": [["prefix-01",5.063861479094374,-0.12434212383285638,19],["prefix-13",5.285869931367749,-0.16224681862150328,217]],
+      "decision": "REJECTED. Treating continuation signals as discovery caused early capacity occupation and displaced original entries; prefix13 also exceeds200 buckets. No full958 run.",
+      "implementation_patch_sha256": "b69d471b0b553a3d1b878c143024e8b9ccbfbe894d7aba6b0d0a57e4c37f4616",
+      "implementation_patch": "diff --git a/quantfusion/strategy/trend.py b/quantfusion/strategy/trend.py\nindex e05fd0c..d458010 100644\n--- a/quantfusion/strategy/trend.py\n+++ b/quantfusion/strategy/trend.py\n@@ -326,7 +326,14 @@ class DualMAStrategy(BaseStrategy):\n         if pd.isna(prev_ma_s) or pd.isna(prev_ma_l):\n             return None\n         golden_cross = prev_ma_s <= prev_ma_l and ma_s > ma_l\n-        if golden_cross and rsi_val > 50:\n+        prior_close = df[\"close\"].iloc[i - 1]\n+        pullback_resumption = (\n+            all(_is_finite_number(value) for value in\n+                (prior_close, close, prev_ma_s, ma_s, ma_l, rsi_val))\n+            and ma_s > ma_l and ma_s > prev_ma_s\n+            and prior_close <= prev_ma_s and close > ma_s\n+        )\n+        if (golden_cross or pullback_resumption) and rsi_val > 50:\n             capital = ctx.current_assets * cfg.get(\"strategy_weight\", 0.95)\n             atr_fallback = atr_val if not pd.isna(atr_val) else close * 0.03\n             shares = self._calc_shares(capital, close, atr_fallback)\n@@ -336,7 +343,7 @@ class DualMAStrategy(BaseStrategy):\n                     ctx,\n                     shares,\n                     stop_loss,\n-                    f\"MA golden cross(RSI={rsi_val:.0f})\",\n+                    f\"MA {'golden cross' if golden_cross else 'pullback resumption'}(RSI={rsi_val:.0f})\",\n                     atr_fallback,\n                 )\n         return None\n"
+    },
+    "confirmed-pullback": {
+      "commit": "aa983835743260ef6f5722c6f9cf0538f8ca15da",
+      "tree": "ffd6488ee443c98baa1b1447b70e80f34f471c16",
+      "source_fingerprint": "872fb062e531d4f44f02adde076effbbd666b5026358ce36cbcb89a1ae6fda6b",
+      "hypothesis": "Separate discovery from holding confirmation: the new pullback proposal may join only a live profitable independent strategy book. Keep original golden crosses, account buy blocks and broad joiner coordination.",
+      "tests": "Two admission failures observed first;125 focused tests passed before economics.",
+      "rows": [["prefix-01",4.539552500645875,-0.12468509293898083,11],["prefix-13",10.062206113540876,-0.15925225971818432,161]],
+      "decision": "REJECTED. Both paths lose wealth versus the unmodified broad-joiner candidate. No further recross threshold variants are justified by this result.",
+      "implementation": "Apply pullback.implementation_patch above plus the following distinct sector-risk patch, each once. The exact combined patch and all tests are in remote source-records.json.",
+      "additional_patch": "diff --git a/quantfusion/engine/sector_risk.py b/quantfusion/engine/sector_risk.py\nindex e29f4c5..a255564 100644\n--- a/quantfusion/engine/sector_risk.py\n+++ b/quantfusion/engine/sector_risk.py\n@@ -266,6 +266,17 @@ class CoreSectorRiskMixin:\n                 if signal is None:\n                     continue\n                 if signal.direction == \"buy\":\n+                    if signal.reason.startswith(\"MA pullback resumption(\"):\n+                        # A resumption confirms an already successful economic\n+                        # holding; it is not a substitute discovery signal.\n+                        confirmed = any(\n+                            name != strategy.name and position.shares > 0\n+                            and np.isfinite(position.entry_price)\n+                            and signal.price > position.entry_price\n+                            for name, position in self.positions.get(code, {}).items()\n+                        )\n+                        if not confirmed:\n+                            continue\n                     if not allow_buys or self._pending_has_buy(\n                         pending, code, strategy.name\n                     ):\n"
+    },
+    "stop-admission": {
+      "commit": "70b66342126e88315eb550bbc1a629b42047e218",
+      "tree": "2a5b0d7c81beb61af2055df5eaaf32ee7b85ad4a",
+      "source_fingerprint": "cf56705ebfd3ab8f5083fab275e20a4b70a1fbcfa095c256bb74b44d2335d8da",
+      "hypothesis": "Evaluate optional Turtle add proposals against their prospective whole-book stop: reject a proposal whose close-estimated execution stop is above both current stop and existing Donchian exit floor. Actual next-open execution stops, existing risk state and mandatory exits remain unchanged.",
+      "causal_evidence": "Three retained prefix03 decisions at2025-10-24/2025-12-09/2026-03-25 proposed stops459.074/570.899/593.994, above old stops404.444/505.387/547.974 and prior lows404/511.34/576. This is a decision-cost observation, not proof that rejecting the adds improves a complete account path.",
+      "tests": "Invalid synthetic symbol fixture was corrected, then expected admission failure observed;116 focused tests passed before economics. Tests and both RED/error records retained.",
+      "rows": [["prefix-03",7.176104781966752,-0.15354566855039165,103],["prefix-13",13.643826964760875,-0.1497170376414415,141],["prefix-01",4.928538056569,-0.12468509293898083,7],["prefix-05",8.380850071535,-0.16536702715527885,106],["prefix-06",8.329214736056876,-0.16334938728893367,114],["prefix-07",4.016053356916376,-0.15028203529495998,67],["prefix-11",8.871311175536126,-0.14705974678251715,149],["prefix-15",10.238031344846252,-0.14625139205187543,144],["random-20260817-03-027",7.17570659086875,-0.169584374805302,87]],
+      "decision": "REJECTED after expansion. Paired03/13 showed useful local changes, but05/06/07/11 lost substantial wealth. Do not promote the initial pair or stop at its partial success. No full958 or external12 rerun.",
+      "implementation_patch_sha256": "07f501e7e24765bb614a3990ef08edf4f45a006698c0747e3d4636bac994c86c",
+      "implementation_patch": "diff --git a/quantfusion/engine/sector_risk.py b/quantfusion/engine/sector_risk.py\nindex e29f4c5..d7809a9 100644\n--- a/quantfusion/engine/sector_risk.py\n+++ b/quantfusion/engine/sector_risk.py\n@@ -266,6 +266,25 @@ class CoreSectorRiskMixin:\n                 if signal is None:\n                     continue\n                 if signal.direction == \"buy\":\n+                    if signal.reason.startswith(\"Turtle pyramid add (\"):\n+                        position = self.positions.get(code, {}).get(strategy.name)\n+                        lower = ind_map[code][\"donchian_lower\"].iloc[i]\n+                        prospective_stop = (\n+                            signal.price - strategy.cfg[\"atr_multiplier\"] * signal.atr\n+                        )\n+                        if position is not None and prospective_stop > max(\n+                            position.stop_loss, lower\n+                        ):\n+                            # Price discovery may justify a new unit, but not\n+                            # an unintended stop inside the old book's range.\n+                            self._record_order_event(\n+                                date=date_str, signal=signal,\n+                                event=\"pyramid_stop_inside_recent_range\",\n+                                prospective_stop=float(prospective_stop),\n+                                existing_stop=float(position.stop_loss),\n+                                recent_exit_floor=float(lower),\n+                            )\n+                            continue\n                     if not allow_buys or self._pending_has_buy(\n                         pending, code, strategy.name\n                     ):\n"
+    }
+  },
+  "preservation_audit": "Source-records binary trial blob980e418b58bbe33f5eee489a5367bb8c03c06eb2 did not match the local blob72b240c5302e51dae7bae50b13544964f87739e3. The trial object is unreferenced and must not be used. Exact originals are instead verified in the remote packet; implementation patches are preserved as UTF-8 above. No invalid blob is canonical.",
+  "remaining_gaps": "Original82-group archive and other earlier27 local originals remain outside these packets. No gates, data, seed, reference, lot/fee/execution rule, account peak or risk history changed. Current broad-joiner research still misses01/03/06/15 wealth and is not accepted. These three alternatives are rejected, not replacement defaults. All17 prefixes, full958 and remaining production qualification are still required before any merge."
+}

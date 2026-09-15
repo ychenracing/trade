@@ -1,0 +1,69 @@
+{
+  "kind": "direct_loss_first_independent_boundary_review",
+  "status": "NOT_MET",
+  "canonical": false,
+  "default_promoted": false,
+  "observed_parent": "c29951df40aaad2f3b4b7235435f8e48ceea739e",
+  "preregistration_comment": 5675341926,
+  "review_comment": 5675409852,
+  "source": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "scenario": "prefix-03",
+    "date": "2025-09-02",
+    "economic_runs_started": 0
+  },
+  "direct_close_known_losses": {
+    "300308": 0.05460835186557933,
+    "300502": 0.0782181437190651,
+    "300394": 0.10403598808844972
+  },
+  "existing_observed_shock_stress_output": {
+    "300308": 0.10403598808844972,
+    "300502": 0.10403598808844972,
+    "300394": 0.10403598808844972,
+    "interpretation": "observed_shock_stress intentionally propagates the maximum observed loss in the optical sub-industry to every member; it is a group planning stress and cannot identify direct-hit holdings"
+  },
+  "account_budget_event": {
+    "equity": 8638569.13255525,
+    "lifetime_peak": 9261005.13255525,
+    "gross_before": 8626707.0,
+    "gross_cap": 7600193.6608195705,
+    "remaining_loss_budget": 1044424.9238599446,
+    "held_stress_debit": 1185489.2393183385,
+    "observed_shock_confirmed": true,
+    "new_reduction_orders": 12,
+    "required_gross_relief": 1026513.3391804295
+  },
+  "held_close_values": {
+    "300308": {"shares": 10700, "close": 382.6, "gross": 4093820.0},
+    "300502": {"shares": 17600, "close": 255.14, "gross": 4490464.0},
+    "300394": {"shares": 300, "close": 141.41, "gross": 42423.0}
+  },
+  "direct_hit_capacity": {
+    "symbols": ["300502", "300394"],
+    "gross": 4532887.0,
+    "covers_required_gross_relief": true,
+    "residual_non_hit_relief_needed_before_execution_constraints": false,
+    "minimal_example_board_lot_relief": 1034701.0,
+    "minimal_example_overshoot": 8187.660819570534,
+    "note": "40 board lots of 300502 plus one board lot of 300394 exceed the required gross relief by about 0.8%; this is a feasibility bound, not a prescribed allocation or accepted economic result"
+  },
+  "current_pro_rata_execution_observation": {
+    "next_open_date": "2025-09-03",
+    "300308_reduction_shares": 1400,
+    "300502_reduction_shares": 2500,
+    "300394_reduction_shares": 300,
+    "planned_non_hit_reduction_is_material": true,
+    "note": "current all-book pro-rata plan liquidates profitable 300308 even though direct-hit capacity is sufficient; actual fills remain separate from close-known planning"
+  },
+  "implementation_boundary": [
+    "Do not derive the direct-hit set from stress_by_symbol/candidates because that mapping already contains group-propagated maxima.",
+    "Keep own current close-to-close loss separate from group contagion stress; the existing daily_loss_limit is unchanged.",
+    "Preserve the existing group stress for reserve/gross-cap calculations and use direct loss only for relief-source ordering.",
+    "After board-lot allocation, verify required gross/stress relief is still met and disclose overshoot rather than treating planned sells as cash.",
+    "Replay has source frames for direct-loss identity; AccountSignalEngine snapshot advice currently calls plan_account_risk_budget without shock/direct-loss inputs, so promotion requires explicit advisory/replay qualification or fail-closed semantics."
+  ],
+  "limits": "This is an independent source/data-bound boundary review only. It does not implement the peer mechanism, run its economic batch, change frozen thresholds/goldens, or establish acceptance."
+}

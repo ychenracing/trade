@@ -32,7 +32,11 @@ from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.domain.models import Signal
 from quantfusion.domain.rules import floor_to_lot, require_finite
 from quantfusion.engine.universe import SleeveBacktestEngine
-from quantfusion.risk.account_budget import plan_account_risk_budget
+from quantfusion.risk.account_budget import (
+    observed_direct_losses,
+    observed_shock_stress,
+    plan_account_risk_budget,
+)
 from quantfusion.config.profiles import config_for_symbol, get_symbol_profile
 from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.config.weak import weak_regime_config
@@ -281,8 +285,13 @@ class AccountSignalEngine:
         def score(symbol: str) -> float:
             return sum(values.get(symbol, 0.) for values in scores)/len(scores)
 
+        evidence_date = pd.Timestamp(as_of)
         receipt, reductions = plan_account_risk_budget(
             equity, peak, cfg, books, buys, score, date_str=as_of,
+            stress_by_symbol=observed_shock_stress(frames, evidence_date, cfg),
+            direct_loss_by_symbol=observed_direct_losses(
+                frames, evidence_date, cfg,
+            ),
         )
         for reduction in reductions:
             row = by_symbol[reduction.symbol]

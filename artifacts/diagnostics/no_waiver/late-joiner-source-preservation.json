@@ -1,0 +1,38 @@
+{
+  "kind": "exact_research_history_preservation",
+  "status": "NOT_MET",
+  "canonical": false,
+  "default_promoted": false,
+  "observed_remote_parent": "84eace683bd621e8e2df05bfa4370eea356c213a",
+  "economic_record": "artifacts/diagnostics/no_waiver/late-joiner-preservation.json",
+  "source_commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "source_tree": "c1b2b89c559ab84a52213ef59fdb3bd2f4265d06",
+  "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "prerequisite_commit": "4e33931bfdfaa0b11c7cdbe076c89eabe2535b76",
+  "parts_directory": "artifacts/diagnostics/no_waiver/decision-preservation",
+  "bundle_bytes": 11069,
+  "bundle_sha256": "dcc7d050beeb7c213485da8aaf8ffef25c02518d78823f20238afa130a7d4212",
+  "bundle_git_blob": "a58d5a236dd553b091e46823afe6fe664bb17ffb",
+  "parts": [
+    {"path":"late-joiner-source.bundle.part000","bytes":3072,"git_blob":"ec987973d9d28e4822cd5cee5b42b77fd8b09cf4","sha256":"10e9cf1caa03c4f21b932f925d4ca959bbaf8f3111f890d077a36c3e6e07b9a8"},
+    {"path":"late-joiner-source.bundle.part001","bytes":3072,"git_blob":"55f48fb9f03669a9c6bb7d2758cf2b9c00c99b25","sha256":"7867c9869948a8611766f8fc8c067e94b1b8f0f38f71e5646bdc66bf2c05d232"},
+    {"path":"late-joiner-source.bundle.part002","bytes":3072,"git_blob":"142e26020c63e2242a7573e9565927b2d08b45a2","sha256":"0cda52bc9d8b8b99224114bfdee786b0aff34aea004baa124fc60c43a9fa64d1"},
+    {"path":"late-joiner-source.bundle.part003","bytes":1853,"git_blob":"303d84d261052c2ab7c0bd9f0c63bef995432121","sha256":"546d2674fc952f79a5f104a231a3530107819cba80a63b28470780fba274cad1"}
+  ],
+  "restore": "First verify and fetch the existing research-source.bundle to obtain prerequisite 4e33931. Verify each part's size, SHA256 and Git blob ID, concatenate the listed four parts in order to a fresh bundle file, then verify its size, SHA256 and git hash-object. Run git bundle verify and git fetch <bundle> HEAD; create an isolated detached worktree at af2389b. Verify tree and native source/data fingerprints. This exact history already includes confirmation reversal; do not apply it twice. Do not force-push research history onto the PR.",
+  "history_contents": "All three commits after 4e33931: broad lone-joiner coordination, rejected established-only refinement and its withdrawal. Includes exact diagnostic observers, next-open probes, tests and both source designs. Production paths on the PR are unchanged.",
+  "additional_original_packet_backup": {
+    "provider": "Owner's connected Google Drive; no permission or sharing changes",
+    "file_id": "1zcB2jhtgyW3ft7N8d7WWs6ial6kFp46G",
+    "url": "https://drive.google.com/file/d/1zcB2jhtgyW3ft7N8d7WWs6ial6kFp46G/view",
+    "bytes": 15025863,
+    "sha256": "b9ec2c1b1dcd077226aa3eb51293970d1f1099b8bc80a751ab916f9ce0085f1d",
+    "verification": "Original packet uploaded, fetched back, full hash and size matched. All 120 manifest file members matched their size and SHA256. Includes 18 complete new raw replays and 2 interrupted attempts; no rerun/reconstruction. Independently matches the packet identity in economic_record.",
+    "git_raw_packet_embedded": false,
+    "read": "Use Google_Drive.fetch(download_raw_file=true, include_base64=false), verify complete digest and evidence/local-manifest.json before using originals. Prior archived local-only flags are historical storage statements, not current acceptance."
+  },
+  "concurrency": "An earlier unattached commit ad17c85371fb585a9c61f050de6dd477af65919b based on 1ad1691 was correctly refused as non-fast-forward. This addition preserves all work through 84eace6 and does not overwrite the concurrent late-joiner-preservation.json or its workflow. No force update was used.",
+  "invalid_transfer": "Isolated whole-bundle transfer blob f51428c2a269264791f665f0e5718b6541adfcd3 failed the local identity check and is not referenced by the tree. Never use it. Each retained part upload returned its exact local Git blob ID.",
+  "remaining": "Same candidate still fails wealth for prefixes 01/03/06/15. Existing economic_record retains all rows and rejected refinement. Full joint acceptance and final qualification are not complete. The old 82-group raw archive remains unrecovered; nothing here fills that historical gap. Raw packet is remotely backed up but is not embedded in the GitHub tree. Reuse current matching workflow results before starting any new run."
+}

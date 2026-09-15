@@ -1,0 +1,71 @@
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index d259022..2f5f373 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -136,9 +136,12 @@ def plan_account_risk_budget(
+         and dominant_group_fraction >= 1. - float(cfg['sector_shock_breadth'])
+     )
+     shock_confirmed = shock_trigger and not shock_episode_active
++    shock_persisted = (
++        shock_trigger and shock_episode_active and bool(shock_reduced_books)
++    )
+     effective_floor = max(
+         receipt['floor'],
+-        shock_floor if shock_confirmed or risk_alert_active else 0.,
++        shock_floor if shock_confirmed or shock_persisted or risk_alert_active else 0.,
+     )
+     receipt['effective_policy_floor'] = effective_floor
+     receipt['remaining_loss_budget'] = max(
+@@ -149,7 +152,7 @@ def plan_account_risk_budget(
+     systemic_stress = (
+         min(board_cap, max(receipt['stress_fraction'], 2. * drawdown,
+                            max(candidates.values())))
+-        if shock_confirmed else receipt['stress_fraction']
++        if shock_persisted else receipt['stress_fraction']
+     )
+     systemic_stress_fraction = systemic_stress + receipt['cost_rate']
+     receipt['systemic_stress_fraction'] = systemic_stress_fraction
+@@ -211,9 +214,9 @@ def plan_account_risk_budget(
+                 low = middle
+             else:
+                 high = middle
+         gap_scale = low
+-    shock_episode = bool(candidates) and (shock_confirmed or shock_episode_active)
+-    reduction_suspended = bool(candidates) and shock_episode_active
+-    observed = candidates if shock_confirmed else {}
++    shock_episode = bool(candidates) and (shock_trigger or shock_episode_active)
++    reduction_suspended = bool(candidates) and shock_episode_active and not shock_persisted
++    observed = candidates if shock_confirmed or shock_persisted else {}
+     stresses = {symbol: (systemic_stress_fraction if observed else
+                          receipt['stress_fraction'] + receipt['cost_rate'])
+         for symbol in {book[1] for book in books} | {signal.symbol for _, signal, _ in buys}}
+@@ -288,12 +291,12 @@ def plan_account_risk_budget(
+     actions = []
+     relief = (
+         0.
+-        if preserve_strategy_valid_holdings and not shock_confirmed
++        if preserve_strategy_valid_holdings and not (shock_confirmed or shock_persisted)
+         else max(0., gross-cap)
+     )
+     if reduction_suspended:
+         pass
+-    elif shock_confirmed and gross:
++    elif (shock_confirmed or shock_persisted) and gross:
+         # A systemic shock against a concentrated account is not evidence that
+         # the lowest short-horizon rank is the one trend to abandon. Reduce
+         # every live book by the same fraction so no surviving winner loses its
+@@ -514,10 +517,11 @@ def plan_account_risk_budget(
+             "requested_buy_gap_debit": buy_gap, "buy_gap_scale": gap_scale,
+             "observed_shock_candidates": candidates,
+             "observed_shock_confirmed": shock_confirmed,
++            "observed_shock_persisted": shock_persisted,
+             "shocked_group_count": len(shocked_groups),
+             "dominant_group_fraction": dominant_group_fraction,
+             "shock_episode_active": shock_episode,
+             "reduction_suspended_during_episode": reduction_suspended,
+             "strategy_valid_holdings_preserved": (
+                 preserve_strategy_valid_holdings
+-                and not shock_confirmed
++                and not (shock_confirmed or shock_persisted)
+                 and not risk_alert_active
+             ),

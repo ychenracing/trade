@@ -1,0 +1,196 @@
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index 63dede5..0576175 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -48,6 +48,8 @@ def plan_account_risk_budget(
+     books: Sequence[tuple[int, str, str, int, float]],
+     buys: Sequence[tuple[int, Signal, float]],
+     score: Callable[[str], float], *, date_str: str,
++    prior_envelope: Mapping[str, Any] | None = None,
++    recovery_confirmed: bool = False,
+ ) -> tuple[dict[str, Any], list[RiskAction]]:
+     """Plan the same AB5 reductions for real snapshot books or replay books.
+ 
+@@ -56,6 +58,15 @@ def plan_account_risk_budget(
+     execution adapter and must not treat these close-known plans as fills.
+     """
+     cfg = dict(cfg)
++    if not isinstance(recovery_confirmed, bool):
++        raise ValueError("market recovery evidence must be boolean")
++    was_defending = False
++    if prior_envelope is not None:
++        if pd.Timestamp(prior_envelope.get("date")) >= pd.Timestamp(date_str):
++            raise ValueError("budget recovery requires a prior observed close")
++        was_defending = prior_envelope.get("budget_defense_active", False)
++        if not isinstance(was_defending, bool):
++            raise ValueError("budget defense state must be boolean")
+     book_ids = {(state, symbol, strategy) for state, symbol, strategy, shares, _ in books if shares}
+     book_ids.update((state, signal.symbol, signal.strategy_name)
+                     for state, signal, _ in buys if signal.target_shares)
+@@ -66,6 +77,7 @@ def plan_account_risk_budget(
+     cap = receipt["gross_cap"]
+     requested = sum(value for _, _, value in buys)
+     binding = cap < receipt["ordinary_gross_cap"] - 1e-8
++    defending = binding or (was_defending and equity < peak and not recovery_confirmed)
+     gross_scale = min(1., max(0., cap-gross)/requested) if binding and requested else 1.
+     current_gap = sum(shares*price*(limit_pct_for_code(symbol, cfg)+receipt["cost_rate"])
+                       for _, symbol, _, shares, price in books)
+@@ -74,20 +86,49 @@ def plan_account_risk_budget(
+     gap_scale = min(1., max(0., receipt["remaining_loss_budget"]-current_gap)/buy_gap) if binding and buy_gap else 1.
+     actions = []
+     relief = max(0., gross-cap)
++    gap_relief = max(0., current_gap-receipt["remaining_loss_budget"]) if defending else 0.
+     for state, symbol, strategy, shares, price in sorted(
+         books, key=lambda book: (score(book[1]), book[1], book[0], book[2]),
+     ):
+-        reduction = min(shares, math.ceil(relief/price/100.)*100)
++        gap_rate = limit_pct_for_code(symbol, cfg) + receipt["cost_rate"]
++        required_value = max(relief, gap_relief / gap_rate)
++        reduction = min(shares, math.ceil(required_value/price/100.)*100)
+         if not reduction:
+             continue
+         actions.append(RiskAction(symbol, strategy, reduction, price, date_str,
+                                   "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
+                                   state_index=state))
+         relief = max(0., relief-reduction*price)
++        gap_relief = max(0., gap_relief-reduction*price*gap_rate)
+     return {**receipt, "gross_before": gross, "buy_envelope_binding": binding,
+             "buy_gross_scale": gross_scale, "current_gap_debit": current_gap,
+             "requested_buy_gap_debit": buy_gap, "buy_gap_scale": gap_scale,
+-            "buy_scale": min(gross_scale, gap_scale)}, actions
++            "buy_scale": 0. if defending else min(gross_scale, gap_scale),
++            "budget_defense_active": defending,
++            "market_recovery_confirmed": recovery_confirmed}, actions
++
++
++def market_budget_recovery(states: Sequence[Any], date: pd.Timestamp, cfg: Mapping[str, Any]) -> bool:
++    """Require a close-known new high of the unchanged fixed reference basket."""
++    from quantfusion.config.portfolio import PortfolioPolicy
++
++    if not states:
++        return False
++    lookback = require_int("regime_ewi_lookback", cfg.get("regime_ewi_lookback", 20), min_value=1)
++    frames = states[0].data_map
++    series = []
++    for symbol in PortfolioPolicy().regime_symbols:
++        frame = frames.get(symbol)
++        if frame is None or "close" not in frame:
++            return False
++        series.append(pd.to_numeric(frame.loc[frame.index <= date, "close"], errors="coerce").rename(symbol))
++    prices = pd.concat(series, axis=1).dropna().tail(lookback + 1)
++    if len(prices) != lookback + 1 or prices.index[-1] != date:
++        return False
++    if not all(math.isfinite(float(v)) and v > 0 for v in prices.to_numpy().flat):
++        return False
++    ewi = prices.div(prices.iloc[0]).mean(axis=1)
++    return bool(ewi.iloc[-1] > ewi.iloc[:-1].max())
+ 
+ 
+ def apply_account_risk_budget(
+@@ -120,6 +161,9 @@ def apply_account_risk_budget(
+                 buys.append((state_index, signal, shares*price))
+     receipt, planned_actions = plan_account_risk_budget(
+         assets, peak, costs, books, buys, score, date_str=date_str,
++        prior_envelope=next((e for e in reversed(events)
++                             if e.get("event") == "account_budget_envelope"), None),
++        recovery_confirmed=market_budget_recovery(states, date, cfg),
+     )
+     cap = receipt["gross_cap"]
+     buy_scale = receipt["buy_scale"]
+--- /dev/null
++++ b/tests/unit/test_account_budget_recovery.py
+@@ -0,0 +1,94 @@
++"""Account risk recovery must not be inferred from one unbinding close."""
++import pytest
++from quantfusion.config.engine import default_engine_config
++from quantfusion.domain.models import Signal
++from quantfusion.risk.account_budget import plan_account_risk_budget
++
++
++def plan(equity, gross, *, previous=None):
++    cfg = default_engine_config()
++    books = [(0, "300308", "turtle_breakout", int(gross / 10), 10.)]
++    buys = [(0, Signal("300308", "turtle_breakout", "buy", 1000, 10., signal_date="2026-01-06"), 10000.)]
++    extra = {} if previous is None else {"prior_envelope": previous}
++    return plan_account_risk_budget(equity, 100000., cfg, books, buys, lambda _: 1., date_str="2026-01-06", **extra)
++
++
++def test_first_binding_close_arms_recovery_without_clearing_peak():
++    receipt, actions = plan(91000., 85000.)
++    assert receipt.get("budget_defense_active") is True
++    assert receipt["buy_scale"] == 0.
++    assert receipt["lifetime_peak"] == 100000.
++    assert actions
++
++
++def test_unbinding_rebound_cannot_immediately_restore_buy_risk():
++    receipt, _ = plan(94000., 73000., previous={"date": "2026-01-05", "budget_defense_active": True})
++    assert receipt["buy_envelope_binding"] is False
++    assert receipt["buy_scale"] == 0.
++    assert receipt["budget_defense_active"] is True
++    assert receipt["lifetime_peak"] == 100000.
++
++
++def test_new_high_releases_episode_using_actual_equity_not_time():
++    receipt, _ = plan(100000., 73000., previous={"date": "2025-01-01", "budget_defense_active": True})
++    assert receipt["budget_defense_active"] is False
++    assert receipt["buy_scale"] == 1.
++
++
++def test_elapsed_time_does_not_erase_unrecovered_risk():
++    receipt, _ = plan(94000., 73000., previous={"date": "2025-01-01", "budget_defense_active": True})
++    assert receipt["buy_scale"] == 0.
++
++
++def test_future_budget_state_is_rejected():
++    with pytest.raises(ValueError, match="prior.*close"):
++        plan(94000., 73000., previous={"date": "2026-01-07", "budget_defense_active": True})
++
++
++def test_unvalidated_truthy_episode_flag_is_rejected():
++    with pytest.raises(ValueError, match="boolean"):
++        plan(94000., 73000., previous={"date": "2026-01-05", "budget_defense_active": "false"})
++
++
++def test_defense_trims_held_gap_excess_even_if_generic_gross_rebounds():
++    receipt, actions = plan(94000., 73000., previous={"date": "2026-01-05", "budget_defense_active": True})
++    assert receipt["buy_envelope_binding"] is False
++    released_gap = sum(a.shares * a.price * (.2 + receipt["cost_rate"]) for a in actions)
++    assert receipt["current_gap_debit"] - released_gap <= receipt["remaining_loss_budget"] + 1e-8
++    assert actions
++
++
++def test_causal_market_recovery_can_fund_an_unlocked_flat_account():
++    cfg = default_engine_config()
++    signal = Signal("300308", "turtle_breakout", "buy", 1000, 10., signal_date="2026-01-06")
++    receipt, actions = plan_account_risk_budget(94000., 100000., cfg, [], [(0, signal, 10000.)], lambda _: 1.,
++        date_str="2026-01-06", prior_envelope={"date": "2026-01-05", "budget_defense_active": True}, recovery_confirmed=True)
++    assert receipt["budget_defense_active"] is False
++    assert receipt["buy_scale"] == 1.
++    assert receipt["lifetime_peak"] == 100000.
++    assert not actions
++
++
++def test_market_recovery_cannot_override_a_binding_loss_budget():
++    cfg = default_engine_config()
++    receipt, _ = plan_account_risk_budget(85000., 100000., cfg, [(0, "300308", "turtle_breakout", 8000, 10.)], [], lambda _: 1.,
++        date_str="2026-01-06", prior_envelope={"date": "2026-01-05", "budget_defense_active": True}, recovery_confirmed=True)
++    assert receipt["budget_defense_active"] is True
++    assert receipt["buy_scale"] == 0.
++
++
++def test_reference_breakout_ignores_future_prices_and_refuses_missing_basket():
++    from types import SimpleNamespace
++    import pandas as pd
++    from quantfusion.config.portfolio import PortfolioPolicy
++    from quantfusion.risk.account_budget import market_budget_recovery
++    dates = pd.bdate_range("2026-01-01", periods=23)
++    frames = {s: pd.DataFrame({"close": [10.] * 20 + [12., 999., 999.]}, index=dates) for s in PortfolioPolicy().regime_symbols}
++    states = [SimpleNamespace(data_map=frames)]
++    assert market_budget_recovery(states, dates[19], default_engine_config()) is False
++    assert market_budget_recovery(states, dates[20], default_engine_config()) is True
++    for frame in frames.values():
++        frame.loc[dates[20], "close"] = 10.
++    assert market_budget_recovery(states, dates[20], default_engine_config()) is False
++    del frames[PortfolioPolicy().regime_symbols[0]]
++    assert market_budget_recovery(states, dates[20], default_engine_config()) is False

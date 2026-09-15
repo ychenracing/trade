@@ -1,0 +1,40 @@
+{
+  "revision": "4e33931bfdfaa0b11c7cdbe076c89eabe2535b76",
+  "source_fingerprint": "4406d18738b1542171fe2e56390a2a8078846e317a3ee88f1956b2d8ab6812d0",
+  "files": {
+    "quantfusion/risk/account_budget.py": {
+      "before": "63eb101da0601957442b808ec006a2ab8b36ae9a9bf6ab9dfd99d86014635bb9",
+      "after": "e9a3c7ba9d55f564b86067a706fa8cb9f78dccd318ab21d1fde030c87ed1ce0f",
+      "edits": [
+        [14,15,""], [64,67,""], [97,102,""], [104,107,""],
+        [133,135,"        and drawdown >= float(cfg['daily_loss_limit'])\n"],
+        [466,486,"    # Strategy-generated growth requires current breakout evidence. Past fills\n    # remain in the ledger, but do not create a second, permanent entry policy.\n    # Active shock, loss headroom, board-gap stress and unfilled-sell rules still\n    # constrain every new unit here, including units in previously reduced books.\n"],
+        [487,489,"        durable or handoff or repeated or proven_dual\n        for durable, handoff, repeated, proven_dual in zip(\n"],
+        [490,493,"            repeated_reentry_admitted, proven_dual_admitted, strict=True,\n"],
+        [497,511,"        1. if admitted else gross_scale if alert_proven else base_buy_scale\n        for admitted, alert_proven in zip(\n            quality_admitted, alert_proven_dual, strict=True,\n"],
+        [532,539,""], [577,582,""], [656,673,""], [686,730,""], [783,802,""], [919,922,""]
+      ]
+    },
+    "quantfusion/strategy/trend.py": {
+      "before": "5a23edd3a84f3a8e492260a0d15363574874e3ccc6e594d977bd83c406d4ba59",
+      "after": "d385576f3da05e6d74727e574c5d8a92d82df787178c2a2360569e6f78286d11",
+      "edits": [[239,239,"                and adx_val > adx_threshold\n                and close > upper\n"]]
+    },
+    "tests/c6_non_economic/test_account_risk_budget.py": {
+      "before": "21df3bf007b4933818d1e9de1d80e06126ad5187a1440ddde47043c7b2cd06cb",
+      "after": "5d50e45b9fad9b84764396ac1928bf73ddaaa29478a1384271c20f0751703da6",
+      "edits": [
+        [534,536,"def test_old_filled_shock_does_not_erase_history_or_override_current_budget():\n    \"\"\"Current financial capacity is distinct from upstream signal qualification.\"\"\"\n"],
+        [567,579,"    assert state.pending == [(pyramid, state.pending[0][1])]\n    assert events[-1]['buy_scales'] == [1.]\n    assert events[-1]['shock_episode_active'] is False\n    assert len(state.sleeve.trades) == 2\n    assert state.sleeve.trades[-1].reason == 'account_budget_trim'\n    assert events[0]['observed_shock_confirmed'] is True\n"],
+        [581,586,"@pytest.mark.parametrize('crowded', [False, True])\ndef test_prior_crowding_is_not_current_portfolio_capacity(crowded):\n    \"\"\"Past concentration is retained as history, not reused as a live slot count.\"\"\"\n"],
+        [618,629,"    assert state.pending == [(pyramid, state.pending[0][1])]\n    assert events[-1]['buy_scales'] == [1.]\n    assert events[-1]['crowded_portfolio'] is False\n    assert events[0]['crowded_portfolio'] is crowded\n    assert len(state.sleeve.trades) == 2\n"]
+      ]
+    },
+    "tests/unit/test_observed_shock_budget.py": {
+      "before": "6829e7bc1edf5bb098ab4b791f1e4590a177b8fffa8d00baa96cbefa6d2532e0",
+      "after": "71ad05745cb3e249cf7e8ffd487fd8fd7ef02eacf388dbe06656951998893f93",
+      "edits": [[73,106,""], [216,274,""]]
+    }
+  },
+  "untracked_test": "tests/unit/test_evidence_qualified_growth.py"
+}

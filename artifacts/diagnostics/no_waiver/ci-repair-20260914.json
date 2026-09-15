@@ -1,0 +1,39 @@
+{
+  "failed_head": "db3eee5712e5fd948c225b6973d005c088c0d1ca",
+  "failed_run": 34796119120,
+  "failure": "test_only_current_markdown_documents_are_kept: unregistered continuation-results-20260914.md",
+  "fix": "Preserve report content as readable_report in continuation-research-results.json; remove redundant diagnostic Markdown; keep hygiene assertion intact.",
+  "verified_head": "5c5c3ea800670f35dbdcecb4ddea40fcf5a190d0",
+  "checks": [
+    {
+      "conclusion": "success",
+      "name": "Exact backtest regression",
+      "status": "completed",
+      "url": "https://github.com/ychenracing/trade/actions/runs/34800049094/job/103841778715"
+    },
+    {
+      "conclusion": "success",
+      "name": "Python 3.11 tests",
+      "status": "completed",
+      "url": "https://github.com/ychenracing/trade/actions/runs/34800049094/job/103840735571"
+    },
+    {
+      "conclusion": "success",
+      "name": "Security and dependency audit",
+      "status": "completed",
+      "url": "https://github.com/ychenracing/trade/actions/runs/34800049094/job/103840735558"
+    },
+    {
+      "conclusion": "success",
+      "name": "Python 3.12 tests",
+      "status": "completed",
+      "url": "https://github.com/ychenracing/trade/actions/runs/34800049094/job/103840735548"
+    },
+    {
+      "conclusion": "success",
+      "name": "Canonical package typecheck",
+      "status": "completed",
+      "url": "https://github.com/ychenracing/trade/actions/runs/34800049094/job/103840735493"
+    }
+  ]
+}

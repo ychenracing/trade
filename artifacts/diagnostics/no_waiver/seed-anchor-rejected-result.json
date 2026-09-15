@@ -1,0 +1,68 @@
+{
+  "kind": "minimum_board_lot_seed_anchor_research",
+  "status": "REJECTED_EARLY",
+  "canonical": false,
+  "default_promoted": false,
+  "preregistration_comment": 5675861886,
+  "parent_source": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975"
+  },
+  "candidate": {
+    "source_fingerprint": "8faf2ec8ed299ef3718919a16914b4884951aef9b283116998101cf8ad9f2c25",
+    "source_patch_sha256": "124433a886b15907c9e888144f48f3d223fb7a7eb150612d5a1c3dfc8b0a13f1",
+    "tests_patch_sha256": "5068fde2bf69d9816ae0de4966a8fc488e2cb6fbe01edd5ce0623cdbab690a24"
+  },
+  "tdd": {
+    "red": "minimum-board-lot seed test failed on exact C: expected native 4500 shares, got capped 100",
+    "green": "6 passed in tests/unit/test_late_strategy_joiner.py; git diff --check PASS"
+  },
+  "evidence": {
+    "requested_scenarios": 10,
+    "completed_scenarios": 8,
+    "stopped_early": true,
+    "stop_reason": "predeclared prefix07->08 adjacent wealth ratio fell below 0.70; remaining prefix17/random were not needed to reject the route"
+  },
+  "scenarios": {
+    "prefix-01": {"wealth":4.928538056569,"required_wealth":5.993502267140751,"wealth_gate":false,"max_drawdown":-0.12468509293898083,"buckets":7,"raw_json_sha256":"760df743c7ceaaf18bf567e638523caa1d3a7b4cd8daf47f467401a62e3f1064","raw_pkl_sha256":"8b02204669c962699aefc4e300b0bc13d98b98a96a8ddf892ad3b21db63d9ca6"},
+    "prefix-03": {"wealth":7.457071362145252,"required_wealth":11.014195207080444,"wealth_gate":false,"max_drawdown":-0.16158800255130132,"buckets":92,"raw_json_sha256":"8d5f66fabba74bf77e1590ad31cd86517587f43837dc6a113501a2f6a2ff0b2a","raw_pkl_sha256":"7642c5091bf5024f04d411194539c42d35ffce78a670e82ba141c66ee16f1d34"},
+    "prefix-05": {"wealth":13.796735085329127,"required_wealth":12.580154771921677,"wealth_gate":true,"max_drawdown":-0.15400039978585942,"buckets":90,"raw_json_sha256":"6e0c1726319efcedccafef1a8bbff31c5b4e2e0865d6678d483f59c16a058afa","raw_pkl_sha256":"9f128641a9a9bf189795294176b532c675006b41bd974c93618f422ff86bd428"},
+    "prefix-06": {"wealth":10.583266687545002,"required_wealth":12.310161540905,"wealth_gate":false,"max_drawdown":-0.15249310693089987,"buckets":105,"raw_json_sha256":"0ab0d53f738b158d9253ba16a4877d93ee0a35a371d6b6ee85752d98eb7aeec6","raw_pkl_sha256":"deca7f7106abcc562e6ef07177216eb9a06b2e6d6de3e80b1a8bff116981c699"},
+    "prefix-07": {"wealth":12.119106824016754,"required_wealth":8.6171130786335,"wealth_gate":true,"max_drawdown":-0.14564072963044922,"buckets":100,"raw_json_sha256":"73e4454e1e806fdd48c0b3b71aad2938095069d3575e9b6971efb6c7bbc26477","raw_pkl_sha256":"3f59531cc9618bef838a2393b35d2dfc5c319930c840cc65130f0c2711a66f33"},
+    "prefix-08": {"wealth":4.529526642549627,"required_wealth":6.031979155043449,"wealth_gate":false,"max_drawdown":-0.1518878682989325,"buckets":86,"raw_json_sha256":"5ecff902441068b11419ad4f32df1fba263f341f1987d41c0bc1a309c3595955","raw_pkl_sha256":"ad2b3ff705bb4a438cb6bd5e605e8b75460ee42e56860d0f824be1f22762c8e0"},
+    "prefix-13": {"wealth":14.078929964532879,"required_wealth":12.659384602482707,"wealth_gate":true,"max_drawdown":-0.17610772798528335,"buckets":170,"raw_json_sha256":"da2ce2dd1673f7646ab992715317f1c9e163656b3ddcfcfa83d08541c2a61a03","raw_pkl_sha256":"6c43dd1a2ae6d0d0472dfcbfc698b4c5a83492c0cc9983eea9b5aa57628345ab"},
+    "prefix-15": {"wealth":10.163803145663628,"required_wealth":11.256293667944922,"wealth_gate":false,"max_drawdown":-0.17610772798528335,"buckets":167,"raw_json_sha256":"2e97f7f213b0623ff7fd6d22bc96d44dac8c7bd8c259d19faa24fd1b7395b2ea","raw_pkl_sha256":"22a59aa3db9e1f1cebbbadfcf682b8d44062a9861157578cd70c506d57fb706c"}
+  },
+  "adjacency": {
+    "prefix06_to_07": 1.1451196669057973,
+    "prefix06_to_07_gate": true,
+    "prefix07_to_08": 0.3737508636835632,
+    "prefix07_to_08_gate": false
+  },
+  "primary_effect": {
+    "prefix03_parent_wealth": 7.018521535589125,
+    "prefix03_candidate_wealth": 7.457071362145252,
+    "delta": 0.43854982655612673,
+    "remaining_shortfall": 3.5571238449351927,
+    "assessment": "real but insufficient magnitude"
+  },
+  "raw_backup": {
+    "provider": "Google Drive",
+    "file_id": "1uMh0xRT4CSDgHCpoCBy45H8m2EKfjdgr",
+    "file_name": "TRADE_PR101_SEED_ANCHOR_REJECTED.tar.gz",
+    "bytes": 801168,
+    "sha256": "e01f328535ccc416a1dcdc23f9cfec96bf480491f9949df9c31193d6f35bda75",
+    "raw_readback_verified": true
+  },
+  "decision": {
+    "route": "REJECT",
+    "reason": [
+      "prefix03 improves only about 0.43855x and remains about 3.55712x below its frozen floor",
+      "prefix06 and prefix15 remain below their frozen wealth floors",
+      "prefix07->08 is about 0.37375, below the frozen 0.70 adjacency floor"
+    ],
+    "no_neighbor_scan": true,
+    "reuse": "The finding that minimum-lot anchoring suppresses early deployment is preserved as causal evidence, but this rule family is not promoted or expanded."
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "status": "IN_PROGRESS_NOT_QUALIFIED",
+  "authority": "2026-09-15 explicit owner prompt",
+  "previous_source": "af9a7ee685e50f7b6fa1d2104bf28935b6e167b3",
+  "acceptance_tests": {
+    "red": "4 expected failures from old turnover/relative gates",
+    "green": "52 passed"
+  },
+  "c6_witness": {
+    "scenario_id": "random-20260807-03-004",
+    "historical_expected": {
+      "max_drawdown": -0.17796519775099098,
+      "total_return": 2.6051501539157518,
+      "budget_orders": 32
+    },
+    "current_observed": {
+      "total_return": 4.877902109623125,
+      "terminal_wealth": 11755804.219246252,
+      "max_drawdown": -0.16579136512258807,
+      "sharpe": 3.3370189244923694,
+      "calmar": 18.735047293045184,
+      "total_trades": 459,
+      "sleeve_fill_count": 459,
+      "date_symbol_side_count": 125,
+      "cash_days": 32,
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 93,
+        "re_entry": 100,
+        "risk_reduction": 208,
+        "strategy_exit": 40,
+        "sector_liquidation": 18,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      },
+      "max_concurrent_symbols": 3,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay"
+    },
+    "cause": "C6-Base+AB5 selects current engine intervention, not historical source. PR101 changes proportional risk allocation and holding/entry behavior. Original expectations are retained here; new regression independently reconciles equity drawdown, net terminal wealth, fills and causal budget orders instead of assigning new golden output."
+  },
+  "schema_cause": "Two unused event-transition fields leaked into fixed W score_trace wire schema. Remove those producer fields; preserve strict schema and underlying admission logic."
+}

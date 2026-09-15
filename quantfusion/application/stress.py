@@ -16,6 +16,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
+from quantfusion.application import native_joint, production_pool
 from quantfusion.application import engine_api as qf
 from quantfusion.application import regime_api as ra
 from quantfusion.application import stress_artifacts, stress_metrics, stress_scenarios
@@ -226,12 +227,13 @@ def _metrics(
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
     include_diagnostics: bool = False,
-    candidate_id: str = "C6-Base+AB5",
+    candidate_id: str = native_joint.CANDIDATE_ID,
 ) -> dict[str, Any]:
     from quantfusion.application.c6_contract import candidate_spec
 
-    spec = candidate_spec(candidate_id)
-    cfg = {"account_risk_budget_enabled": spec["account_risk_budget_enabled"]}
+    cfg = {} if candidate_id == native_joint.CANDIDATE_ID else {
+        "account_risk_budget_enabled": candidate_spec(candidate_id)["account_risk_budget_enabled"]
+    }
     with contextlib.redirect_stdout(io.StringIO()):
         result = ra.ProductionReplayEngine(
             stress_metrics.INITIAL_CAPITAL, cfg=cfg
@@ -272,7 +274,7 @@ def _run_scenario(
     data_dir: str | Path = DATA_DIR,
     regime_data_dir: str | Path = REGIME_DATA_DIR,
     include_diagnostics: bool = False,
-    candidate_id: str = "C6-Base+AB5",
+    candidate_id: str = native_joint.CANDIDATE_ID,
 ) -> dict[str, Any]:
     codes = tuple(str(code) for code in scenario["symbols"])
     return {
@@ -346,9 +348,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--candidate-id",
-        choices=("C6-Base", "C6-Base+S", "C6-Base+AB5", "C6-Base+AB5+S"),
-        default="C6-Base+AB5",
-        help="Exact candidate identity; AB5 is the production default, Base/S are explicit historical diagnostics",
+        choices=(native_joint.CANDIDATE_ID, "C6-Base", "C6-Base+S", "C6-Base+AB5", "C6-Base+AB5+S"),
+        default=native_joint.CANDIDATE_ID,
+        help="Current default uses native joint acceptance; C6 identities are explicit historical runs",
     )
     parser.add_argument("--ab5-release-acceptance", action="store_true",
                         help="Apply the explicit source-bound owner-approved AB5 release profile")
@@ -363,6 +365,10 @@ def _bound_budget_expired(start: float, now: float, *, completed: int, total: in
 def main() -> int:
     """Run, checkpoint, gate, and atomically publish the formal audit."""
     args = build_argument_parser().parse_args()
+    native = args.candidate_id == native_joint.CANDIDATE_ID
+    if native and (args.ab5_release_acceptance or args.ab5_release_evidence
+                   or args.establish_initial_baseline or args.initial_baseline_reference):
+        raise ValueError("Native promotion does not accept historical release or initial-baseline options")
     started = time.monotonic()
     seeds = tuple(
         int(value.strip()) for value in args.seeds.split(",") if value.strip()
@@ -393,6 +399,8 @@ def main() -> int:
         and args.permutation_samples == stress_scenarios.DEFAULT_PERMUTATION_SAMPLES
         and seeds == stress_scenarios.DEFAULT_SEEDS
     )
+    if formal_plan_requested and not native:
+        raise ValueError("Historical candidate identities are diagnostic-only; formal publication requires native-default")
     if selector_requested and (
         args.establish_initial_baseline or args.initial_baseline_reference is not None
     ):
@@ -487,6 +495,11 @@ def main() -> int:
         source_revision=args.source_revision,
         candidate_id=args.candidate_id,
     )
+    if native and formal_plan_complete:
+        native_joint.validate_references(
+            provenance, native_joint.load_original_reference(),
+            native_joint.load_incumbent_reference(),
+        )
     release_l2_evidence = None
     if args.ab5_release_acceptance:
 
@@ -633,7 +646,8 @@ def main() -> int:
     robustness = stress_metrics._robustness_diagnostics(results)
     # 在覆盖正式工件之前加载既有基线，评估强制晋级门。
     incumbent_path = stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json"
-    incumbent = stress_artifacts._load_incumbent(incumbent_path)
+    incumbent = (native_joint.load_incumbent_reference() if native
+                 else stress_artifacts._load_incumbent(incumbent_path))
     initial_baseline_reference = (
         stress_artifacts._load_initial_baseline_reference(
             Path(args.initial_baseline_reference).expanduser().resolve()
@@ -641,6 +655,8 @@ def main() -> int:
         if args.initial_baseline_reference is not None
         else None
     )
+    if native:
+        initial_baseline_reference = native_joint.load_original_reference()
     promotion = stress_metrics._promotion_gates(results, incumbent)
     initial_baseline_gates = stress_metrics._initial_baseline_gates(
         results, initial_baseline_reference
@@ -658,6 +674,11 @@ def main() -> int:
         "summary": summary,
         "results": results,
     }
+    if native:
+        assert initial_baseline_reference is not None and incumbent is not None
+        universe_artifact.update(production_pool.assess(
+            results, initial_baseline_reference, incumbent,
+        ))
     published = stress_artifacts._publish_formal_artifacts(
         prefix_artifact,
         universe_artifact,
@@ -673,11 +694,11 @@ def main() -> int:
     print(
         json.dumps(
             {
-                "absolute_hard_gates": gates,
-                "retained_robustness_hard_gates": retained_gates,
+                "absolute_hard_gates": universe_artifact["absolute_hard_gates"],
+                "retained_robustness_hard_gates": universe_artifact["retained_robustness_hard_gates"],
                 "robustness_diagnostics": robustness,
-                "promotion_gates": promotion,
-                "initial_baseline_gates": initial_baseline_gates,
+                "promotion_gates": universe_artifact["promotion_gates"],
+                "initial_baseline_gates": universe_artifact["initial_baseline_gates"],
                 "summary": universe_artifact["summary"],
             },
             ensure_ascii=False,

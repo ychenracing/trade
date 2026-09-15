@@ -1,0 +1,246 @@
+{
+  "kind": "horizon_discovery_mandate_research",
+  "status": "NOT_MET",
+  "research_state": "REJECTED_JOINT",
+  "canonical": false,
+  "default_promoted": false,
+  "preregistration_comments": [
+    5673621634,
+    5675181161,
+    5675204096
+  ],
+  "primary_source": {
+    "base": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "commit": "9f91a361b014ebd99b5201bb870d537ce0aeb93f",
+    "tree": "006864fd4396fa9146371515e4260b2cd42f379e",
+    "fingerprint": "e16aa91d652faf8610654e1d30818fb4ab4e63123f8064d70198809af7c00750",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {},
+    "runtime": "Python3.13.5 local diagnostic; not locked final qualification"
+  },
+  "source_packet": {
+    "provider": "Owner-authorized connected Google Drive",
+    "file_id": "1jzDyd1lE_Aul5GMUpP1ZCdhh7_iaWHIu",
+    "url": "https://drive.google.com/file/d/1jzDyd1lE_Aul5GMUpP1ZCdhh7_iaWHIu/view",
+    "name": "TRADE_PR101_HORIZON_DISCOVERY_SOURCE.tar.gz",
+    "bytes": 68698,
+    "sha256": "f97e0322ec7ca38c6628c9537ac108a2132fe3ac3e03c84d8f2f593b62e02377",
+    "fresh_raw_readback_verified": true,
+    "manifest_members_verified": 10,
+    "incremental_bundle_bytes": 3085,
+    "incremental_bundle_sha256": "b9f1abb6693bd5a102708f7581d16f790010574028d42b5e56d67272c78466c5"
+  },
+  "mechanism": "Base/slow collector observes the full requested native frames/signals but declines only newly generated unheld buys outside existing ESTABLISHED_BASE_CORE intersect requested symbols. Fast keeps the full requested opportunity set; no-core fallback stays native; held buys, sells, pending obligations, funding/rebalancing and durable risk history are preserved. No new threshold, fraction, score weight, seed, window or ticker list.",
+  "verification": {
+    "corrected_red": "4 expected failures on unmodified C after correcting a fixture-only missing production attribute",
+    "focused_green": "131 passed, 3 subtests",
+    "compile_and_diff": "PASS",
+    "continuous_paths_completed": 13,
+    "independent_exact_reproduction": true,
+    "independent_reproduction_source": "a2ef59c2a72dfffa3da10049f56674cf81d5d9a4",
+    "ruff": "UNAVAILABLE_LOCALLY"
+  },
+  "economic_results": {
+    "prefix-01": {
+      "wealth": 4.928538056569,
+      "signed_max_drawdown": -0.12468509293898083,
+      "buckets": 7,
+      "trades": 36,
+      "own_minimum": 5.993502267140751,
+      "own_minimum_pass": false,
+      "own_shortfall_pct": -17.768646162201264
+    },
+    "prefix-03": {
+      "wealth": 7.018521535589125,
+      "signed_max_drawdown": -0.1665235849670392,
+      "buckets": 99,
+      "trades": 314,
+      "own_minimum": 11.014195207080444,
+      "own_minimum_pass": false,
+      "own_shortfall_pct": -36.27749096840696
+    },
+    "prefix-05": {
+      "wealth": 13.796735085329127,
+      "signed_max_drawdown": -0.15400039978585942,
+      "buckets": 90,
+      "trades": 250,
+      "own_minimum": 12.580154771921677,
+      "own_minimum_pass": true,
+      "own_shortfall_pct": 9.670630731211682
+    },
+    "prefix-06": {
+      "wealth": 12.106015836041626,
+      "signed_max_drawdown": -0.15249310693089987,
+      "buckets": 90,
+      "trades": 260,
+      "own_minimum": 12.310161540905,
+      "own_minimum_pass": false,
+      "own_shortfall_pct": -1.6583511449872135
+    },
+    "prefix-07": {
+      "wealth": 5.969329043334126,
+      "signed_max_drawdown": -0.13888247521753733,
+      "buckets": 96,
+      "trades": 274,
+      "own_minimum": 4.164223576203157,
+      "own_minimum_pass": true,
+      "own_shortfall_pct": 43.34794792110615
+    },
+    "prefix-08": {
+      "wealth": 4.875377218580002,
+      "signed_max_drawdown": -0.13811608561650052,
+      "buckets": 118,
+      "trades": 346,
+      "own_minimum": 4.164223576203157,
+      "own_minimum_pass": true,
+      "own_shortfall_pct": 17.07770078534685
+    },
+    "prefix-09": {
+      "wealth": 11.752805139691002,
+      "signed_max_drawdown": -0.15433514817605723,
+      "buckets": 103,
+      "trades": 259,
+      "own_minimum": 4.630818988398863,
+      "own_minimum_pass": true,
+      "own_shortfall_pct": 153.79539060227043
+    },
+    "prefix-10": {
+      "wealth": 11.068147236439128,
+      "signed_max_drawdown": -0.14903677725980716,
+      "buckets": 115,
+      "trades": 300,
+      "own_minimum": 11.462299463605733,
+      "own_minimum_pass": false,
+      "own_shortfall_pct": -3.438683733731518
+    },
+    "prefix-13": {
+      "wealth": 9.445934746630503,
+      "signed_max_drawdown": -0.1493021848478753,
+      "buckets": 120,
+      "trades": 258,
+      "own_minimum": 12.659384602482707,
+      "own_minimum_pass": false,
+      "own_shortfall_pct": -25.383934186042467
+    },
+    "prefix-15": {
+      "wealth": 9.469957736691377,
+      "signed_max_drawdown": -0.14930013063631678,
+      "buckets": 126,
+      "trades": 274,
+      "own_minimum": 11.256293667944922,
+      "own_minimum_pass": false,
+      "own_shortfall_pct": -15.869663531794465
+    },
+    "prefix-16": {
+      "wealth": 9.223183407712753,
+      "signed_max_drawdown": -0.15437282003263395,
+      "buckets": 144,
+      "trades": 281,
+      "own_minimum": 6.865873501221534,
+      "own_minimum_pass": true,
+      "own_shortfall_pct": 34.333721791871355
+    },
+    "prefix-17": {
+      "wealth": 9.504697945610628,
+      "signed_max_drawdown": -0.15437282003263395,
+      "buckets": 157,
+      "trades": 334,
+      "own_minimum": 8.847967050773612,
+      "own_minimum_pass": true,
+      "own_shortfall_pct": 7.422393088360302
+    },
+    "random-20260817-03-027": {
+      "wealth": 5.674974879407375,
+      "signed_max_drawdown": -0.1567353254858217,
+      "buckets": 96,
+      "trades": 309
+    }
+  },
+  "adjacent_results": {
+    "prefix-05->prefix-06": {
+      "ratio": 0.87745511971993,
+      "threshold": 0.7,
+      "pass": true
+    },
+    "prefix-06->prefix-07": {
+      "ratio": 0.4930878270919189,
+      "threshold": 0.7,
+      "pass": false
+    },
+    "prefix-07->prefix-08": {
+      "ratio": 0.8167378918446914,
+      "threshold": 0.7,
+      "pass": true
+    },
+    "prefix-08->prefix-09": {
+      "ratio": 2.41064529220451,
+      "threshold": 0.7,
+      "pass": true
+    },
+    "prefix-09->prefix-10": {
+      "ratio": 0.941745149765167,
+      "threshold": 0.9,
+      "pass": true
+    },
+    "prefix-15->prefix-16": {
+      "ratio": 0.9739413484368049,
+      "threshold": 0.7,
+      "pass": true
+    },
+    "prefix-16->prefix-17": {
+      "ratio": 1.030522491579476,
+      "threshold": 0.7,
+      "pass": true
+    }
+  },
+  "decision": {
+    "conclusion": "REJECTED_JOINT",
+    "protected_05_pass": true,
+    "protected_13_pass": false,
+    "production_17_pass_own_minimum": true,
+    "prefix_06_to_07_ratio": 0.4930878270919189,
+    "prefix_07_to_08_ratio": 0.8167378918446914,
+    "prefix_09_to_10_ratio": 0.941745149765167,
+    "known_random_dd": -0.1567353254858217,
+    "known_random_buckets": 96,
+    "falsifier": "Triggered: prefix13 wealth 9.445934746630503 is below its frozen necessary minimum 12.659384602482707 and 06->07 retention 0.4930878270919189 is below 0.70. The apparent 07->08 improvement comes from collapsing prefix07 wealth, so this is loss displacement, not stable expansion. No neighboring mandate fractions."
+  },
+  "causal_attribution": {
+    "prefix07": {
+      "control_wealth": 11.957128591508127,
+      "candidate_wealth": 5.969329043334126,
+      "first_equity_divergence": "2025-09-26",
+      "declined_discovery_events": 151,
+      "first_economic_difference": "control buys 688072 base ATR 1300 + slow ATR 1400 on 2025-09-26; candidate omits them and reallocates capital",
+      "terminal_risk_lock_both": false,
+      "cycle_locks_both": 0,
+      "interpretation": "The mandate changes account-wide allocations and downstream fast/core economics; the loss is not a terminal-risk-lock artifact."
+    },
+    "prefix13": {
+      "control_equivalent_wealth": 13.954479489677876,
+      "candidate_wealth": 9.445934746630503,
+      "first_equity_divergence": "2025-05-07",
+      "declined_discovery_events": 539,
+      "first_economic_difference": "control buys profitable noncore 002384 slow turtle on 2025-05-07 and 688498 base turtle/ATR on 2025-05-08; candidate suppresses those discoveries and reallocates into core names",
+      "terminal_risk_lock_both": false,
+      "cycle_locks_both": 0,
+      "interpretation": "Blanket core-only long-horizon discovery removes genuinely profitable expansion opportunities and creates account-wide capital/mix cascades. This falsifies further core-membership/fraction tuning."
+    }
+  },
+  "independent_duplicate": {
+    "source_commit": "a2ef59c2a72dfffa3da10049f56674cf81d5d9a4",
+    "source_tree": "19c3caf0d1218e7ba11d011bda24b30a39b81a76",
+    "all_13_result_rows_exact_equal": true,
+    "role": "Independent semantically equivalent reconstruction created before concurrent source was discovered; preserved but not promoted or treated as the primary producer."
+  },
+  "results_packet": {
+    "provider": "ChatGPT file Library",
+    "path": "/trade-pr101/TRADE_PR101_HORIZON_DISCOVERY_RESULTS.tar.gz",
+    "bytes": 1380328,
+    "sha256": "3e9e838c47d4806665aa2229da4833ca6611b70bb7a8b98370c22dab16a574d7",
+    "member_count": 41
+  },
+  "reused_evidence": "Reused exact retained C controls and frozen bounds; no historical controls were rerun merely to obtain this verdict. The independent a2ef reconstruction reproduced all 13 result rows exactly but is not the primary producer and is not promoted.",
+  "unverified": "full958, formal random P90, locked3.12 qualification, complete all-prefix adjacency (missing02/04/11/12/14 in this component batch), exact-current-HEAD CI, and production promotion remain incomplete; expansion is not justified because the component is rejected.",
+  "next": "Do not extend the hard horizon/core-membership mandate family. Review already-rejected funded-allocation/target-restoration/capital-origin mechanisms before selecting a genuinely distinct opportunity-cost-preserving portfolio coordination change; preregister its source-bound causal discriminator and protection paths before implementation."
+}

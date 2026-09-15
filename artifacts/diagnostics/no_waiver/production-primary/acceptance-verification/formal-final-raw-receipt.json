@@ -1,0 +1,12 @@
+{
+  "path": "/workspace/scratch/f9bafb398fc2/TRADE_PR101_FORMAL958_COMPLETE.tar.gz",
+  "bytes": 184916,
+  "sha256": "415b4d60e6870060941592b9d584a3fe27f4491a82c2b399543ef6708383c824",
+  "members": 13,
+  "local_member_hash_verification": "PASS",
+  "upload": "SUCCESS_FILE_REFERENCE",
+  "remote_content_hash": "UNVERIFIED: provider metadata omitted checksums; known readback channel403 not retried.",
+  "remote_file_id": "17AJNA6OBpIvTBrdCxTjAGRVo0L4FUnaH",
+  "remote_url": "https://drive.google.com/file/d/17AJNA6OBpIvTBrdCxTjAGRVo0L4FUnaH/view",
+  "remote_size": "CONFIRMED_184916"
+}

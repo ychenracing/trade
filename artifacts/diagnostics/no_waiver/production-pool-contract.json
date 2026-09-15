@@ -1,0 +1,308 @@
+{
+  "kind": "production_pool_priority_contract",
+  "authorization": {
+    "date": "2026-09-15",
+    "owner_request": "任意修改包括但不限于核心策略、风险策略、风险阈值；按照主池优先、明确子池退化边界的建议直接实施",
+    "observed_pr_head": "30a155b45b9266a537326b11158b0374c81b3ab1"
+  },
+  "status": "SUPERSEDED_CONCURRENT_DUPLICATE",
+  "old_contract": "artifacts/diagnostics/no_waiver_joint_freeze.json",
+  "old_contract_status": "NOT_MET",
+  "old_contract_sha256": "3cfe2fdd58b8f833515f38ab1313b0d2f80f7272b6c84fb70753dc97e7bf7184",
+  "formal": {
+    "engine": "ProductionReplayEngine",
+    "deployment_policy": "production_daily_replay",
+    "start_date": "2025-04-01",
+    "end_date": "2026-07-20",
+    "initial_capital": 2000000.0,
+    "indicator_state": "warm",
+    "scenario_count": 958,
+    "family_counts": {
+      "prefix": 17,
+      "leave_one_out": 17,
+      "add_one": 24,
+      "random_subset": 750,
+      "permutation": 150
+    },
+    "seeds": [
+      20260807,
+      20260817,
+      20260827
+    ],
+    "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "data_file_count": 45,
+    "calendar_bytes_sha256": "9177f84dd29811a0f4a56c922b4482fc41b5e999c654bacb6862515bdfe9e34e",
+    "metric_source_sha256": "e34cfba222a52c655d0431c10d960a0c67538541491b949cec0d04fa4a04f287",
+    "initial_config_compact_json_sha256": "1ad634265bec392c34340a8d3b9b2f168c013249e7d6e966e172abcb61edfcbb",
+    "initial_policy_compact_json_sha256": "f59bc00631a411df141985c167f5384805321dacaf1477fdbd04235c91115256",
+    "costs": {
+      "slippage": 0.001,
+      "commission_rate": 0.00025,
+      "stamp_duty": 0.0005,
+      "min_commission": 5.0
+    },
+    "max_order_adv_ratio": 0.005,
+    "trade_count_semantics": "trade_records",
+    "turnover_gate_field": "date_symbol_side_count",
+    "guards": [
+      "_absolute_hard_gates",
+      "_retained_robustness_hard_gates",
+      "_initial_baseline_gates_against_original",
+      "_promotion_gates_against_incumbent"
+    ],
+    "limits": {
+      "mdd": 0.2,
+      "random_bucket_p90": 160,
+      "all_bucket_max": 200,
+      "prefix05_original_wealth_ratio": 0.6,
+      "other_prefix_original_wealth_ratio": 0.6,
+      "adjacent_wealth_change": -0.4,
+      "prefix09_10_strict_lower_bound": null,
+      "original_worst_return_degradation": 0.02,
+      "original_add_one_degradation": 0.03,
+      "production17_original_wealth_ratio": 1.1,
+      "production17_incumbent_wealth_ratio": 1.1,
+      "other_prefix_incumbent_wealth_ratio": 0.6
+    },
+    "machine_tolerances": {
+      "mdd": 1e-15,
+      "wealth_and_adjacent": 1e-12,
+      "prefix09_10": "strict; no tolerance"
+    },
+    "waivers_permitted": false,
+    "execution_semantics": "Existing close-known signals, next executable open, original board limits/T+1/ADV/fee/lot/account-state rules; planned sells never count as fills."
+  },
+  "references": {
+    "original": {
+      "path": "artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json",
+      "source_revision": "86fd22448b9aad9d5e6194c0c065c40d56d7bddd",
+      "source_fingerprint": "5e94ba6a8be97c10ae94e8363b22477a22a2318cf030d529c9886248303098aa",
+      "git_blob": "ed4fef958de43abad9c21ab8fac8e985849f5363",
+      "bytes_sha256": "ffe023ae48de50225870c220d37208d1d1ee6c26ba6905a470093562153decbe",
+      "canonical_payload_sha256": "a08fb77de1f840bbb0d4adecb907f559ecead7dbea3c654761042465ff9bd5f7",
+      "run_signature": "2e226318fb7152ab98b5d122ebe6e2d506839b4bac321526597be33ea6e502b4",
+      "scenario_count": 958,
+      "acceptance_status": "rejected",
+      "canonical": false,
+      "role": "Original wealth denominator and original-return/add-one protections. The historical qualification reference uses these same file bytes; this equality was verified, not assumed."
+    },
+    "incumbent": {
+      "path": "artifacts/validation/universe_stress.json",
+      "source_revision": "56e5743ff8999540f07270ca0ddd0b5c664d8033",
+      "source_fingerprint": "89b19838b35f4070dfc0d2c2fa9844344c275941dc64228c5127dd66352d0d08",
+      "git_blob": "4692e4a0e39b3abb52c0fe350290333663b574e2",
+      "bytes_sha256": "f7111b99f0516149a44491658ba3b04ed08d71b9a11a21d0b41f42a1bf3771c8",
+      "canonical_payload_sha256": "ba9f63ab834c49ba00ae9c724f3ab37beec38f9f545205f94e5651e8a43debdb",
+      "run_signature": "3e4cb13685e7ff50abb27f6d2d7687cb4e1ca0ebece9c9383d174671cc870b68",
+      "scenario_count": 958,
+      "acceptance_status": "accepted",
+      "canonical": true,
+      "role": "Separate incumbent promotion protections; accepted with historical exceptions, not a replacement original denominator."
+    }
+  },
+  "changes": {
+    "mdd": {
+      "old": 0.18,
+      "new": 0.2,
+      "loss_of_protection": "Permits 2 additional percentage points of peak-to-trough drawdown."
+    },
+    "original_prefix_wealth": {
+      "old": {
+        "prefix05": 0.99,
+        "others": 0.95
+      },
+      "new": {
+        "production17": 1.1,
+        "others": 0.6
+      },
+      "loss_of_protection": "Nonproduction pools may lose up to40% wealth against the same immutable original reference."
+    },
+    "incumbent_prefix_wealth": {
+      "old": 0.99,
+      "new": {
+        "production17": 1.1,
+        "others": 0.6
+      },
+      "loss_of_protection": "Nonproduction pools may lose up to40% wealth against incumbent; production17 must improve at least10%."
+    },
+    "adjacency": {
+      "old": {
+        "ordinary": 0.7,
+        "09_to_10_strict": 0.9
+      },
+      "new": 0.6,
+      "loss_of_protection": "Every adjacent expansion can lose up to40% wealth; removes special09->10 protection."
+    }
+  },
+  "retained": "All other original/incumbent gates, exact scenario/data/seed/cost identities, accounting, close-to-next-open causality, T+1, lot/ADV/limits, real ownership/cash/pending obligations, persistent risk history, qualification and repository protection. No waiver mechanism.",
+  "external_diagnostics": {
+    "declared_before_local_candidate_replays": true,
+    "first_remote_record": "After initial A/B diagnosis; before any external evaluation or final candidate selection",
+    "status": "not_run",
+    "windows": [
+      [
+        "2024-07-01",
+        "2024-12-31"
+      ],
+      [
+        "2025-01-02",
+        "2025-03-31"
+      ]
+    ],
+    "pools": [
+      "All 17 ordered production symbols at base_main_revision",
+      "Same pool minus 300308",
+      "Same pool minus 300502"
+    ],
+    "conditions": {
+      "normal": "unchanged",
+      "adverse": {
+        "slippage_multiplier": 2,
+        "commission_rate_multiplier": 2,
+        "max_order_adv_ratio_multiplier": 0.5
+      }
+    },
+    "case_count": 12,
+    "paired_same_data_and_execution": true,
+    "diagnostic_rules": {
+      "wealth_ratio_min": 0.99,
+      "mdd_degradation_max": 0.005,
+      "bucket_ratio_max": 1.03,
+      "bucket_exception_requires_wealth_ratio": 1.05
+    },
+    "new_user_hard_gates": false,
+    "completely_unseen": false,
+    "limitations": [
+      "2024 data and related pools have been observed historically; these are outside the formal window, not guaranteed unseen.",
+      "No external results used for this batch selection. Further tuning after exposure must disclose holdout reuse.",
+      "Formal 958 and new seeds on the same series do not establish market generalization.",
+      "No future maximum-drawdown guarantee."
+    ]
+  },
+  "selection_rule": "Compare whole exact C and state-sparse source; select feasible highest production17 wealth, then lower drawdown, then fewer buckets. No mixed rows. Newly integrated source requires new evidence; no near-parameter scan.",
+  "plan": [
+    {
+      "step": "Implement comparator and boundary tests; preserve original contract and numerical impact",
+      "status": "in_progress"
+    },
+    {
+      "step": "Restore exact C and state-sparse, reuse verified rows, test missing prefixes and bound source/core integration",
+      "status": "pending"
+    },
+    {
+      "step": "One stable production source: full958 and registered12 paired external diagnostics; fix genuine qualification/CI failures",
+      "status": "pending"
+    },
+    {
+      "step": "Normal expected-head merge only after all current gates and real repository requirements; verify main",
+      "status": "pending"
+    }
+  ],
+  "numerical_prefix_impact": [
+    {
+      "scenario_id": "prefix-01",
+      "original_wealth": 6.308949754885001,
+      "incumbent_wealth": 5.243497434140125,
+      "new_direct_floor": 3.7853698529310003
+    },
+    {
+      "scenario_id": "prefix-02",
+      "original_wealth": 7.244891154865128,
+      "incumbent_wealth": 4.166592049282376,
+      "new_direct_floor": 4.346934692919077
+    },
+    {
+      "scenario_id": "prefix-03",
+      "original_wealth": 11.593889691663627,
+      "incumbent_wealth": 6.718186501630001,
+      "new_direct_floor": 6.9563338149981755
+    },
+    {
+      "scenario_id": "prefix-04",
+      "original_wealth": 11.202060218092125,
+      "incumbent_wealth": 5.702048335032128,
+      "new_direct_floor": 6.721236130855275
+    },
+    {
+      "scenario_id": "prefix-05",
+      "original_wealth": 12.707227042345128,
+      "incumbent_wealth": 9.189437988796127,
+      "new_direct_floor": 7.624336225407077
+    },
+    {
+      "scenario_id": "prefix-06",
+      "original_wealth": 12.9580647799,
+      "incumbent_wealth": 7.728154769539129,
+      "new_direct_floor": 7.77483886794
+    },
+    {
+      "scenario_id": "prefix-07",
+      "original_wealth": 4.000054304397751,
+      "incumbent_wealth": 4.20628644060925,
+      "new_direct_floor": 2.52377186436555
+    },
+    {
+      "scenario_id": "prefix-08",
+      "original_wealth": 4.010996053991501,
+      "incumbent_wealth": 4.20628644060925,
+      "new_direct_floor": 2.52377186436555
+    },
+    {
+      "scenario_id": "prefix-09",
+      "original_wealth": 3.9083755606000006,
+      "incumbent_wealth": 4.677594937776629,
+      "new_direct_floor": 2.806556962665977
+    },
+    {
+      "scenario_id": "prefix-10",
+      "original_wealth": 12.065578382742878,
+      "incumbent_wealth": 4.404517316873373,
+      "new_direct_floor": 7.239347029645726
+    },
+    {
+      "scenario_id": "prefix-11",
+      "original_wealth": 12.043343401792502,
+      "incumbent_wealth": 4.001171228865376,
+      "new_direct_floor": 7.2260060410755
+    },
+    {
+      "scenario_id": "prefix-12",
+      "original_wealth": 11.920037854401377,
+      "incumbent_wealth": 4.3426781219296275,
+      "new_direct_floor": 7.152022712640826
+    },
+    {
+      "scenario_id": "prefix-13",
+      "original_wealth": 13.325668002613376,
+      "incumbent_wealth": 4.703662538498253,
+      "new_direct_floor": 7.995400801568025
+    },
+    {
+      "scenario_id": "prefix-14",
+      "original_wealth": 13.325668002613376,
+      "incumbent_wealth": 5.284704382655625,
+      "new_direct_floor": 7.995400801568025
+    },
+    {
+      "scenario_id": "prefix-15",
+      "original_wealth": 11.848730176784128,
+      "incumbent_wealth": 4.661834551697004,
+      "new_direct_floor": 7.109238106070477
+    },
+    {
+      "scenario_id": "prefix-16",
+      "original_wealth": 3.8620291194196263,
+      "incumbent_wealth": 6.93522575880963,
+      "new_direct_floor": 4.161135455285778
+    },
+    {
+      "scenario_id": "prefix-17",
+      "original_wealth": 3.8620291194196263,
+      "incumbent_wealth": 8.937340455326881,
+      "new_direct_floor": 9.83107450085957
+    }
+  ],
+  "superseded_by": "artifacts/diagnostics/no_waiver/production-primary/contract.json",
+  "concurrency_correction": "4848c1f preceded this contract but was missed between initial30a155b read and checkpoint. Use the first remote freeze, not whichever policy passes new results. All later proposal numbers retained as history, not effective limits."
+}

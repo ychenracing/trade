@@ -1,0 +1,47 @@
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index d259022..64aa35f 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -304,11 +304,37 @@ def plan_account_risk_budget(
+             receipt['remaining_loss_budget'] / held_stress if held_stress else 1.,
+         )
+         ordered_books = sorted(books, key=lambda book: (book[1], book[0], book[2]))
+-        reductions = [min(book[3], math.ceil(book[3] * (1. - retain_scale) / 100.) * 100)
+-                      for book in ordered_books]
+-        for (state, symbol, strategy, shares, price), reduction in zip(
+-            ordered_books, reductions, strict=True,
+-        ):
++        proportional = [
++            min(book[3], math.ceil(book[3] * (1. - retain_scale) / 100.) * 100)
++            for book in ordered_books
++        ]
++        # Preserve the exact current reduction for every symbol/strategy group,
++        # but avoid fragmenting every economically equivalent funded-sleeve book.
++        # Concentrating an already-required reduction into the fewest live book
++        # identities keeps immediate strategy-level gross/stress unchanged while
++        # leaving untouched copies genuinely untouched for later native decisions.
++        group_relief: dict[tuple[str, str], int] = {}
++        group_books: dict[tuple[str, str], list[tuple[int, str, str, int, float]]] = {}
++        for book, reduction in zip(ordered_books, proportional, strict=True):
++            key = (book[1], book[2])
++            group_relief[key] = group_relief.get(key, 0) + reduction
++            group_books.setdefault(key, []).append(book)
++        sparse_reductions: dict[tuple[int, str, str], int] = {}
++        for key in sorted(group_books):
++            remaining = group_relief[key]
++            for state, symbol, strategy, shares, _price in sorted(
++                group_books[key], key=lambda book: (-book[3], book[0]),
++            ):
++                if remaining <= 0:
++                    break
++                reduction = min(shares, remaining)
++                if reduction:
++                    sparse_reductions[(state, symbol, strategy)] = reduction
++                    remaining -= reduction
++            if remaining:
++                raise ValueError('systemic-shock relief exceeds live group shares')
++        for state, symbol, strategy, shares, price in ordered_books:
++            reduction = sparse_reductions.get((state, symbol, strategy), 0)
+             if reduction:
+                 actions.append(RiskAction(
+                     symbol, strategy, reduction, price, date_str,

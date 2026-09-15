@@ -1,0 +1,72 @@
+diff --git a/tests/unit/test_portfolio_relief_rounding.py b/tests/unit/test_portfolio_relief_rounding.py
+new file mode 100644
+index 0000000..c63c192
+--- /dev/null
++++ b/tests/unit/test_portfolio_relief_rounding.py
+@@ -0,0 +1,66 @@
++"""Legal book lots should satisfy one account requirement without duplicate rounding."""
++from copy import deepcopy
++from math import ceil
++
++from quantfusion.config.engine import default_engine_config
++from quantfusion.risk.account_budget import plan_account_risk_budget
++
++
++def make_plan(books, equity=931500.):
++    original = deepcopy(books)
++    receipt, actions = plan_account_risk_budget(
++        equity, 1e6, default_engine_config(), books, [], lambda _: 1.,
++        date_str='2026-01-05', preserve_strategy_valid_holdings=True,
++        stress_by_symbol={'300308': .11, '603986': .11},
++    )
++    assert books == original
++    return receipt, actions
++
++
++def test_same_asset_two_books_do_not_double_one_required_lot():
++    books = [(0, '300308', 'atr_channel', 5000, 80.),
++             (0, '300308', 'turtle_breakout', 5000, 80.)]
++    receipt, actions = make_plan(books)
++    assert receipt['observed_shock_confirmed'] is True
++    minimum = ceil(max(0., 800000. - receipt['gross_cap']) / 80. / 100.) * 100
++    assert minimum == 100
++    assert sum(action.shares for action in actions) == minimum
++    remaining = 800000. - 80. * minimum
++    assert remaining * receipt['systemic_stress_fraction'] <= receipt['remaining_loss_budget']
++
++
++def test_rounding_is_independent_of_input_order():
++    books = [(0, '300308', 'atr_channel', 5000, 80.),
++             (1, '300308', 'turtle_breakout', 5000, 80.)]
++    _, forward = make_plan(books)
++    _, reverse = make_plan(list(reversed(books)))
++    def key(a):
++        return (a.state_index, a.symbol, a.strategy_name, a.shares)
++    assert [key(a) for a in forward] == [key(a) for a in reverse]
++
++
++def test_cross_group_confirmed_shock_rounding_covers_current_risk_envelope():
++    # In exact C, systemic shock confirmation requires drawdown >= daily_loss_limit.
++    # The older lot-relief fixture used 960k equity (4% drawdown), so it never
++    # entered the shock branch under the current frozen call chain. Keep this
++    # boundary source-equivalent: two shocked groups, confirmed shock, and the
++    # current systemic-stress envelope that actually governs shock relief.
++    books = [(0, '300308', 'atr_channel', 4900, 80.),
++             (1, '300308', 'turtle_breakout', 5000, 80.),
++             (2, '603986', 'turtle_breakout', 100, 80.)]
++    receipt, actions = make_plan(books, 931500.)
++    assert receipt['observed_shock_confirmed'] is True
++    remaining = {book[:3]: (book[3], book[4]) for book in books}
++    for action in actions:
++        key = (action.state_index, action.symbol, action.strategy_name)
++        shares, price = remaining[key]
++        assert 0 < action.shares <= shares
++        assert action.shares % 100 == 0 or action.shares == shares
++        remaining[key] = (shares-action.shares, price)
++    gross = sum(q*p for q,p in remaining.values())
++    assert gross <= receipt['gross_cap']
++    assert (gross * receipt['systemic_stress_fraction']
++            <= receipt['remaining_loss_budget'] + 1e-8)
++    assert receipt['shock_rounding']['planned_shares'] == sum(
++        action.shares for action in actions
++    )

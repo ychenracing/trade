@@ -1,0 +1,33 @@
+{
+  "authority": "Current owner-approved production99%,all958DD18%,family65/85/95; cost/workload diagnostic only. Latest owner instruction requests serious goal feasibility review.",
+  "status": "NOT_MET; FULL958_COMPLETE; NO_NEW_STRATEGY_TRIALS",
+  "historical_entry_preserved": "turnover238-continuation-before-full958.json",
+  "effective_maximum_buckets": null,
+  "no_independent_turnover_or_risk_action_veto": true,
+  "formal_contract": "contract.json",
+  "recovery_index": "acceptance-verification/index.json",
+  "goal_review": "acceptance-verification/goal-reassessment.json",
+  "formal_results": "acceptance-verification/formal-final-assessment.json",
+  "economic_source_revision": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
+  "economic_source_fingerprint": "0032862f2829cac84c9d13cab6076ffe21e4348c85c0a3ac200f6f3db160fe7e",
+  "formal_completed": 958,
+  "current_failures": {
+    "all_scenarios_max_drawdown_at_most18pct": {
+      "failed_scenarios": 13,
+      "maximum": 0.19357897406694738
+    },
+    "random_subset_paired_wealth_minimum65pct": {
+      "failed_scenarios": 15,
+      "minimum": 0.35692399250170204
+    }
+  },
+  "engineering": "1209pytest and318subtests passed; Pyright0 errors; separate from economics/qualification/remoteCI.",
+  "originals": [
+    "acceptance-verification/raw-manifest.json",
+    "acceptance-verification/bounded-raw-receipt.json",
+    "acceptance-verification/formal-final-raw-receipt.json"
+  ],
+  "source_limit": "Later integrated source contains the future-bar causality fix;67 formal records keep original identity and do not certify a replay of that changed engine.",
+  "next": "No automatic third mechanism or rolling relaxation. Preserve complete results and retain originalPR Draft; do not merge unless a same-source candidate actually meets the unchanged effective contract and repository protections.",
+  "running_replays": []
+}

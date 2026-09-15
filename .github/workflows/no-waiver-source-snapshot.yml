@@ -1,0 +1,203 @@
+name: No-waiver source recovery
+
+on:
+  push:
+    branches: [feat/no-waiver-joint-optimization]
+    paths: [.github/workflows/no-waiver-source-snapshot.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: no-waiver-source-recovery
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install repository-locked runtime
+        run: python -m pip install -r requirements-lock.txt
+      - name: Preserve current source and recover exact retained C source
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/source-recovery"
+          work="$RUNNER_TEMP/exact-c-source"
+          mkdir -p "$out"
+          test "$(git rev-parse b7be8011d71b477c8ca3942d97830e67d0e0407c^{tree})" = 7ab528a8afd9f28b66529eeb39444d94a7261c00
+
+          research_bundle=artifacts/diagnostics/no_waiver/decision-preservation/research-source.bundle
+          test "$(git hash-object "$research_bundle")" = 293c08e630e92ee9afc3ab20e5c5b62e185ba7eb
+          test "$(wc -c < "$research_bundle")" -eq 3440840
+          git bundle verify "$research_bundle"
+          git bundle list-heads "$research_bundle" > "$out/RESEARCH_HEADS.txt"
+          git fetch "$research_bundle" HEAD
+          test "$(git rev-parse FETCH_HEAD)" = 4e33931bfdfaa0b11c7cdbe076c89eabe2535b76
+
+          late_bundle="$out/late-joiner-source.bundle"
+          cat \
+            artifacts/diagnostics/no_waiver/decision-preservation/late-joiner-source.bundle.part000 \
+            artifacts/diagnostics/no_waiver/decision-preservation/late-joiner-source.bundle.part001 \
+            artifacts/diagnostics/no_waiver/decision-preservation/late-joiner-source.bundle.part002 \
+            artifacts/diagnostics/no_waiver/decision-preservation/late-joiner-source.bundle.part003 \
+            > "$late_bundle"
+          test "$(wc -c < "$late_bundle")" -eq 11069
+          echo 'dcc7d050beeb7c213485da8aaf8ffef25c02518d78823f20238afa130a7d4212  '"$late_bundle" | sha256sum --check --status
+          test "$(git hash-object "$late_bundle")" = a58d5a236dd553b091e46823afe6fe664bb17ffb
+          git bundle verify "$late_bundle"
+          git bundle list-heads "$late_bundle" > "$out/LATE_HEADS.txt"
+          git fetch "$late_bundle" HEAD
+          test "$(git rev-parse FETCH_HEAD)" = af2389b883949a55ded6e8a428f3e8e2353e3c27
+          test "$(git rev-parse af2389b883949a55ded6e8a428f3e8e2353e3c27^{tree})" = c1b2b89c559ab84a52213ef59fdb3bd2f4265d06
+
+          git worktree add --detach "$work" af2389b883949a55ded6e8a428f3e8e2353e3c27
+          identity_code='from quantfusion.application.stress_artifacts import _tree_fingerprint,_source_files; print(_tree_fingerprint(_source_files()))'
+          test "$(cd "$work" && python -c "$identity_code")" = 1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773
+
+          git bundle create "$out/current-pr-source.bundle" HEAD
+          git rev-parse HEAD > "$out/HOST_HEAD.txt"
+          git rev-parse HEAD^{tree} > "$out/HOST_TREE.txt"
+          git ls-tree -r HEAD > "$out/HOST_FILES.txt"
+          git -C "$work" rev-parse HEAD > "$out/EXACT_C_HEAD.txt"
+          git -C "$work" rev-parse HEAD^{tree} > "$out/EXACT_C_TREE.txt"
+          git -C "$work" log --oneline 4e33931bfdfaa0b11c7cdbe076c89eabe2535b76..af2389b883949a55ded6e8a428f3e8e2353e3c27 > "$out/EXACT_C_HISTORY.txt"
+          git -C "$work" diff --name-status 4e33931bfdfaa0b11c7cdbe076c89eabe2535b76..af2389b883949a55ded6e8a428f3e8e2353e3c27 > "$out/EXACT_C_CHANGED_FILES.txt"
+          git -C "$work" diff --binary 4e33931bfdfaa0b11c7cdbe076c89eabe2535b76..af2389b883949a55ded6e8a428f3e8e2353e3c27 -- quantfusion tests > "$out/EXACT_C_SOURCE.patch"
+          git -C "$work" show af2389b883949a55ded6e8a428f3e8e2353e3c27:quantfusion/risk/account_budget.py > "$out/EXACT_C_account_budget.py"
+          git -C "$work" archive --format=tar.gz --output="$out/EXACT_C_quantfusion_tests.tar.gz" af2389b883949a55ded6e8a428f3e8e2353e3c27 quantfusion tests
+          (
+            cd "$out"
+            sha256sum \
+              current-pr-source.bundle HOST_HEAD.txt HOST_TREE.txt HOST_FILES.txt \
+              RESEARCH_HEADS.txt LATE_HEADS.txt late-joiner-source.bundle \
+              EXACT_C_HEAD.txt EXACT_C_TREE.txt EXACT_C_HISTORY.txt \
+              EXACT_C_CHANGED_FILES.txt EXACT_C_SOURCE.patch \
+              EXACT_C_account_budget.py EXACT_C_quantfusion_tests.tar.gz \
+              > SHA256SUMS
+          )
+      - uses: actions/upload-artifact@v4
+        with:
+          name: no-waiver-source-${{ github.run_id }}
+          path: ${{ runner.temp }}/source-recovery/
+          retention-days: 30
+          if-no-files-found: error
+
+  direct_loss_first:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install repository-locked runtime
+        run: python -m pip install -r requirements-lock.txt
+      - name: Restore exact C, prove RED then GREEN, and run preregistered early paths
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/direct-loss-first"
+          work="$RUNNER_TEMP/direct-loss-first-source"
+          mkdir -p "$out"
+          research_bundle=artifacts/diagnostics/no_waiver/decision-preservation/research-source.bundle
+          git fetch "$research_bundle" HEAD
+          test "$(git rev-parse FETCH_HEAD)" = 4e33931bfdfaa0b11c7cdbe076c89eabe2535b76
+          late_bundle="$out/late-joiner-source.bundle"
+          cat \
+            artifacts/diagnostics/no_waiver/decision-preservation/late-joiner-source.bundle.part000 \
+            artifacts/diagnostics/no_waiver/decision-preservation/late-joiner-source.bundle.part001 \
+            artifacts/diagnostics/no_waiver/decision-preservation/late-joiner-source.bundle.part002 \
+            artifacts/diagnostics/no_waiver/decision-preservation/late-joiner-source.bundle.part003 \
+            > "$late_bundle"
+          echo 'dcc7d050beeb7c213485da8aaf8ffef25c02518d78823f20238afa130a7d4212  '"$late_bundle" | sha256sum --check --status
+          git fetch "$late_bundle" HEAD
+          test "$(git rev-parse FETCH_HEAD)" = af2389b883949a55ded6e8a428f3e8e2353e3c27
+          git worktree add --detach "$work" af2389b883949a55ded6e8a428f3e8e2353e3c27
+          test "$(git -C "$work" rev-parse HEAD^{tree})" = c1b2b89c559ab84a52213ef59fdb3bd2f4265d06
+          identity_code='from quantfusion.application.stress_artifacts import _tree_fingerprint,_source_files; print(_tree_fingerprint(_source_files()))'
+          test "$(cd "$work" && python -c "$identity_code")" = 1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773
+
+          tests_patch="$GITHUB_WORKSPACE/artifacts/diagnostics/no_waiver/direct-loss-first-tests.patch"
+          source_patch="$GITHUB_WORKSPACE/artifacts/diagnostics/no_waiver/direct-loss-first-source.patch"
+          echo '5b625befac45171af253a8797b0c7e38566dfe80f7594141225d7779bf5c26a6  '"$tests_patch" | sha256sum --check --status
+          echo '5355e8ba40afb3bae778e9c2ac8d7406fc61f75e10194012399d38ae3ec839e1  '"$source_patch" | sha256sum --check --status
+          git -C "$work" apply --check "$tests_patch"
+          git -C "$work" apply "$tests_patch"
+          set +e
+          (cd "$work" && python -m pytest -q \
+            tests/c6_non_economic/test_account_risk_budget.py::test_confirmed_multigroup_shock_funds_relief_from_direct_hit_books_first \
+            tests/c6_non_economic/test_account_risk_budget.py::test_snapshot_account_budget_uses_same_close_known_shock_evidence) \
+            > "$out/red-tests.txt" 2>&1
+          red_status=$?
+          set -e
+          test "$red_status" -ne 0
+          grep -q '2 failed' "$out/red-tests.txt"
+
+          git -C "$work" apply --check "$source_patch"
+          git -C "$work" apply "$source_patch"
+          test "$(cd "$work" && python -c "$identity_code")" = b17bb382bb854262ad970838fedd8a98be3b3496f2e9a2be5c6ec973a7c3121a
+          git -C "$work" diff --check
+          (cd "$work" && python -m pytest -q \
+            tests/unit/test_observed_shock_budget.py \
+            tests/c6_non_economic/test_account_risk_budget.py \
+            tests/unit/test_account_signal_sellability.py \
+            tests/unit/test_account_truth_boundary.py \
+            tests/contract/test_fail_closed_boundaries.py) \
+            | tee "$out/green-tests.txt"
+
+          python "$work/artifacts/diagnostics/no_waiver/replay_batch.py" \
+            --root "$work" --out "$out/early" --workers 4 --ids \
+            prefix-01 prefix-03 prefix-05 prefix-06 prefix-07 prefix-08 \
+            prefix-13 prefix-15 prefix-17 random-20260817-03-027 \
+            | tee "$out/replay.log"
+          python - <<'PYCODE'
+          import hashlib, json, os
+          from pathlib import Path
+          out = Path(os.environ['RUNNER_TEMP']) / 'direct-loss-first'
+          record = json.loads(Path('artifacts/diagnostics/no_waiver/direct-loss-first-candidate.json').read_text())
+          rows = json.loads((out / 'early/results.json').read_text())
+          assert rows['identity']['data_fingerprint'] == record['parent_source']['data_fingerprint']
+          assert rows['identity']['source_fingerprint'] == record['candidate']['source_fingerprint']
+          by_id = {row['scenario_id']: row for row in rows['results']}
+          wealth = {key: 1. + row['total_return'] for key, row in by_id.items()}
+          summary = {
+              'status': 'DIAGNOSTIC_NOT_ACCEPTANCE',
+              'canonical': False,
+              'default_promoted': False,
+              'host_commit': os.environ['GITHUB_SHA'],
+              'run_id': os.environ['GITHUB_RUN_ID'],
+              'source_fingerprint': rows['identity']['source_fingerprint'],
+              'data_fingerprint': rows['identity']['data_fingerprint'],
+              'wealth': wealth,
+              'prefix06_to_07': wealth['prefix-07'] / wealth['prefix-06'],
+              'prefix07_to_08': wealth['prefix-08'] / wealth['prefix-07'],
+              'known_random_max_drawdown': by_id['random-20260817-03-027']['max_drawdown'],
+              'known_random_buckets': by_id['random-20260817-03-027']['date_symbol_side_count'],
+          }
+          (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+          entries = {str(p.relative_to(out)): hashlib.sha256(p.read_bytes()).hexdigest()
+                     for p in sorted(out.rglob('*')) if p.is_file()}
+          (out / 'SHA256.json').write_text(json.dumps(entries, indent=2) + '\n')
+          print(json.dumps(summary, indent=2))
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: direct-loss-first-${{ github.run_id }}
+          path: ${{ runner.temp }}/direct-loss-first/
+          retention-days: 90
+          if-no-files-found: error

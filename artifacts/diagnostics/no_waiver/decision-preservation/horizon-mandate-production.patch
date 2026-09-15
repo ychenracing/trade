@@ -1,0 +1,51 @@
+From a2ef59c2a72dfffa3da10049f56674cf81d5d9a4 Mon Sep 17 00:00:00 2001
+From: ychenracing <ychenracing@163.com>
+Date: Tue, 15 Sep 2026 05:25:50 +0000
+Subject: [PATCH] research: reconstruct horizon-specific discovery mandate
+
+---
+ quantfusion/engine/sector_risk.py | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/quantfusion/engine/sector_risk.py b/quantfusion/engine/sector_risk.py
+index e29f4c5..6e30464 100644
+--- a/quantfusion/engine/sector_risk.py
++++ b/quantfusion/engine/sector_risk.py
+@@ -8,6 +8,7 @@ from __future__ import annotations
+ import numpy as np
+ import pandas as pd
+ 
++from quantfusion.config.universe import ESTABLISHED_BASE_CORE
+ from quantfusion.domain.models import BarContext, SectorObservation, Signal
+ from quantfusion.strategy.trend import BaseStrategy, EARLY_DUAL_TRANSITION_RSI_MAX
+ 
+@@ -233,6 +234,18 @@ class CoreSectorRiskMixin:
+             and sector_above_ma
+         )
+ 
++    def _allows_horizon_discovery(
++        self, code: str, held_symbols: set[str]
++    ) -> bool:
++        """Keep long-horizon new discovery on the established core when present."""
++        if code in held_symbols:
++            return True
++        if getattr(self, "sleeve_name", None) not in {"base", "slow"}:
++            return True
++        tradable = set(getattr(self, "_tradable_symbol_codes", ()))
++        established = tradable.intersection(ESTABLISHED_BASE_CORE)
++        return not established or code in established
++
+     def _collect_strategy_signals(
+         self,
+         symbols_dict: dict[str, str],
+@@ -270,6 +283,8 @@ class CoreSectorRiskMixin:
+                         pending, code, strategy.name
+                     ):
+                         continue
++                    if not self._allows_horizon_discovery(code, held_symbols):
++                        continue
+                     rsi = ind_map[code].get("rsi")
+                     signal_day_rsi = (
+                         float(rsi.iloc[i])
+-- 
+2.47.3

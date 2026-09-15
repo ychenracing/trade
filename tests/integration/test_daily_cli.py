@@ -123,7 +123,7 @@ class CLIIntegrationTests(unittest.TestCase):
 
     def test_missing_account_file_exits_1(self) -> None:
         """A missing account snapshot must fail without touching simulation state."""
-        result = self._run_cli("--account", "dummy.json")
+        result = self._run_cli("--account", "dummy.json", "--end-date", "2026-08-04")
         self.assertEqual(result.returncode, 1)
         self.assertIn("Account signal scan failed", result.stdout)
 
@@ -181,6 +181,7 @@ class CLIIntegrationTests(unittest.TestCase):
                 "--output-dir", tmpdir,
                 "--account", "dummy.json",
                 "--reset-risk-state",
+                "--end-date", "2026-08-04",
             )
 
             self.assertEqual(result.returncode, 1)

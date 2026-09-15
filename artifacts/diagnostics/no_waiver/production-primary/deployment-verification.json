@@ -1,0 +1,59 @@
+{
+  "status": "FINAL_ECONOMICS_AND_SOURCE_QUALIFIED",
+  "authority": "2026-09-15 owner approves deployment-scoped evidence-supported improvement and normal PR101 merge",
+  "parent_source": "26bbf76ee0f5b81832ae129134386b85f2f252bb",
+  "contract_sha256": "12cc8e1e475b5c8dbf51c588c6f1b2251dd2fa78ae37896a3f3c45144fa260e7",
+  "plan": "deployment-plan.md",
+  "verification": {
+    "red": "11 expected failures,61 passed,3 subtests; absent scoped predicates and report disclosure",
+    "green": "91 passed,3 subtests",
+    "pyright": "0 errors,0 warnings",
+    "affected_ruff": "PASS",
+    "review": "Independent read-only review of all15 changed production modules against main; no confirmed Critical/Important; separate final release qualification required",
+    "scope": "Initial acceptance implementation checks; final release checks are recorded below."
+  },
+  "historical_reassessment": {
+    "source": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
+    "formal_count": 958,
+    "new_table": "PASS on complete old-source results; NOT final-source qualification",
+    "original_contract": "NOT_MET",
+    "previous_production_contract": "NOT_MET",
+    "random_mdd_max": 0.19357897406694738,
+    "random_p90": 0.1712106342372403,
+    "random_above18_count": 13,
+    "incumbent_random_above18_count": 151,
+    "random_wealth_min_ratio": 0.35692399250170204
+  },
+  "matched_main_adverse_costs": {
+    "candidate_wealth": 8.7274858588415,
+    "baseline_wealth": 6.905283332063999,
+    "candidate_mdd": 0.14677193941295671,
+    "baseline_mdd": 0.1698917656701221,
+    "status": "Final source equivalence and raw ledgers qualified in acceptance-verification/deployment-qualification.json"
+  },
+  "next": "No further strategy optimization is required. Corresponding-HEAD CI and actual merge state are authoritative on https://github.com/ychenracing/trade/pull/101.",
+  "final_release": {
+    "receipt": "artifacts/validation/deployment-release-receipt.json",
+    "source_revision": "fe5588f1d88edc098a79bbf5c130fda58616e37f",
+    "source_fingerprint": "7fc1d2ffd1b18843c94419c90b680b1fa6435244a481a9a9f6b204a857d0cdde",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "scenario_count": 958,
+    "formal_exit_status": 0,
+    "payload_sha256": "f34c748c00e5007ee8fb5ac99f9e997fb0156c82787573df3199a2f371e707fa",
+    "acceptance_status": "accepted under owner-approved deployment contract",
+    "original_contract": "NOT_MET",
+    "previous_production_contract": "NOT_MET",
+    "affected_tests": "41 passed,7 subtests;15 related documentation/baseline tests passed",
+    "repository_lint": "PASS: ruff check --select=E,F,W --ignore=E501,E402,E731,E741 .",
+    "additional_lint_diagnostic": "Unscoped default Ruff reported358 style findings; this is broader than the existing repository gate and was not used to change acceptance or mass-edit historical files.",
+    "prior_corresponding_source_ci": {
+      "source": "814e6019d140715532c79d130a4a094984b1d9fb",
+      "run_id": 35002884578,
+      "status": "success"
+    },
+    "formal_archive": "394bd263742ed22861bf704ab89cb338fffcff7ea6a9e0d284a33dd9ed35afa4",
+    "resume_from_completed": 504,
+    "all_original_members_verified": true,
+    "policy": "No further strategy parameter changes; preserve all individual stress failures."
+  }
+}

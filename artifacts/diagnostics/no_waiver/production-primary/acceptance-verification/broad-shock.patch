@@ -1,0 +1,34 @@
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index bc35492..1280bc6 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -147,7 +147,6 @@ def plan_account_risk_budget(
+         and drawdown >= float(cfg['daily_loss_limit'])
+         and len(shocked_groups) >= 2
+         and max(candidates.values()) >= abs(float(cfg['cm_risk_severe_direct_return']))
+-        and dominant_group_fraction >= 1. - float(cfg['sector_shock_breadth'])
+     )
+     shock_confirmed = shock_trigger and not shock_episode_active
+     effective_floor = max(
+diff --git a/tests/unit/test_observed_shock_budget.py b/tests/unit/test_observed_shock_budget.py
+index d561cb5..5097aba 100644
+--- a/tests/unit/test_observed_shock_budget.py
++++ b/tests/unit/test_observed_shock_budget.py
+@@ -495,3 +495,17 @@ def test_drawdown_alert_trims_actual_symbol_weight_breach_to_configured_limit():
+     assert receipt['alert_dominant_fraction'] == pytest.approx(700_000. / 900_000.)
+     assert sum(action.shares for action in actions) == 1_600
+     assert {action.symbol for action in actions} == {'300408'}
++
++
++def test_cross_industry_shock_does_not_require_single_industry_concentration():
++    cfg = default_engine_config()
++    books = [(0, '300394', 'turtle_breakout', 3000, 100.),
++             (0, '603986', 'turtle_breakout', 3000, 100.),
++             (0, '688120', 'turtle_breakout', 2500, 100.)]
++    receipt, actions = budget.plan_account_risk_budget(
++        900_000., 1_000_000., cfg, books, [], lambda _: 1.,
++        date_str='2026-01-07', preserve_strategy_valid_holdings=True,
++        stress_by_symbol={'300394': .11, '603986': .08, '688120': .07})
++    assert receipt['dominant_group_fraction'] < .8
++    assert receipt['observed_shock_confirmed'] is True
++    assert actions

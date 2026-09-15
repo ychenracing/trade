@@ -1,0 +1,252 @@
+[
+  {
+    "candidate": "K-all-buy-fixed-cash-score",
+    "status": "rejected",
+    "identity": {
+      "source_revision": "056d055ad82af0181a4bfba5b4ba429a028d3a37",
+      "source_fingerprint": "4a7aa288bcf5def5c504b02d680ad824cb906f66c7edd362f9d435a1283f896b",
+      "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+      "cfg_overrides": {},
+      "diagnostic_noncanonical": true,
+      "allow_publication": false,
+      "scenario_ids": [
+        "random-20260817-03-027",
+        "prefix-05",
+        "prefix-11"
+      ],
+      "workers": 3,
+      "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]"
+    },
+    "rows": [
+      {
+        "scenario_id": "random-20260817-03-027",
+        "scenario_type": "random_subset",
+        "seed": 20260817,
+        "sample_size": 3,
+        "symbols": [
+          "300394",
+          "300408",
+          "300502"
+        ],
+        "symbol_count": 3,
+        "total_return": 2.75203420404575,
+        "max_drawdown": -0.21122642563903968,
+        "sharpe": 2.8323880809496127,
+        "calmar": 8.855489918289516,
+        "total_trades": 69,
+        "sleeve_fill_count": 69,
+        "date_symbol_side_count": 23,
+        "max_concurrent_symbols": 3,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 6,
+          "re_entry": 30,
+          "risk_reduction": 18,
+          "strategy_exit": 15,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "prefix-05",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986"
+        ],
+        "symbol_count": 5,
+        "total_return": 8.170502770305129,
+        "max_drawdown": -0.1588155645868333,
+        "sharpe": 3.710796721367954,
+        "calmar": 30.565907489045703,
+        "total_trades": 264,
+        "sleeve_fill_count": 264,
+        "date_symbol_side_count": 98,
+        "max_concurrent_symbols": 4,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 28,
+          "re_entry": 119,
+          "risk_reduction": 64,
+          "strategy_exit": 39,
+          "sector_liquidation": 14,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "prefix-11",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986",
+          "688072",
+          "688300",
+          "300054",
+          "688361",
+          "002409",
+          "688498"
+        ],
+        "symbol_count": 11,
+        "total_return": 3.001171228865376,
+        "max_drawdown": -0.1759823131017042,
+        "sharpe": 2.8828494785658227,
+        "calmar": 11.487052089002395,
+        "total_trades": 196,
+        "sleeve_fill_count": 196,
+        "date_symbol_side_count": 77,
+        "max_concurrent_symbols": 4,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 15,
+          "re_entry": 93,
+          "risk_reduction": 63,
+          "strategy_exit": 25,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      }
+    ],
+    "correctness_tests": "not qualified; isolated mechanism diagnosis only",
+    "promoted": false
+  },
+  {
+    "candidate": "L-fixed-risk-trim-score",
+    "status": "rejected",
+    "identity": {
+      "source_revision": "056d055ad82af0181a4bfba5b4ba429a028d3a37",
+      "source_fingerprint": "251a433ba5637ea74358535c3dee9479fccbff1dd47724f8c2334433a13bd2e4",
+      "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+      "cfg_overrides": {},
+      "diagnostic_noncanonical": true,
+      "allow_publication": false,
+      "scenario_ids": [
+        "random-20260817-03-027",
+        "prefix-05",
+        "prefix-11"
+      ],
+      "workers": 3,
+      "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]"
+    },
+    "rows": [
+      {
+        "scenario_id": "random-20260817-03-027",
+        "scenario_type": "random_subset",
+        "seed": 20260817,
+        "sample_size": 3,
+        "symbols": [
+          "300394",
+          "300408",
+          "300502"
+        ],
+        "symbol_count": 3,
+        "total_return": 2.760148228713125,
+        "max_drawdown": -0.20763263775410326,
+        "sharpe": 2.8353346991619492,
+        "calmar": 9.032601261345103,
+        "total_trades": 72,
+        "sleeve_fill_count": 72,
+        "date_symbol_side_count": 24,
+        "max_concurrent_symbols": 3,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 6,
+          "re_entry": 33,
+          "risk_reduction": 18,
+          "strategy_exit": 15,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "prefix-05",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986"
+        ],
+        "symbol_count": 5,
+        "total_return": 6.799201307740003,
+        "max_drawdown": -0.1588155645868333,
+        "sharpe": 3.522559847911014,
+        "calmar": 26.09918625217677,
+        "total_trades": 262,
+        "sleeve_fill_count": 262,
+        "date_symbol_side_count": 93,
+        "max_concurrent_symbols": 3,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 27,
+          "re_entry": 121,
+          "risk_reduction": 67,
+          "strategy_exit": 36,
+          "sector_liquidation": 11,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "prefix-11",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986",
+          "688072",
+          "688300",
+          "300054",
+          "688361",
+          "002409",
+          "688498"
+        ],
+        "symbol_count": 11,
+        "total_return": 3.001113071828125,
+        "max_drawdown": -0.17599429984895965,
+        "sharpe": 2.882832757128148,
+        "calmar": 11.486070719282164,
+        "total_trades": 197,
+        "sleeve_fill_count": 197,
+        "date_symbol_side_count": 78,
+        "max_concurrent_symbols": 4,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 15,
+          "re_entry": 93,
+          "risk_reduction": 64,
+          "strategy_exit": 25,
+          "sector_liquidation": 0,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      }
+    ],
+    "correctness_tests": "not qualified; isolated mechanism diagnosis only",
+    "promoted": false
+  }
+]

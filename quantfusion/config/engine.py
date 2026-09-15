@@ -6,6 +6,10 @@ import math
 from collections.abc import Mapping
 from typing import Any
 
+# A DualMA cross above this point is already a late momentum confirmation.
+# Earlier crosses may be coordinated as event candidates across sleeves.
+EARLY_DUAL_TRANSITION_RSI_MAX = 60.0
+
 from quantfusion.domain.rules import (
     SYMBOL_RE as _SYMBOL_RE,
     require_bool as _require_bool,

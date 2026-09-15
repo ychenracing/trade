@@ -1,0 +1,160 @@
+diff --git a/tests/c6_non_economic/test_account_risk_budget.py b/tests/c6_non_economic/test_account_risk_budget.py
+index 0b7a6f6..297c080 100644
+--- a/tests/c6_non_economic/test_account_risk_budget.py
++++ b/tests/c6_non_economic/test_account_risk_budget.py
+@@ -699,3 +699,155 @@ def test_budget_derives_proven_early_dual_transition_from_completed_atr_cycle():
+         (0, '300308', 'dual_ma'),
+     ]
+     assert events[-1]['proven_dual_admitted_buy_indexes'] == [0]
++
++
++def test_confirmed_multigroup_shock_funds_relief_from_direct_hit_books_first():
++    """Group confirmation must not pro-rata sell a held non-hit winner."""
++    engine, state, _ = fixture(shares=10_700, cash=20_000.)
++    dates = pd.to_datetime(['2025-08-29', '2025-09-01', '2025-09-02'])
++    losses = {
++        '300308': 0.05460835186557933,
++        '300502': 0.0782181437190651,
++        '300394': 0.10403598808844972,
++        '688008': 0.0711175616835994,
++        '603986': 0.0711175616835994,
++    }
++    closes = {
++        '300308': 382.6,
++        '300502': 255.14,
++        '300394': 141.41,
++        '688008': 100.,
++        '603986': 100.,
++    }
++    frames = {}
++    for symbol, loss in losses.items():
++        close = closes[symbol]
++        previous = close / (1. - loss)
++        frames[symbol] = pd.DataFrame(
++            {
++                'open': [previous, previous, close],
++                'close': [previous, previous, close],
++                'high': [previous, previous, close],
++                'low': [previous, previous, close],
++                'volume': [1e8, 1e8, 1e8],
++            },
++            index=dates,
++        )
++
++    base = state.sleeve.positions['300308']['turtle_breakout']
++    base.shares = 10_700
++    base.entry_price = 100.
++    base.entry_date = '2025-01-01'
++    base.last_buy_date = '2025-01-01'
++    second = deepcopy(base)
++    second.symbol = '300502'
++    second.shares = 17_600
++    third = deepcopy(base)
++    third.symbol = '300394'
++    third.shares = 300
++    state.sleeve.positions = {
++        '300308': {'turtle_breakout': base},
++        '300502': {'turtle_breakout': second},
++        '300394': {'turtle_breakout': third},
++    }
++    state.data_map = frames
++    state.all_dates = list(dates)
++    state.date_to_pos = {date: i for i, date in enumerate(dates)}
++    state.pending = []
++    events = []
++
++    engine._apply_account_risk_budget(
++        [state], dates[-1], 8_638_569.13255525, 9_261_005.13255525, events,
++    )
++
++    receipt = events[-1]
++    reductions = {
++        signal.symbol: signal.target_shares
++        for signal, _ in state.pending
++        if signal.direction == 'sell' and signal.reason == 'account_budget_trim'
++    }
++    assert receipt['observed_shock_confirmed'] is True
++    assert receipt['shocked_group_count'] == 2
++    assert reductions.get('300502', 0) * closes['300502'] + reductions.get('300394', 0) * closes['300394'] >= receipt['gross_before'] - receipt['gross_cap']
++    assert '300308' not in reductions
++
++
++def test_snapshot_account_budget_uses_same_close_known_shock_evidence(monkeypatch):
++    """Manual account advice must not silently omit replay shock evidence."""
++    from quantfusion.account.models import AccountPosition, AccountSnapshot
++    from quantfusion.application import account_scan
++
++    dates = pd.to_datetime(['2025-08-29', '2025-09-01', '2025-09-02'])
++    losses = {
++        '300308': 0.05460835186557933,
++        '300502': 0.0782181437190651,
++        '300394': 0.10403598808844972,
++        '688008': 0.0711175616835994,
++        '603986': 0.0711175616835994,
++    }
++    closes = {
++        '300308': 382.6,
++        '300502': 255.14,
++        '300394': 141.41,
++        '688008': 100.,
++        '603986': 100.,
++    }
++    cfg = default_engine_config()
++    prepared = {}
++    for symbol, loss in losses.items():
++        close = closes[symbol]
++        previous = close / (1. - loss)
++        frame = pd.DataFrame(
++            {
++                'open': [previous, previous, close],
++                'close': [previous, previous, close],
++                'high': [previous, previous, close],
++                'low': [previous, previous, close],
++                'volume': [1e8, 1e8, 1e8],
++            },
++            index=dates,
++        )
++        prepared[symbol] = (frame, '2025-09-02', cfg, {})
++    positions = (
++        AccountPosition('300308', 10_700, 10_700, 100., '2025-01-01'),
++        AccountPosition('300502', 17_600, 17_600, 100., '2025-01-01'),
++        AccountPosition('300394', 300, 300, 100., '2025-01-01'),
++    )
++    snapshot = AccountSnapshot(
++        3, 'main', '2025-09-02', 20_000., 9_261_005.13255525, positions,
++    )
++    actions = [
++        {
++            'symbol': position.symbol,
++            'shares': position.shares,
++            'sellable_shares': position.sellable_shares,
++            'close': closes[position.symbol],
++            'action': 'HOLD',
++            'recommended_shares': 0,
++            'blocked_shares': 0,
++            'execution_status': 'NO_ACTION',
++            'reason': 'hold',
++        }
++        for position in positions
++    ]
++    monkeypatch.setattr(
++        account_scan.SleeveBacktestEngine,
++        '_allocation_scores',
++        lambda self, frames, date: {},
++    )
++
++    receipt = account_scan.AccountSignalEngine._apply_account_budget(
++        snapshot,
++        prepared,
++        actions,
++        equity=8_638_569.13255525,
++        as_of='2025-09-02',
++    )
++
++    assert receipt['observed_shock_confirmed'] is True
++    assert receipt['shocked_group_count'] == 2
++    assert receipt['planned_reductions']
++    by_symbol = {row['symbol']: row for row in actions}
++    assert by_symbol['300308']['action'] == 'HOLD'
++    assert by_symbol['300502']['action'] == 'REDUCE_REVIEW'
++    assert by_symbol['300394']['action'] == 'REDUCE_REVIEW'

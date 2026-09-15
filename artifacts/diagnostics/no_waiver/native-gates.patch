@@ -1,0 +1,390 @@
+diff --git a/quantfusion/application/stress.py b/quantfusion/application/stress.py
+index 8caa6c1..3a96337 100644
+--- a/quantfusion/application/stress.py
++++ b/quantfusion/application/stress.py
+@@ -17,4 +17,5 @@ from pathlib import Path
+ from typing import Any
+ 
++from quantfusion.application import native_joint
+ from quantfusion.application import engine_api as qf
+ from quantfusion.application import regime_api as ra
+@@ -227,10 +228,11 @@ def _metrics(
+     regime_data_dir: str | Path = REGIME_DATA_DIR,
+     include_diagnostics: bool = False,
+-    candidate_id: str = "C6-Base+AB5",
++    candidate_id: str = native_joint.CANDIDATE_ID,
+ ) -> dict[str, Any]:
+     from quantfusion.application.c6_contract import candidate_spec
+ 
+-    spec = candidate_spec(candidate_id)
+-    cfg = {"account_risk_budget_enabled": spec["account_risk_budget_enabled"]}
++    cfg = {} if candidate_id == native_joint.CANDIDATE_ID else {
++        "account_risk_budget_enabled": candidate_spec(candidate_id)["account_risk_budget_enabled"]
++    }
+     with contextlib.redirect_stdout(io.StringIO()):
+         result = ra.ProductionReplayEngine(
+@@ -273,5 +275,5 @@ def _run_scenario(
+     regime_data_dir: str | Path = REGIME_DATA_DIR,
+     include_diagnostics: bool = False,
+-    candidate_id: str = "C6-Base+AB5",
++    candidate_id: str = native_joint.CANDIDATE_ID,
+ ) -> dict[str, Any]:
+     codes = tuple(str(code) for code in scenario["symbols"])
+@@ -347,7 +349,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
+     parser.add_argument(
+         "--candidate-id",
+-        choices=("C6-Base", "C6-Base+S", "C6-Base+AB5", "C6-Base+AB5+S"),
+-        default="C6-Base+AB5",
+-        help="Exact candidate identity; AB5 is the production default, Base/S are explicit historical diagnostics",
++        choices=(native_joint.CANDIDATE_ID, "C6-Base", "C6-Base+S", "C6-Base+AB5", "C6-Base+AB5+S"),
++        default=native_joint.CANDIDATE_ID,
++        help="Current default uses native joint acceptance; C6 identities are explicit historical runs",
+     )
+     parser.add_argument("--ab5-release-acceptance", action="store_true",
+@@ -364,4 +366,8 @@ def main() -> int:
+     """Run, checkpoint, gate, and atomically publish the formal audit."""
+     args = build_argument_parser().parse_args()
++    native = args.candidate_id == native_joint.CANDIDATE_ID
++    if native and (args.ab5_release_acceptance or args.ab5_release_evidence
++                   or args.establish_initial_baseline or args.initial_baseline_reference):
++        raise ValueError("Native promotion does not accept historical release or initial-baseline options")
+     started = time.monotonic()
+     seeds = tuple(
+@@ -394,4 +400,6 @@ def main() -> int:
+         and seeds == stress_scenarios.DEFAULT_SEEDS
+     )
++    if formal_plan_requested and not native:
++        raise ValueError("Historical candidate identities are diagnostic-only; formal publication requires native-default")
+     if selector_requested and (
+         args.establish_initial_baseline or args.initial_baseline_reference is not None
+@@ -488,4 +496,9 @@ def main() -> int:
+         candidate_id=args.candidate_id,
+     )
++    if native and formal_plan_complete:
++        native_joint.validate_references(
++            provenance, native_joint.load_original_reference(),
++            stress_artifacts._load_incumbent(stress_artifacts.VALIDATION_ARTIFACT_DIR / "universe_stress.json"),
++        )
+     release_l2_evidence = None
+     if args.ab5_release_acceptance:
+@@ -642,4 +655,6 @@ def main() -> int:
+         else None
+     )
++    if native:
++        initial_baseline_reference = native_joint.load_original_reference()
+     promotion = stress_metrics._promotion_gates(results, incumbent)
+     initial_baseline_gates = stress_metrics._initial_baseline_gates(
+diff --git a/quantfusion/application/stress_artifacts.py b/quantfusion/application/stress_artifacts.py
+index 12f37e9..1df18e5 100644
+--- a/quantfusion/application/stress_artifacts.py
++++ b/quantfusion/application/stress_artifacts.py
+@@ -14,5 +14,5 @@ from pathlib import Path
+ from typing import Any, Mapping
+ 
+-from quantfusion.application import stress_metrics, stress_scenarios
++from quantfusion.application import native_joint, stress_metrics, stress_scenarios
+ from quantfusion.application.c6_contract import candidate_spec
+ from quantfusion.config.paths import PROJECT_ROOT, VALIDATION_ARTIFACT_DIR
+@@ -89,7 +89,8 @@ def _build_provenance(
+     *,
+     source_revision: str,
+-    candidate_id: str = "C6-Base+AB5",
++    candidate_id: str = native_joint.CANDIDATE_ID,
+ ) -> dict[str, Any]:
+-    candidate_spec(candidate_id)
++    if candidate_id != native_joint.CANDIDATE_ID:
++        candidate_spec(candidate_id)
+     if len(source_revision) != 40 or any(
+         character not in "0123456789abcdef" for character in source_revision
+@@ -126,5 +127,5 @@ def _run_signature(
+     *,
+     source_revision: str,
+-    candidate_id: str = "C6-Base+AB5",
++    candidate_id: str = native_joint.CANDIDATE_ID,
+ ) -> str:
+     return str(
+@@ -451,4 +452,10 @@ def _rejection_reasons(
+             if not passed and name != "permutation_invariant"
+         )
++    if universe_artifact.get("candidate_id") == native_joint.CANDIDATE_ID and incumbent is not None:
++        reasons.extend(
++            {"gate_family": "initial_baseline_gates", "gate": str(name)}
++            for name, passed in universe_artifact["initial_baseline_gates"].get("checks", {}).items()
++            if not passed
++        )
+     return reasons
+ 
+@@ -476,5 +483,14 @@ def _publish_formal_artifacts(
+             "Formal publication requires the exact canonical scenario plan"
+         )
+-    if incumbent is not None and (
++    native = provenance.get("candidate_id") == native_joint.CANDIDATE_ID
++    if native:
++        if (ab5_release_acceptance or ab5_release_evidence is not None
++                or "release_acceptance" in prefix_artifact
++                or "release_acceptance" in universe_artifact):
++            raise ValueError("Native candidates cannot use historical release waivers")
++        if establish_initial_baseline:
++            raise ValueError("Native promotion is not initial baseline establishment")
++        native_joint.validate_references(provenance, initial_baseline_reference, incumbent)
++    if not native and incumbent is not None and (
+         establish_initial_baseline or initial_baseline_reference is not None
+     ):
+@@ -482,5 +498,5 @@ def _publish_formal_artifacts(
+             "Cannot establish an initial baseline when a current-contract incumbent exists"
+         )
+-    if incumbent is None and (
++    if not native and incumbent is None and (
+         establish_initial_baseline != (initial_baseline_reference is not None)
+     ):
+@@ -510,4 +526,12 @@ def _publish_formal_artifacts(
+         and route_accepted
+     )
++    if native:
++        # References were authenticated above; each gate was recomputed by the
++        # existing validator. Never replace these conjunctions with a release assessor.
++        assert initial_baseline_reference is not None and incumbent is not None
++        proof = native_joint.receipt(universe_artifact, initial_baseline_reference, incumbent)
++        accepted = accepted and proof["passed"]
++        prefix_artifact = {**prefix_artifact, "native_joint_acceptance": proof}
++        universe_artifact = {**universe_artifact, "native_joint_acceptance": proof}
+     if ab5_release_acceptance:
+         from quantfusion.application.c6_release_acceptance import (
+diff --git a/tests/unit/test_default_account_budget.py b/tests/unit/test_default_account_budget.py
+index db6bd10..1b6f2b2 100644
+--- a/tests/unit/test_default_account_budget.py
++++ b/tests/unit/test_default_account_budget.py
+@@ -15,9 +15,9 @@ from tests.unit.test_account_truth_boundary import (
+ 
+ 
+-def test_public_engine_and_formal_defaults_enable_ab5():
++def test_public_engine_budget_and_native_formal_defaults():
+     assert default_engine_config().get("account_risk_budget_enabled") is True
+     assert BacktestEngine().cfg["account_risk_budget_enabled"] is True
+     args = stress.build_argument_parser().parse_args(["--source-revision", "a" * 40])
+-    assert args.candidate_id == "C6-Base+AB5"
++    assert args.candidate_id == "native-default"
+ 
+ 
+diff --git a/tests/unit/test_stress_scenarios.py b/tests/unit/test_stress_scenarios.py
+index 970974a..1326b3e 100644
+--- a/tests/unit/test_stress_scenarios.py
++++ b/tests/unit/test_stress_scenarios.py
+@@ -957,5 +957,5 @@ class StressScenarioTests(unittest.TestCase):
+                 "stress_contract_version": stress_metrics.STRESS_CONTRACT_VERSION,
+                 "source_revision": "a" * 40,
+-                "candidate_id": "C6-Base+AB5",
++                "candidate_id": "native-default",
+                 "source_fingerprint": "source-fingerprint",
+                 "data_fingerprint": "data-fingerprint",
+@@ -964,5 +964,5 @@ class StressScenarioTests(unittest.TestCase):
+                 ),
+                 "run_signature": (
+-                    "f31a204fb5db8e91c4ebde4f833600fbe915d7c7be57945e29fc32dd4c022f41"
++                    "7c7077ed5781e65b5c5d6d513bfd1cb598f97edf6bb3f919c3adb1cc8aad4093"
+                 ),
+                 "scenario_count": len(scenarios),
+diff --git a/quantfusion/application/native_joint.py b/quantfusion/application/native_joint.py
+new file mode 100644
+--- /dev/null
++++ b/quantfusion/application/native_joint.py
+@@ -0,0 +1,64 @@
++"""Source-bound orchestration of unchanged native stress acceptance gates."""
++from __future__ import annotations
++
++from typing import Any, Mapping
++
++from quantfusion.application.c6_contract import canonical_payload_hash
++from quantfusion.config.paths import PROJECT_ROOT
++
++CANDIDATE_ID = "native-default"
++ORIGINAL_REFERENCE_PATH = PROJECT_ROOT / "artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json"
++ORIGINAL_REFERENCE_PAYLOAD_SHA256 = "a08fb77de1f840bbb0d4adecb907f559ecead7dbea3c654761042465ff9bd5f7"
++GATE_FAMILIES = (
++    "absolute_hard_gates", "retained_robustness_hard_gates",
++    "initial_baseline_gates", "promotion_gates",
++)
++COMPARABLE_FIELDS = (
++    "stress_contract_version", "data_fingerprint", "scenario_signature",
++    "scenario_count", "start_date", "end_date", "initial_capital", "engine",
++    "deployment_policy",
++)
++
++
++def load_original_reference() -> dict[str, Any]:
++    """Load the immutable wealth denominator, not the accepted incumbent."""
++    from quantfusion.application.stress_artifacts import _load_initial_baseline_reference
++
++    reference = _load_initial_baseline_reference(ORIGINAL_REFERENCE_PATH)
++    if canonical_payload_hash(reference) != ORIGINAL_REFERENCE_PAYLOAD_SHA256:
++        raise ValueError("Native original wealth reference content changed")
++    return reference
++
++
++def validate_references(
++    provenance: Mapping[str, Any], original: Mapping[str, Any] | None,
++    incumbent: Mapping[str, Any] | None,
++) -> None:
++    """Require two separately identified, comparable references for promotion."""
++    if original is None or canonical_payload_hash(original) != ORIGINAL_REFERENCE_PAYLOAD_SHA256:
++        raise ValueError("Native promotion requires the exact original wealth reference")
++    if incumbent is None:
++        raise ValueError("Native promotion requires an accepted incumbent")
++    if incumbent.get("acceptance_status") != "accepted" or incumbent.get("canonical") is not True:
++        raise ValueError("Native promotion requires an accepted canonical incumbent")
++    for field in COMPARABLE_FIELDS:
++        if any(reference.get(field) != provenance.get(field) for reference in (original, incumbent)):
++            raise ValueError(f"Native reference comparison changed: {field}")
++
++
++def receipt(
++    artifact: Mapping[str, Any], original: Mapping[str, Any],
++    incumbent: Mapping[str, Any],
++) -> dict[str, Any]:
++    """Describe recomputed economics; this is not a qualification/CI receipt."""
++    checks = {name: artifact[name]["passed"] is True for name in GATE_FAMILIES}
++    return {
++        "kind": "native_joint_economic_acceptance", "candidate_id": CANDIDATE_ID,
++        "source_revision": artifact["source_revision"],
++        "source_fingerprint": artifact["source_fingerprint"],
++        "data_fingerprint": artifact["data_fingerprint"],
++        "scenario_signature": artifact["scenario_signature"],
++        "original_reference_payload_sha256": canonical_payload_hash(original),
++        "incumbent_payload_sha256": canonical_payload_hash(incumbent),
++        "waivers_used": False, "gate_families": checks, "passed": all(checks.values()),
++    }
+diff --git a/tests/unit/test_native_joint_acceptance.py b/tests/unit/test_native_joint_acceptance.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_native_joint_acceptance.py
+@@ -0,0 +1,130 @@
++"""Native promotion must preserve original and incumbent economics together."""
++from copy import deepcopy
++import json
++from pathlib import Path
++from unittest.mock import patch
++
++import pytest
++
++from quantfusion.application import stress, stress_artifacts as a, stress_metrics as m, stress_scenarios as s
++from tests.unit import test_stress_scenarios as helpers
++
++ROOT = Path(__file__).resolve().parents[2]
++ORIGINAL = ROOT / 'artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json'
++
++
++def fixture():
++    plan = s._multi_seed_scenarios(random_samples=50, permutation_samples=50, seeds=s.DEFAULT_SEEDS)
++    original = json.loads(ORIGINAL.read_text())
++    incumbent = json.loads((ROOT / 'artifacts/validation/universe_stress.json').read_text())
++    rows = [dict(helpers.StressScenarioTests._complete_result(item), total_return=14., max_drawdown=-.05) for item in plan]
++    provenance = dict(helpers.StressScenarioTests._provenance('a' * 40, len(plan)), candidate_id='native-default',
++                      data_fingerprint=original['data_fingerprint'],
++                      scenario_signature=s._scenario_signature(plan))
++    return plan, original, incumbent, rows, provenance
++
++
++def artifacts(rows, provenance, original, incumbent):
++    common = dict(provenance, seeds=list(s.DEFAULT_SEEDS), trade_count_semantics=m.TRADE_COUNT_SEMANTICS)
++    universe = dict(common, results=rows,
++                    absolute_hard_gates=m._absolute_hard_gates(rows),
++                    retained_robustness_hard_gates=m._retained_robustness_hard_gates(rows),
++                    robustness_diagnostics=m._robustness_diagnostics(rows),
++                    initial_baseline_gates=m._initial_baseline_gates(rows, original),
++                    promotion_gates=m._promotion_gates(rows, incumbent))
++    prefix = dict(common, results=[row for row in rows if row['scenario_type'] == 'prefix'])
++    return prefix, universe
++
++
++def publish(tmp_path, setup, **kwargs):
++    plan, original, incumbent, rows, provenance = setup
++    prefix, universe = artifacts(rows, provenance, original, incumbent)
++    with patch.object(a, 'VALIDATION_ARTIFACT_DIR', tmp_path):
++        accepted = a._publish_formal_artifacts(prefix, universe, scenarios=plan,
++            provenance=provenance, incumbent=incumbent, formal_plan_complete=True,
++            initial_baseline_reference=original, **kwargs)
++    return accepted, universe
++
++
++def test_native_success_requires_both_references_and_records_their_distinct_identities(tmp_path):
++    setup = fixture()
++    accepted, _ = publish(tmp_path, setup)
++    assert accepted
++    saved = json.loads((tmp_path / 'universe_stress.json').read_text())
++    assert saved['initial_baseline_gates']['passed']
++    assert saved['promotion_gates']['passed']
++    assert 'release_acceptance' not in saved
++    receipt = saved['native_joint_acceptance']
++    assert receipt['waivers_used'] is False
++    assert receipt['original_reference_payload_sha256'] != receipt['incumbent_payload_sha256']
++
++
++@pytest.mark.parametrize('failure', ['drawdown', 'random_p90', 'maximum_buckets', 'original_five', 'original_other', 'adjacent', 'nine_to_ten'])
++def test_any_native_failure_is_rejected_even_when_legacy_assessor_would_accept(tmp_path, failure):
++    setup = fixture()
++    _, original, incumbent, rows, _ = setup
++    by_id = {r['scenario_id']: r for r in rows}
++    original_by_id = {r['scenario_id']: r for r in original['results']}
++    if failure == 'drawdown':
++        by_id['prefix-01']['max_drawdown'] = -.18000001
++    elif failure in {'random_p90', 'maximum_buckets'}:
++        selected = [r for r in rows if r['scenario_type'] == 'random_subset'] if failure == 'random_p90' else [next(r for r in rows if r['scenario_type'] == 'leave_one_out')]
++        for row in selected:
++            count = 161 if failure == 'random_p90' else 201
++            row.update(date_symbol_side_count=count, total_trades=count, sleeve_fill_count=count)
++            row['reason_attribution']['re_entry'] = count
++    elif failure in {'original_five', 'original_other'}:
++        sid, ratio = ('prefix-05', .98) if failure == 'original_five' else ('prefix-11', .94)
++        by_id[sid]['total_return'] = (1 + original_by_id[sid]['total_return']) * ratio - 1
++        assert m._promotion_gates(rows, incumbent)['passed'], 'incumbent alone misses original wealth failure'
++    elif failure == 'adjacent':
++        by_id['prefix-07']['total_return'] = 15 * .699 - 1
++    else:
++        by_id['prefix-09']['total_return'] = 15.
++        by_id['prefix-10']['total_return'] = 16 * (.9 - 1e-14) - 1
++    with patch('quantfusion.application.c6_release_acceptance.release_formal_assessment', return_value={'passed': True}) as legacy:
++        accepted, _ = publish(tmp_path, setup)
++    assert accepted is False
++    legacy.assert_not_called()
++    assert not (tmp_path / 'universe_stress.json').exists()
++    rejected = json.loads(next((tmp_path / 'candidates').glob('*rejected.json')).read_text())
++    assert rejected['canonical'] is False and rejected['rejection_reasons']
++    if failure.startswith('original_'):
++        assert any(r['gate_family'] == 'initial_baseline_gates' for r in rejected['rejection_reasons'])
++
++
++def test_native_never_accepts_the_legacy_release_flag(tmp_path):
++    with pytest.raises(ValueError, match='[Nn]ative.*[Ww]aiver|[Nn]ative.*release'):
++        publish(tmp_path, fixture(), ab5_release_acceptance=True)
++
++
++def test_native_cannot_substitute_the_shrunken_incumbent_as_original(tmp_path):
++    setup = list(fixture())
++    setup[1] = deepcopy(setup[2])
++    with pytest.raises(ValueError, match='[Oo]riginal.*reference|[Nn]ative.*reference'):
++        publish(tmp_path, setup)
++
++
++def test_native_refuses_legacy_receipt_attached_to_new_candidate(tmp_path):
++    plan, original, incumbent, rows, provenance = fixture()
++    prefix, universe = artifacts(rows, provenance, original, incumbent)
++    universe['release_acceptance'] = {'assessment': {'passed': True}}
++    with patch.object(a, 'VALIDATION_ARTIFACT_DIR', tmp_path), pytest.raises(ValueError, match='[Nn]ative.*release|[Nn]ative.*waiver'):
++        a._publish_formal_artifacts(prefix, universe, scenarios=plan, provenance=provenance,
++            incumbent=incumbent, formal_plan_complete=True, initial_baseline_reference=original)
++
++
++def test_default_formal_identity_is_native_not_a_historical_waiver_candidate():
++    args = stress.build_argument_parser().parse_args(['--source-revision', 'a' * 40])
++    assert args.candidate_id == 'native-default'
++
++
++@pytest.mark.parametrize('identity', ['C6-Base', 'C6-Base+S', 'C6-Base+AB5', 'C6-Base+AB5+S'])
++def test_historical_labels_cannot_restore_a_supported_formal_publication_route(monkeypatch, identity):
++    monkeypatch.setattr('sys.argv', ['stress', '--source-revision', 'a' * 40,
++                                    '--candidate-id', identity])
++    def forbid_replay_preparation(*args, **kwargs):
++        pytest.fail('historical full run reached replay preparation')
++    monkeypatch.setattr(a, '_build_provenance', forbid_replay_preparation)
++    with pytest.raises(ValueError, match='Historical.*diagnostic'):
++        stress.main()

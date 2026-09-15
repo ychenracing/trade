@@ -1,0 +1,146 @@
+{
+  "baseline_floor_diagnosis": [
+    {
+      "scenario_id": "prefix-17",
+      "raw_sha256": "184e97d8b30b270ff2f9186585538619408f6b7818e72e02ea0760c5ba127bb7",
+      "wealth": 11.194244202966377,
+      "drawdown": 0.14888875743400234,
+      "last_trade_date": "2026-06-29",
+      "cash_only_sessions_after_last_trade": 15,
+      "final_equity": 22388488.405932754,
+      "lifetime_peak": 22747728.572407003,
+      "lifetime_floor": 18653137.42937374,
+      "final_remaining_budget": 3735350.976559013,
+      "final_gross_cap": 22388488.405932754
+    },
+    {
+      "scenario_id": "leave-one-out-603986",
+      "raw_sha256": "eac00040101b96255386e233054113a8b71b11daf07e4377f6caaa59b8c739da",
+      "wealth": 3.9946184801897506,
+      "drawdown": 0.18530399728342153,
+      "last_trade_date": "2025-10-15",
+      "cash_only_sessions_after_last_trade": 185,
+      "final_equity": 7989236.960379501,
+      "lifetime_peak": 9806402.552289,
+      "lifetime_floor": 8041250.092876979,
+      "final_remaining_budget": 0.0,
+      "final_gross_cap": 0.0
+    },
+    {
+      "scenario_id": "add-one-05-002384",
+      "raw_sha256": "6a31f8c212d3363c037c8257f817a9fff2821059fb7a9b486976694c26701f6f",
+      "wealth": 4.999227728870127,
+      "drawdown": 0.18282257226088386,
+      "last_trade_date": "2026-04-01",
+      "cash_only_sessions_after_last_trade": 73,
+      "final_equity": 9998455.457740255,
+      "lifetime_peak": 12230322.975136004,
+      "lifetime_floor": 10028864.839611523,
+      "final_remaining_budget": 0.0,
+      "final_gross_cap": 0.0
+    }
+  ],
+  "lot_effect_attribution": {
+    "classification": "Exact full-period cash-ledger accounting; not a causal counterfactual or authorization for symbol-specific rules. Both final portfolios have zero positions.",
+    "wealth_difference": -2.5260850098287513,
+    "first_equity_divergence": "2025-06-25",
+    "symbol_contributions": [
+      {
+        "symbol": "300408",
+        "proportional_net_cash_flow": 3187725.5234820032,
+        "lots_net_cash_flow": -35520.10760550026,
+        "difference_lots_minus_proportional": -3223245.6310875034
+      },
+      {
+        "symbol": "688300",
+        "proportional_net_cash_flow": 1668075.4081337494,
+        "lots_net_cash_flow": -6294.729468000009,
+        "difference_lots_minus_proportional": -1674370.1376017495
+      },
+      {
+        "symbol": "300308",
+        "proportional_net_cash_flow": 5051965.0313715,
+        "lots_net_cash_flow": 4304862.216706754,
+        "difference_lots_minus_proportional": -747102.8146647466
+      },
+      {
+        "symbol": "002384",
+        "proportional_net_cash_flow": 410096.66822900105,
+        "lots_net_cash_flow": -12683.364084249391,
+        "difference_lots_minus_proportional": -422780.0323132505
+      },
+      {
+        "symbol": "300394",
+        "proportional_net_cash_flow": 314010.9628440005,
+        "lots_net_cash_flow": 202211.16203325058,
+        "difference_lots_minus_proportional": -111799.8008107499
+      },
+      {
+        "symbol": "300604",
+        "proportional_net_cash_flow": -30968.07013499993,
+        "lots_net_cash_flow": -115138.1805959997,
+        "difference_lots_minus_proportional": -84170.11046099977
+      },
+      {
+        "symbol": "601869",
+        "proportional_net_cash_flow": 219312.6454792517,
+        "lots_net_cash_flow": 146087.13616975106,
+        "difference_lots_minus_proportional": -73225.50930950063
+      },
+      {
+        "symbol": "300054",
+        "proportional_net_cash_flow": 97681.62956100033,
+        "lots_net_cash_flow": 33495.777803500096,
+        "difference_lots_minus_proportional": -64185.85175750023
+      },
+      {
+        "symbol": "688072",
+        "proportional_net_cash_flow": 37923.65090500005,
+        "lots_net_cash_flow": -13506.191662250014,
+        "difference_lots_minus_proportional": -51429.84256725007
+      },
+      {
+        "symbol": "688082",
+        "proportional_net_cash_flow": 0.0,
+        "lots_net_cash_flow": -26252.38417199997,
+        "difference_lots_minus_proportional": -26252.38417199997
+      },
+      {
+        "symbol": "300502",
+        "proportional_net_cash_flow": 3419633.1185302488,
+        "lots_net_cash_flow": 3398246.0551800015,
+        "difference_lots_minus_proportional": -21387.06335024722
+      },
+      {
+        "symbol": "688120",
+        "proportional_net_cash_flow": 13511.679636999957,
+        "lots_net_cash_flow": 0.0,
+        "difference_lots_minus_proportional": -13511.679636999957
+      },
+      {
+        "symbol": "688256",
+        "proportional_net_cash_flow": -13620.859624749995,
+        "lots_net_cash_flow": -13620.859624749995,
+        "difference_lots_minus_proportional": 0.0
+      },
+      {
+        "symbol": "688361",
+        "proportional_net_cash_flow": -7734.547232499885,
+        "lots_net_cash_flow": 45183.63904275035,
+        "difference_lots_minus_proportional": 52918.186275250235
+      },
+      {
+        "symbol": "002409",
+        "proportional_net_cash_flow": -55935.13764300005,
+        "lots_net_cash_flow": 0.0,
+        "difference_lots_minus_proportional": 55935.13764300005
+      },
+      {
+        "symbol": "688498",
+        "proportional_net_cash_flow": 291315.80055900174,
+        "lots_net_cash_flow": 1643753.3147157505,
+        "difference_lots_minus_proportional": 1352437.5141567488
+      }
+    ]
+  }
+}

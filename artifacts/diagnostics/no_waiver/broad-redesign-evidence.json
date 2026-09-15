@@ -1,0 +1,366 @@
+{
+  "task": "ychenracing/trade original PR101",
+  "task_status": "NOT_MET",
+  "research_batch_status": "ALL_PREREGISTERED_RUNS_COMPLETE_AND_REJECTED",
+  "authority": "2026-09-15 current user explicitly permits core quantitative strategy, risk policy and other implementation changes without further confirmation. Original outcomes retained to avoid changing target numbers into apparent success. No real trading or unrelated repo/task changes.",
+  "research_control_revision": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "new_candidate_runs": 42,
+  "new_read_only_baseline_provenance_runs": 2,
+  "total_new_runs": 44,
+  "experiments": [
+    {
+      "name": "forward_market_stress",
+      "source_revision": "cb200da94759a8aee0d17f27e41af743c38ae1d7",
+      "source_fingerprint": "efc8cd7ec74b53619d93d5beabcc353c8b4d1badf26e421acdfbe705d2fe78ad",
+      "cfg_overrides": {},
+      "completed_runs": 10,
+      "status": "REJECTED_JOINT",
+      "rows": [
+        {
+          "scenario_id": "prefix-01",
+          "wealth": 5.0226478003232495,
+          "max_drawdown": -0.1312367882081649,
+          "date_symbol_side_count": 7
+        },
+        {
+          "scenario_id": "prefix-03",
+          "wealth": 5.116808692554625,
+          "max_drawdown": -0.17147983371253406,
+          "date_symbol_side_count": 90
+        },
+        {
+          "scenario_id": "prefix-05",
+          "wealth": 13.732512932803251,
+          "max_drawdown": -0.16302764937764477,
+          "date_symbol_side_count": 81
+        },
+        {
+          "scenario_id": "prefix-06",
+          "wealth": 12.883895360431627,
+          "max_drawdown": -0.16302764937764477,
+          "date_symbol_side_count": 80
+        },
+        {
+          "scenario_id": "prefix-07",
+          "wealth": 10.916632017060504,
+          "max_drawdown": -0.14478818252220846,
+          "date_symbol_side_count": 105
+        },
+        {
+          "scenario_id": "prefix-08",
+          "wealth": 4.556564126014502,
+          "max_drawdown": -0.1537311232115186,
+          "date_symbol_side_count": 85
+        },
+        {
+          "scenario_id": "prefix-13",
+          "wealth": 10.383237811646001,
+          "max_drawdown": -0.15629507321231714,
+          "date_symbol_side_count": 127
+        },
+        {
+          "scenario_id": "prefix-15",
+          "wealth": 10.226473947588127,
+          "max_drawdown": -0.15629507321231714,
+          "date_symbol_side_count": 138
+        },
+        {
+          "scenario_id": "prefix-17",
+          "wealth": 10.429630859474377,
+          "max_drawdown": -0.1588227094413976,
+          "date_symbol_side_count": 110
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "wealth": 5.567912013733875,
+          "max_drawdown": -0.18661198905609955,
+          "date_symbol_side_count": 86
+        }
+      ]
+    },
+    {
+      "name": "entry_capacity",
+      "source_revision": "9d45678bd542e3ba28d524a54cb8ac4924b52ede",
+      "source_fingerprint": "49a95af9eb6911c87befb7e39fd0f64eee65b3bac8fce0286fdcf6b67153445c",
+      "cfg_overrides": {
+        "max_symbol_weight": 1.0
+      },
+      "completed_runs": 10,
+      "status": "REJECTED_JOINT",
+      "rows": [
+        {
+          "scenario_id": "prefix-01",
+          "wealth": 7.646319064391125,
+          "max_drawdown": -0.13383996280132063,
+          "date_symbol_side_count": 7
+        },
+        {
+          "scenario_id": "prefix-03",
+          "wealth": 6.794731340921626,
+          "max_drawdown": -0.1552215749130311,
+          "date_symbol_side_count": 96
+        },
+        {
+          "scenario_id": "prefix-05",
+          "wealth": 10.389071699365132,
+          "max_drawdown": -0.16267923379259908,
+          "date_symbol_side_count": 102
+        },
+        {
+          "scenario_id": "prefix-06",
+          "wealth": 10.711003972162754,
+          "max_drawdown": -0.16117419290125334,
+          "date_symbol_side_count": 108
+        },
+        {
+          "scenario_id": "prefix-07",
+          "wealth": 13.238330031983377,
+          "max_drawdown": -0.14287492253109502,
+          "date_symbol_side_count": 100
+        },
+        {
+          "scenario_id": "prefix-08",
+          "wealth": 4.832886660103626,
+          "max_drawdown": -0.1446134147822091,
+          "date_symbol_side_count": 83
+        },
+        {
+          "scenario_id": "prefix-13",
+          "wealth": 7.782868530202376,
+          "max_drawdown": -0.15720687966113953,
+          "date_symbol_side_count": 150
+        },
+        {
+          "scenario_id": "prefix-15",
+          "wealth": 8.601749628502754,
+          "max_drawdown": -0.16370161908640415,
+          "date_symbol_side_count": 156
+        },
+        {
+          "scenario_id": "prefix-17",
+          "wealth": 9.646040415693875,
+          "max_drawdown": -0.1639637469494739,
+          "date_symbol_side_count": 120
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "wealth": 9.729839812471129,
+          "max_drawdown": -0.1653386008741152,
+          "date_symbol_side_count": 84
+        }
+      ]
+    },
+    {
+      "name": "native_target_invalidated",
+      "source_revision": "e9bc0cc35f336cdb9453f49a98b3b576b5f59a92",
+      "source_fingerprint": "13ec86e6caa4be5204dbb749e5047630a99b6a91bd6c23f236c23bd4d059d554",
+      "cfg_overrides": {
+        "max_symbol_weight": 1.0
+      },
+      "completed_runs": 10,
+      "status": "INVALIDATED_IMPLEMENTATION_AND_ECONOMIC_FAILURE",
+      "rows": [
+        {
+          "scenario_id": "prefix-01",
+          "wealth": 4.0475210706355025,
+          "max_drawdown": -0.13223971058876405,
+          "date_symbol_side_count": 72
+        },
+        {
+          "scenario_id": "prefix-03",
+          "wealth": 4.478420935233132,
+          "max_drawdown": -0.1407839804855834,
+          "date_symbol_side_count": 343
+        },
+        {
+          "scenario_id": "prefix-05",
+          "wealth": 4.27613702306463,
+          "max_drawdown": -0.1746613728802915,
+          "date_symbol_side_count": 379
+        },
+        {
+          "scenario_id": "prefix-06",
+          "wealth": 5.665739062710129,
+          "max_drawdown": -0.17208119534307653,
+          "date_symbol_side_count": 409
+        },
+        {
+          "scenario_id": "prefix-07",
+          "wealth": 2.8853157783103773,
+          "max_drawdown": -0.16436062962330716,
+          "date_symbol_side_count": 261
+        },
+        {
+          "scenario_id": "prefix-08",
+          "wealth": 2.722363626564503,
+          "max_drawdown": -0.1532980340834137,
+          "date_symbol_side_count": 257
+        },
+        {
+          "scenario_id": "prefix-13",
+          "wealth": 4.323567375117131,
+          "max_drawdown": -0.1517303225457099,
+          "date_symbol_side_count": 579
+        },
+        {
+          "scenario_id": "prefix-15",
+          "wealth": 4.234631403139508,
+          "max_drawdown": -0.15169276370526946,
+          "date_symbol_side_count": 541
+        },
+        {
+          "scenario_id": "prefix-17",
+          "wealth": 3.1744197609057547,
+          "max_drawdown": -0.17513121682179947,
+          "date_symbol_side_count": 484
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "wealth": 4.044570213292001,
+          "max_drawdown": -0.16432652098593123,
+          "date_symbol_side_count": 228
+        }
+      ]
+    },
+    {
+      "name": "native_target_corrected",
+      "source_revision": "bf4634c480e9ec9c99450f051e4a156a149e70d5",
+      "source_fingerprint": "f1ef96d4f0c1b3ae346c1ec8bffa57bb499ad0502f8dd5194d6cf1997eb40d21",
+      "cfg_overrides": {
+        "max_symbol_weight": 1.0
+      },
+      "completed_runs": 4,
+      "status": "REJECTED_JOINT",
+      "rows": [
+        {
+          "scenario_id": "prefix-01",
+          "wealth": 7.646319064391125,
+          "max_drawdown": -0.13383996280132063,
+          "date_symbol_side_count": 7
+        },
+        {
+          "scenario_id": "prefix-03",
+          "wealth": 5.066982776785379,
+          "max_drawdown": -0.1561817208778904,
+          "date_symbol_side_count": 226
+        },
+        {
+          "scenario_id": "prefix-05",
+          "wealth": 6.310937434346503,
+          "max_drawdown": -0.16424678734513093,
+          "date_symbol_side_count": 269
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "wealth": 4.921093293429001,
+          "max_drawdown": -0.15140633992428892,
+          "date_symbol_side_count": 170
+        }
+      ]
+    },
+    {
+      "name": "entry_event_target",
+      "source_revision": "c9428c0bf02029195d501edc844a9c1ee930cc51",
+      "source_fingerprint": "0b4a6ba307236613ad1b6468cda77011048989771461558407977c738f79ad9c",
+      "cfg_overrides": {
+        "max_symbol_weight": 1.0
+      },
+      "completed_runs": 4,
+      "status": "REJECTED_JOINT",
+      "rows": [
+        {
+          "scenario_id": "prefix-01",
+          "wealth": 7.646319064391125,
+          "max_drawdown": -0.13383996280132063,
+          "date_symbol_side_count": 7
+        },
+        {
+          "scenario_id": "prefix-03",
+          "wealth": 6.43378057726088,
+          "max_drawdown": -0.1520163520313048,
+          "date_symbol_side_count": 123
+        },
+        {
+          "scenario_id": "prefix-05",
+          "wealth": 6.172204651605629,
+          "max_drawdown": -0.16344229696165233,
+          "date_symbol_side_count": 165
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "wealth": 5.897286673314128,
+          "max_drawdown": -0.15284069508509654,
+          "date_symbol_side_count": 103
+        }
+      ]
+    },
+    {
+      "name": "consistent_trend",
+      "source_revision": "52a7bb792f293c7dbf323ac7c350c5e8ff9c204b",
+      "source_fingerprint": "51168a1039a87ede98437fb48fdecad8a105fbb166da1f5ce492c3d0011d24b1",
+      "cfg_overrides": {
+        "max_symbol_weight": 1.0
+      },
+      "completed_runs": 4,
+      "status": "REJECTED_JOINT",
+      "rows": [
+        {
+          "scenario_id": "prefix-01",
+          "wealth": 7.646319064391125,
+          "max_drawdown": -0.13383996280132063,
+          "date_symbol_side_count": 7
+        },
+        {
+          "scenario_id": "prefix-03",
+          "wealth": 4.885734173438999,
+          "max_drawdown": -0.16454958161275557,
+          "date_symbol_side_count": 66
+        },
+        {
+          "scenario_id": "prefix-05",
+          "wealth": 4.83798994714325,
+          "max_drawdown": -0.17773258949126908,
+          "date_symbol_side_count": 64
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "wealth": 4.61104063120375,
+          "max_drawdown": -0.17685182213072806,
+          "date_symbol_side_count": 53
+        }
+      ]
+    }
+  ],
+  "main_revision_observed": "b7be8011d71b477c8ca3942d97830e67d0e0407c",
+  "default_promoted": false,
+  "full958_run": false,
+  "formal_random_p90_qualified": false,
+  "merged": false,
+  "local_economics_running": false,
+  "key_findings": [
+    "Exact native-entry cash/capacity evidence supported a real upstream intervention: full-cash symbol entry capacity with independent unchanged60% account alert raises01 wealth4.928538->7.646319, DD13.383996%,7buckets. Its5.993502 wealth floor is exceeded. This is a research-component result, not a qualified portfolio/default.",
+    "All wider-universe capacity, joint-target and consistent-trend variants tested fail joint wealth; moving capital or reducing turnover alone did not repair selection/holding alpha.",
+    "Initial target implementation had concrete slot, close-risk sequence and same-symbol ownership defects. All are preserved, corrected bf4634c is separately source-bound, and its failure is not inferred from invalidated economics.",
+    "Exact-C stop+exit-lag premise was independently falsified before implementation; primary01 native stops imply MORE reserve than the risky random comparison."
+  ],
+  "verification": {
+    "entry_capacity_affected_tests": 37,
+    "native_target_initial_affected_tests": 48,
+    "native_target_corrected_affected_tests": 96,
+    "entry_event_target_affected_tests": 97,
+    "consistent_trend_affected_tests": 38,
+    "result_archives": "All raw pickles, row JSON, identity and results preserved with verified per-member SHA256 manifests. Each source patch and restorable bundle is in its experiment registry.",
+    "runtime": "Local Python3.12.14/numpy2.3.5/pandas2.2.3 diagnostic, not final locked qualification.",
+    "ci": "Known original-PR economic golden failures trace to necessary owner synchronization; no fixture rewriting, test suppression or pass claim. Latest evidence commits need their own CI; none is a qualified economic default."
+  },
+  "closed_families": [
+    "Forward shock stress coefficient removal and nearby coefficients.",
+    "Native stop plus liquidation-lag risk estimator based on these witnesses.",
+    "Blanket symbol-entry-capacity fractions near1.0.",
+    "Continuous/entry-event score-weighted target rebalancing and nearby weights/frequencies.",
+    "Universally slower trend periods and adjacent trailing/entry/exit parameter scans."
+  ],
+  "next_evidence_required": "A materially different close-known alpha/holding signal must explain enough of03 wealth deficit while preserving05/13. Establish an actual decision contrast using completed owned-account traces and the existing fixed-reference score/market state before another candidate. Do not claim lack of authorization, reboot the baseline, infer future winners, or repeat rejected allocation/risk coefficients. Shared proposal-NAV sizing is still unimplemented, but no causal magnitude evidence yet establishes it can close the deficit.",
+  "continuation": "This batch is not full-task completion or an instruction to disable the existing automation. User broad implementation authorization remains valid. Continue only with new discriminating evidence or a materially different supported core design; preserve current evidence and original PR. Normal merge requires one same-source jointly accepted default and applicable repository checks."
+}

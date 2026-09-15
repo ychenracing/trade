@@ -1,0 +1,1177 @@
+{
+  "kind": "exact_c_native_stop_liquidity_provenance",
+  "status": "STOP_PLUS_LAG_HYPOTHESIS_FALSIFIED_BEFORE_IMPLEMENTATION",
+  "source_revision": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "canonical": false,
+  "default_promoted": false,
+  "policy_implemented": false,
+  "new_runs": 2,
+  "replay_metrics": [
+    {
+      "scenario_id": "prefix-01",
+      "symbols": [
+        "300308"
+      ],
+      "wealth": 4.928538056569,
+      "baseline_wealth": 4.928538056569,
+      "baseline_delta": 0.0,
+      "baseline_matches": true,
+      "max_drawdown": -0.12468509293898083,
+      "date_symbol_side_count": 7,
+      "total_trades": 36,
+      "trace_rows": 364,
+      "raw_pickle_sha256": "112c87e6350e0273b3850ddbaaf0bf0570e5b9252bf1ad88f430926990ec4e0b",
+      "trace_jsonl_sha256": "f67b111c9f614476d61c128848e5bd929f5deb5378297e9e52cbf273a9f8c47c",
+      "runtime_seconds": 13.942534385998442
+    },
+    {
+      "scenario_id": "random-20260817-03-027",
+      "symbols": [
+        "300394",
+        "300408",
+        "300502"
+      ],
+      "wealth": 7.638286270395501,
+      "baseline_wealth": 7.638286270395501,
+      "baseline_delta": 0.0,
+      "baseline_matches": true,
+      "max_drawdown": -0.1692496900973578,
+      "date_symbol_side_count": 91,
+      "total_trades": 335,
+      "trace_rows": 628,
+      "raw_pickle_sha256": "300d4a721b826581572af8bc23cdf5fe02c367480bb3506efef59b6007e13b32",
+      "trace_jsonl_sha256": "b41c9514a83da4ec6f16fa079d97d7529b34e616d5005a2995615ee7cc303ac4",
+      "runtime_seconds": 17.965242458005378
+    }
+  ],
+  "scenarios": {
+    "prefix-01": {
+      "witness": {
+        "scenario_id": "prefix-01",
+        "date": "2025-09-04",
+        "assets": 5002126.863245001,
+        "lifetime_peak": 5652496.863245001,
+        "drawdown": 0.11505888737930825,
+        "cash": 809890.8632450005,
+        "gross": 4192236.0,
+        "budget": 367019.4353841003,
+        "C_stress_fraction": 0.203,
+        "C_stress_debit": 851023.908,
+        "stop_plus_lag_reserve_before_costs": 1538206.5600000003,
+        "stop_plus_lag_reserve_with_variable_costs": 1550783.2680000004,
+        "reserve_rate_before_costs": 0.3669179311470061,
+        "observed_shock_confirmed": true,
+        "C_planned_reduction_shares": 6600,
+        "max_liquidation_sessions_at_current_adv": 1,
+        "new_buys_today": 0
+      },
+      "per_symbol": {
+        "300308": {
+          "total_shares": 11400,
+          "gross": 4192236.0,
+          "reserve_before_costs": 1538206.5600000003,
+          "books": [
+            {
+              "state_index": 0,
+              "sleeve": "fast",
+              "strategy": "atr_channel",
+              "shares": 1900,
+              "close": 367.74,
+              "native_stop": 254.874,
+              "stop_distance_fraction": 0.30691793114700605,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 256367.76000000004,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-04"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-06-06",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 3800,
+              "sleeve_symbol_adv_capacity": 83800,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 0,
+              "sleeve": "fast",
+              "strategy": "turtle_breakout",
+              "shares": 1900,
+              "close": 367.74,
+              "native_stop": 254.874,
+              "stop_distance_fraction": 0.30691793114700605,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 256367.76000000004,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-04"
+              ],
+              "native_emitted_directions": [
+                "buy"
+              ],
+              "last_buy_date": "2025-06-06",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 3800,
+              "sleeve_symbol_adv_capacity": 83800,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 1,
+              "sleeve": "base",
+              "strategy": "atr_channel",
+              "shares": 1900,
+              "close": 367.74,
+              "native_stop": 254.874,
+              "stop_distance_fraction": 0.30691793114700605,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 256367.76000000004,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-04"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-06-06",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 3800,
+              "sleeve_symbol_adv_capacity": 83800,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 1,
+              "sleeve": "base",
+              "strategy": "turtle_breakout",
+              "shares": 1900,
+              "close": 367.74,
+              "native_stop": 254.874,
+              "stop_distance_fraction": 0.30691793114700605,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 256367.76000000004,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-04"
+              ],
+              "native_emitted_directions": [
+                "buy"
+              ],
+              "last_buy_date": "2025-06-06",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 3800,
+              "sleeve_symbol_adv_capacity": 83800,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 2,
+              "sleeve": "slow",
+              "strategy": "atr_channel",
+              "shares": 1900,
+              "close": 367.74,
+              "native_stop": 254.874,
+              "stop_distance_fraction": 0.30691793114700605,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 256367.76000000004,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-04"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-06-06",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 3800,
+              "sleeve_symbol_adv_capacity": 83800,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 2,
+              "sleeve": "slow",
+              "strategy": "turtle_breakout",
+              "shares": 1900,
+              "close": 367.74,
+              "native_stop": 254.874,
+              "stop_distance_fraction": 0.30691793114700605,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 256367.76000000004,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-04"
+              ],
+              "native_emitted_directions": [
+                "buy"
+              ],
+              "last_buy_date": "2025-06-06",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 3800,
+              "sleeve_symbol_adv_capacity": 83800,
+              "liquidation_sessions_at_current_adv": 1
+            }
+          ]
+        }
+      },
+      "confirmed_shocks": [
+        {
+          "scenario_id": "prefix-01",
+          "date": "2025-09-04",
+          "assets": 5002126.863245001,
+          "lifetime_peak": 5652496.863245001,
+          "drawdown": 0.11505888737930825,
+          "cash": 809890.8632450005,
+          "gross": 4192236.0,
+          "budget": 367019.4353841003,
+          "C_stress_fraction": 0.203,
+          "C_stress_debit": 851023.908,
+          "stop_plus_lag_reserve_before_costs": 1538206.5600000003,
+          "stop_plus_lag_reserve_with_variable_costs": 1550783.2680000004,
+          "reserve_rate_before_costs": 0.3669179311470061,
+          "observed_shock_confirmed": true,
+          "C_planned_reduction_shares": 6600,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        }
+      ],
+      "prior_close_opportunities": [
+        {
+          "scenario_id": "prefix-01",
+          "date": "2025-08-28",
+          "assets": 4886872.863245001,
+          "lifetime_peak": 4886872.863245001,
+          "drawdown": 0.0,
+          "cash": 809890.8632450005,
+          "gross": 4076982.0,
+          "budget": 879577.1153841005,
+          "C_stress_fraction": 0.11940000000000006,
+          "C_stress_debit": 486791.65080000024,
+          "stop_plus_lag_reserve_before_costs": 1875411.72,
+          "stop_plus_lag_reserve_with_variable_costs": 1887642.666,
+          "reserve_rate_before_costs": 0.46,
+          "observed_shock_confirmed": false,
+          "C_planned_reduction_shares": 0,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "prefix-01",
+          "date": "2025-08-29",
+          "assets": 4840018.863245001,
+          "lifetime_peak": 4886872.863245001,
+          "drawdown": 0.009587726407289443,
+          "cash": 809890.8632450005,
+          "gross": 4030128.0,
+          "budget": 832723.1153841005,
+          "C_stress_fraction": 0.11940000000000006,
+          "C_stress_debit": 481197.28320000024,
+          "stop_plus_lag_reserve_before_costs": 1825746.4799999997,
+          "stop_plus_lag_reserve_with_variable_costs": 1837836.8639999998,
+          "reserve_rate_before_costs": 0.45302443991853353,
+          "observed_shock_confirmed": false,
+          "C_planned_reduction_shares": 0,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "prefix-01",
+          "date": "2025-09-01",
+          "assets": 5423470.863245001,
+          "lifetime_peak": 5423470.863245001,
+          "drawdown": 0.0,
+          "cash": 809890.8632450005,
+          "gross": 4613580.0,
+          "budget": 976164.7553841006,
+          "C_stress_fraction": 0.11940000000000006,
+          "C_stress_debit": 550861.4520000003,
+          "stop_plus_lag_reserve_before_costs": 2122246.8,
+          "stop_plus_lag_reserve_with_variable_costs": 2136087.54,
+          "reserve_rate_before_costs": 0.45999999999999996,
+          "observed_shock_confirmed": false,
+          "C_planned_reduction_shares": 0,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "prefix-01",
+          "date": "2025-09-02",
+          "assets": 5171530.863245001,
+          "lifetime_peak": 5423470.863245001,
+          "drawdown": 0.04645364681635955,
+          "cash": 809890.8632450005,
+          "gross": 4361640.0,
+          "budget": 724224.7553841006,
+          "C_stress_fraction": 0.11940000000000006,
+          "C_stress_debit": 520779.8160000003,
+          "stop_plus_lag_reserve_before_costs": 1855190.4000000001,
+          "stop_plus_lag_reserve_with_variable_costs": 1868275.32,
+          "reserve_rate_before_costs": 0.4253423941453215,
+          "observed_shock_confirmed": false,
+          "C_planned_reduction_shares": 0,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "prefix-01",
+          "date": "2025-09-03",
+          "assets": 5652496.863245001,
+          "lifetime_peak": 5652496.863245001,
+          "drawdown": 0.0,
+          "cash": 809890.8632450005,
+          "gross": 4842606.0,
+          "budget": 1017389.4353841003,
+          "C_stress_fraction": 0.11940000000000006,
+          "C_stress_debit": 578207.1564000003,
+          "stop_plus_lag_reserve_before_costs": 2227598.7600000007,
+          "stop_plus_lag_reserve_with_variable_costs": 2242126.5780000007,
+          "reserve_rate_before_costs": 0.46000000000000013,
+          "observed_shock_confirmed": false,
+          "C_planned_reduction_shares": 0,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "prefix-01",
+          "date": "2025-09-04",
+          "assets": 5002126.863245001,
+          "lifetime_peak": 5652496.863245001,
+          "drawdown": 0.11505888737930825,
+          "cash": 809890.8632450005,
+          "gross": 4192236.0,
+          "budget": 367019.4353841003,
+          "C_stress_fraction": 0.203,
+          "C_stress_debit": 851023.908,
+          "stop_plus_lag_reserve_before_costs": 1538206.5600000003,
+          "stop_plus_lag_reserve_with_variable_costs": 1550783.2680000004,
+          "reserve_rate_before_costs": 0.3669179311470061,
+          "observed_shock_confirmed": true,
+          "C_planned_reduction_shares": 6600,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        }
+      ],
+      "prior_reserve_excess_count": 55,
+      "first_prior_reserve_excess": {
+        "scenario_id": "prefix-01",
+        "date": "2025-06-19",
+        "assets": 2256550.8632450006,
+        "lifetime_peak": 2256550.8632450006,
+        "drawdown": 0.0,
+        "cash": 809890.8632450005,
+        "gross": 1446660.0,
+        "budget": 406119.1553841003,
+        "C_stress_fraction": 0.11940000000000006,
+        "C_stress_debit": 172731.20400000009,
+        "stop_plus_lag_reserve_before_costs": 434926.82380139345,
+        "stop_plus_lag_reserve_with_variable_costs": 439266.8038013934,
+        "reserve_rate_before_costs": 0.30064204706108794,
+        "observed_shock_confirmed": false,
+        "C_planned_reduction_shares": 0,
+        "max_liquidation_sessions_at_current_adv": 1,
+        "new_buys_today": 0
+      },
+      "pending_before_count": 0,
+      "actual_next_open_risk_fill_date": "2025-09-05",
+      "actual_next_open_risk_fills": [
+        {
+          "sleeve": "fast",
+          "symbol": "300308",
+          "strategy": "turtle_breakout",
+          "requested_shares": 1100,
+          "filled_shares": 1100,
+          "open_signal_price": 376.62,
+          "prior_adv_capacity_and_mean": [
+            83800,
+            50311650.0
+          ]
+        },
+        {
+          "sleeve": "fast",
+          "symbol": "300308",
+          "strategy": "atr_channel",
+          "requested_shares": 1100,
+          "filled_shares": 1100,
+          "open_signal_price": 376.62,
+          "prior_adv_capacity_and_mean": [
+            82700,
+            50311650.0
+          ]
+        },
+        {
+          "sleeve": "base",
+          "symbol": "300308",
+          "strategy": "turtle_breakout",
+          "requested_shares": 1100,
+          "filled_shares": 1100,
+          "open_signal_price": 376.62,
+          "prior_adv_capacity_and_mean": [
+            83800,
+            50311650.0
+          ]
+        },
+        {
+          "sleeve": "base",
+          "symbol": "300308",
+          "strategy": "atr_channel",
+          "requested_shares": 1100,
+          "filled_shares": 1100,
+          "open_signal_price": 376.62,
+          "prior_adv_capacity_and_mean": [
+            82700,
+            50311650.0
+          ]
+        },
+        {
+          "sleeve": "slow",
+          "symbol": "300308",
+          "strategy": "turtle_breakout",
+          "requested_shares": 1100,
+          "filled_shares": 1100,
+          "open_signal_price": 376.62,
+          "prior_adv_capacity_and_mean": [
+            83800,
+            50311650.0
+          ]
+        },
+        {
+          "sleeve": "slow",
+          "symbol": "300308",
+          "strategy": "atr_channel",
+          "requested_shares": 1100,
+          "filled_shares": 1100,
+          "open_signal_price": 376.62,
+          "prior_adv_capacity_and_mean": [
+            82700,
+            50311650.0
+          ]
+        }
+      ],
+      "actual_next_open_risk_shares": 6600
+    },
+    "random-20260817-03-027": {
+      "witness": {
+        "scenario_id": "random-20260817-03-027",
+        "date": "2025-09-02",
+        "assets": 8251744.595888751,
+        "lifetime_peak": 9035671.595888752,
+        "drawdown": 0.08675912926679297,
+        "cash": 6137.595888750699,
+        "gross": 8245607.0,
+        "budget": 842353.8872599732,
+        "C_stress_fraction": 0.17651825853358596,
+        "C_stress_debit": 1455500.1881923461,
+        "stop_plus_lag_reserve_before_costs": 1887511.8971453216,
+        "stop_plus_lag_reserve_with_variable_costs": 1912248.7181453216,
+        "reserve_rate_before_costs": 0.22891121261846722,
+        "observed_shock_confirmed": true,
+        "C_planned_reduction_shares": 17900,
+        "max_liquidation_sessions_at_current_adv": 1,
+        "new_buys_today": 0
+      },
+      "per_symbol": {
+        "300394": {
+          "total_shares": 19100,
+          "gross": 2700931.0,
+          "reserve_before_costs": 582160.4693519666,
+          "books": [
+            {
+              "state_index": 0,
+              "sleeve": "fast",
+              "strategy": "atr_channel",
+              "shares": 3000,
+              "close": 141.41,
+              "native_stop": 119.95080000000002,
+              "stop_distance_fraction": 0.151751644155293,
+              "tail_fraction": 0.06378902287839527,
+              "native_atr_period": 10,
+              "reserve_before_costs": 91438.81717570157,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-05-09",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 4900,
+              "sleeve_symbol_adv_capacity": 77400,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 0,
+              "sleeve": "fast",
+              "strategy": "turtle_breakout",
+              "shares": 1900,
+              "close": 141.41,
+              "native_stop": 119.95080000000002,
+              "stop_distance_fraction": 0.151751644155293,
+              "tail_fraction": 0.06378902287839527,
+              "native_atr_period": 10,
+              "reserve_before_costs": 57911.25087794433,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-07-30",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 4900,
+              "sleeve_symbol_adv_capacity": 77400,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 1,
+              "sleeve": "base",
+              "strategy": "atr_channel",
+              "shares": 4000,
+              "close": 141.41,
+              "native_stop": 119.95080000000002,
+              "stop_distance_fraction": 0.151751644155293,
+              "tail_fraction": 0.06378902287839527,
+              "native_atr_period": 10,
+              "reserve_before_costs": 121918.42290093543,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-05-09",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 6600,
+              "sleeve_symbol_adv_capacity": 77400,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 1,
+              "sleeve": "base",
+              "strategy": "turtle_breakout",
+              "shares": 2600,
+              "close": 141.41,
+              "native_stop": 119.95080000000002,
+              "stop_distance_fraction": 0.151751644155293,
+              "tail_fraction": 0.06378902287839527,
+              "native_atr_period": 10,
+              "reserve_before_costs": 79246.97488560803,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-07-30",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 6600,
+              "sleeve_symbol_adv_capacity": 77400,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 2,
+              "sleeve": "slow",
+              "strategy": "atr_channel",
+              "shares": 4100,
+              "close": 141.41,
+              "native_stop": 119.95080000000002,
+              "stop_distance_fraction": 0.151751644155293,
+              "tail_fraction": 0.06378902287839527,
+              "native_atr_period": 10,
+              "reserve_before_costs": 124966.38347345882,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-05-09",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 7600,
+              "sleeve_symbol_adv_capacity": 77400,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 2,
+              "sleeve": "slow",
+              "strategy": "turtle_breakout",
+              "shares": 3500,
+              "close": 141.41,
+              "native_stop": 119.95080000000002,
+              "stop_distance_fraction": 0.151751644155293,
+              "tail_fraction": 0.06378902287839527,
+              "native_atr_period": 10,
+              "reserve_before_costs": 106678.62003831849,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-07-30",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 7600,
+              "sleeve_symbol_adv_capacity": 77400,
+              "liquidation_sessions_at_current_adv": 1
+            }
+          ]
+        },
+        "300408": {
+          "total_shares": 200,
+          "gross": 8138.0,
+          "reserve_before_costs": 1441.8277933558552,
+          "books": [
+            {
+              "state_index": 0,
+              "sleeve": "fast",
+              "strategy": "dual_ma",
+              "shares": 100,
+              "close": 40.69,
+              "native_stop": 35.92226103322072,
+              "stop_distance_fraction": 0.1171722528085347,
+              "tail_fraction": 0.06,
+              "native_atr_period": 20,
+              "reserve_before_costs": 720.9138966779276,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-08-08",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 100,
+              "sleeve_symbol_adv_capacity": 70000,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 1,
+              "sleeve": "base",
+              "strategy": "dual_ma",
+              "shares": 100,
+              "close": 40.69,
+              "native_stop": 35.92226103322072,
+              "stop_distance_fraction": 0.1171722528085347,
+              "tail_fraction": 0.06,
+              "native_atr_period": 20,
+              "reserve_before_costs": 720.9138966779276,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-08-08",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 100,
+              "sleeve_symbol_adv_capacity": 70000,
+              "liquidation_sessions_at_current_adv": 1
+            }
+          ]
+        },
+        "300502": {
+          "total_shares": 21700,
+          "gross": 5536538.0,
+          "reserve_before_costs": 1303909.5999999992,
+          "books": [
+            {
+              "state_index": 0,
+              "sleeve": "fast",
+              "strategy": "atr_channel",
+              "shares": 1000,
+              "close": 255.14,
+              "native_stop": 210.36040000000003,
+              "stop_distance_fraction": 0.17550991612448053,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 60087.999999999956,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-04-25",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 5500,
+              "sleeve_symbol_adv_capacity": 86000,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 0,
+              "sleeve": "fast",
+              "strategy": "turtle_breakout",
+              "shares": 4500,
+              "close": 255.14,
+              "native_stop": 210.36040000000003,
+              "stop_distance_fraction": 0.17550991612448053,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 270395.9999999998,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-06-24",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 5500,
+              "sleeve_symbol_adv_capacity": 86000,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 1,
+              "sleeve": "base",
+              "strategy": "atr_channel",
+              "shares": 1800,
+              "close": 255.14,
+              "native_stop": 210.36040000000003,
+              "stop_distance_fraction": 0.17550991612448053,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 108158.39999999992,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-04-25",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 7500,
+              "sleeve_symbol_adv_capacity": 86000,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 1,
+              "sleeve": "base",
+              "strategy": "turtle_breakout",
+              "shares": 5700,
+              "close": 255.14,
+              "native_stop": 210.36040000000003,
+              "stop_distance_fraction": 0.17550991612448053,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 342501.59999999974,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-06-24",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 7500,
+              "sleeve_symbol_adv_capacity": 86000,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 2,
+              "sleeve": "slow",
+              "strategy": "atr_channel",
+              "shares": 2300,
+              "close": 255.14,
+              "native_stop": 210.36040000000003,
+              "stop_distance_fraction": 0.17550991612448053,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 138202.3999999999,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-04-25",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 8700,
+              "sleeve_symbol_adv_capacity": 86000,
+              "liquidation_sessions_at_current_adv": 1
+            },
+            {
+              "state_index": 2,
+              "sleeve": "slow",
+              "strategy": "turtle_breakout",
+              "shares": 6400,
+              "close": 255.14,
+              "native_stop": 210.36040000000003,
+              "stop_distance_fraction": 0.17550991612448053,
+              "tail_fraction": 0.06,
+              "native_atr_period": 10,
+              "reserve_before_costs": 384563.1999999997,
+              "owners_match_live_book": true,
+              "native_update_dates": [
+                "2025-09-02"
+              ],
+              "native_emitted_directions": [
+                null
+              ],
+              "last_buy_date": "2025-06-24",
+              "today_bought_shares": 0,
+              "sleeve_symbol_total_shares": 8700,
+              "sleeve_symbol_adv_capacity": 86000,
+              "liquidation_sessions_at_current_adv": 1
+            }
+          ]
+        }
+      },
+      "confirmed_shocks": [
+        {
+          "scenario_id": "random-20260817-03-027",
+          "date": "2025-09-02",
+          "assets": 8251744.595888751,
+          "lifetime_peak": 9035671.595888752,
+          "drawdown": 0.08675912926679297,
+          "cash": 6137.595888750699,
+          "gross": 8245607.0,
+          "budget": 842353.8872599732,
+          "C_stress_fraction": 0.17651825853358596,
+          "C_stress_debit": 1455500.1881923461,
+          "stop_plus_lag_reserve_before_costs": 1887511.8971453216,
+          "stop_plus_lag_reserve_with_variable_costs": 1912248.7181453216,
+          "reserve_rate_before_costs": 0.22891121261846722,
+          "observed_shock_confirmed": true,
+          "C_planned_reduction_shares": 17900,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "date": "2025-10-31",
+          "assets": 7814335.8721997505,
+          "lifetime_peak": 9035671.595888752,
+          "drawdown": 0.13516822858465904,
+          "cash": 7127719.8721997505,
+          "gross": 686616.0,
+          "budget": 405055.1635709731,
+          "C_stress_fraction": 0.203,
+          "C_stress_debit": 139383.048,
+          "stop_plus_lag_reserve_before_costs": 112073.6002640586,
+          "stop_plus_lag_reserve_with_variable_costs": 114133.44826405859,
+          "reserve_rate_before_costs": 0.16322602482910184,
+          "observed_shock_confirmed": true,
+          "C_planned_reduction_shares": 0,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "date": "2026-02-02",
+          "assets": 8335490.33872625,
+          "lifetime_peak": 9035671.595888752,
+          "drawdown": 0.07749078192273895,
+          "cash": 69594.33872625089,
+          "gross": 8265896.0,
+          "budget": 926089.630097473,
+          "C_stress_fraction": 0.15798156384547793,
+          "C_stress_debit": 1305859.1766640807,
+          "stop_plus_lag_reserve_before_costs": 1415019.5876828316,
+          "stop_plus_lag_reserve_with_variable_costs": 1439817.2756828316,
+          "reserve_rate_before_costs": 0.17118768342631357,
+          "observed_shock_confirmed": true,
+          "C_planned_reduction_shares": 20200,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 4800
+        }
+      ],
+      "prior_close_opportunities": [
+        {
+          "scenario_id": "random-20260817-03-027",
+          "date": "2025-08-28",
+          "assets": 7940535.595888751,
+          "lifetime_peak": 7940535.595888751,
+          "drawdown": 0.0,
+          "cash": 6137.595888750699,
+          "gross": 7934398.0,
+          "budget": 1429156.4072599756,
+          "C_stress_fraction": 0.11940000000000006,
+          "C_stress_debit": 947367.1212000005,
+          "stop_plus_lag_reserve_before_costs": 2401819.847914041,
+          "stop_plus_lag_reserve_with_variable_costs": 2425623.041914041,
+          "reserve_rate_before_costs": 0.30270977683676076,
+          "observed_shock_confirmed": false,
+          "C_planned_reduction_shares": 0,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "date": "2025-08-29",
+          "assets": 8212543.595888751,
+          "lifetime_peak": 8212543.595888751,
+          "drawdown": 0.0,
+          "cash": 6137.595888750699,
+          "gross": 8206406.0,
+          "budget": 1478117.847259976,
+          "C_stress_fraction": 0.11940000000000006,
+          "C_stress_debit": 979844.8764000005,
+          "stop_plus_lag_reserve_before_costs": 2466307.5931861573,
+          "stop_plus_lag_reserve_with_variable_costs": 2490926.811186157,
+          "reserve_rate_before_costs": 0.30053443531628304,
+          "observed_shock_confirmed": false,
+          "C_planned_reduction_shares": 0,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "date": "2025-09-01",
+          "assets": 9035671.595888752,
+          "lifetime_peak": 9035671.595888752,
+          "drawdown": 0.0,
+          "cash": 6137.595888750699,
+          "gross": 9029534.0,
+          "budget": 1626280.887259976,
+          "C_stress_fraction": 0.11940000000000006,
+          "C_stress_debit": 1078126.3596000005,
+          "stop_plus_lag_reserve_before_costs": 2719662.8380784905,
+          "stop_plus_lag_reserve_with_variable_costs": 2746751.4400784904,
+          "reserve_rate_before_costs": 0.30119636717448434,
+          "observed_shock_confirmed": false,
+          "C_planned_reduction_shares": 0,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        },
+        {
+          "scenario_id": "random-20260817-03-027",
+          "date": "2025-09-02",
+          "assets": 8251744.595888751,
+          "lifetime_peak": 9035671.595888752,
+          "drawdown": 0.08675912926679297,
+          "cash": 6137.595888750699,
+          "gross": 8245607.0,
+          "budget": 842353.8872599732,
+          "C_stress_fraction": 0.17651825853358596,
+          "C_stress_debit": 1455500.1881923461,
+          "stop_plus_lag_reserve_before_costs": 1887511.8971453216,
+          "stop_plus_lag_reserve_with_variable_costs": 1912248.7181453216,
+          "reserve_rate_before_costs": 0.22891121261846722,
+          "observed_shock_confirmed": true,
+          "C_planned_reduction_shares": 17900,
+          "max_liquidation_sessions_at_current_adv": 1,
+          "new_buys_today": 0
+        }
+      ],
+      "prior_reserve_excess_count": 62,
+      "first_prior_reserve_excess": {
+        "scenario_id": "random-20260817-03-027",
+        "date": "2025-05-12",
+        "assets": 2239434.4064382506,
+        "lifetime_peak": 2239434.4064382506,
+        "drawdown": 0.0,
+        "cash": 3967.4064382503857,
+        "gross": 2235467.0,
+        "budget": 402978.19315888523,
+        "C_stress_fraction": 0.11940000000000006,
+        "C_stress_debit": 266914.7598000001,
+        "stop_plus_lag_reserve_before_costs": 397642.33369832695,
+        "stop_plus_lag_reserve_with_variable_costs": 404348.73469832697,
+        "reserve_rate_before_costs": 0.17787886544436887,
+        "observed_shock_confirmed": false,
+        "C_planned_reduction_shares": 0,
+        "max_liquidation_sessions_at_current_adv": 1,
+        "new_buys_today": 0
+      },
+      "pending_before_count": 0,
+      "actual_next_open_risk_fill_date": "2025-09-03",
+      "actual_next_open_risk_fills": [
+        {
+          "sleeve": "fast",
+          "symbol": "300394",
+          "strategy": "turtle_breakout",
+          "requested_shares": 900,
+          "filled_shares": 900,
+          "open_signal_price": 141.64,
+          "prior_adv_capacity_and_mean": [
+            77400,
+            46472795.0
+          ]
+        },
+        {
+          "sleeve": "fast",
+          "symbol": "300394",
+          "strategy": "atr_channel",
+          "requested_shares": 1300,
+          "filled_shares": 1300,
+          "open_signal_price": 141.64,
+          "prior_adv_capacity_and_mean": [
+            76500,
+            46472795.0
+          ]
+        },
+        {
+          "sleeve": "fast",
+          "symbol": "300502",
+          "strategy": "turtle_breakout",
+          "requested_shares": 1900,
+          "filled_shares": 1900,
+          "open_signal_price": 252.86,
+          "prior_adv_capacity_and_mean": [
+            86000,
+            51630750.0
+          ]
+        },
+        {
+          "sleeve": "fast",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "requested_shares": 500,
+          "filled_shares": 500,
+          "open_signal_price": 252.86,
+          "prior_adv_capacity_and_mean": [
+            84100,
+            51630750.0
+          ]
+        },
+        {
+          "sleeve": "fast",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "requested_shares": 100,
+          "filled_shares": 100,
+          "open_signal_price": 40.86,
+          "prior_adv_capacity_and_mean": [
+            70000,
+            42040760.0
+          ]
+        },
+        {
+          "sleeve": "base",
+          "symbol": "300394",
+          "strategy": "turtle_breakout",
+          "requested_shares": 1100,
+          "filled_shares": 1100,
+          "open_signal_price": 141.64,
+          "prior_adv_capacity_and_mean": [
+            77400,
+            46472795.0
+          ]
+        },
+        {
+          "sleeve": "base",
+          "symbol": "300394",
+          "strategy": "atr_channel",
+          "requested_shares": 1700,
+          "filled_shares": 1700,
+          "open_signal_price": 141.64,
+          "prior_adv_capacity_and_mean": [
+            76300,
+            46472795.0
+          ]
+        },
+        {
+          "sleeve": "base",
+          "symbol": "300502",
+          "strategy": "turtle_breakout",
+          "requested_shares": 2500,
+          "filled_shares": 2500,
+          "open_signal_price": 252.86,
+          "prior_adv_capacity_and_mean": [
+            86000,
+            51630750.0
+          ]
+        },
+        {
+          "sleeve": "base",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "requested_shares": 800,
+          "filled_shares": 800,
+          "open_signal_price": 252.86,
+          "prior_adv_capacity_and_mean": [
+            83500,
+            51630750.0
+          ]
+        },
+        {
+          "sleeve": "base",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "requested_shares": 100,
+          "filled_shares": 100,
+          "open_signal_price": 40.86,
+          "prior_adv_capacity_and_mean": [
+            70000,
+            42040760.0
+          ]
+        },
+        {
+          "sleeve": "slow",
+          "symbol": "300502",
+          "strategy": "turtle_breakout",
+          "requested_shares": 2700,
+          "filled_shares": 2700,
+          "open_signal_price": 252.86,
+          "prior_adv_capacity_and_mean": [
+            86000,
+            51630750.0
+          ]
+        },
+        {
+          "sleeve": "slow",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "requested_shares": 1000,
+          "filled_shares": 1000,
+          "open_signal_price": 252.86,
+          "prior_adv_capacity_and_mean": [
+            83300,
+            51630750.0
+          ]
+        },
+        {
+          "sleeve": "slow",
+          "symbol": "300394",
+          "strategy": "turtle_breakout",
+          "requested_shares": 1500,
+          "filled_shares": 1500,
+          "open_signal_price": 141.64,
+          "prior_adv_capacity_and_mean": [
+            77400,
+            46472795.0
+          ]
+        },
+        {
+          "sleeve": "slow",
+          "symbol": "300394",
+          "strategy": "atr_channel",
+          "requested_shares": 1800,
+          "filled_shares": 1800,
+          "open_signal_price": 141.64,
+          "prior_adv_capacity_and_mean": [
+            75900,
+            46472795.0
+          ]
+        }
+      ],
+      "actual_next_open_risk_shares": 17900
+    }
+  },
+  "conclusion": "The tight-native-stop premise is false. Primary01 stop distance is materially wider than either dominant known-random holding, so the proposed estimator demands greater primary01 relief than C. All witness books were settled and fit one session of close-known ADV capacity; no settlement or liquidity-horizon distinction rescues this hypothesis. Do not implement or scan neighboring stop/tail coefficients from these witnesses.",
+  "limitations": [
+    "This is provenance on two continuous exact-C baselines, not a new candidate or full958 acceptance.",
+    "Exact terminal wealth and reported metric anchors match; no independent original-byte full-path equality claim.",
+    "Reserve figures include native stop distance plus one modeled lag bridge; variable execution costs are shown separately, and no stop fill is guaranteed.",
+    "Future open prices/tradability are absent from close observations; realized next-open facts are separate retrospective evidence.",
+    "Static independent observer review found no blocking mutation/causality defect; no independent replay was run."
+  ]
+}

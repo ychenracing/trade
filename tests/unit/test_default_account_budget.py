@@ -14,11 +14,11 @@ from tests.unit.test_account_truth_boundary import (
 )
 
 
-def test_public_engine_and_formal_defaults_enable_ab5():
+def test_public_engine_budget_and_native_formal_defaults():
     assert default_engine_config().get("account_risk_budget_enabled") is True
     assert BacktestEngine().cfg["account_risk_budget_enabled"] is True
     args = stress.build_argument_parser().parse_args(["--source-revision", "a" * 40])
-    assert args.candidate_id == "C6-Base+AB5"
+    assert args.candidate_id == "native-default"
 
 
 def test_historical_diagnostic_identity_explicitly_disables_budget():

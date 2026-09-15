@@ -1,0 +1,207 @@
+{
+  "kind": "production_primary_acceptance_contract",
+  "authority": {
+    "date": "2026-09-15",
+    "user_instruction": "按照你说的直接实施吧",
+    "approved_proposal": "Prioritize production pool; explicitly bound subset degradation; retain original contract outcomes; compare retained C and the existing state-sparse candidate; modify causal holding/risk mechanisms only when needed; verify one source before normal PR101 merge.",
+    "scope": "ychenracing/trade original PR101 only; no live trading, other repositories, automations or protection bypass"
+  },
+  "status": "FROZEN_BEFORE_NEW_COMPARISON_RUNS",
+  "original_contract": {
+    "path": "artifacts/diagnostics/no_waiver_joint_freeze.json",
+    "sha256": "3cfe2fdd58b8f833515f38ab1313b0d2f80f7272b6c84fb70753dc97e7bf7184",
+    "status": "NOT_MET",
+    "immutable": true
+  },
+  "comparators": {
+    "original": {
+      "path": "artifacts/validation/candidates/stress-86fd22448b9aad9d5e6194c0c065c40d56d7bddd-rejected.json",
+      "source_revision": "86fd22448b9aad9d5e6194c0c065c40d56d7bddd",
+      "source_fingerprint": "5e94ba6a8be97c10ae94e8363b22477a22a2318cf030d529c9886248303098aa",
+      "git_blob": "ed4fef958de43abad9c21ab8fac8e985849f5363",
+      "bytes_sha256": "ffe023ae48de50225870c220d37208d1d1ee6c26ba6905a470093562153decbe",
+      "canonical_payload_sha256": "a08fb77de1f840bbb0d4adecb907f559ecead7dbea3c654761042465ff9bd5f7",
+      "run_signature": "2e226318fb7152ab98b5d122ebe6e2d506839b4bac321526597be33ea6e502b4",
+      "scenario_count": 958,
+      "acceptance_status": "rejected",
+      "canonical": false,
+      "role": "Original wealth denominator and original-return/add-one protections. The historical qualification reference uses these same file bytes; this equality was verified, not assumed."
+    },
+    "incumbent": {
+      "path": "artifacts/validation/universe_stress.json",
+      "source_revision": "56e5743ff8999540f07270ca0ddd0b5c664d8033",
+      "source_fingerprint": "89b19838b35f4070dfc0d2c2fa9844344c275941dc64228c5127dd66352d0d08",
+      "git_blob": "4692e4a0e39b3abb52c0fe350290333663b574e2",
+      "bytes_sha256": "f7111b99f0516149a44491658ba3b04ed08d71b9a11a21d0b41f42a1bf3771c8",
+      "canonical_payload_sha256": "ba9f63ab834c49ba00ae9c724f3ab37beec38f9f545205f94e5651e8a43debdb",
+      "run_signature": "3e4cb13685e7ff50abb27f6d2d7687cb4e1ca0ebece9c9383d174671cc870b68",
+      "scenario_count": 958,
+      "acceptance_status": "accepted",
+      "canonical": true,
+      "role": "Separate incumbent promotion protections; accepted with historical exceptions, not a replacement original denominator."
+    },
+    "B1": "Scientific correctness control only; not an acceptance denominator"
+  },
+  "formal": {
+    "engine": "ProductionReplayEngine",
+    "deployment_policy": "production_daily_replay",
+    "start_date": "2025-04-01",
+    "end_date": "2026-07-20",
+    "initial_capital": 2000000.0,
+    "indicator_state": "warm",
+    "scenario_count": 958,
+    "family_counts": {
+      "prefix": 17,
+      "leave_one_out": 17,
+      "add_one": 24,
+      "random_subset": 750,
+      "permutation": 150
+    },
+    "seeds": [
+      20260807,
+      20260817,
+      20260827
+    ],
+    "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "data_file_count": 45,
+    "calendar_bytes_sha256": "9177f84dd29811a0f4a56c922b4482fc41b5e999c654bacb6862515bdfe9e34e",
+    "metric_source_sha256": "e34cfba222a52c655d0431c10d960a0c67538541491b949cec0d04fa4a04f287",
+    "initial_config_compact_json_sha256": "1ad634265bec392c34340a8d3b9b2f168c013249e7d6e966e172abcb61edfcbb",
+    "initial_policy_compact_json_sha256": "f59bc00631a411df141985c167f5384805321dacaf1477fdbd04235c91115256",
+    "costs": {
+      "slippage": 0.001,
+      "commission_rate": 0.00025,
+      "stamp_duty": 0.0005,
+      "min_commission": 5.0
+    },
+    "max_order_adv_ratio": 0.005,
+    "trade_count_semantics": "trade_records",
+    "turnover_gate_field": "date_symbol_side_count",
+    "guards": [
+      "_absolute_hard_gates",
+      "_retained_robustness_hard_gates",
+      "_initial_baseline_gates_against_original",
+      "_promotion_gates_against_incumbent"
+    ],
+    "limits": {
+      "mdd": 0.18,
+      "random_bucket_p90": 160,
+      "all_bucket_max": 200,
+      "prefix05_original_wealth_ratio": 0.99,
+      "other_prefix_original_wealth_ratio": 0.95,
+      "adjacent_wealth_change": -0.3,
+      "prefix09_10_strict_lower_bound": -0.1,
+      "original_worst_return_degradation": 0.02,
+      "original_add_one_degradation": 0.03
+    },
+    "machine_tolerances": {
+      "mdd": 1e-15,
+      "wealth_and_adjacent": 1e-12,
+      "prefix09_10": "strict; no tolerance"
+    },
+    "waivers_permitted": false,
+    "execution_semantics": "Existing close-known signals, next executable open, original board limits/T+1/ADV/fee/lot/account-state rules; planned sells never count as fills.",
+    "guard_semantics": "The guards named in this inherited formal block are reported in full; changed_gates/new_wealth_gates/retained_gates above define the effective production-primary acceptance."
+  },
+  "changed_gates": {
+    "original_reference_prefix_wealth": "Report all 17 original ratios and failures as diagnostics; no original-reference prefix wealth gate in new acceptance.",
+    "incumbent_fixed_prefix_wealth": "Replace every-prefix >=0.99 by production prefix-17 >=0.99 plus uniformly paired family wealth gates.",
+    "adjacent_prefix_wealth": "Report all 16 actual ratios, including strict 09->10 original failure; no adjacent-ratio gate in new acceptance."
+  },
+  "new_wealth_gates": {
+    "production_scenario_id": "prefix-17",
+    "production_incumbent_wealth_ratio_min": 0.99,
+    "families": [
+      "prefix",
+      "leave_one_out",
+      "add_one",
+      "random_subset",
+      "permutation"
+    ],
+    "each_family_paired_wealth_ratio_min": 0.7,
+    "each_family_paired_wealth_ratio_p10_min": 0.9,
+    "each_family_paired_wealth_ratio_median_min": 1.0,
+    "formula": "(1 + candidate.total_return)/(1 + pinned_incumbent.total_return), paired by exact scenario ID, type and ordered symbols",
+    "quantiles": "Existing stress_metrics._quantile linear interpolation, evaluated separately within each of the five families; no pooling or optional family.",
+    "tolerance": 1e-12,
+    "rationale": "Production economics have priority. The median scenario in every family must retain incumbent wealth; lower-decile deterioration is bounded at 10%, with a 30% absolute paired terminal-wealth loss ceiling. These are explicit policy choices, not estimates of future safety or scientifically optimal constants.",
+    "lost_protection": "No guarantee of retaining 99%/95% of the original reference per prefix or 99% of the incumbent per prefix. Up to 30% paired terminal-wealth loss is allowed in an individual stress case. Adding a symbol may reduce wealth by more than the old adjacent limits; all such cliffs must remain visible."
+  },
+  "retained_gates": [
+    "all 958 max drawdown <=18% with existing machine tolerance",
+    "random bucket P90 <=160 and all bucket max <=200",
+    "original-reference worst total return and worst add-one deterioration bounds",
+    "all existing incumbent promotion checks other than fixed_prefix_wealth_at_least_99pct",
+    "exact permutation invariance, real account ownership/cash/fees/ADV/lot/T+1/limits and persistent risk history",
+    "locked environment, source/data/config binding, complete formal scenario coverage, qualification and real repository protections"
+  ],
+  "selection": {
+    "candidates": [
+      {
+        "name": "retained-C",
+        "source_revision": "af2389b883949a55ded6e8a428f3e8e2353e3c27"
+      },
+      {
+        "name": "state-sparse",
+        "source_revision": "0bedf24808aa81faca03a7e23cd6a9bfa9d67a6f"
+      }
+    ],
+    "historical_visibility": "Existing diagnostic outcomes have already been viewed. This is a disclosed acceptance redesign and reuse of failed original-contract candidates, not unseen validation or a claim of original success.",
+    "reuse": "Recover hashes/source identities. Reuse existing compatible rows. Fill missing prefixes first; then LOO/add-one and a bounded preregistered random risk screen. Full958 only for a stable candidate without known necessary failures.",
+    "ranking": "Among candidates surviving necessary gates, prefer higher production prefix-17 wealth, then lower drawdown, then fewer date/symbol/side buckets. New core changes require event-level cause and protected paths."
+  },
+  "external_diagnostics": {
+    "declared_before_local_candidate_replays": true,
+    "first_remote_record": "After initial A/B diagnosis; before any external evaluation or final candidate selection",
+    "status": "not_run",
+    "windows": [
+      [
+        "2024-07-01",
+        "2024-12-31"
+      ],
+      [
+        "2025-01-02",
+        "2025-03-31"
+      ]
+    ],
+    "pools": [
+      "All 17 ordered production symbols at base_main_revision",
+      "Same pool minus 300308",
+      "Same pool minus 300502"
+    ],
+    "conditions": {
+      "normal": "unchanged",
+      "adverse": {
+        "slippage_multiplier": 2,
+        "commission_rate_multiplier": 2,
+        "max_order_adv_ratio_multiplier": 0.5
+      }
+    },
+    "case_count": 12,
+    "paired_same_data_and_execution": true,
+    "diagnostic_rules": {
+      "wealth_ratio_min": 0.99,
+      "mdd_degradation_max": 0.005,
+      "bucket_ratio_max": 1.03,
+      "bucket_exception_requires_wealth_ratio": 1.05
+    },
+    "new_user_hard_gates": false,
+    "completely_unseen": false,
+    "limitations": [
+      "2024 data and related pools have been observed historically; these are outside the formal window, not guaranteed unseen.",
+      "No external results used for this batch selection. Further tuning after exposure must disclose holdout reuse.",
+      "Formal 958 and new seeds on the same series do not establish market generalization.",
+      "No future maximum-drawdown guarantee."
+    ]
+  },
+  "implementation": {
+    "gate_location": "quantfusion/application/native_joint.py",
+    "consumers": [
+      "quantfusion/application/stress.py",
+      "quantfusion/application/stress_artifacts.py"
+    ],
+    "preserve_legacy": "Keep original gate implementations and outputs intact. Native publication must recompute the new contract and retain separate original-contract results; no waiver or forged pass on legacy checks. Update documentation/tests and semantic goldens only after independent result verification."
+  },
+  "no_further_threshold_adjustment": "Do not tune this contract against the new results. Failures call for source improvements, a separately justified direction, or a truthful blocker, not automatic relaxation."
+}

@@ -1,0 +1,14 @@
+{
+  "local_path": "/workspace/scratch/bf273963828a/TRADE_PR101_RECOVERY_RESERVE_ORIGINALS_20260915.tar.gz",
+  "bytes": 1480953,
+  "local_sha256": "66fc11b1c87c7871974b2e45530eaaf42f4a6e1b9e5e1ccf737fd23e97bf4264",
+  "members": 45,
+  "raw_replay_members": 12,
+  "local_member_verification": "ALL_MATCH",
+  "remote_file_id": "1rQM9doOSOT9aij89hyL9vQq7gNl52uuO",
+  "remote_url": "https://drive.google.com/file/d/1rQM9doOSOT9aij89hyL9vQq7gNl52uuO/view",
+  "upload_status": "SUCCESS",
+  "provider_size_verified": true,
+  "content_readback_verified": false,
+  "transfer": "authorized host file reference; no inline bytes/base64"
+}

@@ -1,0 +1,44 @@
+{
+  "kind": "staged_systemic_shock_relief_source_preservation",
+  "status": "IMPLEMENTED_ECONOMICS_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "observed_parent": "d39f143a114f711e886aa8c1f1bbe206d402a20e",
+  "preregistration_comment": 5677455229,
+  "base": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773"
+  },
+  "candidate": {
+    "commit": "cd312cb0067ca5e8db36ce4d6aaeb25f4f70e500",
+    "tree": "4ba17d10eed61f1dc01295f210baa2fa94a7547a",
+    "source_fingerprint": "f3a61f377f136b0f83074b4ac79513f63c4125ec21014e0256e18631be19c3e1",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {}
+  },
+  "mechanism": "At the first newly confirmed systemic shock, retain the existing ordinary two-session stress envelope and still plan nonzero board-lot relief. Only when the same existing severe trigger persists on a later close during the live shock episode, and at least one first-stage shock reduction has actually filled, escalate to the existing severe systemic stress envelope and plan only the additional relief from current books. Recovery schedules no second-stage sale. No new threshold, window, stress fraction, score, ticker branch, synthetic restore or risk-history reset.",
+  "fail_closed_execution_boundary": "shock_persisted requires historical shock_reduced_book_ids, so queued but unfilled first-stage sells do not trigger escalation or create credit. Once fills exist, severe planning uses the actual remaining live shares; the deterministic test shows3600 first-stage +3000 incremental severe shares equals the prior6600 severe total on the witness fixture.",
+  "verification": {
+    "red": "Exact C failed the preregistered test because the first confirmed shock immediately used0.203 systemic stress rather than the existing ordinary0.1194 envelope.",
+    "green": "80 affected account/shock/risk tests passed after implementation; the legacy no-repeat test remains valid when no first-stage fill identity exists. compileall and git diff --check passed.",
+    "runtime": "Python3.13.5 local diagnostic; not locked final qualification."
+  },
+  "production_patch": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/staged-systemic-shock-production.patch",
+    "sha256": "083c6d8bf613d1a88d4250784bdc0b5d781c8fafb6c334159fe2e575c46248fc"
+  },
+  "tests_patch": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/staged-systemic-shock-tests.patch",
+    "sha256": "a698889d1ff6569a294d3c76149aa152c1f9ee00b8a9f190e2d422389c5b646b"
+  },
+  "incremental_bundle": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/staged-systemic-shock-source.bundle.b64",
+    "prerequisite": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "bytes": 2043,
+    "sha256": "486857ff329068a45f1b30fada8e1d82aca9ee405911efa8bfcfc9f9fafee63b",
+    "encoding": "base64"
+  },
+  "predeclared_paths": ["prefix-01", "prefix-03", "prefix-05", "prefix-13", "prefix-17", "prefix-06", "prefix-07", "prefix-08", "random-20260817-03-027"],
+  "advance_condition": "prefix01 materially approaches5.993502267140751; prefix03 beats retained C7.018521535589125 and rejected seed-anchor7.457071362145252; prefix05/13/17 retain floors;06->07 and07->08>=0.70; known random DD<=18% and buckets<=160. Persistent severe stress must remain fully funded. No neighboring staging delay/fraction scan.",
+  "economics": "UNRUN; exact source transport preserved before the bounded continuous replay batch."
+}

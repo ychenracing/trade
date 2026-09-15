@@ -1,0 +1,234 @@
+{
+  "status": "REJECTED_JOINT_EARLY",
+  "canonical": false,
+  "default_promoted": false,
+  "base_source": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "supersedes": "093fdf283acdecdfc44f3b3018aaa9bfdc72c583",
+  "source_revision": "1e51ec4bd0069349dea46f0707df95acd3aaa240",
+  "source_fingerprint": "c231c69a20d3d8480644a70bde78556f4b05be345cd51eb85ef203090d10b479",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "cfg_overrides": {},
+  "mechanism": "Derive the activation set from positive native capacities after existing slots, aggregate exposure and real cash/fee constraints, before lifting any symbol ceiling. Only that native fundable set can receive the simultaneous endpoint. No native score/admission contract changed.",
+  "tests": {
+    "red": "1 expected failure, 5 passed",
+    "green": "44 passed",
+    "real_preparation_red": "5900 actual filled versus 8000 required"
+  },
+  "predeclared_economics": [
+    "prefix-01",
+    "prefix-03",
+    "prefix-05",
+    "random-20260817-03-027"
+  ],
+  "decision_rule": "Original four-path rule in diversification-aware-buy-funding.json unchanged. No 958 or next protected batch when rejected.",
+  "qualification_note": "Native score order still determines admission when slots bind; funding order independence is conditional on the admitted set, not an unconditional admission invariance claim.",
+  "files": {
+    "activation-green.txt": {
+      "bytes": 99,
+      "sha256": "c70d45e857bb09b0d0a0104d4d17025b5a411f8a1143d328caa3c63cc85a5814"
+    },
+    "activation-red.txt": {
+      "bytes": 2234,
+      "sha256": "69ab0d926938964b2ca907db728d26bc8b5a1f1c0430893439415aa0522057ba"
+    },
+    "tradable-source.patch": {
+      "bytes": 30574,
+      "sha256": "3f54e20b24e898f514429a03215aa37c8bd808b49d74bba21919b6298ad3bf13"
+    },
+    "add-stop-observer.txt": {
+      "bytes": 6650,
+      "sha256": "ec25b738d3f17492de646fee7f87e977492ad24f47329b2b554a0c712271cb76"
+    },
+    "tradable-replay.txt": {
+      "bytes": 2539,
+      "sha256": "84ff7718d116b6ef8b9385bd0a6804124049d8348ed42bf0b06abb82e3682b3f"
+    },
+    "tradable-green.txt": {
+      "bytes": 99,
+      "sha256": "0cf350a2c4422c42c503a77c4ca0ad8dec3ef7f6a8a9db9dd57244e92bf0247b"
+    },
+    "tradable-source.bundle": {
+      "bytes": 12638,
+      "sha256": "5ac8548f5b41c3f474c4ca7b5ee7c4e7baa9b5bce9cee3f559eef76db4375f18"
+    },
+    "activation-source.bundle": {
+      "bytes": 11714,
+      "sha256": "4f2c1572ce09e4521963ace2ad2c6bb70018993e05cdfa54fc8e100510c24e3a"
+    },
+    "tradable-red.txt": {
+      "bytes": 3130,
+      "sha256": "a116a7634cac1e8b34a1504e199b612fb61b080d6af00f74053bbe2c21f18993"
+    },
+    "observe_add_stops.py": {
+      "bytes": 2580,
+      "sha256": "b2c06839abbbbfd610b7d032e56620cde3a355013d80aa5c7c8b643ba14d4b37"
+    },
+    "diversification-replay.txt": {
+      "bytes": 2535,
+      "sha256": "a7ce14638104d79ca1eb40885eb7ec964eee076fdd7fef8bdf230d82c92913e4"
+    },
+    "causal-review.json": {
+      "bytes": 3323,
+      "sha256": "2049a8d816ccd9949c2f7c06feceb1fe0f1a445b837b15b5c245faefc639ecbc"
+    },
+    "activation-source.patch": {
+      "bytes": 29338,
+      "sha256": "669ffe36c240989ec81210c6f2809efede5f97d64f342bad24266d3334535636"
+    },
+    "add-stop-observations.json": {
+      "bytes": 98838,
+      "sha256": "25f81ed4f91bc739a2eaf6ef1c8a6d089c26355fa43bbc0b48cea7aa5b92925a"
+    },
+    "original-source.tar.gz": {
+      "bytes": 15831,
+      "sha256": "099a3175f78e11f3eee9922c20ca94a51007079642d692444497d89cca049b06"
+    },
+    "tradable-results.tar.gz": {
+      "bytes": 352768,
+      "sha256": "8018f569993a7ca68999bf0b7a193c9d9a58a7f2fb96701461ce48ed05f93607"
+    },
+    "diversification-results.tar.gz": {
+      "bytes": 352296,
+      "sha256": "8f9e8ed285a4217979a77d369af6aab6176732913878cf55f024911b62330092"
+    }
+  },
+  "superseded_activation_source": {
+    "source_revision": "44a0cd52b093e84f0fb07d0b493a68e291f72258",
+    "source_fingerprint": "f11e83def9e6ebb8d5427133adf9f7b4001e6eb5d843f110ee2e99bfc8331cc4",
+    "reason": "symbol_names also includes signal-only reference names; these four runs are incomplete wiring evidence"
+  },
+  "economic_rows": [
+    {
+      "scenario_id": "prefix-01",
+      "scenario_type": "prefix",
+      "symbols": [
+        "300308"
+      ],
+      "symbol_count": 1,
+      "total_return": 6.646319064391125,
+      "max_drawdown": -0.13383996280132063,
+      "sharpe": 3.6981572987077507,
+      "calmar": 30.367380178386757,
+      "total_trades": 36,
+      "sleeve_fill_count": 36,
+      "date_symbol_side_count": 7,
+      "max_concurrent_symbols": 1,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 9,
+        "re_entry": 3,
+        "risk_reduction": 15,
+        "strategy_exit": 0,
+        "sector_liquidation": 9,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      }
+    },
+    {
+      "scenario_id": "prefix-03",
+      "scenario_type": "prefix",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "symbol_count": 3,
+      "total_return": 6.2637667669555,
+      "max_drawdown": -0.15344350753762903,
+      "sharpe": 3.58666086403845,
+      "calmar": 25.16408632543366,
+      "total_trades": 353,
+      "sleeve_fill_count": 353,
+      "date_symbol_side_count": 96,
+      "max_concurrent_symbols": 3,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 74,
+        "re_entry": 105,
+        "risk_reduction": 87,
+        "strategy_exit": 67,
+        "sector_liquidation": 20,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      }
+    },
+    {
+      "scenario_id": "prefix-05",
+      "scenario_type": "prefix",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "603986"
+      ],
+      "symbol_count": 5,
+      "total_return": 12.210221688183251,
+      "max_drawdown": -0.1493108572210189,
+      "sharpe": 3.9889914122288133,
+      "calmar": 45.7590197317784,
+      "total_trades": 277,
+      "sleeve_fill_count": 277,
+      "date_symbol_side_count": 93,
+      "max_concurrent_symbols": 5,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 52,
+        "re_entry": 95,
+        "risk_reduction": 64,
+        "strategy_exit": 42,
+        "sector_liquidation": 24,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      }
+    },
+    {
+      "scenario_id": "random-20260817-03-027",
+      "scenario_type": "random_subset",
+      "seed": 20260817,
+      "sample_size": 3,
+      "symbols": [
+        "300394",
+        "300408",
+        "300502"
+      ],
+      "symbol_count": 3,
+      "total_return": 6.518735762123502,
+      "max_drawdown": -0.16023612140115415,
+      "sharpe": 3.5015362514323285,
+      "calmar": 24.94360653347627,
+      "total_trades": 342,
+      "sleeve_fill_count": 342,
+      "date_symbol_side_count": 94,
+      "max_concurrent_symbols": 3,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 73,
+        "re_entry": 110,
+        "risk_reduction": 100,
+        "strategy_exit": 41,
+        "sector_liquidation": 18,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      }
+    }
+  ],
+  "gap": {
+    "prefix03_wealth": 7.2637667669555,
+    "prefix03_floor": 11.014195207080444,
+    "prefix03_missing_wealth": 3.750428440124944,
+    "prefix03_vs_prior_simultaneous": -1.1702931911383736,
+    "prefix05_wealth": 13.210221688183251,
+    "prefix05_floor": 12.580154771921677
+  },
+  "next": "Do not expand this failed candidate or scan activation/cap parameters. Retain tested component gains, investigate actual holding/stop loss with causal account evidence before another core change.",
+  "followup": "causal-review.json"
+}

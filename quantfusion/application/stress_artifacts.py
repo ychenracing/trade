@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
-from quantfusion.application import stress_metrics, stress_scenarios
+from quantfusion.application import native_joint, production_pool, stress_metrics, stress_scenarios
 from quantfusion.application.c6_contract import candidate_spec
 from quantfusion.config.paths import PROJECT_ROOT, VALIDATION_ARTIFACT_DIR
 
@@ -88,9 +88,10 @@ def _build_provenance(
     regime_data_dir: Path,
     *,
     source_revision: str,
-    candidate_id: str = "C6-Base+AB5",
+    candidate_id: str = native_joint.CANDIDATE_ID,
 ) -> dict[str, Any]:
-    candidate_spec(candidate_id)
+    if candidate_id != native_joint.CANDIDATE_ID:
+        candidate_spec(candidate_id)
     if len(source_revision) != 40 or any(
         character not in "0123456789abcdef" for character in source_revision
     ):
@@ -125,7 +126,7 @@ def _run_signature(
     regime_data_dir: Path,
     *,
     source_revision: str,
-    candidate_id: str = "C6-Base+AB5",
+    candidate_id: str = native_joint.CANDIDATE_ID,
 ) -> str:
     return str(
         _build_provenance(
@@ -290,10 +291,20 @@ def _validate_publish_candidate(
         scenario_id: completed[scenario_id] for scenario_id in expected_prefix_ids
     }:
         raise ValueError("Stress candidate prefix and universe results differ")
-    expected_absolute_gates = stress_metrics._absolute_hard_gates(results)
+    revised = None
+    if provenance.get("candidate_id") == native_joint.CANDIDATE_ID:
+        if initial_baseline_reference is None or incumbent is None:
+            raise ValueError("Production-pool comparison requires both references")
+        revised = production_pool.assess(results, initial_baseline_reference, incumbent)
+        for key in ("economic_contract", "original_contract_assessment", "original_contract_diagnostics"):
+            if universe_artifact.get(key) != revised[key]:
+                raise ValueError(f"Stress candidate changed: {key}")
+    expected_absolute_gates = (revised["absolute_hard_gates"] if revised is not None
+                               else stress_metrics._absolute_hard_gates(results))
     if universe_artifact.get("absolute_hard_gates") != expected_absolute_gates:
         raise ValueError("Stress candidate absolute hard gates changed")
-    expected_retained_gates = stress_metrics._retained_robustness_hard_gates(results)
+    expected_retained_gates = (revised["retained_robustness_hard_gates"] if revised is not None
+                               else stress_metrics._retained_robustness_hard_gates(results))
     if (
         universe_artifact.get("retained_robustness_hard_gates")
         != expected_retained_gates
@@ -302,10 +313,11 @@ def _validate_publish_candidate(
     expected_diagnostics = stress_metrics._robustness_diagnostics(results)
     if universe_artifact.get("robustness_diagnostics") != expected_diagnostics:
         raise ValueError("Stress candidate robustness diagnostics changed")
-    expected_promotion_gates = stress_metrics._promotion_gates(results, incumbent)
+    expected_promotion_gates = (revised["promotion_gates"] if revised is not None
+                                else stress_metrics._promotion_gates(results, incumbent))
     if universe_artifact.get("promotion_gates") != expected_promotion_gates:
         raise ValueError("Stress candidate promotion gates changed")
-    expected_initial_gates = stress_metrics._initial_baseline_gates(
+    expected_initial_gates = revised["initial_baseline_gates"] if revised is not None else stress_metrics._initial_baseline_gates(
         results, initial_baseline_reference
     )
     if universe_artifact.get("initial_baseline_gates") != expected_initial_gates:
@@ -330,6 +342,26 @@ def _load_incumbent(path: Path) -> dict[str, Any] | None:
     stress_metrics._current_incumbent_by_id(payload)
     if payload.get("candidate_id") == "C6-Base+AB5" or "release_acceptance" in payload:
         _validate_ab5_incumbent(payload)
+    if (payload.get("candidate_id") == native_joint.CANDIDATE_ID
+            or "native_joint_acceptance" in payload or "economic_contract" in payload):
+        if (payload.get("candidate_id") != native_joint.CANDIDATE_ID
+                or "native_joint_acceptance" not in payload):
+            raise ValueError("Native incumbent requires its original acceptance receipt")
+        original = native_joint.load_original_reference()
+        incumbent = native_joint.load_incumbent_reference()
+        native_joint.validate_references(payload, original, incumbent)
+        scenarios = stress_scenarios._multi_seed_scenarios(
+            random_samples=50, permutation_samples=50, seeds=stress_scenarios.DEFAULT_SEEDS,
+        )
+        provenance = {field: payload.get(field) for field in (*PROVENANCE_FIELDS, "candidate_id")}
+        _validate_publish_candidate(
+            {**payload, "results": [row for row in payload["results"] if row["scenario_type"] == "prefix"]},
+            payload, scenarios=scenarios, provenance=provenance, incumbent=incumbent,
+            initial_baseline_reference=original,
+        )
+        expected = native_joint.receipt(payload, original, incumbent)
+        if payload["native_joint_acceptance"] != expected or expected["passed"] is not True:
+            raise ValueError("Native accepted artifact has an invalid receipt")
     return payload
 
 
@@ -450,6 +482,12 @@ def _rejection_reasons(
             for name, passed in promotion.get("checks", {}).items()
             if not passed and name != "permutation_invariant"
         )
+    if universe_artifact.get("candidate_id") == native_joint.CANDIDATE_ID and incumbent is not None:
+        reasons.extend(
+            {"gate_family": "initial_baseline_gates", "gate": str(name)}
+            for name, passed in universe_artifact["initial_baseline_gates"].get("checks", {}).items()
+            if not passed
+        )
     return reasons
 
 
@@ -475,13 +513,22 @@ def _publish_formal_artifacts(
         raise ValueError(
             "Formal publication requires the exact canonical scenario plan"
         )
-    if incumbent is not None and (
+    native = provenance.get("candidate_id") == native_joint.CANDIDATE_ID
+    if native:
+        if (ab5_release_acceptance or ab5_release_evidence is not None
+                or "release_acceptance" in prefix_artifact
+                or "release_acceptance" in universe_artifact):
+            raise ValueError("Native candidates cannot use historical release waivers")
+        if establish_initial_baseline:
+            raise ValueError("Native promotion is not initial baseline establishment")
+        native_joint.validate_references(provenance, initial_baseline_reference, incumbent)
+    if not native and incumbent is not None and (
         establish_initial_baseline or initial_baseline_reference is not None
     ):
         raise ValueError(
             "Cannot establish an initial baseline when a current-contract incumbent exists"
         )
-    if incumbent is None and (
+    if not native and incumbent is None and (
         establish_initial_baseline != (initial_baseline_reference is not None)
     ):
         raise ValueError(
@@ -509,6 +556,14 @@ def _publish_formal_artifacts(
         and universe_artifact["retained_robustness_hard_gates"]["passed"]
         and route_accepted
     )
+    if native:
+        # References were authenticated above; each gate was recomputed by the
+        # existing validator. Never replace these conjunctions with a release assessor.
+        assert initial_baseline_reference is not None and incumbent is not None
+        proof = native_joint.receipt(universe_artifact, initial_baseline_reference, incumbent)
+        accepted = accepted and proof["passed"]
+        prefix_artifact = {**prefix_artifact, "native_joint_acceptance": proof}
+        universe_artifact = {**universe_artifact, "native_joint_acceptance": proof}
     if ab5_release_acceptance:
         from quantfusion.application.c6_release_acceptance import (
             release_formal_assessment,

@@ -1,0 +1,48 @@
+{
+  "status": "NOT_MET",
+  "source_revision": "1e51ec4bd0069349dea46f0707df95acd3aaa240",
+  "comparison": [
+    {
+      "scenario": "prefix-01",
+      "original_reference_wealth": 6.308949754885001,
+      "correctness_B1_wealth": 6.347162383572625,
+      "current_candidate_wealth": 7.646319064391125,
+      "own_floor": 5.993502267140751,
+      "joint_necessary_floor": 5.993502267140751,
+      "remaining_wealth_gap": 0
+    },
+    {
+      "scenario": "prefix-03",
+      "original_reference_wealth": 11.593889691663627,
+      "correctness_B1_wealth": 10.388591682323378,
+      "current_candidate_wealth": 7.2637667669555,
+      "own_floor": 11.014195207080444,
+      "joint_necessary_floor": 11.014195207080444,
+      "remaining_wealth_gap": 3.750428440124944
+    },
+    {
+      "scenario": "prefix-05",
+      "original_reference_wealth": 12.707227042345128,
+      "correctness_B1_wealth": 12.940568804996504,
+      "current_candidate_wealth": 13.210221688183251,
+      "own_floor": 12.580154771921677,
+      "joint_necessary_floor": 12.580154771921677,
+      "remaining_wealth_gap": 0
+    }
+  ],
+  "comparability_limits": "B1 preserves original economics except three necessary book/execution corrections; it is seven-path diagnostic control, not full corrected reference. Frozen reference denominators are unchanged. B1/current differences cannot all be assigned to bookkeeping or this allocation component. Current source changed only research execution/config/budget alert separation relative to C; component combination is continuously rerun, not best-row splicing.",
+  "followup_probe": {
+    "question": "Does incrementally tightening every old share to the latest add stop explain enough of the remaining prefix03 loss?",
+    "observed_adds": 45,
+    "next_sell_reason_counts": {
+      "Donchian exit": 28,
+      "account_budget_trim": 10,
+      "ATR trailing stop": 7
+    },
+    "economic_trades_equity_identical": true,
+    "effect_evidence": "Seven add events next exit by ATR stop; remaining38 next exit by Donchian or account risk. Three 300308 cases on2025-12-10 tighten900 total old shares from505.386852 to574.567101; old-share stop-distance transfer is62262.224674. This is risk-distance currency, not realized missed profit.",
+    "decision": "Actual stop coupling confirmed, but no evidence yet supports a direct effect of the required7,500,856.88 currency units. Do not reopen the rejected postshock requalification family or deploy blended stops from this observation. Further route/compounding effects are unproved, not mathematically excluded."
+  },
+  "proposal_nav_check": "_collect_strategy_signals already passes current sleeve assets to BarContext; native strategy quantities are risk-budget based. Replacing sleeve NAV with total account NAV changes proposal competition but does not create shared cash. No isolated magnitude evidence supports this as the next candidate.",
+  "continuation": "This is not original-task completion. The four-path diversification family is closed without adjacent parameter scans; no958 expansion. A new direction needs an actual close-known alpha/holding discriminator large enough for prefix03 and paired protection05/13. No such next production mechanism has been verified by this continuation. Keep current candidate noncanonical and all failed originals."
+}

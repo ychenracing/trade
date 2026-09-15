@@ -1,0 +1,12 @@
+{
+  "path": "/workspace/scratch/f9bafb398fc2/TRADE_PR101_BOUNDED_RESEARCH_AND_REGRESSIONS.tar.gz",
+  "bytes": 2614621,
+  "sha256": "8a319e7482b8dee472c1129d6452410a75e6b56c95a88fa24dd4c56eb0f504f4",
+  "members": 54,
+  "local_archive_verify": "PASS",
+  "remote_file_id": "1l-S5_CaFLKh4IF38cNOpil5NNcFQtWMa",
+  "remote_url": "https://drive.google.com/file/d/1l-S5_CaFLKh4IF38cNOpil5NNcFQtWMa/view",
+  "upload": "SUCCESS_FILE_REFERENCE",
+  "remote_size": "CONFIRMED_2614621",
+  "remote_content_hash": "UNVERIFIED; provider metadata omits checksums. Previously attempted authorized readback returned403; not retried."
+}

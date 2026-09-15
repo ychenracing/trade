@@ -265,3 +265,14 @@ class DailyReportTests(unittest.TestCase):
         text = self.render(data)
         self.assertIn('模拟持有 300 股；这不是真实账户持仓。\n\n支持买入', text)
         self.assertIn('| 股票 | 代码 | 本次结论 |\n| --- | --- | --- |', text)
+
+
+def test_reports_disclose_deployment_scope_without_changing_decisions():
+    from quantfusion.application.daily_report import render_daily_report
+    for data in (simulation(), account()):
+        before = copy.deepcopy(data)
+        text = render_daily_report(data)
+        assert '17股科技主池' in text
+        assert '任意子池' in text
+        assert '18%' in text
+        assert data == before

@@ -1,0 +1,44 @@
+{
+  "kind": "state_sparse_systemic_shock_relief_source_preservation",
+  "status": "IMPLEMENTED_ECONOMICS_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "observed_parent": "086795d3537d0fa34ef9c75fcec544d703b46b91",
+  "preregistration_comment": 5677345023,
+  "base": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773"
+  },
+  "candidate": {
+    "commit": "0bedf24808aa81faca03a7e23cd6a9bfa9d67a6f",
+    "tree": "77d54c61c8d590ca4150ac0bded3068b26b6b874",
+    "source_fingerprint": "1f39c7ded9dfc9f26fa2fc7b4382d9fc2ee745b5b5f2eeb7e709f048c1a4730f",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {}
+  },
+  "mechanism": "Compute the unchanged confirmed-systemic-shock pro-rata board-lot reductions first. Within each symbol+strategy group across funded sleeves, preserve the exact group reduction total but concentrate it into the minimum number of live book identities, largest live book first with deterministic state-index tie and at most one partial residual. Immediate strategy-level gross/stress relief is unchanged; no strategy preference, relief reduction, synthetic restore, sell credit, HWM/loss/cycle/shock reset, new threshold, score, seed, window or fraction.",
+  "verification": {
+    "red": "Exact C trimmed all three equivalent ATR books and all three equivalent Turtle books by1100 each.",
+    "green": "New deterministic test passes with each strategy preserving the same3300-share relief in1900+1400 shares across two books; full account-budget file35 passed; affected account/shock/risk suite80 passed; compileall and diff-check passed.",
+    "runtime": "Python3.13.5 local diagnostic; not locked final qualification."
+  },
+  "production_patch": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/state-sparse-shock-production.patch",
+    "sha256": "3b6f340786043ede8c014159bc6470be5eb954f7b5f7c61fddcd593eeefd0a28"
+  },
+  "tests_patch": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/state-sparse-shock-tests.patch",
+    "sha256": "7d4b5c64bd0c9fc8ba89659cf88722590da6e40b16a6e6614d3b30efb00e9f4e"
+  },
+  "incremental_bundle": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/state-sparse-shock-source.bundle.b64",
+    "prerequisite": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "bytes": 2198,
+    "sha256": "8ac0799d3dc5e3c9e75db37dfd5abb690708ec5e1210af842dc191c4f7b52494",
+    "encoding": "base64"
+  },
+  "predeclared_paths": ["prefix-01", "prefix-03", "prefix-05", "prefix-13", "prefix-17", "prefix-06", "prefix-07", "prefix-08", "random-20260817-03-027"],
+  "secondary_if_supported": ["prefix-15"],
+  "advance_condition": "prefix01 materially improves toward5.993502267140751 with DD<=18%; prefix03 beats retained C7.018521535589125 and rejected seed-anchor7.457071362145252; prefix05/13/17 retain frozen necessary floors;06->07 and07->08>=0.70; known random DD<=18% and buckets<=160. Any aggregate group relief mismatch is immediate rejection. No nearby sparsity/order/fraction scan.",
+  "economics": "UNRUN; exact source transport is preserved before the bounded continuous replay batch."
+}

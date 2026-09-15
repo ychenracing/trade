@@ -1,0 +1,14 @@
+{
+  "kind": "small_repair_verification",
+  "tested_parent": "3cf078e08b6e6ccf9658ddfce7eea078a1f28607",
+  "tests": "40 passed in 2.41s",
+  "coverage": [
+    "architecture dependency boundaries",
+    "event transition selection",
+    "observed shock budgeting",
+    "generated-file hygiene"
+  ],
+  "economic_requalification": false,
+  "raw_binary_uploads": false,
+  "merge_status": "NOT_MET"
+}

@@ -1,0 +1,52 @@
+{
+  "kind": "postshock_native_requalification_result",
+  "status": "REJECTED_JOINT",
+  "canonical": false,
+  "default_promoted": false,
+  "preregistration": "artifacts/diagnostics/no_waiver/alpha-loss-postshock-native-requalification.json",
+  "source_preservation": "artifacts/diagnostics/no_waiver/postshock-native-requalification-source.json",
+  "source": {
+    "base": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "commit": "4e9adf8a22b111d791d54ce1604dde6b25906874",
+    "tree": "b9a82b035b3eaba053a648901733b82ad1a6767c",
+    "source_fingerprint": "f2f75f611acc02ee5c3e5d644da8492045986d3de7a12fe5d7fe8ee3d174e9f6",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {},
+    "runtime": "Python3.13.5 local diagnostic; not locked final qualification"
+  },
+  "engineering": {
+    "red": "Exact C produced shock_reduced_pyramid_buy_indexes=[0] after shock_episode_active=false.",
+    "green": "93 affected tests passed; compileall and diff check passed.",
+    "production_change": "Confirmed-shock-reduced Turtle pyramids are blocked only while the real shock episode is active; crowded-shock veto remains. No synthetic order, target restoration, HWM reset, risk-history reset or funding credit."
+  },
+  "rows": [
+    ["prefix-01", 4.009475006789126, -0.13959649113794634, 19, 70, "57beb9982da55b0427ef2a78100fa246035fcabbed9cd3f5e0f3850195575c62"],
+    ["prefix-03", 6.764534982105, -0.1665235849670392, 98, 324, "5e3c7e2ead7f4cc47c3b7b9bc19e79ab6fc6dfec57155a22fb79f0cbb7c124a1"],
+    ["prefix-05", 13.796735085329127, -0.15400039978585942, 90, 250, "8899a8a7162a86b36e32acbf69e944e4a113f6a89dad983ea81589f1c641e678"],
+    ["prefix-13", 13.954479489677876, -0.15145875483212992, 156, 430, "ebeca22c742e3ce073f330e583a5897dd51bfed70083a62f7978689f7edfd5d9"],
+    ["prefix-17", 11.803552251377, -0.14656306834704708, 119, 358, "1e5d5edfac5fa5972dda82df88e9458326311b06b6bae3a4cb7a9783a11b4200"],
+    ["prefix-06", 10.80584103216, -0.15249310693089987, 101, 283, "217cdfaa5638b23fb426697c8cf4e23b95ecaa47703484a9d3c54fca6b598c0c"],
+    ["prefix-07", 11.957128591508127, -0.14671023122266383, 100, 317, "86ee864056e34f08a5620fc410ffecf9aeae9ba82fa94478a7ba7346256bac19"],
+    ["prefix-08", 4.529526642549627, -0.1518878682989325, 86, 266, "4b412e78f9742986ca74a0e8e1e59c4cb40d1b608d0930c4701157bf544ead2b"],
+    ["random-20260817-03-027", 7.424038574367502, -0.1762441780851331, 91, 335, "1a44f950ce3b09b237078462f41189407a1b24a9bdb9e444eb30268e23a8a43d"]
+  ],
+  "columns": ["scenario_id", "wealth_including_principal", "signed_max_drawdown", "date_symbol_side_buckets", "trades", "raw_pickle_sha256"],
+  "decision": {
+    "prefix01_floor": 5.993502267140751,
+    "prefix01_actual": 4.009475006789126,
+    "prefix03_retained_c": 7.018521535589125,
+    "prefix03_rejected_seed_anchor": 7.457071362145252,
+    "prefix03_actual": 6.764534982105,
+    "known_random_dd": -0.1762441780851331,
+    "known_random_buckets": 91,
+    "conclusion": "REJECTED_JOINT. Both primary alpha witnesses worsen materially, so the preregistered advance condition fails before any secondary prefix15 or full958 expansion. No neighboring delay/fraction/price threshold scan."
+  },
+  "causal_failure": {
+    "prefix01_first_divergence": "The first new executed trade versus retained C is 2025-09-11: each sleeve buys 500 shares of 300308 Turtle at 401.19079 as a single-strategy pyramid after the shock episode clears.",
+    "prefix01_followup": "Those three Turtle books later sell 1300 shares each on 2025-10-15 at 343.656 on ATR trailing stops. Total trades rise from retained-C 36 to70; the candidate adds re-entry/risk-reduction churn rather than recovering the missing ATR holding alpha.",
+    "prefix01_candidate_minus_c_final_assets": -1838126.0995597488,
+    "interpretation": "The persistent veto is economically consequential, but simply removing it after the episode is the wrong repair: the newly admitted Turtle adds are late/high and stop out before the subsequent trend. The historical alpha gap is dominated by retained ATR exposure, not by these blocked Turtle pyramids."
+  },
+  "evidence_boundary": "All nine preregistered continuous paths completed under the same candidate source and frozen data. Raw pickle SHA256 values are recorded; binary raw bytes remain local in this execution environment and are not relabeled as remotely preserved. Metrics are diagnostic, not full17/full958/formal randomP90/locked qualification.",
+  "next": "Do not continue this post-shock pyramid requalification family. Preserve the stronger alpha attribution: prefix01 is a single-symbol holding/risk-deleveraging witness and prefix03 loses about 6.09m of net contribution from300308, roughly5.20m in ATR books. Review structural holding/allocation mechanisms that can preserve high-contribution live ATR exposure without restoring old quantity, resetting risk state, or adding another entry gate."
+}

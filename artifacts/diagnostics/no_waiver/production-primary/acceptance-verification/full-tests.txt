@@ -1,0 +1,166 @@
+........................................................................ [  6%]
+........................................................................ [ 12%]
+........................................................................ [ 18%]
+........................................................................ [ 24%]
+........................................................................ [ 30%]
+........................................................................ [ 36%]
+................................................................ [ 41%]
+..................................................................... [ 47%]
+..................................................................... [ 53%]
+.................................................. [ 57%]
+.....F...F.................................................. [ 62%]
+........................................................................ [ 68%]
+..................................................................... [ 74%]
+........................................................... [ 79%]
+.....FFFFFF...................................EEE................... [ 84%]
+........................................................................ [ 90%]
+..................................................... [ 95%]
+.......................................................          [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_exposes_pending_suppression_without_evaluating_strategy_twice[False] _
+tests/unit/test_pending_trace_observer.py:17: in observer_module
+    assert path.is_file(), 'read-only pending observer is missing'
+E   AssertionError: read-only pending observer is missing
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = PosixPath('/workspace/scratch/bf273963828a/trade-turnover/artifacts/diagnostics/no_waiver/pending_trace.py').is_file
+_ ERROR at setup of test_exposes_pending_suppression_without_evaluating_strategy_twice[True] _
+tests/unit/test_pending_trace_observer.py:17: in observer_module
+    assert path.is_file(), 'read-only pending observer is missing'
+E   AssertionError: read-only pending observer is missing
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = PosixPath('/workspace/scratch/bf273963828a/trade-turnover/artifacts/diagnostics/no_waiver/pending_trace.py').is_file
+______ ERROR at setup of test_restores_instrumented_methods_on_exception _______
+tests/unit/test_pending_trace_observer.py:17: in observer_module
+    assert path.is_file(), 'read-only pending observer is missing'
+E   AssertionError: read-only pending observer is missing
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = PosixPath('/workspace/scratch/bf273963828a/trade-turnover/artifacts/diagnostics/no_waiver/pending_trace.py').is_file
+=================================== FAILURES ===================================
+_ IntegrationTests.test_economic_sequences_match_frozen_fingerprints (universe='1_symbol') _
+tests/regression/test_quant_fusion.py:857: in test_economic_sequences_match_frozen_fingerprints
+    self.assertEqual(
+E   AssertionError: {'total_trades': 36, 'sell_trades': 24, 'sleeve_fill_count[699 chars]9db'} != {'total_trades': 46, 'sell_trades': 23, 'sleeve_fill_count[701 chars]9db'}
+E   Diff is 2014 characters long. Set self.maxDiff to None to see it.
+_ IntegrationTests.test_economic_sequences_match_frozen_fingerprints (universe='3_symbols') _
+tests/regression/test_quant_fusion.py:857: in test_economic_sequences_match_frozen_fingerprints
+    self.assertEqual(
+E   AssertionError: {'total_trades': 342, 'sell_trades': 179, 'sleeve_fill_cou[706 chars]9db'} != {'total_trades': 247, 'sell_trades': 110, 'sleeve_fill_cou[706 chars]9db'}
+E   Diff is 2078 characters long. Set self.maxDiff to None to see it.
+_ IntegrationTests.test_economic_sequences_match_frozen_fingerprints (universe='5_symbols') _
+tests/regression/test_quant_fusion.py:857: in test_economic_sequences_match_frozen_fingerprints
+    self.assertEqual(
+E   AssertionError: {'total_trades': 437, 'sell_trades': 250, 'sleeve_fill_cou[707 chars]9db'} != {'total_trades': 264, 'sell_trades': 117, 'sleeve_fill_cou[707 chars]9db'}
+E   Diff is 2078 characters long. Set self.maxDiff to None to see it.
+_ IntegrationTests.test_economic_sequences_match_frozen_fingerprints (universe='13_symbols') _
+tests/regression/test_quant_fusion.py:857: in test_economic_sequences_match_frozen_fingerprints
+    self.assertEqual(
+E   AssertionError: {'total_trades': 657, 'sell_trades': 415, 'sleeve_fill_cou[710 chars]9db'} != {'total_trades': 457, 'sell_trades': 180, 'sleeve_fill_cou[709 chars]9db'}
+E   Diff is 1987 characters long. Set self.maxDiff to None to see it.
+_ IntegrationTests.test_economic_sequences_match_frozen_fingerprints (universe='17_symbols') _
+tests/regression/test_quant_fusion.py:857: in test_economic_sequences_match_frozen_fingerprints
+    self.assertEqual(
+E   AssertionError: {'total_trades': 645, 'sell_trades': 404, 'sleeve_fill_cou[710 chars]9db'} != {'total_trades': 438, 'sell_trades': 183, 'sleeve_fill_cou[709 chars]9db'}
+E   Diff is 2006 characters long. Set self.maxDiff to None to see it.
+_______ AdaptiveEngineTests.test_frozen_bull_single_symbol_golden_metric _______
+tests/regression/test_regime_adaptive.py:209: in test_frozen_bull_single_symbol_golden_metric
+    self.assertAlmostEqual(result["total_return"], baseline["total_return"], places=12)
+E   AssertionError: 3.928538056569 != 4.243497434140125 within 12 places (0.31495937757112547 difference)
+----------------------------- Captured stdout call -----------------------------
+  REGIME [2025-11-17] CHOPPY entered — queue 2 partial sells (30% ratio)
+  REGIME [2025-11-17] CHOPPY entered — queue 2 partial sells (30% ratio)
+  REGIME [2025-11-17] CHOPPY entered — queue 2 partial sells (30% ratio)
+  WARNING [2026-06-26] sector breadth deteriorated repeatedly; generate T+1 liquidation signals
+  WARNING [2026-06-26] sector breadth deteriorated repeatedly; generate T+1 liquidation signals
+  WARNING [2026-06-26] sector breadth deteriorated repeatedly; generate T+1 liquidation signals
+__ AdaptiveEngineTests.test_weak_real_execution_matches_frozen_research_point __
+tests/regression/test_regime_adaptive.py:181: in test_weak_real_execution_matches_frozen_research_point
+    self.assertAlmostEqual(result["total_return"], baseline["total_return"], places=12)
+E   AssertionError: 0.04681879352062501 != 0.027204698062500032 within 12 places (0.01961409545812498 difference)
+----------------------------- Captured stdout call -----------------------------
+  WARNING [2024-08-05] sector breadth deteriorated repeatedly; generate T+1 liquidation signals
+  WARNING [2024-08-05] sector breadth deteriorated repeatedly; generate T+1 liquidation signals
+  WARNING [2024-08-05] sector breadth deteriorated repeatedly; generate T+1 liquidation signals
+  RECOVERED [2024-08-13] sector breadth recovered repeatedly; new entries are allowed from the next trading day
+  RECOVERED [2024-08-13] sector breadth recovered repeatedly; new entries are allowed from the next trading day
+  RECOVERED [2024-08-13] sector breadth recovered repeatedly; new entries are allowed from the next trading day
+______ test_native_fills_conserve_cash_inventory_and_do_not_mutate_inputs ______
+tests/unit/test_next_open_probe.py:36: in test_native_fills_conserve_cash_inventory_and_do_not_mutate_inputs
+    probe = _load_probe()
+            ^^^^^^^^^^^^^
+tests/unit/test_next_open_probe.py:18: in _load_probe
+    assert path.is_file(), 'The isolated native execution probe is not implemented'
+E   AssertionError: The isolated native execution probe is not implemented
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = PosixPath('/workspace/scratch/bf273963828a/trade-turnover/artifacts/diagnostics/no_waiver/next_open_probe.py').is_file
+_________ test_limit_down_keeps_the_obligation_without_crediting_cash __________
+tests/unit/test_next_open_probe.py:51: in test_limit_down_keeps_the_obligation_without_crediting_cash
+    out = _load_probe()(rows, frames, policy, cfg, '2026-01-05', '2026-01-06')
+          ^^^^^^^^^^^^^
+tests/unit/test_next_open_probe.py:18: in _load_probe
+    assert path.is_file(), 'The isolated native execution probe is not implemented'
+E   AssertionError: The isolated native execution probe is not implemented
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = PosixPath('/workspace/scratch/bf273963828a/trade-turnover/artifacts/diagnostics/no_waiver/next_open_probe.py').is_file
+_______________ test_adv_is_prior_only_and_shared_across_sleeves _______________
+tests/unit/test_next_open_probe.py:63: in test_adv_is_prior_only_and_shared_across_sleeves
+    out = _load_probe()(rows, frames, policy, cfg, '2026-01-05', '2026-01-06')
+          ^^^^^^^^^^^^^
+tests/unit/test_next_open_probe.py:18: in _load_probe
+    assert path.is_file(), 'The isolated native execution probe is not implemented'
+E   AssertionError: The isolated native execution probe is not implemented
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = PosixPath('/workspace/scratch/bf273963828a/trade-turnover/artifacts/diagnostics/no_waiver/next_open_probe.py').is_file
+_____ test_rejects_same_day_or_skipped_next_session[2026-01-05-2026-01-05] _____
+tests/unit/test_next_open_probe.py:72: in test_rejects_same_day_or_skipped_next_session
+    _load_probe()(rows, frames, policy, cfg, close, execution)
+    ^^^^^^^^^^^^^
+tests/unit/test_next_open_probe.py:18: in _load_probe
+    assert path.is_file(), 'The isolated native execution probe is not implemented'
+E   AssertionError: The isolated native execution probe is not implemented
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = PosixPath('/workspace/scratch/bf273963828a/trade-turnover/artifacts/diagnostics/no_waiver/next_open_probe.py').is_file
+_____ test_rejects_same_day_or_skipped_next_session[2026-01-05-2026-01-07] _____
+tests/unit/test_next_open_probe.py:72: in test_rejects_same_day_or_skipped_next_session
+    _load_probe()(rows, frames, policy, cfg, close, execution)
+    ^^^^^^^^^^^^^
+tests/unit/test_next_open_probe.py:18: in _load_probe
+    assert path.is_file(), 'The isolated native execution probe is not implemented'
+E   AssertionError: The isolated native execution probe is not implemented
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = PosixPath('/workspace/scratch/bf273963828a/trade-turnover/artifacts/diagnostics/no_waiver/next_open_probe.py').is_file
+_________ test_rejects_incomplete_snapshot_instead_of_inventing_a_mark _________
+tests/unit/test_next_open_probe.py:79: in test_rejects_incomplete_snapshot_instead_of_inventing_a_mark
+    _load_probe()(rows, frames, policy, cfg, '2026-01-05', '2026-01-06')
+    ^^^^^^^^^^^^^
+tests/unit/test_next_open_probe.py:18: in _load_probe
+    assert path.is_file(), 'The isolated native execution probe is not implemented'
+E   AssertionError: The isolated native execution probe is not implemented
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = PosixPath('/workspace/scratch/bf273963828a/trade-turnover/artifacts/diagnostics/no_waiver/next_open_probe.py').is_file
+=========================== short test summary info ============================
+SUBFAILED(universe='1_symbol') tests/regression/test_quant_fusion.py::IntegrationTests::test_economic_sequences_match_frozen_fingerprints
+SUBFAILED(universe='3_symbols') tests/regression/test_quant_fusion.py::IntegrationTests::test_economic_sequences_match_frozen_fingerprints
+SUBFAILED(universe='5_symbols') tests/regression/test_quant_fusion.py::IntegrationTests::test_economic_sequences_match_frozen_fingerprints
+SUBFAILED(universe='13_symbols') tests/regression/test_quant_fusion.py::IntegrationTests::test_economic_sequences_match_frozen_fingerprints
+SUBFAILED(universe='17_symbols') tests/regression/test_quant_fusion.py::IntegrationTests::test_economic_sequences_match_frozen_fingerprints
+FAILED tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_frozen_bull_single_symbol_golden_metric
+FAILED tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_weak_real_execution_matches_frozen_research_point
+FAILED tests/unit/test_next_open_probe.py::test_native_fills_conserve_cash_inventory_and_do_not_mutate_inputs
+FAILED tests/unit/test_next_open_probe.py::test_limit_down_keeps_the_obligation_without_crediting_cash
+FAILED tests/unit/test_next_open_probe.py::test_adv_is_prior_only_and_shared_across_sleeves
+FAILED tests/unit/test_next_open_probe.py::test_rejects_same_day_or_skipped_next_session[2026-01-05-2026-01-05]
+FAILED tests/unit/test_next_open_probe.py::test_rejects_same_day_or_skipped_next_session[2026-01-05-2026-01-07]
+FAILED tests/unit/test_next_open_probe.py::test_rejects_incomplete_snapshot_instead_of_inventing_a_mark
+ERROR tests/unit/test_pending_trace_observer.py::test_exposes_pending_suppression_without_evaluating_strategy_twice[False]
+ERROR tests/unit/test_pending_trace_observer.py::test_exposes_pending_suppression_without_evaluating_strategy_twice[True]
+ERROR tests/unit/test_pending_trace_observer.py::test_restores_instrumented_methods_on_exception
+13 failed, 1181 passed, 3 errors, 306 subtests passed in 294.23s (0:04:54)

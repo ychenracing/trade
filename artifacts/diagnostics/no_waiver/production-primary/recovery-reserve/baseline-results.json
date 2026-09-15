@@ -1,0 +1,142 @@
+{
+  "identity": {
+    "source_revision": "739ddc60f837f9ca283a7995ef57173f9a22eb16",
+    "source_fingerprint": "968f2511f0bdddde11d96e5aa18c901af8284a26bb930a7149e8147069e9223d",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {},
+    "diagnostic_noncanonical": true,
+    "allow_publication": false,
+    "scenario_ids": [
+      "prefix-17",
+      "leave-one-out-603986",
+      "add-one-05-002384"
+    ],
+    "workers": 3,
+    "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]"
+  },
+  "results": [
+    {
+      "scenario_id": "prefix-17",
+      "scenario_type": "prefix",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "603986",
+        "688072",
+        "688300",
+        "300054",
+        "688361",
+        "002409",
+        "688498",
+        "688120",
+        "002384",
+        "688082",
+        "300604",
+        "601869",
+        "300408"
+      ],
+      "symbol_count": 17,
+      "total_return": 10.194244202966377,
+      "max_drawdown": -0.14888875743400234,
+      "sharpe": 3.6632739895803974,
+      "calmar": 39.38116744407046,
+      "total_trades": 388,
+      "sleeve_fill_count": 388,
+      "date_symbol_side_count": 122,
+      "max_concurrent_symbols": 6,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 111,
+        "re_entry": 76,
+        "risk_reduction": 148,
+        "strategy_exit": 37,
+        "sector_liquidation": 16,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      }
+    },
+    {
+      "scenario_id": "leave-one-out-603986",
+      "scenario_type": "leave_one_out",
+      "omitted_symbol": "603986",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "688072",
+        "688300",
+        "300054",
+        "688361",
+        "002409",
+        "688498",
+        "688120",
+        "002384",
+        "688082",
+        "300604",
+        "601869",
+        "300408"
+      ],
+      "symbol_count": 16,
+      "total_return": 2.9946184801897506,
+      "max_drawdown": -0.18530399728342153,
+      "sharpe": 2.7379210946769774,
+      "calmar": 10.8878988530581,
+      "total_trades": 107,
+      "sleeve_fill_count": 107,
+      "date_symbol_side_count": 47,
+      "max_concurrent_symbols": 6,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 11,
+        "re_entry": 40,
+        "risk_reduction": 36,
+        "strategy_exit": 20,
+        "sector_liquidation": 0,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      }
+    },
+    {
+      "scenario_id": "add-one-05-002384",
+      "scenario_type": "add_one",
+      "base_size": 5,
+      "added_symbol": "002384",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "603986",
+        "002384"
+      ],
+      "symbol_count": 6,
+      "total_return": 3.9992277288701272,
+      "max_drawdown": -0.18282257226088386,
+      "sharpe": 2.7005803411127656,
+      "calmar": 14.269124986103376,
+      "total_trades": 210,
+      "sleeve_fill_count": 210,
+      "date_symbol_side_count": 83,
+      "max_concurrent_symbols": 5,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 42,
+        "re_entry": 65,
+        "risk_reduction": 72,
+        "strategy_exit": 31,
+        "sector_liquidation": 0,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      }
+    }
+  ]
+}

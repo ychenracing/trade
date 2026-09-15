@@ -379,6 +379,9 @@ def render_daily_report(data: dict[str, Any], *, replay: dict[str, Any] | None =
         raise ValueError("failed scan is not a successful report")
     traces: list[str] = []
     lines = _overview(data, account, traces)
+    lines.extend(["", "适用范围：本次改进以固定17股科技主池为主要评估对象。"
+                  "更换股票或使用任意子池时，应重新评估收益与风险；"
+                  "历史18%回撤目标不构成未来账户损失上限。"])
     overview: list[tuple[str, str, str]] = []
     rows = (_account_rows(data, symbols or {}, traces, overview) if account
             else _simulation_rows(data, replay or {}, traces, overview))

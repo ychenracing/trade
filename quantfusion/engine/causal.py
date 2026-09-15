@@ -60,7 +60,9 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         self._requested_end_date = ""
         self._risk_lock_logged = False
         self._allocation_raw_series: dict[str, dict[int, pd.Series]] = {}
-        self._allocation_score_cache: dict[pd.Timestamp, dict[str, float]] = {}
+        self._allocation_score_cache: dict[
+            tuple[pd.Timestamp, tuple[str, ...]], dict[str, float]
+        ] = {}
 
     def _display_run_period(self, start_date: str, end_date: str) -> tuple[str, str]:
         """Show the requested trading window, not the optional warmup window."""
@@ -139,11 +141,18 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         if getattr(self, "_c6_intervention", None) == "W1_DATA_MAP_ONLY":
             data_map = {code: frame for code, frame in data_map.items() if code != "601869"}
         date = pd.Timestamp(date)
-        cached = self._allocation_score_cache.get(date)
+        ranked_universe = tuple(sorted(data_map))
+        cache_key = (date, ranked_universe)
+        cached = self._allocation_score_cache.get(cache_key)
         if cached is not None:
             return cached
-        if not self._allocation_raw_series:
-            self._allocation_raw_series = self._build_allocation_raw_series(data_map)
+        missing_raw = set(data_map) - set(self._allocation_raw_series)
+        if missing_raw:
+            self._allocation_raw_series.update(
+                self._build_allocation_raw_series(
+                    {code: data_map[code] for code in sorted(missing_raw)}
+                )
+            )
         raw: dict[int, dict[str, float]] = {
             window: {} for window in self.ALLOCATION_LOOKBACKS
         }
@@ -172,7 +181,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
             code: scores[code] / observations[code] if observations[code] else 0.0
             for code in scores
         }
-        self._allocation_score_cache[date] = result
+        self._allocation_score_cache[cache_key] = result
         return result
 
     def _build_allocation_raw_series(
