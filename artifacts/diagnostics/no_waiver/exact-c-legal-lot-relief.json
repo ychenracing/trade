@@ -1,14 +1,13 @@
 {
   "kind": "exact_c_aggregate_legal_lot_shock_relief_research",
-  "status": "NOT_MET",
-  "research_state": "SOURCE_PRESERVED_ECONOMICS_UNRUN",
+  "status": "REJECTED_JOINT",
+  "research_state": "REJECTED_JOINT",
   "canonical": false,
   "default_promoted": false,
   "preregistration_comment": 5678282476,
-  "observed_remote_parent": "f2a43d316fd4941dbc96e43b576bbca7e1144e73",
+  "source_preservation_commit": "46764eaa39203eca2529964bd44945ff6f82cf39",
   "base_source": {
     "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
-    "tree": "c1b2b89c559ab84a52213ef59fdb3bd2f4265d06",
     "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
     "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975"
   },
@@ -18,26 +17,37 @@
     "source_fingerprint": "a7a8e8d2a5664539b2908aaf2c3367b2741767a0e8c35aca0a6acdd25d5f0fc5",
     "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
     "cfg_overrides": {},
-    "production_patch_path": "artifacts/diagnostics/no_waiver/decision-preservation/exact-c-legal-lot-relief-production.patch",
     "production_patch_sha256": "97aa57befa5e21e390f8ea803159c6428d484aee0c125e8606d1a3e1fec71b63",
-    "tests_patch_path": "artifacts/diagnostics/no_waiver/decision-preservation/exact-c-legal-lot-relief-tests.patch",
     "tests_patch_sha256": "1a267592db3858803678739a6d2cbfdb939b06979e2009993a8d52f5d8b67103",
-    "bundle_base64_path": "artifacts/diagnostics/no_waiver/decision-preservation/exact-c-legal-lot-relief-source.bundle.b64",
     "bundle_sha256": "0702587fbcbc6a504f3802132bd849e4c2c2acef0137f09a6101180381c3712e",
-    "bundle_bytes": 2878,
-    "bundle_prerequisite": "af2389b883949a55ded6e8a428f3e8e2353e3c27"
+    "bundle_bytes": 2878
   },
-  "mechanism": "Under the existing confirmed-shock retain_scale, floor each book ideal reduction to a legal lot and add only the minimum deterministic extra board lots needed for the unchanged current gross/systemic-stress envelope. This removes duplicate per-book ceiling oversell without reducing required risk relief, crediting pending sells, changing thresholds, or resetting risk history.",
-  "relationship_to_old_research": "A prior legal-lot relief experiment existed on source lineage ea21b4b->828a5c5 and was REJECTED_JOINT. Its economics are not reused as exact-C acceptance. This source-bound isolation exists because the old source identity cannot prove retained-C behavior; no neighboring rounding/tie-break variants are authorized.",
+  "mechanism": "Floor per-book ideal confirmed-shock reductions and add only the minimum deterministic legal board lots required by the unchanged current gross/systemic-stress envelope; no threshold/risk/history change.",
   "verification": {
-    "red": "On exact C, deterministic two-book fixture required one 100-share lot but current per-book ceiling planned 200; expected failure observed before production patch.",
-    "stale_old_test_resolution": "The prior old-base 960k/1m fixture has only 4% drawdown and cannot enter exact C shock_confirmed, whose unchanged trigger requires drawdown>=daily_loss_limit=6%. It was replaced with a source-equivalent two-shocked-group confirmed-shock fixture, not weakened.",
-    "focused_green": "52 passed across portfolio relief rounding, default account budget, risk owner-state, native joint acceptance and daily CLI.",
-    "compile_and_diff_check": "PASS",
-    "runtime": "Python3.13.5 local diagnostic; not locked final qualification",
-    "new_economic_runs": 0
+    "red": "Exact C planned 200 shares across two books when one 100-share lot covered the current requirement.",
+    "focused_green": "52 passed across rounding/account budget/owner-state/native acceptance/daily CLI; compile and diff check PASS.",
+    "runtime": "Python3.13.5 local diagnostic; not locked qualification."
   },
-  "scenario_ids": ["prefix-01", "prefix-03", "prefix-05", "prefix-13", "prefix-17", "prefix-06", "prefix-07", "prefix-08", "random-20260817-03-027"],
-  "falsifier": "Reject/no neighboring rounding or tie-break variants if prefix01/03 improvement is immaterial, protected05/13/17 floor fails, 06->07 or 07->08<0.70, known random DD>18% or buckets>160, or post-plan current gross/systemic-stress envelope is under-covered. No full958 unless this exact source survives.",
-  "next": "Run only the preregistered continuous diagnostic paths under this exact source; preserve raw results and identity before any expansion. Do not combine with direct-loss-first unless this source independently demonstrates material complementary alpha and requires a separate same-source preregistration."
+  "rows": {
+    "prefix-01": {"wealth_including_principal": 4.939377504720876, "signed_max_drawdown": -0.1252310675447461, "date_symbol_side_buckets": 7, "total_trades": 36, "raw_sha256": "472993359dcbfb9c9e0fc6bb2f06a782be3d2ee7e9d3bd6df2497b5813c2fe23", "delta_vs_retained_C": 0.010839448151876319, "necessary_minimum": 5.993502267140751, "necessary_minimum_pass": false, "gap_vs_minimum": -1.0541247624198746},
+    "prefix-03": {"wealth_including_principal": 7.388090925179751, "signed_max_drawdown": -0.1596104771631742, "date_symbol_side_buckets": 85, "total_trades": 309, "raw_sha256": "be32b0637ff469966d881378738dcda72349e303813cde1900d78ea0404b95eb", "delta_vs_retained_C": 0.3695693895906258, "necessary_minimum": 11.014195207080444, "necessary_minimum_pass": false, "gap_vs_minimum": -3.6261042819006937},
+    "prefix-05": {"wealth_including_principal": 11.746043164760877, "signed_max_drawdown": -0.15152887249201336, "date_symbol_side_buckets": 98, "total_trades": 269, "raw_sha256": "a8c7b19bc08c62d88bffb5f3044361bd7fe7892f28878fbf1f3d97a557eafea8", "delta_vs_retained_C": -2.0506919205682497, "necessary_minimum": 12.580154771921677, "necessary_minimum_pass": false, "gap_vs_minimum": -0.8341116071607999},
+    "prefix-13": {"wealth_including_principal": 12.769093757329877, "signed_max_drawdown": -0.14777206913239563, "date_symbol_side_buckets": 136, "total_trades": 350, "raw_sha256": "526ea82623de4aba8d9e695644716d3077eeda2bb275bbe74d4438749c595226", "delta_vs_retained_C": -1.1853857323479993, "necessary_minimum": 12.659384602482707, "necessary_minimum_pass": true, "gap_vs_minimum": 0.10970915484717025},
+    "prefix-17": {"wealth_including_principal": 9.738328186237503, "signed_max_drawdown": -0.14991072358756205, "date_symbol_side_buckets": 119, "total_trades": 359, "raw_sha256": "52733ce31f6151d632265a3c7af00a44339cda6f6927d5b7565a174d7d474f7e", "delta_vs_retained_C": -2.065224065139498, "necessary_minimum": 8.847967050773612, "necessary_minimum_pass": true, "gap_vs_minimum": 0.8903611354638912},
+    "prefix-06": {"wealth_including_principal": 10.871686592320128, "signed_max_drawdown": -0.15152887249201336, "date_symbol_side_buckets": 94, "total_trades": 278, "raw_sha256": "6806578fb97435f79775f6917fcff474af2b8b1e7ecade881986317215ad493b", "delta_vs_retained_C": 0.06584556016012755, "necessary_minimum": 12.310161540905, "necessary_minimum_pass": false, "gap_vs_minimum": -1.4384749485848722},
+    "prefix-07": {"wealth_including_principal": 12.061184094082254, "signed_max_drawdown": -0.1461339186102304, "date_symbol_side_buckets": 102, "total_trades": 319, "raw_sha256": "e8922e6914f00e9afe84a23664cf200c96026cf9f18aa356868ec2dbcc1b6cf9", "delta_vs_retained_C": 0.10405550257412699, "necessary_minimum": 8.6171130786335, "necessary_minimum_pass": true, "gap_vs_minimum": 3.4440710154487544},
+    "prefix-08": {"wealth_including_principal": 8.650456271669004, "signed_max_drawdown": -0.13503326081110734, "date_symbol_side_buckets": 146, "total_trades": 440, "raw_sha256": "414c4917935ddbfff90ae1a628fbac09cf75db82598f7c3578a8907806746c3e", "delta_vs_retained_C": 4.120929629119377, "necessary_minimum": 6.031979155043449, "necessary_minimum_pass": true, "gap_vs_minimum": 2.618477116625555},
+    "random-20260817-03-027": {"wealth_including_principal": 7.622691355806379, "signed_max_drawdown": -0.1595185816688964, "date_symbol_side_buckets": 93, "total_trades": 339, "raw_sha256": "bb3be44f4c74aeb81b3aa99cf01c1c2751d0e04a26a60a80463e28629aa6a129", "delta_vs_retained_C": -0.015594914589121878}
+  },
+  "adjacent_ratios": {"06_to_07": 1.1094124165244426, "07_to_08": 0.7172145126209704},
+  "primary_alpha_effect": {"prefix01_gap_closed_fraction": 0.010178227628942486, "prefix03_gap_closed_fraction": 0.09249238550872202},
+  "raw_results_packet": {"provider": "ChatGPT file Library", "path": "/trade-pr101/TRADE_PR101_EXACT_C_LEGAL_LOT_RELIEF_REJECTED.tar.gz", "file_id": "file_000000009fe481f69d813caac770e731", "library_file_id": "libfile_9a1eb401d6788191b51b18b971ea9429", "bytes": 905376, "sha256": "880e05b338ca845241b52d41f34c4ed56452ccd6493aea6c90649db6eb8e7814", "member_count": 21},
+  "decision": {
+    "conclusion": "REJECTED_JOINT",
+    "reasons": ["prefix01 improvement is only 0.010839x (about 1.02% of its remaining gap), materially insufficient", "prefix03 improves 0.369569x but closes only about 9.25% of its remaining gap", "protected prefix05 falls to 11.746043 below 12.580155", "prefix06 remains below 12.310162 despite a small improvement"],
+    "positive_evidence": ["07->08 retention improves to about 0.7172 and passes 0.70", "prefix13 and production17 remain above tested necessary floors", "known sampled random path remains below 18% DD with 93 buckets"],
+    "no_neighbor_scan": true
+  },
+  "interpretation": "Duplicate board-lot ceiling oversell exists and its exact-C repair changes economics, but it is not the dominant alpha-loss cause. The large old-lineage prefix01 result does not transport to retained C; source identity matters. Do not continue rounding/tie-break variants or use this as a foundation merely because 07->08 improves.",
+  "next": "Return to alpha/decision attribution. The surviving high-information fact is that staged timing can recover 01/03 alpha but harms other winners, while direct-loss-first preserves 05/13/17 and stability but does not restore 01/03. Any next candidate must use a distinct close-known holding/opportunity-cost discriminator, not risk-threshold or rounding variants; combine components only with predeclared complementary evidence on one source."
 }
