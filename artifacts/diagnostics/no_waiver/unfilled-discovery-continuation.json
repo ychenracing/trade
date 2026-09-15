@@ -1,10 +1,11 @@
 {
   "kind": "unfilled_native_discovery_research",
   "status": "NOT_MET",
-  "research_state": "IMPLEMENTED_ECONOMICS_UNRUN",
+  "research_state": "REJECTED_JOINT",
   "canonical": false,
   "default_promoted": false,
   "observed_parent": "4d45509bc3b4d25a21080518910a384991a3953f",
+  "source_preservation_commit": "7fd186c434757eef048dee685be2389fe12f5ded",
   "preregistration_comments": [5674293817, 5674502100, 5675011111],
   "source": {
     "base": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
@@ -28,6 +29,17 @@
     "manifest_members_verified": 14,
     "restore": "Fetch raw packet and verify full SHA256 plus evidence/SHA256.json. Restore exact af2389b using existing late-joiner-source-preservation.json, then verify/fetch evidence/unfilled-discovery.bundle in an isolated worktree; verify commit/tree and native source/data fingerprints. Source and tests are also retained as separate exact patches. Bundle preservation does not promote its source to the PR default."
   },
+  "results_packet": {
+    "provider": "Owner-authorized connected Google Drive",
+    "file_id": "1YBUyGPBxfUy_e3W78kVYS1sR9bBja8hg",
+    "url": "https://drive.google.com/file/d/1YBUyGPBxfUy_e3W78kVYS1sR9bBja8hg/view",
+    "name": "TRADE_PR101_UNFILLED_DISCOVERY_RESULTS.tar.gz",
+    "bytes": 1153769,
+    "sha256": "5e176cf4be604e31c5fc537aab683cc3a19f957b9d9ed06fb8abb3db8142dfca",
+    "fresh_raw_readback_verified": true,
+    "manifest_members_verified": 44,
+    "contents": "Exact source bundle/patches, red-green logs, preregistration receipt, unchanged runtime lock, ten complete original continuous replay pickles and identity/hash receipts, full-account assessment and executable analysis, copied unchanged frozen bounds, CI observation and failure decision. Source controls remain at their previously retained exact locations with hashes and original producer identities in economic-assessment.json."
+  },
   "verification": {
     "baseline_focused_tests": 8,
     "missing_mechanism_red_failures": 7,
@@ -38,12 +50,31 @@
     "compile_and_diff_check": "PASS",
     "ruff": "UNAVAILABLE_LOCALLY",
     "runtime": "Python3.13.5 local diagnostic; not locked final qualification",
-    "fixture_correction": "Initial fill test requested an overlarge order and native risk correctly rejected it. Corrected to one real board lot; no execution check weakened. Original failing command retained."
+    "fixture_correction": "Initial fill test requested an overlarge order and native risk correctly rejected it. Corrected to one real board lot; no execution check weakened. Original failing command retained.",
+    "continuous_paths_completed": 10,
+    "max_daily_full_account_cash_error": 1.1175870895385742e-8,
+    "all_tested_terminal_books_flat": true,
+    "filled_continuation_orders": "Actually executed on nine paths; prefix03 has11 and prefix17 has34. No dormant-feature explanation."
   },
   "mechanism": "Arm only an observed valid native golden cross; retain its unfilled episode, require a new highest observed close and native RSI, invalidate nonbullish MA state, consume on actual own-book fill even before another close. No filled-book restoration. Continuations retain single-probe sizing, zero new fusion votes and no early-cross portfolio admission bypass. Preserve real cash, existing pending TTL/obligations, exits and durable risk. No new economic thresholds or ticker/date branches.",
   "scenario_ids": ["prefix-03", "prefix-17", "prefix-05", "prefix-13", "prefix-07", "prefix-08", "prefix-06", "prefix-01", "prefix-15", "random-20260817-03-027"],
   "falsifier": "Reject harmful displacement into protected05/13/production17, materially insufficient major-gap effects or merely moved pool-expansion losses; do not scan neighboring confirmations.",
-  "reused_evidence": "Verified all120 members of retained b9ec2c1b original packet and all48 files of locked modern-reference artifact10378263868/run34923007758. No controls rerun. Source-bound C03 actual order events confirm May14/June5 discovery was rejected at following opens; these denials are not additive lost profits.",
-  "unverified": "Economic batch, full958, locked final qualification and exact-current-HEAD CI remain unrun. Full-history replay reconstructs episode state; a point-in-time external account snapshot without episode history fails closed rather than fabricating a continuation. Final production/advice qualification remains necessary if economics support promotion.",
-  "next": "Execute the ten preregistered continuous paths using this exact isolated source, preserve original results and identity, and assess mechanism falsifier before any expansion. Historical82-group/earlier27 gaps remain unchanged. Original/incumbent/native gates and old NOT_MET remain."
+  "economic_results": {
+    "prefix03": {"control_wealth": 7.018521535589125, "candidate_wealth": 6.7988430660222505, "necessary_infimum": 11.014195207080444},
+    "prefix05": {"control_wealth": 13.796735085329127, "candidate_wealth": 10.427210502185627, "necessary_infimum": 12.580154771921677},
+    "prefix07": {"control_wealth": 11.957128591508127, "candidate_wealth": 4.520340872764126, "necessary_infimum": 8.6171130786335},
+    "prefix08": {"candidate_wealth": 8.543718443483879, "necessary_infimum": 6.031979155043449, "matching_control_raw": "NOT_LOCATED; no summary reconstruction"},
+    "prefix13": {"control_wealth": 13.954479489677876, "candidate_wealth": 9.248718235390127, "necessary_infimum": 12.659384602482707},
+    "prefix17": {"control_wealth": 11.803552251377, "candidate_wealth": 6.352181845353749, "necessary_infimum": 8.847967050773612},
+    "adjacency06_to07": 0.5784452107963224,
+    "adjacency07_to08": 1.8900606578059926,
+    "tested_prefix_infima_failed": 8,
+    "tested_prefix_count": 9,
+    "conclusion": "REJECTED: complete-account profits and later holding paths deteriorate. Improved07-to08 ratio merely moves the loss to07 and breaks06-to07. Known sampled DD/buckets within18%/200 do not imply958/randomP90 PASS."
+  },
+  "failure_attribution": "Candidate07 reaches the existing confirmed cycle floor on2025-11-24 and liquidates2025-11-25, then remains cash. Persistent risk lock and all_sleeves_locked are true despite the separate terminal_risk_lock field being false. Do not reset history or change risk thresholds. Source03 first actual divergence is the2025-05-29 continuation fill; fees alone do not explain the lost terminal wealth. Full signed net cash by symbol/book and month-end actual observations retained.",
+  "reused_evidence": "Verified120 members of b9ec2c1b original packet,48 of locked modern artifact10378263868, and17 of owner-sync packet1zNSy83MywedlMb-5C_wJU_85Gtc_ZeHU. Reused nine matching C controls without reruns. Original dirty-parent-plus-patch and observer producer identities retained, not rewritten as af2389b. C17 slot-budget observer shows74 full-slot days,zero changed held orders; no patch on that disproven mechanism.",
+  "ci": {"historical_run": 34924085959, "job": 104238280427, "actual_outcome": "8 failed,1080 passed,321 subtests; economic fingerprint/exact-return mismatch. Exact backtest regression skipped. No silent golden update or owner-sync rollback."},
+  "unverified": "Full958, locked final qualification, unmeasured adjacent pairs and exact-current-HEAD full CI remain incomplete. Point-in-time external-account snapshots without episode history fail closed. Candidate is rejected, not production-qualified. Historical82-group/earlier27 raw gaps unchanged.",
+  "next": "Do not extend this failed continuation family. The full-account attribution is now available. Resolve the precise source/run successor of horizon-mandate preregistration5673621634 using the existing bounded coordination mechanism before reconstructing or executing it; its name is not evidence of implementation. Any new reconstruction must be labeled new work, not recovered originals. No altered reference or default promotion."
 }
