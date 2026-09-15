@@ -1,6 +1,6 @@
 {
   "authority": "User explicitly accepts238 date/symbol/side buckets.",
-  "status": "CANDIDATE_REOPENED_VALIDATION_IN_PROGRESS",
+  "status": "TURNOVER238_ACCEPTED; CANDIDATE_UNDER_RESEARCH",
   "previous_status": "REJECTED under200 cap; historical records unchanged",
   "effective_maximum_buckets": 238,
   "formal_contract": "contract.json",
@@ -267,6 +267,39 @@
   "screen_scope": "Six diagnostic paths; all satisfy individual18pct drawdown and238 bucket bounds. Family quantiles, other retained promotions and complete958 remain unverified.",
   "implementation": "Apply only proportional-reserve.patch; do not include rejected admission-blocking or alternate lot-rounding variants.",
   "tests": "51 acceptance tests and80 affected budget tests pass; complete repository Ruff passes after formatting two historical observer scripts.",
-  "originals": "Original first3raws in recovery-reserve archive; additional3raws pending host-file archive.",
-  "next": "Exact-source full958; preserve progress and inspect actual remaining gates; do not stop because of old200 cap."
+  "originals": "turnover238-verification/raw-preservation.json",
+  "next": "Keep proportional reserve and accepted238. Investigate the separate LOO300502 wealth/workload/cost tradeoff and resolve real compatibility/schema failures; no return to the200 criterion or rejected low-wealth tweaks.",
+  "accepted_238_is_not_a_failure": true,
+  "additional_removal": "Incumbent maximum+10 predicate (230) removed so it cannot silently veto238.",
+  "partial_formal": {
+    "source_revision": "632d91a120ecce61a4ed03f07e194ac0ca4f4202",
+    "completed": 24,
+    "required": 958,
+    "canonical": false,
+    "path": "turnover238-verification/partial-formal.json",
+    "stopped_reason": "Acceptance-consistency correction; no full formal pass claimed. Partial rows additionally reveal a distinct wealth shortfall."
+  },
+  "new_failure_to_investigate": {
+    "scenario_id": "leave-one-out-300502",
+    "wealth": 4.976958496005879,
+    "wealth_ratio": 0.6710768091436762,
+    "current_required_wealth_ratio": 0.7,
+    "relative_wealth_increase_needed": 0.043099672738253325,
+    "absolute_wealth_increase_needed": 0.2145052824097231,
+    "max_drawdown": 0.15426359744463358,
+    "buckets": 283,
+    "interpretation": "238 itself is accepted. This is a separately observed wealth/workload tradeoff, not a resurrection of the200 veto."
+  },
+  "verification": {
+    "acceptance_tests": 51,
+    "affected_budget_tests": 80,
+    "ruff": "PASS",
+    "pyright": "PASS",
+    "full_suite": "Interrupted after two failures; not passed. Both failures separately reproduced.",
+    "failures": [
+      "Historical C6 witness expects drawdown17.7965pct; current engine gives16.5791pct. Do not change frozen metric assertions blindly.",
+      "Native W evaluation record intervention_601869 violates its wire schema."
+    ],
+    "failure_log": "turnover238-verification/test-failures.txt"
+  }
 }
