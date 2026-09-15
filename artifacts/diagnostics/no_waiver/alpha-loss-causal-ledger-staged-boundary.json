@@ -114,5 +114,107 @@
     ],
     "next_after_boundary": "If the exact staged source passes the missing pending/unfilled persistent-severe state transition, run only its already preregistered continuous paths and evaluate primary01/03, protected05/13/17,06/07/08 adjacency and known-random risk. If it fails that correctness boundary, fix the engineering semantics under the same preregistered economic mechanism before any replay; do not compensate with a new gate or parameter."
   },
-  "acceptance": "NOT_MET; no new economic run, no full958, no formal random P90, no production promotion and no merge claim."
+  "acceptance": "NOT_MET; no new economic run, no full958, no formal random P90, no production promotion and no merge claim.",
+  "native_entry_binding_audit": {
+    "recorded_at_tokyo": "2026-09-15T19:54:00+09:00",
+    "scope_owner_comment": 5678764960,
+    "observed_latest_head_before_write": "b0ace047174a8e53cbe633074aac513005b049ee",
+    "status": "FORENSIC_BATCH_VERIFIED_NOT_ECONOMIC_ACCEPTANCE",
+    "historical_state_warning": "The earlier staged candidate and decision fields above preserve their original review-time state. Subsequent corrected staged results rejected that economic family. Do not restart it from UNRUN_AT_REVIEW or this historical next-step text. Use current PR coordination and later result indexes.",
+    "source_commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "source_tree": "c1b2b89c559ab84a52213ef59fdb3bd2f4265d06",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+    "producer_identity_boundary": "Restored clean C matches source content, but original records retain their original 4e33931 plus patch producer identity. No producer was rewritten to af2389b. Local Python3.13.5 evidence is not locked qualification.",
+    "original_packet": {
+      "drive_id": "14DdnTQruSJa5Pw0d_4zY8wcUPM620GH7",
+      "sha256": "b9ec2c1b1dcd077226aa3eb51293970d1f1099b8bc80a751ab916f9ce0085f1d",
+      "bytes": 15025863,
+      "manifest_members_verified": 120
+    },
+    "new_packet": {
+      "drive_id": "1cytja7bni6O7HtDWAAviC3yKg3ZscPxJ",
+      "url": "https://drive.google.com/file/d/1cytja7bni6O7HtDWAAviC3yKg3ZscPxJ/view",
+      "file_name": "TRADE_PR101_BINDING_AUDIT_EVIDENCE_20260915.tar.gz",
+      "bytes": 184912,
+      "sha256": "0a221ee4340f373ba4cd309a3b83f3b331c4c514efad9e0241eb604df8166aa1",
+      "fresh_raw_readback_verified": true,
+      "manifest_members_verified": 23,
+      "result_path": "results/result.json",
+      "result_sha256": "eb165904537d2ed22c20130b91326b626b17103cd66f549e1bd2d939dc61af4e",
+      "code_sha256": {
+        "binding_audit.py": "334a3b7737a0ae04abcba77e2221fd040d84d24730b8e6dcea7b377d5bd9d701",
+        "run_binding_audit.py": "f81737980531e4dc8fda85e218558699f902ed8ab7e4d6d27548185e08d28b55",
+        "test_binding_audit.py": "6af68eee813f287f3c62b28bd34fd4ad0c0068fe1fdedd463295790e05b845e3"
+      },
+      "source_location_boundary": "Research code, complete derived ledgers and test logs are stored in this verified Drive packet; this GitHub index is not a production-source promotion. Existing original replay archives were reused, not recreated."
+    },
+    "verification": {
+      "new_forensic_tests": 6,
+      "existing_focused_tests": 36,
+      "total_passed": 42,
+      "red_failures_preserved": 6,
+      "compileall_exit_code": 0,
+      "exact_c_worktree_clean": true,
+      "reused_paths": ["prefix-01", "prefix-03", "prefix-13", "prefix-15", "random-20260817-03-027"],
+      "account_days_reconciled": 1580,
+      "max_asset_error_currency_units": 1.4901161193847656e-8,
+      "complete_trades_order_risk_fusion_regime_hashes_unchanged": true,
+      "complete_equity_curve_unchanged": true,
+      "source_data_and_original_file_hashes_unchanged": true,
+      "new_economic_replays": 0,
+      "ruff": "not installed locally; not claimed",
+      "full_958_and_production_advisory_qualification": "not run by this forensic batch"
+    },
+    "findings": {
+      "p01_entry": {
+        "signal_date": "2025-06-05",
+        "execution_date": "2025-06-06",
+        "raw_targets_per_sleeve": [4800, 4800],
+        "native_capacity_per_sleeve": 3800,
+        "actual_allocations_per_sleeve": [1900, 1900],
+        "cash_before_per_sleeve": 650819.1911766666,
+        "cash_after_per_sleeve": 269963.6210816668,
+        "symbol_exposure_cap": 0.6,
+        "extra_100_share_lot_exposure_excess": 288.87529399991035,
+        "decision": "No duplicate fusion haircut or idle-cash execution defect: native exposure capacity binds. No additional full lot is available under the unchanged cap. This is a flat-symbol bound, not full ADV/risk authorization."
+      },
+      "p01_shock_books": {
+        "date": "2025-09-04",
+        "actual_owned_books": 6,
+        "distinct_declared_economic_signatures": 1,
+        "decision": "Cost, stop, high-water, shares, units and entry/add dates do not distinguish these books at this witness. Strategy labels alone do not justify a new stop/headroom relief ordering; future exit rules are not asserted identical."
+      },
+      "p03_complete_funding": {
+        "date": "2025-06-05",
+        "base_routed_trace_visible_symbols": ["300394"],
+        "base_owned_300502_books_absent_from_trace": {"atr_channel": 1800, "turtle_breakout": 3000},
+        "actual_sleeve_cash": {"base": 3139.1688891666854, "fast": 5490.733458916802, "slow": 2411.6533676668187},
+        "decision": "All owned inventory must be reconstructed, not inferred from routed collect snapshots. Every actual sleeve has less than the cash needed for one next-open 300308 lot; planned sales or pooled sleeve cash cannot create authority. Displayed trade rows are not guaranteed intraday execution order."
+      },
+      "add_stop_transfer": {
+        "old_shares": 800,
+        "hypothetical_new_shares": 500,
+        "old_and_signal_stop": 254.874,
+        "next_open_slipped_execution_price": 401.19079,
+        "signal_atr": 38.42322477976757,
+        "native_combined_stop": 362.7675652202324,
+        "fill_authorized_in_retained_c": false,
+        "decision": "Existing execution-price stop anchoring raises the common stop for old shares as well as the add. This explains a coupling in the rejected requalification remedy, not a newly proved execution defect. The retained C add is vetoed, so a stop-only change cannot fix that witness. No closed requalification family reopened and no recovered-wealth claim."
+      }
+    },
+    "current_ci_boundary": {
+      "inspected_run": 34956098819,
+      "inspected_head": "e259ae025ee8781b1b47ae5c17f393034b85242e",
+      "inspected_job": 104338408130,
+      "result": "failure: 8 failed,1080 passed,321 subtests passed; exact backtest regression skipped",
+      "interpretation": "Economic golden mismatches, not a queue. A separate peer owns CI diagnosis. No golden changed or owner-sync fix reverted here; newer-head checks must be read independently."
+    },
+    "coordination_and_next_decision": {
+      "peer_risk_redesign_owner": 5678856302,
+      "paired_opportunity_evidence": "2ed0cd11789953be7ae5895128ea7b5ca6f3f57c:artifacts/diagnostics/no_waiver/alpha-opportunity-cost-paired-attribution.json",
+      "paired_evidence_comment": 5678885196,
+      "latest_peer_index": "artifacts/diagnostics/no_waiver/forward-market-stress.json",
+      "decision": "This isolated attribution batch is finished, not the PR. Do not compete with the registered systemic-risk/holding redesign or independent CI work. Feed complete owned-account constraints and the negative entry-capacity result into that coordination; blocked opportunity demand is a real distinct state, not extra cash or permission to fund every signal. Reuse preserved evidence before proposing another mechanism. All original frozen gates remain NOT_MET; no new default, full acceptance or merge."
+    }
+  }
 }
