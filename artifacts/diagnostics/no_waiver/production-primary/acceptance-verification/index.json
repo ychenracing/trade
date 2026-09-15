@@ -1,0 +1,41 @@
+{
+  "status": "NOT_MET; FORMAL_RUNNING; TWO_BOUNDED_MECHANISMS_REGISTERED",
+  "economic_source_revision": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
+  "economic_source_fingerprint": "0032862f2829cac84c9d13cab6076ffe21e4348c85c0a3ac200f6f3db160fe7e",
+  "equivalent_remote_source": "5242d4d5e0455a1cfd3c4a053e2e94d08b5fe8e4",
+  "exact_tree_equivalence": "75ad8f6184c9412f077aa3497b80db10b29127cf",
+  "formal_completed_at_checkpoint": 276,
+  "formal_required": 958,
+  "latest_observed_worst_mdd": -0.19357897406694738,
+  "first24_exactly_reproduced": true,
+  "correctness_fix": {
+    "source": "23bf7a6a677ae2328f9e848b2431cacdd088d531",
+    "issue": "Next-day bar existence influenced close budget",
+    "red": "1200/1200 vs1900/5000 after deleting only future row",
+    "green": "37 budget tests; independent review confirms actual open still rejects missing bar"
+  },
+  "tests": {
+    "first_full": "1181 passed,13 failed,3 errors,306 subtests",
+    "missing_observer_files": "Recovered exact historical blobs;9 tests pass",
+    "remaining_full_failures": "5 economic fingerprint subtests and2 regime historical scalar expectations; do not blindly regenerate while candidate unsettled",
+    "acceptance_and_recovery": "76 passed",
+    "pyright": "0 errors"
+  },
+  "raw_preservation": {
+    "file_id": "19PqbsZYtHqRwvqWGN_eDuUtCvBDWdehg",
+    "path": "/workspace/scratch/f9bafb398fc2/TRADE_PR101_ACCEPTANCE_REPLAYS.tar.gz",
+    "bytes": 3569743,
+    "sha256": "62728145e94f9cd0cc4ff097d24b2eac0b17acf16ef5e4725ca49369f60172ac",
+    "upload": "SUCCESS_FILE_REFERENCE",
+    "remote_size": "CONFIRMED",
+    "remote_content_hash": "UNVERIFIED: provider metadata omitted checksums; prior direct download channel403 remains unavailable"
+  },
+  "recovery": {
+    "worktree": "/workspace/scratch/f9bafb398fc2/trade-causal",
+    "formal_worktree": "/workspace/scratch/bf273963828a/trade-turnover",
+    "formal_checkpoint": "/workspace/scratch/f9bafb398fc2/formal-958.json",
+    "formal_log": "/workspace/scratch/f9bafb398fc2/formal-958.txt",
+    "research": "../bounded-followup.json",
+    "do_not_duplicate_running_replays": true
+  }
+}

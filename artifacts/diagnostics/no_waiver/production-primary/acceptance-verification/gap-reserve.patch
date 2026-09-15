@@ -1,0 +1,42 @@
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index bc35492..bc61aeb 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -213,6 +213,13 @@ def plan_account_risk_budget(
+         return market_scenario + excess_group_scenario
+ 
+     current_gap = grouped_gap_debit(0.)
++    if (candidates and preserve_strategy_valid_holdings and not risk_alert_active
++            and current_gap > receipt['remaining_loss_budget'] and gross):
++        # Continuous reserve for observed exposure; no synthetic shock episode.
++        cap = min(cap, gross * receipt['remaining_loss_budget'] / current_gap)
++        receipt['gross_cap'] = cap
++        binding = cap < receipt['ordinary_gross_cap'] - 1e-8
++        gross_scale = min(1., max(0., cap-gross)/requested) if binding and requested else 1.
+     full_gap = grouped_gap_debit(1.)
+     buy_gap = max(0., full_gap - current_gap)
+     gap_scale = 1.
+diff --git a/tests/unit/test_observed_shock_budget.py b/tests/unit/test_observed_shock_budget.py
+index d561cb5..34a0c25 100644
+--- a/tests/unit/test_observed_shock_budget.py
++++ b/tests/unit/test_observed_shock_budget.py
+@@ -495,3 +495,19 @@ def test_drawdown_alert_trims_actual_symbol_weight_breach_to_configured_limit():
+     assert receipt['alert_dominant_fraction'] == pytest.approx(700_000. / 900_000.)
+     assert sum(action.shares for action in actions) == 1_600
+     assert {action.symbol for action in actions} == {'300408'}
++
++
++def test_recent_shock_reserves_held_group_gap_without_new_episode():
++    cfg = default_engine_config()
++    books = [(0, '300394', 'turtle_breakout', 3000, 100.),
++             (0, '603986', 'turtle_breakout', 1200, 100.)]
++    receipt, actions = budget.plan_account_risk_budget(
++        450_000., 480_000., cfg, books, [], lambda _: 1.,
++        date_str='2026-01-07', preserve_strategy_valid_holdings=True,
++        stress_by_symbol={'300394': .104, '603986': .071})
++    assert receipt['observed_shock_confirmed'] is False
++    assert receipt['current_gap_debit'] > receipt['remaining_loss_budget']
++    assert actions
++    remaining = sum((shares-sum(a.shares for a in actions if a.symbol==symbol))*price
++                    for _,symbol,_,shares,price in books)
++    assert remaining <= receipt['gross_cap']

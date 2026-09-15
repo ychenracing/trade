@@ -1,0 +1,189 @@
+{
+  "semantics": "No broker orders. Intent records include rejected/suppressed/queued records; authorized and filled records are separately counted. Fills are sleeve-level; buckets aggregate date/symbol/side. Slippage reconstructed from the execution formula, not actual market impact. Same-source normal diagnostic metrics must match native formal rows before reuse.",
+  "results": [
+    {
+      "id": "leave-one-out-300502-adverse",
+      "wealth_net_of_costs": 5.2456673562775,
+      "mdd": 0.12884431628346477,
+      "raw_sha256": "9011c1083c27fba208e93c949a861f980dc387261622d9387a773964f95cb660",
+      "sessions": 316,
+      "order_intents_including_rejected_or_suppressed": 2606,
+      "authorized_order_records": 698,
+      "filled_order_records": 692,
+      "fill_records": 692,
+      "date_symbol_side_buckets": 227,
+      "active_fill_days": 117,
+      "fills_per_session": 2.189873417721519,
+      "peak_fills_per_day": 31,
+      "peak_buckets_per_day": 6,
+      "top5_fill_days": [
+        [
+          "2026-02-03",
+          31
+        ],
+        [
+          "2025-12-16",
+          29
+        ],
+        [
+          "2026-06-02",
+          28
+        ],
+        [
+          "2025-10-15",
+          27
+        ],
+        [
+          "2025-11-17",
+          27
+        ]
+      ],
+      "top5_day_share": 0.20520231213872833,
+      "commission": 49598.770087000004,
+      "stamp_duty": 26904.903358,
+      "explicit_fees": 76503.67344500001,
+      "modeled_slippage_money": 198138.614,
+      "gross_traded_value": 99051775.046,
+      "gross_turnover_over_initial_capital": 49.525887523,
+      "gross_turnover_over_mean_nav": 19.476702572169998
+    },
+    {
+      "id": "leave-one-out-300502-normal",
+      "wealth_net_of_costs": 4.976958496005879,
+      "mdd": 0.15426359744463358,
+      "raw_sha256": "ed39e884157e040fbec22abb505ac2af3f50b56bee1f3f23160939b86b157712",
+      "sessions": 316,
+      "order_intents_including_rejected_or_suppressed": 2929,
+      "authorized_order_records": 1072,
+      "filled_order_records": 1060,
+      "fill_records": 1060,
+      "date_symbol_side_buckets": 283,
+      "active_fill_days": 130,
+      "fills_per_session": 3.3544303797468356,
+      "peak_fills_per_day": 39,
+      "peak_buckets_per_day": 6,
+      "top5_fill_days": [
+        [
+          "2026-01-27",
+          39
+        ],
+        [
+          "2025-09-29",
+          32
+        ],
+        [
+          "2025-10-15",
+          30
+        ],
+        [
+          "2026-06-29",
+          29
+        ],
+        [
+          "2026-03-04",
+          28
+        ]
+      ],
+      "top5_day_share": 0.1490566037735849,
+      "commission": 32332.479353249997,
+      "stamp_duty": 33837.493635,
+      "explicit_fees": 66169.97298825,
+      "modeled_slippage_money": 127338.035,
+      "gross_traded_value": 127329887.57499999,
+      "gross_turnover_over_initial_capital": 63.66494378749999,
+      "gross_turnover_over_mean_nav": 25.449676698436306
+    },
+    {
+      "id": "prefix-17-adverse",
+      "wealth_net_of_costs": 8.7274858588415,
+      "mdd": 0.14677193941295671,
+      "raw_sha256": "c8b6aad4902c47c23f367b8157b3072a5999b8e8fc8c8fa5c582b2bf40e8bf78",
+      "sessions": 316,
+      "order_intents_including_rejected_or_suppressed": 3005,
+      "authorized_order_records": 568,
+      "filled_order_records": 564,
+      "fill_records": 564,
+      "date_symbol_side_buckets": 183,
+      "active_fill_days": 90,
+      "fills_per_session": 1.7848101265822784,
+      "peak_fills_per_day": 34,
+      "peak_buckets_per_day": 6,
+      "top5_fill_days": [
+        [
+          "2025-12-12",
+          34
+        ],
+        [
+          "2025-11-03",
+          25
+        ],
+        [
+          "2026-06-29",
+          24
+        ],
+        [
+          "2026-06-09",
+          23
+        ],
+        [
+          "2026-03-27",
+          22
+        ]
+      ],
+      "top5_day_share": 0.22695035460992907,
+      "commission": 56514.315448,
+      "stamp_duty": 32091.004869,
+      "explicit_fees": 88605.320317,
+      "modeled_slippage_money": 225703.962,
+      "gross_traded_value": 112820442.438,
+      "gross_turnover_over_initial_capital": 56.410221219,
+      "gross_turnover_over_mean_nav": 13.653594967676826
+    },
+    {
+      "id": "prefix-17-normal",
+      "wealth_net_of_costs": 9.610542744515504,
+      "mdd": 0.15104978428469945,
+      "raw_sha256": "efe71948962f7853d3c0ccdce40470e4afa8e5c9e0fc6d1160230852da064c28",
+      "sessions": 316,
+      "order_intents_including_rejected_or_suppressed": 2939,
+      "authorized_order_records": 649,
+      "filled_order_records": 645,
+      "fill_records": 645,
+      "date_symbol_side_buckets": 190,
+      "active_fill_days": 92,
+      "fills_per_session": 2.0411392405063293,
+      "peak_fills_per_day": 30,
+      "peak_buckets_per_day": 6,
+      "top5_fill_days": [
+        [
+          "2025-12-12",
+          30
+        ],
+        [
+          "2026-06-09",
+          29
+        ],
+        [
+          "2026-06-29",
+          29
+        ],
+        [
+          "2026-02-03",
+          26
+        ],
+        [
+          "2025-12-30",
+          23
+        ]
+      ],
+      "top5_day_share": 0.2124031007751938,
+      "commission": 35014.902676,
+      "stamp_duty": 39177.490293,
+      "explicit_fees": 74192.392969,
+      "modeled_slippage_money": 139432.118,
+      "gross_traded_value": 139414683.29,
+      "gross_turnover_over_initial_capital": 69.707341645,
+      "gross_turnover_over_mean_nav": 16.00753130920448
+    }
+  ]
+}

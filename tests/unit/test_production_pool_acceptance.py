@@ -130,3 +130,15 @@ def test_only_approved_table_can_veto_economics():
     result = production_pool.assess(rows, original, incumbent)
     assert all(result[k]['passed'] for k in ('absolute_hard_gates', 'retained_robustness_hard_gates', 'initial_baseline_gates', 'promotion_gates'))
     assert not result['original_contract_assessment']['absolute_hard_gates']['passed']
+
+
+@pytest.mark.parametrize('family', production_pool.FAMILIES)
+@pytest.mark.parametrize('level,ratio', [('minimum', .65), ('p10', .85), ('median', .95)])
+def test_authorized_family_boundary_is_inclusive(family, level, ratio):
+    _, original, incumbent, rows, _ = fixture()
+    bases = {row['scenario_id']: row for row in incumbent['results']}
+    selected = [row for row in rows if row['scenario_type'] == family]
+    for row in (selected[:1] if level == 'minimum' else selected):
+        row['total_return'] = (1 + bases[row['scenario_id']]['total_return']) * ratio - 1
+    result = production_pool.assess(rows, original, incumbent)
+    assert result['promotion_gates']['checks'][f'{family}_paired_wealth_{level}']

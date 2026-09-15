@@ -1,0 +1,39 @@
+{
+  "source": "23bf7a6a677ae2328f9e848b2431cacdd088d531",
+  "formal_parent": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
+  "budget": "At most two distinct structural mechanisms; no threshold scan; complete original958 independently",
+  "mechanism1": {
+    "name": "broad-shock",
+    "source": "07d4245082335858ffd3fb9a1e4aba178d9015bf",
+    "change": "Remove80% single-sector concentration prerequisite from existing multi-sector severe-shock confirmation",
+    "status": "REJECTED_MAIN_WEALTH",
+    "main_wealth": 5.540082685923879,
+    "first_divergence": "2025-10-15",
+    "cause": "New Oct14 shock invokes stronger systemic loss/floor and categorical episode. Cap shrinks from3.2847m to1.6943m, damaging subsequent participation."
+  },
+  "mechanism2": {
+    "name": "observed-gap-reserve",
+    "status": "REGISTERED_BEFORE_RUN",
+    "change": "Keep shock state unchanged. When recent close-known shock evidence exists, use existing grouped held-gap debit to size the same proportional reserve before alert; credit only real holdings/cash. Unlike old all-times B-held-gap, no extra reserve in periods without observed shock evidence; unlike mechanism1, no new shock episode or doubled-drawdown categorical liquidation.",
+    "causal_witness": {
+      "scenario": "random-20260807-03-035",
+      "date": "2025-09-03",
+      "held_gap_debit": 756663.181,
+      "remaining_loss_budget": 569520.93888237,
+      "gross": 4183379,
+      "new_orders": 0,
+      "next_close_mdd": 0.18384223665239732
+    },
+    "screen_ids": [
+      "prefix-17",
+      "leave-one-out-300502",
+      "leave-one-out-603986",
+      "add-one-05-002384",
+      "random-20260807-03-035",
+      "random-20260807-03-039",
+      "random-20260807-03-043",
+      "random-20260807-05-005"
+    ]
+  },
+  "next_after_two": "Do not add an automatic third mechanism; finish registered validation and reassess with explicit evidence."
+}

@@ -851,3 +851,29 @@ def test_snapshot_account_budget_uses_same_close_known_shock_evidence(monkeypatc
     assert by_symbol['300308']['action'] == 'HOLD'
     assert by_symbol['300502']['action'] == 'REDUCE_REVIEW'
     assert by_symbol['300394']['action'] == 'REDUCE_REVIEW'
+
+
+def test_close_budget_does_not_depend_on_future_candidate_bar():
+    engine, state, dates = fixture(shares=2_000, cash=70_000.)
+    engine._runtime_tradable_count = 3
+    engine._new_candidate_intent_streak = {}
+    state.sleeve._tradable_symbol_codes = {'300308', '300502', '603986'}
+    state.sleeve._fixed_reference_scores = lambda date, candidates: {symbol: 1. for symbol in candidates}
+    for symbol in ('300502', '603986'):
+        state.data_map[symbol] = state.data_map['300308'].copy()
+        state.pending.append((Signal(symbol, 'turtle_breakout', 'buy', 5_000, 10.,
+                                     signal_date='2026-01-05', reason='entry'),
+                              SimpleNamespace(name='turtle_breakout')))
+    decisions = []
+    for missing in (False, True):
+        variant = deepcopy(state)
+        if missing:
+            variant.data_map['603986'] = variant.data_map['603986'].drop(dates[1])
+        _, eligible = engine._authorize_portfolio_buys(
+            [variant], dates[1], carried_symbols=engine._held_portfolio_symbols([variant]),
+            preview_only=True)
+        engine._apply_account_risk_budget(
+            [variant], dates[0], 90_000., 100_000., [],
+            portfolio_evidence_buy_symbols=eligible, preserve_strategy_valid_holdings=True)
+        decisions.append({signal.symbol: signal.target_shares for signal, _ in variant.pending})
+    assert decisions[0] == decisions[1]

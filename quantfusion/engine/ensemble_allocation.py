@@ -483,7 +483,7 @@ class EnsembleAllocationMixin:
                 if signal.direction == "buy"
                 and signal.symbol not in existing
                 and signal.symbol in state.data_map
-                and date in state.data_map[signal.symbol].index
+                and (preview_only or date in state.data_map[signal.symbol].index)
             }
             candidate_symbols.update(candidates)
         score_samples = {symbol: [] for symbol in candidate_symbols}
@@ -496,7 +496,7 @@ class EnsembleAllocationMixin:
                 if signal.direction == "buy"
                 and signal.symbol not in existing
                 and signal.symbol in state.data_map
-                and date in state.data_map[signal.symbol].index
+                and (preview_only or date in state.data_map[signal.symbol].index)
             }
             score_data_map = state.data_map
             if self._c6_intervention_id() == "W1_DATA_MAP_ONLY":
