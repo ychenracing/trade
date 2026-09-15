@@ -1,10 +1,9 @@
 {
   "kind": "simultaneous_native_buy_funding_research",
-  "status": "SOURCE_PRESERVED_ECONOMICS_UNRUN",
+  "status": "REJECTED_JOINT_EARLY",
   "canonical": false,
   "default_promoted": false,
   "preregistration_comment": 5679569326,
-  "observed_parent": "e17e6af56fb9e1fce55ae27501d4e8e56c74457e",
   "base_source": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
   "entry_capacity_reference": {
     "reported_source": "9d45678bd542e3ba28d524a54cb8ac4924b52ede",
@@ -18,9 +17,9 @@
     "source_fingerprint": "a47c545a15356bdb623b7b10f660f4fd9ee3a79a394a26119663315c87511fff",
     "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975"
   },
-  "mechanism": "After native sells, gates and admission, coordinate all executable same-open native buy batches within one funded sleeve. Compute each symbol's existing requested/exposure/ADV ceiling without serial cash consumption; enforce native total/group exposure as simultaneous aggregate constraints; divide only actual sleeve cash across remaining symbol batches proportional to their native capped demand with deterministic board-lot/fee reconciliation. Existing holdings are never sold or retargeted; queued sale proceeds receive no cash credit; same-symbol strategy ownership remains native pro-rata.",
+  "mechanism": "After native sells, gates and admission, coordinate executable same-open native buy batches within each funded sleeve. Symbol demand is capped by native request/exposure/ADV and aggregate total/group exposure before cash is divided proportionally with deterministic board-lot/fee reconciliation. Existing holdings are never sold or retargeted; queued-sale proceeds receive no credit; same-symbol strategy ownership remains native pro-rata.",
   "engineering": {
-    "red": "Two causal tests failed on the entry-capacity reconstruction: reversing native symbol ranking moved cash between 300308/300502; under a shared 50% group cap it changed the entire funded symbol.",
+    "red": "Reversing native symbol ranking moved cash between 300308/300502; with a shared 50% group cap it changed the entire funded symbol.",
     "green_target": "3 passed",
     "focused": "14 passed, 37 deselected",
     "account_budget": "34 passed",
@@ -35,11 +34,43 @@
     "library_file_id": "libfile_dbd333e0597881919f98f5171c9bd081",
     "bytes": 12511,
     "sha256": "22d6b9bbc9aa2a6d1d967153d02ad87bfdd1aee35cefb2ac2dfa7137b767ffeb",
-    "bundle_bytes": 5272,
     "bundle_sha256": "fd34583847095e3d649b5a30f7bc638a4d7f3499408bd3d40c58fd70f2c3bf93",
     "patch_sha256": "ac09fb4b019d54fd6b4387dd18327462c6c74a69f08d550cc6c1aa1c1dafbe66"
   },
-  "predeclared_economics": ["prefix-01", "prefix-03", "prefix-05", "random-20260817-03-027"],
-  "decision_rule": "Reject without expansion if prefix01 does not retain the entry-capacity gain with DD<=18%, prefix03 does not materially improve over entry-capacity 6.7947313409 toward retained C/floor, prefix05 falls below 12.5801547719, or known-random DD exceeds18%/buckets160. No demand-weight, fraction, score, ticker or ordering scan. Expand to 06/07/08/13/17 and then full958 only if these four survive.",
-  "unverified": "Economic replay, formal random P90, full958, locked qualification, production promotion, exact-current-HEAD CI and merge are not yet established."
+  "economic_results": {
+    "prefix-01": {"wealth": 7.646319064391125, "max_drawdown": -0.13383996280132063, "buckets": 7, "trades": 36, "raw_sha256": "da848013ddb964103d35e8b51555b8d8c63688264407963c64d87acac4834108"},
+    "prefix-03": {"wealth": 8.434059958093874, "max_drawdown": -0.1559489804711408, "buckets": 95, "trades": 324, "raw_sha256": "08e6007f98335453a22362853359ed8419e100383917aa69de90a11e18ddfba2"},
+    "prefix-05": {"wealth": 10.98911381995338, "max_drawdown": -0.15247086447756864, "buckets": 102, "trades": 332, "raw_sha256": "ec3e2f9d5da19c027fc6a74de24674ffaf77e890510a0a1546fd737a165fa8b4"},
+    "random-20260817-03-027": {"wealth": 8.741847524841628, "max_drawdown": -0.1823636172484919, "buckets": 83, "trades": 316, "raw_sha256": "07fcfd5cf04c79f5736eb40fe64a7c4b84619275e4a8d425642fdf1f45b0dfa7"}
+  },
+  "decision": {
+    "prefix01_retains_entry_capacity_gain": true,
+    "prefix03_delta_vs_entry_capacity": 1.6393286171938737,
+    "prefix03_delta_vs_retained_c": 1.4155384225047491,
+    "prefix05_gap_vs_floor": -1.5910409519682975,
+    "known_random_drawdown_excess_percentage_points": 0.2363617248491906,
+    "conclusion": "REJECTED_JOINT_EARLY"
+  },
+  "causal_attribution": {
+    "prefix-03": {
+      "final_asset_delta_vs_retained_c": 2831076.8450094983,
+      "first_divergence": "2025-05-09 same-open multi-symbol native buys",
+      "net_cashflow_delta_by_symbol": {"300308": 449223.73573700245, "300394": 566639.5021307506, "300502": 1815213.6071417565}
+    },
+    "prefix-05": {
+      "final_asset_delta_vs_retained_c": -5615242.530751493,
+      "first_divergence": "2025-04-25 single-symbol 300502 ATR buy; simultaneous allocator is not active because no competing symbol batch exists",
+      "net_cashflow_delta_by_symbol": {"300308": -7378020.380923248, "300394": 426849.467921498, "300502": 2065610.5739922496, "603986": -762635.424398751, "688256": 32953.23265674987}
+    }
+  },
+  "result_packet": {
+    "provider": "ChatGPT file Library",
+    "path": "/trade-pr101/TRADE_PR101_SIMULTANEOUS_BUY_REJECTED.tar.gz",
+    "file_id": "file_000000002d4481f6bde2fd24849345e4",
+    "library_file_id": "libfile_214b30cda92c81918e06f187c06bb2a5",
+    "bytes": 348442,
+    "sha256": "f67590e2a0a90094b853a770421b2cc4aaf935105fb23bc83282ac5d627cecd1"
+  },
+  "interpretation": "The mechanism successfully removes serial same-open symbol cash priority and materially improves prefix03 while preserving the single-symbol prefix01 gain. It cannot repair prefix05: that path diverges earlier on 2025-04-25 when only 300502 has executable native demand, so the widened entry endpoint consumes extra cash before later 603986/300308 opportunities exist. The sampled random path also exceeds 18% DD. Do not expand to 06/07/08/13/17 or 958 and do not tune funding weights/fractions/order.",
+  "next": "Use the paired timing evidence to test a close-known diversification-availability discriminator rather than another cash-weight parameter: distinguish a single-symbol universe from a multi-symbol universe with only one current executable demand, and distinguish both from genuinely simultaneous multi-symbol native demand. Any new source must preserve the original 60% diversified entry protection where no competing same-open demand yet exists, retain the unlevered single-symbol endpoint, and use simultaneous funding only when multiple symbol batches actually compete. Preregister and falsify on 01/03/05/random before expansion."
 }
