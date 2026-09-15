@@ -1,0 +1,223 @@
+From a2ef59c2a72dfffa3da10049f56674cf81d5d9a4 Mon Sep 17 00:00:00 2001
+From: ychenracing <ychenracing@163.com>
+Date: Tue, 15 Sep 2026 05:25:50 +0000
+Subject: [PATCH] research: reconstruct horizon-specific discovery mandate
+
+---
+ tests/unit/test_horizon_discovery_mandate.py | 205 +++++++++++++++++++
+ 1 file changed, 205 insertions(+)
+ create mode 100644 tests/unit/test_horizon_discovery_mandate.py
+
+diff --git a/tests/unit/test_horizon_discovery_mandate.py b/tests/unit/test_horizon_discovery_mandate.py
+new file mode 100644
+index 0000000..3bc5663
+--- /dev/null
++++ b/tests/unit/test_horizon_discovery_mandate.py
+@@ -0,0 +1,205 @@
++import pandas as pd
++
++from quantfusion.domain.models import Signal
++from quantfusion.engine.causal import CausalBacktestEngine
++
++
++class _SignalStrategy:
++    def __init__(self, name: str, signal: Signal) -> None:
++        self.name = name
++        self._signal = signal
++
++    def on_bar(self, _ctx):
++        return self._signal
++
++
++def _engine(
++    *,
++    sleeve_name: str,
++    symbol: str,
++    direction: str = "buy",
++    held: bool = False,
++    tradable_symbols: set[str] | None = None,
++):
++    date = pd.Timestamp("2026-04-24")
++    signal = Signal(
++        symbol=symbol,
++        strategy_name="dual_ma",
++        direction=direction,
++        target_shares=100,
++        price=10.0,
++        signal_date=date.strftime("%Y-%m-%d"),
++    )
++    engine = object.__new__(CausalBacktestEngine)
++    engine.sleeve_name = sleeve_name
++    engine.positions = {symbol: {"dual_ma": object()}} if held else {}
++    engine.cfg = {"max_positions": 6}
++    engine._portfolio_max_positions = 6
++    engine._tradable_symbol_codes = set(tradable_symbols or {symbol})
++    engine.strategy_instances = {symbol: [_SignalStrategy("dual_ma", signal)]}
++    engine.order_events = []
++    frame = pd.DataFrame({"close": [10.0]}, index=[date])
++    indicators = {symbol: {"rsi": pd.Series([50.0], index=[date])}}
++    return engine, date, signal, frame, indicators
++
++
++def _collect(
++    *,
++    sleeve_name: str,
++    symbol: str,
++    direction: str = "buy",
++    held: bool = False,
++    tradable_symbols: set[str] | None = None,
++    pending=None,
++):
++    engine, date, signal, frame, indicators = _engine(
++        sleeve_name=sleeve_name,
++        symbol=symbol,
++        direction=direction,
++        held=held,
++        tradable_symbols=tradable_symbols,
++    )
++    pending = [] if pending is None else pending
++    daily = engine._collect_strategy_signals(
++        {symbol: "Candidate"},
++        {symbol: frame},
++        indicators,
++        date,
++        date.strftime("%Y-%m-%d"),
++        100_000.0,
++        pending,
++        allow_buys=True,
++        top_symbols=None,
++    )
++    return engine, signal, daily, pending
++
++
++def test_base_and_slow_restrict_only_new_noncore_discovery_when_core_exists():
++    tradable = {"300308", "300502", "300394", "688256", "603986", "300054"}
++    for sleeve_name in ("base", "slow"):
++        engine, _signal, daily, _pending = _collect(
++            sleeve_name=sleeve_name,
++            symbol="300054",
++            tradable_symbols=tradable,
++        )
++        assert daily == []
++        assert engine.order_events == []
++
++
++def test_fast_retains_full_requested_discovery_set():
++    tradable = {"300308", "300502", "300394", "688256", "603986", "300054"}
++    _engine_obj, _signal, daily, _pending = _collect(
++        sleeve_name="fast",
++        symbol="300054",
++        tradable_symbols=tradable,
++    )
++    assert len(daily) == 1
++
++
++def test_base_allows_established_core_discovery():
++    tradable = {"300308", "300502", "300394", "688256", "603986", "300054"}
++    _engine_obj, _signal, daily, _pending = _collect(
++        sleeve_name="base",
++        symbol="300308",
++        tradable_symbols=tradable,
++    )
++    assert len(daily) == 1
++
++
++def test_base_falls_back_to_full_universe_when_no_established_core_is_requested():
++    _engine_obj, _signal, daily, _pending = _collect(
++        sleeve_name="base",
++        symbol="300054",
++        tradable_symbols={"300054", "688361"},
++    )
++    assert len(daily) == 1
++
++
++def test_existing_noncore_holding_can_still_generate_buy_signal():
++    tradable = {"300308", "300502", "300394", "688256", "603986", "300054"}
++    _engine_obj, _signal, daily, _pending = _collect(
++        sleeve_name="slow",
++        symbol="300054",
++        held=True,
++        tradable_symbols=tradable,
++    )
++    assert len(daily) == 1
++
++
++def test_noncore_sell_is_never_blocked_by_discovery_mandate():
++    tradable = {"300308", "300502", "300394", "688256", "603986", "300054"}
++    _engine_obj, _signal, daily, _pending = _collect(
++        sleeve_name="base",
++        symbol="300054",
++        direction="sell",
++        tradable_symbols=tradable,
++    )
++    assert len(daily) == 1
++
++
++def test_existing_pending_noncore_buy_is_preserved_and_not_duplicated():
++    tradable = {"300308", "300502", "300394", "688256", "603986", "300054"}
++    engine, _date, signal, _frame, _indicators = _engine(
++        sleeve_name="base", symbol="300054", tradable_symbols=tradable
++    )
++    strategy = engine.strategy_instances["300054"][0]
++    pending = [(signal, strategy)]
++    date = pd.Timestamp("2026-04-24")
++    frame = pd.DataFrame({"close": [10.0]}, index=[date])
++    indicators = {"300054": {"rsi": pd.Series([50.0], index=[date])}}
++    daily = engine._collect_strategy_signals(
++        {"300054": "Candidate"},
++        {"300054": frame},
++        indicators,
++        date,
++        date.strftime("%Y-%m-%d"),
++        100_000.0,
++        pending,
++        allow_buys=True,
++        top_symbols=None,
++    )
++    assert daily == []
++    assert pending == [(signal, strategy)]
++    assert engine.order_events == []
++
++
++
++def test_single_engine_without_sleeve_name_keeps_existing_discovery_behavior():
++    tradable = {"300308", "300502", "300394", "688256", "603986", "300054"}
++    engine, date, _signal, frame, indicators = _engine(
++        sleeve_name="fast", symbol="300054", tradable_symbols=tradable
++    )
++    del engine.sleeve_name
++    daily = engine._collect_strategy_signals(
++        {"300054": "Candidate"},
++        {"300054": frame},
++        indicators,
++        date,
++        date.strftime("%Y-%m-%d"),
++        100_000.0,
++        [],
++        allow_buys=True,
++        top_symbols=None,
++    )
++    assert len(daily) == 1
++
++def test_collector_does_not_mutate_market_inputs_when_applying_mandate():
++    tradable = {"300308", "300502", "300394", "688256", "603986", "300054"}
++    engine, date, _signal, frame, indicators = _engine(
++        sleeve_name="base", symbol="300054", tradable_symbols=tradable
++    )
++    frame_before = frame.copy(deep=True)
++    indicator_before = indicators["300054"]["rsi"].copy(deep=True)
++    engine._collect_strategy_signals(
++        {"300054": "Candidate"},
++        {"300054": frame},
++        indicators,
++        date,
++        date.strftime("%Y-%m-%d"),
++        100_000.0,
++        [],
++        allow_buys=True,
++        top_symbols=None,
++    )
++    pd.testing.assert_frame_equal(frame, frame_before)
++    pd.testing.assert_series_equal(indicators["300054"]["rsi"], indicator_before)
+-- 
+2.47.3

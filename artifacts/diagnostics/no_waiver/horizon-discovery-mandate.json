@@ -1,0 +1,37 @@
+{
+  "kind": "horizon_discovery_mandate_research",
+  "status": "NOT_MET",
+  "research_state": "NEW_RECONSTRUCTION_IMPLEMENTED_ECONOMICS_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "reconstruction": "New source reconstruction from preregistration 5673621634; no recovered original horizon-mandate source/run was located in the bounded remote/local check.",
+  "preregistration_comment": 5673621634,
+  "coordination_comments": [5673922203, 5674033263],
+  "base_source": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "tree": "c1b2b89c559ab84a52213ef59fdb3bd2f4265d06",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975"
+  },
+  "candidate_source": {
+    "commit": "a2ef59c2a72dfffa3da10049f56674cf81d5d9a4",
+    "tree": "19c3caf0d1218e7ba11d011bda24b30a39b81a76",
+    "production_patch_sha256": "e8109d3e11dacda9009742e3ba4392fa1445303323683e8339a9450ad548eedc",
+    "tests_patch_sha256": "294ada8dee7660fe0583c5bb047f41b4445c02b1da46b98f2dd53c2719cb0654",
+    "bundle_sha256": "b27940a408286b6d49572f9e9dfe0c59c5cba8bb7a3e789b7a2dedfcfad36b59",
+    "bundle_bytes": 2583,
+    "bundle_prerequisite": "af2389b883949a55ded6e8a428f3e8e2353e3c27"
+  },
+  "mechanism": "For base/slow funded sleeves only, when the requested universe contains any ESTABLISHED_BASE_CORE names, suppress only newly generated unheld buy discovery outside that established core. Fast retains the full requested opportunity set. If no established core is present, base/slow fall back to full-universe behavior. Already-held buys, sells and existing pending obligations remain unchanged. No new ticker list, seed, window, fraction, score weight or optimizer is introduced.",
+  "wiring": "Implemented at CoreSectorRiskMixin._collect_strategy_signals before momentum selection. The established set is the existing ESTABLISHED_BASE_CORE intersected with _tradable_symbol_codes; missing sleeve_name/single-engine behavior remains unrestricted.",
+  "verification": {
+    "initial_red": "1 failed, 7 passed before implementation; base/slow noncore discovery was still admitted.",
+    "focused_green": "45 passed across new mandate, event-transition, pending-observer, unified-universe and C6 fixed-reference admission tests.",
+    "py_compile": "PASS",
+    "git_diff_check": "PASS",
+    "ruff": "UNAVAILABLE_LOCALLY"
+  },
+  "predeclared_economic_paths": ["prefix-01", "prefix-03", "prefix-05", "prefix-06", "prefix-07", "prefix-08", "prefix-09", "prefix-10", "prefix-13", "prefix-15", "prefix-16", "prefix-17", "random-20260817-03-027"],
+  "falsifier": "Reject if protected05/13/production17 materially regress, if the 07->08 expansion cliff is merely shifted to another adjacent pair, or if the mechanism fails to materially reduce the major wealth/stability gaps. Do not scan neighboring mandate fractions.",
+  "unverified": "Economic paths, full958, formal random P90, locked qualification, production daily/advice restart semantics and exact-current-HEAD CI are not yet run for this reconstruction.",
+  "next": "Preserve this exact source transport on the original PR branch, then execute the preregistered continuous economic paths from the formal start using this exact source. Expand only if the same source survives the predeclared falsifier and frozen gates remain intact."
+}
