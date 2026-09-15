@@ -1,4 +1,4 @@
-name: Joiner locked-runtime evidence
+name: Corrected-reference locked-runtime evidence
 on:
   push:
     branches: [feat/no-waiver-joint-optimization]
@@ -9,7 +9,7 @@ concurrency:
   group: no-waiver-joiner-evidence
   cancel-in-progress: false
 jobs:
-  paired:
+  reference:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -24,7 +24,7 @@ jobs:
           cache-dependency-path: requirements-lock.txt
       - name: Install unchanged locked runtime
         run: python -m pip install -r requirements-lock.txt
-      - name: Restore exact research source and verify two diagnostic paths
+      - name: Qualify the preregistered modern correctness control, without promotion
         run: |
           set -euo pipefail
           python - <<'PYCODE'
@@ -36,11 +36,13 @@ jobs:
           import sys
 
           repo = Path.cwd()
-          out = Path(os.environ['RUNNER_TEMP']) / 'joiner-evidence'
+          out = Path(os.environ['RUNNER_TEMP']) / 'reference-evidence'
           out.mkdir(parents=True, exist_ok=True)
-          work = Path(os.environ['RUNNER_TEMP']) / 'joiner-source'
-          record = repo / 'artifacts/diagnostics/no_waiver/late-joiner-preservation.json'
-          item = json.loads(record.read_text())
+          work = Path(os.environ['RUNNER_TEMP']) / 'corrected-main'
+          main = 'b7be8011d71b477c8ca3942d97830e67d0e0407c'
+          retained = '4e33931bfdfaa0b11c7cdbe076c89eabe2535b76'
+          expected_source = 'e2be79a2b16d1e5925ed4315a307f49df650e709962ac04b2ea11ada83ad8c4d'
+          expected_data = 'aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975'
 
           def command(args, cwd=repo):
               result = subprocess.run(args, cwd=cwd, text=True, capture_output=True)
@@ -50,55 +52,71 @@ jobs:
               return result.stdout
 
           try:
+              assert command(['git', 'rev-parse', main + '^{tree}']).strip() == '7ab528a8afd9f28b66529eeb39444d94a7261c00'
               bundle = repo / 'artifacts/diagnostics/no_waiver/decision-preservation/research-source.bundle'
               assert command(['git', 'hash-object', str(bundle)]).strip() == '293c08e630e92ee9afc3ab20e5c5b62e185ba7eb'
               command(['git', 'bundle', 'verify', str(bundle)])
               command(['git', 'fetch', str(bundle), 'HEAD'])
-              command(['git', 'worktree', 'add', '--detach', str(work), '4e33931bfdfaa0b11c7cdbe076c89eabe2535b76'])
-              reversal = repo / 'artifacts/diagnostics/no_waiver/decision-preservation/rejected-confirmation-removal.patch'
-              command(['git', 'apply', '--check', str(reversal)], work)
-              command(['git', 'apply', str(reversal)], work)
-              patch = out / 'joiner.patch'
-              patch.write_text(item['joiner_patch'])
-              command(['git', 'apply', '--check', str(patch)], work)
-              command(['git', 'apply', str(patch)], work)
-              assert item['tests_path'] == 'tests/unit/test_late_strategy_joiner.py'
-              (work / item['tests_path']).write_text(item['tests_source'])
-              identity_code = 'from quantfusion.application.stress_artifacts import _tree_fingerprint,_source_files; print(_tree_fingerprint(_source_files()))'
-              assert command([sys.executable, '-c', identity_code], work).strip() == item['source_fingerprint']
-              (out / 'source.patch').write_text(command(['git', 'diff', '--', 'quantfusion', 'tests'], work))
-              (out / 'record.json').write_bytes(record.read_bytes())
+              command(['git', 'worktree', 'add', '--detach', str(work), main])
+              changed = ['quantfusion/engine/execution_flow.py', 'tests/unit/test_risk_sell_strategy_state.py']
+              for path in changed:
+                  (work / path).write_text(command(['git', 'show', retained + ':' + path]))
+              identity_code = ('import json; from quantfusion.application.stress_artifacts import _tree_fingerprint,_source_files,_data_files; '
+                               'from quantfusion.config.paths import MARKET_DATA_DIR,REGIME_DATA_DIR; '
+                               'print(json.dumps({"source":_tree_fingerprint(_source_files()),'
+                               '"data":_tree_fingerprint(_data_files(MARKET_DATA_DIR,REGIME_DATA_DIR))}))')
+              fingerprints = json.loads(command([sys.executable, '-c', identity_code], work))
+              assert fingerprints == {'source': expected_source, 'data': expected_data}
+              assert (repo / 'requirements-lock.txt').read_bytes() == (work / 'requirements-lock.txt').read_bytes()
+              (out / 'source.patch').write_text(command(['git', 'diff', '--', 'quantfusion'], work))
+              (out / 'test_risk_sell_strategy_state.py').write_bytes((work / changed[1]).read_bytes())
+              (out / 'requirements-lock.txt').write_bytes((work / 'requirements-lock.txt').read_bytes())
               (out / 'runtime.txt').write_text(sys.version + '\n' + command([sys.executable, '-m', 'pip', 'freeze']))
-              tests = [item['tests_path'], 'tests/unit/test_observed_shock_budget.py',
-                       'tests/unit/test_event_transition_selection.py', 'tests/unit/test_atr_trend_readmission.py',
-                       'tests/unit/test_risk_sell_strategy_state.py', 'tests/c6_non_economic/test_account_risk_budget.py',
-                       'tests/c6_non_economic/test_c6_fixed_reference_admission.py']
+              tests = [changed[1], 'tests/c6_non_economic/test_c6_book_identity.py',
+                       'tests/c6_non_economic/test_c6_retained_winner.py',
+                       'tests/c6_non_economic/test_account_risk_budget.py']
               (out / 'tests.txt').write_text(command([sys.executable, '-m', 'pytest', '-q', *tests], work))
-              command(['ruff', 'check', '--select=E,F,W', '--ignore=E501,E402,E731,E741',
-                       'quantfusion/engine/signals.py', item['tests_path']], work)
+              command(['ruff', 'check', '--select=E,F,W', '--ignore=E501,E402,E731,E741', *changed], work)
               command(['git', 'diff', '--check'], work)
-              command([sys.executable, '-m', 'artifacts.diagnostics.no_waiver.replay_batch',
-                       '--root', str(work), '--out', str(out / 'raw'), '--workers', '2',
-                       '--ids', 'prefix-03', 'prefix-13'], work)
-              rows = json.loads((out / 'raw/results.json').read_text())
-              assert rows['identity']['source_fingerprint'] == item['source_fingerprint']
-              assert rows['identity']['data_fingerprint'] == item['data_fingerprint']
-              assert rows['identity']['cfg_overrides'] == {}
-              expected = {row[0]: row[1:] for row in item['rows']}
-              comparisons = []
-              for row in rows['results']:
-                  actual = [1 + row['total_return'], row['max_drawdown'], row['date_symbol_side_count']]
-                  comparisons.append({'scenario': row['scenario_id'], 'actual': actual,
-                                      'expected': expected[row['scenario_id']],
-                                      'exact_match': actual == expected[row['scenario_id']]})
-              receipt = {'status': 'NOT_MET', 'canonical': False, 'default_promoted': False,
-                         'host_sha': os.environ['GITHUB_SHA'], 'run_id': os.environ['GITHUB_RUN_ID'],
-                         'source_record_sha256': hashlib.sha256(record.read_bytes()).hexdigest(),
-                         'kind': 'New locked-runtime paired reproduction, not transfer of local originals',
-                         'comparisons': comparisons}
-              (out / 'replication.json').write_text(json.dumps(receipt, indent=2) + '\n')
-              assert {x['scenario'] for x in comparisons} == {'prefix-03', 'prefix-13'}
-              assert all(x['exact_match'] for x in comparisons), 'Runtime drift needs investigation'
+              command(['git', 'add', *changed], work)
+              command(['git', '-c', 'user.name=Trade Research', '-c', 'user.email=trade-research@localhost',
+                       'commit', '-m', 'research: bind unchanged modern correctness control for locked replay'], work)
+              source_revision = command(['git', 'rev-parse', 'HEAD'], work).strip()
+              source_tree = command(['git', 'rev-parse', 'HEAD^{tree}'], work).strip()
+              command(['git', 'bundle', 'create', str(out / 'corrected-main.bundle'), main + '..HEAD'], work)
+              command(['git', 'bundle', 'verify', str(out / 'corrected-main.bundle')], work)
+              runner = out / 'replay_batch.py'
+              runner.write_bytes((repo / 'artifacts/diagnostics/no_waiver/replay_batch.py').read_bytes())
+              ids = ['prefix-' + str(i).zfill(2) for i in range(1, 18)] + ['random-20260817-03-027']
+              command([sys.executable, str(runner), '--root', str(work), '--out', str(out / 'raw'),
+                       '--workers', '2', '--ids', *ids], work)
+              evidence = json.loads((out / 'raw/results.json').read_text())
+              assert evidence['identity']['source_revision'] == source_revision
+              assert evidence['identity']['source_fingerprint'] == expected_source
+              assert evidence['identity']['data_fingerprint'] == expected_data
+              assert evidence['identity']['cfg_overrides'] == {}
+              assert {r['scenario_id'] for r in evidence['results']} == set(ids)
+              assert not command(['git', 'status', '--porcelain'], work).strip()
+              for row in evidence['results']:
+                  sid = row['scenario_id']
+                  record = json.loads((out / 'raw' / (sid + '.json')).read_text())
+                  assert record['source_fingerprint'] == expected_source
+                  assert record['result'] == row
+                  assert hashlib.sha256((out / 'raw' / (sid + '.pkl')).read_bytes()).hexdigest() == record['raw_sha256']
+              review = command([sys.executable, '-m', 'scripts.review_reference_transition',
+                                '--reference-run', str(out / 'raw')])
+              (out / 'reference-impact-review.json').write_text(review)
+              (out / 'receipt.json').write_text(json.dumps({
+                  'kind': 'new_locked_runtime_correctness_reference_measurement',
+                  'status': 'NOT_MET', 'canonical': False, 'activation_allowed': False,
+                  'default_promoted': False, 'host_sha': os.environ['GITHUB_SHA'],
+                  'run_id': os.environ['GITHUB_RUN_ID'], 'source_revision': source_revision,
+                  'source_tree': source_tree, 'source_fingerprint': expected_source,
+                  'data_fingerprint': expected_data, 'base_main': main,
+                  'scope': '17 prefixes and one known random path; not full958, formal random P90 or deployment qualification',
+                  'originals': 'New Python3.12 originals, not restored Python3.13 records',
+                  'policy': 'Only real-fill owner synchronization added to unchanged main; no new economic rule or reference activated'
+              }, indent=2) + '\n')
           finally:
               entries = {str(p.relative_to(out)): hashlib.sha256(p.read_bytes()).hexdigest()
                          for p in sorted(out.rglob('*')) if p.is_file() and p.name != 'SHA256.json'}
@@ -107,7 +125,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: no-waiver-joiner-${{ github.run_id }}
-          path: ${{ runner.temp }}/joiner-evidence/
+          name: no-waiver-reference-${{ github.run_id }}
+          path: ${{ runner.temp }}/reference-evidence/
           retention-days: 90
           if-no-files-found: error
