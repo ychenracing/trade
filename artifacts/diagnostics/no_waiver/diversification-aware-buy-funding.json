@@ -1,0 +1,41 @@
+{
+  "kind": "diversification_available_entry_capacity_research",
+  "status": "SOURCE_PRESERVED_ECONOMICS_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "preregistration_comment": 5679834828,
+  "observed_parent": "33c2aed2cc4b1c750d2a622a30b742641ec62084",
+  "base_source": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+  "candidate_source": {
+    "commit": "f80d166b67755e51dfb198787c5ff3089268795d",
+    "tree": "1e44f8196e50ed26fcb4b9753ea7c361457a3e62",
+    "source_fingerprint": "e12658990ddadf0506495fea6365ed21d480f1e1dd33a4ff9731ec9d6e893e5a",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {}
+  },
+  "mechanism": "Retain the existing diversified entry ceiling by default. Lift only the existing standard portfolio diversification ceiling to the unlevered endpoint when the executable universe itself contains one symbol or when multiple symbols genuinely compete in the same-open native buy set. Explicit strategy-specific stricter symbol caps remain binding. Simultaneous multi-symbol demand is coordinated with actual cash and native total/group/ADV constraints. Existing holdings are not sold or retargeted and queued sells create no funding credit.",
+  "engineering": {
+    "initial_red": "On top of the simultaneous-funding source, a genuine one-symbol universe still stopped near the native diversified cap instead of the unlevered endpoint.",
+    "regression_found_and_fixed_before_economics": "The first implementation incorrectly lifted an explicitly stricter strategy-specific 20% cap in a one-symbol data map. The fix only lifts when the strategy cap equals the engine's existing diversified ceiling; explicit stricter/heterogeneous strategy caps remain unchanged.",
+    "targeted": "5 passed",
+    "execution_control": "11 passed, 37 deselected",
+    "account_budget": "16 passed",
+    "compileall": "PASS",
+    "diff_check": "PASS",
+    "ruff": "UNAVAILABLE_LOCALLY"
+  },
+  "source_packet": {
+    "provider": "ChatGPT file Library",
+    "path": "/trade-pr101/TRADE_PR101_DIVERSIFICATION_BUY_SOURCE.tar.gz",
+    "file_id": "file_00000000a70c81f7861a54ef104e75c8",
+    "library_file_id": "libfile_2d7ef91be9188191aff50d5f3ac84d3a",
+    "bytes": 15269,
+    "sha256": "032e1f9e8d750f939e25203c945dba438e70db3dfa59a7adaba9aee0b7fdf603",
+    "bundle_bytes": 7041,
+    "bundle_sha256": "761326215993eb2262b16782a190e8bde6282c82f15afeffa3389268d696e7c3",
+    "patch_sha256": "d839f323c733247e704f65730064fbc60cbcc4bd8bfaf1b34d753cfa8e1bd0b5"
+  },
+  "predeclared_economics": ["prefix-01", "prefix-03", "prefix-05", "random-20260817-03-027"],
+  "decision_rule": "prefix01 must retain the entry-capacity gain with DD<=18%; prefix03 must materially retain the simultaneous-funding improvement; prefix05 must reach 12.5801547719; known-random DD<=18% and buckets<=160. If any fail jointly, reject without 06/07/08/13/17 or 958 and without activation-count/cap/fraction scans.",
+  "unverified": "Economic replay, formal random P90, full958, locked qualification, production promotion, exact-current-HEAD CI and merge are not yet established."
+}
