@@ -70,7 +70,7 @@ def test_any_native_failure_is_rejected_even_when_legacy_assessor_would_accept(t
     elif failure in {'random_p90', 'maximum_buckets'}:
         selected = [r for r in rows if r['scenario_type'] == 'random_subset'] if failure == 'random_p90' else [next(r for r in rows if r['scenario_type'] == 'leave_one_out')]
         for row in selected:
-            count = 161 if failure == 'random_p90' else 201
+            count = 161 if failure == 'random_p90' else 239
             row.update(date_symbol_side_count=count, total_trades=count, sleeve_fill_count=count)
             row['reason_attribution']['re_entry'] = count
     else:

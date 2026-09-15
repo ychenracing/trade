@@ -356,6 +356,21 @@ def plan_account_risk_budget(
             append_pro_rata_relief(residual_books, residual_relief)
         else:
             append_pro_rata_relief(ordered_books, required_relief)
+    elif preserve_strategy_valid_holdings and not risk_alert_active and gross > cap:
+        # Fund the unchanged two-session reserve before a cycle alert. Share
+        # the necessary close-known reduction across books so score ordering
+        # does not erase one still-valid opportunity. These are plans, not fills.
+        fraction = (gross - cap) / gross
+        for state, symbol, strategy, shares, price in sorted(
+            books, key=lambda book: (book[1], book[0], book[2]),
+        ):
+            reduction = min(shares, math.ceil(shares * fraction / 100.) * 100)
+            if reduction:
+                actions.append(RiskAction(
+                    symbol, strategy, reduction, price, date_str,
+                    "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
+                    state_index=state,
+                ))
     elif risk_alert_active:
         for state, symbol, strategy, shares, price in sorted(
             books, key=lambda book: (book[1], book[0], book[2]),
@@ -563,6 +578,7 @@ def plan_account_risk_budget(
                 preserve_strategy_valid_holdings
                 and not shock_confirmed
                 and not risk_alert_active
+                and not actions
             ),
             "risk_alert_active": risk_alert_active,
             "weak_book_ids": sorted(weak_books),

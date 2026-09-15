@@ -15,7 +15,7 @@ def assess(
     results: list[dict[str, Any]], original: dict[str, Any],
     incumbent: dict[str, Any],
 ) -> dict[str, Any]:
-    """Apply the first remote freeze; retain every unchanged promotion predicate."""
+    """Apply the owner-approved contract; retain every unchanged predicate."""
     native_joint.validate_references(original, original, incumbent)
     reference = metrics._current_incumbent_by_id(incumbent)
     by_id = {row['scenario_id']: row for row in results}
@@ -41,6 +41,11 @@ def assess(
         'promotion_gates': metrics._promotion_gates(results, incumbent),
     }
     current: dict[str, Any] = deepcopy(old)
+    absolute = current['absolute_hard_gates']
+    del absolute['checks']['all_date_symbol_side_buckets_at_most_200']
+    absolute['checks'][f'all_date_symbol_side_buckets_at_most_{native_joint.ALL_BUCKET_MAX}'] = (
+        absolute['observed']['all_worst_date_symbol_side_buckets'] <= native_joint.ALL_BUCKET_MAX
+    )
     # Preserve removed predicates in the independent original assessment.
     current['retained_robustness_hard_gates']['checks'] = {}
     initial = current['initial_baseline_gates']

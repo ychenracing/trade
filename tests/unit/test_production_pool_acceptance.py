@@ -1,4 +1,4 @@
-"""The first remote freeze governs; original failures cannot disappear."""
+"""Explicit owner amendments govern; original failures cannot disappear."""
 from copy import deepcopy
 
 import pytest
@@ -103,3 +103,13 @@ def test_frozen_contract_cannot_drift_after_results(tmp_path, monkeypatch):
     monkeypatch.setattr(native_joint, 'PRIMARY_CONTRACT_PATH', path)
     with pytest.raises(ValueError, match='contract content changed'):
         production_pool.assess(rows, original, incumbent)
+
+
+@pytest.mark.parametrize('count,passed', [(238, True), (239, False)])
+def test_owner_turnover_revision_keeps_old_result_visible(count, passed):
+    _, original, incumbent, rows, _ = fixture()
+    row = next(r for r in rows if r['scenario_type'] == 'leave_one_out')
+    row['date_symbol_side_count'] = count
+    result = production_pool.assess(rows, original, incumbent)
+    assert result['absolute_hard_gates']['passed'] is passed
+    assert result['original_contract_assessment']['absolute_hard_gates']['passed'] is False
