@@ -16,7 +16,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
-from quantfusion.application import native_joint
+from quantfusion.application import native_joint, production_pool
 from quantfusion.application import engine_api as qf
 from quantfusion.application import regime_api as ra
 from quantfusion.application import stress_artifacts, stress_metrics, stress_scenarios
@@ -673,6 +673,11 @@ def main() -> int:
         "summary": summary,
         "results": results,
     }
+    if native:
+        assert initial_baseline_reference is not None and incumbent is not None
+        universe_artifact.update(production_pool.assess(
+            results, initial_baseline_reference, incumbent,
+        ))
     published = stress_artifacts._publish_formal_artifacts(
         prefix_artifact,
         universe_artifact,
@@ -688,11 +693,11 @@ def main() -> int:
     print(
         json.dumps(
             {
-                "absolute_hard_gates": gates,
-                "retained_robustness_hard_gates": retained_gates,
+                "absolute_hard_gates": universe_artifact["absolute_hard_gates"],
+                "retained_robustness_hard_gates": universe_artifact["retained_robustness_hard_gates"],
                 "robustness_diagnostics": robustness,
-                "promotion_gates": promotion,
-                "initial_baseline_gates": initial_baseline_gates,
+                "promotion_gates": universe_artifact["promotion_gates"],
+                "initial_baseline_gates": universe_artifact["initial_baseline_gates"],
                 "summary": universe_artifact["summary"],
             },
             ensure_ascii=False,

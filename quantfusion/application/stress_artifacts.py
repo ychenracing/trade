@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
-from quantfusion.application import native_joint, stress_metrics, stress_scenarios
+from quantfusion.application import native_joint, production_pool, stress_metrics, stress_scenarios
 from quantfusion.application.c6_contract import candidate_spec
 from quantfusion.config.paths import PROJECT_ROOT, VALIDATION_ARTIFACT_DIR
 
@@ -291,10 +291,20 @@ def _validate_publish_candidate(
         scenario_id: completed[scenario_id] for scenario_id in expected_prefix_ids
     }:
         raise ValueError("Stress candidate prefix and universe results differ")
-    expected_absolute_gates = stress_metrics._absolute_hard_gates(results)
+    revised = None
+    if provenance.get("candidate_id") == native_joint.CANDIDATE_ID:
+        if initial_baseline_reference is None or incumbent is None:
+            raise ValueError("Production-pool comparison requires both references")
+        revised = production_pool.assess(results, initial_baseline_reference, incumbent)
+        for key in ("economic_contract", "original_contract_assessment"):
+            if universe_artifact.get(key) != revised[key]:
+                raise ValueError(f"Stress candidate changed: {key}")
+    expected_absolute_gates = (revised["absolute_hard_gates"] if revised is not None
+                               else stress_metrics._absolute_hard_gates(results))
     if universe_artifact.get("absolute_hard_gates") != expected_absolute_gates:
         raise ValueError("Stress candidate absolute hard gates changed")
-    expected_retained_gates = stress_metrics._retained_robustness_hard_gates(results)
+    expected_retained_gates = (revised["retained_robustness_hard_gates"] if revised is not None
+                               else stress_metrics._retained_robustness_hard_gates(results))
     if (
         universe_artifact.get("retained_robustness_hard_gates")
         != expected_retained_gates
@@ -303,10 +313,11 @@ def _validate_publish_candidate(
     expected_diagnostics = stress_metrics._robustness_diagnostics(results)
     if universe_artifact.get("robustness_diagnostics") != expected_diagnostics:
         raise ValueError("Stress candidate robustness diagnostics changed")
-    expected_promotion_gates = stress_metrics._promotion_gates(results, incumbent)
+    expected_promotion_gates = (revised["promotion_gates"] if revised is not None
+                                else stress_metrics._promotion_gates(results, incumbent))
     if universe_artifact.get("promotion_gates") != expected_promotion_gates:
         raise ValueError("Stress candidate promotion gates changed")
-    expected_initial_gates = stress_metrics._initial_baseline_gates(
+    expected_initial_gates = revised["initial_baseline_gates"] if revised is not None else stress_metrics._initial_baseline_gates(
         results, initial_baseline_reference
     )
     if universe_artifact.get("initial_baseline_gates") != expected_initial_gates:

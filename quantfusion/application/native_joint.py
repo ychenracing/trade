@@ -1,4 +1,4 @@
-"""Source-bound orchestration of unchanged native stress acceptance gates."""
+"""Source-bound current acceptance with immutable historical comparisons."""
 from __future__ import annotations
 
 from typing import Any, Mapping
@@ -54,6 +54,10 @@ def receipt(
     checks = {name: artifact[name]["passed"] is True for name in GATE_FAMILIES}
     return {
         "kind": "native_joint_economic_acceptance", "candidate_id": CANDIDATE_ID,
+        "economic_contract": artifact["economic_contract"],
+        "original_contract_passed": all(
+            gate["passed"] for gate in artifact["original_contract_assessment"].values()
+        ),
         "source_revision": artifact["source_revision"],
         "source_fingerprint": artifact["source_fingerprint"],
         "data_fingerprint": artifact["data_fingerprint"],

@@ -30,7 +30,7 @@ from quantfusion.risk.overlay.adapter import (
     apply_cooldown_buy_gate,
     apply_risk_buy_gate,
 )
-from quantfusion.strategy.trend import BaseStrategy
+from quantfusion.strategy.trend import BaseStrategy, EARLY_DUAL_TRANSITION_RSI_MAX
 
 _ESTABLISHED_BASE_CORE = ESTABLISHED_BASE_CORE
 _ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
@@ -248,6 +248,7 @@ class EnsembleAllocationMixin:
             sleeve._warmup_calendar_days = warmup_days
             sleeve._requested_start_date = request.start_date
             sleeve._requested_end_date = request.end_date
+            sleeve._portfolio_max_positions = int(self.cfg["max_positions"])
             profile, route, start_ts, end_ts = sleeve._validate_run_request(
                 request.symbols_dict,
                 request.start_date,
@@ -367,16 +368,36 @@ class EnsembleAllocationMixin:
 
     @staticmethod
     def _overlay_allocation_score(states: list[_PreparedSleeveRun], date: pd.Timestamp):
-        """Mean allocation score across sleeves, used to rank laggards for trim."""
+        """Mean held-book score across sleeves, used to rank laggards for trim.
+
+        A risk exit compares live account holdings only.  Letting an unheld
+        add-one universe member into this cross-section can change the selected
+        trim without adding any position or risk, which makes the exit depend
+        on irrelevant candidate-pool composition.
+        """
+        held = EnsembleAllocationMixin._held_portfolio_symbols(states)
+        sleeve_scores: list[dict[str, float]] = []
+        for state in states:
+            ranked_data = (
+                {
+                    symbol: frame
+                    for symbol, frame in state.data_map.items()
+                    if symbol in held
+                }
+                if held
+                else state.data_map
+            )
+            try:
+                sleeve_scores.append(
+                    state.sleeve._allocation_scores(ranked_data, date)
+                )
+            except Exception:
+                sleeve_scores.append({})
+
         def _score(symbol: str) -> float:
-            samples = []
-            for state in states:
-                try:
-                    scores = state.sleeve._allocation_scores(state.data_map, date)
-                except Exception:
-                    scores = {}
-                samples.append(float(scores.get(symbol, 0.0)))
+            samples = [float(scores.get(symbol, 0.0)) for scores in sleeve_scores]
             return float(np.mean(samples)) if samples else 0.0
+
         return _score
 
     def _authorize_portfolio_buys(
@@ -385,7 +406,9 @@ class EnsembleAllocationMixin:
         date: pd.Timestamp,
         external_risk_level: int = 0,
         carried_symbols: set[str] | None = None,
-    ) -> dict[str, float]:
+        *,
+        preview_only: bool = False,
+    ) -> dict[str, float] | tuple[dict[str, float], set[str]]:
         """Admit symbols by the mean of comparable percentile ranks (Borda score)."""
         held = self._held_portfolio_symbols(states)
         carried = set(carried_symbols or ()) & {
@@ -394,13 +417,66 @@ class EnsembleAllocationMixin:
             for signal, _ in state.pending
             if signal.direction == "buy"
         }
-        existing = held | carried
         hard_limit = int(self.cfg["max_positions"])
         maximum = self._current_position_limit(states, external_risk_level)
         if len(held) > hard_limit:
             raise RuntimeError("portfolio symbol limit was already exceeded")
+
+        # A moving-average cross is an event, unlike a breakout that can emit
+        # on several consecutive closes.  Requiring four repeated intent days
+        # therefore deletes the event by construction.  Two or more funded
+        # sleeves observing the same early (not already overextended) cross is
+        # the event's independent confirmation.  It receives a real portfolio
+        # slot, but never exceeds the live position limit or bypasses upstream
+        # risk/cooldown gates, which have already filtered these queues.
+        transition_votes: dict[str, dict[int, float]] = {}
+        for state_index, state in enumerate(states):
+            for signal, _ in state.pending:
+                if (
+                    signal.direction != "buy"
+                    or signal.strategy_name != "dual_ma"
+                    or signal.symbol in held
+                    or signal.symbol in carried
+                    or signal.signal_date is None
+                ):
+                    continue
+                rsi = getattr(state, "indicator_map", {}).get(
+                    signal.symbol, {}
+                ).get("rsi")
+                signal_date = pd.Timestamp(signal.signal_date)
+                if rsi is None or signal_date not in rsi.index:
+                    continue
+                value = float(rsi.loc[signal_date])
+                if (
+                    math.isfinite(value)
+                    and value <= EARLY_DUAL_TRANSITION_RSI_MAX
+                ):
+                    transition_votes.setdefault(signal.symbol, {})[
+                        state_index
+                    ] = value
+        transition_candidates = {
+            symbol: votes
+            for symbol, votes in transition_votes.items()
+            if self._runtime_tradable_count > hard_limit and len(votes) >= 2
+        }
+        transition_capacity = max(maximum - len(held | carried), 0)
+        ranked_transitions = sorted(
+            transition_candidates,
+            key=lambda symbol: (
+                -len(transition_candidates[symbol]),
+                float(np.mean(list(transition_candidates[symbol].values()))),
+                EXECUTION_PRIORITY.get(symbol, 9999),
+                symbol,
+            ),
+        )
+        admitted_transitions = set(
+            ranked_transitions
+            if preview_only
+            else ranked_transitions[:transition_capacity]
+        )
+        existing = held | carried | admitted_transitions
         candidate_symbols: set[str] = set()
-        for state in states:
+        for state_index, state in enumerate(states):
             candidates = {
                 signal.symbol
                 for signal, _ in state.pending
@@ -434,7 +510,10 @@ class EnsembleAllocationMixin:
                 if self._c6_feature_enabled("U")
                 else state.sleeve._allocation_scores(score_data_map, date)
             )
-            if getattr(self, "_c6_score_trace", None) is not None:
+            if (
+                not preview_only
+                and getattr(self, "_c6_score_trace", None) is not None
+            ):
                 receipt = {"decision_timestamp": date.strftime("%Y-%m-%d"), "state_index": state_index, "sleeve_name": state.sleeve.sleeve_name, "fixed_reference": self._c6_feature_enabled("U"), "pool_members": sorted(score_data_map), "scores": {symbol: float(scores[symbol]) for symbol in sorted(scores)}}
                 if (self._c6_intervention_id() or "").startswith("W"):
                     # These read-only queries use the same prior-close inputs,
@@ -531,18 +610,20 @@ class EnsembleAllocationMixin:
                     if admission_scores.get(symbol, 0.0) >= expansion_min_score
                 }
             previous = self._new_candidate_intent_streak
-            self._new_candidate_intent_streak = {
+            next_intent_streak = {
                 symbol: previous.get(symbol, 0) + 1
                 for symbol in current_intent
             }
+            if not preview_only:
+                self._new_candidate_intent_streak = next_intent_streak
             confirmation_eligible = confirmation_core | {
-                symbol
-                for symbol, streak in self._new_candidate_intent_streak.items()
+                symbol for symbol, streak in next_intent_streak.items()
                 if streak >= required_confirmation_days
             }
         else:
             required_confirmation_days = 1
-            self._new_candidate_intent_streak = {}
+            if not preview_only:
+                self._new_candidate_intent_streak = {}
             confirmation_eligible = set(admission_scores)
 
         eligible_new = (
@@ -557,24 +638,56 @@ class EnsembleAllocationMixin:
             ),
         )
         migration_capacity = max(maximum - len(existing), 0)
+        ranked_migrations = sorted(
+            route_migrations,
+            key=lambda symbol: (EXECUTION_PRIORITY.get(symbol, 9999), symbol),
+        )
         admitted_migrations = set(
-            sorted(
-                route_migrations,
-                key=lambda symbol: (EXECUTION_PRIORITY.get(symbol, 9999), symbol),
-            )[:migration_capacity]
+            ranked_migrations
+            if preview_only
+            else ranked_migrations[:migration_capacity]
         )
         candidate_capacity = max(
             maximum - len(existing) - len(admitted_migrations), 0
         )
-        allowed = existing | admitted_migrations | set(ranked[:candidate_capacity])
+        allowed = (
+            existing | admitted_migrations | set(ranked)
+            if preview_only
+            else existing
+            | admitted_migrations
+            | set(ranked[:candidate_capacity])
+        )
+        if preview_only:
+            return admission_scores, allowed
         for receipt in score_receipts:
-            receipt.update(allowed_symbols=sorted(allowed), existing_symbols=sorted(existing),
-                           candidate_capacity=candidate_capacity, maximum_positions=maximum)
-        for state in states:
+            receipt.update(
+                allowed_symbols=sorted(allowed),
+                existing_symbols=sorted(existing),
+                event_transition_candidates=sorted(transition_candidates),
+                admitted_event_transition_symbols=sorted(admitted_transitions),
+                candidate_capacity=candidate_capacity,
+                maximum_positions=maximum,
+            )
+        for state_index, state in enumerate(states):
             retained: list[tuple[Signal, BaseStrategy]] = []
             for signal, strategy in state.pending:
+                if (
+                    signal.direction == "buy"
+                    and signal.strategy_name == "dual_ma"
+                    and signal.symbol in admitted_transitions
+                ):
+                    state.sleeve._record_order_event(
+                        date=date_str,
+                        signal=signal,
+                        event="admitted_cross_sleeve_early_dual_transition",
+                        portfolio_max_positions=maximum,
+                        sleeve_votes=len(transition_candidates[signal.symbol]),
+                        signal_day_rsi=transition_votes[signal.symbol].get(state_index),
+                    )
                 if signal.direction == "buy" and signal.symbol not in allowed:
-                    if signal.symbol in route_migrations:
+                    if signal.symbol in transition_candidates:
+                        event = "rejected_portfolio_symbol_limit"
+                    elif signal.symbol in route_migrations:
                         event = "rejected_portfolio_symbol_limit"
                     elif (
                         signal.symbol in candidate_symbols
@@ -690,10 +803,17 @@ class EnsembleAllocationMixin:
     def _apply_account_risk_budget(
         self, states: list[_PreparedSleeveRun], date: pd.Timestamp,
         assets: float, peak: float, events: list[dict[str, Any]],
+        *, shock_floor: float = 0., preserve_strategy_valid_holdings: bool = False,
+        risk_alert_active: bool | None = None,
+        portfolio_evidence_buy_symbols: set[str] | None = None,
     ) -> None:
         """Apply the canonical budget once to the combined account, never per sleeve."""
         apply_account_risk_budget(states, date, assets, peak, self.cfg,
-                                  self._overlay_allocation_score(states, date), events)
+                                  self._overlay_allocation_score(states, date), events,
+                                  shock_floor=shock_floor,
+                                  preserve_strategy_valid_holdings=preserve_strategy_valid_holdings,
+                                  risk_alert_active=risk_alert_active,
+                                  portfolio_evidence_buy_symbols=portfolio_evidence_buy_symbols)
 
     def _execute_ensemble_open(
         self,

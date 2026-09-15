@@ -155,6 +155,22 @@ class CoreSignalMixin:
                 )
             for signal, strategy in buys:
                 target_shares = _floor_to_lot(signal.target_shares * scale)
+                held = self.positions.get(symbol, {})
+                live_shares = sum(position.shares for position in held.values())
+                own = held.get(signal.strategy_name)
+                if votes == 1 and live_shares > 0 and (own is None or own.shares == 0):
+                    # A lone new strategy joins the existing economic position;
+                    # it cannot dominate that position on one fresh vote alone.
+                    joined_shares = min(target_shares, _floor_to_lot(live_shares))
+                    if joined_shares < target_shares:
+                        self._record_order_event(
+                            date=date_str, signal=signal,
+                            event="scaled_late_strategy_join",
+                            requested_shares=target_shares,
+                            authorized_shares=joined_shares,
+                            existing_symbol_shares=live_shares,
+                        )
+                    target_shares = joined_shares
                 if target_shares > 0:
                     fused.append(
                         (

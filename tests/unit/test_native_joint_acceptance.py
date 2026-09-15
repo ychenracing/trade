@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from quantfusion.application import stress, stress_artifacts as a, stress_metrics as m, stress_scenarios as s
+from quantfusion.application import production_pool, stress, stress_artifacts as a, stress_metrics as m, stress_scenarios as s
 from tests.unit import test_stress_scenarios as helpers
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +32,7 @@ def artifacts(rows, provenance, original, incumbent):
                     robustness_diagnostics=m._robustness_diagnostics(rows),
                     initial_baseline_gates=m._initial_baseline_gates(rows, original),
                     promotion_gates=m._promotion_gates(rows, incumbent))
+    universe.update(production_pool.assess(rows, original, incumbent))
     prefix = dict(common, results=[row for row in rows if row['scenario_type'] == 'prefix'])
     return prefix, universe
 
@@ -66,7 +67,7 @@ def test_any_native_failure_is_rejected_even_when_legacy_assessor_would_accept(t
     by_id = {r['scenario_id']: r for r in rows}
     original_by_id = {r['scenario_id']: r for r in original['results']}
     if failure == 'drawdown':
-        by_id['prefix-01']['max_drawdown'] = -.18000001
+        by_id['prefix-01']['max_drawdown'] = -.20000001
     elif failure in {'random_p90', 'maximum_buckets'}:
         selected = [r for r in rows if r['scenario_type'] == 'random_subset'] if failure == 'random_p90' else [next(r for r in rows if r['scenario_type'] == 'leave_one_out')]
         for row in selected:
@@ -74,14 +75,14 @@ def test_any_native_failure_is_rejected_even_when_legacy_assessor_would_accept(t
             row.update(date_symbol_side_count=count, total_trades=count, sleeve_fill_count=count)
             row['reason_attribution']['re_entry'] = count
     elif failure in {'original_five', 'original_other'}:
-        sid, ratio = ('prefix-05', .98) if failure == 'original_five' else ('prefix-11', .94)
+        sid, ratio = ('prefix-05', .599) if failure == 'original_five' else ('prefix-11', .599)
         by_id[sid]['total_return'] = (1 + original_by_id[sid]['total_return']) * ratio - 1
-        assert m._promotion_gates(rows, incumbent)['passed'], 'incumbent alone misses original wealth failure'
+        assert production_pool.assess(rows, original, incumbent)['promotion_gates']['passed'], 'incumbent alone misses original wealth failure'
     elif failure == 'adjacent':
-        by_id['prefix-07']['total_return'] = 15 * .699 - 1
+        by_id['prefix-07']['total_return'] = 15 * .599 - 1
     else:
         by_id['prefix-09']['total_return'] = 15.
-        by_id['prefix-10']['total_return'] = 16 * (.9 - 1e-14) - 1
+        by_id['prefix-10']['total_return'] = 16 * .599 - 1
     with patch('quantfusion.application.c6_release_acceptance.release_formal_assessment', return_value={'passed': True}) as legacy:
         accepted, _ = publish(tmp_path, setup)
     assert accepted is False

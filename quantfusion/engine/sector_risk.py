@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from quantfusion.domain.models import BarContext, SectorObservation, Signal
-from quantfusion.strategy.trend import BaseStrategy
+from quantfusion.strategy.trend import BaseStrategy, EARLY_DUAL_TRANSITION_RSI_MAX
 
 
 class CoreSectorRiskMixin:
@@ -270,10 +270,31 @@ class CoreSectorRiskMixin:
                         pending, code, strategy.name
                     ):
                         continue
+                    rsi = ind_map[code].get("rsi")
+                    signal_day_rsi = (
+                        float(rsi.iloc[i])
+                        if rsi is not None and not pd.isna(rsi.iloc[i])
+                        else None
+                    )
+                    early_dual_transition = (
+                        len(self._tradable_symbol_codes)
+                        > int(
+                            getattr(
+                                self,
+                                "_portfolio_max_positions",
+                                self.cfg.get("max_positions", 6),
+                            )
+                        )
+                        and strategy.name == "dual_ma"
+                        and signal_day_rsi is not None
+                        and np.isfinite(signal_day_rsi)
+                        and signal_day_rsi <= EARLY_DUAL_TRANSITION_RSI_MAX
+                    )
                     if (
                         top_symbols is not None
                         and code not in top_symbols
                         and (code not in held_symbols)
+                        and not early_dual_transition
                     ):
                         continue
                 elif signal.direction == "sell":

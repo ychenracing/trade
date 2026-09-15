@@ -352,10 +352,32 @@ class EnsembleOrchestrationMixin:
                 )
                 if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
                     cm_overlay.finalize_c6_s_queue(states, date, state_local_books=self._c6_feature_enabled("F0"))
+            portfolio_evidence_buy_symbols = None
+            if idx + 1 < len(reference_dates):
+                preview = self._authorize_portfolio_buys(
+                    states,
+                    reference_dates[idx + 1],
+                    cm_overlay.risk_level if cm_overlay is not None else 0,
+                    self._held_portfolio_symbols(states),
+                    preview_only=True,
+                )
+                if not isinstance(preview, tuple):
+                    raise RuntimeError(
+                        'portfolio evidence preview lost its decision receipt'
+                    )
+                _, portfolio_evidence_buy_symbols = preview
             if self.cfg.get("account_risk_budget_enabled", False):
                 self._apply_account_risk_budget(
                     states, date, assets, float(portfolio_risk.lifetime_peak_assets),
                     portfolio_risk_events,
+                    shock_floor=float(portfolio_risk.peak_assets) * (1. - min(
+                        portfolio_risk.policy.confirmed_drawdown,
+                        portfolio_risk.policy.emergency_drawdown,
+                    )),
+                    preserve_strategy_valid_holdings=True,
+                    portfolio_evidence_buy_symbols=(
+                        portfolio_evidence_buy_symbols
+                    ),
                 )
             held = self._held_portfolio_symbols(states)
             self._record_c6_exposure(states, date, "official_sample")

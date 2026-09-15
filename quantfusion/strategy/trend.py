@@ -6,10 +6,39 @@ import numpy as np
 import pandas as pd
 
 from quantfusion.domain.models import BarContext, Position, Signal
-from quantfusion.domain.rules import floor_to_lot, is_finite_number
+from quantfusion.domain.rules import floor_to_lot, is_finite_number, limit_pct_for_code
 
 _floor_to_lot = floor_to_lot
 _is_finite_number = is_finite_number
+
+# A DualMA cross above this point is already a late momentum confirmation.
+# Earlier crosses may be coordinated as event candidates across sleeves.
+EARLY_DUAL_TRANSITION_RSI_MAX = 60.0
+
+
+def _has_unresolved_limit_advance(
+    ctx: BarContext, position: Position, close: float, cfg: dict
+) -> bool:
+    """Avoid chasing an add missed after a limit-sized close advance."""
+    i, closes = ctx.i, ctx.df["close"]
+    if i < 1:
+        return False
+    limit = limit_pct_for_code(ctx.symbol, cfg)
+    prior_close = closes.iloc[i - 1]
+    if not _is_finite_number(prior_close) or prior_close <= 0:
+        return True
+    if close / prior_close - 1 >= limit:
+        return True
+    if not isinstance(closes.index, pd.DatetimeIndex):
+        return False
+    start = int(closes.index.searchsorted(pd.Timestamp(position.last_buy_date)))
+    start = min(max(start, 1), i)
+    history = closes.iloc[start - 1 : i]
+    returns = history.pct_change().iloc[1:]
+    if not any(_is_finite_number(value) and value >= limit for value in returns):
+        return False
+    prior_peak = history.iloc[1:].max()
+    return not _is_finite_number(prior_peak) or close <= prior_peak
 
 
 class BaseStrategy:
@@ -206,7 +235,10 @@ class TurtleBreakoutStrategy(BaseStrategy):
                 )
             if close <= lower:
                 return self._make_sell_signal(ctx, f"Donchian exit@{lower:.2f}")
-            if pos.units < max_units:
+            if (
+                pos.units < max_units
+                and not _has_unresolved_limit_advance(ctx, pos, close, cfg)
+            ):
                 add_gap = atr_val * float(cfg.get("pyramid_add_atr", 0.5))
                 base_add_price = (
                     pos.last_add_price if pos.last_add_price > 0 else pos.entry_price
@@ -354,7 +386,17 @@ class ATRChannelStrategy(BaseStrategy):
                     ctx, f"hard stop{cfg.get('hard_stop', 0.15):.0%}"
                 )
             return None
-        if adx_val > cfg.get("adx_threshold", 15) and close > upper_channel:
+        prior_high = ind.get('donchian_upper')
+        long_ma = ind.get('ma_long')
+        range_breakout = (
+            prior_high is not None and long_ma is not None and i > 0
+            and _is_finite_number(prior_high.iloc[i])
+            and _is_finite_number(long_ma.iloc[i])
+            and close > prior_high.iloc[i]
+            and ma > long_ma.iloc[i]
+            and ma > ind['ma_short'].iloc[i - 1]
+        )
+        if adx_val > cfg.get("adx_threshold", 15) and (close > upper_channel or range_breakout):
             capital = ctx.current_assets * cfg.get("strategy_weight", 0.95)
             shares = self._calc_shares(capital, close, atr_val)
             if shares > 0:
@@ -363,7 +405,7 @@ class ATRChannelStrategy(BaseStrategy):
                     ctx,
                     shares,
                     stop_loss,
-                    f"ATR channel breakout(ADX={adx_val:.1f})",
+                    f"ATR {'range' if range_breakout else 'channel'} breakout(ADX={adx_val:.1f})",
                     atr_val,
                 )
         return None
