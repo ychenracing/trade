@@ -158,9 +158,11 @@ RiskEvidence -> RiskPolicy -> RiskAction -> EngineAdapter -> pending signal
 
 `stress_scenarios.py` 构造和选择计划，`stress_metrics.py` 计算指标及门禁，`stress_artifacts.py` 校验检查点与控制发布，`stress.py` 负责参数、编排和退出码。场景与验收的完整数量、当前基线、来源哈希和适用限制集中在[验证结果与证据](VALIDATION.md#formal-stress-evidence)，不在本文件复制。
 
-绝对风险门、扩展稳健性门、诊断统计和相对晋级门职责不同。任何 ID、family、ID 文件或 shard 选择都属于诊断，输出与正式发布隔离，不能更新 canonical 工件。未筛选的完整正式计划仍需实际满足其适用发布条件；账户预算的有限例外通过独立来源绑定的 `release_acceptance` 记录，不改写原生失败或策略触发线。
+绝对风险门、扩展稳健性门、诊断统计和相对晋级门职责不同。任何 ID、family、ID 文件或 shard 选择都属于诊断，输出与正式发布隔离，不能更新 canonical 工件。未筛选的完整正式计划仍需实际满足其适用发布条件；历史账户预算的有限例外通过独立来源绑定的 `release_acceptance` 记录，不改写原生失败或策略触发线。
 
 正式写入前，prefix 与 universe 的共同场景记录必须逐条相等，排序差异不影响比较。读取账户预算 incumbent 时重算已有记录、门禁与发布评估，并检查来源、固定参考和 L2 上下文；历史经济源码不必等于后来维护程序 HEAD。读取内部一致性不是数字签名，更不是重新认证全部外部原始对象。
+
+当前部署的完整指标以按族/seed的小型表保存，`scripts.release_tables`仅承担复核和导出：重建完整指标后，经原生身份、固定参考和重新计算的门禁验证才原子写出。它不修改日常决策，也不把历史accepted记录当作新候选资格。
 
 当前文档只描述现行实现和能力；不可变证据及 Git 对象保留其来源身份，不构成新的执行授权。项目入口见[项目 brief](../.github/PROJECT_BRIEF.md)。
 

@@ -1,5 +1,9 @@
 # Deployment-focused acceptance and delivery
 
+This is the plan recorded at the acceptance freeze. Its checkboxes record that
+planning snapshot; completed measurements are in `deployment-verification.json`,
+and corresponding-HEAD checks and actual merge status are recorded on PR101.
+
 Owner authorization: 2026-09-15, approve the goal of evidence-supported net return,
 risk and stability improvements within an explicit use scope, with understandable
 and executable decisions; revise acceptance and continue original PR101 to normal

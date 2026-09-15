@@ -17,13 +17,39 @@
 计划由唯一有序 17 股股票池确定性生成。随机子集使用 3 个固定 seed、5 个规模、每规模 50 个样本；顺序置换使用 3 个固定 seed、每个 50 次。正式结果须覆盖 958 个唯一场景、有限指标、`ProductionReplayEngine`／`production_daily_replay` 语义，并具有独立的源码、数据、场景与运行指纹。
 
 <!-- CURRENT_FORMAL_STRESS_RESULT:START -->
-当前正式基线：完整计划已运行：`958/958`，唯一 scenario ID：`958`；acceptance 为 `accepted`，canonical 为 `true`。接受依据为来源绑定的有限例外，不表示原生硬门全部通过。全场景最差最大回撤为 `-21.106217%`；经济源码：`56e5743ff8999540f07270ca0ddd0b5c664d8033`。完整记录与发布回执分别见 `artifacts/validation/universe_stress.json`、`artifacts/validation/c6_release_receipt.json`。
+当前正式候选：完整计划已运行：`958/958`，唯一 scenario ID：`958`；acceptance 为 `accepted`，canonical 为 `true`。接受依据为固定17股部署范围合同，原合同结果仍为 `NOT_MET`。主池财富为 `9.610543` 倍，最大回撤为 `-15.104978%`；全场景最差最大回撤为 `-19.357897%`。经济源码：`fe5588f1d88edc098a79bbf5c130fda58616e37f`。完整指标与发布回执分别见 `artifacts/validation/deployment-release/index.json`、`artifacts/validation/deployment-release-receipt.json`。
 <!-- CURRENT_FORMAL_STRESS_RESULT:END -->
 <!-- CURRENT_FORMAL_STRESS_PLAN:END -->
 
-## 当前正式基线与风险例外
+## 当前部署结果与限制
 
-正式工件为 `artifacts/validation/universe_stress.json`、`prefix_stress.json` 及 `artifacts/validation/c6_release_receipt.json`。完整计划覆盖 958/958，前缀覆盖 17/17；发布回执引用经来源认证的 77/77 资格样本。经济运行编号为 `34638696991`；这些是证据身份，不是产品版本号，也不意味着在当前维护提交上重新执行了完整经济矩阵。
+同一最终源码完成958个场景；固定17股主池在既定费用和模拟滑点之后，财富为 **9.610543倍**、最大回撤 **15.104978%**，对照为8.937340倍、16.872315%。主池190个日期／股票／方向桶、645笔袖套成交；它们不是券商订单，峰值一天30笔袖套成交、6个桶，仍需人工逐项复核。
+
+不利成本对照提高滑点、佣金并收紧成交容量：候选8.727486倍、14.677194%回撤，对照6.905283倍、16.989177%。12条已登记跨窗口复核完成；四条主池对照财富和回撤均改善，但2024年下半年主池绝对收益仍约为-12.7%，2025年一季度约为-10.8%/-9.6%。2024年下半年移除300502的两个对照财富分别降低约1.82%和1.37%，同时回撤改善。费用项来自回放配置，滑点是模型假设，不是已实现的实盘成本或未见样本证明。
+
+| 场景族 | 配对财富最低值 | P10 | 中位数 |
+|---|---:|---:|---:|
+| prefix | 93.9933% | 99.3289% | 160.4323% |
+| leave_one_out | 67.1077% | 90.1252% | 118.9736% |
+| add_one | 78.4156% | 112.1166% | 168.1812% |
+| random_subset | 35.6924% | 89.7891% | 126.5729% |
+| permutation | 107.5325% | 107.5325% | 107.5325% |
+
+随机子池最大回撤为19.357897%（对照21.106217%），P90为17.121063%（对照18.513920%）；超过18%的路径为13条，对照151条。仍有15条随机路径财富低于对照65%，最差仅保留35.692399%。这些明显损失全部保留，不能概括为“任意股票池均改善”。
+
+验收范围修订前已看到旧候选失败，本次是用户授权后的明确政策调整；原合同和前一份全场景18%/65%最低财富合同均保持NOT_MET。当前通过的是已冻结的部署范围合同，并且对最终源码重新执行完整矩阵，未沿用旧源码的通过身份。
+
+当前指标按族和seed保存在 `artifacts/validation/deployment-release/`，消除重复场景文字而保留每项测量值。以下命令重建完整JSON、核验每个文件与完整语义哈希、重新计算原生门和固定参考后才写出结果：
+
+```bash
+python -m scripts.release_tables artifacts/validation/deployment-release /tmp/trade-deployment-release.json
+```
+
+`deployment-release-receipt.json`绑定源码、数据、合同、表格和独立成本/跨窗口资格记录。完整原件及重建清单见 `artifacts/diagnostics/no_waiver/production-primary/acceptance-verification/deployment-originals/` 与 `deployment-formal-originals/`；分片按清单顺序重建，逐段和整体校验后再解包。CI对实际提交内容执行原件重建检查。Git中的旧 `universe_stress.json`、`prefix_stress.json`、`c6_release_receipt.json`继续作为下述历史基线，不能当作本次新结果；正式CLI未来运行仍可产生自己的完整工件。
+
+## 历史基线与风险例外
+
+历史正式工件为 `artifacts/validation/universe_stress.json`、`prefix_stress.json` 及 `artifacts/validation/c6_release_receipt.json`。完整计划覆盖 958/958，前缀覆盖 17/17；发布回执引用经来源认证的 77/77 资格样本。经济运行编号为 `34638696991`；这些是证据身份，不是产品版本号，也不意味着在当前维护提交上重新执行了完整经济矩阵。
 
 | 正式基线观测 | 结果 |
 |---|---:|
@@ -54,7 +80,7 @@
 
 本次经授权的策略和风险改造改变了历史交易路径。五池及两个自适应窗口已从原始回放分别核对净现金流与期末现金、现金与持仓市值构成的权益、权益序列独立重算的收益和回撤、成交记录数量及信号早于成交的因果顺序。旧黄金原件保留在同目录的 `goldens-before-strategy-revision.json`，其同源显式启用预算对照仍为 `tests/fixtures/account_budget_default_equivalence.json`；该历史对照不代表当前源码的对照回放。新旧原件和核对证据均由黄金文件的 `_source_binding` 绑定哈希。
 
-这些是来源绑定的固定回归预期，不是任意 HEAD 已经重跑的声明，也不是完整正式压力验收。当前候选经济验收仍为 `NOT_MET`，更新黄金预期不改变固定 incumbent、正式场景或经济门槛。实际提交是否通过测试，须查看对应提交的测试结果。
+这些是来源绑定的固定回归预期，不是任意 HEAD 已经重跑的声明，也不是完整正式压力验收。这些黄金预期更新时经济验收为 `NOT_MET`；本次部署范围验收见上方独立发布回执，固定 incumbent 和历史事实不变。实际提交是否通过测试，须查看对应提交的测试结果。
 
 当前回归中的 2024 年自适应弱市窗口，启用预算收益约为 +4.681879%。旧证据中的启用预算 +2.720470% 与显式关闭预算 +49.679035% 属于历史源码；不能将历史关闭预算结果与当前收益拼成同源反事实。该已查看窗口也不是未见样本，不能据此宣称预算必然提高收益或证明未来表现。
 
