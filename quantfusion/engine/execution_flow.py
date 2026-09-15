@@ -314,12 +314,18 @@ class CoreExecutionMixin:
         if signal.target_shares <= 0 or signal.price <= 0:
             return 0
         strat_name = strategy.name if strategy is not None else signal.strategy_name
+        owners = [owner for owner in (
+            self.strategy_instances.get(signal.symbol, [])
+            + self.external_strategy_instances.get(signal.symbol, [])
+        ) if owner.name == strat_name]
+        if strategy is not None and strategy not in owners:
+            owners.append(strategy)
         pos = None
         if signal.symbol in self.positions:
             pos = self.positions[signal.symbol].get(strat_name)
         if pos is None:
-            if strategy is not None:
-                strategy.position = None
+            for owner in owners:
+                owner.position = None
             return 0
         cfg = self.cfg
         slippage = float(cfg.get("slippage", 0.001))
@@ -357,11 +363,11 @@ class CoreExecutionMixin:
             del self.positions[signal.symbol][strat_name]
             if not self.positions[signal.symbol]:
                 del self.positions[signal.symbol]
-            if strategy is not None:
-                strategy.position = None
-        else:
-            if strategy is not None:
-                strategy.position = pos
+        # Risk-adapter orders deliberately carry no strategy object. Their
+        # fills still change the same strategy-owned book; a zero-share stale
+        # object would otherwise suppress future entries indefinitely.
+        for owner in owners:
+            owner.position = pos if pos.shares > 0 else None
         self.trades.append(
             TradeRecord(
                 symbol=signal.symbol,
