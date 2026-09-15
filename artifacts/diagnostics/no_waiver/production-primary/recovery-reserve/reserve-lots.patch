@@ -1,0 +1,90 @@
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index 0809328..5611371 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -356,6 +356,32 @@ def plan_account_risk_budget(
+             append_pro_rata_relief(residual_books, residual_relief)
+         else:
+             append_pro_rata_relief(ordered_books, required_relief)
++    elif preserve_strategy_valid_holdings and not risk_alert_active and gross > cap:
++        # Fund the unchanged two-session reserve before a cycle alert. Share
++        # the necessary close-known reduction across books so score ordering
++        # does not erase one still-valid opportunity. These are plans, not fills.
++        required = gross - cap
++        fraction = required / gross
++        ordered = sorted(books, key=lambda book: (book[1], book[0], book[2]))
++        desired = [shares * fraction for _, _, _, shares, _ in ordered]
++        reductions = [floor_to_lot(quantity) for quantity in desired]
++        planned = sum(quantity * book[4] for quantity, book in zip(reductions, ordered))
++        # Round the account plan, not every fractional book upward. Allocate
++        # remaining lots by the largest unmet proportional value, with stable
++        # ties. The resulting actual-lot plan still funds all required relief.
++        while planned + 1e-8 < required:
++            eligible = [i for i, book in enumerate(ordered) if reductions[i] < book[3]]
++            index = max(eligible, key=lambda i: ((desired[i] - reductions[i]) * ordered[i][4], -i))
++            extra = min(100, ordered[index][3] - reductions[index])
++            reductions[index] += extra
++            planned += extra * ordered[index][4]
++        for (state, symbol, strategy, _, price), reduction in zip(ordered, reductions):
++            if reduction:
++                actions.append(RiskAction(
++                    symbol, strategy, reduction, price, date_str,
++                    "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
++                    state_index=state,
++                ))
+     elif risk_alert_active:
+         for state, symbol, strategy, shares, price in sorted(
+             books, key=lambda book: (book[1], book[0], book[2]),
+@@ -563,6 +589,7 @@ def plan_account_risk_budget(
+                 preserve_strategy_valid_holdings
+                 and not shock_confirmed
+                 and not risk_alert_active
++                and not actions
+             ),
+             "risk_alert_active": risk_alert_active,
+             "weak_book_ids": sorted(weak_books),
+diff --git a/tests/unit/test_proportional_reserve_research.py b/tests/unit/test_proportional_reserve_research.py
+new file mode 100644
+index 0000000..a731f58
+--- /dev/null
++++ b/tests/unit/test_proportional_reserve_research.py
+@@ -0,0 +1,39 @@
++"""Research: retain each opportunity while funding the existing reserve."""
++from quantfusion.config.engine import default_engine_config
++from quantfusion.risk.account_budget import plan_account_risk_budget
++
++
++def test_preserved_books_share_required_reserve_without_erasing_one_book():
++    books = [(0, '300308', 'turtle_breakout', 4000, 100.),
++             (1, '603986', 'dual_ma', 4000, 100.)]
++    receipt, actions = plan_account_risk_budget(
++        900_000., 1_000_000., default_engine_config(), books, [],
++        lambda symbol: float(symbol == '603986'), date_str='2026-01-05',
++        preserve_strategy_valid_holdings=True,
++    )
++    assert len(actions) == 2
++    assert abs(actions[0].shares - actions[1].shares) <= 100
++    assert all(0 < action.shares < 4000 for action in actions)
++    assert 800_000. - sum(a.shares * a.price for a in actions) <= receipt['gross_cap']
++    assert receipt['strategy_valid_holdings_preserved'] is False
++
++
++def test_sufficient_reserve_does_not_reduce_valid_holdings():
++    receipt, actions = plan_account_risk_budget(
++        1_000_000., 1_000_000., default_engine_config(),
++        [(0, '300308', 'turtle_breakout', 4000, 100.)], [],
++        lambda _: 0., date_str='2026-01-05', preserve_strategy_valid_holdings=True,
++    )
++    assert actions == []
++    assert receipt['strategy_valid_holdings_preserved'] is True
++
++
++def test_lot_rounding_does_not_sell_every_small_book_for_fractional_targets():
++    books = [(0, '300308', 'turtle_breakout', 7900, 100.),
++             (1, '603986', 'dual_ma', 100, 100.)]
++    receipt, actions = plan_account_risk_budget(
++        910_000., 1_000_000., default_engine_config(), books, [], lambda _: 1.,
++        date_str='2026-01-05', preserve_strategy_valid_holdings=True,
++    )
++    assert {a.symbol for a in actions} == {'300308'}
++    assert 800_000. - sum(a.shares * a.price for a in actions) <= receipt['gross_cap']

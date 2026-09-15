@@ -1,0 +1,43 @@
+{
+  "owner_clarification": "Preserve large originals using a supported non-inline transfer; do not omit originals. No permission or access-control bypass.",
+  "archives": [
+    {
+      "local_path": "/workspace/scratch/bf273963828a/direct-loss-continuation.tar.gz",
+      "remote_file_id": "161exhnUlDTr6MJ1pAdGtSwmPwAHsGjbD",
+      "remote_url": "https://drive.google.com/file/d/161exhnUlDTr6MJ1pAdGtSwmPwAHsGjbD/view",
+      "bytes": 4637833,
+      "local_sha256": "8d9b9f7c07b7e4ae912c06fa2f57dd0924d509bd0788f5d4755653b9ff95c699",
+      "raw_replay_members": 61,
+      "upload_status": "SUCCESS",
+      "provider_size_verified": true,
+      "content_readback_verified": false,
+      "transfer": "authorized host file reference; no inline bytes/base64"
+    },
+    {
+      "local_path": "/workspace/scratch/bf273963828a/TRADE_PR101_PRIMARY_SCREEN_ORIGINALS.tar.gz",
+      "remote_file_id": "1Bz6EJSvPD3pM-S-aVzjc3Ko2JMOQRBkf",
+      "remote_url": "https://drive.google.com/file/d/1Bz6EJSvPD3pM-S-aVzjc3Ko2JMOQRBkf/view",
+      "bytes": 14144572,
+      "local_sha256": "762dbe0073344e2d06b8087c54930aa7820fb076317c0daed714d25d9d9a956e",
+      "raw_replay_members": 131,
+      "upload_status": "SUCCESS",
+      "provider_size_verified": true,
+      "content_readback_verified": false,
+      "transfer": "authorized host file reference; no inline bytes/base64"
+    },
+    {
+      "local_path": "/workspace/scratch/bf273963828a/TRADE_PR101_PRIMARY_PREFIX_ORIGINALS.tar.gz",
+      "remote_file_id": "1vK8TwE9ktgaEKMcqmaJxmbtIjHM2M4rF",
+      "remote_url": "https://drive.google.com/file/d/1vK8TwE9ktgaEKMcqmaJxmbtIjHM2M4rF/view",
+      "bytes": 2151816,
+      "local_sha256": "cb82760b683172ff1b75dd843483162f880c10fa07f22f07859f72107954e816",
+      "raw_replay_members": 20,
+      "upload_status": "SUCCESS",
+      "provider_size_verified": true,
+      "content_readback_verified": false,
+      "transfer": "authorized host file reference; no inline bytes/base64"
+    }
+  ],
+  "readback_limitation": "Two fresh streamed connector references downloaded from the runtime returned HTTP403/error1010. Provider metadata confirms byte counts but does not expose requested content checksums. Upload success is not claimed as hash verification.",
+  "new_recovery_replays": "Separate12raw archive: ../recovery-reserve/raw-preservation-receipt.json"
+}

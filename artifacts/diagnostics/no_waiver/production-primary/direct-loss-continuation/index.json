@@ -12,7 +12,7 @@
   },
   "original_contract_status": "NOT_MET",
   "raw_replay_count": 61,
-  "raw_archive": "LOCAL_ONLY: original binary replays and archives were not committed; large uploads stopped under owner instruction. compact-evidence.json records recoverable local paths and hashes.",
+  "raw_archive": "Uploaded prior61 replay originals through host file reference; see raw-preservation-receipt.json. Provider size verified, content readback blocked403.",
   "results": "compact-evidence.json",
   "direct_loss": {
     "research_source_revision": "ff19a4e9cb603147bbf0ffade380ee2e129cd6db",
@@ -303,13 +303,18 @@
       "peer-alert-alignment",
       "peer-residual-cap"
     ],
-    "remaining_problem": "Close-known risk relief can prevent LOO liquidation but current generalized reductions destroy production trend wealth. None of the tested sources meets all frozen protections. Need a materially different, evidence-supported holding/reduction/readmission mechanism; no exact-symbol/date switch, neighboring parameter scan, threshold lowering, or mixed-source row selection.",
-    "merge": "Only normal merge after one final default source passes complete formal958, source-bound qualification and repository checks. Current source remains unqualified research."
+    "remaining_problem": "Proportional reserve improves failed-path wealth/DD but has238 LOO buckets; account-level lot rounding reduces it to221 while losing wealth. Current evidence points to opportunity allocation under binding account/group budgets. Do not repeat rejected rearm-only, admission-blocking or rounding routes, scan risk thresholds, select rows from different sources, or merge incomplete stress evidence.",
+    "merge": "Only normal merge after one final default source passes complete formal958, source-bound qualification and repository checks. Current source remains unqualified research.",
+    "latest_research": "../recovery-reserve/index.json"
   },
   "storage": {
-    "owner_instruction": "\u5982\u679c\u88ab\u4e2d\u65ad\u4e86\u4f60\u5c31\u91cd\u8bd5\uff0c\u4e0d\u8981\u7528\u5927\u6587\u4ef6\u4e0a\u4f20\u3002\u7ee7\u7eed",
-    "policy": "Only small code, summaries and recovery metadata; no binary, archive or assembled Base64 uploads. Reuse existing Git blob objects for unchanged large references.",
-    "raw_originals_remote": false,
-    "limitation": "Local scratch originals can be lost; no claim of durable raw preservation or full qualification."
-  }
+    "owner_instruction": "大型原件需要保存；避免直接大载荷上传，采用授权的文件引用或流式传输。",
+    "policy": "Small explicit Git writes; supported host file-reference transfers for large originals. No inline binary/Base64 payloads or permission bypass.",
+    "raw_originals_remote": true,
+    "content_readback_verified": false,
+    "receipt": "raw-preservation-receipt.json",
+    "limitation": "Provider uploads and byte counts confirmed for originals; content readback remains blocked403. New12raws have a separate receipt.",
+    "new_recovery_originals": "../recovery-reserve/raw-preservation-receipt.json"
+  },
+  "latest_research": "../recovery-reserve/index.json"
 }

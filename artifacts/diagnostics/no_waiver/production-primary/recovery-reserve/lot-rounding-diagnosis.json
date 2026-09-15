@@ -1,0 +1,309 @@
+{
+  "non_mutating_observer": true,
+  "wealth": 8.301496752048255,
+  "max_drawdown": -0.16054253870718957,
+  "buckets": 238,
+  "records": [
+    {
+      "date": "2025-06-24",
+      "current_symbols": [
+        "002384",
+        "300308",
+        "300394",
+        "300502",
+        "688256"
+      ],
+      "proposed_symbols": [
+        "300308"
+      ],
+      "required_relief": 1060.2578677069396,
+      "current_relief": 135422.0,
+      "proposed_relief": 12385.0,
+      "current_orders": 13,
+      "proposed_orders": 1
+    },
+    {
+      "date": "2025-10-09",
+      "current_symbols": [
+        "002384",
+        "300054",
+        "300308",
+        "300502",
+        "300604",
+        "601869"
+      ],
+      "proposed_symbols": [
+        "300308",
+        "300502",
+        "601869"
+      ],
+      "required_relief": 318099.6890400322,
+      "current_relief": 511859.0,
+      "proposed_relief": 322583.0,
+      "current_orders": 23,
+      "proposed_orders": 9
+    },
+    {
+      "date": "2025-10-10",
+      "current_symbols": [
+        "002384",
+        "300308",
+        "300502",
+        "300604",
+        "601869"
+      ],
+      "proposed_symbols": [
+        "300308",
+        "300502",
+        "601869"
+      ],
+      "required_relief": 1096351.4412427098,
+      "current_relief": 1211173.0,
+      "proposed_relief": 1126570.0,
+      "current_orders": 13,
+      "proposed_orders": 9
+    },
+    {
+      "date": "2025-10-13",
+      "current_symbols": [
+        "002384",
+        "002409",
+        "300308",
+        "300502"
+      ],
+      "proposed_symbols": [
+        "002409",
+        "300308",
+        "300502"
+      ],
+      "required_relief": 1978472.1292033503,
+      "current_relief": 2067966.0,
+      "proposed_relief": 1982240.0,
+      "current_orders": 10,
+      "proposed_orders": 9
+    },
+    {
+      "date": "2025-10-31",
+      "current_symbols": [
+        "300308",
+        "300502",
+        "688072",
+        "688498"
+      ],
+      "proposed_symbols": [
+        "300308",
+        "300502",
+        "688072",
+        "688498"
+      ],
+      "required_relief": 1488776.468078971,
+      "current_relief": 1903019.0,
+      "proposed_relief": 1514509.0,
+      "current_orders": 21,
+      "proposed_orders": 21
+    },
+    {
+      "date": "2025-11-14",
+      "current_symbols": [
+        "002384",
+        "300308",
+        "688072",
+        "688498"
+      ],
+      "proposed_symbols": [
+        "002384",
+        "300308",
+        "688072",
+        "688498"
+      ],
+      "required_relief": 2767163.005937008,
+      "current_relief": 3053348.0,
+      "proposed_relief": 2793830.0,
+      "current_orders": 19,
+      "proposed_orders": 19
+    },
+    {
+      "date": "2025-12-11",
+      "current_symbols": [
+        "002384",
+        "300308",
+        "300394",
+        "300502",
+        "688072",
+        "688498"
+      ],
+      "proposed_symbols": [
+        "002384",
+        "300308",
+        "300394",
+        "300502",
+        "688072"
+      ],
+      "required_relief": 1611251.1737280572,
+      "current_relief": 2096085.0,
+      "proposed_relief": 1625884.0,
+      "current_orders": 32,
+      "proposed_orders": 23
+    },
+    {
+      "date": "2025-12-26",
+      "current_symbols": [
+        "300308",
+        "300394",
+        "300502",
+        "601869",
+        "688072",
+        "688498"
+      ],
+      "proposed_symbols": [
+        "300308",
+        "300502",
+        "601869",
+        "688072"
+      ],
+      "required_relief": 1225908.795017819,
+      "current_relief": 1763335.0,
+      "proposed_relief": 1249889.0,
+      "current_orders": 28,
+      "proposed_orders": 17
+    },
+    {
+      "date": "2025-12-29",
+      "current_symbols": [
+        "300308",
+        "300394",
+        "300502",
+        "601869",
+        "688072"
+      ],
+      "proposed_symbols": [
+        "300308",
+        "601869",
+        "688072"
+      ],
+      "required_relief": 278216.38455509115,
+      "current_relief": 819522.0,
+      "proposed_relief": 285626.0,
+      "current_orders": 21,
+      "proposed_orders": 9
+    },
+    {
+      "date": "2026-02-13",
+      "current_symbols": [
+        "300394",
+        "300408",
+        "601869",
+        "688072",
+        "688120",
+        "688361"
+      ],
+      "proposed_symbols": [
+        "300394",
+        "300408",
+        "601869",
+        "688072",
+        "688120",
+        "688361"
+      ],
+      "required_relief": 2134440.0816991534,
+      "current_relief": 2351186.0,
+      "proposed_relief": 2155415.0,
+      "current_orders": 29,
+      "proposed_orders": 28
+    },
+    {
+      "date": "2026-03-03",
+      "current_symbols": [
+        "300394",
+        "300408",
+        "601869",
+        "688072",
+        "688120",
+        "688361"
+      ],
+      "proposed_symbols": [
+        "300394",
+        "300408",
+        "601869"
+      ],
+      "required_relief": 221397.2644650694,
+      "current_relief": 584646.0,
+      "proposed_relief": 237523.0,
+      "current_orders": 28,
+      "proposed_orders": 9
+    },
+    {
+      "date": "2026-03-05",
+      "current_symbols": [
+        "002384",
+        "300394",
+        "300408",
+        "601869",
+        "688120",
+        "688361"
+      ],
+      "proposed_symbols": [
+        "002384",
+        "300394",
+        "300408",
+        "601869",
+        "688120"
+      ],
+      "required_relief": 1546281.8796597822,
+      "current_relief": 1721780.0,
+      "proposed_relief": 1553809.0,
+      "current_orders": 23,
+      "proposed_orders": 20
+    },
+    {
+      "date": "2026-03-17",
+      "current_symbols": [
+        "002384",
+        "300394",
+        "300408",
+        "601869",
+        "688120",
+        "688300"
+      ],
+      "proposed_symbols": [
+        "002384",
+        "300394",
+        "300408",
+        "601869",
+        "688120",
+        "688300"
+      ],
+      "required_relief": 1487014.4680391615,
+      "current_relief": 1637338.0,
+      "proposed_relief": 1487294.0,
+      "current_orders": 26,
+      "proposed_orders": 25
+    },
+    {
+      "date": "2026-06-08",
+      "current_symbols": [
+        "002384",
+        "300054",
+        "300308",
+        "300408",
+        "601869",
+        "688300"
+      ],
+      "proposed_symbols": [
+        "002384",
+        "300054",
+        "300308",
+        "300408",
+        "601869",
+        "688300"
+      ],
+      "required_relief": 3435898.9485719725,
+      "current_relief": 4160060.0,
+      "proposed_relief": 3483110.0,
+      "current_orders": 35,
+      "proposed_orders": 26
+    }
+  ],
+  "planned_symbol_dates_removed": 19,
+  "planned_orders_removed": 96
+}

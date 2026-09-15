@@ -1,0 +1,590 @@
+{
+  "classification": "Observed historical divergence; not stock-specific trading instructions",
+  "source_cases": [
+    {
+      "variant": "proportional-reserve-screen",
+      "order_events": [
+        {
+          "sleeve": "base",
+          "date": "2026-01-12",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-01-12",
+          "requested_shares": 11900,
+          "authorized_shares": 2200,
+          "close_gross_cap": 5110223.009274479
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-01-12",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-01-12",
+          "requested_shares": 8300,
+          "authorized_shares": 1500,
+          "close_gross_cap": 5110223.009274479
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-01-12",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-01-12",
+          "requested_shares": 13500,
+          "authorized_shares": 2500,
+          "close_gross_cap": 5110223.009274479
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-01-13",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "direction": "buy",
+          "event": "admitted_cross_sleeve_early_dual_transition",
+          "signal_date": "2026-01-12",
+          "portfolio_max_positions": 6,
+          "sleeve_votes": 3,
+          "signal_day_rsi": 56.19287011600955
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-01-13",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "direction": "buy",
+          "event": "admitted_cross_sleeve_early_dual_transition",
+          "signal_date": "2026-01-12",
+          "portfolio_max_positions": 6,
+          "sleeve_votes": 3,
+          "signal_day_rsi": 56.19287011600955
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-01-13",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "direction": "buy",
+          "event": "admitted_cross_sleeve_early_dual_transition",
+          "signal_date": "2026-01-12",
+          "portfolio_max_positions": 6,
+          "sleeve_votes": 3,
+          "signal_day_rsi": 56.19287011600955
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 6100,
+          "authorized_shares": 2500,
+          "close_gross_cap": 3575135.8272686154
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 6100,
+          "authorized_shares": 2500,
+          "close_gross_cap": 3575135.8272686154
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 4300,
+          "authorized_shares": 1800,
+          "close_gross_cap": 3575135.8272686154
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 4300,
+          "authorized_shares": 1800,
+          "close_gross_cap": 3575135.8272686154
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 6900,
+          "authorized_shares": 2900,
+          "close_gross_cap": 3575135.8272686154
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 6900,
+          "authorized_shares": 2900,
+          "close_gross_cap": 3575135.8272686154
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-03-09",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-09",
+          "requested_shares": 4800,
+          "authorized_shares": 3500,
+          "close_gross_cap": 4582414.4301559655
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-03-09",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-09",
+          "requested_shares": 3400,
+          "authorized_shares": 2400,
+          "close_gross_cap": 4582414.4301559655
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-03-09",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-09",
+          "requested_shares": 5400,
+          "authorized_shares": 3900,
+          "close_gross_cap": 4582414.4301559655
+        }
+      ],
+      "budgets": [
+        {
+          "date": "2026-01-12",
+          "equity": 8652590.672573753,
+          "lifetime_peak": 9807475.664959,
+          "gross_before": 3425592.0,
+          "gross_cap": 5110223.009274479,
+          "risk_alert_active": false,
+          "new_reduction_orders": 0,
+          "portfolio_evidence_buy_symbols": [
+            "002409",
+            "300308",
+            "300408",
+            "300502",
+            "601869",
+            "688072",
+            "688120",
+            "688361"
+          ]
+        },
+        {
+          "date": "2026-03-06",
+          "equity": 8469221.263042253,
+          "lifetime_peak": 9807475.664959,
+          "gross_before": 1472096.0,
+          "gross_cap": 3575135.8272686154,
+          "risk_alert_active": false,
+          "new_reduction_orders": 0,
+          "portfolio_evidence_buy_symbols": [
+            "300394",
+            "300408",
+            "601869",
+            "688120",
+            "688300"
+          ]
+        },
+        {
+          "date": "2026-03-09",
+          "equity": 8589470.328227002,
+          "lifetime_peak": 9807475.664959,
+          "gross_before": 2101223.0,
+          "gross_cap": 4582414.4301559655,
+          "risk_alert_active": false,
+          "new_reduction_orders": 0,
+          "portfolio_evidence_buy_symbols": [
+            "300394",
+            "300408",
+            "601869",
+            "688120",
+            "688300"
+          ]
+        },
+        {
+          "date": "2026-03-10",
+          "equity": 9015120.116327502,
+          "lifetime_peak": 9807475.664959,
+          "gross_before": 3385543.0,
+          "gross_cap": 8146818.015587284,
+          "risk_alert_active": false,
+          "new_reduction_orders": 0,
+          "portfolio_evidence_buy_symbols": [
+            "002384",
+            "300394",
+            "300408",
+            "601869",
+            "688120",
+            "688300"
+          ]
+        }
+      ]
+    },
+    {
+      "variant": "reserve-lots-screen",
+      "order_events": [
+        {
+          "sleeve": "base",
+          "date": "2026-01-12",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-01-12",
+          "requested_shares": 11400,
+          "authorized_shares": 0,
+          "close_gross_cap": 3758243.0585176186
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-01-12",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-01-12",
+          "requested_shares": 9600,
+          "authorized_shares": 0,
+          "close_gross_cap": 3758243.0585176186
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-01-12",
+          "symbol": "300408",
+          "strategy": "dual_ma",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-01-12",
+          "requested_shares": 12300,
+          "authorized_shares": 0,
+          "close_gross_cap": 3758243.0585176186
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 6000,
+          "authorized_shares": 0,
+          "close_gross_cap": 2439817.083425494
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 6000,
+          "authorized_shares": 0,
+          "close_gross_cap": 2439817.083425494
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 5000,
+          "authorized_shares": 0,
+          "close_gross_cap": 2439817.083425494
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 5000,
+          "authorized_shares": 0,
+          "close_gross_cap": 2439817.083425494
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 6200,
+          "authorized_shares": 0,
+          "close_gross_cap": 2439817.083425494
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-03-06",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-06",
+          "requested_shares": 6200,
+          "authorized_shares": 0,
+          "close_gross_cap": 2439817.083425494
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-03-09",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-09",
+          "requested_shares": 5100,
+          "authorized_shares": 0,
+          "close_gross_cap": 1913990.158157491
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-03-09",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-09",
+          "requested_shares": 5100,
+          "authorized_shares": 0,
+          "close_gross_cap": 1913990.158157491
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-03-09",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-09",
+          "requested_shares": 4300,
+          "authorized_shares": 0,
+          "close_gross_cap": 1913990.158157491
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-03-09",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-09",
+          "requested_shares": 4300,
+          "authorized_shares": 0,
+          "close_gross_cap": 1913990.158157491
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-03-09",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-09",
+          "requested_shares": 5400,
+          "authorized_shares": 0,
+          "close_gross_cap": 1913990.158157491
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-03-09",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-09",
+          "requested_shares": 5400,
+          "authorized_shares": 0,
+          "close_gross_cap": 1913990.158157491
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-03-10",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-10",
+          "requested_shares": 4500,
+          "authorized_shares": 100,
+          "close_gross_cap": 2556364.7784254933
+        },
+        {
+          "sleeve": "base",
+          "date": "2026-03-10",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-10",
+          "requested_shares": 4500,
+          "authorized_shares": 100,
+          "close_gross_cap": 2556364.7784254933
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-03-10",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-10",
+          "requested_shares": 3800,
+          "authorized_shares": 100,
+          "close_gross_cap": 2556364.7784254933
+        },
+        {
+          "sleeve": "fast",
+          "date": "2026-03-10",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-10",
+          "requested_shares": 3800,
+          "authorized_shares": 100,
+          "close_gross_cap": 2556364.7784254933
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-03-10",
+          "symbol": "688300",
+          "strategy": "turtle_breakout",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-10",
+          "requested_shares": 4700,
+          "authorized_shares": 100,
+          "close_gross_cap": 2556364.7784254933
+        },
+        {
+          "sleeve": "slow",
+          "date": "2026-03-10",
+          "symbol": "688300",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "account_budget_buy_reduced",
+          "signal_date": "2026-03-10",
+          "requested_shares": 4700,
+          "authorized_shares": 100,
+          "close_gross_cap": 2556364.7784254933
+        }
+      ],
+      "budgets": [
+        {
+          "date": "2026-01-12",
+          "equity": 8530699.398320004,
+          "lifetime_peak": 9855713.63065,
+          "gross_before": 3307315.0,
+          "gross_cap": 3758243.0585176186,
+          "risk_alert_active": false,
+          "new_reduction_orders": 0,
+          "portfolio_evidence_buy_symbols": [
+            "002409",
+            "300054",
+            "300308",
+            "300408",
+            "300502",
+            "601869",
+            "688361",
+            "688498"
+          ]
+        },
+        {
+          "date": "2026-03-06",
+          "equity": 8422497.905047255,
+          "lifetime_peak": 9855713.63065,
+          "gross_before": 2455126.0,
+          "gross_cap": 2439817.083425494,
+          "risk_alert_active": true,
+          "new_reduction_orders": 0,
+          "portfolio_evidence_buy_symbols": [
+            "300394",
+            "300408",
+            "601869",
+            "688300",
+            "688361",
+            "688498"
+          ]
+        },
+        {
+          "date": "2026-03-09",
+          "equity": 8359684.170170255,
+          "lifetime_peak": 9855713.63065,
+          "gross_before": 1657436.0,
+          "gross_cap": 1913990.158157491,
+          "risk_alert_active": true,
+          "new_reduction_orders": 1,
+          "portfolio_evidence_buy_symbols": [
+            "300394",
+            "300408",
+            "601869",
+            "688300",
+            "688361",
+            "688498"
+          ]
+        },
+        {
+          "date": "2026-03-10",
+          "equity": 8436433.699830255,
+          "lifetime_peak": 9855713.63065,
+          "gross_before": 1641468.0,
+          "gross_cap": 2556364.7784254933,
+          "risk_alert_active": true,
+          "new_reduction_orders": 0,
+          "portfolio_evidence_buy_symbols": [
+            "002384",
+            "300394",
+            "300408",
+            "601869",
+            "688300",
+            "688361",
+            "688498"
+          ]
+        }
+      ]
+    }
+  ]
+}
