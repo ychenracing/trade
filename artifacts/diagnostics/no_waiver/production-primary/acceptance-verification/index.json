@@ -1,10 +1,10 @@
 {
-  "status": "NOT_MET; FORMAL_RUNNING; TWO_MECHANISMS_REJECTED; GOAL_REASSESSED",
+  "status": "NOT_MET; FORMAL958_COMPLETE; TWO_MECHANISMS_REJECTED; GOAL_REASSESSED",
   "economic_source_revision": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
   "economic_source_fingerprint": "0032862f2829cac84c9d13cab6076ffe21e4348c85c0a3ac200f6f3db160fe7e",
   "equivalent_remote_source": "5242d4d5e0455a1cfd3c4a053e2e94d08b5fe8e4",
   "exact_tree_equivalence": "75ad8f6184c9412f077aa3497b80db10b29127cf",
-  "formal_completed_at_checkpoint": 636,
+  "formal_completed_at_checkpoint": 958,
   "formal_required": 958,
   "latest_observed_worst_mdd": -0.19357897406694738,
   "first24_exactly_reproduced": true,
@@ -40,10 +40,23 @@
     "formal_checkpoint": "/workspace/scratch/f9bafb398fc2/formal-958.json",
     "formal_log": "/workspace/scratch/f9bafb398fc2/formal-958.txt",
     "research": "../bounded-followup.json",
-    "do_not_duplicate_running_replays": true
+    "do_not_duplicate_running_replays": false,
+    "do_not_repeat_completed_formal958": true,
+    "next": "Read completed assessment and goal-reassessment. Do not automatically resume strategy trials. No qualifying candidate, no merge."
   },
   "goal_reassessment": "goal-reassessment.json",
   "additional_raw_preservation": "bounded-raw-receipt.json",
   "research_status": "Both mechanisms rejected for economic losses, no bucket veto. No third trial authorized by evidence.",
-  "contract_wording_cleanup": "Removed stale statement that238 remained effective; active rule unchanged, no standalone turnover/risk-action veto."
+  "contract_wording_cleanup": "Removed stale statement that238 remained effective; active rule unchanged, no standalone turnover/risk-action veto.",
+  "formal_exit_code": 2,
+  "final_formal_assessment": "formal-final-assessment.json",
+  "final_originals": "formal-final-raw-receipt.json",
+  "currently_running": [],
+  "integrated_source": {
+    "local": "bde169f61ea9d370d770f03cfd80b8ececa2a427",
+    "remote": "26bbf76ee0f5b81832ae129134386b85f2f252bb",
+    "tree": "270639fa0d542300907686bed6290abb23ca13fd",
+    "later_changes": "Final evidence/index only; actual branchHEAD must be read live."
+  },
+  "current_reader_reassessment": "Current acceptance reader recomputed identical current/original gates from completed67 records. This is result re-evaluation, not a new engine replay."
 }

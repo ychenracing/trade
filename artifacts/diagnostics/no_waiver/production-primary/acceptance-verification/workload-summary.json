@@ -45,7 +45,23 @@
       "modeled_slippage_money": 198138.614,
       "gross_traded_value": 99051775.046,
       "gross_turnover_over_initial_capital": 49.525887523,
-      "gross_turnover_over_mean_nav": 19.476702572169998
+      "gross_turnover_over_mean_nav": 19.476702572169998,
+      "risk_event_records": 387,
+      "risk_event_types": {
+        "account_budget_envelope": 316,
+        "blocked_market_risk_pyramid": 3,
+        "cooldown_blocked_buy": 7,
+        "independent_risk_basket_loaded": 1,
+        "layered_stop": 1,
+        "risk_action_suppressed": 3,
+        "sector_guard_on": 3,
+        "sector_risk_level": 16,
+        "sector_risk_trim": 1,
+        "sector_shock": 36
+      },
+      "risk_action_order_records_with_action_id": 259,
+      "unique_nonnull_risk_action_ids": 259,
+      "risk_action_records_with_fills": 256
     },
     {
       "id": "leave-one-out-300502-normal",
@@ -91,7 +107,24 @@
       "modeled_slippage_money": 127338.035,
       "gross_traded_value": 127329887.57499999,
       "gross_turnover_over_initial_capital": 63.66494378749999,
-      "gross_turnover_over_mean_nav": 25.449676698436306
+      "gross_turnover_over_mean_nav": 25.449676698436306,
+      "risk_event_records": 394,
+      "risk_event_types": {
+        "account_budget_envelope": 316,
+        "blocked_market_risk_pyramid": 5,
+        "concentration_trim": 1,
+        "cooldown_blocked_buy": 7,
+        "independent_risk_basket_loaded": 1,
+        "layered_stop": 1,
+        "portfolio_drawdown_alert_off": 4,
+        "portfolio_drawdown_alert_on": 4,
+        "sector_guard_on": 3,
+        "sector_risk_level": 16,
+        "sector_shock": 36
+      },
+      "risk_action_order_records_with_action_id": 536,
+      "unique_nonnull_risk_action_ids": 536,
+      "risk_action_records_with_fills": 536
     },
     {
       "id": "prefix-17-adverse",
@@ -137,7 +170,26 @@
       "modeled_slippage_money": 225703.962,
       "gross_traded_value": 112820442.438,
       "gross_turnover_over_initial_capital": 56.410221219,
-      "gross_turnover_over_mean_nav": 13.653594967676826
+      "gross_turnover_over_mean_nav": 13.653594967676826,
+      "risk_event_records": 396,
+      "risk_event_types": {
+        "account_budget_envelope": 316,
+        "blocked_market_risk_pyramid": 9,
+        "concentration_trim": 2,
+        "cooldown_blocked_buy": 7,
+        "independent_risk_basket_loaded": 1,
+        "layered_stop": 1,
+        "portfolio_drawdown_alert_off": 1,
+        "portfolio_drawdown_alert_on": 1,
+        "risk_action_suppressed": 2,
+        "sector_guard_on": 3,
+        "sector_risk_level": 16,
+        "sector_risk_trim": 1,
+        "sector_shock": 36
+      },
+      "risk_action_order_records_with_action_id": 220,
+      "unique_nonnull_risk_action_ids": 220,
+      "risk_action_records_with_fills": 218
     },
     {
       "id": "prefix-17-normal",
@@ -183,7 +235,27 @@
       "modeled_slippage_money": 139432.118,
       "gross_traded_value": 139414683.29,
       "gross_turnover_over_initial_capital": 69.707341645,
-      "gross_turnover_over_mean_nav": 16.00753130920448
+      "gross_turnover_over_mean_nav": 16.00753130920448,
+      "risk_event_records": 401,
+      "risk_event_types": {
+        "account_budget_envelope": 316,
+        "blocked_market_risk_pyramid": 12,
+        "concentration_trim": 2,
+        "cooldown_blocked_buy": 7,
+        "independent_risk_basket_loaded": 1,
+        "layered_stop": 2,
+        "portfolio_drawdown_alert_off": 1,
+        "portfolio_drawdown_alert_on": 1,
+        "risk_action_suppressed": 3,
+        "sector_guard_on": 3,
+        "sector_risk_level": 16,
+        "sector_risk_trim": 1,
+        "sector_shock": 36
+      },
+      "risk_action_order_records_with_action_id": 260,
+      "unique_nonnull_risk_action_ids": 260,
+      "risk_action_records_with_fills": 256
     }
-  ]
+  ],
+  "risk_semantics": "Risk-event logs include observations/state transitions and are disclosed by exact event type. Non-null action_id records and distinct action IDs are counted separately; null IDs are not asserted to be non-risk actions. Formal958 rows separately preserve filled-trade reason attribution, not all event log calls."
 }

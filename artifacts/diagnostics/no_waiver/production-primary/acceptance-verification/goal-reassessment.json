@@ -406,5 +406,86 @@
     "market_windows": 1,
     "interpretation": "Different ordered pools and duplicate subsets remain required coverage, but do not create independent market observations."
   },
-  "decision": "Do not assume eventual joint success. Finish existingformal and independent correctness verification, preserve result and rejected research, keep originalPR unmerged when NOT_MET, no automatic third strategy mechanism or rolling relaxation."
+  "decision": "Do not assume eventual joint success. Finish existingformal and independent correctness verification, preserve result and rejected research, keep originalPR unmerged when NOT_MET, no automatic third strategy mechanism or rolling relaxation.",
+  "final_formal_result": {
+    "path": "formal-final-assessment.json",
+    "completed": 958,
+    "status": "NOT_MET",
+    "mdd_failure_count": 13,
+    "minimum_wealth_failure_count": 15,
+    "families": {
+      "prefix": {
+        "count": 17,
+        "paired_wealth_minimum": 0.9399333400030975,
+        "paired_wealth_p10": 0.9932886027794671,
+        "paired_wealth_median": 1.604322734471246,
+        "maximum_drawdown": 0.1640509125954827,
+        "drawdown_failures": 0,
+        "wealth_minimum_failures": 0,
+        "buckets_maximum": 223,
+        "buckets_p90": 218.0,
+        "fill_records_total": 9207,
+        "risk_reduction_fill_records_total": 4870,
+        "sector_liquidation_fill_records_total": 415
+      },
+      "leave_one_out": {
+        "count": 17,
+        "paired_wealth_minimum": 0.6710768091436762,
+        "paired_wealth_p10": 0.9012519663551061,
+        "paired_wealth_median": 1.1897355693201193,
+        "maximum_drawdown": 0.1654353768498381,
+        "drawdown_failures": 0,
+        "wealth_minimum_failures": 0,
+        "buckets_maximum": 283,
+        "buckets_p90": 244.40000000000003,
+        "fill_records_total": 12816,
+        "risk_reduction_fill_records_total": 6922,
+        "sector_liquidation_fill_records_total": 505
+      },
+      "add_one": {
+        "count": 24,
+        "paired_wealth_minimum": 0.7841562683962799,
+        "paired_wealth_p10": 1.1211658788879684,
+        "paired_wealth_median": 1.68181188010763,
+        "maximum_drawdown": 0.15733628648998246,
+        "drawdown_failures": 0,
+        "wealth_minimum_failures": 0,
+        "buckets_maximum": 218,
+        "buckets_p90": 196.79999999999998,
+        "fill_records_total": 13187,
+        "risk_reduction_fill_records_total": 6736,
+        "sector_liquidation_fill_records_total": 638
+      },
+      "random_subset": {
+        "count": 750,
+        "paired_wealth_minimum": 0.35692399250170204,
+        "paired_wealth_p10": 0.8978910866920712,
+        "paired_wealth_median": 1.2657291823791557,
+        "maximum_drawdown": 0.19357897406694738,
+        "drawdown_failures": 13,
+        "wealth_minimum_failures": 15,
+        "buckets_maximum": 306,
+        "buckets_p90": 222.0,
+        "fill_records_total": 359662,
+        "risk_reduction_fill_records_total": 180278,
+        "sector_liquidation_fill_records_total": 16539
+      },
+      "permutation": {
+        "count": 150,
+        "paired_wealth_minimum": 1.0753246776883583,
+        "paired_wealth_p10": 1.0753246776883583,
+        "paired_wealth_median": 1.0753246776883583,
+        "maximum_drawdown": 0.15104978428469945,
+        "drawdown_failures": 0,
+        "wealth_minimum_failures": 0,
+        "buckets_maximum": 190,
+        "buckets_p90": 190.0,
+        "fill_records_total": 96750,
+        "risk_reduction_fill_records_total": 50400,
+        "sector_liquidation_fill_records_total": 4350
+      }
+    },
+    "interpretation": "Four families pass current economics; randomP10/median pass. Severe relative wealth loss is concentrated in15/750 random cases, while13 random cases breach18%. Neither broad failure nor a joint pass. Scenario counts are not future failure probabilities."
+  },
+  "final_decision": "No further strategy trial or contract relaxation in this round; preserve verified engineering work and complete formal rejection. Keep originalPR Draft/unmerged. Feasibility unproven; do not promise eventual success by patching."
 }

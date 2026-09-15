@@ -1,0 +1,14 @@
+{
+  "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]",
+  "numpy": "2.5.1",
+  "pandas": "3.0.5",
+  "measured_git_head": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
+  "source_fingerprint": "0032862f2829cac84c9d13cab6076ffe21e4348c85c0a3ac200f6f3db160fe7e",
+  "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+  "formal_source_equivalent_remote": "5242d4d5e0455a1cfd3c4a053e2e94d08b5fe8e4",
+  "formal_source_tree": "75ad8f6184c9412f077aa3497b80db10b29127cf",
+  "tested_integration_local": "bde169f61ea9d370d770f03cfd80b8ececa2a427",
+  "tested_integration_remote": "26bbf76ee0f5b81832ae129134386b85f2f252bb",
+  "tested_integration_tree": "270639fa0d542300907686bed6290abb23ca13fd",
+  "no_economic_identity_relabeling": true
+}
