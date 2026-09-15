@@ -11,12 +11,12 @@
     "interpretation": "Correction raises13 wealth versus original13.325668002613376;03 falls from11.593889691663627 but remains above broad-joiner7.018521535589125. Correctness does not explain all subsequent decision-policy loss. These are separate continuous runs, not additive attribution or replacements for frozen original wealth."
   },
   "corroborated_exit": {
-    "source_fingerprint": "972875230caa6510c5d4624109b686e6da2ea17c2bb74751b6d95fe04b3bfebeb0",
-    "commit_short": "a3cdc52",
+    "source_fingerprint": "972875230caa6510c5d4624109b686e6da2ea17c2bb74751b6d95fe04b3bfeb0",
+    "commit": "a3cdc52e2b61f075534b2942a3296b6d852d512e",
     "hypothesis": "Coordinate mature profitable independent strategy books on a native full Turtle exit only when the close also breaks a falling short average. Preserve real book owners, live pending exits and native next-open execution.",
     "tests": "8 expected missing-feature RED failures;108 focused passed before economics.",
     "completed_rows": [["prefix-01",4.928538056569,-0.12468509293898083,7],["prefix-03",7.018521535589125,-0.1665235849670392,99],["prefix-05",13.796735085329127,-0.15400039978585942,90]],
-    "scope": "Only3 completed of9 declared scenario IDs after command interruption; remaining paths were not run. All3 completed metrics are identical to the base, not improvement. The lagging average did not confirm the targeted early drawdown node. Full exact identity in packet takes precedence over this abbreviated record."
+    "scope": "Only3 completed of9 declared scenario IDs after command interruption; remaining paths were not run. All3 completed metrics are identical to the base, not improvement. The lagging average did not confirm the targeted early drawdown node."
   },
   "native_exit": {
     "commit": "925b9f56de59361bafe88d18b3dd6b3cf51d68ee",
@@ -35,6 +35,7 @@
     "restore": "Fetch via Google_Drive.fetch(download_raw_file=true,include_base64=false); check full hash and evidence/manifest.json. evidence/current-source-records.json has complete independent source/test patches, exact identities and rows. evidence/exit-research.bundle requires af2389b and restores both exact exit experiments; the original-reference correction is separately saved as its exact patch. Do not apply complete patches cumulatively or overwrite live worktrees.",
     "github_raw_storage": false
   },
+  "publication_audit": "Readback caught an extra eb in the first transcribed corroborated source fingerprint at31fdfd1. Corrected directly against the original raw identity and exact source record; original packet bytes, run identities, metrics and all thresholds were unchanged.",
   "boundary": "Python3.13.5 diagnostic continuous production replays only, not locked/full qualification. All data identities equal aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975, cfg overrides{}. No frozen thresholds, data, seeds, original denominators, execution rules or risk histories changed. Historical82-group and earlier missing27 originals remain missing. Production PR source remains unpromoted.",
   "next": "Use isolated correctness evidence to audit discretionary entry/holding/allocation rules rather than attributing all lost wealth to required fixes. Coordinate actual opportunity and incumbent strength, not equal-capital sales or more nearby growth/exit filters. Reuse completed evidence and keep one final source identity for all native gates."
 }
