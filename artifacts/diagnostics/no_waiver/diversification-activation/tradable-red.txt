@@ -1,0 +1,58 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ test_prepared_single_tradable_ignores_signal_only_reference_symbols ______
+
+    def test_prepared_single_tradable_ignores_signal_only_reference_symbols() -> None:
+        cfg = default_engine_config()
+        policy = PortfolioPolicy(allocation_mode="single")
+        sleeve = SleeveBacktestEngine(
+            1_000_000.0, cfg=cfg, policy=policy,
+            allocation_lookbacks=policy.single_lookbacks, sleeve_name="test",
+        )
+        start, end = pd.Timestamp("2025-04-01"), pd.Timestamp("2025-06-06")
+        data_map, _, _, date_to_pos = sleeve._prepare_run(
+            {"300308": "300308"}, str(start.date()), str(end.date()), start, end,
+            None, None, "none", str(MARKET_DATA_DIR), None,
+        )
+        assert len(sleeve.symbol_names) > 1
+        assert sleeve._tradable_symbol_codes == {"300308"}
+        strategy = sleeve.strategy_instances["300308"][0]
+        signal = Signal("300308", strategy.name, "buy", target_shares=8_000,
+                        price=100.0, atr=0.0, signal_date="2025-06-05")
+        sleeve._execute_pending_signals([(signal, strategy)], data_map, end, date_to_pos)
+        # The real open is about 100; eight thousand shares fit the actual cash
+        # and the single-tradable endpoint, but cannot fit a 60% symbol ceiling.
+>       assert sum(t.shares for t in sleeve.trades) == 8_000
+E       assert 5900 == 8000
+E        +  where 5900 = sum(<generator object test_prepared_single_tradable_ignores_signal_only_reference_symbols.<locals>.<genexpr> at 0x7facc75768c0>)
+
+tests/unit/test_simultaneous_native_buy_funding.py:243: AssertionError
+----------------------------- Captured stdout call -----------------------------
+
+============================================================
+Quant Fusion backtest
+  Capital: 1,000,000
+  Symbols: {'300308': '300308', '300502': '300502', '300394': '300394', '688008': '688008', '603986': '603986'}
+  Period: 2025-04-01 ~ 2025-06-06
+============================================================
+
+  Loading data for 300308 (300308)...
+  [Parameter route] 300308(300308) -> default
+  300308 (300308): 44 rows, 2025-04-01 through 2025-06-06
+  Loading data for 300502 (300502)...
+  [Parameter route] 300502(300502) -> default
+  300502 (300502): 44 rows, 2025-04-01 through 2025-06-06
+  Loading data for 300394 (300394)...
+  [Parameter route] 300394(300394) -> default
+  300394 (300394): 44 rows, 2025-04-01 through 2025-06-06
+  Loading data for 688008 (688008)...
+  [Parameter route] 688008(688008) -> default
+  688008 (688008): 44 rows, 2025-04-01 through 2025-06-06
+  Loading data for 603986 (603986)...
+  [Parameter route] 603986(603986) -> default
+  603986 (603986): 44 rows, 2025-04-01 through 2025-06-06
+
+  Trading days: 44
+=========================== short test summary info ============================
+FAILED tests/unit/test_simultaneous_native_buy_funding.py::test_prepared_single_tradable_ignores_signal_only_reference_symbols
+1 failed, 6 deselected in 0.42s
