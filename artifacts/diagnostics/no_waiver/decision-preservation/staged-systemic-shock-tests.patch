@@ -1,0 +1,79 @@
+diff --git a/tests/c6_non_economic/test_account_risk_budget.py b/tests/c6_non_economic/test_account_risk_budget.py
+index 0b7a6f6..b490a6a 100644
+--- a/tests/c6_non_economic/test_account_risk_budget.py
++++ b/tests/c6_non_economic/test_account_risk_budget.py
+@@ -699,3 +699,74 @@ def test_budget_derives_proven_early_dual_transition_from_completed_atr_cycle():
+         (0, '300308', 'dual_ma'),
+     ]
+     assert events[-1]['proven_dual_admitted_buy_indexes'] == [0]
++
++
++def test_systemic_shock_uses_ordinary_first_stage_and_escalates_only_if_severe_trigger_persists():
++    """A first shock still cuts risk; the severe multiplier needs a second close."""
++    from quantfusion.risk.account_budget import plan_account_risk_budget
++
++    cfg = default_engine_config()
++    books = [
++        (state, '300308', strategy, 1900, 367.74)
++        for state in range(3)
++        for strategy in ('atr_channel', 'turtle_breakout')
++    ]
++    common = dict(
++        equity=5002126.863245001,
++        peak=5652496.863245001,
++        cfg=cfg,
++        books=books,
++        buys=[],
++        score=lambda _symbol: 0.,
++        stress_by_symbol={'300308': .15625, '688008': .100446},
++    )
++
++    first, first_actions = plan_account_risk_budget(
++        **common, date_str='2025-09-04', shock_episode_active=False,
++    )
++    reduced_ids = {
++        (state, '300308', strategy)
++        for state in range(3)
++        for strategy in ('atr_channel', 'turtle_breakout')
++    }
++    persistent, persistent_actions = plan_account_risk_budget(
++        **common, date_str='2025-09-05', shock_episode_active=True,
++        shock_reduced_book_ids=reduced_ids,
++    )
++    recovered, recovered_actions = plan_account_risk_budget(
++        equity=5400000., peak=5652496.863245001, cfg=cfg, books=books, buys=[],
++        score=lambda _symbol: 0., date_str='2025-09-05',
++        stress_by_symbol={'300308': .03, '688008': .02}, shock_episode_active=True,
++    )
++
++    ordinary_stress = first['stress_fraction'] + first['cost_rate']
++    severe_stress = min(
++        max(limit_pct_for_code('300308', cfg), limit_pct_for_code('688008', cfg)),
++        max(first['stress_fraction'], 2. * ((common['peak'] - common['equity']) / common['peak']), .15625),
++    ) + first['cost_rate']
++    assert first['systemic_stress_fraction'] == pytest.approx(ordinary_stress)
++    assert 0 < sum(action.shares for action in first_actions) < 6600
++    assert persistent['systemic_stress_fraction'] == pytest.approx(severe_stress)
++    assert sum(action.shares for action in persistent_actions) == 6600
++
++    # Once first-stage orders have actually filled, the next close plans only
++    # the incremental severe relief. Queued sells are not credited here.
++    first_sold = {
++        (action.state_index, action.symbol, action.strategy_name): action.shares
++        for action in first_actions
++    }
++    remaining_books = [
++        (state, symbol, strategy, shares - first_sold.get((state, symbol, strategy), 0), price)
++        for state, symbol, strategy, shares, price in books
++    ]
++    escalated, incremental_actions = plan_account_risk_budget(
++        equity=common['equity'], peak=common['peak'], cfg=cfg,
++        books=remaining_books, buys=[], score=lambda _symbol: 0.,
++        date_str='2025-09-05', stress_by_symbol=common['stress_by_symbol'],
++        shock_episode_active=True, shock_reduced_book_ids=reduced_ids,
++    )
++    assert escalated['observed_shock_persisted'] is True
++    assert sum(action.shares for action in first_actions) == 3600
++    assert sum(action.shares for action in incremental_actions) == 3000
++    assert sum(action.shares for action in first_actions + incremental_actions) == 6600
++    assert recovered_actions == []
