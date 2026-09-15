@@ -1,4 +1,10 @@
-import contextlib,io,json,pickle,sys,hashlib,dataclasses
+import contextlib
+import io
+import json
+import pickle
+import sys
+import hashlib
+import dataclasses
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).parent/'trade-candidate'))
 from quantfusion.engine.execution_flow import CoreExecutionMixin
