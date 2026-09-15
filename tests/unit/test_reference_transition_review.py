@@ -157,3 +157,18 @@ def test_symbol_count_and_signed_drawdown_must_match_metric_contract():
         e['results'][2][field] = value
         with pytest.raises(ValueError):
             tool().review(e)
+
+
+@pytest.mark.parametrize('index,ratio', [(2, .95), (4, .99)])
+def test_candidate_floor_tolerance_matches_native_ratio_not_absolute_wealth(index, ratio):
+    reference, candidate = evidence(), evidence()
+    wealth = 1 + reference['results'][index]['total_return']
+    candidate['results'][index]['total_return'] = wealth * (ratio - .5e-12) - 1
+    sid = candidate['results'][index]['scenario_id']
+    checked = tool().review(reference, candidate=candidate)['candidate_diagnostic_checks']
+    assert sid not in checked['wealth_floor_violations']['old_own_floors']
+    assert sid not in checked['wealth_floor_violations']['proposed_own_floors']
+    candidate['results'][index]['total_return'] = wealth * (ratio - 2e-12) - 1
+    checked = tool().review(reference, candidate=candidate)['candidate_diagnostic_checks']
+    assert sid in checked['wealth_floor_violations']['old_own_floors']
+    assert sid in checked['wealth_floor_violations']['proposed_own_floors']

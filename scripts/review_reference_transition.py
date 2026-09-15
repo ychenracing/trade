@@ -159,12 +159,18 @@ def review(reference: dict, *, candidate: dict | None = None,
     if candidate is not None:
         actual = _bound_prefixes(candidate, original, plan)
         violations = {'old_own_floors': [], 'proposed_own_floors': []}
-        for row, outcome in zip(rows, actual, strict=True):
+        for row, outcome, corrected in zip(rows, actual, proposed, strict=True):
+            sid = row['scenario_id']
             wealth = 1 + outcome['total_return']
-            for key, floor in (('old_own_floors', row['old_own_floor']),
-                               ('proposed_own_floors', row['proposed_own_floor'])):
-                if wealth < floor - 1e-12:
-                    violations[key].append(row['scenario_id'])
+            ratio = .99 if sid == 'prefix-05' else .95
+            # Native tolerance applies to the wealth ratio, not absolute wealth.
+            old_ok = wealth / (1 + original_by_id[sid]['total_return']) >= ratio - 1e-12
+            new_ok = wealth / (1 + corrected['total_return']) >= ratio - 1e-12
+            incumbent_ok = wealth / (1 + incumbent_by_id[sid]['total_return']) >= .99 - 1e-12
+            if not (old_ok and incumbent_ok):
+                violations['old_own_floors'].append(sid)
+            if not (new_ok and incumbent_ok and (old_ok or sid != production_id)):
+                violations['proposed_own_floors'].append(sid)
         result['candidate_identity'] = dict(candidate['identity'])
         result['candidate_diagnostic_checks'] = {
             'wealth_floor_violations': violations,
