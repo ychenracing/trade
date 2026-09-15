@@ -1,0 +1,53 @@
+diff --git a/tests/c6_non_economic/test_account_risk_budget.py b/tests/c6_non_economic/test_account_risk_budget.py
+index 0b7a6f6..37bda75 100644
+--- a/tests/c6_non_economic/test_account_risk_budget.py
++++ b/tests/c6_non_economic/test_account_risk_budget.py
+@@ -699,3 +699,48 @@ def test_budget_derives_proven_early_dual_transition_from_completed_atr_cycle():
+         (0, '300308', 'dual_ma'),
+     ]
+     assert events[-1]['proven_dual_admitted_buy_indexes'] == [0]
++
++
++def test_confirmed_systemic_shock_preserves_group_relief_while_sparsifying_equivalent_books():
++    """Keep exact strategy-level relief but avoid marking every duplicate sleeve book reduced."""
++    from quantfusion.risk.account_budget import plan_account_risk_budget
++
++    cfg = default_engine_config()
++    books = [
++        (state, '300308', strategy, 1900, 367.74)
++        for state in range(3)
++        for strategy in ('atr_channel', 'turtle_breakout')
++    ]
++    kwargs = dict(
++        equity=5002126.863245001,
++        peak=5652496.863245001,
++        cfg=cfg,
++        buys=[],
++        score=lambda _symbol: 0.,
++        date_str='2025-09-04',
++        stress_by_symbol={'300308': .15625, '688008': .100446},
++    )
++
++    receipt, actions = plan_account_risk_budget(books=books, **kwargs)
++    _, reversed_actions = plan_account_risk_budget(books=list(reversed(books)), **kwargs)
++
++    assert receipt['observed_shock_confirmed'] is True
++    by_strategy = {
++        strategy: sorted(
++            (action.state_index, action.shares)
++            for action in actions if action.strategy_name == strategy
++        )
++        for strategy in ('atr_channel', 'turtle_breakout')
++    }
++    assert by_strategy == {
++        'atr_channel': [(0, 1900), (1, 1400)],
++        'turtle_breakout': [(0, 1900), (1, 1400)],
++    }
++    assert sorted(
++        (a.state_index, a.symbol, a.strategy_name, a.shares) for a in actions
++    ) == sorted(
++        (a.state_index, a.symbol, a.strategy_name, a.shares) for a in reversed_actions
++    )
++    assert sum(a.shares for a in actions if a.strategy_name == 'atr_channel') == 3300
++    assert sum(a.shares for a in actions if a.strategy_name == 'turtle_breakout') == 3300
++    assert all(a.shares % 100 == 0 for a in actions)
