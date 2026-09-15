@@ -1,0 +1,20 @@
+diff --git a/tests/unit/test_late_strategy_joiner.py b/tests/unit/test_late_strategy_joiner.py
+index 82f2e63..8db90a7 100644
+--- a/tests/unit/test_late_strategy_joiner.py
++++ b/tests/unit/test_late_strategy_joiner.py
+@@ -27,6 +27,15 @@ def test_lone_joiner_cannot_dominate_current_symbol_inventory():
+     assert engine.order_events[-1]['event'] == 'scaled_late_strategy_join'
+ 
+ 
++def test_minimum_board_lot_seed_does_not_cap_lone_joiner():
++    engine = engine_with({'atr_channel': 100})
++    original, strategy = buy()
++    out = engine._fuse_daily_signals([(original, strategy)], '2026-01-06')
++    assert out[0][0].target_shares == 4500
++    assert original.target_shares == 5000
++    assert engine.order_events == []
++
++
+ @pytest.mark.parametrize('holdings,name', [({}, 'dual_ma'), ({'dual_ma': 100}, 'dual_ma')])
+ def test_initial_entry_and_own_pyramid_keep_native_sizing(holdings, name):
+     engine = engine_with(holdings)

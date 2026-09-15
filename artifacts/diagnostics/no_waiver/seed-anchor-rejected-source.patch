@@ -1,0 +1,22 @@
+diff --git a/quantfusion/engine/signals.py b/quantfusion/engine/signals.py
+index 3849153..b21603d 100644
+--- a/quantfusion/engine/signals.py
++++ b/quantfusion/engine/signals.py
+@@ -22,7 +22,7 @@ from quantfusion.config.profiles import (
+     semiconductor_heavy_config,
+ )
+ from quantfusion.domain.models import Signal
+-from quantfusion.domain.rules import floor_to_lot
++from quantfusion.domain.rules import A_SHARE_LOT_SIZE, floor_to_lot
+ from quantfusion.risk.managers import RiskManager
+ from quantfusion.strategy.trend import BaseStrategy
+ 
+@@ -158,7 +158,7 @@ class CoreSignalMixin:
+                 held = self.positions.get(symbol, {})
+                 live_shares = sum(position.shares for position in held.values())
+                 own = held.get(signal.strategy_name)
+-                if votes == 1 and live_shares > 0 and (own is None or own.shares == 0):
++                if votes == 1 and live_shares > A_SHARE_LOT_SIZE and (own is None or own.shares == 0):
+                     # A lone new strategy joins the existing economic position;
+                     # it cannot dominate that position on one fresh vote alone.
+                     joined_shares = min(target_shares, _floor_to_lot(live_shares))
