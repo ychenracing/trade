@@ -22,6 +22,7 @@ from scripts.backtest_universes import UNIVERSES
 ROOT = PROJECT_ROOT
 THIS_FILE = Path(__file__).resolve().relative_to(ROOT)
 EXPECTED_MARKDOWN = {
+    Path("artifacts/diagnostics/no_waiver/production-primary/deployment-plan.md"),
     Path(".github/PROJECT_BRIEF.md"),
     Path(".github/pull_request_template.md"),
     Path("AGENTS.md"),

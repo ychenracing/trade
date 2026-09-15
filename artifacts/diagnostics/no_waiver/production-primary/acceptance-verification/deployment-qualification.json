@@ -1,0 +1,445 @@
+{
+  "status": "EXTERNAL_COST_SOURCE_QUALIFIED",
+  "identity": {
+    "executed_source_revision": "fe5588f1d88edc098a79bbf5c130fda58616e37f",
+    "equivalent_remote_source": "7252bf1474013ce4f14f0c9c8b37a5e62d3c17b1",
+    "source_fingerprint": "7fc1d2ffd1b18843c94419c90b680b1fa6435244a481a9a9f6b204a857d0cdde",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]"
+  },
+  "scope": "Daily-bar fixed17 manual decision support; prior viewed windows are robustness diagnostics, not unseen performance or live costs. Formal958 and engineering remain separate release gates.",
+  "baseline_identity": {
+    "source_revision": "b7be8011d71b477c8ca3942d97830e67d0e0407c",
+    "source_fingerprint": "482241bdd831e5aea9811348d6746848b7a04da628f7792c7cc44360c78ef0d8",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "canonical": false,
+    "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]"
+  },
+  "external_source_identity": {
+    "source_revision": "8d8f10255f1f7c81a597da90767e38eafad0896c",
+    "source_fingerprint": "7fc1d2ffd1b18843c94419c90b680b1fa6435244a481a9a9f6b204a857d0cdde",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "canonical": false,
+    "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]"
+  },
+  "paired_external": [
+    {
+      "id": "2024-07-01_300308_adverse",
+      "candidate_wealth": 0.872182027294,
+      "baseline_wealth": 0.8682586399654999,
+      "wealth_ratio": 1.004518685041425,
+      "candidate_mdd": 0.16814313375732381,
+      "baseline_mdd": 0.17515464050825458,
+      "candidate_buckets": 10,
+      "baseline_buckets": 19,
+      "raw_sha256": "a0fb87e47af5b45bfce27386759d94abd946f61069d3c4fa6c0dc706830ba992",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2024-07-01_300308_normal",
+      "candidate_wealth": 0.8728910177132501,
+      "baseline_wealth": 0.8690192268197502,
+      "wealth_ratio": 1.0044553569978756,
+      "candidate_mdd": 0.168051210363657,
+      "baseline_mdd": 0.1753065504686488,
+      "candidate_buckets": 10,
+      "baseline_buckets": 19,
+      "raw_sha256": "f3088585d2461b654cb9a5480fcacdaac72c29c05db12a1e78932230e2b1e3b6",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2024-07-01_300502_adverse",
+      "candidate_wealth": 1.0410315294084997,
+      "baseline_wealth": 1.0555058060415,
+      "wealth_ratio": 0.986286881085682,
+      "candidate_mdd": 0.15466229120096978,
+      "baseline_mdd": 0.16157185122839585,
+      "candidate_buckets": 13,
+      "baseline_buckets": 18,
+      "raw_sha256": "132bff84f1c270c116303bc49884487fdc277f4ebc7ef5d5df21d2c7af73f369",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2024-07-01_300502_normal",
+      "candidate_wealth": 1.0420469045602503,
+      "baseline_wealth": 1.0613764097188756,
+      "wealth_ratio": 0.9817882657070313,
+      "candidate_mdd": 0.15462170040476686,
+      "baseline_mdd": 0.16090553877898997,
+      "candidate_buckets": 11,
+      "baseline_buckets": 19,
+      "raw_sha256": "b02ff99e7e6f3ab6ee9747710ab62e77a73a52ca66b12e268af7a70be37feb1d",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2024-07-01_all_adverse",
+      "candidate_wealth": 0.872182027294,
+      "baseline_wealth": 0.8682586399654999,
+      "wealth_ratio": 1.004518685041425,
+      "candidate_mdd": 0.16814313375732381,
+      "baseline_mdd": 0.17515464050825458,
+      "candidate_buckets": 10,
+      "baseline_buckets": 19,
+      "raw_sha256": "0d5a3527d2c07877baab5fab8c64efa59fb6c8b296056971fd63931aa8ac087a",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2024-07-01_all_normal",
+      "candidate_wealth": 0.8728910177132501,
+      "baseline_wealth": 0.8690192268197502,
+      "wealth_ratio": 1.0044553569978756,
+      "candidate_mdd": 0.168051210363657,
+      "baseline_mdd": 0.1753065504686488,
+      "candidate_buckets": 10,
+      "baseline_buckets": 19,
+      "raw_sha256": "f4c61d37d7d9b94c362be83310c58ec566f6c324fa1f69480f2dee451710cfd8",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2025-01-02_300308_adverse",
+      "candidate_wealth": 0.90402176429,
+      "baseline_wealth": 0.8870601698630001,
+      "wealth_ratio": 1.0191211318050946,
+      "candidate_mdd": 0.1697352482660523,
+      "baseline_mdd": 0.17502374499033418,
+      "candidate_buckets": 30,
+      "baseline_buckets": 28,
+      "raw_sha256": "66cda7f8b3aa275c6f5aade588e7ae084204ebdbb809c001451e847b63d8a36e",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2025-01-02_300308_normal",
+      "candidate_wealth": 0.8920915076701252,
+      "baseline_wealth": 0.8868262381375003,
+      "wealth_ratio": 1.005937205403037,
+      "candidate_mdd": 0.16899885117668964,
+      "baseline_mdd": 0.17436158382694555,
+      "candidate_buckets": 33,
+      "baseline_buckets": 30,
+      "raw_sha256": "22e33f5f666d57053cad3950a275dc55be348c54230254630e516321feb64344",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2025-01-02_300502_adverse",
+      "candidate_wealth": 0.9029912253660001,
+      "baseline_wealth": 0.8905806785465,
+      "wealth_ratio": 1.0139353425449955,
+      "candidate_mdd": 0.17064986018159226,
+      "baseline_mdd": 0.1717496310484452,
+      "candidate_buckets": 26,
+      "baseline_buckets": 22,
+      "raw_sha256": "f41a2d4fb793bd18a856f2042cdf373b9f7f28dec163a896d7e222dd9f66f6e6",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2025-01-02_300502_normal",
+      "candidate_wealth": 0.8936522595702501,
+      "baseline_wealth": 0.8898208280148753,
+      "wealth_ratio": 1.0043058461150234,
+      "candidate_mdd": 0.1674536133539461,
+      "baseline_mdd": 0.17157360988445555,
+      "candidate_buckets": 32,
+      "baseline_buckets": 25,
+      "raw_sha256": "6d62532c8d3d973ada59c3bcd75f829f234e8074ae6e43b16f3a6d9c23602a29",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2025-01-02_all_adverse",
+      "candidate_wealth": 0.90402176429,
+      "baseline_wealth": 0.8870601698630001,
+      "wealth_ratio": 1.0191211318050946,
+      "candidate_mdd": 0.1697352482660523,
+      "baseline_mdd": 0.17502374499033418,
+      "candidate_buckets": 30,
+      "baseline_buckets": 28,
+      "raw_sha256": "ce1cca5c2a88a009cbf0b4dae7e5251c0efec442baf1e405acb32354bc47a820",
+      "joint_deterioration": false
+    },
+    {
+      "id": "2025-01-02_all_normal",
+      "candidate_wealth": 0.8920915076701252,
+      "baseline_wealth": 0.8868262381375003,
+      "wealth_ratio": 1.005937205403037,
+      "candidate_mdd": 0.16899885117668964,
+      "baseline_mdd": 0.17436158382694555,
+      "candidate_buckets": 33,
+      "baseline_buckets": 30,
+      "raw_sha256": "4e9e7382112387d9ecb1e9645c0189bf0a8ff69c409d42a3725cc7fce994ed89",
+      "joint_deterioration": false
+    }
+  ],
+  "paired_main_costs": [
+    {
+      "id": "prefix-17-normal",
+      "candidate": {
+        "id": "prefix-17-normal",
+        "wealth": 9.610542744515504,
+        "mdd": 0.15104978428469945,
+        "buckets": 190,
+        "fills": 645,
+        "orders": 2939,
+        "sha256": "efe71948962f7853d3c0ccdce40470e4afa8e5c9e0fc6d1160230852da064c28"
+      },
+      "baseline": {
+        "id": "prefix-17-normal",
+        "wealth": 8.937340455326881,
+        "mdd": 0.16872315265587953,
+        "buckets": 172,
+        "fills": 438,
+        "orders": 2834,
+        "sha256": "41310d9164aa59ad05a33bd78d928724ef1580aa623c644085cbb5095326ec3f"
+      },
+      "wealth_improved": true,
+      "drawdown_improved": true
+    },
+    {
+      "id": "prefix-17-adverse",
+      "candidate": {
+        "id": "prefix-17-adverse",
+        "wealth": 8.7274858588415,
+        "mdd": 0.14677193941295671,
+        "buckets": 183,
+        "fills": 564,
+        "orders": 3005,
+        "sha256": "c8b6aad4902c47c23f367b8157b3072a5999b8e8fc8c8fa5c582b2bf40e8bf78"
+      },
+      "baseline": {
+        "id": "prefix-17-adverse",
+        "wealth": 6.905283332063999,
+        "mdd": 0.1698917656701221,
+        "buckets": 174,
+        "fills": 442,
+        "orders": 2422,
+        "sha256": "16babd8b23a72376dd02a5869a099a68de773efeaf60b4472d8a7cd372b545ec"
+      },
+      "wealth_improved": true,
+      "drawdown_improved": true
+    }
+  ],
+  "raw_reconciliation": [
+    {
+      "file": "deployment-external-final/2024-07-01_300308_adverse.pkl",
+      "bytes": 253588,
+      "sha256": "a0fb87e47af5b45bfce27386759d94abd946f61069d3c4fa6c0dc706830ba992",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2024-07-01_300308_normal.pkl",
+      "bytes": 253588,
+      "sha256": "f3088585d2461b654cb9a5480fcacdaac72c29c05db12a1e78932230e2b1e3b6",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2024-07-01_300502_adverse.pkl",
+      "bytes": 260548,
+      "sha256": "132bff84f1c270c116303bc49884487fdc277f4ebc7ef5d5df21d2c7af73f369",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2024-07-01_300502_normal.pkl",
+      "bytes": 255721,
+      "sha256": "b02ff99e7e6f3ab6ee9747710ab62e77a73a52ca66b12e268af7a70be37feb1d",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2024-07-01_all_adverse.pkl",
+      "bytes": 254553,
+      "sha256": "0d5a3527d2c07877baab5fab8c64efa59fb6c8b296056971fd63931aa8ac087a",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2024-07-01_all_normal.pkl",
+      "bytes": 254553,
+      "sha256": "f4c61d37d7d9b94c362be83310c58ec566f6c324fa1f69480f2dee451710cfd8",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2025-01-02_300308_adverse.pkl",
+      "bytes": 200927,
+      "sha256": "66cda7f8b3aa275c6f5aade588e7ae084204ebdbb809c001451e847b63d8a36e",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2025-01-02_300308_normal.pkl",
+      "bytes": 204903,
+      "sha256": "22e33f5f666d57053cad3950a275dc55be348c54230254630e516321feb64344",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2025-01-02_300502_adverse.pkl",
+      "bytes": 192782,
+      "sha256": "f41a2d4fb793bd18a856f2042cdf373b9f7f28dec163a896d7e222dd9f66f6e6",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2025-01-02_300502_normal.pkl",
+      "bytes": 197010,
+      "sha256": "6d62532c8d3d973ada59c3bcd75f829f234e8074ae6e43b16f3a6d9c23602a29",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2025-01-02_all_adverse.pkl",
+      "bytes": 200931,
+      "sha256": "ce1cca5c2a88a009cbf0b4dae7e5251c0efec442baf1e405acb32354bc47a820",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-external-final/2025-01-02_all_normal.pkl",
+      "bytes": 204907,
+      "sha256": "4e9e7382112387d9ecb1e9645c0189bf0a8ff69c409d42a3725cc7fce994ed89",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-workload-final/leave-one-out-300502-adverse.pkl",
+      "bytes": 6093539,
+      "sha256": "9011c1083c27fba208e93c949a861f980dc387261622d9387a773964f95cb660",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-workload-final/leave-one-out-300502-normal.pkl",
+      "bytes": 6452747,
+      "sha256": "ed39e884157e040fbec22abb505ac2af3f50b56bee1f3f23160939b86b157712",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-workload-final/prefix-17-adverse.pkl",
+      "bytes": 6015626,
+      "sha256": "c8b6aad4902c47c23f367b8157b3072a5999b8e8fc8c8fa5c582b2bf40e8bf78",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-workload-final/prefix-17-normal.pkl",
+      "bytes": 6108319,
+      "sha256": "efe71948962f7853d3c0ccdce40470e4afa8e5c9e0fc6d1160230852da064c28",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-baseline-costs/prefix-17-adverse.pkl",
+      "bytes": 4952978,
+      "sha256": "16babd8b23a72376dd02a5869a099a68de773efeaf60b4472d8a7cd372b545ec",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    },
+    {
+      "file": "deployment-baseline-costs/prefix-17-normal.pkl",
+      "bytes": 5213708,
+      "sha256": "41310d9164aa59ad05a33bd78d928724ef1580aa623c644085cbb5095326ec3f",
+      "cash_and_equity_reconciled": true,
+      "wealth_and_drawdown_recomputed": true,
+      "signal_before_fill": true
+    }
+  ],
+  "workload_reuse": "All four final-source raw PKL hashes exactly match workload-summary.json; order intents are not broker orders.",
+  "locked_packages": {
+    "akracer": "0.0.14",
+    "akshare": "1.18.81",
+    "bandit": "1.9.4",
+    "beautifulsoup4": "4.15.0",
+    "boolean-py": "5.0",
+    "cachecontrol": "0.14.4",
+    "certifi": "2026.7.22",
+    "cffi": "2.1.0",
+    "charset-normalizer": "3.4.9",
+    "contourpy": "1.3.3",
+    "coverage": "7.15.3",
+    "curl-cffi": "0.16.0",
+    "cycler": "0.12.1",
+    "cyclonedx-python-lib": "11.11.0",
+    "decorator": "5.3.1",
+    "defusedxml": "0.7.1",
+    "et-xmlfile": "2.0.0",
+    "filelock": "3.32.2",
+    "fonttools": "4.63.0",
+    "html5lib": "1.1",
+    "idna": "3.18",
+    "iniconfig": "2.3.0",
+    "jsonpath": "0.82.2",
+    "kiwisolver": "1.5.0",
+    "license-expression": "30.4.4",
+    "lxml": "6.1.1",
+    "markdown-it-py": "4.2.0",
+    "matplotlib": "3.11.1",
+    "mdurl": "0.1.2",
+    "msgpack": "1.2.1",
+    "nodeenv": "1.10.0",
+    "numpy": "2.5.1",
+    "openpyxl": "3.1.5",
+    "packageurl-python": "0.17.6",
+    "packaging": "26.2",
+    "pandas": "3.0.5",
+    "pillow": "12.3.0",
+    "pip": "26.2",
+    "pip-api": "0.0.34",
+    "pip-audit": "2.10.1",
+    "pip-requirements-parser": "32.0.1",
+    "platformdirs": "4.11.0",
+    "pluggy": "1.6.0",
+    "py-mini-racer": "0.6.0",
+    "py-serializable": "2.1.0",
+    "pycparser": "3.0",
+    "pygments": "2.20.0",
+    "pyparsing": "3.3.2",
+    "pyright": "1.1.411",
+    "pytest": "9.1.1",
+    "pytest-cov": "7.1.0",
+    "python-dateutil": "2.9.0.post0",
+    "pyyaml": "6.0.3",
+    "requests": "2.34.2",
+    "rich": "15.0.0",
+    "ruff": "0.16.1",
+    "six": "1.17.0",
+    "sortedcontainers": "2.4.0",
+    "soupsieve": "2.9.1",
+    "stevedore": "5.9.0",
+    "tabulate": "0.10.0",
+    "tomli": "2.4.1",
+    "tomli-w": "1.2.0",
+    "tqdm": "4.70.0",
+    "typing-extensions": "4.16.0",
+    "urllib3": "2.7.0",
+    "webencodings": "0.5.1",
+    "xlrd": "2.0.2"
+  },
+  "lock_sha256": "22d95d1f81d2cac0a0e164ff3d79717904509135b6a0974ae1f679c8a00cd434",
+  "historical_baseline_external": "external-comparison.json; unchanged exact baseline source/data identity and paired cases",
+  "source_blob_equivalence": {
+    "local_execution_commit": "fe5588f1d88edc098a79bbf5c130fda58616e37f",
+    "remote_commit": "7252bf1474013ce4f14f0c9c8b37a5e62d3c17b1",
+    "production_files": 101,
+    "manifest_sha256": "ba8db4427bc2fe8586f82584b5dd2c6075096e1fcf50c42a3abb98e411b8cf37",
+    "all_working_files_match_both_commits": true
+  }
+}
