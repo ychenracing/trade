@@ -14,7 +14,7 @@ ORIGINAL_REFERENCE_PAYLOAD_SHA256 = "a08fb77de1f840bbb0d4adecb907f559ecead7dbea3
 INCUMBENT_REFERENCE_PATH = PROJECT_ROOT / "artifacts/diagnostics/no_waiver/production-primary/incumbent-reference.json"
 INCUMBENT_REFERENCE_PAYLOAD_SHA256 = "ba9f63ab834c49ba00ae9c724f3ab37beec38f9f545205f94e5651e8a43debdb"
 PRIMARY_CONTRACT_PATH = PROJECT_ROOT / "artifacts/diagnostics/no_waiver/production-primary/contract.json"
-PRIMARY_CONTRACT_SHA256 = "92318bf48abd349f949e750e8282ed18cebef1ce738f004c7030758c8b87a69c"
+PRIMARY_CONTRACT_SHA256 = "12cc8e1e475b5c8dbf51c588c6f1b2251dd2fa78ae37896a3f3c45144fa260e7"
 GATE_FAMILIES = (
     "absolute_hard_gates", "retained_robustness_hard_gates",
     "initial_baseline_gates", "promotion_gates",

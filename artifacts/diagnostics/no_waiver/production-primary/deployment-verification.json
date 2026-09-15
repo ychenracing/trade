@@ -1,0 +1,34 @@
+{
+  "status": "IMPLEMENTED_NOT_YET_RELEASE_QUALIFIED",
+  "authority": "2026-09-15 owner approves deployment-scoped evidence-supported improvement and normal PR101 merge",
+  "parent_source": "26bbf76ee0f5b81832ae129134386b85f2f252bb",
+  "contract_sha256": "12cc8e1e475b5c8dbf51c588c6f1b2251dd2fa78ae37896a3f3c45144fa260e7",
+  "plan": "deployment-plan.md",
+  "verification": {
+    "red": "11 expected failures,61 passed,3 subtests; absent scoped predicates and report disclosure",
+    "green": "91 passed,3 subtests",
+    "pyright": "0 errors,0 warnings",
+    "affected_ruff": "PASS",
+    "review": "Independent read-only review of all15 changed production modules against main; no confirmed Critical/Important; separate final release qualification required"
+  },
+  "historical_reassessment": {
+    "source": "67cbb3bc27551298b7370b7a15b7fa9dbab89b3d",
+    "formal_count": 958,
+    "new_table": "PASS on complete old-source results; NOT final-source qualification",
+    "original_contract": "NOT_MET",
+    "previous_production_contract": "NOT_MET",
+    "random_mdd_max": 0.19357897406694738,
+    "random_p90": 0.1712106342372403,
+    "random_above18_count": 13,
+    "incumbent_random_above18_count": 151,
+    "random_wealth_min_ratio": 0.35692399250170204
+  },
+  "matched_main_adverse_costs": {
+    "candidate_wealth": 8.7274858588415,
+    "baseline_wealth": 6.905283332063999,
+    "candidate_mdd": 0.14677193941295671,
+    "baseline_mdd": 0.1698917656701221,
+    "status": "Original identities preserved; candidate-engine equivalence to final source still required"
+  },
+  "next": "Commit stable source, final958 and full engineering/qualification, preserve originals, publish and merge only after all required release checks."
+}

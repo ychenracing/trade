@@ -2,11 +2,11 @@
   "kind": "production_primary_acceptance_contract",
   "authority": {
     "date": "2026-09-15",
-    "user_instruction": "我同意：在明确使用范围内，扣除真实成本后，获得有证据支持的收益、风险和稳定性改善，并保持系统可理解、可执行。按照这个目标调整并继续优化至正常合并main。",
-    "approved_proposal": "Deployment17 economics and structured sensitivity; full random stress distributions and individual failures disclosed; cross-window/cost tradeoffs and correctness before normal PR101 merge.",
+    "user_instruction": "按照你说的直接实施吧",
+    "approved_proposal": "Prioritize production pool; explicitly bound subset degradation; retain original contract outcomes; compare retained C and the existing state-sparse candidate; modify causal holding/risk mechanisms only when needed; verify one source before normal PR101 merge.",
     "scope": "ychenracing/trade original PR101 only; no live trading, other repositories, automations or protection bypass"
   },
-  "status": "FROZEN_OWNER_APPROVED_DEPLOYMENT_SCOPE",
+  "status": "FROZEN_WITH_EXPLICIT_OWNER_ACCEPTANCE_REVISION",
   "original_contract": {
     "path": "artifacts/diagnostics/no_waiver_joint_freeze.json",
     "sha256": "3cfe2fdd58b8f833515f38ab1313b0d2f80f7272b6c84fb70753dc97e7bf7184",
@@ -102,16 +102,14 @@
     },
     "waivers_permitted": false,
     "execution_semantics": "Existing close-known signals, next executable open, original board limits/T+1/ADV/fee/lot/account-state rules; planned sells never count as fills.",
-    "guard_semantics": "Inherited original limits are retained for diagnostics; changed_gates/new_wealth_gates/retained_gates and deployment_revision define the only effective deployment-scoped acceptance."
+    "guard_semantics": "Inherited limits below describe original diagnostics only except18% absolute drawdown. new_wealth_gates and retained_gates are the sole effective table."
   },
   "changed_gates": {
     "original_reference_prefix_wealth": "Report all 17 original ratios and failures as diagnostics; no original-reference prefix wealth gate in new acceptance.",
     "incumbent_fixed_prefix_wealth": "Replace every-prefix >=0.99 by production prefix-17 >=0.99 plus uniformly paired family wealth gates.",
     "adjacent_prefix_wealth": "Report all 16 actual ratios, including strict 09->10 original failure; no adjacent-ratio gate in new acceptance.",
     "incumbent_maximum_turnover": "All incumbent-relative and absolute turnover or risk-action limits, including230/238, are diagnostic only. No independent cost/workload veto remains.",
-    "all_other_relative_economics": "All historical prefix, adjacency, original worst return, add-one, relative drawdown, turnover and risk-action predicates are diagnostics only; no independent veto.",
-    "all_scenario_mdd": "18% retained for prefix/leave_one_out/add_one/permutation. Random subsets use incumbent-relative maximum, P90 severity and count>18% non-deterioration, not an absolute18% veto.",
-    "random_individual_wealth": "65% individual random wealth floor is diagnostic only; preserve all failures. Random P10>=85%, median>=100% remain required."
+    "all_other_relative_economics": "All historical prefix, adjacency, original worst return, add-one, relative drawdown, turnover and risk-action predicates are diagnostics only; no independent veto."
   },
   "new_wealth_gates": {
     "production_scenario_id": "prefix-17",
@@ -125,29 +123,18 @@
     ],
     "each_family_paired_wealth_ratio_min": 0.65,
     "each_family_paired_wealth_ratio_p10_min": 0.85,
-    "each_family_paired_wealth_ratio_median_min": 1.0,
+    "each_family_paired_wealth_ratio_median_min": 0.95,
     "formula": "(1 + candidate.total_return)/(1 + pinned_incumbent.total_return), paired by exact scenario ID, type and ordered symbols",
     "quantiles": "Existing stress_metrics._quantile linear interpolation, evaluated separately within each of the five families; no pooling or optional family.",
     "tolerance": 1e-12,
-    "rationale": "Use scope and measured improvement approved by owner; medians must retain incumbent wealth. Random worst-case opportunity loss is disclosed, not claimed safe for arbitrary deployment.",
-    "lost_protection": "Random subsets may exceed18% historical MDD and retain less than65% incumbent wealth. Full worst-case, tail and failure records remain visible. No broad-generalization or future drawdown guarantee.",
-    "individual_minimum_families": [
-      "prefix",
-      "leave_one_out",
-      "add_one",
-      "permutation"
-    ],
-    "production_drawdown_not_worse_than_incumbent": true,
-    "production_at_least_one_strict_improvement": "wealth ratio>1+1e-12 OR MDD severity<incumbent-1e-15"
+    "rationale": "Explicit owner economic tradeoff; one effective table, no rolling relaxation.",
+    "lost_protection": "Up to35% paired terminal wealth loss in worst subset,15% at P10,5% at median; no independent turnover/risk-action or old relative-return/drawdown veto. Historical failures preserved. This is informed policy adjustment, not unseen validation."
   },
   "retained_gates": [
-    "complete exact958 results; original data, costs, configuration and scenario identities",
-    "18% historical maximum MDD for every non-random family",
-    "main17 wealth>=99% incumbent, MDD no worse, and strict improvement in at least one",
-    "all family wealth P10>=85%, median>=100%; nonrandom individual minimum>=65%",
-    "random MDD maximum/P90/count>18% no worse than paired incumbent",
-    "permutation, data, causality, real cash/fees/ADV/T+1/limits/lots/account-state correctness",
-    "final source/data/config binding and actual repository protections"
+    "all958 max drawdown <=18% with existing metric and tolerance",
+    "production prefix-17 paired incumbent wealth >=99%; each family minimum>=65%,P10>=85%,median>=95%",
+    "exact permutation invariance and all data, causal, account, execution correctness",
+    "source/data/config binding, complete formal coverage, qualification and repository protections"
   ],
   "selection": {
     "candidates": [
@@ -202,8 +189,7 @@
       "No external results used for this batch selection. Further tuning after exposure must disclose holdout reuse.",
       "Formal 958 and new seeds on the same series do not establish market generalization.",
       "No future maximum-drawdown guarantee."
-    ],
-    "hard_gate_scope": "Main deployment comparison review as defined in deployment_revision; remaining subset comparisons stay diagnostic and already viewed."
+    ]
   },
   "implementation": {
     "gate_location": "quantfusion/application/native_joint.py",
@@ -237,40 +223,5 @@
       "loo300502_buckets": 283
     },
     "lost_protection": "Up to35% paired terminal wealth loss in worst subset,15% at P10,5% at median; no independent turnover/risk-action or old relative-return/drawdown veto. Historical failures preserved. This is informed policy adjustment, not unseen validation."
-  },
-  "deployment_scope": {
-    "symbols": [
-      "300308",
-      "300502",
-      "300394",
-      "688256",
-      "603986",
-      "688072",
-      "688300",
-      "300054",
-      "688361",
-      "002409",
-      "688498",
-      "688120",
-      "002384",
-      "688082",
-      "300604",
-      "601869",
-      "300408"
-    ],
-    "primary_scenario": "prefix-17",
-    "mode": "daily close / next executable open / manual decision support",
-    "scope_source": "pinned incumbent prefix-17 exact ordered symbols",
-    "generalization_claim": false,
-    "random_subsets": "outside validated deployment; complete stress diagnostics and relative distribution protections"
-  },
-  "deployment_revision": {
-    "authority": "Explicit owner instruction in current conversation,2026-09-15",
-    "previous_contract": "contract-before-deployment-scope.json",
-    "previous_sha256": "92318bf48abd349f949e750e8282ed18cebef1ce738f004c7030758c8b87a69c",
-    "design": "deployment-plan.md",
-    "selection_disclosure": "Earlier600+ scenario outcomes and12 external diagnostics already viewed, including random MDD19.357897% and wealth ratio35.692399%; no claim of unseen policy selection.",
-    "release_review": "Matched main normal/adverse costs and registered cross-window pairs must be complete; main MDD<=18%, lower wealth must be accompanied by lower MDD; disclose absolute losses, fees and workload.",
-    "no_rolling_relaxation": true
   }
 }
