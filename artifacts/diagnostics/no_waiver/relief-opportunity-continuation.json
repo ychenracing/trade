@@ -1,0 +1,38 @@
+{
+  "status": "NOT_MET", "canonical": false, "default_promoted": false, "original_pr": 101,
+  "base": "ea21b4b954e21f4748a5c0826869ff33e01ecc6e",
+  "columns": ["scenario_id", "wealth_including_principal", "signed_max_drawdown", "date_symbol_side_buckets"],
+  "studies": {
+    "lot-relief": {
+      "commit": "828a5c54be3fcd39a391666d014af38c71d8e129", "tree": "55b2ec4ba59554e559c16ad864682015baa48fd0",
+      "source_fingerprint": "3a79bb791c4e1b0ac1ef449052b2450c173acca912727688a72ded00ca21f8d9",
+      "hypothesis": "Allocate required systemic relief in legal lots across actual strategy books, checking residual gross and the unchanged modeled stress instead of independently rounding every proportional cut upward. Keep each book owner, existing caps, old ceiling and native execution.",
+      "tests": "Expected RED1 failure/2 passes, then107 focused passed before economics. Compile and diff check passed; local Ruff unavailable.",
+      "runtime_source_binding": "Commit failed for missing invocation-local author identity; the shell launched already-tested staged source. The raw identity correctly records ea21b4b plus fingerprint3a79 and saved source.patch SHA256 d65f8631726d32a97bfcbab2e99412ea6f4ed17e175a1139bbe4d8b09bd72a0a. No source changed during the run. After all9 completed, fingerprint matched and exact tree was committed as828a5c5. Do not relabel the original runtime identity as a clean parent or as the later commit.",
+      "rows": [["prefix-01",5.6488764114625,-0.15230549939315088,6],["prefix-03",7.388090925179751,-0.1596104771631742,85],["prefix-05",11.746043164760877,-0.15152887249201336,98],["prefix-06",10.871686592320128,-0.15152887249201336,94],["prefix-07",12.061184094082254,-0.1461339186102304,102],["prefix-11",12.350023746572505,-0.1499779329048062,104],["prefix-13",12.769093757329877,-0.14777206913239563,136],["prefix-15",10.116894584988001,-0.14777206913239563,127],["random-20260817-03-027",7.622691355806379,-0.1595185816688964,93]],
+      "decision": "REJECTED_JOINT: improves01 and restores13 necessary wealth relative to timing-only but05 loses its necessary floor and03/06/15 remain below. Not a promoted foundation."
+    },
+    "opportunity-capital": {
+      "commit": "ee7ce99c0928ac20163e6b500c9697f8184a6e51", "parent": "828a5c54be3fcd39a391666d014af38c71d8e129",
+      "source_fingerprint": "337beadc0088141a8a22f7700273e0705ee609180c35a39db286eae3feefa932",
+      "hypothesis": "When a close-known, already-admissible unheld two-strategy opportunity lacks cash, compare prospective equal capital units and plan ordinary real-owner partial sales from incumbents above their unit. Retain original buy proposals, protected pending obligations and all native next-open checks; credit no anticipated cash or risk relief.",
+      "tests": "9 expected missing-feature RED failures, then116 focused passed before economics; compile and diff check passed. Full standalone/advice/locked-runtime qualification is not complete.",
+      "rows": [["prefix-01",5.6488764114625,-0.15230549939315088,6],["prefix-03",6.033960960563628,-0.16006335852461803,114],["prefix-05",9.156835768107504,-0.15563495228316596,153],["prefix-06",9.177410000806752,-0.15300264020215457,162],["prefix-07",4.403362362915127,-0.1427689643490234,130],["prefix-11",9.371667178032252,-0.1408083373802957,159],["prefix-13",7.339096360827379,-0.15641353172688052,190],["prefix-15",8.327611345026627,-0.1649157383448417,155],["random-20260817-03-027",7.471102995534378,-0.15719640603522733,101]],
+      "actual_path": "Prefix03 300308 entries genuinely move from June24 at127.10698 to June6 at100.2001; native June24 Turtle additions subsequently occur. First allocation changes already occur May8/9, including incumbent300502 sales. The continuous candidate loses wealth despite earlier entry. No additive counterfactual or profitable-signal claim.",
+      "decision": "REJECTED_JOINT. Equal prospective capital is not sufficient evidence to sell incumbents; do not scan nearby funding fractions or promote the unchanged01 row."
+    }
+  },
+  "original_packet": {
+    "provider": "Owner-authorized connected Google Drive", "file_id": "1EY1qkDzEwVJWvmHZG0zYwtygtzMkMtrj",
+    "url": "https://drive.google.com/file/d/1EY1qkDzEwVJWvmHZG0zYwtygtzMkMtrj/view",
+    "name": "TRADE_PR101_RELIEF_AND_OPPORTUNITY_ORIGINALS.tar.gz", "bytes": 1957532,
+    "sha256": "33dca93e9a0df7f49267348894de25a40a6e0edc0f2367a939ba41404e5859d7",
+    "uploaded_and_raw_readback_verified": true, "manifest_file_members_verified": 60, "complete_new_raw_replays": 18,
+    "bundle_sha256": "898379a2b7930a9aacb1643be87ae122a4c6606252f54f34d73aa51f54f34568",
+    "restore": "Fetch through Google_Drive.fetch(download_raw_file=true,include_base64=false); verify archive SHA and evidence/manifest.json. evidence/research.bundle contains both exact commits and requires ea21b4b from preloss-symbol-continuation.json. evidence/research-record.json contains complete independent source/test patches relative to ea21, test/error output and all raw source/data identities and hashes. Original staged runtime binding of lot-relief is explicitly preserved in its source-capture.json. Never chain the independent complete patches or overwrite a live worktree.",
+    "github_raw_storage": false
+  },
+  "attribution_integrity": "Old pending_trace.book_before/emitted observer data are watchlisted subsets, not full account inventory. Allocation work uses the real full engine ledger and reconciliation; earlier apparent concentration inferred from watched-only inventory is not a verified bug.",
+  "boundary": "18 new Python3.13.5 continuous diagnostic production replays, not acceptance or locked qualification. Frozen data fingerprint aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975 and all configuration overrides{} verified. Thresholds, fee/lot/T+1/ADV, true stops, account peaks and risk histories unchanged. Old82-group/1217-file and unrelated earlier27 raw gaps remain unfilled. Default PR economics were not replaced. Preserve both rejected candidates separately from af2389b.",
+  "next": "Complete already-started isolated original-reference sublot-correction attribution, without redefining the frozen denominator. Use it to distinguish later decision-policy damage from required correctness changes; do not mechanically treat any rejected research snapshot as an accepted foundation. Continue source-bound structural decisions and simultaneous native economic verification."
+}
