@@ -1,0 +1,49 @@
+{
+  "kind": "unfilled_native_discovery_research",
+  "status": "NOT_MET",
+  "research_state": "IMPLEMENTED_ECONOMICS_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "observed_parent": "4d45509bc3b4d25a21080518910a384991a3953f",
+  "preregistration_comments": [5674293817, 5674502100, 5675011111],
+  "source": {
+    "base": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "commit": "11822d724ffe220b77e6cde5c9583231781ff96c",
+    "tree": "1e44a25c0daa5493924dde45f87ecc0f5863254e",
+    "fingerprint": "1c99f317ae78a28142800c06f9beee431beaf906924bf9b6a81b9ea20f1a96dc",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {},
+    "production_patch_sha256": "a65794335e63ab415af757bbeb91bbf1039cacde50aa579c1a7a027f5f3d810e",
+    "bundle_bytes": 4998,
+    "bundle_sha256": "fec84e84efee012c6904e317e97a22e7b7279744fee96c37a0690e7136b1fd5f"
+  },
+  "source_packet": {
+    "provider": "Owner-authorized connected Google Drive",
+    "file_id": "1-9e-JnDsLF9xQ67MqbvW7SPQuNBi1U7D",
+    "url": "https://drive.google.com/file/d/1-9e-JnDsLF9xQ67MqbvW7SPQuNBi1U7D/view",
+    "name": "TRADE_PR101_UNFILLED_DISCOVERY_SOURCE.tar.gz",
+    "bytes": 73054,
+    "sha256": "22e004a379ce4469f534937f5e1c30e51e734937ebed08c764c952f370137dcb",
+    "uploaded_raw_readback_verified": true,
+    "manifest_members_verified": 14,
+    "restore": "Fetch raw packet and verify full SHA256 plus evidence/SHA256.json. Restore exact af2389b using existing late-joiner-source-preservation.json, then verify/fetch evidence/unfilled-discovery.bundle in an isolated worktree; verify commit/tree and native source/data fingerprints. Source and tests are also retained as separate exact patches. Bundle preservation does not promote its source to the PR default."
+  },
+  "verification": {
+    "baseline_focused_tests": 8,
+    "missing_mechanism_red_failures": 7,
+    "separate_cross_sleeve_event_red_failures": 1,
+    "affected_tests_passed": 104,
+    "daily_state_tests_passed": 47,
+    "daily_state_subtests_passed": 3,
+    "compile_and_diff_check": "PASS",
+    "ruff": "UNAVAILABLE_LOCALLY",
+    "runtime": "Python3.13.5 local diagnostic; not locked final qualification",
+    "fixture_correction": "Initial fill test requested an overlarge order and native risk correctly rejected it. Corrected to one real board lot; no execution check weakened. Original failing command retained."
+  },
+  "mechanism": "Arm only an observed valid native golden cross; retain its unfilled episode, require a new highest observed close and native RSI, invalidate nonbullish MA state, consume on actual own-book fill even before another close. No filled-book restoration. Continuations retain single-probe sizing, zero new fusion votes and no early-cross portfolio admission bypass. Preserve real cash, existing pending TTL/obligations, exits and durable risk. No new economic thresholds or ticker/date branches.",
+  "scenario_ids": ["prefix-03", "prefix-17", "prefix-05", "prefix-13", "prefix-07", "prefix-08", "prefix-06", "prefix-01", "prefix-15", "random-20260817-03-027"],
+  "falsifier": "Reject harmful displacement into protected05/13/production17, materially insufficient major-gap effects or merely moved pool-expansion losses; do not scan neighboring confirmations.",
+  "reused_evidence": "Verified all120 members of retained b9ec2c1b original packet and all48 files of locked modern-reference artifact10378263868/run34923007758. No controls rerun. Source-bound C03 actual order events confirm May14/June5 discovery was rejected at following opens; these denials are not additive lost profits.",
+  "unverified": "Economic batch, full958, locked final qualification and exact-current-HEAD CI remain unrun. Full-history replay reconstructs episode state; a point-in-time external account snapshot without episode history fails closed rather than fabricating a continuation. Final production/advice qualification remains necessary if economics support promotion.",
+  "next": "Execute the ten preregistered continuous paths using this exact isolated source, preserve original results and identity, and assess mechanism falsifier before any expansion. Historical82-group/earlier27 gaps remain unchanged. Original/incumbent/native gates and old NOT_MET remain."
+}
