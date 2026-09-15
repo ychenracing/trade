@@ -35,11 +35,11 @@
       "bytes": 30574,
       "sha256": "3f54e20b24e898f514429a03215aa37c8bd808b49d74bba21919b6298ad3bf13"
     },
-    "add-stop-observer.log": {
+    "add-stop-observer.txt": {
       "bytes": 6650,
       "sha256": "ec25b738d3f17492de646fee7f87e977492ad24f47329b2b554a0c712271cb76"
     },
-    "tradable-replay.log": {
+    "tradable-replay.txt": {
       "bytes": 2539,
       "sha256": "84ff7718d116b6ef8b9385bd0a6804124049d8348ed42bf0b06abb82e3682b3f"
     },
@@ -63,7 +63,7 @@
       "bytes": 2580,
       "sha256": "b2c06839abbbbfd610b7d032e56620cde3a355013d80aa5c7c8b643ba14d4b37"
     },
-    "diversification-replay.log": {
+    "diversification-replay.txt": {
       "bytes": 2535,
       "sha256": "a7ce14638104d79ca1eb40885eb7ec964eee076fdd7fef8bdf230d82c92913e4"
     },

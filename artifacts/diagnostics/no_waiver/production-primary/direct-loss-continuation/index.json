@@ -1,0 +1,314 @@
+{
+  "kind": "production_primary_direct_loss_continuation",
+  "date": "2026-09-15",
+  "status": "NOT_MET",
+  "canonical": false,
+  "merge_permitted": false,
+  "effective_contract": {
+    "path": "artifacts/diagnostics/no_waiver/production-primary/contract.json",
+    "bytes_sha256": "4990863d2fe33914fad80f1372b1c43c920e126351578af44f53e639bffe9bf8",
+    "first_remote_freeze": "4848c1f6921d5b0447b7d41f01115da95e6cc16a",
+    "duplicate_contract": "production-pool-contract.json is superseded; do not select gates after results"
+  },
+  "original_contract_status": "NOT_MET",
+  "raw_replay_count": 61,
+  "raw_archive": "LOCAL_ONLY: original binary replays and archives were not committed; large uploads stopped under owner instruction. compact-evidence.json records recoverable local paths and hashes.",
+  "results": "compact-evidence.json",
+  "direct_loss": {
+    "research_source_revision": "ff19a4e9cb603147bbf0ffade380ee2e129cd6db",
+    "research_source_fingerprint": "b17bb382bb854262ad970838fedd8a98be3b3496f2e9a2be5c6ec973a7c3121a",
+    "integrated_formal_source": "3cf078e08b6e6ccf9658ddfce7eea078a1f28607",
+    "historical_rows_reused_from": "artifacts/diagnostics/no_waiver/direct-loss-first-result.json",
+    "complete_prefix_comparison": [
+      {
+        "scenario_id": "prefix-01",
+        "wealth": 4.928538056569,
+        "original_wealth_ratio": 0.781197861459088,
+        "incumbent_wealth_ratio": 0.9399333400030975
+      },
+      {
+        "scenario_id": "prefix-02",
+        "wealth": 5.970887819241751,
+        "original_wealth_ratio": 0.824151487111321,
+        "incumbent_wealth_ratio": 1.4330387397225832
+      },
+      {
+        "scenario_id": "prefix-03",
+        "wealth": 6.980929787136749,
+        "original_wealth_ratio": 0.6021214599062693,
+        "incumbent_wealth_ratio": 1.039109257452588
+      },
+      {
+        "scenario_id": "prefix-04",
+        "wealth": 7.5363030499295,
+        "original_wealth_ratio": 0.672760447918128,
+        "incumbent_wealth_ratio": 1.321683473573543
+      },
+      {
+        "scenario_id": "prefix-05",
+        "wealth": 13.704754138122127,
+        "original_wealth_ratio": 1.0785007690861959,
+        "incumbent_wealth_ratio": 1.4913593361020692
+      },
+      {
+        "scenario_id": "prefix-06",
+        "wealth": 11.266665997923,
+        "original_wealth_ratio": 0.8694713438537037,
+        "incumbent_wealth_ratio": 1.4578727178615876
+      },
+      {
+        "scenario_id": "prefix-07",
+        "wealth": 11.540198051080502,
+        "original_wealth_ratio": 2.8850103455827947,
+        "incumbent_wealth_ratio": 2.743559720438104
+      },
+      {
+        "scenario_id": "prefix-08",
+        "wealth": 9.313481124690126,
+        "original_wealth_ratio": 2.3219871072727467,
+        "incumbent_wealth_ratio": 2.214181382126971
+      },
+      {
+        "scenario_id": "prefix-09",
+        "wealth": 11.968703188623502,
+        "original_wealth_ratio": 3.0623216738122543,
+        "incumbent_wealth_ratio": 2.5587301482570246
+      },
+      {
+        "scenario_id": "prefix-10",
+        "wealth": 11.968703188623502,
+        "original_wealth_ratio": 0.9919709448609663,
+        "incumbent_wealth_ratio": 2.717369992569289
+      },
+      {
+        "scenario_id": "prefix-11",
+        "wealth": 11.694761657145252,
+        "original_wealth_ratio": 0.9710560653285558,
+        "incumbent_wealth_ratio": 2.922834587226993
+      },
+      {
+        "scenario_id": "prefix-12",
+        "wealth": 11.694761657145252,
+        "original_wealth_ratio": 0.9811010501805627,
+        "incumbent_wealth_ratio": 2.6929837599727047
+      },
+      {
+        "scenario_id": "prefix-13",
+        "wealth": 13.422915323504629,
+        "original_wealth_ratio": 1.007297744538749,
+        "incumbent_wealth_ratio": 2.8537156340705914
+      },
+      {
+        "scenario_id": "prefix-14",
+        "wealth": 13.422915323504629,
+        "original_wealth_ratio": 1.007297744538749,
+        "incumbent_wealth_ratio": 2.539955757517596
+      },
+      {
+        "scenario_id": "prefix-15",
+        "wealth": 10.318526304996126,
+        "original_wealth_ratio": 0.870855032652679,
+        "incumbent_wealth_ratio": 2.213404656593823
+      },
+      {
+        "scenario_id": "prefix-16",
+        "wealth": 11.67303416043875,
+        "original_wealth_ratio": 3.0225132435544495,
+        "incumbent_wealth_ratio": 1.683151286836021
+      },
+      {
+        "scenario_id": "prefix-17",
+        "wealth": 11.194244202966377,
+        "original_wealth_ratio": 2.8985395647789973,
+        "incumbent_wealth_ratio": 1.252525206902499
+      }
+    ],
+    "complete_adjacent_diagnostics": [
+      {
+        "from": "prefix-01",
+        "to": "prefix-02",
+        "wealth_ratio": 1.2114926882391537
+      },
+      {
+        "from": "prefix-02",
+        "to": "prefix-03",
+        "wealth_ratio": 1.16916110274925
+      },
+      {
+        "from": "prefix-03",
+        "to": "prefix-04",
+        "wealth_ratio": 1.0795557726158622
+      },
+      {
+        "from": "prefix-04",
+        "to": "prefix-05",
+        "wealth_ratio": 1.8184982805661365
+      },
+      {
+        "from": "prefix-05",
+        "to": "prefix-06",
+        "wealth_ratio": 0.8220990967348211
+      },
+      {
+        "from": "prefix-06",
+        "to": "prefix-07",
+        "wealth_ratio": 1.0242779943248452
+      },
+      {
+        "from": "prefix-07",
+        "to": "prefix-08",
+        "wealth_ratio": 0.8070469053880848
+      },
+      {
+        "from": "prefix-08",
+        "to": "prefix-09",
+        "wealth_ratio": 1.2850944806120193
+      },
+      {
+        "from": "prefix-09",
+        "to": "prefix-10",
+        "wealth_ratio": 1.0
+      },
+      {
+        "from": "prefix-10",
+        "to": "prefix-11",
+        "wealth_ratio": 0.977111845188154
+      },
+      {
+        "from": "prefix-11",
+        "to": "prefix-12",
+        "wealth_ratio": 1.0
+      },
+      {
+        "from": "prefix-12",
+        "to": "prefix-13",
+        "wealth_ratio": 1.1477716021090103
+      },
+      {
+        "from": "prefix-13",
+        "to": "prefix-14",
+        "wealth_ratio": 1.0
+      },
+      {
+        "from": "prefix-14",
+        "to": "prefix-15",
+        "wealth_ratio": 0.7687246813609513
+      },
+      {
+        "from": "prefix-15",
+        "to": "prefix-16",
+        "wealth_ratio": 1.1312695064591525
+      },
+      {
+        "from": "prefix-16",
+        "to": "prefix-17",
+        "wealth_ratio": 0.9589832471239529
+      }
+    ],
+    "status": "REJECTED_NECESSARY_GATE"
+  },
+  "formal_attempt": {
+    "status": "TERMINATED_REJECTED_NECESSARY_GATE",
+    "completed": 50,
+    "required": 958,
+    "source_identity": {
+      "stress_contract_version": 2,
+      "source_revision": "3cf078e08b6e6ccf9658ddfce7eea078a1f28607",
+      "candidate_id": "native-default",
+      "source_fingerprint": "65b35d6c26d4cc52fd350daafa2a5af1e1ad65e458abe30c212c132664c21dc0",
+      "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+      "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+      "run_signature": "a235289f7610014ed40c583919f178f4726466ade232834548aa50db33ffb6ba",
+      "scenario_count": 958,
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "initial_capital": 2000000.0,
+      "engine": "ProductionReplayEngine",
+      "deployment_policy": "production_daily_replay"
+    },
+    "checkpoint": "LOCAL_ONLY: /workspace/scratch/bf273963828a/formal-958-checkpoint.json; completed rows preserved locally; minimal necessary failures below.",
+    "necessary_failures": [
+      {
+        "scenario_id": "add-one-05-002384",
+        "wealth": 4.999227728870127,
+        "mdd": 0.18282257226088386,
+        "buckets": 83,
+        "incumbent_wealth_ratio": 0.46261395103886344,
+        "failures": [
+          "mdd_above_18pct",
+          "paired_family_min_below_0_70"
+        ]
+      },
+      {
+        "scenario_id": "leave-one-out-603986",
+        "wealth": 3.9946184801897506,
+        "mdd": 0.18530399728342153,
+        "buckets": 47,
+        "incumbent_wealth_ratio": 0.4287785071511574,
+        "failures": [
+          "mdd_above_18pct",
+          "paired_family_min_below_0_70"
+        ]
+      }
+    ],
+    "reason": "Stopped after exact-source necessary failure; no canonical publication, full family quantiles or qualification claim. No restart on this rejected source."
+  },
+  "material_excess_research": {
+    "source_revision": "07baac8a48fdf7f6baa3dd0edf6330bdae69dbe0",
+    "status": "REJECTED",
+    "mechanism": "Only preserve valid holdings when current gross-cap excess is no more than equity*daily_loss_limit; distinct causal counterexample, not a cap parameter scan.",
+    "cause_evidence": "LOCAL_ONLY: material-budget-causal-events.json",
+    "loo603986_wealth": 5.394498001441627,
+    "loo603986_mdd": 0.16749676156906274,
+    "production17_wealth": 4.2076207487393775,
+    "reason": "Risk repair sacrifices production wealth and still misses paired LOO wealth. Do not promote or scan neighboring constants."
+  },
+  "risk20_research": {
+    "source_revision": "2646c9107d7f779a13205a3f40772b645025fc02",
+    "status": "REJECTED",
+    "production17_wealth": 7.84276048,
+    "reason": "Ran before first-contract reconciliation; retain as failed research, not an approved acceptance change."
+  },
+  "external": {
+    "status": "COMPLETED_DIAGNOSTICS",
+    "paired_cases": 12,
+    "raw_replays": 24,
+    "passed_diagnostic_cases": 8,
+    "comparison": "external-comparison.json",
+    "base_main_revision": "b7be8011d71b477c8ca3942d97830e67d0e0407c",
+    "hard_gate": false,
+    "completely_unseen": false,
+    "identity_limitation": "Candidate engine is integrated direct-loss3cf078e, but acceptance-only working changes were present at launch. Recorded source fingerprint b5814b differs from clean formal65b35d. These external diagnostics are NOT qualification of a clean final source or of subsequent architecture/acceptance edits."
+  },
+  "engineering": {
+    "review": "Independent review identified frozen-incumbent and full17/16 disclosure gaps; five new counterexamples RED, fixes GREEN, reviewer confirmed closure. First-contract writer owns unified final acceptance integration. Local patch and logs retained locally, not a competing implementation claim.",
+    "focused_tests": "83 passed before final shared integration;121 passed+27subtests and one preexisting generated-log hygiene failure in additional affected suite. No full-suite PASS.",
+    "static": "Local reviewed code ruff passes;pyright0errors. Subsequent final integration requires its own checks.",
+    "full_suite": "Two broader attempts terminated without complete result; existing economic goldens not changed to disguise unqualified source."
+  },
+  "coordination": {
+    "first_writer_comment": "https://github.com/ychenracing/trade/pull/101#issuecomment-5681505858",
+    "readback": "Reuse peer C41/sparse90 and failed alert/residual batches; do not rerun or overwrite their preserved originals. Peer owns acceptance integration; this writer owns these direct-loss/material/raw evidence and small architecture/hygiene repairs."
+  },
+  "next_boundary": {
+    "goal_complete": false,
+    "no_authorization_needed": true,
+    "known_routes_closed": [
+      "retained-C",
+      "state-sparse",
+      "direct-loss-first",
+      "risk20-C",
+      "material-excess-budget",
+      "peer-alert-alignment",
+      "peer-residual-cap"
+    ],
+    "remaining_problem": "Close-known risk relief can prevent LOO liquidation but current generalized reductions destroy production trend wealth. None of the tested sources meets all frozen protections. Need a materially different, evidence-supported holding/reduction/readmission mechanism; no exact-symbol/date switch, neighboring parameter scan, threshold lowering, or mixed-source row selection.",
+    "merge": "Only normal merge after one final default source passes complete formal958, source-bound qualification and repository checks. Current source remains unqualified research."
+  },
+  "storage": {
+    "owner_instruction": "\u5982\u679c\u88ab\u4e2d\u65ad\u4e86\u4f60\u5c31\u91cd\u8bd5\uff0c\u4e0d\u8981\u7528\u5927\u6587\u4ef6\u4e0a\u4f20\u3002\u7ee7\u7eed",
+    "policy": "Only small code, summaries and recovery metadata; no binary, archive or assembled Base64 uploads. Reuse existing Git blob objects for unchanged large references.",
+    "raw_originals_remote": false,
+    "limitation": "Local scratch originals can be lost; no claim of durable raw preservation or full qualification."
+  }
+}

@@ -1,0 +1,30 @@
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index d259022..3f2b3a4 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -35,7 +35,7 @@ def account_budget_capacity(
+              for key in ('slippage', 'commission_rate', 'stamp_duty', 'min_commission')}
+     maximum = require_finite('max_total_weight', cfg['max_total_weight'],
+                               min_value=0., max_value=1.)
+-    floor = 0.82 * peak
++    floor = 0.80 * peak
+     stress = 1. - (1. - daily)**2
+     cost_rate = 2*costs['slippage'] + 2*costs['commission_rate'] + costs['stamp_duty']
+     fixed = 2*book_count*costs['min_commission']
+diff --git a/tests/c6_non_economic/test_account_risk_budget.py b/tests/c6_non_economic/test_account_risk_budget.py
+index 0b7a6f6..73b63d5 100644
+--- a/tests/c6_non_economic/test_account_risk_budget.py
++++ b/tests/c6_non_economic/test_account_risk_budget.py
+@@ -66,10 +66,10 @@ def test_budget_formula_has_fixed_two_session_and_fee_reserve():
+     cfg = engine.cfg
+     stress = 1-(1-cfg['daily_loss_limit'])**2
+     costs = 2*cfg['slippage']+2*cfg['commission_rate']+cfg['stamp_duty']
+-    assert r['floor'] == pytest.approx(82000.)
++    assert r['floor'] == pytest.approx(80000.)
+     assert r['stress_fraction'] == pytest.approx(stress)
+     assert r['gross_cap'] == pytest.approx(min(cfg['max_total_weight']*90000.,
+-                       (90000.-82000.-2*cfg['min_commission'])/(stress+costs)))
++                       (90000.-80000.-2*cfg['min_commission'])/(stress+costs)))
+ 
+ 
+ def test_nonbinding_budget_leaves_existing_buy_batch_unchanged():

@@ -6,14 +6,11 @@ import numpy as np
 import pandas as pd
 
 from quantfusion.domain.models import BarContext, Position, Signal
+from quantfusion.config.engine import EARLY_DUAL_TRANSITION_RSI_MAX as EARLY_DUAL_TRANSITION_RSI_MAX
 from quantfusion.domain.rules import floor_to_lot, is_finite_number, limit_pct_for_code
 
 _floor_to_lot = floor_to_lot
 _is_finite_number = is_finite_number
-
-# A DualMA cross above this point is already a late momentum confirmation.
-# Earlier crosses may be coordinated as event candidates across sleeves.
-EARLY_DUAL_TRANSITION_RSI_MAX = 60.0
 
 
 def _has_unresolved_limit_advance(

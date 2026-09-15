@@ -17,7 +17,7 @@ from quantfusion.config.overlay import (
 from quantfusion.execution.c6_receipts import reconcile_close_queue
 from quantfusion.risk.overlay.adapter import apply_risk_actions
 from quantfusion.risk.overlay.models import RiskAction
-from quantfusion.strategy.trend import EARLY_DUAL_TRANSITION_RSI_MAX
+from quantfusion.config.engine import EARLY_DUAL_TRANSITION_RSI_MAX
 
 
 def account_budget_capacity(
