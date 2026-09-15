@@ -1,0 +1,82 @@
+{
+  "kind": "alpha_loss_attribution_and_postshock_native_requalification",
+  "status": "PREREGISTERED_IMPLEMENTATION_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "observed_parent": "a1ce6fd7c4ce105c1d67956c8a69da50f29cfd16",
+  "comparison": {
+    "historical_strong_source_fingerprint": "5e94ba6a8be97c10ae94e8363b22477a22a2318cf030d529c9886248303098aa",
+    "retained_c_commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "retained_c_source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "reference_prefix01_raw_sha256": "9a9c59978e1be0daf2f16196db90f945dcc4535f6e07d3c86d8d203bdb6dc7c3",
+    "retained_c_prefix01_raw_sha256": "9ef73b8c759c94438fc052e3b040acc4cd47387714c6ef317fd6e9a8ab9e432a",
+    "reference_prefix03_raw_sha256": "07ccd50ca6c423dc567c951adb49cb2c1d7366ef7743b88f3424a5f2b715b9be",
+    "retained_c_prefix03_raw_sha256": "0e3276fff3358c7900901b63d95b7a7e348b0f4d952e6409705436ce58ea42b6"
+  },
+  "attribution": {
+    "prefix01": {
+      "historical_wealth": 6.308949754885001,
+      "retained_c_wealth": 4.928538056569,
+      "historical_max_drawdown": -0.1834136674871038,
+      "retained_c_max_drawdown": -0.12468509293898083,
+      "symbol": "300308",
+      "historical_net_contribution": 10617899.50977,
+      "retained_c_net_contribution": 7857076.1131380005,
+      "lost_net_contribution": 2760823.396631999,
+      "shock_trim": "On the 2025-09-04 close a confirmed systemic-shock plan creates six account_budget_trim orders; on the 2025-09-05 open each ATR/Turtle book sells 1100 shares, 6600 shares total. This is real next-open execution, not planned cash.",
+      "post_episode_capacity": "The shock episode is false from 2025-09-10 onward. On 2025-09-19, for example, gross_before is 2016480 while the unchanged close-known gross_cap is 5307714.7665140005; ordinary gross/gap/shock scales are nonzero, but all three native Turtle pyramid proposals are still forced to zero solely by shock_reduced_pyramid.",
+      "persistent_veto_observation": "Across 185 close dates after the shock episode is inactive, the retained-C account-budget receipts still report shock_reduced_pyramid blocks. Repeated requested shares sum to 796900; this is repeated proposal volume, not additive missed profit or independent opportunities.",
+      "interpretation": "The single-symbol witness rules out stock-pool competition as the main prefix01 loss. The dominant gap is risk deleveraging followed by a persistent same-live-cycle veto on later native Turtle participation. Historical full retention is not admissible evidence because its max drawdown is 18.3413667487%, above the frozen 18% contract."
+    },
+    "prefix03": {
+      "historical_wealth": 11.593889691663627,
+      "retained_c_wealth": 7.018521535589125,
+      "final_asset_gap": 9150736.312149003,
+      "net_contribution_gap_by_symbol": {
+        "300308": 6086596.3498794995,
+        "300394": 2195454.782872499,
+        "300502": 868685.1793969981
+      },
+      "gap_share_300308": 0.6651558811257596,
+      "300308_atr_contribution": {
+        "historical": 8102272.88690225,
+        "retained_c": 2903517.8868867503,
+        "lost": 5198755.0000155
+      },
+      "interpretation": "About two thirds of the total prefix03 asset gap is 300308; roughly 5.20m of that gap is ATR-book contribution. The just-rejected one-board-lot seed-anchor improved prefix03 wealth only to 7.457071362145252 and left the main high-winner retention gap open."
+    }
+  },
+  "failed_family_exclusion": {
+    "minimum_board_lot_seed_anchor": "a1ce6fd7 records REJECTED_EARLY; no neighboring board-lot multiples/ratios.",
+    "target_r": "Previously rejected target-r restored tactical partial-reduction quantity after recovery. This new test does not restore old shares, keep a target quantity, or credit a prior trim as future funding.",
+    "native_cycle_reentry": "The rejected native-cycle reentry required a completed ordinary cycle. This test stays inside the already-live risk-reduced book and does not fabricate a completed cycle or reset risk history.",
+    "f_g_h_i": "Earlier recovery experiments studied immediate recovery/blocking around a different source family. This test keeps the actual shock episode block and asks only whether the categorical veto should persist after the episode itself is over."
+  },
+  "hypothesis": {
+    "name": "episode_scoped_confirmed_shock_pyramid_veto",
+    "mechanism": "For books reduced by a confirmed systemic shock, keep native Turtle pyramid adds blocked while the real shock episode is active. Once that episode is no longer active, stop applying the extra confirmed-shock categorical veto and let a later native Turtle pyramid proposal flow through the unchanged current close-known gross/gap/shock/account budget. Crowded-portfolio shock-reduced vetoes remain unchanged. No previous quantity is restored, no synthetic order is created, and no prior sale is treated as cash before execution.",
+    "causal_discriminator": "A later native strategy proposal plus an inactive shock episode and current account capacity is new close-known decision evidence; prior risk reduction alone creates no right to rebuy.",
+    "unchanged": "18% drawdown contract, data, seeds, scenarios, fees, board lots, T+1, ADV, limits, next-open execution, actual ownership/cash/pending obligations, HWM, cycle locks, loss history and all other risk/admission rules."
+  },
+  "predeclared_validation": {
+    "engineering": [
+      "RED: exact C must currently block a confirmed-shock-reduced Turtle pyramid after shock_episode_active=false.",
+      "GREEN: keep the block while shock_episode_active=true; keep crowded shock-reduced veto unchanged; after inactive episode use the ordinary current budget rather than unconditional zero; no synthetic target/restoration state."
+    ],
+    "early_continuous_paths": [
+      "prefix-01",
+      "prefix-03",
+      "prefix-05",
+      "prefix-13",
+      "prefix-17",
+      "prefix-06",
+      "prefix-07",
+      "prefix-08",
+      "random-20260817-03-027"
+    ],
+    "secondary_if_supported": ["prefix-15"],
+    "advance_condition": "prefix01 must reach its frozen necessary wealth floor 5.993502267140751; prefix03 must beat both retained C and the rejected seed-anchor 7.457071362145252; prefix05/13/17 must retain their frozen necessary floors; 06->07 and 07->08 must each remain >=0.70; known random DD must remain <=18% and buckets<=160. Otherwise reject without nearby delay/fraction/price-threshold scanning.",
+    "not_acceptance": "Even a passing bounded batch is not full17/full958/formal random P90/qualification or merge acceptance."
+  }
+}
