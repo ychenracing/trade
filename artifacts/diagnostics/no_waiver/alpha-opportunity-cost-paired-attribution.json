@@ -1,0 +1,206 @@
+{
+  "kind": "alpha_opportunity_cost_paired_attribution",
+  "status": "DIAGNOSIS_VERIFIED_NOT_ACCEPTANCE",
+  "canonical": false,
+  "default_promoted": false,
+  "observed_pr_head": "e259ae025ee8781b1b47ae5c17f393034b85242e",
+  "base_main": "b7be8011d71b477c8ca3942d97830e67d0e0407c",
+  "retained_c": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "tree": "c1b2b89c559ab84a52213ef59fdb3bd2f4265d06",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "source_artifact": {
+      "run_id": 34936324660,
+      "artifact_id": 10382878814
+    },
+    "original_packet": {
+      "drive_file_id": "14DdnTQruSJa5Pw0d_4zY8wcUPM620GH7",
+      "bytes": 15025863,
+      "sha256": "b9ec2c1b1dcd077226aa3eb51293970d1f1099b8bc80a751ab916f9ce0085f1d"
+    },
+    "raw_inputs": {
+      "prefix01": {
+        "packet_member": "evidence/late-joiner/prefix-01/result.pkl",
+        "bytes": 2215828,
+        "sha256": "9ef73b8c759c94438fc052e3b040acc4cd47387714c6ef317fd6e9a8ab9e432a"
+      },
+      "prefix03": {
+        "packet_member": "evidence/late-joiner/prefix-03/result.pkl",
+        "bytes": 2422706,
+        "sha256": "0e3276fff3358c7900901b63d95b7a7e348b0f4d952e6409705436ce58ea42b6"
+      },
+      "prefix05": {
+        "packet_member": "evidence/late-joiner/protected-sentinels/prefix-05.pkl",
+        "bytes": 644305,
+        "sha256": "8899a8a7162a86b36e32acbf69e944e4a113f6a89dad983ea81589f1c641e678"
+      },
+      "prefix13": {
+        "packet_member": "evidence/late-joiner/prefix-13/result.pkl",
+        "bytes": 3208995,
+        "sha256": "28e4c0b32115627e277719aed3dfca9cd140db1cbcf1ac5ed1f19c590c8bdc65"
+      }
+    }
+  },
+  "paired_question": "Why does preserving more incumbent exposure around the September systemic shock improve the single/three-symbol witnesses but damage larger-universe protected paths? This attribution uses only close-known retained-C order/risk records and does not propose a new threshold or rerun economics.",
+  "close_known_pre_shock_unheld_buy_demand": {
+    "window": "2025-08-18..2025-09-02",
+    "definition": "buy order_events for a symbol with zero filled holdings at that event date and an event beginning with rejected; counts are retained-C events, not counterfactual fills",
+    "prefix01": {
+      "count": 0,
+      "symbols": {}
+    },
+    "prefix03": {
+      "count": 0,
+      "symbols": {}
+    },
+    "prefix05": {
+      "count": 52,
+      "symbols": {
+        "688256": {
+          "count": 44,
+          "first_event_date": "2025-08-18",
+          "first_signal_date": "2025-08-15",
+          "last_event_date": "2025-09-01",
+          "last_signal_date": "2025-08-29",
+          "dominant_rejection": "rejected_no_shared_batch_capacity"
+        },
+        "603986": {
+          "count": 8,
+          "first_event_date": "2025-08-26",
+          "first_signal_date": "2025-08-25",
+          "last_event_date": "2025-08-28",
+          "last_signal_date": "2025-08-27",
+          "dominant_rejection": "rejected_no_shared_batch_capacity"
+        }
+      }
+    },
+    "prefix13": {
+      "count": 47,
+      "symbols": {
+        "688256": {
+          "count": 32,
+          "first_event_date": "2025-08-18",
+          "first_signal_date": "2025-08-15",
+          "last_event_date": "2025-08-29",
+          "last_signal_date": "2025-08-28",
+          "dominant_rejection": "rejected_no_shared_batch_capacity"
+        },
+        "300394": {
+          "count": 12,
+          "first_event_date": "2025-09-01",
+          "first_signal_date": "2025-08-29",
+          "last_event_date": "2025-09-02",
+          "last_signal_date": "2025-09-01",
+          "dominant_rejection": "rejected_no_shared_batch_capacity"
+        },
+        "603986": {
+          "count": 3,
+          "first_event_date": "2025-08-19",
+          "first_signal_date": "2025-08-18",
+          "last_event_date": "2025-08-19",
+          "last_signal_date": "2025-08-18",
+          "dominant_rejection": "rejected_no_shared_batch_capacity"
+        }
+      }
+    }
+  },
+  "same_shock_state_contrast": {
+    "prefix03": {
+      "date": "2025-09-02",
+      "held_symbols": {
+        "300394": 300,
+        "300502": 17600,
+        "300308": 10700
+      },
+      "equity": 8638569.13255525,
+      "gross_before": 8626707.0,
+      "gross_cap": 7600193.6608195705,
+      "held_stress_debit": 1185489.2393183385,
+      "new_reduction_orders": 12,
+      "next_open_account_budget_trim": {
+        "date": "2025-09-03",
+        "shares": 4200,
+        "gross_value": 1220260.5180000002,
+        "by_symbol": {
+          "300308": 1400,
+          "300394": 300,
+          "300502": 2500
+        }
+      }
+    },
+    "prefix05": {
+      "date": "2025-09-02",
+      "held_symbols": {
+        "300394": 100,
+        "300502": 15900,
+        "300308": 12500
+      },
+      "equity": 8862965.64205575,
+      "gross_before": 8853367.0,
+      "gross_cap": 8086824.128830675,
+      "held_stress_debit": 1187944.361431481,
+      "new_reduction_orders": 10,
+      "next_open_account_budget_trim": {
+        "date": "2025-09-03",
+        "shares": 2900,
+        "gross_value": 886572.54,
+        "by_symbol": {
+          "300308": 1200,
+          "300394": 100,
+          "300502": 1600
+        }
+      }
+    },
+    "interpretation": "prefix05 is not failing because the September-2 shock required more immediate relief than prefix03: both held the same three optical symbols, but prefix05 had a higher gross cap and actually sold fewer shares/value. The larger-universe difference already existed in its blocked native opportunity set before the shock."
+  },
+  "subsequent_native_evidence": {
+    "prefix05_603986": {
+      "pre_shock_rejected_events": 8,
+      "later_first_filled_signal_date": "2025-09-12",
+      "later_first_fill_date": "2025-09-15",
+      "first_fill_strategies": [
+        "atr_channel",
+        "turtle_breakout"
+      ],
+      "note": "This later fill is hindsight attribution only; the production-usable fact is that native 603986 demand was already emitted and capacity-rejected on Aug25-27."
+    },
+    "prefix05_688256": {
+      "pre_shock_rejected_events": 44,
+      "first_later_fill_date": "2026-01-13",
+      "note": "Do not call this a pre-shock winner; the verified close-known fact is only repeated blocked demand."
+    }
+  },
+  "cross_family_link": {
+    "corrected_staged_timing_source": "0785c194528bdec49942828d6ce5b495d7f95b6e",
+    "prefix01_delta_vs_retained_c": 0.4824445661122514,
+    "prefix03_delta_vs_retained_c": 0.6823054171758764,
+    "prefix05_delta_vs_retained_c": -4.417449383184749,
+    "prefix13_delta_vs_retained_c": -6.193649361069376,
+    "prefix05_net_cashflow_delta_by_symbol": {
+      "300308": -5716000.0,
+      "603986": -2885000.0,
+      "300502": -540000.0
+    },
+    "prefix13_net_cashflow_delta_by_symbol": {
+      "002384": -4860000.0,
+      "603986": -4316000.0,
+      "300308": -2497000.0,
+      "688300": -2085000.0,
+      "688498": 1431000.0
+    },
+    "interpretation": "The sign split aligns with a source-available opportunity-cost state: p01/p03 had no blocked unheld buy demand in the preregistered pre-shock window, while p05/p13 had many such native proposals. This is evidence for scenario-dependent opportunity cost, not proof of a trading rule or additive causal decomposition."
+  },
+  "ruled_out_or_not_authorized_by_this_diagnosis": [
+    "Do not reopen staged-delay/fraction, legal-lot rounding, state-sparsity, post-shock reentry, or direct-loss threshold scans.",
+    "Do not reuse the rejected opportunity-capital design that sells incumbents against equal prospective capital units; it already failed continuous economics.",
+    "Do not treat blocked buy proposals as guaranteed profitable opportunities or anticipated cash.",
+    "Do not lower or defer required account risk relief based on this attribution."
+  ],
+  "research_implication": "The next structural candidate should distinguish incumbent-holding continuity from portfolio opportunity cost using existing close-known native demand/obligation state, but must not simply fund every blocked buy or weaken risk relief. First quantify whether upstream admission/allocation suppresses native demand beyond actual account/cash/risk constraints; only then preregister one source-bound coordination change and test p01/p03 plus p05/p13/17, 06/07/08 and known-random early.",
+  "coordination": {
+    "comment_5678764960": "A concurrent executor owns the upstream native-entry-demand attribution. This evidence is complementary cross-scenario pairing and should not duplicate its implementation.",
+    "comment_5678856302": "A separate executor owns systemic-risk estimation/holding coordination. No production/shared source change is made here."
+  },
+  "acceptance": "NOT_MET; evidence-only attribution. No new economic run, candidate promotion, frozen-contract change, full958 claim, or merge claim."
+}
