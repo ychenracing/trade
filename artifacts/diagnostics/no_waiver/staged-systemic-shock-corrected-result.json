@@ -1,0 +1,42 @@
+{
+  "kind": "staged_systemic_shock_relief_economic_result",
+  "status": "REJECTED_JOINT",
+  "canonical": false,
+  "default_promoted": false,
+  "source": {
+    "commit": "0785c194528bdec49942828d6ce5b495d7f95b6e",
+    "tree": "be6c961606776080029f9bb2d67788d5fca40ada",
+    "source_fingerprint": "269822b6ed781ac7cb16f59043e5c743a224afb4b1011002a05cca4466cf253d",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {}
+  },
+  "preregistration_comment": 5677455229,
+  "correction_index_commit": "604825ac3ed3a8dfe577bed8a9de046998719116",
+  "scenario_ids": ["prefix-01","prefix-03","prefix-05","prefix-13","prefix-17","prefix-06","prefix-07","prefix-08","random-20260817-03-027"],
+  "rows": {
+    "prefix-01": {"wealth_including_principal":5.410982622681251,"signed_max_drawdown":-0.141064331111941,"date_symbol_side_buckets":7,"total_trades":36,"raw_sha256":"d3c423ebb9b3f6fd4d76729486e794e3c19c4af3afb864468cc0ceb9511dcfc8","cash_reconciliation_abs_error":1.862645149230957e-09,"necessary_minimum":5.993502267140751,"necessary_minimum_pass":false,"gap_vs_minimum":-0.5825196444594996,"delta_vs_retained_C":0.4824445661122514},
+    "prefix-03": {"wealth_including_principal":7.700826952765001,"signed_max_drawdown":-0.14755115459297558,"date_symbol_side_buckets":94,"total_trades":311,"raw_sha256":"469327bc06e550a933259500106fdce67ede92113c97d2423e46aa75917ac668","cash_reconciliation_abs_error":0.0,"necessary_minimum":11.014195207080444,"necessary_minimum_pass":false,"gap_vs_minimum":-3.313368254315443,"delta_vs_retained_C":0.6823054171758764},
+    "prefix-05": {"wealth_including_principal":9.379285702144378,"signed_max_drawdown":-0.16081575578342525,"date_symbol_side_buckets":103,"total_trades":343,"raw_sha256":"e7fd01877c281bbeb0edec46d434b63786096a772c4564fc7b62a5b86330df07","cash_reconciliation_abs_error":0.0,"necessary_minimum":12.580154771921677,"necessary_minimum_pass":false,"gap_vs_minimum":-3.2008690697772995,"delta_vs_retained_C":-4.417449383184749},
+    "prefix-13": {"wealth_including_principal":7.7608301286085,"signed_max_drawdown":-0.1700889746174359,"date_symbol_side_buckets":172,"total_trades":490,"raw_sha256":"044813cdf355a9d96aa194411c741df9a9f02a2c67cf108627dec8ee4f5b2ce6","cash_reconciliation_abs_error":3.725290298461914e-09,"necessary_minimum":12.659384602482707,"necessary_minimum_pass":false,"gap_vs_minimum":-4.898554473874206,"delta_vs_retained_C":-6.193649361069376},
+    "prefix-17": {"wealth_including_principal":8.504474272973752,"signed_max_drawdown":-0.14983658349804357,"date_symbol_side_buckets":122,"total_trades":415,"raw_sha256":"d7e96a1b7aed75a8d5c3c5cbf915d7b683eb0424166c7962203c360d1d60f4b9","cash_reconciliation_abs_error":0.0,"necessary_minimum":8.847967050773612,"necessary_minimum_pass":false,"gap_vs_minimum":-0.34349277779985954,"delta_vs_retained_C":-3.2990777270262477},
+    "prefix-06": {"wealth_including_principal":10.323695243782128,"signed_max_drawdown":-0.1456244724160644,"date_symbol_side_buckets":93,"total_trades":287,"raw_sha256":"b34a5bcf3bb2658ab1fff1592c00850791bcae94cd2748b29367b6f3f5e36e67","cash_reconciliation_abs_error":0.0,"necessary_minimum":12.310161540905,"necessary_minimum_pass":false,"gap_vs_minimum":-1.9864662971228721,"delta_vs_retained_C":-0.48214578837787236},
+    "prefix-07": {"wealth_including_principal":11.56067689650975,"signed_max_drawdown":-0.14198053861845333,"date_symbol_side_buckets":111,"total_trades":371,"raw_sha256":"e30882083c4529efc54df35d5776b5e38c9a3632b1f45c73808f28ad266a5642","cash_reconciliation_abs_error":3.725290298461914e-09,"necessary_minimum":8.6171130786335,"necessary_minimum_pass":true,"gap_vs_minimum":2.9435638178762513,"delta_vs_retained_C":-0.39645169499837607},
+    "prefix-08": {"wealth_including_principal":4.263291249216002,"signed_max_drawdown":-0.1629962533936119,"date_symbol_side_buckets":107,"total_trades":375,"raw_sha256":"1377444ddb4a393c24d3e1fc3d9ccef723706730fa976f5c7eefaf5aa5b2c28c","cash_reconciliation_abs_error":0.0,"necessary_minimum":6.031979155043449,"necessary_minimum_pass":false,"gap_vs_minimum":-1.7686879058274467,"delta_vs_retained_C":-0.26623575078399764},
+    "random-20260817-03-027": {"wealth_including_principal":5.1335612118135,"signed_max_drawdown":-0.18661198905609955,"date_symbol_side_buckets":81,"total_trades":299,"raw_sha256":"99065318ce5b15ad322ab05a4edec3db3dff32fa99bac126cab8c5e9a8c780ed","cash_reconciliation_abs_error":3.725290298461914e-09}
+  },
+  "adjacent_ratios": {"06_to_07":1.1198196598715606,"07_to_08":0.36877522721036515},
+  "primary_alpha_effect": {"prefix01_gap_closed_fraction":0.45301481620048034,"prefix03_gap_closed_fraction":0.17076104638976114,"prefix03_beats_seed_anchor":true},
+  "max_cash_reconciliation_abs_error": 3.725290298461914e-09,
+  "violations": ["prefix-05_wealth_floor","prefix-13_wealth_floor","prefix-17_wealth_floor","prefix07_to_08_adjacency","known_random_drawdown"],
+  "decision": "Reject this staged-severe-timing family. It materially restores prefix01/03 alpha, but breaks protected prefix05/13/17, 07->08 stability, and the known random 18% drawdown gate. Per preregistration, do not scan nearby staging delays/fractions.",
+  "raw_results_packet": {"provider":"ChatGPT file Library","path":"/trade-pr101/TRADE_PR101_STAGED_SYSTEMIC_SHOCK_CORRECTED_REJECTED.tar.gz","file_id":"file_00000000c8a881f5828c1392dae69b1d","library_file_id":"libfile_fedd26ea6084819195fcaa313178553b","bytes":907014,"sha256":"4445772f30efc87b233655be338827012397f79ed8e41af11b7d4631ebdd10d5","member_count":23,"fresh_materialized_readback_byte_identical":true},
+  "drifted_source_comparison": {"source_commit":"cd312cb0067ca5e8db36ce4d6aaeb25f4f70e500","existing_library_packet":"/trade-pr101/TRADE_PR101_STAGED_SYSTEMIC_SHOCK_REJECTED.tar.gz","correction_effect":{"prefix-01_delta":0.0,"prefix-03_delta":2.5840182602103763,"prefix-05_delta":-4.353227230658874,"prefix-06_delta":-2.560200116649499,"prefix-07_identical_raw":true,"prefix-08_identical_raw":true,"prefix-13_identical_raw":true,"prefix-17_identical_raw":true,"known_random_identical_raw":true},"interpretation":"The fail-closed persistence fix is economically material only on paths where a later severe close occurs before stage-one fills. It rescues prefix03 but makes prefix05/06 worse. Fatal13/17/07->08/random failures are byte-identical to the drifted source, so they are structural to staged timing rather than this wiring bug."},
+  "causal_loss_attribution_vs_retained_C": {
+    "prefix01": {"first_difference":"2025-09-05 account_budget_trim: each 300308 ATR/Turtle book 1100 shares in C vs 600 staged","300308_net_cashflow_delta":965000.0,"interpretation":"less first-stage trimming preserves single-symbol winner alpha"},
+    "prefix03": {"first_difference":"C trims on 2025-09-03; staged defers to larger 2025-09-05 trims","net_cashflow_delta_by_symbol":{"300308":651000.0,"300394":532000.0,"300502":181000.0},"interpretation":"delay changes full path and improves all three retained winners despite later larger relief"},
+    "prefix05": {"net_cashflow_delta_by_symbol":{"300308":-5716000.0,"603986":-2885000.0,"300502":-540000.0},"interpretation":"the same delay cascades into large lost contribution from 300308 and 603986, falsifying universal timing staging"},
+    "prefix13": {"net_cashflow_delta_by_symbol":{"002384":-4860000.0,"603986":-4316000.0,"300308":-2497000.0,"688300":-2085000.0,"688498":1431000.0},"interpretation":"failure is multi-winner opportunity-cost displacement, not one optical book or risk lock"},
+    "known_random": {"net_cashflow_delta_by_symbol":{"300408":-3092000.0,"300394":-1456000.0,"300502":-462000.0},"interpretation":"delayed first-stage risk causes later concentrated losses and breaches the 18% sampled-risk gate"}
+  },
+  "next": "Do not tune staged timing. The evidence now rules out universal delay as the alpha-restoration lever: it improves 300308-dominant01/03 but destroys other high-contribution winners and risk. Next work should identify a close-known, source-bound holding/exit coordination discriminator that preserves genuinely strong live exposure while still satisfying the same immediate required account relief; it must be distinct from ranked-score/direct-loss/core-membership/state-sparsity/re-entry families and preregistered before implementation."
+}
