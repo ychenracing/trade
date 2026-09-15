@@ -1,5 +1,5 @@
 {
-  "status": "PREREGISTERED_ENTRY_EVENT_NOT_RUN",
+  "status": "REJECTED_JOINT",
   "hypothesis": "A native pyramid is demand for additional deployment, not authority to sell other profitable holdings. Recompute the jointly funded symbol target only when a qualified, risk-approved, slot-eligible native request would establish a currently unheld symbol. Otherwise preserve native existing-book orders and actual holdings; execution still enforces cash/exposure/risk. This separates opportunity entry from continuous weight rebalancing; no score/period/concentration fraction is tuned.",
   "base": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
   "source_revision": "c9428c0bf02029195d501edc844a9c1ee930cc51",
@@ -32,6 +32,167 @@
     "Opening cash demand excludes expired, missing-open and opening-limit-blocked instructions using existing read-only causal checks.",
     "Retained-winner unit coordinator mocks the new funding boundary and asserts its order; its unchanged defensive invariants remain tested."
   ],
-  "basis": "Corrected bf4634c gives01W7.646319/7buckets (entry capacity benefit retained), but03W5.066983/226buckets,05W6.310937/269buckets. Prefix03 contains282 actual native account target allocation SELL fills. Repeated target rebalancing, not single-stock ownership or unavailable-slot errors, remains an observed turnover cause."
+  "basis": "Corrected bf4634c gives01W7.646319/7buckets (entry capacity benefit retained), but03W5.066983/226buckets,05W6.310937/269buckets. Prefix03 contains282 actual native account target allocation SELL fills. Repeated target rebalancing, not single-stock ownership or unavailable-slot errors, remains an observed turnover cause.",
+  "results": {
+    "identity": {
+      "source_revision": "c9428c0bf02029195d501edc844a9c1ee930cc51",
+      "source_fingerprint": "0b4a6ba307236613ad1b6468cda77011048989771461558407977c738f79ad9c",
+      "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+      "cfg_overrides": {
+        "max_symbol_weight": 1.0
+      },
+      "diagnostic_noncanonical": true,
+      "allow_publication": false,
+      "scenario_ids": [
+        "prefix-01",
+        "prefix-03",
+        "prefix-05",
+        "random-20260817-03-027"
+      ],
+      "workers": 3,
+      "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]"
+    },
+    "results": [
+      {
+        "scenario_id": "prefix-01",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308"
+        ],
+        "symbol_count": 1,
+        "total_return": 6.646319064391125,
+        "max_drawdown": -0.13383996280132063,
+        "sharpe": 3.6981572987077502,
+        "calmar": 30.367380178386757,
+        "total_trades": 36,
+        "sleeve_fill_count": 36,
+        "date_symbol_side_count": 7,
+        "max_concurrent_symbols": 1,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 9,
+          "re_entry": 3,
+          "risk_reduction": 15,
+          "strategy_exit": 0,
+          "sector_liquidation": 9,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "prefix-03",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308",
+          "300502",
+          "300394"
+        ],
+        "symbol_count": 3,
+        "total_return": 5.43378057726088,
+        "max_drawdown": -0.1520163520313048,
+        "sharpe": 3.3793128957534013,
+        "calmar": 22.451018617819805,
+        "total_trades": 435,
+        "sleeve_fill_count": 435,
+        "date_symbol_side_count": 123,
+        "max_concurrent_symbols": 3,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 98,
+          "re_entry": 116,
+          "risk_reduction": 103,
+          "strategy_exit": 99,
+          "sector_liquidation": 19,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "prefix-05",
+        "scenario_type": "prefix",
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986"
+        ],
+        "symbol_count": 5,
+        "total_return": 5.172204651605629,
+        "max_drawdown": -0.16344229696165233,
+        "sharpe": 3.282426808115435,
+        "calmar": 20.002445258715877,
+        "total_trades": 508,
+        "sleeve_fill_count": 508,
+        "date_symbol_side_count": 165,
+        "max_concurrent_symbols": 5,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 92,
+          "re_entry": 167,
+          "risk_reduction": 90,
+          "strategy_exit": 132,
+          "sector_liquidation": 27,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      },
+      {
+        "scenario_id": "random-20260817-03-027",
+        "scenario_type": "random_subset",
+        "seed": 20260817,
+        "sample_size": 3,
+        "symbols": [
+          "300394",
+          "300408",
+          "300502"
+        ],
+        "symbol_count": 3,
+        "total_return": 4.897286673314128,
+        "max_drawdown": -0.15284069508509654,
+        "sharpe": 3.248883902577182,
+        "calmar": 20.393157174183727,
+        "total_trades": 387,
+        "sleeve_fill_count": 387,
+        "date_symbol_side_count": 103,
+        "max_concurrent_symbols": 3,
+        "terminal_risk_lock": false,
+        "deployment_policy": "production_daily_replay",
+        "reason_attribution": {
+          "initial_entry": 0,
+          "add": 78,
+          "re_entry": 105,
+          "risk_reduction": 110,
+          "strategy_exit": 72,
+          "sector_liquidation": 22,
+          "route_migration": 0,
+          "sticky_replacement": 0
+        }
+      }
+    ]
+  },
+  "conclusion": "Entry-only retargeting reduces03/05turnover123/165buckets but fails wealth:03W6.433781 vs11.014195 floor,05W6.172205 vs12.580155. KnownrandomW5.897287 DD15.284%.01retains7.646319gain. Close allocation family; do not tune score weights/rebalance frequencies/native event exceptions.",
+  "raw_archive": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/entry-target-rejected.tar.gz",
+    "bytes": 403455,
+    "sha256": "7ce021183940ef5b5a4244df5eabff9ad7acb8570ae6767cbe5c02d7f262f15c",
+    "members": {
+      "identity.json": "a196e0f8eac109c4fa097c331b439258c0ee59caa2d5a357a55455395a14fb84",
+      "prefix-01.json": "48720ced786f35c2b4127d54893df9ff943cd8f5c8848a85d14f3c17e735894d",
+      "prefix-01.pkl": "524a6398bb6ab9b19553670ccf68fae2d2378436c1f778ecf15ae952fddf470b",
+      "prefix-03.json": "7927613433bb0e7c54b645b6be5e8788d55acf34ec622554f67dc499ae40c938",
+      "prefix-03.pkl": "c20a915bb976bcf04ca23686e3e00c09a539bd2fdabe604bfa8d8feec8d00b0c",
+      "prefix-05.json": "fed6bd547ffc0be2aa4b0d64ec83f996d3872b6e274e2dadc52a7ba67195cc9a",
+      "prefix-05.pkl": "f13df0329536f5c433ce6211ce029c964d1ef918a670d2e5f3bba445c7ae097d",
+      "random-20260817-03-027.json": "4f82ff5e0147caea60dafccb22cb51d2372c8f978fa83f9b989855d433ebeb53",
+      "random-20260817-03-027.pkl": "ecd738e96c59d517915f04eff9b884ade2fe5e71938813cb72eb0e2a6dabdb5e",
+      "results.json": "a5a5e5de3546bc4dc03cec4716d6256cda8413013e44703a7cc6aac3e04aed00"
+    }
+  }
 }
-
