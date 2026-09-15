@@ -1,0 +1,43 @@
+{
+  "kind": "exact_c_aggregate_legal_lot_shock_relief_research",
+  "status": "NOT_MET",
+  "research_state": "SOURCE_PRESERVED_ECONOMICS_UNRUN",
+  "canonical": false,
+  "default_promoted": false,
+  "preregistration_comment": 5678282476,
+  "observed_remote_parent": "f2a43d316fd4941dbc96e43b576bbca7e1144e73",
+  "base_source": {
+    "commit": "af2389b883949a55ded6e8a428f3e8e2353e3c27",
+    "tree": "c1b2b89c559ab84a52213ef59fdb3bd2f4265d06",
+    "source_fingerprint": "1b1707feb8f662edaeb24526ebd997bdbde293089324ec1008ba18d1e2003773",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975"
+  },
+  "candidate": {
+    "commit": "6b4b0c652eedc3b1252fc8c74062f8241e778fa5",
+    "tree": "17b7d0ce56581c9f901c60e76f983839546b4036",
+    "source_fingerprint": "a7a8e8d2a5664539b2908aaf2c3367b2741767a0e8c35aca0a6acdd25d5f0fc5",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "cfg_overrides": {},
+    "production_patch_path": "artifacts/diagnostics/no_waiver/decision-preservation/exact-c-legal-lot-relief-production.patch",
+    "production_patch_sha256": "97aa57befa5e21e390f8ea803159c6428d484aee0c125e8606d1a3e1fec71b63",
+    "tests_patch_path": "artifacts/diagnostics/no_waiver/decision-preservation/exact-c-legal-lot-relief-tests.patch",
+    "tests_patch_sha256": "1a267592db3858803678739a6d2cbfdb939b06979e2009993a8d52f5d8b67103",
+    "bundle_base64_path": "artifacts/diagnostics/no_waiver/decision-preservation/exact-c-legal-lot-relief-source.bundle.b64",
+    "bundle_sha256": "0702587fbcbc6a504f3802132bd849e4c2c2acef0137f09a6101180381c3712e",
+    "bundle_bytes": 2878,
+    "bundle_prerequisite": "af2389b883949a55ded6e8a428f3e8e2353e3c27"
+  },
+  "mechanism": "Under the existing confirmed-shock retain_scale, floor each book ideal reduction to a legal lot and add only the minimum deterministic extra board lots needed for the unchanged current gross/systemic-stress envelope. This removes duplicate per-book ceiling oversell without reducing required risk relief, crediting pending sells, changing thresholds, or resetting risk history.",
+  "relationship_to_old_research": "A prior legal-lot relief experiment existed on source lineage ea21b4b->828a5c5 and was REJECTED_JOINT. Its economics are not reused as exact-C acceptance. This source-bound isolation exists because the old source identity cannot prove retained-C behavior; no neighboring rounding/tie-break variants are authorized.",
+  "verification": {
+    "red": "On exact C, deterministic two-book fixture required one 100-share lot but current per-book ceiling planned 200; expected failure observed before production patch.",
+    "stale_old_test_resolution": "The prior old-base 960k/1m fixture has only 4% drawdown and cannot enter exact C shock_confirmed, whose unchanged trigger requires drawdown>=daily_loss_limit=6%. It was replaced with a source-equivalent two-shocked-group confirmed-shock fixture, not weakened.",
+    "focused_green": "52 passed across portfolio relief rounding, default account budget, risk owner-state, native joint acceptance and daily CLI.",
+    "compile_and_diff_check": "PASS",
+    "runtime": "Python3.13.5 local diagnostic; not locked final qualification",
+    "new_economic_runs": 0
+  },
+  "scenario_ids": ["prefix-01", "prefix-03", "prefix-05", "prefix-13", "prefix-17", "prefix-06", "prefix-07", "prefix-08", "random-20260817-03-027"],
+  "falsifier": "Reject/no neighboring rounding or tie-break variants if prefix01/03 improvement is immaterial, protected05/13/17 floor fails, 06->07 or 07->08<0.70, known random DD>18% or buckets>160, or post-plan current gross/systemic-stress envelope is under-covered. No full958 unless this exact source survives.",
+  "next": "Run only the preregistered continuous diagnostic paths under this exact source; preserve raw results and identity before any expansion. Do not combine with direct-loss-first unless this source independently demonstrates material complementary alpha and requires a separate same-source preregistration."
+}

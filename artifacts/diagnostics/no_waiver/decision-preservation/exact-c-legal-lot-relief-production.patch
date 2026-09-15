@@ -1,0 +1,62 @@
+diff --git a/quantfusion/risk/account_budget.py b/quantfusion/risk/account_budget.py
+index d259022..4c1afef 100644
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -304,8 +304,55 @@ def plan_account_risk_budget(
+             receipt['remaining_loss_budget'] / held_stress if held_stress else 1.,
+         )
+         ordered_books = sorted(books, key=lambda book: (book[1], book[0], book[2]))
+-        reductions = [min(book[3], math.ceil(book[3] * (1. - retain_scale) / 100.) * 100)
+-                      for book in ordered_books]
++        ideal = [book[3] * (1. - retain_scale) for book in ordered_books]
++        ceilings = [min(book[3], math.ceil(amount / 100.) * 100)
++                    for book, amount in zip(ordered_books, ideal, strict=True)]
++        reductions = [min(book[3], floor_to_lot(amount))
++                      for book, amount in zip(ordered_books, ideal, strict=True)]
++
++        def residual_risk() -> tuple[float, float]:
++            remaining_gross = 0.
++            group_excess: dict[str, float] = {}
++            for (_, symbol, _, shares, price), sold in zip(
++                ordered_books, reductions, strict=True,
++            ):
++                value = (shares - sold) * price
++                remaining_gross += value
++                group = SYMBOL_SUB_INDUSTRY.get(symbol, symbol)
++                group_excess[group] = group_excess.get(group, 0.) + value * (
++                    limit_pct_for_code(symbol, cfg) + receipt['cost_rate'] - base_gap_rate
++                )
++            remaining_stress = remaining_gross * systemic_stress_fraction
++            if drawdown < daily_loss_limit:
++                remaining_stress = max(
++                    remaining_stress,
++                    remaining_gross * base_gap_rate + max(group_excess.values(), default=0.),
++                )
++            return remaining_gross, remaining_stress
++
++        # Apportion at most each book's original ceiling. A portfolio may
++        # need only one extra lot, not an extra lot for every strategy owner.
++        remainders = sorted(
++            (i for i in range(len(ordered_books)) if ceilings[i] > reductions[i]),
++            key=lambda i: (-(ideal[i] - reductions[i]) / (ceilings[i] - reductions[i]),
++                           ordered_books[i][:3]),
++        )
++        for index in remainders:
++            remaining_gross, remaining_stress = residual_risk()
++            if (remaining_gross <= cap + 1e-8
++                    and remaining_stress <= receipt['remaining_loss_budget'] + 1e-8):
++                break
++            reductions[index] = ceilings[index]
++        remaining_gross, remaining_stress = residual_risk()
++        if (remaining_gross > cap + 1e-8
++                or remaining_stress > receipt['remaining_loss_budget'] + 1e-8):
++            raise RuntimeError('Legal shock reduction lots do not cover the planned risk')
++        receipt['shock_rounding'] = {
++            'independent_ceiling_shares': sum(ceilings),
++            'planned_shares': sum(reductions),
++            'remaining_gross': remaining_gross,
++            'remaining_modeled_stress': remaining_stress,
++        }
+         for (state, symbol, strategy, shares, price), reduction in zip(
+             ordered_books, reductions, strict=True,
+         ):
