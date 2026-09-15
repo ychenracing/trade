@@ -1,6 +1,6 @@
 {
   "kind": "forward_market_stress_research",
-  "status": "IMPLEMENTED_ECONOMICS_UNRUN",
+  "status": "REJECTED_JOINT",
   "canonical": false,
   "default_promoted": false,
   "authority": "Owner explicitly authorizes redesign of core quant and risk policies in current conversation; internal mechanism restrictions superseded. Original outcome targets are retained.",
@@ -43,5 +43,97 @@
     "sha256": "6dacf637510c250b099a758fc20cf38dea8fe4fb6443b8487712e1e5e7aeb9a6",
     "base64": "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",
     "prerequisite": "af2389b883949a55ded6e8a428f3e8e2353e3c27"
-  }
+  },
+  "rows": {
+    "prefix-01": {
+      "wealth_including_principal": 5.0226478003232495,
+      "signed_max_drawdown": -0.1312367882081649,
+      "buckets": 7,
+      "raw_sha256": "2b6472ef0fdae1edfbf9ca0d7e13ce7190666e774ef8b65bcd6e03746ef6acb7",
+      "necessary_minimum": 5.993502267140751,
+      "minimum_pass": false
+    },
+    "prefix-03": {
+      "wealth_including_principal": 5.116808692554625,
+      "signed_max_drawdown": -0.17147983371253406,
+      "buckets": 90,
+      "raw_sha256": "d01b1fdb84a008cee07b5afe36294b24605583e9ea6a82460013e93013875d9d",
+      "necessary_minimum": 11.014195207080444,
+      "minimum_pass": false
+    },
+    "prefix-05": {
+      "wealth_including_principal": 13.732512932803251,
+      "signed_max_drawdown": -0.16302764937764477,
+      "buckets": 81,
+      "raw_sha256": "e692646c1d82dff9c74c41ae5b8ab224a63b301f5feedcdda5ddedad15718944",
+      "necessary_minimum": 12.580154771921677,
+      "minimum_pass": true
+    },
+    "prefix-06": {
+      "wealth_including_principal": 12.883895360431627,
+      "signed_max_drawdown": -0.16302764937764477,
+      "buckets": 80,
+      "raw_sha256": "4264bec440a4029e61f7e1754dc54c66fa48caa6f8c02fa87879d4035e2be8e9",
+      "necessary_minimum": 12.310161540905,
+      "minimum_pass": true
+    },
+    "prefix-07": {
+      "wealth_including_principal": 10.916632017060504,
+      "signed_max_drawdown": -0.14478818252220846,
+      "buckets": 105,
+      "raw_sha256": "17b803f45d3306b4bc3638b92b9bdc515984e59bd8e545db2fe30c2e53a82e26",
+      "necessary_minimum": 8.6171130786335,
+      "minimum_pass": true
+    },
+    "prefix-08": {
+      "wealth_including_principal": 4.556564126014502,
+      "signed_max_drawdown": -0.1537311232115186,
+      "buckets": 85,
+      "raw_sha256": "1421524ad24b56b78dd5731803b9a60a481d27ea6fb3b83e065b2a16d8b8cdcb",
+      "necessary_minimum": 6.031979155043449,
+      "minimum_pass": false
+    },
+    "prefix-13": {
+      "wealth_including_principal": 10.383237811646001,
+      "signed_max_drawdown": -0.15629507321231714,
+      "buckets": 127,
+      "raw_sha256": "49bed4a8b96dacb92bc55e30c49fe1105986ffc81b5fcc5f284451db3f6fc3c7",
+      "necessary_minimum": 12.659384602482707,
+      "minimum_pass": false
+    },
+    "prefix-15": {
+      "wealth_including_principal": 10.226473947588127,
+      "signed_max_drawdown": -0.15629507321231714,
+      "buckets": 138,
+      "raw_sha256": "4b372b693833af441dab79e1ed8d5a6b33604d863ddcf41e26598dcb16e17280",
+      "necessary_minimum": 11.256293667944922,
+      "minimum_pass": false
+    },
+    "prefix-17": {
+      "wealth_including_principal": 10.429630859474377,
+      "signed_max_drawdown": -0.1588227094413976,
+      "buckets": 110,
+      "raw_sha256": "09e8a3b756f922f8303abc05c21badf0f5a8f75af1d90ed953eee0e8abe1a984",
+      "necessary_minimum": 8.847967050773612,
+      "minimum_pass": true
+    },
+    "random-20260817-03-027": {
+      "wealth_including_principal": 5.567912013733875,
+      "signed_max_drawdown": -0.18661198905609955,
+      "buckets": 86,
+      "raw_sha256": "4f92e4331a95f462b6a78cb506294e1630282c9c0c17fde9b2bbcb2d4c98c1b6"
+    }
+  },
+  "adjacent_ratios": {
+    "06_to_07": 0.8473083420552388,
+    "07_to_08": 0.41739651193642024
+  },
+  "results_packet": {
+    "path": "artifacts/diagnostics/no_waiver/decision-preservation/forward-market-stress-rejected.tar.gz",
+    "bytes": 978322,
+    "sha256": "f47bb5ba2434c292365d7f6c0d8b6a4c830bb7d6440f0a3fafd4f0d912a0f5e1",
+    "manifest_members": 22
+  },
+  "decision": "Reject:01 only improves0.094110x;03 collapses to5.116809;protected13 below floor;07->08 fails;knownrandomDD18.661199%.05/06 improvements cannot cancel failures. No coefficient variants.",
+  "next": "Inspect missing native-stop and execution-lag provenance before any distinct capital-at-risk design. Do not promote this source or run958."
 }
