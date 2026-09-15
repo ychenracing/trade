@@ -1,0 +1,47 @@
+{
+  "kind": "trade_pr101_independent_boundary_review",
+  "status": "NOT_MET",
+  "canonical": false,
+  "default_promoted": false,
+  "observed_parent": "ddabe83743beac0dc1dfbdb983b7246031a7adc3",
+  "review_source": {
+    "parent": "9f91a361b014ebd99b5201bb870d537ce0aeb93f",
+    "commit": "3951c4570069755b1e3e5eceed4290f7c7ccd255",
+    "tree": "641f3e33102273e6cf88217cd68adfaf7f73795b",
+    "production_fingerprint": "e16aa91d652faf8610654e1d30818fb4ab4e63123f8064d70198809af7c00750",
+    "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "change": "Nine deterministic test cases only; production code unchanged. The research implementation dependency is not promoted to the PR default.",
+    "patch_sha256": "0b44fd40eb172cb34653ae9e97517428af73cbb70db233c46d1657fb2bcdf89e",
+    "bundle_sha256": "347855bdf6aeb37d44f920fcba68e4582b323984c3d324e94ec674dffe2ce0f0",
+    "bundle_bytes": 2853
+  },
+  "verification": {
+    "negative_control": "Exact af2389b: 7 expected failures and 2 passes; missing mandate behavior, not infrastructure errors.",
+    "final_focused": "62 passed; compile, diff check, source/data fingerprints and incremental bundle verified.",
+    "covered": "Actual ATR proposals through the public funded-sleeve class; requested versus reference-only symbols; prior pending rights; real buy/cash/fee and next-session risk-sale ownership; persistent peak; failed funding; same-day native queue deduplication; separate funded books.",
+    "runtime": "Python3.13.5/numpy2.3.5/pandas2.2.3/pytest9.0.2; diagnostic, not locked final qualification.",
+    "account_advice": "Snapshot AccountSignalEngine intentionally lacks funded-sleeve ownership history. Existing account boundary tests pass, but this does not certify horizon economics or snapshot/replay equivalence.",
+    "new_economic_runs": 0
+  },
+  "remote_originals": {
+    "provider": "Owner-authorized Google Drive",
+    "file_id": "1nky4N45tPhmfN99ez-PL4MioaDR2nrwd",
+    "url": "https://drive.google.com/file/d/1nky4N45tPhmfN99ez-PL4MioaDR2nrwd/view",
+    "name": "TRADE_PR101_HORIZON_INDEPENDENT_REVIEW.tar.gz",
+    "bytes": 9165,
+    "sha256": "0d6d3d573341be56c18eac8e1ddd15ae850d9d5138d0c69066b4082704c59507",
+    "fresh_raw_readback_verified": true,
+    "manifest_members_verified": 7,
+    "restore": "Verify full archive and evidence/SHA256.json, recover exact 9f91a361 via its already indexed source packet, verify/fetch evidence/horizon-independent-review.bundle HEAD; verify commit/tree. Test-only source does not belong in default tests without its rejected research dependency."
+  },
+  "previous_unfilled_review_preservation": {
+    "receipt_comment": 5675279738,
+    "file_id": "1EKNloAXThK3IWBrH4dTl6YYLD40lIoN_",
+    "bytes": 31453,
+    "sha256": "741004be78df97d7a0777325d5c5a15218255a8695d056dc06e73d07dd53eb6c",
+    "verified": "Fresh archive download and all 3 members; all 13 embedded original-file hashes verified. Original historical local-only fields retained, superseded only for preservation."
+  },
+  "economic_conclusion": "Peer source9f91a361 is REJECTED_JOINT per ddabe837/comment5675301040: prefix13 wealth9.445934746630503 is below12.659384602482707; 06->07 retention0.4930878270919189 is below0.70. This independent engineering review does not overturn rejection or justify neighboring variants/full958.",
+  "peer_raw_result_access": "Source packet verified. The separately claimed 1380328-byte/41-file results packet SHA2563e9e838c47d4806665aa2229da4833ca6611b70bb7a8b98370c22dab16a574d7 has only the Library path /trade-pr101/TRADE_PR101_HORIZON_DISCOVERY_RESULTS.tar.gz in the current index. Two bounded Library searches and the authorized Drive root metadata listing did not yield downloadable bytes in this session. This is unresolved independent access, not proof of deletion; do not claim its members verified or reconstruct raw records from metrics. Historical82/27 gaps are unchanged.",
+  "coordination": "Active peer proceeds under comment5675341926. No duplicate economic batch or edits to its source/index. Retain user-required early production17 and07/08 coverage before accepting any new component; queued sells create no funding and planned relief must not be reported as realized relief. All frozen contracts, default golden, main and schedulers unchanged."
+}
