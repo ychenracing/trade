@@ -25,6 +25,8 @@ from quantfusion.config.universe import SYMBOL_NAMES
 
 DEFAULT_SYMBOLS = tuple(dict.fromkeys((*SYMBOL_NAMES, *PortfolioPolicy().regime_symbols)))
 DEFAULT_RESEARCH_OUTPUT = PROJECT_ROOT / "data_cache" / "research_market"
+LEGACY_START_DATE = "2024-01-01"
+LEGACY_END_DATE = "2026-07-20"
 
 
 def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
@@ -37,6 +39,21 @@ def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
         ordered.extend(symbols_for_pool(pool_name))
     ordered.extend(PortfolioPolicy().regime_symbols)
     return tuple(dict.fromkeys(ordered))
+
+
+def resolve_download_window(
+    start: str,
+    end: str,
+    *,
+    research_selection: bool,
+    today: str,
+) -> tuple[str, str]:
+    """Resolve pool research defaults without changing the retained legacy snapshot."""
+    resolved_start = start or (
+        DEFAULT_RESEARCH_START_DATE if research_selection else LEGACY_START_DATE
+    )
+    resolved_end = end or (today if research_selection else LEGACY_END_DATE)
+    return resolved_start, resolved_end
 
 
 def _market_id(symbol: str) -> str:
@@ -123,11 +140,21 @@ def _download(symbol: str, start: str, end: str) -> tuple[pd.DataFrame, str]:
 def main() -> int:
     """Download all requested symbols and write a provenance manifest."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start", default=DEFAULT_RESEARCH_START_DATE)
+    parser.add_argument(
+        "--start",
+        default="",
+        help=(
+            "Snapshot start date. Research pools default to 2023-01-01; "
+            "legacy non-pool mode retains 2024-01-01."
+        ),
+    )
     parser.add_argument(
         "--end",
         default="",
-        help="Snapshot end date YYYY-MM-DD (default: current Shanghai-market date)",
+        help=(
+            "Snapshot end date. Research pools default to the current Shanghai-market "
+            "date; legacy non-pool mode retains 2026-07-20."
+        ),
     )
     parser.add_argument(
         "--output",
@@ -161,7 +188,12 @@ def main() -> int:
         symbols = select_download_symbols(tuple(args.pools))
     else:
         symbols = DEFAULT_SYMBOLS
-    end_date = args.end or today_str()
+    start_date, end_date = resolve_download_window(
+        args.start,
+        args.end,
+        research_selection=research_selection,
+        today=today_str(),
+    )
     output = Path(
         args.output
         or (DEFAULT_RESEARCH_OUTPUT if research_selection else MARKET_DATA_DIR)
@@ -172,12 +204,12 @@ def main() -> int:
         "provider": "Eastmoney push2his",
         "adjustment": "qfq",
         "volume_unit": "shares",
-        "requested_start": args.start,
+        "requested_start": start_date,
         "requested_end": end_date,
         "symbols": symbol_manifest,
     }
     for symbol in symbols:
-        frame, name = _download(symbol, args.start, end_date)
+        frame, name = _download(symbol, start_date, end_date)
         path = output / f"{symbol}.csv"
         frame.assign(date=frame["date"].dt.strftime("%Y-%m-%d")).to_csv(
             path, index=False
