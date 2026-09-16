@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import time
 import urllib.parse
@@ -198,20 +199,24 @@ def _store_symbol_snapshot(
     name: str,
     *,
     provider: str,
+    include_sha256: bool = False,
 ) -> None:
-    """Persist one already-validated frame and its compact provenance row."""
+    """Persist one validated frame and its compact provenance row."""
     serial = _serializable_frame(frame)
     path = output / f"{symbol}.csv"
     serial.assign(date=serial["date"].dt.strftime("%Y-%m-%d")).to_csv(
         path, index=False
     )
-    symbol_manifest[symbol] = {
+    entry: dict[str, object] = {
         "name": name,
         "provider": provider,
         "rows": len(serial),
         "first_date": serial["date"].iloc[0].strftime("%Y-%m-%d"),
         "last_date": serial["date"].iloc[-1].strftime("%Y-%m-%d"),
     }
+    if include_sha256:
+        entry["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    symbol_manifest[symbol] = entry
     print(
         f"{symbol} {name}: {provider}, {len(serial)} rows, "
         f"{serial['date'].iloc[0].date()} to {serial['date'].iloc[-1].date()}"
@@ -251,6 +256,7 @@ def _download_research_symbols(
                 frame,
                 name,
                 provider=provider,
+                include_sha256=True,
             )
             time.sleep(RESEARCH_INTER_SYMBOL_DELAY_SECONDS)
         if not next_pending:
@@ -263,6 +269,14 @@ def _download_research_symbols(
         f"failover; first pending symbol={pending[0] if pending else 'unknown'}; "
         f"{last_error}"
     )
+
+
+def _write_manifest(output: Path, manifest: dict[str, object]) -> None:
+    """Replace the research/legacy manifest atomically within one output directory."""
+    payload = json.dumps(manifest, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+    temporary = output / ".manifest.json.tmp"
+    temporary.write_text(payload, encoding="utf-8")
+    temporary.replace(output / "manifest.json")
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
@@ -359,13 +373,42 @@ def main() -> int:
         "symbols": symbol_manifest,
     }
     if research_selection:
-        _download_research_symbols(
-            tuple(symbols),
-            start=data_start,
-            end=end_date,
-            output=output,
-            symbol_manifest=symbol_manifest,
+        requested_symbols = list(symbols)
+        manifest.update(
+            {
+                "complete": False,
+                "requested_symbols": requested_symbols,
+                "downloaded_symbols": [],
+                "missing_symbols": requested_symbols,
+            }
         )
+        try:
+            _download_research_symbols(
+                tuple(symbols),
+                start=data_start,
+                end=end_date,
+                output=output,
+                symbol_manifest=symbol_manifest,
+            )
+        except Exception as exc:
+            downloaded = list(symbol_manifest)
+            manifest.update(
+                {
+                    "downloaded_symbols": downloaded,
+                    "missing_symbols": [code for code in symbols if code not in symbol_manifest],
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+            _write_manifest(output, manifest)
+            raise
+        manifest.update(
+            {
+                "complete": True,
+                "downloaded_symbols": list(symbol_manifest),
+                "missing_symbols": [],
+            }
+        )
+        _write_manifest(output, manifest)
     else:
         for symbol in symbols:
             frame, name = _download(symbol, data_start, end_date)
@@ -378,10 +421,7 @@ def main() -> int:
                 provider="Eastmoney push2his",
             )
             time.sleep(0.3)
-    (output / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+        _write_manifest(output, manifest)
     return 0
 
 
