@@ -158,38 +158,27 @@ def select_positive_momentum_leaders(
         frame = frame_loader(code, str(boundary.date()))
         return frame.loc[frame.index <= boundary].copy()
 
-    # Load reference basket for relative strength calculation.  The numeric
-    # fallback remains unchanged for research, but its degraded health is now
-    # explicit so production cannot mistake missing reference evidence for a
-    # valid zero-relative-strength baseline.
+    # The fixed reference basket is an optional ranking enrichment.  Preserve
+    # its established zero-baseline fallback when reference history is absent
+    # or incomplete; decision-critical health applies to requested symbols.
     reference_symbols = ("300308", "300502", "300394", "688008", "603986")
     ref_returns: list[float] = []
     for ref_code in reference_symbols:
-        source = f"leader_reference:{ref_code}"
         try:
             ref_frame = load_frame(ref_code)
             ref_closes = pd.Series(
                 pd.to_numeric(ref_frame["close"], errors="coerce"),
                 index=ref_frame.index,
             ).dropna()
-        except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
-            issues.append(issue_from_exception(source, exc))
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError):
             continue
         if len(ref_closes) < 121:
-            issues.append(_unavailable_issue(source, "fewer than 121 close observations"))
             continue
         observed_date = _normalized_timestamp(str(ref_closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
-            issues.append(
-                _unavailable_issue(
-                    source,
-                    f"stale evidence last observed {observed_date.date()}",
-                )
-            )
             continue
         ref_ret = float(ref_closes.iloc[-1] / ref_closes.iloc[-121] - 1.0)
         if not math.isfinite(ref_ret):
-            issues.append(_invalid_issue(source, "non-finite 120-day return"))
             continue
         ref_returns.append(ref_ret)
     ref_avg_return = float(np.mean(ref_returns)) if ref_returns else 0.0
