@@ -12,6 +12,7 @@ from quantfusion.domain.rules import require_int
 from quantfusion.engine.ensemble import EnsembleBacktestEngine, EnsembleSleeveBacktestEngine
 from quantfusion.engine.runtime import ReplayRuntimePolicy
 from quantfusion.config.portfolio import PortfolioPolicy
+from quantfusion.risk.exposure_recovery import apply_account_risk_budget_with_recovery
 from quantfusion.risk.managers import RiskManager
 
 _EnsembleBacktestEngine = EnsembleBacktestEngine
@@ -262,6 +263,34 @@ class BacktestEngine(
                 float(sleeve_cfg.get("strategy_weight", 0.98)), exposure_cap
             )
         return sleeve_cfg
+
+    def _apply_account_risk_budget(
+        self,
+        states: list[Any],
+        date: Any,
+        assets: float,
+        peak: float,
+        events: list[dict[str, Any]],
+        *,
+        shock_floor: float = 0.0,
+        preserve_strategy_valid_holdings: bool = False,
+        risk_alert_active: bool | None = None,
+        portfolio_evidence_buy_symbols: set[str] | None = None,
+    ) -> None:
+        """Apply AB5 with causal recovery hysteresis to the combined account."""
+        apply_account_risk_budget_with_recovery(
+            states,
+            date,
+            assets,
+            peak,
+            self.cfg,
+            self._overlay_allocation_score(states, date),
+            events,
+            shock_floor=shock_floor,
+            preserve_strategy_valid_holdings=preserve_strategy_valid_holdings,
+            risk_alert_active=risk_alert_active,
+            portfolio_evidence_buy_symbols=portfolio_evidence_buy_symbols,
+        )
 
     def run(  # noqa: PLR0913 - Preserve the inherited public API.
         self,
