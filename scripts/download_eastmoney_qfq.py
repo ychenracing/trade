@@ -92,8 +92,7 @@ def _url(symbol: str, start: str, end: str) -> str:
             "secid": f"{_market_id(symbol)}.{symbol}",
             "klt": "101",
             "fqt": "1",
-            # Long historical research can exceed the old 1000-row cap.
-            "lmt": "2000",
+            "lmt": "1000",
             "beg": start.replace("-", ""),
             "end": end.replace("-", ""),
             "fields1": "f1,f2,f3,f4,f5,f6",
@@ -266,11 +265,13 @@ def _download_research_symbols(
     )
 
 
-def main() -> int:
-    """Download all requested symbols and write a provenance manifest."""
+def build_argument_parser() -> argparse.ArgumentParser:
+    """Build legacy-compatible and pool-aware historical data arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--start",
+        "--start-date",
+        dest="start",
         default="",
         help=(
             "Replay-window start date. Research pools default to 2023-01-01 and "
@@ -280,6 +281,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--end",
+        "--end-date",
+        dest="end",
         default="",
         help=(
             "Snapshot end date. Research pools default to the current Shanghai-market "
@@ -308,7 +311,12 @@ def main() -> int:
         action="store_true",
         help="Download the union of all research pools A-J.",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> int:
+    """Download all requested symbols and write a provenance manifest."""
+    args = build_argument_parser().parse_args()
     research_selection = bool(args.pools or args.all_pools)
     if args.symbols:
         symbols = tuple(args.symbols)
