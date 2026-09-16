@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-import pandas as pd
+import json
 
+import pandas as pd
+import pytest
+
+from scripts import compare_universes as compare
 from scripts import download_eastmoney_qfq as download
 from quantfusion.application.backtest_cli import build_argument_parser
 from quantfusion.config import profiles
@@ -136,6 +140,25 @@ def test_pool_download_selection_includes_all_fixed_risk_evidence() -> None:
     assert set(PortfolioPolicy().regime_symbols) <= set(selected)
     assert set(RISK_BASKET) <= set(selected)
     assert download.select_download_symbols(()) == download.DEFAULT_SYMBOLS
+
+
+def test_comparison_fails_closed_when_fixed_risk_evidence_is_missing(tmp_path) -> None:
+    for code in symbols_for_pool("pool_b"):
+        (tmp_path / f"{code}.csv").write_text("date,close\n2023-01-03,1\n")
+    with pytest.raises(ValueError, match="missing required research market-data files"):
+        compare.validate_market_data_directory(tmp_path, ("pool_b",))
+
+
+def test_comparison_rejects_incomplete_download_manifest(tmp_path) -> None:
+    required = compare.required_market_symbols(("pool_b",))
+    for code in required:
+        (tmp_path / f"{code}.csv").write_text("date,close\n2023-01-03,1\n")
+    (tmp_path / "manifest.json").write_text(
+        json.dumps({"complete": False, "symbols": {}}),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="incomplete research market-data manifest"):
+        compare.validate_market_data_directory(tmp_path, ("pool_b",))
 
 
 def test_pool_download_uses_research_window_without_mutating_legacy_defaults() -> None:
