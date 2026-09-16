@@ -32,6 +32,7 @@ jobs:
         run: >-
           python -m pytest -q
           tests/unit/test_research_universes.py
+          tests/unit/test_research_profile_routing.py
           tests/unit/test_universe_comparison.py
       - name: Download independent 2023-current research inputs
         run: |
