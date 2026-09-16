@@ -20,8 +20,8 @@ test_text = one(
     "w1 runtime policy",
 )
 test_text = test_text.replace(
-    "ProductionReplayEngine.validate_c6_diagnostic_request(request)",
-    "validate_c6_diagnostic_request(request)",
+    "ProductionReplayEngine.validate_c6_diagnostic_request",
+    "validate_c6_diagnostic_request",
 )
 new_ablation = '''def test_ablation_map_is_exact_and_production_defaults_full_on() -> None:
     production = BacktestEngine()
@@ -125,7 +125,15 @@ new_budget = '''    from quantfusion.engine.replay import ProductionReplayEngine
     with pytest.raises(ValueError, match="own evidence identity"):
         run_c6_diagnostic(
             engine, {}, '2025-04-01', '2026-07-20',
-            data_dir='unused', regime_data_dir='unused', diagnostic_request={},
+            data_dir='unused', regime_data_dir='unused',
+            diagnostic_request={
+                'schema_version': 1,
+                'intervention_id': 'C6_BASE',
+                'recording_mode': 'DEFAULT',
+                'scenario_id': 'prefix-05',
+                'diagnostic_noncanonical': True,
+                'allow_publication': False,
+            },
         )
 '''
 budget_text = one(budget_text, old_budget, new_budget, "budget adapter test")
