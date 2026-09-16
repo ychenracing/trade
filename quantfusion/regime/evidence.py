@@ -17,6 +17,8 @@ from quantfusion.config.regime import (
     MAX_LEADERS,
     REGIME_INDEX_FILES,
 )
+from quantfusion.data.feature_contract import validate_causal_feature_frame
+from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.health import (
     HealthIssue,
     HealthReport,
@@ -25,7 +27,6 @@ from quantfusion.domain.health import (
     issue_from_exception,
     unavailable_issue,
 )
-from quantfusion.data.providers import DataFetcher
 from quantfusion.regime.models import IndexTrend, LeaderSelection, RegimeEvidence
 
 
@@ -69,10 +70,20 @@ def _local_frame(data_dir: str | Path, code: str, end_date: str) -> pd.DataFrame
 
 
 def _leader_quality_inputs(
-    frame: pd.DataFrame, closes: pd.Series
+    frame: pd.DataFrame,
+    closes: pd.Series,
+    *,
+    as_of: pd.Timestamp,
 ) -> dict[str, float] | None:
     """Return causal, scale-comparable opportunity-quality inputs."""
-    if len(closes) < 61 or "volume" not in frame.columns:
+    contract = validate_causal_feature_frame(
+        feature_name="leader_quality",
+        as_of_date=as_of,
+        required_history=61,
+        source_columns=("close", "volume"),
+        frame=frame,
+    )
+    if contract.validation_status is not HealthState.READY or len(closes) < 61:
         return None
     daily_returns = closes.pct_change().dropna()
     if len(daily_returns) < 60:
@@ -265,7 +276,11 @@ def select_positive_momentum_leaders(
             ref_ret = float(ref_closes.iloc[-1] / ref_closes.iloc[-121] - 1.0)
             if math.isfinite(ref_ret):
                 ref_returns.append(ref_ret)
-        quality_inputs = _leader_quality_inputs(ref_frame, ref_closes)
+        quality_inputs = _leader_quality_inputs(
+            ref_frame,
+            ref_closes,
+            as_of=boundary,
+        )
         if quality_inputs is not None:
             reference_quality[ref_code] = quality_inputs
     ref_avg_return = float(np.mean(ref_returns)) if ref_returns else 0.0
@@ -390,7 +405,11 @@ def select_positive_momentum_leaders(
             + 0.10 * max(0.0, trend_repair)
         )
         weak_score = 0.6 * mature_score + 0.4 * emerging_score
-        quality_inputs = _leader_quality_inputs(frame, closes)
+        quality_inputs = _leader_quality_inputs(
+            frame,
+            closes,
+            as_of=boundary,
+        )
         quality_score = (
             _leader_quality_score(quality_inputs, reference_quality)
             if quality_inputs is not None
