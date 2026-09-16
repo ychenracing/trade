@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Mapping
 
-from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.engine.replay import ProductionReplayEngine
 from quantfusion.engine.runtime import ReplayRuntimePolicy
 
@@ -220,7 +218,9 @@ def run_c6_diagnostic(
         "exposure_trace": "_c6_exposure_trace",
     }
     for generic_name, research_name in legacy_names.items():
-        result[research_name] = diagnostics.get(generic_name, [] if generic_name != "warm_state" else {})
+        result[research_name] = diagnostics.get(
+            generic_name, [] if generic_name != "warm_state" else {}
+        )
     result["diagnostic_request"] = request.as_dict()
     result["deployment_policy"] = "diagnostic_noncanonical"
     return result
