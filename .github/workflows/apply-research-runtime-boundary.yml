@@ -49,4 +49,4 @@ jobs:
           git diff --cached --check
           git commit -m 'refactor: isolate research runtime policy'
           git push origin HEAD:agent/architecture-consistency-refactor
-# function-boundary research test migration
+# final focused runtime migration retry
