@@ -28,14 +28,14 @@ Quant Fusion 是面向 A 股科技、算力硬件、光通信和半导体产业�
 
 ## 多股票池研究入口
 
-Pool A–J 的名称和代码映射集中在 `quantfusion/config/research_universes.py`。旧的生产 17 股 `SYMBOL_NAMES` 不因研究池扩展而改变。单池趋势回测可直接使用 `--pool`；Pool B/F/G 或其他多池比较使用同一 `ProductionReplayEngine` 连续账户路由，不复制交易信号、费用、风险或执行实现。
+Pool A–J 的名称和代码映射集中在 `quantfusion/config/research_universes.py`。旧的生产 17 股 `SYMBOL_NAMES` 不因研究池扩展而改变。单池趋势回测可直接使用 `--pool`；`backtest_cli` 同时接受旧 `--start/--end` 与新 `--start-date/--end-date` 别名。Pool B/F/G 或其他多池比较使用同一 `ProductionReplayEngine` 连续账户路由，不复制交易信号、费用、风险或执行实现。
 
-研究数据应放在独立目录。以下命令准备 Pool B/F/G 的股票、固定信号参考和现有独立风险篮；未指定 `--output` 时，Pool 模式默认使用 `data_cache/research_market`，不会覆盖仓库冻结 `data/market`。Pool 模式会在研究窗口前额外保留 365 个自然日的真实行情用于 warm 指标预热，但收益、回撤和报告窗口仍从指定的 `--start` / `--start-date` 开始。`YYYY-MM-DD` 应替换为已经完成收盘且数据可获得的截止日。
+研究数据应放在独立目录。以下命令准备 Pool B/F/G 的股票、固定信号参考和现有独立风险篮；未指定 `--output` 时，Pool 模式默认使用 `data_cache/research_market`，不会覆盖仓库冻结 `data/market`。Pool 模式会在研究窗口前额外保留 365 个自然日的真实行情用于 warm 指标预热，但收益、回撤和报告窗口仍从指定的 `--start-date` 开始。`YYYY-MM-DD` 应替换为已经完成收盘且数据可获得的截止日。
 
 ```bash
 python -m scripts.download_eastmoney_qfq \
   --pool pool_b --pool pool_f --pool pool_g \
-  --start 2023-01-01 --end YYYY-MM-DD \
+  --start-date 2023-01-01 --end-date YYYY-MM-DD \
   --output ../trade-runtime/research-market
 
 python -m scripts.compare_universes \
@@ -46,15 +46,23 @@ python -m scripts.compare_universes \
   --output-dir ../trade-runtime/universe-comparison
 ```
 
-比较输出同时保存 JSON、CSV 和 Markdown，包含股票数量、窗口、累计／年化收益、最大回撤、成交记录数、建模换手率、空仓比例、平均现金比例、依据实际成交与截至各组合日最后可见收盘价重建的持仓 HHI，以及风险事件统计。该报告是研究输出，不改变生产交易决策，也不是新的策略晋级门。
+Pool 数据准备复用现有 Eastmoney→Sina→Tencent 提供方切换，并保留旧无 Pool 的 Eastmoney-only 冻结快照默认行为。研究下载开始前即写 `complete=false` manifest；单股 CSV 原子替换并记录提供方、首尾日期、行数和 SHA-256，只有全部所需股票完成后才切换为 `complete=true`。中途失败或硬中断不会把部分目录冒充完整研究输入。对明显陈旧数据和 Tencent 1000 行上限造成的长历史截断失败关闭。
+
+比较运行前要求所选 Pool、固定信号参考、现有 `RISK_BASKET` 与两只固定指数证据完整。完整研究 manifest 会逐文件复核 SHA-256；股票侧必须具有可接受的截止日覆盖。两只固定指数必须有 MA120 所需的预热观测、窗口内完全一致的日期序列和可接受的截止日新鲜度。固定风险或指数证据不足不会被解释成股票池自身的现金防御表现。
+
+比较输出同时保存 JSON、CSV 和 Markdown，包含股票数量和成员名称、请求窗口、实际观察窗口、累计／年化收益、最大回撤、成交记录数、建模换手率、空仓比例、平均现金比例、依据实际成交与截至各组合日最后可见收盘价重建的持仓 HHI，以及风险事件类型和次数。JSON 还保存股票 manifest SHA-256 与两只固定指数 SHA-256。该报告是研究输出，不改变生产交易决策，也不是新的策略晋级门。
 
 研究窗口支持从 `2023-01-01` 开始，不代表仓库旧冻结样本已经覆盖 2023。现有 `data/market` 的发布清单主要从 2024 年开始，原 17 股正式经济证据仍绑定 2025-04-01 至 2026-07-20。较晚上市标的在上市前没有观测，不补造历史；只有真实数据出现后才参与回放。历史比较必须保存实际数据来源、窗口、源码和报告身份，不能用旧 SHA 或旧冻结业绩证明新窗口。
+
+`688825` 和 `688037` 在研究 symbol catalog 中分别按当前证券身份解析为长鑫科技和芯源微；旧参数画像文件中的细分类别用于复用既有参数工厂，不作为证券名称事实源。证券名称以研究 catalog 为准，避免把历史注释误当作 symbol mapping。
 
 ## 证据与风险限制
 
 当前版本已完成同一经济源码的 958/958 场景验证，其中前缀场景为 17/17。固定 17 股主池在 2025-04-01 至 2026-07-20、初始资金 200 万元及既定费用和滑点下，期末财富为初始本金的 9.610543 倍，最大回撤为 15.104978%。不利成本、跨窗口检查、完整指标及来源见[验证说明](VALIDATION.md#formal-stress-evidence)。
 
 风险预算存在机会成本，不能宣称所有行情收益改善。科技集中样本、幸存者偏差、前复权重述、数据覆盖范围、跳空、连续跌停及人工执行误差仍需独立考虑。日历证据仅覆盖 2024–2026 年；缺少合格输入不能靠忽略错误继续。真实账户仍需使用者维护准确快照和权益高水位；报告不是券商订单或自动交易授权。
+
+Pool A–J 的比较结果属于新增研究证据，不能覆盖上述固定 17 股正式验收。请求窗口与实际观察窗口、股票／指数输入哈希、源码身份和报告身份均应匹配后才可比较；失败、缺失或输入不完整必须保留，不能通过删股、缩短窗口、改风险阈值或重写旧黄金结果隐藏。
 
 ## 运行入口
 
