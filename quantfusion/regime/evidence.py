@@ -17,6 +17,12 @@ from quantfusion.config.regime import (
     MAX_LEADERS,
     REGIME_INDEX_FILES,
 )
+from quantfusion.data.health import (
+    DataHealthIssue,
+    DataHealthReport,
+    DataHealthStatus,
+    issue_from_exception,
+)
 from quantfusion.data.providers import DataFetcher
 from quantfusion.regime.models import IndexTrend, LeaderSelection, RegimeEvidence
 
@@ -49,19 +55,31 @@ def _local_frame(data_dir: str | Path, code: str, end_date: str) -> pd.DataFrame
     return frame.loc[frame.index <= boundary].copy()
 
 
+def _unavailable_issue(source: str, message: str) -> DataHealthIssue:
+    return DataHealthIssue(source, DataHealthStatus.UNAVAILABLE, message)
+
+
+def _invalid_issue(source: str, message: str) -> DataHealthIssue:
+    return DataHealthIssue(source, DataHealthStatus.INVALID, message)
+
+
 def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
     """Require both fixed indices to have fresh, complete trend evidence."""
     boundary = _normalized_timestamp(as_of)
     observations: list[IndexTrend] = []
+    issues: list[DataHealthIssue] = []
     for code in REGIME_INDEX_FILES.values():
+        source = f"regime_index:{code}"
         try:
             frame = _local_frame(data_dir, code, str(boundary.date()))
-        except (OSError, RuntimeError, ValueError):
+            closes = pd.Series(
+                pd.to_numeric(frame["close"], errors="coerce"), index=frame.index
+            ).dropna()
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
+            issues.append(issue_from_exception(source, exc))
             continue
-        closes = pd.Series(
-            pd.to_numeric(frame["close"], errors="coerce"), index=frame.index
-        ).dropna()
         if len(closes) < 60:
+            issues.append(_unavailable_issue(source, "fewer than 60 close observations"))
             continue
         close = float(closes.iloc[-1])
         ma20 = float(closes.tail(20).mean())
@@ -69,9 +87,16 @@ def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
         if not all(
             math.isfinite(value) and value > 0 for value in (close, ma20, ma60)
         ):
+            issues.append(_invalid_issue(source, "non-finite or non-positive trend inputs"))
             continue
         observed_date = _normalized_timestamp(str(closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
+            issues.append(
+                _unavailable_issue(
+                    source,
+                    f"stale evidence last observed {observed_date.date()}",
+                )
+            )
             continue
         observations.append(
             IndexTrend(
@@ -91,6 +116,7 @@ def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
         as_of=str(boundary.date()),
         regime=regime,
         observations=tuple(observations),
+        health=DataHealthReport.from_issues(issues),
     )
 
 
@@ -102,7 +128,7 @@ def select_positive_momentum_leaders(
     maximum: int = MAX_LEADERS,
     frame_loader: Callable[[str, str], pd.DataFrame] | None = None,
 ) -> LeaderSelection:
-    """Select positive long-horizon leaders with deterministic tie-breaking.
+    """Select positive long-horizon leaders with explicit input health.
 
     Uses multi-factor weak-market scoring (section 12.2):
     - 240-day momentum (25%)
@@ -110,6 +136,10 @@ def select_positive_momentum_leaders(
     - 60-day momentum (20%)
     - Drawdown resilience (15%)
     - Trend repair: 5-day vs 20-day momentum (15%)
+
+    Research callers receive degraded results plus diagnostics. Production
+    callers decide whether to accept degradation via ``LeaderSelection`` rather
+    than inferring data health from an empty selection.
     """
     normalized = tuple(sorted(str(symbol) for symbol in symbols))
     if not normalized or len(normalized) != len(set(normalized)):
@@ -119,6 +149,8 @@ def select_positive_momentum_leaders(
     boundary = _normalized_timestamp(as_of)
     observations: list[tuple[float, str, bool]] = []
     observed_codes: set[str] = set()
+    invalid_codes: set[str] = set()
+    issues: list[DataHealthIssue] = []
 
     def load_frame(code: str) -> pd.DataFrame:
         if frame_loader is None:
@@ -126,7 +158,9 @@ def select_positive_momentum_leaders(
         frame = frame_loader(code, str(boundary.date()))
         return frame.loc[frame.index <= boundary].copy()
 
-    # Load reference basket for relative strength calculation
+    # The fixed reference basket is an optional ranking enrichment.  Preserve
+    # its established zero-baseline fallback when reference history is absent
+    # or incomplete; decision-critical health applies to requested symbols.
     reference_symbols = ("300308", "300502", "300394", "688008", "603986")
     ref_returns: list[float] = []
     for ref_code in reference_symbols:
@@ -136,28 +170,51 @@ def select_positive_momentum_leaders(
                 pd.to_numeric(ref_frame["close"], errors="coerce"),
                 index=ref_frame.index,
             ).dropna()
-            if len(ref_closes) >= 121:
-                ref_ret = float(ref_closes.iloc[-1] / ref_closes.iloc[-121] - 1.0)
-                ref_returns.append(ref_ret)
-        except (OSError, RuntimeError, ValueError):
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError):
             continue
+        if len(ref_closes) < 121:
+            continue
+        observed_date = _normalized_timestamp(str(ref_closes.index[-1]))
+        if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
+            continue
+        ref_ret = float(ref_closes.iloc[-1] / ref_closes.iloc[-121] - 1.0)
+        if not math.isfinite(ref_ret):
+            continue
+        ref_returns.append(ref_ret)
     ref_avg_return = float(np.mean(ref_returns)) if ref_returns else 0.0
 
     for code in normalized:
+        source = f"leader_symbol:{code}"
         try:
             frame = load_frame(code)
             closes = pd.Series(
                 pd.to_numeric(frame["close"], errors="coerce"), index=frame.index
             ).dropna()
-        except (OSError, RuntimeError, ValueError):
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
+            issue = issue_from_exception(source, exc)
+            issues.append(issue)
+            if issue.status is DataHealthStatus.INVALID:
+                invalid_codes.add(code)
             continue
         # A symbol only needs the SHORT emerging-window history to
         # be considered. Mature candidates require full long-horizon history;
         # emerging candidates instead use short-horizon momentum and breakout.
         if len(closes) < EMERGING_MIN_DAYS:
+            issues.append(
+                _unavailable_issue(
+                    source,
+                    f"fewer than {EMERGING_MIN_DAYS} close observations",
+                )
+            )
             continue
         observed_date = _normalized_timestamp(str(closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
+            issues.append(
+                _unavailable_issue(
+                    source,
+                    f"stale evidence last observed {observed_date.date()}",
+                )
+            )
             continue
         observed_codes.add(code)
         close = float(closes.iloc[-1])
@@ -175,21 +232,16 @@ def select_positive_momentum_leaders(
         # Both channels are scored against a FIXED technology reference pool (not the
         # caller's pool) so adding/removing a symbol never changes an unchanged
         # symbol's score.
-        # 60-day momentum
         if len(closes) >= 61:
             momentum_60 = float(closes.iloc[-1] / closes.iloc[-61] - 1.0)
         else:
             momentum_60 = 0.0
 
-        # 20-day momentum (drives the emerging-leader channel).
         if len(closes) >= 21:
             momentum_20 = float(closes.iloc[-1] / closes.iloc[-21] - 1.0)
         else:
             momentum_20 = 0.0
 
-        # Emerging-channel gate: short history + positive short-horizon momentum
-        # + a real breakout setup (price near its 20-day high). Mature and emerging
-        # history requirements are evaluated independently.
         if len(closes) >= 20:
             high20 = float(closes.iloc[-20:].max())
             breakout_quality = close / high20 if high20 > 0 else 0.0
@@ -203,19 +255,12 @@ def select_positive_momentum_leaders(
         if not (is_mature or is_emerging):
             continue
 
-        # Relative strength vs reference basket (120-day): compare the
-        # symbol's own 120-day return against the basket's 120-day return.
         if len(closes) >= 121:
             symbol_120 = float(closes.iloc[-1] / closes.iloc[-121] - 1.0)
-            # Relative strength vs the reference basket. When the basket is
-            # empty/missing its average falls back to 0, in which case the
-            # symbol's own 120-day return is its relative strength (subtracting
-            # 0 is a no-op) rather than being discarded.
             rs_120 = symbol_120 - ref_avg_return
         else:
             rs_120 = 0.0
 
-        # Drawdown resilience: how far from 60-day peak (lower is better)
         if len(closes) >= 60:
             peak_60 = float(closes.iloc[-60:].max())
             drawdown_from_peak = 1.0 - float(closes.iloc[-1] / peak_60) if peak_60 > 0 else 0.0
@@ -223,7 +268,6 @@ def select_positive_momentum_leaders(
         else:
             resilience = 0.0
 
-        # Trend repair: 5-day vs 20-day momentum
         if len(closes) >= 21:
             mom_5 = float(closes.iloc[-1] / closes.iloc[-6] - 1.0)
             mom_20 = float(closes.iloc[-1] / closes.iloc[-21] - 1.0)
@@ -231,7 +275,6 @@ def select_positive_momentum_leaders(
         else:
             trend_repair = 0.0
 
-        # Volume expansion over 20 days (from the raw frame, if available).
         volume_expansion = 0.0
         if "volume" in frame.columns and len(frame) >= 21:
             volumes = cast(
@@ -242,8 +285,6 @@ def select_positive_momentum_leaders(
             if math.isfinite(cur_vol) and math.isfinite(avg_vol) and avg_vol > 0:
                 volume_expansion = max(0.0, min(2.0, cur_vol / avg_vol))
 
-        # Mature-leader channel: long-horizon strength + relative strength +
-        # resilience + trend repair.
         mature_score = (
             0.25 * max(0.0, momentum_240)
             + 0.25 * max(0.0, rs_120)
@@ -251,9 +292,6 @@ def select_positive_momentum_leaders(
             + 0.15 * resilience
             + 0.15 * max(0.0, trend_repair)
         )
-        # Emerging-leader channel: short-horizon momentum + breakout quality +
-        # volume expansion + trend repair, so new market leaders are captured
-        # even when they have no long 240-day history.
         emerging_score = (
             0.30 * momentum_60
             + 0.25 * momentum_20
@@ -261,14 +299,10 @@ def select_positive_momentum_leaders(
             + 0.15 * min(1.0, volume_expansion)
             + 0.10 * max(0.0, trend_repair)
         )
-        # Combined score: favor the mature channel but let a strong emerging
-        # leader (positive 60-day momentum) still rise to the top.
         weak_score = 0.6 * mature_score + 0.4 * emerging_score
         if math.isfinite(weak_score):
             observations.append((weak_score, code, is_mature))
     ranked = sorted(observations, key=lambda item: (-item[0], item[1]))
-    # Cap how many EMERGING-ONLY (immature) leaders enter the
-    # selection so short-history names never crowd out the mature core.
     selected_codes: list[str] = []
     emerging_selected = 0
     for _, code, is_mature in ranked:
@@ -292,7 +326,9 @@ def select_positive_momentum_leaders(
         observed_symbols=len(observed_codes),
         selected_symbols=tuple(code for _, code in leaders),
         selected_returns=tuple(score for score, _ in leaders),
-        unavailable_symbols=tuple(sorted(set(normalized) - observed_codes)),
+        unavailable_symbols=tuple(sorted(set(normalized) - observed_codes - invalid_codes)),
+        invalid_symbols=tuple(sorted(invalid_codes)),
+        health=DataHealthReport.from_issues(issues),
     )
 
 

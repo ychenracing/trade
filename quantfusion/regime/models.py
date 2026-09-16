@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
+
+from quantfusion.data.health import DataHealthReport, DataHealthStatus
+
 
 @dataclass(frozen=True, slots=True)
 class IndexTrend:
@@ -48,11 +51,16 @@ class RegimeEvidence:
     as_of: str
     regime: str
     observations: tuple[IndexTrend, ...]
+    health: DataHealthReport = field(default_factory=DataHealthReport)
+
+    @property
+    def status(self) -> str:
+        return self.health.status.value
 
 
 @dataclass(frozen=True, slots=True)
 class LeaderSelection:
-    """Positive 240-session leaders observable before deployment."""
+    """Positive leaders plus explicit input-health diagnostics."""
 
     as_of: str
     requested_symbols: tuple[str, ...]
@@ -60,6 +68,24 @@ class LeaderSelection:
     selected_symbols: tuple[str, ...]
     selected_returns: tuple[float, ...]
     unavailable_symbols: tuple[str, ...] = ()
+    invalid_symbols: tuple[str, ...] = ()
+    health: DataHealthReport = field(default_factory=DataHealthReport)
+
+    @property
+    def status(self) -> str:
+        if self.invalid_symbols or self.health.status is DataHealthStatus.INVALID:
+            return DataHealthStatus.INVALID.value
+        if self.unavailable_symbols or self.health.status is DataHealthStatus.UNAVAILABLE:
+            return DataHealthStatus.UNAVAILABLE.value
+        return DataHealthStatus.VALID.value
+
+    def require_valid(self, context: str) -> None:
+        """Fail closed when a production decision lacks valid leader evidence."""
+        if self.status == DataHealthStatus.VALID.value:
+            return
+        details = sorted(set(self.invalid_symbols + self.unavailable_symbols))
+        suffix = f": {', '.join(details)}" if details else ""
+        raise RuntimeError(f"{context} leader evidence is {self.status}{suffix}")
 
 
 @dataclass(frozen=True, slots=True)

@@ -20,6 +20,7 @@ from quantfusion.config.weak import weak_regime_config, weak_regime_policy
 from quantfusion.domain.models import BarContext
 from quantfusion.domain.rules import require_finite
 from quantfusion.engine.universe import BacktestEngine, SleeveBacktestEngine
+from quantfusion.engine.strategy_lifecycle import StrategyLifecycleRegistry
 from quantfusion.regime.evidence import (
     detect_regime,
     local_frame,
@@ -109,10 +110,8 @@ class ProductionRouteController:
         self.previous_route: str | None = None
         self.events: list[dict[str, Any]] = []
         self.journal: list[dict[str, Any]] = []
-        self._leader_cache: dict[str, tuple[str, ...]] = {}
-        self._weak_strategies: dict[
-            tuple[str, str], PositiveMomentumHoldStrategy
-        ] = {}
+        self._leader_cache: dict[str, LeaderSelection] = {}
+        self._weak_strategy_registry = StrategyLifecycleRegistry()
         self._weak_episode_leaders: tuple[str, ...] = ()
         self._carry_trend_book = False
         self._restoring_trend_cash = False
@@ -148,19 +147,27 @@ class ProductionRouteController:
             )
 
     def _leaders(self, symbols: Sequence[str], date_str: str) -> tuple[str, ...]:
-        cached = self._leader_cache.get(date_str)
-        if cached is not None:
-            return cached
-        try:
-            selected = select_positive_momentum_leaders(
+        selection = self._leader_cache.get(date_str)
+        if selection is None:
+            selection = select_positive_momentum_leaders(
                 tuple(symbols),
                 data_dir=self.leader_data_dir,
                 as_of=date_str,
-            ).selected_symbols
-        except (OSError, RuntimeError, ValueError):
-            selected = ()
-        self._leader_cache[date_str] = tuple(selected)
-        return tuple(selected)
+            )
+            self._leader_cache[date_str] = selection
+        if selection.status != "valid":
+            self.events.append(
+                {
+                    "date": date_str,
+                    "event": "leader_selection_failure",
+                    "status": selection.status,
+                    "unavailable_symbols": list(selection.unavailable_symbols),
+                    "invalid_symbols": list(selection.invalid_symbols),
+                    "health": selection.health.as_dict(),
+                }
+            )
+        selection.require_valid("production route")
+        return tuple(selection.selected_symbols)
 
     def _append_weak_signals(
         self,
@@ -176,26 +183,23 @@ class ProductionRouteController:
         # All idle cash is migrated to this sleeve on the route transition.
         for state in states[:1]:
             current_assets = state.sleeve._total_assets(state.data_map, date)
+            sleeve_name = str(state.sleeve.sleeve_name)
             for symbol in symbols_dict:
-                key = (str(state.sleeve.sleeve_name), symbol)
-                strategy = self._weak_strategies.get(key)
-                if strategy is None:
+                entry = self._weak_strategy_registry.get(sleeve_name, symbol)
+                if symbol not in leaders and (
+                    entry is None or entry.strategy.position is None
+                ):
+                    continue
+                if entry is None:
                     cfg = dict(state.sleeve.cfg)
                     cfg.update(_weak_regime_config(max(len(leaders), 1)))
-                    strategy = PositiveMomentumHoldStrategy(cfg)
-                    self._weak_strategies[key] = strategy
-                # Dynamic weak-route strategies own real positions and therefore
-                # must participate in every liquidation path. Keep them in the
-                # external registry so the sleeve risk/sector/route controls can
-                # find them without the core signal loop evaluating them a second
-                # time on the same close.
-                registered = state.sleeve.external_strategy_instances.setdefault(
-                    symbol, []
-                )
-                if strategy not in registered:
-                    registered.append(strategy)
-                if symbol not in leaders and strategy.position is None:
-                    continue
+                    entry = self._weak_strategy_registry.acquire(
+                        sleeve_name,
+                        symbol,
+                        lambda cfg=cfg: PositiveMomentumHoldStrategy(cfg),
+                    )
+                strategy = entry.strategy
+                self._weak_strategy_registry.activate(state.sleeve, entry)
                 frame = state.data_map.get(symbol)
                 indicators = state.indicator_map.get(symbol)
                 if frame is None or indicators is None or date not in frame.index:
@@ -332,6 +336,23 @@ class ProductionRouteController:
                 if not weak_positions:
                     self._restoring_trend_cash = False
 
+        active_weak_symbols = (
+            self._weak_episode_leaders
+            if route in {
+                RegimeRoute.WEAK.value,
+                RegimeRoute.TRANSITION_TO_TREND.value,
+            } and not self._carry_trend_book
+            else ()
+        )
+        for state in states:
+            self._weak_strategy_registry.reconcile(
+                state.sleeve,
+                current_symbols=symbols_dict,
+                active_symbols=active_weak_symbols,
+                pending=state.pending,
+                date=date_str,
+            )
+
         sleeve_rows = []
         for state in states:
             risk = state.sleeve.risk
@@ -361,12 +382,12 @@ class ProductionRouteController:
     def result_snapshot(self) -> dict[str, Any]:
         """Return the complete serializable route and persistence audit."""
         cooldowns = {
-            f"{sleeve}:{symbol}": {
-                "cooldown_end": strategy._cooldown_end,
-                "exit_reason": strategy._exit_reason,
-                "failures": strategy._failures,
+            f"{entry.sleeve_name}:{entry.symbol}": {
+                "cooldown_end": entry.strategy._cooldown_end,
+                "exit_reason": entry.strategy._exit_reason,
+                "failures": entry.strategy._failures,
             }
-            for (sleeve, symbol), strategy in sorted(self._weak_strategies.items())
+            for entry in self._weak_strategy_registry.entries()
         }
         return {
             "engine": "ProductionReplayEngine",
@@ -377,6 +398,7 @@ class ProductionRouteController:
             "transition_events": list(self.events),
             "daily_journal": list(self.journal),
             "weak_cooldowns": cooldowns,
+            "weak_strategy_lifecycle": self._weak_strategy_registry.snapshot(),
         }
 
     @property
@@ -692,6 +714,7 @@ class RegimeAdaptiveBacktestEngine:
             as_of=when,
             frame_loader=leader_frame_loader,
         )
+        leaders.require_valid("current production decision")
         name = (
             "positive_momentum_hold" if leaders.selected_symbols else "cash_preservation"
         )
@@ -711,6 +734,7 @@ class RegimeAdaptiveBacktestEngine:
         data_dir: str | Path,
         leader_data_dir: str | Path | None = None,
         selection_boundary: str | None = None,
+        allow_degraded_leaders: bool = False,
     ) -> DeploymentDecision:
         """Choose a route using only complete evidence available at the boundary."""
         boundary = self._boundary(start_date, selection_boundary)
@@ -736,6 +760,8 @@ class RegimeAdaptiveBacktestEngine:
             data_dir=leader_data_dir or data_dir,
             as_of=boundary,
         )
+        if not allow_degraded_leaders:
+            leaders.require_valid("deployment decision")
         name = "positive_momentum_hold" if leaders.selected_symbols else "cash_preservation"
         reason = (
             "fixed-index trend was not confirmed; selected only positive "
@@ -836,6 +862,7 @@ class RegimeAdaptiveBacktestEngine:
             data_dir=evidence_dir,
             leader_data_dir=leader_data_dir,
             selection_boundary=selection_boundary,
+            allow_degraded_leaders=allow_unavailable_symbols,
         )
         if mode == "trend":
             decision = replace(
@@ -849,6 +876,8 @@ class RegimeAdaptiveBacktestEngine:
                 data_dir=leader_data_dir or evidence_dir,
                 as_of=decision.boundary,
             )
+            if not allow_unavailable_symbols:
+                leaders.require_valid("forced weak deployment")
             decision = replace(
                 decision,
                 name=(
