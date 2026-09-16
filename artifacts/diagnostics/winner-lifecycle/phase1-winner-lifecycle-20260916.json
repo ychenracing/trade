@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "title": "Trade Winner Lifecycle Phase 1 Research",
+  "decision": "REJECT_PRODUCTION_CANDIDATE",
+  "production_effect": "none",
+  "research_contract": {
+    "source_main_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+    "window": ["2025-04-01", "2026-07-20"],
+    "initial_capital": 2000000.0,
+    "universe_size": 17,
+    "candidate_rule": "defer ATR trailing sell only while the existing per-strategy profit-lock is active and intact",
+    "new_thresholds": 0,
+    "future_data_in_candidate": false,
+    "hard_and_structural_risk_actions_preserved": true
+  },
+  "evidence_identity": {
+    "probe_source_commit": "c8949007353870c9b5475b9c4dfed635f11dbb37",
+    "workflow_run_id": 35117645926,
+    "python_312_job_id": 104867043854,
+    "controlled_receipt_failure": true,
+    "python_311_full_suite": "success",
+    "typecheck": "success",
+    "security_dependency_audit": "success",
+    "raw_receipt_prefix": "WINNER_LIFECYCLE_JSON="
+  },
+  "source_identity_check": {
+    "prior_total_return": 8.610542744542613,
+    "observed_current_total_return": 8.610542744515504,
+    "total_return_delta": -2.7108981726087222e-11,
+    "exact_total_return_match_at_1e_12": false,
+    "interpretation": "The retained value differs by 2.71e-11 in return units. This is recorded rather than relabeled as an exact match; same-source Current vs Candidate is used for the counterfactual comparison.",
+    "prior_max_drawdown": -0.15104978428469945,
+    "observed_current_max_drawdown": -0.15104978428469945,
+    "max_drawdown_exact_match": true
+  },
+  "current": {
+    "final_assets": 19221085.48903101,
+    "total_return": 8.610542744515504,
+    "max_drawdown": -0.15104978428469945,
+    "sharpe": 3.7258627517994465,
+    "calmar": 33.61339205407966,
+    "fills": 645,
+    "sell_fills": 404,
+    "date_symbol_side_buckets": 190,
+    "sell_buckets": 109,
+    "gross_traded_value": 139414683.29,
+    "turnover_over_mean_assets": 16.00753130920448,
+    "explicit_fees": 74192.392969,
+    "sell_rebuy": {
+      "with_later_rebuy": 82,
+      "rebuy_within_20_sessions": 40,
+      "rebuy_within_60_sessions": 67,
+      "rebuy_gap_median": 22.0
+    }
+  },
+  "candidate": {
+    "final_assets": 18322314.09429226,
+    "total_return": 8.16115704714613,
+    "max_drawdown": -0.15212947059897633,
+    "sharpe": 3.651325852921912,
+    "calmar": 31.878001603333097,
+    "fills": 668,
+    "sell_fills": 428,
+    "date_symbol_side_buckets": 195,
+    "sell_buckets": 113,
+    "gross_traded_value": 135719246.759,
+    "turnover_over_mean_assets": 15.928719233954798,
+    "explicit_fees": 72191.12870775,
+    "sell_rebuy": {
+      "with_later_rebuy": 88,
+      "rebuy_within_20_sessions": 45,
+      "rebuy_within_60_sessions": 72,
+      "rebuy_gap_median": 18.5
+    }
+  },
+  "candidate_minus_current": {
+    "total_return": -0.44938569736937417,
+    "total_return_percentage_points": -44.93856973693742,
+    "max_drawdown": -0.0010796863142768787,
+    "max_drawdown_percentage_points": -0.10796863142768787,
+    "sharpe": -0.07453689887753434,
+    "calmar": -1.7353904507465643,
+    "fills": 23,
+    "sell_fills": 24,
+    "date_symbol_side_buckets": 5,
+    "sell_buckets": 4,
+    "gross_traded_value": -3695436.5309999883,
+    "turnover_over_mean_assets": -0.07881207524968303,
+    "explicit_fees": -2001.2642612499913,
+    "rebuy_within_20_sessions": 5,
+    "rebuy_within_60_sessions": 5
+  },
+  "winner_state_attribution": {
+    "definition_used_for_probe": "strategic_winner = existing profit-lock active and current gain positive; trend quality and relative strength are measured separately rather than turned into new tunable gates",
+    "current_strategic_winner_signals": 26,
+    "current_strategic_winner_median_hold_sessions": 23.0,
+    "current_strategic_winner_median_current_gain": 0.24365775057056482,
+    "current_strategic_winner_median_peak_gain": 0.33754683179997835,
+    "current_strategic_winner_median_relative_strength_60": 0.5021820933621682,
+    "current_strategic_winner_close_above_ma_short_rate": 0.5769230769230769,
+    "current_strategic_winner_ma_short_above_long_rate": 1.0,
+    "candidate_deferred_atr_signals": 18,
+    "candidate_deferred_unique_date_symbol_strategy": 14,
+    "deferred_atr_median_hold_sessions": 156.5,
+    "deferred_atr_median_current_gain": 3.2592047764482803,
+    "deferred_atr_median_peak_gain": 4.096793586708437,
+    "deferred_atr_median_relative_strength_60": -0.1037904598335948,
+    "deferred_atr_close_above_ma_short_rate": 0.0,
+    "deferred_atr_ma_short_above_long_rate": 0.6111111111111112
+  },
+  "interpretation": [
+    "The probe confirms that Trade does have economically meaningful strategic-winner states; current strategic-winner exit signals have much longer holding periods and stronger excess-return history than ordinary/unvalidated exits.",
+    "However, ATR trailing stops on the extreme winners are not simply redundant profit-taking. Every deferred ATR signal in this counterfactual occurred with price below the short moving average, and median close-known 60-session relative strength was already negative.",
+    "Deferring those ATR exits allowed larger winners to remain exposed through deteriorating trend state, then created more later sell/rebuy chains. The result was lower return, slightly deeper drawdown, lower Sharpe/Calmar, and more fills.",
+    "Therefore the specific rule 'profit lock active => defer ATR trailing' is rejected. Phase 1 provides no evidence to weaken or bypass ATR trailing globally for winners.",
+    "The useful retained finding is narrower: winner lifecycle is a real state dimension, but any future production use must preserve trend deterioration as authoritative rather than treating accumulated profit alone as a reason to hold longer."
+  ],
+  "preserved_references": {
+    "prior_exit_attribution": "artifacts/diagnostics/alpha-attribution/02-sell-analysis.json",
+    "prior_order_efficiency": "artifacts/diagnostics/alpha-attribution/03-order-efficiency.json"
+  },
+  "phase_1_status": "COMPLETE_RESEARCH_CANDIDATE_REJECTED",
+  "production_promotion": false
+}
