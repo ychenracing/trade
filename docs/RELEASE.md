@@ -30,7 +30,7 @@ Quant Fusion 是面向 A 股科技、算力硬件、光通信和半导体产业�
 
 Pool A–J 的名称和代码映射集中在 `quantfusion/config/research_universes.py`。旧的生产 17 股 `SYMBOL_NAMES` 不因研究池扩展而改变。单池趋势回测可直接使用 `--pool`；Pool B/F/G 或其他多池比较使用同一 `ProductionReplayEngine` 连续账户路由，不复制交易信号、费用、风险或执行实现。
 
-研究数据应放在独立目录。以下命令准备 Pool B/F/G 的股票、固定信号参考和现有独立风险篮；未指定 `--output` 时，Pool 模式默认使用 `data_cache/research_market`，不会覆盖仓库冻结 `data/market`。`YYYY-MM-DD` 应替换为已经完成收盘且数据可获得的截止日。
+研究数据应放在独立目录。以下命令准备 Pool B/F/G 的股票、固定信号参考和现有独立风险篮；未指定 `--output` 时，Pool 模式默认使用 `data_cache/research_market`，不会覆盖仓库冻结 `data/market`。Pool 模式会在研究窗口前额外保留 365 个自然日的真实行情用于 warm 指标预热，但收益、回撤和报告窗口仍从指定的 `--start` / `--start-date` 开始。`YYYY-MM-DD` 应替换为已经完成收盘且数据可获得的截止日。
 
 ```bash
 python -m scripts.download_eastmoney_qfq \
@@ -46,7 +46,7 @@ python -m scripts.compare_universes \
   --output-dir ../trade-runtime/universe-comparison
 ```
 
-比较输出同时保存 JSON、CSV 和 Markdown，包含股票数量、窗口、累计／年化收益、最大回撤、成交记录数、建模换手率、空仓比例、平均现金比例、依据实际成交与同日收盘价重建的持仓 HHI，以及风险事件统计。该报告是研究输出，不改变生产交易决策，也不是新的策略晋级门。
+比较输出同时保存 JSON、CSV 和 Markdown，包含股票数量、窗口、累计／年化收益、最大回撤、成交记录数、建模换手率、空仓比例、平均现金比例、依据实际成交与截至各组合日最后可见收盘价重建的持仓 HHI，以及风险事件统计。该报告是研究输出，不改变生产交易决策，也不是新的策略晋级门。
 
 研究窗口支持从 `2023-01-01` 开始，不代表仓库旧冻结样本已经覆盖 2023。现有 `data/market` 的发布清单主要从 2024 年开始，原 17 股正式经济证据仍绑定 2025-04-01 至 2026-07-20。较晚上市标的在上市前没有观测，不补造历史；只有真实数据出现后才参与回放。历史比较必须保存实际数据来源、窗口、源码和报告身份，不能用旧 SHA 或旧冻结业绩证明新窗口。
 
