@@ -12,16 +12,6 @@ import pandas as pd
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager
 
 
-def _geometric_mean(values: tuple[float, ...]) -> float:
-    """Return a consistency-sensitive mean for non-negative percentile scores."""
-    if not values:
-        return 0.0
-    product = math.prod(values)
-    if product <= 0.0:
-        return 0.0
-    return product ** (1.0 / len(values))
-
-
 class UniverseSelectionMixin:
     """Stable universe routing and sticky candidate selection."""
 
@@ -73,15 +63,7 @@ class UniverseSelectionMixin:
         if len(tradable) < 5:
             return set(tradable)
 
-        reference_percentiles = self._candidate_reference_percentiles(date, tradable)
-        scores = {
-            code: sum(values) / len(values)
-            for code, values in reference_percentiles.items()
-        }
-        quality_scores = {
-            code: _geometric_mean(values)
-            for code, values in reference_percentiles.items()
-        }
+        scores = self._candidate_reference_scores(date, tradable)
 
         universe_size = len(tradable)
         if universe_size <= 8:
@@ -99,13 +81,8 @@ class UniverseSelectionMixin:
             if code in scores and scores[code] >= reference_threshold
         ]
 
-        def sort_key(code: str) -> tuple[bool, float, float, str]:
-            return (
-                code not in scores,
-                -quality_scores.get(code, 0.0),
-                -scores.get(code, 0.0),
-                code,
-            )
+        def sort_key(code: str) -> tuple[bool, float, str]:
+            return code not in scores, -scores.get(code, 0.0), code
 
         ranked = sorted(eligible, key=sort_key)
         scores = {code: scores[code] for code in eligible}
@@ -245,12 +222,13 @@ class UniverseSelectionMixin:
                     self._sticky_leader = None
         return selected
 
-    def _candidate_reference_percentiles(
+    def _candidate_reference_scores(
         self, date: pd.Timestamp, symbols: list[str] | set[str]
-    ) -> dict[str, tuple[float, ...]]:
-        """Return per-horizon fixed-basket percentiles for each requested symbol."""
+    ) -> dict[str, float]:
+        """Score symbols against the fixed basket, independent of pool makeup."""
         requested = sorted(symbols)
-        percentiles: dict[str, list[float]] = {code: [] for code in requested}
+        totals = {code: 0.0 for code in requested}
+        observations = {code: 0 for code in requested}
         for window in self.policy.candidate_lookbacks:
             reference_values: list[float] = []
             for code in self.policy.regime_symbols:
@@ -270,22 +248,13 @@ class UniverseSelectionMixin:
                 value = float(series.loc[date])
                 if not math.isfinite(value):
                     continue
-                percentiles[code].append(
-                    sum(reference <= value for reference in reference_values)
-                    / len(reference_values)
-                )
+                percentile = sum(
+                    reference <= value for reference in reference_values
+                ) / len(reference_values)
+                totals[code] += percentile
+                observations[code] += 1
         return {
-            code: tuple(values)
-            for code, values in percentiles.items()
-            if values
-        }
-
-    def _candidate_reference_scores(
-        self, date: pd.Timestamp, symbols: list[str] | set[str]
-    ) -> dict[str, float]:
-        """Score symbols against the fixed basket, independent of pool makeup."""
-        percentiles = self._candidate_reference_percentiles(date, symbols)
-        return {
-            code: sum(values) / len(values)
-            for code, values in percentiles.items()
+            code: totals[code] / observations[code]
+            for code in requested
+            if observations[code]
         }
