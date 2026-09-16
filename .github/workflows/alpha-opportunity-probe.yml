@@ -1,0 +1,50 @@
+name: Alpha opportunity candidate probe
+
+on:
+  push:
+    branches:
+      - agent/alpha-opportunity-consistency
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Measure fixed-universe economics
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          from tests.regression.test_quant_fusion import UNIVERSES, run_quiet
+
+          baseline = json.loads(Path('tests/fixtures/backtest_golden_metrics.json').read_text())
+          rows = {}
+          for name, codes in UNIVERSES.items():
+              result = run_quiet(codes)
+              expected = baseline[str(len(codes))]
+              rows[name] = {
+                  'symbols': len(codes),
+                  'total_return': float(result['total_return']),
+                  'baseline_total_return': float(expected['total_return']),
+                  'return_delta': float(result['total_return']) - float(expected['total_return']),
+                  'max_drawdown': float(result['max_drawdown']),
+                  'baseline_max_drawdown': float(expected['max_drawdown']),
+                  'drawdown_delta': float(result['max_drawdown']) - float(expected['max_drawdown']),
+                  'sharpe': float(result['sharpe']),
+                  'calmar': float(result['calmar']),
+                  'total_trades': int(result['total_trades']),
+                  'baseline_total_trades': int(expected['total_trades']),
+                  'trade_delta': int(result['total_trades']) - int(expected['total_trades']),
+              }
+          print('ALPHA_OPPORTUNITY_PROBE=' + json.dumps(rows, sort_keys=True))
+          PYCODE
