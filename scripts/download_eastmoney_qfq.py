@@ -1,22 +1,85 @@
-"""Download a reproducible Eastmoney forward-adjusted OHLCV snapshot."""
+"""Download reproducible forward-adjusted OHLCV research and legacy snapshots."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import time
 import urllib.parse
 import urllib.request
+from collections.abc import Iterable
 from pathlib import Path
 
 import pandas as pd
 
-from quantfusion.config.paths import MARKET_DATA_DIR
+from quantfusion.application.daily_support import today_str
+from quantfusion.config.overlay import RISK_BASKET
+from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT
 from quantfusion.config.portfolio import PortfolioPolicy
+from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
+from quantfusion.config.research_universes import (
+    DEFAULT_RESEARCH_START_DATE,
+    RESEARCH_SYMBOL_NAMES,
+    UNIVERSE_POOLS,
+    symbols_for_pool,
+)
 from quantfusion.config.universe import SYMBOL_NAMES
+from quantfusion.data.providers import DataFetcher
 
 
 DEFAULT_SYMBOLS = tuple(dict.fromkeys((*SYMBOL_NAMES, *PortfolioPolicy().regime_symbols)))
+DEFAULT_RESEARCH_OUTPUT = PROJECT_ROOT / "data_cache" / "research_market"
+LEGACY_START_DATE = "2024-01-01"
+LEGACY_END_DATE = "2026-07-20"
+DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS = 365
+RESEARCH_INTER_SYMBOL_DELAY_SECONDS = 1.0
+RESEARCH_COOLDOWN_SECONDS = 10.0
+RESEARCH_MAX_PASSES = 3
+
+
+def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
+    """Return a stable pool union plus all fixed production risk evidence symbols."""
+    pool_names = tuple(pools)
+    if not pool_names:
+        return DEFAULT_SYMBOLS
+    ordered: list[str] = []
+    for pool_name in pool_names:
+        ordered.extend(symbols_for_pool(pool_name))
+    ordered.extend(PortfolioPolicy().regime_symbols)
+    ordered.extend(RISK_BASKET)
+    return tuple(dict.fromkeys(ordered))
+
+
+def resolve_download_window(
+    start: str,
+    end: str,
+    *,
+    research_selection: bool,
+    today: str,
+) -> tuple[str, str]:
+    """Resolve replay-window defaults without changing the retained legacy snapshot."""
+    resolved_start = start or (
+        DEFAULT_RESEARCH_START_DATE if research_selection else LEGACY_START_DATE
+    )
+    resolved_end = end or (today if research_selection else LEGACY_END_DATE)
+    return resolved_start, resolved_end
+
+
+def research_data_start(
+    replay_start: str,
+    *,
+    research_selection: bool,
+    warmup_calendar_days: int = DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS,
+) -> str:
+    """Include causal pre-window data for warm indicators only in pool research mode."""
+    if not research_selection:
+        return replay_start
+    if warmup_calendar_days < 0:
+        raise ValueError("warmup_calendar_days must be non-negative")
+    return str(
+        (pd.Timestamp(replay_start) - pd.Timedelta(days=warmup_calendar_days)).date()
+    )
 
 
 def _market_id(symbol: str) -> str:
@@ -25,7 +88,7 @@ def _market_id(symbol: str) -> str:
 
 
 def _url(symbol: str, start: str, end: str) -> str:
-    """Build the fixed Eastmoney daily forward-adjusted endpoint URL."""
+    """Build the retained Eastmoney daily forward-adjusted endpoint URL."""
     query = urllib.parse.urlencode(
         {
             "secid": f"{_market_id(symbol)}.{symbol}",
@@ -41,10 +104,19 @@ def _url(symbol: str, start: str, end: str) -> str:
     return f"https://push2his.eastmoney.com/api/qt/stock/kline/get?{query}"
 
 
-def _download(symbol: str, start: str, end: str) -> tuple[pd.DataFrame, str]:
-    """Download one symbol with bounded retries and strict response checks."""
+def _download(
+    symbol: str,
+    start: str,
+    end: str,
+    *,
+    attempts: int = 5,
+    retry_base_delay: float = 1.5,
+) -> tuple[pd.DataFrame, str]:
+    """Retain the legacy Eastmoney-only snapshot path with bounded retries."""
+    if attempts < 1:
+        raise ValueError("attempts must be positive")
     errors: list[str] = []
-    for attempt in range(5):
+    for attempt in range(attempts):
         try:
             request = urllib.request.Request(
                 _url(symbol, start, end),
@@ -75,8 +147,6 @@ def _download(symbol: str, start: str, end: str) -> tuple[pd.DataFrame, str]:
             )
             for column in ("open", "close", "high", "low", "volume_lots"):
                 frame[column] = pd.to_numeric(frame[column], errors="raise")
-            # Eastmoney reports A-share volume in board lots. The strategy's ADV
-            # participation control expects shares, so convert one lot to 100 shares.
             frame["volume"] = frame.pop("volume_lots") * 100.0
             frame = frame[["date", "open", "high", "low", "close", "volume"]]
             frame["date"] = pd.to_datetime(frame["date"], errors="raise")
@@ -95,52 +165,288 @@ def _download(symbol: str, start: str, end: str) -> tuple[pd.DataFrame, str]:
             return frame, name
         except Exception as error:  # External endpoint boundary.
             errors.append(f"attempt {attempt + 1}: {error}")
-            if attempt < 4:
-                time.sleep(1.5 * (attempt + 1))
+            if attempt + 1 < attempts:
+                time.sleep(retry_base_delay * (attempt + 1))
     raise RuntimeError(f"{symbol} download failed: {'; '.join(errors)}")
+
+
+def _fetch_research_symbol(
+    symbol: str, start: str, end: str
+) -> tuple[pd.DataFrame, str, str]:
+    """Use provider failover and reject visibly truncated/stale research history."""
+    frame = DataFetcher.fetch_stock_data(symbol, start, end)
+    if frame.empty:
+        raise RuntimeError(f"{symbol} provider failover returned no research rows")
+    provider = str(frame.attrs.get("volume_provider", "unknown"))
+    start_ts = pd.Timestamp(start)
+    end_ts = pd.Timestamp(end)
+    visible = frame.loc[frame.index <= end_ts]
+    if visible.empty:
+        raise RuntimeError(f"{symbol} provider data contains no rows through {end}")
+    first = pd.Timestamp(visible.index[0])
+    latest = pd.Timestamp(visible.index[-1])
+    if provider == "Tencent" and len(visible) >= 1000 and first > start_ts:
+        raise RuntimeError(
+            f"{symbol} Tencent fallback hit the 1000-row history cap; "
+            f"first={first.date()} requested_start={start_ts.date()}"
+        )
+    if (end_ts - latest).days > MAX_EVIDENCE_STALENESS_DAYS:
+        raise RuntimeError(
+            f"{symbol} provider data is stale: last={latest.date()} requested_end={end_ts.date()}"
+        )
+    name = RESEARCH_SYMBOL_NAMES.get(symbol, symbol)
+    return frame, name, provider
+
+
+def _serializable_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return a stable CSV frame whether dates arrive as a column or index."""
+    if "date" in frame.columns:
+        out = frame.copy()
+    else:
+        out = frame.reset_index()
+        if "date" not in out.columns:
+            out.rename(columns={out.columns[0]: "date"}, inplace=True)
+    out["date"] = pd.to_datetime(out["date"], errors="raise")
+    return out
+
+
+def _store_symbol_snapshot(
+    output: Path,
+    symbol_manifest: dict[str, object],
+    symbol: str,
+    frame: pd.DataFrame,
+    name: str,
+    *,
+    provider: str,
+    include_sha256: bool = False,
+) -> None:
+    """Atomically persist one validated frame and its compact provenance row."""
+    serial = _serializable_frame(frame)
+    path = output / f"{symbol}.csv"
+    temporary = output / f".{symbol}.csv.tmp"
+    serial.assign(date=serial["date"].dt.strftime("%Y-%m-%d")).to_csv(
+        temporary, index=False
+    )
+    temporary.replace(path)
+    entry: dict[str, object] = {
+        "name": name,
+        "provider": provider,
+        "rows": len(serial),
+        "first_date": serial["date"].iloc[0].strftime("%Y-%m-%d"),
+        "last_date": serial["date"].iloc[-1].strftime("%Y-%m-%d"),
+    }
+    if include_sha256:
+        entry["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    symbol_manifest[symbol] = entry
+    print(
+        f"{symbol} {name}: {provider}, {len(serial)} rows, "
+        f"{serial['date'].iloc[0].date()} to {serial['date'].iloc[-1].date()}"
+    )
+
+
+def _download_research_symbols(
+    symbols: tuple[str, ...],
+    *,
+    start: str,
+    end: str,
+    output: Path,
+    symbol_manifest: dict[str, object],
+) -> None:
+    """Use provider failover, preserving completed symbols across bounded passes."""
+    pending = list(symbols)
+    last_error = ""
+    for pass_index in range(RESEARCH_MAX_PASSES):
+        if not pending:
+            return
+        next_pending: list[str] = []
+        for offset, symbol in enumerate(pending):
+            try:
+                frame, name, provider = _fetch_research_symbol(symbol, start, end)
+            except RuntimeError as exc:
+                last_error = str(exc)
+                next_pending = pending[offset:]
+                print(
+                    f"{symbol}: research input unavailable; deferring "
+                    f"{len(next_pending)} symbol(s) after pass {pass_index + 1}"
+                )
+                break
+            _store_symbol_snapshot(
+                output,
+                symbol_manifest,
+                symbol,
+                frame,
+                name,
+                provider=provider,
+                include_sha256=True,
+            )
+            time.sleep(RESEARCH_INTER_SYMBOL_DELAY_SECONDS)
+        if not next_pending:
+            return
+        pending = next_pending
+        if pass_index + 1 < RESEARCH_MAX_PASSES:
+            time.sleep(RESEARCH_COOLDOWN_SECONDS)
+    raise RuntimeError(
+        "research snapshot download remained incomplete after bounded provider "
+        f"failover; first pending symbol={pending[0] if pending else 'unknown'}; "
+        f"{last_error}"
+    )
+
+
+def _write_manifest(output: Path, manifest: dict[str, object]) -> None:
+    """Replace the research/legacy manifest atomically within one output directory."""
+    payload = json.dumps(manifest, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+    temporary = output / ".manifest.json.tmp"
+    temporary.write_text(payload, encoding="utf-8")
+    temporary.replace(output / "manifest.json")
+
+
+def build_argument_parser() -> argparse.ArgumentParser:
+    """Build legacy-compatible and pool-aware historical data arguments."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--start",
+        "--start-date",
+        dest="start",
+        default="",
+        help=(
+            "Replay-window start date. Research pools default to 2023-01-01 and "
+            "automatically fetch one calendar year of pre-window warmup data; "
+            "legacy non-pool mode retains 2024-01-01."
+        ),
+    )
+    parser.add_argument(
+        "--end",
+        "--end-date",
+        dest="end",
+        default="",
+        help=(
+            "Snapshot end date. Research pools default to the current Shanghai-market "
+            "date; legacy non-pool mode retains 2026-07-20."
+        ),
+    )
+    parser.add_argument(
+        "--output",
+        default="",
+        help=(
+            "Output directory. Pool downloads default to data_cache/research_market; "
+            "legacy non-pool downloads keep the retained data/market default."
+        ),
+    )
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--symbol", action="append", dest="symbols")
+    selection.add_argument(
+        "--pool",
+        action="append",
+        dest="pools",
+        choices=tuple(UNIVERSE_POOLS),
+        help="Configured research pool; repeat to download a union of pools.",
+    )
+    selection.add_argument(
+        "--all-pools",
+        action="store_true",
+        help="Download the union of all research pools A-J.",
+    )
+    return parser
 
 
 def main() -> int:
     """Download all requested symbols and write a provenance manifest."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--start", default="2024-01-01")
-    parser.add_argument("--end", default="2026-07-20")
-    parser.add_argument("--output", default=str(MARKET_DATA_DIR))
-    parser.add_argument("--symbol", action="append", dest="symbols")
-    args = parser.parse_args()
-    symbols = tuple(args.symbols or DEFAULT_SYMBOLS)
-    output = Path(args.output)
+    args = build_argument_parser().parse_args()
+    research_selection = bool(args.pools or args.all_pools)
+    if args.symbols:
+        symbols = tuple(args.symbols)
+    elif args.all_pools:
+        symbols = select_download_symbols(tuple(UNIVERSE_POOLS))
+    elif args.pools:
+        symbols = select_download_symbols(tuple(args.pools))
+    else:
+        symbols = DEFAULT_SYMBOLS
+    replay_start, end_date = resolve_download_window(
+        args.start,
+        args.end,
+        research_selection=research_selection,
+        today=today_str(),
+    )
+    data_start = research_data_start(
+        replay_start,
+        research_selection=research_selection,
+    )
+    output = Path(
+        args.output
+        or (DEFAULT_RESEARCH_OUTPUT if research_selection else MARKET_DATA_DIR)
+    ).expanduser()
     output.mkdir(parents=True, exist_ok=True)
     symbol_manifest: dict[str, object] = {}
     manifest: dict[str, object] = {
-        "provider": "Eastmoney push2his",
+        "provider": (
+            "DataFetcher failover (Eastmoney/Sina/Tencent)"
+            if research_selection
+            else "Eastmoney push2his"
+        ),
         "adjustment": "qfq",
         "volume_unit": "shares",
-        "requested_start": args.start,
-        "requested_end": args.end,
+        "requested_start": data_start,
+        "research_window_start": replay_start,
+        "warmup_calendar_days": (
+            DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS if research_selection else 0
+        ),
+        "requested_end": end_date,
         "symbols": symbol_manifest,
     }
-    for symbol in symbols:
-        frame, name = _download(symbol, args.start, args.end)
-        path = output / f"{symbol}.csv"
-        frame.assign(date=frame["date"].dt.strftime("%Y-%m-%d")).to_csv(
-            path, index=False
+    if research_selection:
+        requested_symbols = list(symbols)
+        manifest.update(
+            {
+                "complete": False,
+                "requested_symbols": requested_symbols,
+                "downloaded_symbols": [],
+                "missing_symbols": requested_symbols,
+            }
         )
-        symbol_manifest[symbol] = {
-            "name": name,
-            "rows": len(frame),
-            "first_date": frame["date"].iloc[0].strftime("%Y-%m-%d"),
-            "last_date": frame["date"].iloc[-1].strftime("%Y-%m-%d"),
-        }
-        print(
-            f"{symbol} {name}: {len(frame)} rows, "
-            f"{frame['date'].iloc[0].date()} to {frame['date'].iloc[-1].date()}"
+        # Write the incomplete identity before external I/O. A hard interruption
+        # can therefore never leave an older successful manifest claiming that
+        # partially replaced CSVs are a complete research snapshot.
+        _write_manifest(output, manifest)
+        try:
+            _download_research_symbols(
+                tuple(symbols),
+                start=data_start,
+                end=end_date,
+                output=output,
+                symbol_manifest=symbol_manifest,
+            )
+        except Exception as exc:
+            downloaded = list(symbol_manifest)
+            manifest.update(
+                {
+                    "downloaded_symbols": downloaded,
+                    "missing_symbols": [code for code in symbols if code not in symbol_manifest],
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+            _write_manifest(output, manifest)
+            raise
+        manifest.update(
+            {
+                "complete": True,
+                "downloaded_symbols": list(symbol_manifest),
+                "missing_symbols": [],
+            }
         )
-        time.sleep(0.3)
-    (output / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+        _write_manifest(output, manifest)
+    else:
+        for symbol in symbols:
+            frame, name = _download(symbol, data_start, end_date)
+            _store_symbol_snapshot(
+                output,
+                symbol_manifest,
+                symbol,
+                frame,
+                name,
+                provider="Eastmoney push2his",
+            )
+            time.sleep(0.3)
+        _write_manifest(output, manifest)
     return 0
 
 

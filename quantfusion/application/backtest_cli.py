@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import argparse
 
+from quantfusion.application.daily_support import today_str
 from quantfusion.application.reporting import PerformanceReport
+from quantfusion.config.research_universes import (
+    DEFAULT_RESEARCH_START_DATE,
+    RESEARCH_SYMBOL_NAMES,
+    UNIVERSE_POOLS,
+    symbols_for_pool,
+)
 from quantfusion.config.universe import SYMBOL_NAMES
 from quantfusion.domain.rules import SYMBOL_RE
 from quantfusion.engine.universe import BacktestEngine
@@ -12,10 +19,13 @@ from quantfusion.engine.universe import BacktestEngine
 _SYMBOL_RE = SYMBOL_RE
 
 DEFAULT_SYMBOLS = dict(list(SYMBOL_NAMES.items())[:5])
+LEGACY_BACKTEST_START_DATE = "2025-04-01"
+LEGACY_BACKTEST_END_DATE = "2026-07-20"
 
+# Keep the production symbol table public contract unchanged while allowing
+# research-only names to resolve through the separate research catalog.
 SYMBOL_NAME_TABLE: dict[str, str] = dict(SYMBOL_NAMES)
-
-DEFAULT_SYMBOL_NAMES = {v: k for k, v in SYMBOL_NAME_TABLE.items()}
+DEFAULT_SYMBOL_NAMES = {v: k for k, v in RESEARCH_SYMBOL_NAMES.items()}
 
 
 def parse_symbols(symbols_str: str) -> dict[str, str]:
@@ -25,12 +35,12 @@ def parse_symbols(symbols_str: str) -> dict[str, str]:
         s = s.strip()
         if not s:
             continue
-        if s in DEFAULT_SYMBOLS:
-            result[s] = DEFAULT_SYMBOLS[s]
+        if s in RESEARCH_SYMBOL_NAMES:
+            result[s] = RESEARCH_SYMBOL_NAMES[s]
         elif s in DEFAULT_SYMBOL_NAMES:
             result[DEFAULT_SYMBOL_NAMES[s]] = s
         elif _SYMBOL_RE.match(s):
-            result[s] = SYMBOL_NAME_TABLE.get(s, s)
+            result[s] = RESEARCH_SYMBOL_NAMES.get(s, s)
         else:
             raise ValueError(
                 f"Invalid stock code or name: '{s}' (use a six-digit code or a preset name)"
@@ -38,19 +48,58 @@ def parse_symbols(symbols_str: str) -> dict[str, str]:
     return result
 
 
+def resolve_backtest_window(
+    start: str,
+    end: str,
+    *,
+    pool_selected: bool,
+    today: str,
+) -> tuple[str, str]:
+    """Use 2023-to-current defaults only for configured pool research."""
+    if pool_selected:
+        return start or DEFAULT_RESEARCH_START_DATE, end or today
+    return start or LEGACY_BACKTEST_START_DATE, end or LEGACY_BACKTEST_END_DATE
+
+
 def build_argument_parser() -> argparse.ArgumentParser:
     """Build the standalone command-line interface."""
     parser = argparse.ArgumentParser(
         description="Quant Fusion standalone backtester"
     )
-    parser.add_argument(
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument(
         "--symbol",
         "-s",
-        default=",".join(DEFAULT_SYMBOLS),
+        default="",
         help="Comma-separated six-digit codes or preset stock names",
     )
-    parser.add_argument("--start", default="2025-04-01")
-    parser.add_argument("--end", default="2026-07-20")
+    selection.add_argument(
+        "--pool",
+        choices=tuple(UNIVERSE_POOLS),
+        default="",
+        help="Configured research universe (pool_a through pool_j)",
+    )
+    parser.add_argument(
+        "--start",
+        "--start-date",
+        dest="start",
+        default="",
+        help=(
+            "Backtest start date YYYY-MM-DD. Pool research defaults to "
+            f"{DEFAULT_RESEARCH_START_DATE}; legacy non-pool mode retains "
+            f"{LEGACY_BACKTEST_START_DATE}."
+        ),
+    )
+    parser.add_argument(
+        "--end",
+        "--end-date",
+        dest="end",
+        default="",
+        help=(
+            "Backtest end date YYYY-MM-DD. Pool research defaults to the current "
+            f"Shanghai-market date; legacy non-pool mode retains {LEGACY_BACKTEST_END_DATE}."
+        ),
+    )
     parser.add_argument("--capital", type=float, default=2_000_000)
     parser.add_argument(
         "--data-dir",
@@ -80,13 +129,25 @@ def build_argument_parser() -> argparse.ArgumentParser:
 
 def main() -> dict | None:
     """Run a standalone backtest from local CSV or online providers."""
-    args = build_argument_parser().parse_args()
-    symbols = parse_symbols(args.symbol)
+    parser = build_argument_parser()
+    args = parser.parse_args()
+    if args.pool:
+        symbols = symbols_for_pool(args.pool)
+    elif args.symbol:
+        symbols = parse_symbols(args.symbol)
+    else:
+        symbols = dict(DEFAULT_SYMBOLS)
+    start_date, end_date = resolve_backtest_window(
+        args.start,
+        args.end,
+        pool_selected=bool(args.pool),
+        today=today_str(),
+    )
     engine = BacktestEngine(args.capital)
     result = engine.run(
         symbols,
-        args.start,
-        args.end,
+        start_date,
+        end_date,
         data_dir=args.data_dir or None,
         cache_dir=args.cache_dir or None,
         indicator_state=args.indicator_state,

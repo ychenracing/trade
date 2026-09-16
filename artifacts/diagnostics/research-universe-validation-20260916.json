@@ -1,0 +1,221 @@
+{
+  "acceptance_interpretation": {
+    "close_to_next_tradable_open_causality_changed": false,
+    "core_strategy_logic_changed": false,
+    "frozen_canonical_evidence_relabelled": false,
+    "production_17_symbol_contract_changed": false,
+    "risk_thresholds_or_fixed_risk_basket_changed": false,
+    "status": "research validation passed on exact source; final post-cleanup CI and PR merge verification remain separate",
+    "transaction_cost_contract_changed": false
+  },
+  "artifact_file_identities": {
+    "comparison_csv": {
+      "path_in_artifact": "universe-comparison/comparison.csv",
+      "sha256": "584878e09b47d39145becf70588d71da6ceab114a9afe2b0ecc2e0e3c43f016f",
+      "size_bytes": 3082
+    },
+    "comparison_json": {
+      "path_in_artifact": "universe-comparison/comparison.json",
+      "sha256": "6ee0e1983ed8c23c8fbc0f2ab5f2d3d403adcae1aaad4dc061c42d306ec87b7c",
+      "size_bytes": 7843
+    },
+    "comparison_markdown": {
+      "path_in_artifact": "universe-comparison/comparison.md",
+      "sha256": "bfa014f5df73414b7f13451629093581c1e0d7bb1b972a380b0ee23033699986",
+      "size_bytes": 3242
+    },
+    "market_manifest": {
+      "path_in_artifact": "trade-research-market/manifest.json",
+      "sha256": "8662b842bd0a2739e8c6a8bc2f0eb98f5af14e419fd44fdad279bda87f6bb665",
+      "size_bytes": 10023
+    },
+    "regime_refresh_manifest": {
+      "path_in_artifact": "trade-research-regime/live_refresh_manifest.json",
+      "sha256": "75165e59f080982d51fd525448303ee58ee9de0cceb5c4717ab5ed735e9ba515",
+      "size_bytes": 936
+    },
+    "validation_receipt": {
+      "path_in_artifact": "universe-comparison/validation-receipt.json",
+      "sha256": "8ce6fe7d58821118ffb02989f3e5d919091dcdfd54744f7a80f05b96d9d10634",
+      "size_bytes": 23034
+    }
+  },
+  "kind": "source-bound research-universe validation receipt",
+  "metrics": [
+    {
+      "all_cash_day_ratio": 0.7694877505567929,
+      "annual_return": 0.1771822894906736,
+      "average_cash_ratio": 0.945916922187234,
+      "end_date": "2026-09-15",
+      "holding_concentration_hhi_max": 1.0,
+      "holding_concentration_hhi_mean": 0.8393102140901799,
+      "max_concurrent_symbols": 3,
+      "max_drawdown": -0.17974697129998213,
+      "observed_end_date": "2026-09-15",
+      "observed_start_date": "2023-01-03",
+      "pool": "pool_b",
+      "risk_event_count": 1109,
+      "risk_event_types": {
+        "account_budget_envelope": 898,
+        "concentration_trim": 3,
+        "independent_risk_basket_loaded": 1,
+        "portfolio_drawdown_alert_off": 3,
+        "portfolio_drawdown_alert_on": 5,
+        "risk_action_suppressed": 3,
+        "risk_execution_owner_changed": 6,
+        "sector_guard_off": 12,
+        "sector_guard_on": 15,
+        "sector_risk_level": 57,
+        "sector_risk_trim": 1,
+        "sector_shock": 105
+      },
+      "start_date": "2023-01-01",
+      "symbol_count": 3,
+      "total_return": 0.7883438787053749,
+      "total_trades": 256,
+      "turnover_ratio": 5.822311267422636
+    },
+    {
+      "all_cash_day_ratio": 0.6815144766146993,
+      "annual_return": 0.05873380700198627,
+      "average_cash_ratio": 0.9442039957832828,
+      "end_date": "2026-09-15",
+      "holding_concentration_hhi_max": 1.0,
+      "holding_concentration_hhi_mean": 0.7863825866284001,
+      "max_concurrent_symbols": 6,
+      "max_drawdown": -0.1746122031773825,
+      "observed_end_date": "2026-09-15",
+      "observed_start_date": "2023-01-03",
+      "pool": "pool_f",
+      "risk_event_count": 1117,
+      "risk_event_types": {
+        "account_budget_envelope": 898,
+        "blocked_market_risk_pyramid": 1,
+        "concentration_trim": 1,
+        "independent_risk_basket_loaded": 1,
+        "layered_stop": 3,
+        "portfolio_drawdown_alert_off": 7,
+        "portfolio_drawdown_alert_on": 9,
+        "risk_action_suppressed": 1,
+        "risk_execution_owner_changed": 6,
+        "sector_guard_off": 12,
+        "sector_guard_on": 15,
+        "sector_risk_level": 56,
+        "sector_risk_trim": 2,
+        "sector_shock": 105
+      },
+      "start_date": "2023-01-01",
+      "symbol_count": 15,
+      "total_return": 0.22554001900050014,
+      "total_trades": 296,
+      "turnover_ratio": 8.993970724915243
+    },
+    {
+      "all_cash_day_ratio": 0.6447661469933185,
+      "annual_return": 0.10760234132896307,
+      "average_cash_ratio": 0.916709043234151,
+      "end_date": "2026-09-15",
+      "holding_concentration_hhi_max": 1.0,
+      "holding_concentration_hhi_mean": 0.6577077462282654,
+      "max_concurrent_symbols": 6,
+      "max_drawdown": -0.17472842621276516,
+      "observed_end_date": "2026-09-15",
+      "observed_start_date": "2023-01-03",
+      "pool": "pool_g",
+      "risk_event_count": 1138,
+      "risk_event_types": {
+        "account_budget_envelope": 898,
+        "blocked_confirmed_market_risk": 5,
+        "blocked_market_risk_pyramid": 7,
+        "confirmed_cycle_drawdown_lock": 1,
+        "independent_risk_basket_loaded": 1,
+        "layered_stop": 4,
+        "persistent_portfolio_risk_lock": 1,
+        "portfolio_drawdown_alert_off": 10,
+        "portfolio_drawdown_alert_on": 13,
+        "portfolio_drawdown_rearmed": 1,
+        "risk_execution_owner_changed": 6,
+        "sector_guard_off": 12,
+        "sector_guard_on": 15,
+        "sector_risk_level": 56,
+        "sector_risk_trim": 3,
+        "sector_shock": 105
+      },
+      "start_date": "2023-01-01",
+      "symbol_count": 27,
+      "total_return": 0.43933388949962504,
+      "total_trades": 382,
+      "turnover_ratio": 8.105578870536169
+    }
+  ],
+  "nonfatal_external_io_note": {
+    "description": "After the workflow prepared valid independent regime-index files with provider fallback, the comparison command retried Eastmoney and recorded preserved_last_good when Eastmoney disconnected. The run remained successful; regime files and hashes were validated and used. This is retained as external-provider evidence, not treated as a strategy/economic failure.",
+    "regime_refresh_manifest_sha256": "75165e59f080982d51fd525448303ee58ee9de0cceb5c4717ab5ed735e9ba515"
+  },
+  "preserved_prior_failure_runs": [
+    {
+      "class": "historical market-data acquisition/provider disconnect; replay did not start",
+      "run_id": 35045314417
+    },
+    {
+      "class": "historical market-data acquisition failure on earlier source",
+      "run_id": 35045731007
+    },
+    {
+      "class": "historical market-data acquisition/provider disconnect at 300308; replay did not start",
+      "run_id": 35046002011
+    },
+    {
+      "class": "historical market-data acquisition failure on earlier source",
+      "run_id": 35046282609
+    },
+    {
+      "class": "historical market-data acquisition failure on earlier source",
+      "run_id": 35046335391
+    },
+    {
+      "class": "older-source Pyright Optional-member failures; fixed by descendant source before validated revision",
+      "run_id": 35048246822
+    }
+  ],
+  "scope": "research-only Pool B/F/G historical-window validation; not a production strategy/economic retune",
+  "source": {
+    "base_revision": "8a263b03c1dbfc534a239940d48784158438e2bb",
+    "branch": "feat/configurable-universe-history",
+    "checkout_revision": "42122d4ca97388e14e920655c65eb21abee8bb1c",
+    "exact_head_match": true,
+    "pr": 105,
+    "repository": "ychenracing/trade",
+    "validated_revision": "42122d4ca97388e14e920655c65eb21abee8bb1c"
+  },
+  "validation": {
+    "all_embedded_sha256_verified": true,
+    "complete": true,
+    "deployment_policy": "production_daily_replay",
+    "end_date": "2026-09-15",
+    "engine": "ProductionReplayEngine",
+    "market_downloaded_symbols": 35,
+    "market_hash_count": 35,
+    "market_manifest_complete": true,
+    "market_missing_symbols": [],
+    "market_requested_symbols": 35,
+    "pools": [
+      "pool_b",
+      "pool_f",
+      "pool_g"
+    ],
+    "regime_hash_count": 2,
+    "report_hash_count": 3,
+    "start_date": "2023-01-01"
+  },
+  "workflow": {
+    "artifact_digest": "sha256:5b7ded6d9c8807799e2def279fa01e6db846fc1b5713a92660a83009c9730be6",
+    "artifact_expires_at": "2026-12-15T05:06:40Z",
+    "artifact_id": 10431227442,
+    "artifact_name": "research-universe-validation-42122d4ca97388e14e920655c65eb21abee8bb1c",
+    "artifact_size_bytes": 667992,
+    "conclusion": "success",
+    "run_id": 35058209928,
+    "run_url": "https://github.com/ychenracing/trade/actions/runs/35058209928"
+  }
+}
