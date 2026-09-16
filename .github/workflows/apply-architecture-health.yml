@@ -45,3 +45,4 @@ jobs:
           git diff --cached --check
           git commit -m 'refactor: unify architecture health state'
           git push origin HEAD:agent/architecture-consistency-refactor
+# rerun after research-adapter lint cleanup
