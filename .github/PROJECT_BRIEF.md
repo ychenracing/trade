@@ -21,7 +21,7 @@
 
 固定行情、黄金预期和正式证据与缓存、日扫输出、研究检查点分开。日常扫描显式指定独立的 `--regime-data-dir`，不刷新冻结 `data/regime`。指数刷新状态和旧路由不能替代请求日的数据完整性核对。
 
-正式压力计划与 ID、family、shard 等诊断选择严格隔离。只有精确正式计划及其适用验收满足发布条件时才可发布 canonical 工件；诊断、Actions 成功或一次文件写入成功都不等于正式经济接受。有限历史例外只属于其绑定的候选与证据。
+正式压力计划与 ID、family、shard 等诊断选择严格隔离。只有精确正式计划及其适用验收满足发布条件时才可发布 canonical 工件；诊断、Actions 成功或一次文件写入成功都不等于正式经济接受。
 
 ## 事实源与职责
 
@@ -30,7 +30,7 @@
 | 工程流程、授权边界、渐进验证与合并原则 | [AGENTS.md](../AGENTS.md) 与当前任务的有效合同 |
 | 如何准备输入、运行、读报告与安全排错 | [README.md](../README.md)；功能与参数再核对当前源码、解析器和测试 |
 | 模块、状态所有权、因果顺序与输出分支 | [ARCHITECTURE.md](../docs/ARCHITECTURE.md) |
-| 证据类型、当前基线、来源及有限例外 | [VALIDATION.md](../docs/VALIDATION.md) 与其引用的原始工件、冻结合同和授权 |
+| 验证结果、来源及复核方法 | [VALIDATION.md](../docs/VALIDATION.md) 与其引用的原始工件与当前验收规则 |
 | 配置默认值、校验与画像 | `quantfusion/config/`；`engine.py` 管理默认值及校验，`profiles.py` 管理行业分类、符号路由与画像构造 |
 | 数据格式、单位、冻结与运行输入隔离 | [data/README.md](../data/README.md)、清单与读取器 |
 | 实际 CI 覆盖和执行条件 | [ci.yml](workflows/ci.yml)、对应锁文件及实时 checks |
