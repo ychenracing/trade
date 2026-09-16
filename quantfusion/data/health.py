@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Iterable
 
@@ -36,14 +36,16 @@ class DataHealthReport:
     """Structured health for inputs without changing domain decisions."""
 
     issues: tuple[DataHealthIssue, ...] = ()
+    status: DataHealthStatus = field(init=False)
 
-    @property
-    def status(self) -> DataHealthStatus:
+    def __post_init__(self) -> None:
         if any(issue.status is DataHealthStatus.INVALID for issue in self.issues):
-            return DataHealthStatus.INVALID
-        if self.issues:
-            return DataHealthStatus.UNAVAILABLE
-        return DataHealthStatus.VALID
+            status = DataHealthStatus.INVALID
+        elif self.issues:
+            status = DataHealthStatus.UNAVAILABLE
+        else:
+            status = DataHealthStatus.VALID
+        object.__setattr__(self, "status", status)
 
     @property
     def valid(self) -> bool:
