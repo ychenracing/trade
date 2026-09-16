@@ -114,6 +114,22 @@ def test_research_window_defaults_to_2023_and_backtest_accepts_pool_selection() 
     assert aliases.end == "2025-12-31"
 
 
+def test_download_cli_accepts_start_date_and_end_date_aliases() -> None:
+    args = download.build_argument_parser().parse_args(
+        [
+            "--pool",
+            "pool_g",
+            "--start-date",
+            "2023-01-01",
+            "--end-date",
+            "2026-09-15",
+        ]
+    )
+    assert args.start == "2023-01-01"
+    assert args.end == "2026-09-15"
+    assert args.pools == ["pool_g"]
+
+
 def test_pool_download_selection_includes_all_fixed_risk_evidence() -> None:
     selected = download.select_download_symbols(("pool_b",))
     assert selected[:3] == tuple(symbols_for_pool("pool_b"))
