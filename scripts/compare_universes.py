@@ -12,15 +12,18 @@ from quantfusion.application.universe_comparison import (
     summarize_universe_result,
     write_universe_comparison,
 )
-from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT, REGIME_DATA_DIR
+from quantfusion.config.paths import PROJECT_ROOT
 from quantfusion.config.research_universes import (
     DEFAULT_RESEARCH_START_DATE,
     UNIVERSE_POOLS,
     symbols_for_pool,
 )
+from quantfusion.data import contracts as market_data_contracts
 from quantfusion.engine.replay import ProductionReplayEngine
 
 DEFAULT_VALIDATION_POOLS = ("pool_b", "pool_f", "pool_g")
+DEFAULT_RESEARCH_DATA_DIR = PROJECT_ROOT / "data_cache" / "research_market"
+DEFAULT_RESEARCH_REGIME_DIR = PROJECT_ROOT / "data_cache" / "regime"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "reports" / "universe_comparison"
 
 
@@ -75,8 +78,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default="",
         help="Replay end date YYYY-MM-DD (default: current Shanghai-market date).",
     )
-    parser.add_argument("--data-dir", default=str(MARKET_DATA_DIR))
-    parser.add_argument("--regime-data-dir", default=str(REGIME_DATA_DIR))
+    parser.add_argument("--data-dir", default=str(DEFAULT_RESEARCH_DATA_DIR))
+    parser.add_argument("--regime-data-dir", default=str(DEFAULT_RESEARCH_REGIME_DIR))
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--capital", type=float, default=2_000_000.0)
     parser.add_argument("--indicator-state", choices=("cold", "warm"), default="warm")
@@ -93,6 +96,16 @@ def main() -> int:
     end_date = args.end_date or today_str()
     data_dir = Path(args.data_dir).expanduser()
     regime_data_dir = Path(args.regime_data_dir).expanduser()
+    if not data_dir.is_dir():
+        raise ValueError(
+            f"Research market-data directory does not exist: {data_dir}. "
+            "Run scripts.download_eastmoney_qfq with the same pool selection first."
+        )
+    market_data_contracts.refresh_regime_indices(
+        regime_data_dir,
+        end_date=end_date,
+        strict=True,
+    )
 
     rows = [
         _run_pool(
