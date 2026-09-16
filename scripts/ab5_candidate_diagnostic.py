@@ -104,11 +104,43 @@ def run() -> dict[str, Any]:
         for event in result.get("risk_events", [])
         if event.get("event") == "account_budget_envelope"
     ]
-    recovery_days = sum("ab5_recovery_state" in event for event in envelopes)
+    recovery_events = [event for event in envelopes if "ab5_recovery_state" in event]
     recovery_states: dict[str, int] = defaultdict(int)
-    for event in envelopes:
-        if "ab5_recovery_state" in event:
-            recovery_states[str(event["ab5_recovery_state"])] += 1
+    reduced_new = reduced_no_new = pending_new = pending_no_new = 0
+    recovery_detail: list[dict[str, Any]] = []
+    for event in recovery_events:
+        state = str(event["ab5_recovery_state"])
+        recovery_states[state] += 1
+        new_orders = int(event.get("new_reduction_orders", -1))
+        if state == "AB5_REDUCED":
+            if new_orders > 0:
+                reduced_new += 1
+            elif new_orders == 0:
+                reduced_no_new += 1
+        elif state == "AB5_RECOVERY_PENDING":
+            if new_orders > 0:
+                pending_new += 1
+            elif new_orders == 0:
+                pending_no_new += 1
+        recovery_detail.append(
+            {
+                key: event.get(key)
+                for key in (
+                    "date",
+                    "ab5_recovery_state",
+                    "ab5_recovery_buy_gross_cap",
+                    "gross_before",
+                    "gross_cap",
+                    "new_reduction_orders",
+                    "risk_alert_active",
+                    "shock_episode_active",
+                    "recovery_buy_gross_cap",
+                    "recovery_buy_gross_scale",
+                    "buy_scale",
+                    "buy_shares_removed",
+                )
+            }
+        )
 
     metrics = {
         "window": [START_DATE, END_DATE],
@@ -128,8 +160,13 @@ def run() -> dict[str, Any]:
         "explicit_fees": explicit_fees,
         "ab5_sell_fills": len(ab5_sells),
         "ab5_sell_notional": sum(abs(float(trade.gross_value)) for trade in ab5_sells),
-        "recovery_active_days": recovery_days,
+        "recovery_active_days": len(recovery_events),
         "recovery_state_days": dict(sorted(recovery_states.items())),
+        "recovery_reduced_with_new_reductions": reduced_new,
+        "recovery_reduced_without_new_reductions": reduced_no_new,
+        "recovery_pending_with_new_reductions": pending_new,
+        "recovery_pending_without_new_reductions": pending_no_new,
+        "recovery_detail": recovery_detail,
     }
     metrics.update(_sell_rebuy_metrics(trades, equity_curve))
     return metrics
