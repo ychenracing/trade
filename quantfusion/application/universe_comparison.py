@@ -92,6 +92,18 @@ def _trade_gross_value(trade: Any) -> float:
     return max(shares, 0) * max(price, 0.0)
 
 
+def _members_text(record: Mapping[str, Any]) -> str:
+    symbols = list(record.get("symbols", []))
+    names = list(record.get("symbol_names", []))
+    if len(symbols) != len(names):
+        raise ValueError("comparison report requires aligned symbols and symbol_names")
+    return "; ".join(f"{code} {name}" for code, name in zip(symbols, names, strict=True))
+
+
+def _risk_event_types_text(event_types: Mapping[str, Any]) -> str:
+    return "; ".join(f"{name}={int(count)}" for name, count in sorted(event_types.items()))
+
+
 def summarize_universe_result(
     pool_name: str,
     symbols: Mapping[str, str],
@@ -147,6 +159,7 @@ def summarize_universe_result(
         "pool": pool_name,
         "symbol_count": len(symbols),
         "symbols": list(symbols),
+        "symbol_names": list(symbols.values()),
         "start_date": start_date,
         "end_date": end_date,
         "total_return": float(result["total_return"]),
@@ -174,6 +187,9 @@ def write_universe_comparison(
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
 
+    for record in records:
+        record["members"] = _members_text(record)
+
     json_path = output / "comparison.json"
     json_path.write_text(
         json.dumps(records, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
@@ -183,6 +199,7 @@ def write_universe_comparison(
     scalar_fields = (
         "pool",
         "symbol_count",
+        "members",
         "start_date",
         "end_date",
         "total_return",
@@ -196,18 +213,27 @@ def write_universe_comparison(
         "holding_concentration_hhi_max",
         "max_concurrent_symbols",
         "risk_event_count",
+        "risk_event_types",
     )
     csv_path = output / "comparison.csv"
     with csv_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=scalar_fields)
         writer.writeheader()
         for record in records:
-            writer.writerow({field: record[field] for field in scalar_fields})
+            csv_record = {field: record[field] for field in scalar_fields}
+            csv_record["risk_event_types"] = json.dumps(
+                record["risk_event_types"],
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            writer.writerow(csv_record)
 
     markdown_path = output / "comparison.md"
     headers = (
         "Pool",
         "Stocks",
+        "Members",
         "Window",
         "Return",
         "Max DD",
@@ -219,6 +245,7 @@ def write_universe_comparison(
         "Avg HHI",
         "Peak HHI",
         "Risk events",
+        "Risk event types",
     )
     lines = [
         "# Universe comparison",
@@ -229,12 +256,14 @@ def write_universe_comparison(
     for record in records:
         hhi_mean = record["holding_concentration_hhi_mean"]
         hhi_max = record["holding_concentration_hhi_max"]
+        risk_types = _risk_event_types_text(record["risk_event_types"])
         lines.append(
             "| "
             + " | ".join(
                 (
                     str(record["pool"]),
                     str(record["symbol_count"]),
+                    str(record["members"]),
                     f"{record['start_date']} → {record['end_date']}",
                     f"{float(record['total_return']):.2%}",
                     f"{float(record['max_drawdown']):.2%}",
@@ -246,6 +275,7 @@ def write_universe_comparison(
                     "N/A" if hhi_mean is None else f"{float(hhi_mean):.2%}",
                     "N/A" if hhi_max is None else f"{float(hhi_max):.2%}",
                     str(record["risk_event_count"]),
+                    risk_types or "none",
                 )
             )
             + " |"
@@ -254,6 +284,7 @@ def write_universe_comparison(
         [
             "",
             "HHI is reconstructed from executed fills and the latest closing price known by each portfolio date; cash-only days are reported separately and excluded from the HHI average.",
+            "Risk-event counts are descriptive replay evidence and do not change production decisions.",
             "",
         ]
     )
