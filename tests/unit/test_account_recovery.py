@@ -331,3 +331,11 @@ def test_account_budget_adapter_gates_before_canonical_and_annotates_envelope(
     assert envelope["ab5_recovery_book_ids"] == [[0, "300308", "atr_channel"]]
     assert envelope["ab5_recovery_blocked_orders"] == 1
     assert envelope["ab5_recovery_buy_shares_blocked"] == 500
+
+
+def test_all_production_replay_paths_use_the_recovery_adapter() -> None:
+    import quantfusion.engine.replay_loop as replay_loop
+    from quantfusion.engine.universe import BacktestEngine
+
+    assert BacktestEngine._apply_account_risk_budget.__module__ == "quantfusion.engine.universe"
+    assert replay_loop.apply_account_risk_budget is apply_account_risk_budget_with_recovery
