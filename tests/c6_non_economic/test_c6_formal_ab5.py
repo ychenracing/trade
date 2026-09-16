@@ -13,11 +13,11 @@ from quantfusion.application.c6_contract import (
 )
 from quantfusion.application.c6_parallel_l1 import core_l1_tasks
 from quantfusion.config.engine import default_engine_config
-from quantfusion.engine.replay import (
-    ProductionReplayEngine,
+from quantfusion.research.c6_runtime import (
     c6_diagnostic_engine_config,
+    runtime_policy_for_intervention,
+    validate_c6_diagnostic_request,
 )
-from quantfusion.engine.universe import BacktestEngine
 
 
 def _request(intervention_id: str) -> dict[str, object]:
@@ -53,13 +53,13 @@ def test_only_ab5_interventions_enable_the_existing_budget_path() -> None:
     ordinary = default_engine_config()
     for intervention in ("C6_BASE", "C6_BASE_PLUS_S"):
         request = _request(intervention)
-        assert ProductionReplayEngine.validate_c6_diagnostic_request(request) == request
+        assert validate_c6_diagnostic_request(request) == request
         assert c6_diagnostic_engine_config({}, request).get(
             "account_risk_budget_enabled", False
         ) is False
     for intervention in ("C6_BASE_AB5", "C6_BASE_AB5_PLUS_S"):
         request = _request(intervention)
-        assert ProductionReplayEngine.validate_c6_diagnostic_request(request) == request
+        assert validate_c6_diagnostic_request(request) == request
         assert c6_diagnostic_engine_config({}, request)[
             "account_risk_budget_enabled"
         ] is True
@@ -71,17 +71,22 @@ def test_only_ab5_interventions_enable_the_existing_budget_path() -> None:
 
 
 def test_ab5_variants_keep_full_base_and_s_feature_sets() -> None:
-    engine = object.__new__(BacktestEngine)
     for intervention, expected in (
         ("C6_BASE_AB5", {"F0", "F1", "U"}),
         ("C6_BASE_AB5_PLUS_S", {"F0", "F1", "U", "S"}),
     ):
-        engine._c6_diagnostic_request = {"intervention_id": intervention}
-        assert {
-            feature
-            for feature in ("F0", "F1", "U", "S")
-            if engine._c6_feature_enabled(feature)
-        } == expected
+        policy = runtime_policy_for_intervention(intervention)
+        enabled = {
+            name
+            for name, value in {
+                "F0": policy.state_local_books,
+                "F1": policy.block_retained_defensive_rebuy,
+                "U": policy.use_fixed_reference_scores,
+                "S": policy.overlay_s_enabled,
+            }.items()
+            if value
+        }
+        assert enabled == expected
 
 
 def test_formal_ab5_l1_uses_binding_candidate_without_changing_scenarios() -> None:

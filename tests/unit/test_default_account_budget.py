@@ -7,7 +7,7 @@ from tests.c6_non_economic.test_c6_recovery_boundaries import synthetic_market a
 from quantfusion.account.models import AccountPosition, AccountSnapshot
 from quantfusion.application import stress
 from quantfusion.config.engine import default_engine_config
-from quantfusion.engine.replay import c6_diagnostic_engine_config
+from quantfusion.research.c6_runtime import c6_diagnostic_engine_config
 from quantfusion.engine.universe import BacktestEngine
 from tests.unit.test_account_truth_boundary import (
     AS_OF, _decision, _frame, _run_with_market,

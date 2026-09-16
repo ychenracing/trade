@@ -13,6 +13,7 @@ import pandas as pd
 
 from quantfusion.domain.models import Signal
 from quantfusion.domain.rules import SYMBOL_RE
+from quantfusion.engine.runtime import runtime_policy
 from quantfusion.strategy.trend import BaseStrategy
 
 _SYMBOL_RE = SYMBOL_RE
@@ -238,8 +239,9 @@ class CoreReplayLoopMixin:
         pending: list[tuple[Signal, BaseStrategy]],
     ) -> list[tuple[Signal, BaseStrategy]]:
         """Evaluate close-based risk and signals after the opening execution phase."""
-        if getattr(self, "_c6_intervention", None) in {"W1_DATA_MAP_ONLY", "W2_POOL_DENOMINATOR_ONLY"}:
-            symbols_dict = {code: name for code, name in symbols_dict.items() if code != "601869"}
+        exclusions = runtime_policy(self).signal_universe_exclusions
+        if exclusions:
+            symbols_dict = {code: name for code, name in symbols_dict.items() if code not in exclusions}
         before = list(pending)
         date_str = date.strftime("%Y-%m-%d")
         current_assets = self._total_assets(data_map, date)

@@ -8,6 +8,11 @@ from types import SimpleNamespace
 
 import pandas as pd
 import pytest
+from quantfusion.research.c6_runtime import (
+    run_c6_diagnostic,
+    runtime_policy_for_intervention,
+    validate_c6_diagnostic_request,
+)
 from quantfusion.application import c6_diagnostics
 from quantfusion.engine.replay import ProductionReplayEngine
 from quantfusion.engine.universe import BacktestEngine
@@ -111,7 +116,7 @@ def test_w1_excludes_601869_from_the_first_native_score_query():
     def sleeve():
         return SleeveBacktestEngine(2000000., cfg={}, policy=PortfolioPolicy(), allocation_lookbacks=(10,), sleeve_name='fast')
     control, diagnostic = sleeve(), sleeve()
-    diagnostic._c6_intervention = 'W1_DATA_MAP_ONLY'
+    diagnostic._runtime_policy = runtime_policy_for_intervention('W1_DATA_MAP_ONLY')
     expected = control._allocation_scores({k: v for k, v in data.items() if k != '601869'}, dates[-1])
     actual = diagnostic._allocation_scores(data, dates[-1])
     assert actual == expected
@@ -230,21 +235,23 @@ def test_diagnostic_request_is_closed_and_production_signature_unchanged() -> No
         "recording_mode": "DEFAULT", "scenario_id": "prefix-05",
         "diagnostic_noncanonical": True, "allow_publication": False,
     }
-    assert ProductionReplayEngine.validate_c6_diagnostic_request(request) == request
+    assert validate_c6_diagnostic_request(request) == request
     for key, value in (
         ("schema_version", 2), ("intervention_id", "TYPO"),
         ("recording_mode", "TRACE"), ("scenario_id", ""),
         ("diagnostic_noncanonical", False), ("allow_publication", True),
     ):
         with pytest.raises(ValueError, match=key):
-            ProductionReplayEngine.validate_c6_diagnostic_request({**request, key: value})
+            validate_c6_diagnostic_request({**request, key: value})
     with pytest.raises(ValueError, match="extra"):
-        ProductionReplayEngine.validate_c6_diagnostic_request({**request, "candidate": "x"})
+        validate_c6_diagnostic_request({**request, "candidate": "x"})
     with pytest.raises(ValueError, match="no-drift"):
-        ProductionReplayEngine.validate_c6_diagnostic_request({**request, "recording_mode": "ON", "scenario_id": "prefix-04"})
+        validate_c6_diagnostic_request({**request, "recording_mode": "ON", "scenario_id": "prefix-04"})
 def test_ablation_map_is_exact_and_production_defaults_full_on() -> None:
-    engine = object.__new__(BacktestEngine)
-    assert all(engine._c6_feature_enabled(item) for item in ("F0", "F1", "U"))
+    production = BacktestEngine()
+    assert production._runtime_policy.state_local_books is True
+    assert production._runtime_policy.block_retained_defensive_rebuy is True
+    assert production._runtime_policy.use_fixed_reference_scores is True
     expected = {
         "BASELINE": set(), "F0_ONLY": {"F0"}, "F0_F1": {"F0", "F1"},
         "U_ONLY": {"U"}, "C6_BASE": {"F0", "F1", "U"},
@@ -253,8 +260,17 @@ def test_ablation_map_is_exact_and_production_defaults_full_on() -> None:
         "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK": set(),
     }
     for intervention, enabled in expected.items():
-        engine._c6_diagnostic_request = {"intervention_id": intervention}
-        assert {item for item in ("F0", "F1", "U") if engine._c6_feature_enabled(item)} == enabled
+        policy = runtime_policy_for_intervention(intervention)
+        actual = {
+            name
+            for name, value in {
+                "F0": policy.state_local_books,
+                "F1": policy.block_retained_defensive_rebuy,
+                "U": policy.use_fixed_reference_scores,
+            }.items()
+            if value
+        }
+        assert actual == enabled
 def test_s_counterpart_is_same_scenario_only() -> None:
     assert c6_diagnostics.base_counterpart_id("C6-Base+S::prefix-05") == "C6-Base::prefix-05"
     with pytest.raises(ValueError, match="prefix"):
@@ -413,9 +429,9 @@ def _warm_fixture():
 
 
 def test_warm_boundary_captures_raw_state_before_replay_without_aliases():
-    from quantfusion.engine.ensemble_orchestration import capture_c6_warm_state
+    from quantfusion.engine.ensemble_orchestration import capture_diagnostic_warm_state
     states, risk = _warm_fixture()
-    captured = capture_c6_warm_state(states, risk, None)
+    captured = capture_diagnostic_warm_state(states, risk, None)
     states[0].sleeve.cash = 123
     states[0].sleeve.positions['contaminated'] = {}
     states[0].data_map['a'].iloc[0, 0] = -999
@@ -433,7 +449,7 @@ def test_warm_boundary_captures_raw_state_before_replay_without_aliases():
 
 @pytest.mark.parametrize('contamination', ['cash', 'positions', 'pending', 'trades', 'lock', 'peak', 'sticky', 'safe_mode', 'external_risk'])
 def test_warm_boundary_rejects_pre_window_economic_contamination(contamination):
-    from quantfusion.engine.ensemble_orchestration import capture_c6_warm_state
+    from quantfusion.engine.ensemble_orchestration import capture_diagnostic_warm_state
     states, risk = _warm_fixture()
     sleeve = states[0].sleeve
     if contamination == 'cash':
@@ -455,7 +471,7 @@ def test_warm_boundary_rejects_pre_window_economic_contamination(contamination):
     elif contamination == 'external_risk':
         sleeve._external_risk_level = 2
     with pytest.raises(ValueError, match='warm boundary'):
-        capture_c6_warm_state(states, risk, None)
+        capture_diagnostic_warm_state(states, risk, None)
 
 
 def test_warm_boundary_missing_capture_cannot_reconstruct_end_state():
@@ -484,7 +500,8 @@ def test_readiness_not_ready_suppresses_buys_but_preserves_sells(tmp_path):
     blocked = _synthetic_daily_signals(tmp_path / 'blocked', ready='INVALID', opinion=None)
     assert ready['summary']['buy'] == 1
     assert blocked['summary']['buy'] == 0
-    assert blocked['summary']['warmup_not_ready'] is True
+    assert blocked['warmup_health']['warmup_status'] == 'INVALID'
+    assert blocked['summary']['buys_suppressed'] is True
     assert not ready['summary']['current_route_mismatch']
     assert [x for x in blocked['pending_signals'] if x['direction'] == 'sell'] == [x for x in ready['pending_signals'] if x['direction'] == 'sell']
     assert blocked['summary']['sell'] == 1
@@ -549,13 +566,23 @@ def test_healthy_bull_replay_and_s_noop_preserve_all_five_paths(tmp_path, record
         s_flags = []
         engine = ProductionReplayEngine(2000000.)
         kwargs = {'data_dir': str(tmp_path), 'regime_data_dir': str(tmp_path)}
-        runner = engine.run
-        if intervention != 'PRODUCTION':
-            runner = engine.run_c6_diagnostic
-            kwargs['diagnostic_request'] = {'schema_version': 1, 'intervention_id': intervention,
-                                           'recording_mode': 'DEFAULT', 'scenario_id': 'synthetic-healthy-bull',
-                                           'diagnostic_noncanonical': True, 'allow_publication': False}
-        result = runner({symbol: symbol for symbol in symbols}, '2026-01-05', '2026-01-09', **kwargs)
+        if intervention == 'PRODUCTION':
+            result = engine.run(
+                {symbol: symbol for symbol in symbols},
+                '2026-01-05', '2026-01-09', **kwargs,
+            )
+        else:
+            result = run_c6_diagnostic(
+                engine,
+                {symbol: symbol for symbol in symbols},
+                '2026-01-05', '2026-01-09',
+                diagnostic_request={
+                    'schema_version': 1, 'intervention_id': intervention,
+                    'recording_mode': 'DEFAULT', 'scenario_id': 'synthetic-healthy-bull',
+                    'diagnostic_noncanonical': True, 'allow_publication': False,
+                },
+                **kwargs,
+            )
         states = replay_states
         expected_s = intervention == 'C6_BASE_PLUS_S' or (
             intervention == 'PRODUCTION' and getattr(CrossMarketOverlay, 'C6_S_PRODUCTION', False))

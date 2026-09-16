@@ -18,6 +18,7 @@ from quantfusion.domain.models import (
 )
 from quantfusion.domain.rules import floor_to_lot, is_finite_number
 from quantfusion.engine.causal import CausalBacktestEngine
+from quantfusion.engine.runtime import ReplayRuntimePolicy
 from quantfusion.config.portfolio import (
     PortfolioPolicyBase,
     require_positive_ratio,
@@ -54,6 +55,7 @@ class _EnsembleSleeveBacktestEngine(_CausalBacktestEngine):
         self._execution_data_map: dict[str, pd.DataFrame] | None = None
         self._execution_date: pd.Timestamp | None = None
         self._adv_used: dict[tuple[str, str, str], int] = {}
+        self._runtime_policy = ReplayRuntimePolicy()
         normalized_cfg = dict(cfg or {})
         normalized_cfg["max_drawdown"] = policy.confirmed_drawdown
         super().__init__(initial_capital=initial_capital, cfg=normalized_cfg)
@@ -260,6 +262,7 @@ class _RunRequest:
     cache_dir: str | None
     indicator_state: str
     warmup_calendar_days: int
+    runtime_policy: ReplayRuntimePolicy = field(default_factory=ReplayRuntimePolicy)
     risk_state: dict | None = None
     route_controller: Any | None = None
 
@@ -540,8 +543,11 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
         allocation_mode: str | None = None,
         risk_state: dict | None = None,
         route_controller: Any | None = None,
+        runtime_policy: ReplayRuntimePolicy | None = None,
     ) -> dict:
         """Run the configured single sleeve or the default three-sleeve ensemble."""
+        effective_runtime = runtime_policy or ReplayRuntimePolicy()
+        self._runtime_policy = effective_runtime
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
         if mode not in {"single", "ensemble"}:
             raise ValueError("allocation_mode must be 'single' or 'ensemble'")
@@ -580,6 +586,7 @@ class _EnsembleBacktestEngine(_EnsembleSleeveBacktestEngine):
                 cache_dir=cache_dir,
                 indicator_state=indicator_state,
                 warmup_calendar_days=warmup_calendar_days,
+                runtime_policy=effective_runtime,
                 risk_state=risk_state,
                 route_controller=route_controller,
             )

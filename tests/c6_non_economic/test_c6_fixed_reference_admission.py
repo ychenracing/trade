@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 import pandas as pd
+from quantfusion.research.c6_runtime import runtime_policy_for_intervention
 from quantfusion.config.universe import (
     ESTABLISHED_BASE_CORE,
     ESTABLISHED_EXPANSION_CORE,
@@ -154,7 +155,7 @@ def test_u_off_uses_the_legacy_pool_relative_coordinator_score() -> None:
         missing_reference=True,
     )
     coordinator = _coordinator()
-    coordinator._c6_diagnostic_request = {"intervention_id": "BASELINE"}
+    coordinator._runtime_policy = runtime_policy_for_intervention("BASELINE")
     state.sleeve._allocation_scores = lambda *_: {"candidate": 1.0}
     coordinator._authorize_portfolio_buys(
         [state], pd.Timestamp("2026-01-05")

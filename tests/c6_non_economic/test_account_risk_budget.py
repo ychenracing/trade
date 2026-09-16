@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pandas as pd
 import pytest
+from quantfusion.research.c6_runtime import run_c6_diagnostic
 
 from quantfusion.config.engine import default_engine_config, validate_engine_config
 from quantfusion.config.portfolio import PortfolioPolicy
@@ -282,8 +283,18 @@ def test_budget_cannot_masquerade_as_frozen_base_or_s():
     from quantfusion.engine.replay import ProductionReplayEngine
     engine = ProductionReplayEngine(cfg={'account_risk_budget_enabled': True})
     with pytest.raises(ValueError, match="own evidence identity"):
-        engine.run_c6_diagnostic({}, '2025-04-01', '2026-07-20',
-            data_dir='unused', regime_data_dir='unused', diagnostic_request={})
+        run_c6_diagnostic(
+            engine, {}, '2025-04-01', '2026-07-20',
+            data_dir='unused', regime_data_dir='unused',
+            diagnostic_request={
+                'schema_version': 1,
+                'intervention_id': 'C6_BASE',
+                'recording_mode': 'DEFAULT',
+                'scenario_id': 'prefix-05',
+                'diagnostic_noncanonical': True,
+                'allow_publication': False,
+            },
+        )
 
 
 def test_portfolio_alert_uses_current_indicators_to_exit_weak_book():

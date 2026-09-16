@@ -15,6 +15,7 @@ from quantfusion.config.profiles import (
 )
 from quantfusion.data.providers import DataFetcher
 from quantfusion.indicators.technical import Indicators
+from quantfusion.engine.runtime import runtime_policy
 
 
 class CoreDataFlowMixin:
@@ -85,8 +86,9 @@ class CoreDataFlowMixin:
         date: pd.Timestamp,
     ) -> set[str]:
         """Select at most max_positions candidates by lag-safe momentum."""
-        if getattr(self, "_c6_intervention", None) in {"W1_DATA_MAP_ONLY", "W2_POOL_DENOMINATOR_ONLY"}:
-            data_map = {code: frame for code, frame in data_map.items() if code != "601869"}
+        exclusions = runtime_policy(self).signal_universe_exclusions
+        if exclusions:
+            data_map = {code: frame for code, frame in data_map.items() if code not in exclusions}
         lookback = int(self.cfg.get("momentum_lookback", 20))
         scores: dict[str, float] = {}
         for code, df in data_map.items():

@@ -21,7 +21,7 @@ from quantfusion.risk.managers import RecoverableDrawdownRiskManager
 from quantfusion.risk.overlay.adapter import apply_risk_actions
 
 
-def capture_c6_warm_state(states: list, account_risk: Any, overlay: Any) -> dict:
+def capture_diagnostic_warm_state(states: list, account_risk: Any, overlay: Any) -> dict:
     """Copy causal inputs and actual ledgers before the first replay iteration."""
     first, execution = states[0].all_dates[:2]
     sleeves = []
@@ -163,9 +163,10 @@ class EnsembleOrchestrationMixin:
         self._new_candidate_intent_streak = {}
         self._tail_guard_active = False
         self._tail_guard_policies = {}
-        diagnostic = getattr(self, "_c6_diagnostic_request", None)
-        self._c6_score_trace = [] if diagnostic is not None and diagnostic["recording_mode"] != "OFF" else None
-        self._c6_exposure_trace = [] if diagnostic is not None and diagnostic["recording_mode"] != "OFF" else None
+        runtime = request.runtime_policy
+        self._runtime_policy = runtime
+        self._diagnostic_score_trace = [] if runtime.recording_enabled else None
+        self._diagnostic_exposure_trace = [] if runtime.recording_enabled else None
         effective_policy = self._effective_policy(tradable_count)
         states = self._prepare_ensemble_sleeves(request, effective_policy)
         if not self._reference_evidence_complete(
@@ -224,17 +225,11 @@ class EnsembleOrchestrationMixin:
             ),
         ) if self.cfg.get("enable_cm_overlay", True) else None
         if cm_overlay is not None:
-            setattr(
-                cm_overlay,
-                "_c6_s_enabled",
-                self._c6_feature_enabled("S")
-                if diagnostic is not None
-                else bool(getattr(cm_overlay, "C6_S_PRODUCTION", False)),
-            )
+            setattr(cm_overlay, "_c6_s_enabled", runtime.overlay_s_enabled)
             setattr(
                 cm_overlay,
                 "_c6_diagnostic_evidence_enabled",
-                diagnostic is not None and diagnostic["recording_mode"] != "OFF",
+                runtime.recording_enabled,
             )
             cm_overlay.events.append(
                 {
@@ -258,10 +253,10 @@ class EnsembleOrchestrationMixin:
         last_agreement: rg.SleeveAgreementSnapshot | None = None
         prev_consensus: float | None = None
         prev_decline_streak = 0
-        warm_state = capture_c6_warm_state(states, portfolio_risk, cm_overlay) if diagnostic is not None else None
+        warm_state = capture_diagnostic_warm_state(states, portfolio_risk, cm_overlay) if runtime.diagnostics_enabled else None
         pending_path = []
         for idx, date in enumerate(reference_dates):
-            if diagnostic is not None:
+            if runtime.diagnostics_enabled:
                 pending_path.append({"date": date.strftime("%Y-%m-%d"),
                                      "pending": [[dict(vars(signal)) for signal, _ in state.pending] for state in states]})
             # Pass the overlay so it can hard-block re-entry buys
@@ -277,18 +272,19 @@ class EnsembleOrchestrationMixin:
                     date,
                     state.pending,
                 )
-                if self._c6_intervention_id() in {
-                    "W1_DATA_MAP_ONLY",
-                    "W2_POOL_DENOMINATOR_ONLY",
-                }:
+                if runtime.signal_universe_exclusions:
                     state.pending = [
-                        item for item in state.pending if item[0].symbol != "601869"
+                        item
+                        for item in state.pending
+                        if item[0].symbol not in runtime.signal_universe_exclusions
                     ]
             if request.route_controller is not None:
                 previous_queues = [list(state.pending) for state in states]
-                route_symbols = request.symbols_dict
-                if self._c6_intervention_id() in {"W1_DATA_MAP_ONLY", "W2_POOL_DENOMINATOR_ONLY"}:
-                    route_symbols = {code: name for code, name in route_symbols.items() if code != "601869"}
+                route_symbols = {
+                    code: name
+                    for code, name in request.symbols_dict.items()
+                    if code not in runtime.signal_universe_exclusions
+                }
                 request.route_controller.after_close(
                     states,
                     date,
@@ -308,10 +304,7 @@ class EnsembleOrchestrationMixin:
                 state.sleeve._total_assets(state.data_map, date) for state in states
             ]
             assets = sum(state_assets)
-            if (
-                self._c6_intervention_id()
-                != "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK"
-            ):
+            if runtime.merged_portfolio_lock_enabled:
                 status = portfolio_risk.check_portfolio_risk(
                     assets,
                     date.strftime("%Y-%m-%d"),
@@ -348,10 +341,10 @@ class EnsembleOrchestrationMixin:
                     states,
                     date_str=date.strftime("%Y-%m-%d"),
                     events=cm_overlay.events,
-                    state_local_books=self._c6_feature_enabled("F0"),
+                    state_local_books=runtime.state_local_books,
                 )
-                if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
-                    cm_overlay.finalize_c6_s_queue(states, date, state_local_books=self._c6_feature_enabled("F0"))
+                if runtime.recording_enabled:
+                    cm_overlay.finalize_c6_s_queue(states, date, state_local_books=runtime.state_local_books)
             portfolio_evidence_buy_symbols = None
             if idx + 1 < len(reference_dates):
                 preview = self._authorize_portfolio_buys(
@@ -380,7 +373,7 @@ class EnsembleOrchestrationMixin:
                     ),
                 )
             held = self._held_portfolio_symbols(states)
-            self._record_c6_exposure(states, date, "official_sample")
+            self._record_diagnostic_exposure(states, date, "official_sample")
             for state in states:
                 for signal, strategy in state.pending:
                     order_receipt(state.sleeve, signal, date.strftime("%Y-%m-%d"), queued=True, defensive=strategy is None)
@@ -552,16 +545,17 @@ class EnsembleOrchestrationMixin:
         combined["risk_event_calibration"] = self._calibrate_run_risk_events(
             combined, risk_level_curve, overlay_risk_frames
         )
-        request_data = getattr(self, "_c6_diagnostic_request", None)
-        if request_data is not None:
-            combined["_c6_sleeve_results"] = results
-            combined["_c6_states"] = states
-            combined["_c6_warm_state"] = warm_state
-            combined["_c6_score_trace"] = self._c6_score_trace
-            combined["_c6_orders"] = getattr(states[0].sleeve, "_c6_orders", [])
-            combined["_c6_fills"] = getattr(states[0].sleeve, "_c6_fills", [])
-            combined["_c6_pending_path"] = pending_path
-            combined["_c6_exposure_trace"] = self._c6_exposure_trace
+        if runtime.diagnostics_enabled:
+            combined["_runtime_diagnostics"] = {
+                "sleeve_results": results,
+                "states": states,
+                "warm_state": warm_state,
+                "score_trace": self._diagnostic_score_trace,
+                "orders": getattr(states[0].sleeve, "_c6_orders", []),
+                "fills": getattr(states[0].sleeve, "_c6_fills", []),
+                "pending_path": pending_path,
+                "exposure_trace": self._diagnostic_exposure_trace,
+            }
         combined["account_risk_budget"] = account_budget_status(
             portfolio_risk_events, bool(self.cfg["account_risk_budget_enabled"]))
         self.last_result = combined

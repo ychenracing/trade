@@ -126,32 +126,43 @@ class C6DiagnosticRequest:
         }
 
     def runtime_policy(self) -> ReplayRuntimePolicy:
-        features = _FEATURES[self.intervention_id]
-        signal_exclusions = (
-            frozenset({"601869"})
-            if self.intervention_id in {"W1_DATA_MAP_ONLY", "W2_POOL_DENOMINATOR_ONLY"}
-            else frozenset()
+        return runtime_policy_for_intervention(
+            self.intervention_id,
+            recording=self.recording_mode != "OFF",
         )
-        allocation_exclusions = (
-            frozenset({"601869"})
-            if self.intervention_id == "W1_DATA_MAP_ONLY"
-            else frozenset()
-        )
-        recording = self.recording_mode != "OFF"
-        return ReplayRuntimePolicy(
-            diagnostics_enabled=True,
-            recording_enabled=recording,
-            compare_score_families=recording and self.intervention_id.startswith("W"),
-            state_local_books="F0" in features,
-            block_retained_defensive_rebuy="F1" in features,
-            use_fixed_reference_scores="U" in features,
-            overlay_s_enabled="S" in features,
-            merged_portfolio_lock_enabled=(
-                self.intervention_id != "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK"
-            ),
-            allocation_data_exclusions=allocation_exclusions,
-            signal_universe_exclusions=signal_exclusions,
-        )
+
+
+def runtime_policy_for_intervention(
+    intervention_id: str, *, recording: bool = True
+) -> ReplayRuntimePolicy:
+    """Map one frozen research identity onto generic engine capabilities."""
+    if intervention_id not in _INTERVENTIONS:
+        raise ValueError("intervention_id is not in the frozen enum")
+    features = _FEATURES[intervention_id]
+    signal_exclusions = (
+        frozenset({"601869"})
+        if intervention_id in {"W1_DATA_MAP_ONLY", "W2_POOL_DENOMINATOR_ONLY"}
+        else frozenset()
+    )
+    allocation_exclusions = (
+        frozenset({"601869"})
+        if intervention_id == "W1_DATA_MAP_ONLY"
+        else frozenset()
+    )
+    return ReplayRuntimePolicy(
+        diagnostics_enabled=True,
+        recording_enabled=recording,
+        compare_score_families=recording and intervention_id.startswith("W"),
+        state_local_books="F0" in features,
+        block_retained_defensive_rebuy="F1" in features,
+        use_fixed_reference_scores="U" in features,
+        overlay_s_enabled="S" in features,
+        merged_portfolio_lock_enabled=(
+            intervention_id != "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK"
+        ),
+        allocation_data_exclusions=allocation_exclusions,
+        signal_universe_exclusions=signal_exclusions,
+    )
 
 
 def validate_c6_diagnostic_request(request: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -222,7 +233,9 @@ def run_c6_diagnostic(
             generic_name, [] if generic_name != "warm_state" else {}
         )
     result["diagnostic_request"] = request.as_dict()
-    result["deployment_policy"] = "diagnostic_noncanonical"
+    result["requested_symbols"] = sorted(symbols_dict)
+    result["selected_symbols"] = sorted(diagnostic_symbols)
+    result["deployment_policy"] = "production_daily_replay"
     return result
 
 
@@ -230,5 +243,6 @@ __all__ = [
     "C6DiagnosticRequest",
     "c6_diagnostic_engine_config",
     "run_c6_diagnostic",
+    "runtime_policy_for_intervention",
     "validate_c6_diagnostic_request",
 ]

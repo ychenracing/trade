@@ -4,6 +4,7 @@ from __future__ import annotations
 from unittest import mock
 import pandas as pd
 import pytest
+from quantfusion.research.c6_runtime import runtime_policy_for_intervention
 from quantfusion.config.engine import default_engine_config
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.domain.models import Position, Signal
@@ -79,7 +80,7 @@ def _run(
 ) -> list[str]:
     coordinator = BacktestEngine()
     if intervention_id is not None:
-        coordinator._c6_diagnostic_request = {"intervention_id": intervention_id}
+        coordinator._runtime_policy = runtime_policy_for_intervention(intervention_id)
     calls: list[str] = []
     with (
         mock.patch.object(
@@ -324,9 +325,9 @@ def test_exposure_receipt_uses_side_neutral_marks_and_real_book_inventory() -> N
     state = _state(sleeve, [])
     state.data_map = data_map
     coordinator = BacktestEngine()
-    coordinator._c6_exposure_trace = []
-    coordinator._record_c6_exposure([state], dates[1], 'batch_start')
-    snapshot = coordinator._c6_exposure_trace[0]
+    coordinator._diagnostic_exposure_trace = []
+    coordinator._record_diagnostic_exposure([state], dates[1], 'batch_start')
+    snapshot = coordinator._diagnostic_exposure_trace[0]
     assert snapshot['gross_notional'] == 5000.
     assert snapshot['assets'] == sleeve.cash + 5000.
     assert snapshot['positions'][0]['shares'] == 500

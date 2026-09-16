@@ -16,6 +16,7 @@ from typing import Any
 
 from quantfusion.application.c6_contract import canonical_json_bytes as _canonical_bytes
 from quantfusion.io.c6_stream import ChainedArray, load_object, producer_payload_path, select_records, write_json
+from quantfusion.research.c6_runtime import run_c6_diagnostic
 from quantfusion.application.c6_predicates import (
     _l1_predicate_rows, _predicate_rows,
     _attach_interventions as _attach_interventions,
@@ -175,7 +176,8 @@ def _l2_evaluate(
     cfg = {"account_risk_budget_enabled": spec["account_risk_budget_enabled"]}
     codes = [str(item) for item in scenario["symbols"]]
     with contextlib.redirect_stdout(io.StringIO()):
-        result = ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL, cfg=cfg).run_c6_diagnostic(
+        result = run_c6_diagnostic(
+            ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL, cfg=cfg),
             {code: stress.NAMES[code] for code in codes},
             stress_metrics.START_DATE, stress_metrics.END_DATE,
             data_dir=str(MARKET_DATA_DIR), regime_data_dir=str(REGIME_DATA_DIR),
@@ -620,7 +622,8 @@ def _l1_evaluate(task: tuple[str, Mapping[str, Any], str]) -> dict[str, Any]:
     codes = [str(item) for item in scenario["symbols"]]
     request = {"schema_version": 1, "intervention_id": _VARIANTS[variant], "recording_mode": recording, "scenario_id": scenario["scenario_id"], "diagnostic_noncanonical": True, "allow_publication": False}
     with contextlib.redirect_stdout(io.StringIO()):
-        result = ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL).run_c6_diagnostic(
+        result = run_c6_diagnostic(
+            ProductionReplayEngine(stress_metrics.INITIAL_CAPITAL),
             {code: stress.NAMES[code] for code in codes}, stress_metrics.START_DATE,
             stress_metrics.END_DATE, diagnostic_request=request,
             data_dir=str(MARKET_DATA_DIR), regime_data_dir=str(REGIME_DATA_DIR),
