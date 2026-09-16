@@ -55,6 +55,23 @@ EXPECTED_NAMES = {
 }
 
 
+def _ohlcv_frame(index: pd.DatetimeIndex, price: float = 10.0) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "open": [price] * len(index),
+            "high": [price] * len(index),
+            "low": [price] * len(index),
+            "close": [price] * len(index),
+            "volume": [100_000.0] * len(index),
+        },
+        index=index,
+    )
+
+
+def _write_ohlcv(path, index: pd.DatetimeIndex) -> None:
+    _ohlcv_frame(index).rename_axis("date").reset_index().to_csv(path, index=False)
+
+
 def test_all_requested_research_pools_resolve_by_canonical_name_mapping() -> None:
     assert tuple(UNIVERSE_POOLS) == tuple(EXPECTED_NAMES)
     expected_sizes = {
@@ -162,6 +179,41 @@ def test_comparison_rejects_incomplete_download_manifest(tmp_path) -> None:
         compare.validate_market_data_directory(tmp_path, ("pool_b",))
 
 
+def test_comparison_rejects_market_file_hash_drift(tmp_path) -> None:
+    required = compare.required_market_symbols(("pool_b",))
+    entries = {}
+    for code in required:
+        path = tmp_path / f"{code}.csv"
+        path.write_text("date,close\n2023-01-03,1\n", encoding="utf-8")
+        entries[code] = {"sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+    (tmp_path / "manifest.json").write_text(
+        json.dumps({"complete": True, "symbols": entries}),
+        encoding="utf-8",
+    )
+    (tmp_path / f"{required[0]}.csv").write_text(
+        "date,close\n2023-01-03,2\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="sha256 mismatch"):
+        compare.validate_market_data_directory(tmp_path, ("pool_b",))
+
+
+def test_regime_validation_requires_shared_warm_and_current_index_coverage(tmp_path) -> None:
+    dates = pd.bdate_range("2022-05-02", "2023-02-01")
+    for code in ("000300", "000682"):
+        _write_ohlcv(tmp_path / f"{code}.csv", dates)
+    receipt = compare.validate_regime_data_directory(
+        tmp_path, start_date="2023-01-01", end_date="2023-02-01"
+    )
+    assert receipt["warmup_sessions"] >= 120
+    assert receipt["observed_end_date"] == "2023-02-01"
+
+    _write_ohlcv(tmp_path / "000682.csv", dates.delete(-2))
+    with pytest.raises(ValueError, match="date coverage differs"):
+        compare.validate_regime_data_directory(
+            tmp_path, start_date="2023-01-01", end_date="2023-02-01"
+        )
+
+
 def test_pool_download_uses_research_window_without_mutating_legacy_defaults() -> None:
     assert download.resolve_download_window(
         "", "", research_selection=True, today="2026-09-16"
@@ -181,23 +233,12 @@ def test_pool_download_includes_pre_window_warmup_without_changing_replay_start(
     assert download.research_data_start(
         "2024-01-01", research_selection=False, warmup_calendar_days=365
     ) == "2024-01-01"
-    # The retained Eastmoney-only legacy endpoint remains byte-semantically
-    # compatible; long research history uses DataFetcher provider failover.
     assert "lmt=1000" in download._url("300308", "2022-01-01", "2026-09-16")
 
 
 def test_research_fetch_reuses_existing_provider_failover(monkeypatch) -> None:
     index = pd.to_datetime(["2022-01-04", "2022-01-05"])
-    frame = pd.DataFrame(
-        {
-            "open": [10.0, 10.5],
-            "close": [10.5, 11.0],
-            "high": [11.0, 11.5],
-            "low": [9.5, 10.0],
-            "volume": [100_000.0, 120_000.0],
-        },
-        index=index,
-    )
+    frame = _ohlcv_frame(index)
     frame.attrs["volume_provider"] = "Sina"
 
     monkeypatch.setattr(
@@ -214,25 +255,29 @@ def test_research_fetch_reuses_existing_provider_failover(monkeypatch) -> None:
     )
 
     actual, name, provider = download._fetch_research_symbol(
-        "300308", "2022-01-01", "2026-09-16"
+        "300308", "2022-01-01", "2022-01-05"
     )
     assert actual is frame
     assert name == "中际旭创"
     assert provider == "Sina"
 
 
+def test_research_fetch_rejects_tencent_history_truncated_at_provider_cap(monkeypatch) -> None:
+    dates = pd.bdate_range("2022-10-01", periods=1000)
+    frame = _ohlcv_frame(dates)
+    frame.attrs["volume_provider"] = "Tencent"
+    monkeypatch.setattr(
+        download.DataFetcher,
+        "fetch_stock_data",
+        lambda symbol, start, end: frame,
+    )
+    with pytest.raises(RuntimeError, match="1000-row history cap"):
+        download._fetch_research_symbol("300308", "2022-01-01", "2026-09-15")
+
+
 def test_research_snapshot_records_content_hash(tmp_path) -> None:
     index = pd.to_datetime(["2022-01-04", "2022-01-05"])
-    frame = pd.DataFrame(
-        {
-            "open": [10.0, 10.5],
-            "close": [10.5, 11.0],
-            "high": [11.0, 11.5],
-            "low": [9.5, 10.0],
-            "volume": [100_000.0, 120_000.0],
-        },
-        index=index,
-    )
+    frame = _ohlcv_frame(index)
     manifest: dict[str, object] = {}
     download._store_symbol_snapshot(
         tmp_path,
