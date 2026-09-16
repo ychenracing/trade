@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 
 import pandas as pd
@@ -218,6 +219,34 @@ def test_research_fetch_reuses_existing_provider_failover(monkeypatch) -> None:
     assert actual is frame
     assert name == "中际旭创"
     assert provider == "Sina"
+
+
+def test_research_snapshot_records_content_hash(tmp_path) -> None:
+    index = pd.to_datetime(["2022-01-04", "2022-01-05"])
+    frame = pd.DataFrame(
+        {
+            "open": [10.0, 10.5],
+            "close": [10.5, 11.0],
+            "high": [11.0, 11.5],
+            "low": [9.5, 10.0],
+            "volume": [100_000.0, 120_000.0],
+        },
+        index=index,
+    )
+    manifest: dict[str, object] = {}
+    download._store_symbol_snapshot(
+        tmp_path,
+        manifest,
+        "300308",
+        frame,
+        "中际旭创",
+        provider="Sina",
+        include_sha256=True,
+    )
+    path = tmp_path / "300308.csv"
+    entry = manifest["300308"]
+    assert isinstance(entry, dict)
+    assert entry["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def test_unknown_pool_fails_closed() -> None:
