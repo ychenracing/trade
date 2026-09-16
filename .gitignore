@@ -30,6 +30,7 @@ daily_signals/
 data_cache/
 cache/
 optimizer_output/
+reports/universe_comparison/
 artifacts/checkpoints/
 benchmark_validation.json
 live_refresh_manifest.json
