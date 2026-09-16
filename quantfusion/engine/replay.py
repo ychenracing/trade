@@ -17,6 +17,7 @@ from quantfusion.config.regime import (
     WEAK_TERMINAL_DRAWDOWN,
 )
 from quantfusion.config.weak import weak_regime_config, weak_regime_policy
+from quantfusion.domain.health import HealthReport, unavailable_issue
 from quantfusion.domain.models import BarContext
 from quantfusion.domain.rules import require_finite
 from quantfusion.engine.runtime import ReplayRuntimePolicy
@@ -758,6 +759,14 @@ class RegimeAdaptiveBacktestEngine:
                     selected_symbols=(),
                     selected_returns=(),
                     unavailable_symbols=tuple(sorted(symbols_dict)),
+                    health=HealthReport.from_issues(
+                        [
+                            unavailable_issue(
+                                "trend_symbols",
+                                "no requested symbol had observable data",
+                            )
+                        ]
+                    ),
                 )
                 decision = replace(
                     decision,
