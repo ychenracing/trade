@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from scripts.download_eastmoney_qfq import DEFAULT_SYMBOLS as DOWNLOAD_DEFAULTS
-from scripts.download_eastmoney_qfq import (
-    _url,
-    research_data_start,
-    resolve_download_window,
-    select_download_symbols,
-)
+import pandas as pd
+
+from scripts import download_eastmoney_qfq as download
 from quantfusion.application.backtest_cli import build_argument_parser
 from quantfusion.config import profiles
 from quantfusion.config.overlay import RISK_BASKET, SYMBOL_SUB_INDUSTRY
@@ -89,35 +85,68 @@ def test_research_window_defaults_to_2023_and_backtest_accepts_pool_selection() 
 
 
 def test_pool_download_selection_includes_all_fixed_risk_evidence() -> None:
-    selected = select_download_symbols(("pool_b",))
+    selected = download.select_download_symbols(("pool_b",))
     assert selected[:3] == tuple(symbols_for_pool("pool_b"))
     assert set(PortfolioPolicy().regime_symbols) <= set(selected)
     assert set(RISK_BASKET) <= set(selected)
-    assert select_download_symbols(()) == DOWNLOAD_DEFAULTS
+    assert download.select_download_symbols(()) == download.DEFAULT_SYMBOLS
 
 
 def test_pool_download_uses_research_window_without_mutating_legacy_defaults() -> None:
-    assert resolve_download_window("", "", research_selection=True, today="2026-09-16") == (
-        "2023-01-01",
-        "2026-09-16",
-    )
-    assert resolve_download_window("", "", research_selection=False, today="2026-09-16") == (
-        "2024-01-01",
-        "2026-07-20",
-    )
-    assert resolve_download_window(
+    assert download.resolve_download_window(
+        "", "", research_selection=True, today="2026-09-16"
+    ) == ("2023-01-01", "2026-09-16")
+    assert download.resolve_download_window(
+        "", "", research_selection=False, today="2026-09-16"
+    ) == ("2024-01-01", "2026-07-20")
+    assert download.resolve_download_window(
         "2025-04-01", "2025-12-31", research_selection=True, today="2026-09-16"
     ) == ("2025-04-01", "2025-12-31")
 
 
 def test_pool_download_includes_pre_window_warmup_without_changing_replay_start() -> None:
-    assert research_data_start(
+    assert download.research_data_start(
         "2023-01-01", research_selection=True, warmup_calendar_days=365
     ) == "2022-01-01"
-    assert research_data_start(
+    assert download.research_data_start(
         "2024-01-01", research_selection=False, warmup_calendar_days=365
     ) == "2024-01-01"
-    assert "lmt=2000" in _url("300308", "2022-01-01", "2026-09-16")
+    assert "lmt=2000" in download._url("300308", "2022-01-01", "2026-09-16")
+
+
+def test_research_fetch_reuses_existing_provider_failover(monkeypatch) -> None:
+    index = pd.to_datetime(["2022-01-04", "2022-01-05"])
+    frame = pd.DataFrame(
+        {
+            "open": [10.0, 10.5],
+            "close": [10.5, 11.0],
+            "high": [11.0, 11.5],
+            "low": [9.5, 10.0],
+            "volume": [100_000.0, 120_000.0],
+        },
+        index=index,
+    )
+    frame.attrs["volume_provider"] = "Sina"
+
+    monkeypatch.setattr(
+        download.DataFetcher,
+        "fetch_stock_data",
+        lambda symbol, start, end: frame,
+    )
+    monkeypatch.setattr(
+        download,
+        "_download",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("research mode must not call the legacy Eastmoney-only path")
+        ),
+    )
+
+    actual, name, provider = download._fetch_research_symbol(
+        "300308", "2022-01-01", "2026-09-16"
+    )
+    assert actual is frame
+    assert name == "中际旭创"
+    assert provider == "Sina"
 
 
 def test_unknown_pool_fails_closed() -> None:
