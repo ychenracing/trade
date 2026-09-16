@@ -48,4 +48,4 @@ jobs:
           git diff --cached --check
           git commit -m 'refactor: isolate research runtime policy'
           git push origin HEAD:agent/architecture-consistency-refactor
-# scoped ProductionReplayEngine replacement anchors
+# robust import fallback for current research tests
