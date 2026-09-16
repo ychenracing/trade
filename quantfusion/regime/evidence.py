@@ -68,6 +68,81 @@ def _local_frame(data_dir: str | Path, code: str, end_date: str) -> pd.DataFrame
     return _slice_to_boundary(frame, boundary)
 
 
+def _leader_quality_inputs(
+    frame: pd.DataFrame, closes: pd.Series
+) -> dict[str, float] | None:
+    """Return causal, scale-comparable opportunity-quality inputs."""
+    if len(closes) < 61 or "volume" not in frame.columns:
+        return None
+    daily_returns = closes.pct_change().dropna()
+    if len(daily_returns) < 60:
+        return None
+    ret20 = float(closes.iloc[-1] / closes.iloc[-21] - 1.0)
+    ret60 = float(closes.iloc[-1] / closes.iloc[-61] - 1.0)
+    vol20 = float(daily_returns.iloc[-20:].std())
+    vol60 = float(daily_returns.iloc[-60:].std())
+    high60 = float(closes.iloc[-60:].max())
+    breakout = float(closes.iloc[-1] / high60) if high60 > 0 else float("nan")
+    volumes = cast(pd.Series, pd.to_numeric(frame["volume"], errors="coerce"))
+    current_volume = float(volumes.iloc[-1])
+    average_volume = float(volumes.iloc[-21:-1].mean())
+    volume_ratio = (
+        current_volume / average_volume
+        if math.isfinite(current_volume)
+        and math.isfinite(average_volume)
+        and average_volume > 0
+        else float("nan")
+    )
+    if (
+        not all(
+            math.isfinite(value)
+            for value in (ret20, ret60, vol20, vol60, breakout, volume_ratio)
+        )
+        or vol20 <= 0
+        or vol60 <= 0
+    ):
+        return None
+    return {
+        "ret20": ret20,
+        "ret60": ret60,
+        "ra20": ret20 / (vol20 * math.sqrt(20.0)),
+        "ra60": ret60 / (vol60 * math.sqrt(60.0)),
+        "breakout": breakout,
+        "volume": volume_ratio,
+    }
+
+
+def _leader_quality_score(
+    inputs: dict[str, float],
+    reference_inputs: dict[str, dict[str, float]],
+) -> float | None:
+    """Rank broad opportunity quality by median fixed-reference percentile."""
+    if len(reference_inputs) != 5:
+        return None
+    reference_rows = tuple(reference_inputs.values())
+    reference_ret60 = float(np.mean([row["ret60"] for row in reference_rows]))
+    values = {
+        "ra20": inputs["ra20"],
+        "ra60": inputs["ra60"],
+        "rs60": inputs["ret60"] - reference_ret60,
+        "breakout": inputs["breakout"],
+        "volume": inputs["volume"],
+    }
+    reference_values = {
+        "ra20": [row["ra20"] for row in reference_rows],
+        "ra60": [row["ra60"] for row in reference_rows],
+        "rs60": [row["ret60"] - reference_ret60 for row in reference_rows],
+        "breakout": [row["breakout"] for row in reference_rows],
+        "volume": [row["volume"] for row in reference_rows],
+    }
+    percentiles = sorted(
+        sum(reference <= values[name] for reference in reference_values[name])
+        / len(reference_values[name])
+        for name in ("ra20", "ra60", "rs60", "breakout", "volume")
+    )
+    return float(percentiles[len(percentiles) // 2])
+
+
 def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
     """Require both fixed indices to have fresh, complete trend evidence."""
     boundary = _normalized_timestamp(as_of)
@@ -135,12 +210,13 @@ def select_positive_momentum_leaders(
 ) -> LeaderSelection:
     """Select positive long-horizon leaders with explicit input health.
 
-    Uses multi-factor weak-market scoring (section 12.2):
-    - 240-day momentum (25%)
-    - 120-day relative strength vs reference basket (25%)
-    - 60-day momentum (20%)
-    - Drawdown resilience (15%)
-    - Trend repair: 5-day vs 20-day momentum (15%)
+    Existing mature/emerging eligibility remains unchanged. When all five fixed
+    technology references provide comparable quality evidence, eligible leaders
+    are ordered by the median percentile of 20/60-day risk-adjusted momentum,
+    60-day relative strength, breakout proximity, and volume confirmation. This
+    favors broad multi-period quality without adding fitted weights or changing
+    weak-route risk/execution rules. If reference quality evidence is incomplete,
+    the established blended weak-market score remains the ranking fallback.
 
     Research callers receive degraded results plus diagnostics. Production
     callers decide whether to accept degradation via ``LeaderSelection`` rather
@@ -163,11 +239,12 @@ def select_positive_momentum_leaders(
             return _local_frame(data_dir, code, str(boundary.date()))
         return _slice_to_boundary(frame_loader(code, str(boundary.date())), boundary)
 
-    # The fixed reference basket is an optional ranking enrichment.  Preserve
-    # its established zero-baseline fallback when reference history is absent
-    # or incomplete; decision-critical health applies to requested symbols.
+    # The fixed reference basket is an optional ranking enrichment. Preserve
+    # its established fallback when reference history is absent or incomplete;
+    # decision-critical health applies to requested symbols.
     reference_symbols = ("300308", "300502", "300394", "688008", "603986")
     ref_returns: list[float] = []
+    reference_quality: dict[str, dict[str, float]] = {}
     for ref_code in reference_symbols:
         try:
             ref_frame = load_frame(ref_code)
@@ -177,15 +254,18 @@ def select_positive_momentum_leaders(
             ).dropna()
         except (OSError, RuntimeError, ValueError, TypeError, KeyError):
             continue
-        if len(ref_closes) < 121:
+        if len(ref_closes) < 61:
             continue
         observed_date = _normalized_timestamp(str(ref_closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
             continue
-        ref_ret = float(ref_closes.iloc[-1] / ref_closes.iloc[-121] - 1.0)
-        if not math.isfinite(ref_ret):
-            continue
-        ref_returns.append(ref_ret)
+        if len(ref_closes) >= 121:
+            ref_ret = float(ref_closes.iloc[-1] / ref_closes.iloc[-121] - 1.0)
+            if math.isfinite(ref_ret):
+                ref_returns.append(ref_ret)
+        quality_inputs = _leader_quality_inputs(ref_frame, ref_closes)
+        if quality_inputs is not None:
+            reference_quality[ref_code] = quality_inputs
     ref_avg_return = float(np.mean(ref_returns)) if ref_returns else 0.0
 
     for code in normalized:
@@ -232,13 +312,17 @@ def select_positive_momentum_leaders(
         has_mature_history = len(closes) >= LEADER_LOOKBACK + 1
         momentum_240 = 0.0
         if has_mature_history:
-            momentum_240 = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
-        is_mature = has_mature_history and math.isfinite(momentum_240) and momentum_240 > 0
+            momentum_240 = float(
+                closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0
+            )
+        is_mature = (
+            has_mature_history
+            and math.isfinite(momentum_240)
+            and momentum_240 > 0
+        )
 
-        # Multi-factor scoring (mature + emerging dual channel).
-        # Both channels are scored against a FIXED technology reference pool (not the
-        # caller's pool) so adding/removing a symbol never changes an unchanged
-        # symbol's score.
+        # Multi-factor scoring (mature + emerging dual channel). Eligibility is
+        # unchanged; quality ranking below only chooses among eligible leaders.
         if len(closes) >= 61:
             momentum_60 = float(closes.iloc[-1] / closes.iloc[-61] - 1.0)
         else:
@@ -255,8 +339,10 @@ def select_positive_momentum_leaders(
         else:
             breakout_quality = 0.0
         is_emerging = (
-            math.isfinite(momentum_60) and momentum_60 > 0
-            and math.isfinite(momentum_20) and momentum_20 > 0
+            math.isfinite(momentum_60)
+            and momentum_60 > 0
+            and math.isfinite(momentum_20)
+            and momentum_20 > 0
             and breakout_quality >= 0.90
         )
         if not (is_mature or is_emerging):
@@ -270,7 +356,9 @@ def select_positive_momentum_leaders(
 
         if len(closes) >= 60:
             peak_60 = float(closes.iloc[-60:].max())
-            drawdown_from_peak = 1.0 - float(closes.iloc[-1] / peak_60) if peak_60 > 0 else 0.0
+            drawdown_from_peak = (
+                1.0 - float(closes.iloc[-1] / peak_60) if peak_60 > 0 else 0.0
+            )
             resilience = 1.0 - min(1.0, drawdown_from_peak)
         else:
             resilience = 0.0
@@ -307,8 +395,15 @@ def select_positive_momentum_leaders(
             + 0.10 * max(0.0, trend_repair)
         )
         weak_score = 0.6 * mature_score + 0.4 * emerging_score
-        if math.isfinite(weak_score):
-            observations.append((weak_score, code, is_mature))
+        quality_inputs = _leader_quality_inputs(frame, closes)
+        quality_score = (
+            _leader_quality_score(quality_inputs, reference_quality)
+            if quality_inputs is not None
+            else None
+        )
+        ranking_score = quality_score if quality_score is not None else weak_score
+        if math.isfinite(ranking_score):
+            observations.append((ranking_score, code, is_mature))
     ranked = sorted(observations, key=lambda item: (-item[0], item[1]))
     selected_codes: list[str] = []
     emerging_selected = 0
