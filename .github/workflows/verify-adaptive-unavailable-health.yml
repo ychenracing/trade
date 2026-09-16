@@ -1,0 +1,22 @@
+name: Verify adaptive unavailable health
+
+on:
+  push:
+    branches: [agent/architecture-consistency-refactor]
+    paths:
+      - .github/workflows/verify-adaptive-unavailable-health.yml
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/architecture-consistency-refactor
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Run focused unavailable-health test
+        run: python -m pytest -q tests/unit/test_adaptive_unavailable_health.py
