@@ -104,9 +104,9 @@ class MarkdownConsistencyTests(unittest.TestCase):
     def test_release_metadata_and_project_entrypoint_are_consistent(self) -> None:
         import quantfusion
 
-        self.assertEqual(getattr(quantfusion, "__version__", None), "1.0.0")
+        self.assertEqual(getattr(quantfusion, "__version__", None), "1.0.1")
         for relative in ("README.md", "docs/RELEASE.md"):
-            self.assertIn("1.0.0", (ROOT / relative).read_text(encoding="utf-8"))
+            self.assertIn("1.0.1", (ROOT / relative).read_text(encoding="utf-8"))
         self.assertTrue((ROOT / ".github/PROJECT_BRIEF.md").is_file())
 
     def test_markdown_metadata_comments_are_not_prose(self) -> None:

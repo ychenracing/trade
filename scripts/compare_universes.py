@@ -26,6 +26,7 @@ from quantfusion.config.regime import (
 )
 from quantfusion.config.research_universes import (
     DEFAULT_RESEARCH_START_DATE,
+    RESEARCH_FIRST_TRADING_DATES,
     UNIVERSE_POOLS,
     symbols_for_pool,
 )
@@ -49,9 +50,9 @@ def required_market_symbols(pools: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(ordered))
 
 
-def _manifest_payload(path: Path) -> dict | None:
+def _manifest_payload(path: Path) -> dict:
     if not path.is_file():
-        return None
+        raise ValueError(f"research market-data manifest is required: {path}")
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -73,57 +74,125 @@ def _latest_observation_on_or_before(path: Path, end: pd.Timestamp) -> pd.Timest
     return pd.Timestamp(dates.max())
 
 
+def _manifest_entry_is_prelisting_na(
+    code: str,
+    entry: dict,
+    *,
+    end_date: str | None,
+) -> bool:
+    if entry.get("status") != "not_applicable_pre_listing":
+        return False
+    expected_first = RESEARCH_FIRST_TRADING_DATES.get(code)
+    declared_first = entry.get("first_trading_date")
+    if expected_first is None or declared_first != expected_first:
+        raise ValueError(
+            f"invalid pre-listing manifest identity for {code}: {declared_first!r}"
+        )
+    if end_date is None:
+        raise ValueError("pre-listing manifest entries require an explicit end_date")
+    end = pd.Timestamp(end_date)
+    if pd.isna(end):
+        raise ValueError("research market-data end_date must be valid")
+    if end.normalize() >= pd.Timestamp(expected_first):
+        raise ValueError(
+            f"pre-listing N/A is invalid for {code}: first trade {expected_first} "
+            f"is not after requested end {end.date()}"
+        )
+    return True
+
+
+def active_symbols_for_pool(
+    pool_name: str,
+    data_dir: Path,
+    *,
+    end_date: str,
+) -> dict[str, str]:
+    # Return configured pool members that can exist inside this research window.
+    manifest = _manifest_payload(data_dir / "manifest.json")
+    if manifest.get("complete") is not True:
+        raise ValueError("incomplete research market-data manifest")
+    entries = manifest.get("symbols")
+    if not isinstance(entries, dict):
+        raise ValueError("invalid research market-data manifest: symbols must be an object")
+    active: dict[str, str] = {}
+    for code, name in symbols_for_pool(pool_name).items():
+        entry = entries.get(code)
+        if not isinstance(entry, dict):
+            raise ValueError(f"research market-data manifest omits required symbol: {code}")
+        if _manifest_entry_is_prelisting_na(code, entry, end_date=end_date):
+            continue
+        active[code] = name
+    if not active:
+        raise ValueError(f"{pool_name} has no listed symbols in the requested window")
+    return active
+
+
 def validate_market_data_directory(
     data_dir: Path,
     pools: tuple[str, ...],
     *,
     end_date: str | None = None,
 ) -> None:
-    """Reject incomplete research inputs before risk logic can silently degrade."""
+    # Require source-attested complete research inputs before any comparison.
     if not data_dir.is_dir():
         raise ValueError(
             f"Research market-data directory does not exist: {data_dir}. "
             "Run scripts.download_eastmoney_qfq with the same pool selection first."
         )
     required = required_market_symbols(pools)
-    missing = [code for code in required if not (data_dir / f"{code}.csv").is_file()]
-    if missing:
+    manifest_path = data_dir / "manifest.json"
+    if not manifest_path.is_file():
+        missing = [code for code in required if not (data_dir / f"{code}.csv").is_file()]
+        if missing:
+            raise ValueError(
+                "missing required research market-data files: " + ", ".join(missing)
+            )
+    manifest = _manifest_payload(manifest_path)
+    if manifest.get("complete") is not True:
+        raise ValueError("incomplete research market-data manifest")
+    entries = manifest.get("symbols")
+    if not isinstance(entries, dict):
+        raise ValueError("invalid research market-data manifest: symbols must be an object")
+    absent = [code for code in required if code not in entries]
+    if absent:
         raise ValueError(
-            "missing required research market-data files: " + ", ".join(missing)
+            "research market-data manifest omits required symbols: " + ", ".join(absent)
         )
 
-    manifest = _manifest_payload(data_dir / "manifest.json")
-    if manifest is not None:
-        if manifest.get("complete") is False:
-            raise ValueError("incomplete research market-data manifest")
-        entries = manifest.get("symbols")
-        if not isinstance(entries, dict):
-            raise ValueError("invalid research market-data manifest: symbols must be an object")
-        absent = [code for code in required if code not in entries]
-        if absent:
-            raise ValueError(
-                "research market-data manifest omits required symbols: "
-                + ", ".join(absent)
-            )
+    attested_na: list[str] = []
+    observed: list[str] = []
+    for code in required:
+        entry = entries.get(code)
+        if not isinstance(entry, dict):
+            raise ValueError(f"invalid research market-data manifest entry for {code}")
+        path = data_dir / f"{code}.csv"
+        if _manifest_entry_is_prelisting_na(code, entry, end_date=end_date):
+            if path.exists():
+                raise ValueError(
+                    f"pre-listing N/A symbol must not carry a market-data CSV: {code}"
+                )
+            attested_na.append(code)
+            continue
+        if not path.is_file():
+            raise ValueError(f"missing required research market-data file: {code}")
+        expected_hash = entry.get("sha256")
+        if not isinstance(expected_hash, str) or len(expected_hash) != 64:
+            raise ValueError(f"research market-data manifest lacks sha256 for {code}")
+        actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual_hash != expected_hash:
+            raise ValueError(f"research market-data sha256 mismatch for {code}")
+        observed.append(code)
 
-        if manifest.get("complete") is True:
-            for code in required:
-                entry = entries.get(code)
-                if not isinstance(entry, dict):
-                    raise ValueError(f"invalid research market-data manifest entry for {code}")
-                expected_hash = entry.get("sha256")
-                if not isinstance(expected_hash, str) or len(expected_hash) != 64:
-                    raise ValueError(f"research market-data manifest lacks sha256 for {code}")
-                actual_hash = hashlib.sha256((data_dir / f"{code}.csv").read_bytes()).hexdigest()
-                if actual_hash != expected_hash:
-                    raise ValueError(f"research market-data sha256 mismatch for {code}")
+    declared_na = manifest.get("not_applicable_symbols", [])
+    if not isinstance(declared_na, list) or set(declared_na) != set(attested_na):
+        raise ValueError("research market-data manifest pre-listing identity is inconsistent")
 
     if end_date is not None:
         end = pd.Timestamp(end_date)
-        if end is pd.NaT:
+        if pd.isna(end):
             raise ValueError("research market-data end_date must be valid")
         stale: list[str] = []
-        for code in required:
+        for code in observed:
             latest = _latest_observation_on_or_before(data_dir / f"{code}.csv", end)
             if (end - latest).days > MAX_EVIDENCE_STALENESS_DAYS:
                 stale.append(f"{code}:{latest.date()}")
@@ -214,7 +283,8 @@ def _run_pool(
     indicator_state: str,
     warmup_calendar_days: int,
 ) -> dict:
-    symbols = symbols_for_pool(pool_name)
+    configured_symbols = symbols_for_pool(pool_name)
+    symbols = active_symbols_for_pool(pool_name, data_dir, end_date=end_date)
     engine = ProductionReplayEngine(initial_capital)
     with contextlib.redirect_stdout(io.StringIO()):
         result = engine.run(
@@ -246,11 +316,12 @@ def _run_pool(
 
     row = summarize_universe_result(
         pool_name,
-        symbols,
+        configured_symbols,
         start_date,
         end_date,
         result,
         market_frames=market_frames,
+        active_symbols=symbols,
     )
     requested_start = pd.Timestamp(start_date)
     requested_end = pd.Timestamp(end_date)
@@ -318,6 +389,7 @@ def main() -> int:
         regime_data_dir,
         end_date=end_date,
         strict=True,
+        allow_provider_fallback=True,
     )
     regime_coverage = validate_regime_data_directory(
         regime_data_dir,

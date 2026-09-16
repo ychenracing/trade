@@ -1,6 +1,6 @@
 # Quant Fusion A股科技趋势决策系统
 
-当前版本：`1.0.0`。源码以 `main` 为唯一维护入口；功能、优势和使用限制见[发布说明](docs/RELEASE.md)。
+当前版本：`1.0.1`。源码以 `main` 为唯一维护入口；功能、优势和使用限制见[发布说明](docs/RELEASE.md)。
 
 ## 项目定位与使用边界
 
@@ -45,7 +45,7 @@ python -m quantfusion.application.backtest_cli \
 
 研究股票池 A–J 由名称映射为六位代码，不通过修改策略源码切换。`backtest_cli` 支持 `--pool`，并同时接受 `--start/--end` 与 `--start-date/--end-date`；研究默认起点为 `2023-01-01`。生产日扫仍固定使用 17 股生产池，不读取研究 Pool 配置。
 
-Pool 模式的数据默认写入被忽略的 `data_cache/research_market`，不会覆盖 `data/market`。研究下载器会取得所选 Pool 的并集、固定信号参考和现有独立风险篮，并在请求窗口前多取 365 个自然日用于 warm 指标。研究路径复用既有 Eastmoney→Sina→Tencent 提供方切换；若返回数据陈旧、Tencent 1000 行上限导致长历史明显截断、文件写入中断或全部提供方失败，则保存 `complete=false` 的 manifest 并失败关闭。完整 manifest 为每个研究 CSV 保存 SHA-256；比较前会重新核验文件集合和哈希。
+Pool 模式的数据默认写入被忽略的 `data_cache/research_market`，不会覆盖 `data/market`。研究下载器会取得所选 Pool 的并集、固定信号参考和现有独立风险篮，并在请求窗口前多取 365 个自然日用于 warm 指标。研究路径复用既有 Eastmoney→Sina→Tencent 提供方切换；若返回数据陈旧、Tencent 1000 行上限导致长历史明显截断、文件写入中断或全部提供方失败，则保存 `complete=false` 的 manifest 并失败关闭。Pool 比较强制要求 `complete=true` 的 manifest，并逐文件复核 SHA-256；缺失 manifest、身份不一致或文件漂移都会失败关闭。
 
 ```bash
 python -m scripts.download_eastmoney_qfq \
@@ -61,11 +61,11 @@ python -m scripts.compare_universes \
   --output-dir ../trade-runtime/universe-comparison
 ```
 
-`compare_universes` 使用 `ProductionReplayEngine` 的连续账户路由，不复制信号、费用、T+1、仓位或风险实现。运行前要求所选交易池、固定信号参考、固定风险篮与两只路由指数输入完整；两只指数还必须具有 MA120 所需的预热历史、窗口内一致日期覆盖和可接受的截止日新鲜度。缺失风险证据不会静默降级成“策略主动现金”。
+`compare_universes` 使用 `ProductionReplayEngine` 的连续账户路由，不复制信号、费用、T+1、仓位或风险实现。研究比较刷新两只固定指数时显式允许 Eastmoney→Tencent→Sina 的独立提供方回退；生产日扫仍保留原默认路径，不因研究入口改变。运行前要求所选交易池、固定信号参考、固定风险篮与两只路由指数输入完整；两只指数还必须具有 MA120 所需的预热历史、窗口内一致日期覆盖和可接受的截止日新鲜度。缺失风险证据不会静默降级成“策略主动现金”。
 
 比较报告同时生成 JSON、CSV、Markdown，列出股票代码与名称、请求窗口、实际观察窗口、累计收益、年化收益、最大回撤、成交记录数、建模换手率、全现金日比例、平均现金比例、按实际成交与截至当日最后可见收盘价重建的持仓 HHI，以及风险事件类型和次数。JSON 还保留股票 manifest SHA-256 和两只固定指数 SHA-256。报告是研究输出，不改变生产交易决策，也不替代正式 17 股经济验收。
 
-较晚上市标的在上市前没有观测，不补造历史；只有真实行情出现后才参与对应日期的策略计算。请求窗口与实际观察窗口分别记录，不能把从 2024 才有数据的结果标成完整 2023 回放。完整研究证据须使用对应源码、实际数据和相同配置身份，不以旧 SHA、旧冻结样本或旧正式业绩证明新窗口。
+较晚上市标的在上市前没有观测，不补造历史；如果整个请求窗口都早于已核验的首个交易日，manifest 会明确记录 `not_applicable_pre_listing`，该标的不进入该窗口的研究回放。上市后才有数据的成员会继续参与其可观察日期。报告把组合回放日历与逐成员首末观测日期分开记录，不能把组合覆盖窗口误读为所有成员全程可观察。完整研究证据须使用对应源码、实际数据和相同配置身份，不以旧 SHA、旧冻结样本或旧正式业绩证明新窗口。
 
 ### 日常人工决策支持
 

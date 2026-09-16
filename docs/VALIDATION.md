@@ -8,7 +8,7 @@
 
 ## Pool A–J 研究验证边界
 
-生产 17 股正式验收与新增研究股票池分开维护。`quantfusion/config/universe.py` 继续定义正式生产 17 股及其前缀；`quantfusion/config/research_universes.py` 定义 Pool A–J。研究股票池、2023 年起窗口或 `scripts.compare_universes` 产生的结果均为非 canonical 研究证据，不能覆盖下方 958 场景正式计划、黄金值、固定 seed、成本口径或发布回执。
+生产 17 股正式验收与新增研究股票池分开维护。`quantfusion/config/universe.py` 继续定义正式生产 17 股及其前缀；`quantfusion/config/research_universes.py` 定义 Pool A–J。研究股票池、2023 年起窗口或 `scripts.compare_universes` 产生的结果均为非 canonical 研究证据，不能覆盖下方 958 场景正式计划、黄金值、固定 seed、成本口径或发布回执。Pool 比较强制绑定完整 manifest 与逐文件 SHA-256；研究固定指数允许显式独立提供方回退。整个请求窗口早于已核验首个交易日的成员只能记为上市前 N/A，不能补造历史；报告另列逐成员实际首末观测日期。
 
 Pool 研究回放复用 `ProductionReplayEngine`、现有交易费用、风险政策、固定信号参考和独立风险篮。数据准备须保留研究窗口前的真实预热历史；晚上市标的不补造上市前记录。由研究下载器生成的完整 manifest 逐文件绑定 SHA-256，中断时保持 `complete=false`、已完成标的和缺失列表；比较入口拒绝不完整 manifest、缺失固定风险输入、哈希漂移和明显陈旧数据。
 

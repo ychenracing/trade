@@ -20,6 +20,7 @@ from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.config.research_universes import (
     DEFAULT_RESEARCH_START_DATE,
+    RESEARCH_FIRST_TRADING_DATES,
     RESEARCH_SYMBOL_NAMES,
     UNIVERSE_POOLS,
     symbols_for_pool,
@@ -80,6 +81,17 @@ def research_data_start(
     return str(
         (pd.Timestamp(replay_start) - pd.Timedelta(days=warmup_calendar_days)).date()
     )
+
+
+def prelisting_not_applicable(symbol: str, end_date: str) -> bool:
+    # Return whether the requested window ends before a known first trade.
+    first_trading = RESEARCH_FIRST_TRADING_DATES.get(symbol)
+    if first_trading is None:
+        return False
+    end = pd.Timestamp(end_date)
+    if pd.isna(end):
+        raise ValueError("end_date must resolve to a valid timestamp")
+    return end.normalize() < pd.Timestamp(first_trading)
 
 
 def _market_id(symbol: str) -> str:
@@ -230,6 +242,7 @@ def _store_symbol_snapshot(
     temporary.replace(path)
     entry: dict[str, object] = {
         "name": name,
+        "status": "observed",
         "provider": provider,
         "rows": len(serial),
         "first_date": serial["date"].iloc[0].strftime("%Y-%m-%d"),
@@ -260,6 +273,22 @@ def _download_research_symbols(
             return
         next_pending: list[str] = []
         for offset, symbol in enumerate(pending):
+            if prelisting_not_applicable(symbol, end):
+                first_trading = RESEARCH_FIRST_TRADING_DATES[symbol]
+                symbol_manifest[symbol] = {
+                    "name": RESEARCH_SYMBOL_NAMES.get(symbol, symbol),
+                    "status": "not_applicable_pre_listing",
+                    "provider": None,
+                    "rows": 0,
+                    "first_date": None,
+                    "last_date": None,
+                    "first_trading_date": first_trading,
+                }
+                print(
+                    f"{symbol} {RESEARCH_SYMBOL_NAMES.get(symbol, symbol)}: "
+                    f"not applicable before first trade {first_trading}"
+                )
+                continue
             try:
                 frame, name, provider = _fetch_research_symbol(symbol, start, end)
             except RuntimeError as exc:
@@ -400,6 +429,7 @@ def main() -> int:
                 "complete": False,
                 "requested_symbols": requested_symbols,
                 "downloaded_symbols": [],
+                "not_applicable_symbols": [],
                 "missing_symbols": requested_symbols,
             }
         )
@@ -416,20 +446,43 @@ def main() -> int:
                 symbol_manifest=symbol_manifest,
             )
         except Exception as exc:
-            downloaded = list(symbol_manifest)
+            downloaded = [
+                code
+                for code, entry in symbol_manifest.items()
+                if isinstance(entry, dict) and entry.get("status") == "observed"
+            ]
+            not_applicable = [
+                code
+                for code, entry in symbol_manifest.items()
+                if isinstance(entry, dict)
+                and entry.get("status") == "not_applicable_pre_listing"
+            ]
             manifest.update(
                 {
                     "downloaded_symbols": downloaded,
+                    "not_applicable_symbols": not_applicable,
                     "missing_symbols": [code for code in symbols if code not in symbol_manifest],
                     "error": f"{type(exc).__name__}: {exc}",
                 }
             )
             _write_manifest(output, manifest)
             raise
+        downloaded = [
+            code
+            for code, entry in symbol_manifest.items()
+            if isinstance(entry, dict) and entry.get("status") == "observed"
+        ]
+        not_applicable = [
+            code
+            for code, entry in symbol_manifest.items()
+            if isinstance(entry, dict)
+            and entry.get("status") == "not_applicable_pre_listing"
+        ]
         manifest.update(
             {
                 "complete": True,
-                "downloaded_symbols": list(symbol_manifest),
+                "downloaded_symbols": downloaded,
+                "not_applicable_symbols": not_applicable,
                 "missing_symbols": [],
             }
         )

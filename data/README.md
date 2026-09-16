@@ -43,7 +43,7 @@
 
 `boundary_route` 返回最后一个可用指数日的状态；消费它的 `decide_current` 同时检查既有 `detect_regime` 结果，证据为 `unknown` 时返回现金防御。日扫传递请求的 `end_date`，不通过退回股票缓存末日掩盖陈旧证据；入口另行校验独立日历目标。底层路由函数的自然日容忍不是绕过入口覆盖要求的授权。
 
-Pool 历史比较复用同一两只指数，但不能把指数缺失导致的 `CASH` 当成某股票池的主动防御效果。`scripts.compare_universes` 在正式比较前要求两个指数都有至少 MA120 所需的预热观测、研究窗口内完全一致的日期序列和可接受的截止日新鲜度，并把两个指数的 SHA-256 写入 JSON 研究报告。历史截止日较早时，`refresh_regime_indices` 不会替用户补造历史指数，须事先提供真实文件。
+Pool 历史比较复用同一两只指数，但不能把指数缺失导致的 `CASH` 当成某股票池的主动防御效果。研究比较入口允许 Eastmoney 失败后改用 Tencent、Sina 获取同一指数身份；该回退只由研究入口显式启用，不改变生产日扫默认行为。`scripts.compare_universes` 在正式比较前要求两个指数都有至少 MA120 所需的预热观测、研究窗口内完全一致的日期序列和可接受的截止日新鲜度，并把两个指数的 SHA-256 写入 JSON 研究报告。历史截止日较早时，`refresh_regime_indices` 不会替用户补造历史指数，须事先提供真实文件。
 
 ## 股票缓存与日扫冻结快照
 
@@ -53,9 +53,9 @@ Pool 历史比较复用同一两只指数，但不能把指数缺失导致的 `C
 
 无 `--pool` 的 `scripts.download_eastmoney_qfq.py` 保留原 Eastmoney-only 冻结快照行为和原默认窗口；显式 `--symbol` 仍只下载指定标的。Pool 研究模式另支持可重复 `--pool` 与 `--all-pools`，默认研究窗口起点为 `2023-01-01`、默认输出为被忽略的 `data_cache/research_market`，不会覆盖仓库冻结证据。它下载所选 Pool 并集、`PortfolioPolicy.regime_symbols` 和现有固定 `RISK_BASKET`，并把研究起点前 365 个自然日作为指标预热输入。
 
-Pool 研究路径复用现有 Eastmoney→Sina→Tencent 股票提供方切换。下载器会拒绝超过既有新鲜度界限的结果；若 Tencent 回退恰好达到其 1000 行历史上限且显然未覆盖请求起点，也拒绝把截断历史当成功。较晚上市标的保留真实首日，不补造上市前 K 线。
+Pool 研究路径复用现有 Eastmoney→Sina→Tencent 股票提供方切换。下载器会拒绝超过既有新鲜度界限的结果；若 Tencent 回退恰好达到其 1000 行历史上限且显然未覆盖请求起点，也拒绝把截断历史当成功。较晚上市标的保留真实首日，不补造上市前 K 线；请求结束日早于已核验首个交易日时，manifest 明确记为 `not_applicable_pre_listing`，不创建占位 CSV。
 
-研究下载开始外部 I/O 前先原子写入 `complete=false` 的 `manifest.json`。每个完成的 CSV 通过临时文件原子替换，并在 manifest 中记录名称、提供方、首尾日期、行数和 SHA-256。全部标的完成后才改为 `complete=true`；异常会保留已经完成的文件、缺失列表和错误原因。硬中断因此不会留下旧成功 manifest 宣称新目录完整。`scripts.compare_universes` 拒绝 `complete=false`、缺少所选 Pool／固定参考／风险篮文件、完整 manifest 的哈希漂移以及明显陈旧的截止日覆盖。
+研究下载开始外部 I/O 前先原子写入 `complete=false` 的 `manifest.json`。每个完成的 CSV 通过临时文件原子替换，并在 manifest 中记录名称、提供方、首尾日期、行数和 SHA-256。全部标的完成后才改为 `complete=true`；异常会保留已经完成的文件、缺失列表和错误原因。硬中断因此不会留下旧成功 manifest 宣称新目录完整。`scripts.compare_universes` 强制要求 manifest 存在且 `complete=true`，拒绝缺少所选 Pool／固定参考／风险篮身份、逐文件哈希漂移以及明显陈旧的截止日覆盖；只有经首个交易日事实证明的上市前 N/A 可以没有 CSV。
 
 快照直接序列化已经校验的数据帧，不重新复制可能变化的股票缓存。日扫清单必须覆盖全部声明股票和两只固定指数，逐一核验文件、哈希与长度；不完整或重复的清单不能仅凭自洽哈希通过。同日重跑只复用通过当前身份、覆盖和完整性校验的旧快照，保留原字节；不混用新日期与旧价格，不改写旧清单以适配新日历。
 

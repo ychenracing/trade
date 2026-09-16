@@ -10,6 +10,8 @@ from typing import Any, Iterable, Mapping, cast
 
 import pandas as pd
 
+from quantfusion.config.research_universes import RESEARCH_FIRST_TRADING_DATES
+
 
 def _equity_frame(result: Mapping[str, Any]) -> pd.DataFrame:
     equity_value = result.get("equity_curve")
@@ -112,6 +114,55 @@ def _risk_event_types_text(event_types: Mapping[str, Any]) -> str:
     return "; ".join(f"{name}={int(count)}" for name, count in sorted(event_types.items()))
 
 
+def _member_observation_summary(
+    symbols: Mapping[str, str],
+    *,
+    start_date: str,
+    end_date: str,
+    market_frames: Mapping[str, pd.DataFrame],
+    active_symbols: Mapping[str, str],
+) -> tuple[dict[str, dict[str, Any]], list[str], list[str]]:
+    start = pd.Timestamp(start_date)
+    end = pd.Timestamp(end_date)
+    active_codes = set(active_symbols)
+    observations: dict[str, dict[str, Any]] = {}
+    late_listing: list[str] = []
+    not_applicable: list[str] = []
+    for code, name in symbols.items():
+        first_trading = RESEARCH_FIRST_TRADING_DATES.get(code)
+        if code not in active_codes:
+            if first_trading is None or end.normalize() >= pd.Timestamp(first_trading):
+                raise ValueError(f"inactive research member lacks valid pre-listing identity: {code}")
+            observations[code] = {
+                "name": name,
+                "status": "not_applicable_pre_listing",
+                "first_trading_date": first_trading,
+                "first_observation": None,
+                "last_observation": None,
+            }
+            not_applicable.append(code)
+            continue
+        frame = market_frames.get(code)
+        if frame is None or frame.empty:
+            raise ValueError(f"missing observation frame for active research member {code}")
+        dates = pd.DatetimeIndex(pd.to_datetime(frame.index, errors="raise"))
+        current = dates[(dates >= start) & (dates <= end)]
+        if current.empty:
+            raise ValueError(f"active research member has no observation in window: {code}")
+        is_late = first_trading is not None and pd.Timestamp(first_trading) > start.normalize()
+        status = "late_listing" if is_late else "observed"
+        if is_late:
+            late_listing.append(code)
+        observations[code] = {
+            "name": name,
+            "status": status,
+            "first_trading_date": first_trading,
+            "first_observation": pd.Timestamp(current[0]).strftime("%Y-%m-%d"),
+            "last_observation": pd.Timestamp(current[-1]).strftime("%Y-%m-%d"),
+        }
+    return observations, late_listing, not_applicable
+
+
 def summarize_universe_result(
     pool_name: str,
     symbols: Mapping[str, str],
@@ -120,8 +171,9 @@ def summarize_universe_result(
     result: Mapping[str, Any],
     *,
     market_frames: Mapping[str, pd.DataFrame] | None = None,
+    active_symbols: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Derive comparable research metrics without changing engine decisions."""
+    # Derive comparable research metrics without changing engine decisions.
     equity = _equity_frame(result)
     observed_dates = pd.DatetimeIndex(pd.to_datetime(equity.index, errors="raise"))
     if observed_dates.hasnans or not observed_dates.is_monotonic_increasing:
@@ -153,14 +205,29 @@ def summarize_universe_result(
     max_concurrent = int(result.get("max_concurrent_symbols", 0))
     if max_concurrent < 0:
         raise ValueError("max_concurrent_symbols must be non-negative")
+    active = dict(active_symbols or symbols)
     if market_frames is None:
         hhi_mean: float | None = None
         hhi_max: float | None = None
+        member_observations: dict[str, dict[str, Any]] = {}
+        late_listing_members: list[str] = []
+        not_applicable_prelisting_symbols = [code for code in symbols if code not in active]
     else:
         hhi_mean, hhi_max = _holding_concentration_hhi(
             trades,
             observed_dates,
             market_frames,
+        )
+        (
+            member_observations,
+            late_listing_members,
+            not_applicable_prelisting_symbols,
+        ) = _member_observation_summary(
+            symbols,
+            start_date=start_date,
+            end_date=end_date,
+            market_frames=market_frames,
+            active_symbols=active,
         )
 
     risk_events = result.get("risk_events")
@@ -173,12 +240,17 @@ def summarize_universe_result(
     return {
         "pool": pool_name,
         "symbol_count": len(symbols),
+        "active_symbol_count": len(active),
         "symbols": list(symbols),
+        "active_symbols": list(active),
         "symbol_names": list(symbols.values()),
         "start_date": start_date,
         "end_date": end_date,
         "observed_start_date": observed_start,
         "observed_end_date": observed_end,
+        "member_observations": member_observations,
+        "late_listing_members": late_listing_members,
+        "not_applicable_prelisting_symbols": not_applicable_prelisting_symbols,
         "total_return": float(result["total_return"]),
         "annual_return": float(result["annual_return"]),
         "max_drawdown": float(result["max_drawdown"]),
@@ -194,10 +266,30 @@ def summarize_universe_result(
     }
 
 
+def _member_coverage_text(record: Mapping[str, Any]) -> str:
+    observations = record.get("member_observations", {})
+    if not isinstance(observations, Mapping) or not observations:
+        return "N/A"
+    parts: list[str] = []
+    for code, details in observations.items():
+        if not isinstance(details, Mapping):
+            continue
+        status = str(details.get("status", "unknown"))
+        name = str(details.get("name", ""))
+        first = details.get("first_observation")
+        last = details.get("last_observation")
+        if first and last:
+            parts.append(f"{code} {name}: {status} {first}→{last}")
+        else:
+            first_trading = details.get("first_trading_date")
+            parts.append(f"{code} {name}: {status} first_trade={first_trading}")
+    return "; ".join(parts) or "N/A"
+
+
 def write_universe_comparison(
     rows: Iterable[Mapping[str, Any]], output_dir: str | Path
 ) -> dict[str, Path]:
-    """Write JSON, CSV and human-readable Markdown research reports."""
+    # Write JSON, CSV and human-readable Markdown research reports.
     records = [dict(row) for row in rows]
     if not records:
         raise ValueError("universe comparison requires at least one result")
@@ -206,6 +298,11 @@ def write_universe_comparison(
 
     for record in records:
         record["members"] = _members_text(record)
+        record.setdefault("active_symbol_count", record["symbol_count"])
+        record.setdefault("active_symbols", list(record.get("symbols", [])))
+        record.setdefault("member_observations", {})
+        record.setdefault("late_listing_members", [])
+        record.setdefault("not_applicable_prelisting_symbols", [])
 
     json_path = output / "comparison.json"
     json_path.write_text(
@@ -216,11 +313,15 @@ def write_universe_comparison(
     scalar_fields: tuple[str, ...] = (
         "pool",
         "symbol_count",
+        "active_symbol_count",
         "members",
         "start_date",
         "end_date",
         "observed_start_date",
         "observed_end_date",
+        "late_listing_members",
+        "not_applicable_prelisting_symbols",
+        "member_observations",
         "total_return",
         "annual_return",
         "max_drawdown",
@@ -240,21 +341,29 @@ def write_universe_comparison(
         writer.writerow(scalar_fields)
         for record in records:
             csv_record = {field: record[field] for field in scalar_fields}
-            csv_record["risk_event_types"] = json.dumps(
-                record["risk_event_types"],
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-            )
+            for field in (
+                "late_listing_members",
+                "not_applicable_prelisting_symbols",
+                "member_observations",
+                "risk_event_types",
+            ):
+                csv_record[field] = json.dumps(
+                    record[field],
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
             writer.writerow([csv_record[field] for field in scalar_fields])
 
     markdown_path = output / "comparison.md"
     headers = (
         "Pool",
-        "Stocks",
+        "Configured",
+        "Active",
         "Members",
         "Requested window",
-        "Observed window",
+        "Portfolio observed window",
+        "Member coverage",
         "Return",
         "Max DD",
         "Annual",
@@ -283,9 +392,11 @@ def write_universe_comparison(
                 (
                     str(record["pool"]),
                     str(record["symbol_count"]),
+                    str(record["active_symbol_count"]),
                     str(record["members"]),
                     f"{record['start_date']} → {record['end_date']}",
                     f"{record['observed_start_date']} → {record['observed_end_date']}",
+                    _member_coverage_text(record),
                     f"{float(record['total_return']):.2%}",
                     f"{float(record['max_drawdown']):.2%}",
                     f"{float(record['annual_return']):.2%}",
@@ -304,7 +415,7 @@ def write_universe_comparison(
     lines.extend(
         [
             "",
-            "Requested and observed windows are reported separately so a pre-close, suspended, or otherwise shorter data set cannot be mislabeled as full requested-date coverage.",
+            "The portfolio observed window is the replay calendar, not a claim that every configured member had data for the full period. Member coverage records each symbol's actual first/last observation and explicit pre-listing N/A state.",
             "HHI is reconstructed from executed fills and the latest closing price known by each portfolio date; cash-only days are reported separately and excluded from the HHI average.",
             "Risk-event counts are descriptive replay evidence and do not change production decisions.",
             "",

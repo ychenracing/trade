@@ -34,6 +34,20 @@ RESEARCH_SYMBOL_NAMES: Mapping[str, str] = MappingProxyType(
     }
 )
 
+# Official first-trading dates are used only to identify windows that end before
+# a late-listed symbol could possibly have market data. They never create or
+# forward-fill pre-listing observations.
+RESEARCH_FIRST_TRADING_DATES: Mapping[str, str] = MappingProxyType(
+    {
+        "688535": "2023-04-04",  # 华海诚科
+        "688249": "2023-05-05",  # 晶合集成
+        "688361": "2023-05-19",  # 中科飞测
+        "688347": "2023-08-07",  # 华虹公司
+        "920045": "2025-12-31",  # 蘅东光
+        "688825": "2026-07-27",  # 长鑫科技
+    }
+)
+
 _NAME_TO_SYMBOL = {name: code for code, name in RESEARCH_SYMBOL_NAMES.items()}
 if len(_NAME_TO_SYMBOL) != len(RESEARCH_SYMBOL_NAMES):
     raise RuntimeError("Research symbol catalog contains duplicate security names")
