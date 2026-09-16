@@ -22,12 +22,22 @@ def _equity_frame(result: Mapping[str, Any]) -> pd.DataFrame:
     return equity
 
 
+def _latest_close_on_or_before(frame: pd.DataFrame, date: pd.Timestamp) -> float:
+    """Mirror the engine's causal close-marking rule without using future prices."""
+    history = frame.loc[frame.index <= pd.Timestamp(date), "close"]
+    closes = pd.to_numeric(history, errors="coerce")
+    closes = closes[closes.notna() & (closes > 0)]
+    if closes.empty:
+        return 0.0
+    return float(closes.iloc[-1])
+
+
 def _holding_concentration_hhi(
     trades: list[Any],
     dates: pd.DatetimeIndex,
     market_frames: Mapping[str, pd.DataFrame],
 ) -> tuple[float, float]:
-    """Rebuild close-marked symbol weights from executed fills and return mean/max HHI."""
+    """Rebuild causally close-marked symbol weights and return mean/max HHI."""
     trades_by_date: dict[pd.Timestamp, list[Any]] = defaultdict(list)
     for trade in trades:
         trade_date = pd.Timestamp(getattr(trade, "date"))
@@ -56,15 +66,11 @@ def _holding_concentration_hhi(
             frame = market_frames.get(symbol)
             if not isinstance(frame, pd.DataFrame) or "close" not in frame.columns:
                 raise ValueError(f"missing close-price frame for held symbol {symbol}")
-            timestamp = pd.Timestamp(date)
-            if timestamp not in frame.index:
+            close = _latest_close_on_or_before(frame, pd.Timestamp(date))
+            if close <= 0:
                 raise ValueError(
-                    f"missing close price for held symbol {symbol} on {timestamp.date()}"
-                )
-            close = float(frame.loc[timestamp, "close"])
-            if not pd.notna(close) or close <= 0:
-                raise ValueError(
-                    f"invalid close price for held symbol {symbol} on {timestamp.date()}"
+                    f"missing causal close price for held symbol {symbol} on or before "
+                    f"{pd.Timestamp(date).date()}"
                 )
             values.append(quantity * close)
         total = sum(values)
@@ -74,6 +80,16 @@ def _holding_concentration_hhi(
     if not observed:
         return 0.0, 0.0
     return float(sum(observed) / len(observed)), float(max(observed))
+
+
+def _trade_gross_value(trade: Any) -> float:
+    """Use the audited gross value, with a deterministic compatibility fallback."""
+    gross = float(getattr(trade, "gross_value", 0.0))
+    if gross > 0:
+        return gross
+    shares = int(getattr(trade, "shares", 0))
+    price = float(getattr(trade, "price", 0.0))
+    return max(shares, 0) * max(price, 0.0)
 
 
 def summarize_universe_result(
@@ -97,9 +113,7 @@ def summarize_universe_result(
     trades = result.get("trades")
     if not isinstance(trades, list):
         raise ValueError("comparison result requires a trades list")
-    gross_traded_value = sum(
-        abs(float(getattr(trade, "gross_value", 0.0))) for trade in trades
-    )
+    gross_traded_value = sum(abs(_trade_gross_value(trade)) for trade in trades)
 
     positive_assets = assets > 0
     if not bool(positive_assets.all()):
@@ -239,7 +253,7 @@ def write_universe_comparison(
     lines.extend(
         [
             "",
-            "HHI is reconstructed from executed fills and same-day closing prices; cash-only days are reported separately and excluded from the HHI average.",
+            "HHI is reconstructed from executed fills and the latest closing price known by each portfolio date; cash-only days are reported separately and excluded from the HHI average.",
             "",
         ]
     )
