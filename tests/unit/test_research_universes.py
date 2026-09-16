@@ -6,7 +6,7 @@ from scripts.download_eastmoney_qfq import DEFAULT_SYMBOLS as DOWNLOAD_DEFAULTS
 from scripts.download_eastmoney_qfq import resolve_download_window, select_download_symbols
 from quantfusion.application.backtest_cli import build_argument_parser
 from quantfusion.config import profiles
-from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
+from quantfusion.config.overlay import RISK_BASKET, SYMBOL_SUB_INDUSTRY
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.research_universes import (
     DEFAULT_RESEARCH_START_DATE,
@@ -83,10 +83,11 @@ def test_research_window_defaults_to_2023_and_backtest_accepts_pool_selection() 
     assert args.start == DEFAULT_RESEARCH_START_DATE
 
 
-def test_pool_download_selection_includes_fixed_regime_evidence() -> None:
+def test_pool_download_selection_includes_all_fixed_risk_evidence() -> None:
     selected = select_download_symbols(("pool_b",))
     assert selected[:3] == tuple(symbols_for_pool("pool_b"))
     assert set(PortfolioPolicy().regime_symbols) <= set(selected)
+    assert set(RISK_BASKET) <= set(selected)
     assert select_download_symbols(()) == DOWNLOAD_DEFAULTS
 
 
