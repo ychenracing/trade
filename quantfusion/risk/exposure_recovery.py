@@ -119,7 +119,7 @@ def _recovery_safe(envelope: Mapping[str, Any] | None) -> bool:
     """Advance only after canonical AB5 requests no new reduction at the close."""
     if not envelope or envelope.get("event") != "account_budget_envelope":
         return False
-    if envelope.get("risk_alert_active") or envelope.get("shock_episode_active"):
+    if envelope.get("shock_episode_active"):
         return False
     orders = envelope.get("new_reduction_orders")
     if isinstance(orders, bool) or not isinstance(orders, int) or orders < 0:
