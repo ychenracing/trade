@@ -52,9 +52,22 @@ EXPECTED_NAMES = {
 
 def test_all_requested_research_pools_resolve_by_canonical_name_mapping() -> None:
     assert tuple(UNIVERSE_POOLS) == tuple(EXPECTED_NAMES)
+    expected_sizes = {
+        "pool_a": 1,
+        "pool_b": 3,
+        "pool_c": 5,
+        "pool_d": 8,
+        "pool_e": 13,
+        "pool_f": 15,
+        "pool_g": 27,
+        "pool_h": 12,
+        "pool_i": 9,
+        "pool_j": 4,
+    }
     for pool_name, expected_names in EXPECTED_NAMES.items():
         resolved = symbols_for_pool(pool_name)
         assert tuple(resolved.values()) == expected_names
+        assert len(resolved) == expected_sizes[pool_name]
         assert len(resolved) == len(set(resolved))
 
 
@@ -75,13 +88,30 @@ def test_every_research_symbol_reuses_existing_routing_and_risk_metadata() -> No
     assert expected <= set(profiles.SYMBOL_GROUPS)
     assert expected <= set(profiles.SYMBOL_PROFILES)
     assert expected <= set(SYMBOL_SUB_INDUSTRY)
+    assert SYMBOL_SUB_INDUSTRY["688825"] == "memory"
+    assert SYMBOL_SUB_INDUSTRY["688037"] == "equipment"
 
 
 def test_research_window_defaults_to_2023_and_backtest_accepts_pool_selection() -> None:
     assert DEFAULT_RESEARCH_START_DATE == "2023-01-01"
-    args = build_argument_parser().parse_args(["--pool", "pool_b", "--no-plot"])
+    parser = build_argument_parser()
+    args = parser.parse_args(["--pool", "pool_b", "--no-plot"])
     assert args.pool == "pool_b"
     assert args.start == DEFAULT_RESEARCH_START_DATE
+
+    aliases = parser.parse_args(
+        [
+            "--pool",
+            "pool_f",
+            "--start-date",
+            "2024-01-01",
+            "--end-date",
+            "2025-12-31",
+            "--no-plot",
+        ]
+    )
+    assert aliases.start == "2024-01-01"
+    assert aliases.end == "2025-12-31"
 
 
 def test_pool_download_selection_includes_all_fixed_risk_evidence() -> None:
@@ -111,7 +141,9 @@ def test_pool_download_includes_pre_window_warmup_without_changing_replay_start(
     assert download.research_data_start(
         "2024-01-01", research_selection=False, warmup_calendar_days=365
     ) == "2024-01-01"
-    assert "lmt=2000" in download._url("300308", "2022-01-01", "2026-09-16")
+    # The retained Eastmoney-only legacy endpoint remains byte-semantically
+    # compatible; long research history uses DataFetcher provider failover.
+    assert "lmt=1000" in download._url("300308", "2022-01-01", "2026-09-16")
 
 
 def test_research_fetch_reuses_existing_provider_failover(monkeypatch) -> None:
