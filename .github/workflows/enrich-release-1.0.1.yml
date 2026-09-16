@@ -1,0 +1,137 @@
+name: Enrich 1.0.1 release metadata
+
+on:
+  push:
+    branches: [tmp/research-closure-1.0.1]
+    paths: [.github/workflows/enrich-release-1.0.1.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  enrich:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      FINAL_SHA: 4eef8ed8bb19ce5883d45cb3a0c41855bc6ef914
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify release identity and expand tag/release descriptions
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$FINAL_SHA"
+          test "$(git rev-list -n 1 1.0.1)" = "$FINAL_SHA"
+          test "$(git rev-list -n 1 1.0.0)" != "$FINAL_SHA"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          cat > "$RUNNER_TEMP/tag-message.txt" <<'EOF'
+          Quant Fusion 1.0.1
+
+          Patch release for research reproducibility, fail-closed input identity, and release consistency.
+
+          Changed / fixed:
+          - Pool research comparison now requires a complete=true source manifest and verifies every required CSV with SHA-256 before replay.
+          - Legitimate windows that end before a known listing date are represented explicitly as not_applicable_pre_listing; no pre-listing price history is fabricated.
+          - Research-only fixed-index refresh explicitly enables provider fallback while production daily-scan behavior remains unchanged.
+          - Universe comparison reports configured versus active members and each member's actual first/last observation, including late-listing status.
+
+          Added:
+          - first-trading-date metadata used only to distinguish valid pre-listing N/A from missing data;
+          - active_symbol_count, active_symbols, member_observations, late_listing_members, and not_applicable_prelisting_symbols in research comparison outputs;
+          - contract tests for manifest enforcement, provider fallback, pre-listing semantics, and member-level observation disclosure.
+
+          Cleaned up:
+          - removed obsolete no-waiver/actionable-boundary research workflows that belonged to completed historical research.
+
+          Verified on exact main commit 4eef8ed8bb19ce5883d45cb3a0c41855bc6ef914 with Python 3.11/3.12 full tests, Pyright, Bandit, pip-audit, and the five frozen-universe exact backtest regression.
+
+          Unchanged: production 17-symbol strategy economics, risk thresholds, transaction costs, frozen goldens, causal close-to-next-trading-day execution, and canonical economic evidence. Existing 1.0.0 tag remains unchanged.
+          EOF
+
+          # Recreate only the annotated tag object/message; keep the target commit identical.
+          git tag -fa 1.0.1 "$FINAL_SHA" -F "$RUNNER_TEMP/tag-message.txt"
+          test "$(git rev-list -n 1 1.0.1)" = "$FINAL_SHA"
+          git push --force origin refs/tags/1.0.1
+
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          # Quant Fusion 1.0.1
+
+          `1.0.1` is a patch release that closes the reproducibility and release-identity gaps around the newly added configurable research universes and 2023+ historical research windows. It does **not** change the production strategy's economic behavior.
+
+          ## What changed / fixed
+
+          - **Research manifests are now mandatory and fail-closed.** `scripts.compare_universes` requires a `complete=true` research `manifest.json`, checks that all required Pool / fixed-reference / risk-basket identities are accounted for, and re-verifies each observed CSV against its recorded SHA-256 before replay. A directory of loose CSV files is no longer accepted as sufficient evidence.
+          - **Pre-listing history is handled explicitly instead of being fabricated or misclassified as missing.** For a symbol whose verified first trading date is after the requested research window, the downloader records `not_applicable_pre_listing`. No synthetic pre-listing K-lines are created, and a true missing/stale/truncated input still fails closed.
+          - **Research index refresh now explicitly opts into provider fallback.** The Pool-comparison entry point may fall back across independent index providers for the two fixed regime indices. This opt-in is research-only; production daily-scan defaults are unchanged.
+          - **Portfolio coverage and member coverage are no longer conflated.** Comparison output now distinguishes the portfolio replay calendar from each member's actual observation interval, so a Pool whose replay starts in 2023 cannot be mistaken for claiming every constituent had 2023 data.
+          - **Version identity is aligned to 1.0.1.** Runtime/package metadata and current release documentation now consistently identify this maintained source as `1.0.1`; the existing `1.0.0` tag is left untouched.
+
+          ## What is new
+
+          - First-trading-date metadata used strictly for research availability semantics.
+          - Explicit `not_applicable_pre_listing` manifest state.
+          - New research-report fields: `active_symbol_count`, `active_symbols`, `member_observations`, `late_listing_members`, and `not_applicable_prelisting_symbols`.
+          - Per-member first/last observation and late-listing disclosure in JSON/CSV/Markdown comparison reports.
+          - Contract tests covering mandatory manifests, file-hash attestation, research-only index fallback, pre-listing N/A semantics, and member-level coverage reporting.
+
+          ## Cleanup
+
+          Historical workflows that belonged to the completed no-waiver/actionable-boundary research were removed from the maintained `main` branch:
+
+          - `actionable-boundary-research.yml`
+          - `no-waiver-boundary-study.yml`
+          - `no-waiver-joiner-study.yml`
+          - `no-waiver-source-snapshot.yml`
+
+          Current CI and formal validation workflows remain in place.
+
+          ## Verification performed before publishing
+
+          Release identity was bound to exact `main` commit `4eef8ed8bb19ce5883d45cb3a0c41855bc6ef914` and passed:
+
+          - full Python **3.11** test suite under the repository's normal 3.11 exclusion contract;
+          - full Python **3.12** test suite;
+          - compile-all and Ruff checks;
+          - canonical-package Pyright type checking;
+          - Bandit security scan;
+          - strict `pip-audit` dependency audit;
+          - exact five-frozen-universe backtest regression against the retained golden metrics and economic fingerprints;
+          - focused RED→GREEN closure tests for the five newly fixed research-contract gaps.
+
+          ## What this release does not change
+
+          The following production contracts are intentionally unchanged:
+
+          - the production **17-symbol** universe and its strategy economics;
+          - risk thresholds and risk-state semantics;
+          - transaction-cost assumptions;
+          - frozen golden metrics, seeds, scenarios, and canonical evidence identity;
+          - close-after-decision / next-tradable-day execution timing and other causal boundaries;
+          - account and risk-state continuity.
+
+          ## Published release identity
+
+          - Version: **1.0.1**
+          - Main commit: `4eef8ed8bb19ce5883d45cb3a0c41855bc6ef914`
+          - Tag: `1.0.1` (annotated, points to the exact main commit above)
+          - GitHub Release: **Quant Fusion 1.0.1**
+          - Previous tag `1.0.0`: unchanged
+
+          This is a maintenance/reproducibility patch release; it does not claim a strategy-return or drawdown improvement.
+          EOF
+
+          gh release edit 1.0.1 \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Quant Fusion 1.0.1" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+
+          # Read back the release and tag target as a final publication check.
+          test "$(gh release view 1.0.1 --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)" = "1.0.1"
+          test "$(git ls-remote origin refs/tags/1.0.1^{} | awk '{print $1}')" = "$FINAL_SHA"
