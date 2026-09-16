@@ -19,6 +19,7 @@ from quantfusion.config.research_universes import (
     symbols_for_pool,
 )
 from quantfusion.data import contracts as market_data_contracts
+from quantfusion.data.providers import DataFetcher
 from quantfusion.engine.replay import ProductionReplayEngine
 
 DEFAULT_VALIDATION_POOLS = ("pool_b", "pool_f", "pool_g")
@@ -50,8 +51,22 @@ def _run_pool(
             indicator_state=indicator_state,
             warmup_calendar_days=warmup_calendar_days,
         )
+        market_frames = {
+            code: DataFetcher.load_stock_data(
+                code,
+                start_date,
+                end_date,
+                data_dir=str(data_dir),
+            )
+            for code in symbols
+        }
     return summarize_universe_result(
-        pool_name, symbols, start_date, end_date, result
+        pool_name,
+        symbols,
+        start_date,
+        end_date,
+        result,
+        market_frames=market_frames,
     )
 
 
@@ -128,6 +143,7 @@ def main() -> int:
             f"return={row['total_return']:.6%}",
             f"max_drawdown={row['max_drawdown']:.6%}",
             f"trades={row['total_trades']}",
+            f"avg_hhi={row['holding_concentration_hhi_mean']:.6f}",
         )
     print("reports:", ", ".join(f"{name}={path}" for name, path in paths.items()))
     return 0
