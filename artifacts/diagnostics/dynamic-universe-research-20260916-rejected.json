@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "artifact_status": "rejected",
+  "kind": "dynamic_candidate_universe_research",
+  "scope": "research_only",
+  "decision": "do_not_admit_to_production",
+  "source_revision": "60782cb1a8bde18033bc250586e0fa7c97e517d0",
+  "research_run": {
+    "workflow_run_id": 35107479187,
+    "artifact_id": 10451246450,
+    "artifact_digest": "sha256:b0e27efd346c0028850ce40493a2f700805c6822e0e87f3bf9a8146d8bd617be",
+    "raw_receipt_sha256": "217691a4310d0bb7ef5ee052531e0b293fae32923479aae30a72e29602dfac78",
+    "market_manifest_sha256": "97a1216079ff761b9a4187765c1dfd3257930ee81345a30c7f267a4c5bd0f642",
+    "requested_start_date": "2023-01-01",
+    "requested_end_date": "2026-09-15",
+    "decision_count": 44
+  },
+  "contract": {
+    "core_universe": "immutable production 17-symbol universe",
+    "watch_universe": "curated pool_g symbols outside production core",
+    "candidate_selector": "existing causal select_positive_momentum_leaders over Watch only",
+    "decision_frequency": "monthly_last_observed_session",
+    "promotion_streak": 2,
+    "demotion_miss_streak": 2,
+    "maximum_active_candidates": 1,
+    "liquidity_contract": "prior 20-session ADV times existing max_order_adv_ratio must support at least one 100-share lot",
+    "execution_boundary": "promotion effective no earlier than next observed session",
+    "future_returns": "post-hoc evaluation only; never used for selection"
+  },
+  "result": {
+    "promotion_count": 7,
+    "demotion_count": 7,
+    "promotions_per_year": 1.889689578713969,
+    "full": {
+      "complete_20d_count": 7,
+      "median_excess_20d": -0.0017256530012108584,
+      "positive_excess_hit_rate_20d": 0.42857142857142855,
+      "complete_60d_count": 7,
+      "median_excess_60d": 0.09795086906801154,
+      "positive_excess_hit_rate_60d": 0.5714285714285714
+    },
+    "early_2023_2024": {
+      "promotion_count": 4,
+      "median_excess_20d": 0.0020761167780835588,
+      "positive_excess_hit_rate_20d": 0.5,
+      "median_excess_60d": -0.07239576462075609,
+      "positive_excess_hit_rate_60d": 0.5
+    },
+    "late_2025_2026": {
+      "promotion_count": 3,
+      "median_excess_20d": -0.016512781818312394,
+      "positive_excess_hit_rate_20d": 0.3333333333333333,
+      "median_excess_60d": 0.09795086906801154,
+      "positive_excess_hit_rate_60d": 0.6666666666666666
+    },
+    "checks": {
+      "at_least_four_complete_60d_promotions": true,
+      "both_time_splits_have_two_complete_60d_promotions": true,
+      "full_median_excess_positive_20d": false,
+      "full_median_excess_positive_60d": true,
+      "early_median_excess_positive_20d": true,
+      "late_median_excess_positive_20d": false,
+      "full_hit_rate_at_least_half_20d": false,
+      "full_hit_rate_at_least_half_60d": true,
+      "promotion_frequency_is_low": true
+    }
+  },
+  "promotion_observations": [
+    {"symbol": "688041", "decision_date": "2023-04-28", "excess_return_20d": -0.24090140737783017, "excess_return_60d": -0.47068730619802235},
+    {"symbol": "002281", "decision_date": "2023-07-31", "excess_return_20d": 0.005877886557377976, "excess_return_60d": 0.2037998833764344},
+    {"symbol": "688041", "decision_date": "2023-12-29", "excess_return_20d": 0.0693523170029482, "excess_return_60d": -0.34859141261794657},
+    {"symbol": "688041", "decision_date": "2024-08-30", "excess_return_20d": -0.0017256530012108584, "excess_return_60d": 0.3272901619260682},
+    {"symbol": "002281", "decision_date": "2025-08-29", "excess_return_20d": -0.0939385770070521, "excess_return_60d": -0.12224485268130092},
+    {"symbol": "688019", "decision_date": "2025-12-31", "excess_return_20d": 0.18073810213074037, "excess_return_60d": 0.09795086906801154},
+    {"symbol": "300666", "decision_date": "2026-03-31", "excess_return_20d": -0.016512781818312394, "excess_return_60d": 0.41558271424192217}
+  ],
+  "rejection_reason": "The preregistered low-churn causal promotion policy failed the 20-session full-window median/hit-rate checks and the late-period 20-session median check. The 60-session signal was positive but not sufficient to override the failed short-horizon and time-split checks.",
+  "production_effect": "none",
+  "retention_policy": "Permanent compact rejected evidence. The exact raw receipt and market manifest are source-bound by the hashes above; temporary research code and workflow are intentionally excluded from the production tree after the rejection decision."
+}
