@@ -6,7 +6,7 @@ import pandas as pd
 
 from quantfusion.config.engine import default_engine_config
 from quantfusion.config.portfolio import PortfolioPolicy
-from quantfusion.engine.replay import ProductionRouteController
+from quantfusion.engine.route_components import CashAllocator
 from quantfusion.engine.universe import BacktestEngine
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager
 
@@ -87,7 +87,7 @@ def test_route_cash_migration_rebases_risk_and_latest_sleeve_equity() -> None:
         for sleeve in sleeves
     ]
 
-    ProductionRouteController._shift_free_cash(states, (1.0, 0.0, 0.0))
+    CashAllocator.shift_free_cash(states, (1.0, 0.0, 0.0))
 
     assert [sleeve.cash for sleeve in sleeves] == [3_000_000.0, 0.0, 0.0]
     assert sleeves[0].risk.lifetime_peak_assets == 3_900_000.0

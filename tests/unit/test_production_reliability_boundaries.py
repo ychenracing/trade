@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from quantfusion.engine.replay import ProductionRouteController
+from quantfusion.engine.route_components import LeaderSelector
 from quantfusion.engine.universe import BacktestEngine
 from quantfusion.regime.evidence import select_positive_momentum_leaders
 from quantfusion.regime.models import LeaderSelection
@@ -81,14 +82,14 @@ def test_leader_selection_distinguishes_invalid_data() -> None:
     assert getattr(selection, "status", None) == "INVALID"
 
 
-def test_production_route_rejects_unavailable_leader_evidence(tmp_path) -> None:
-    controller = ProductionRouteController([], leader_data_dir=tmp_path)
+def test_production_leader_selector_rejects_unavailable_evidence(tmp_path) -> None:
+    selector = LeaderSelector(tmp_path, event_sink=[])
 
     with pytest.raises(RuntimeError, match="leader"):
-        controller._leaders(("600000",), "2026-01-30")
+        selector.select(("600000",), "2026-01-30")
 
 
-def test_production_route_keeps_valid_leader_behavior(monkeypatch, tmp_path) -> None:
+def test_production_leader_selector_caches_valid_selection(tmp_path) -> None:
     selection = LeaderSelection(
         as_of="2026-01-30",
         requested_symbols=("600000",),
@@ -96,14 +97,23 @@ def test_production_route_keeps_valid_leader_behavior(monkeypatch, tmp_path) -> 
         selected_symbols=("600000",),
         selected_returns=(0.7,),
     )
-    monkeypatch.setattr(
-        "quantfusion.engine.replay.select_positive_momentum_leaders",
-        lambda *args, **kwargs: selection,
-    )
-    controller = ProductionRouteController([], leader_data_dir=tmp_path)
+    calls: list[tuple[tuple[str, ...], str, str]] = []
 
-    assert controller._leaders(("600000",), "2026-01-30") == ("600000",)
-    assert controller._leaders(("600000",), "2026-01-30") == ("600000",)
+    def select(symbols, *, data_dir, as_of):
+        calls.append((tuple(symbols), str(data_dir), as_of))
+        return selection
+
+    events: list[dict] = []
+    selector = LeaderSelector(
+        tmp_path,
+        event_sink=events,
+        selector=select,
+    )
+
+    assert selector.select(("600000",), "2026-01-30") == ("600000",)
+    assert selector.select(("600000",), "2026-01-30") == ("600000",)
+    assert len(calls) == 1
+    assert events == []
 
 
 def test_overlay_allocation_failure_retains_fallback_but_is_observable() -> None:

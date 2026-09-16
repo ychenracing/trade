@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "purpose": "navigation_only",
+  "authoritative_status_source": "artifact_embedded_status_and_docs_validation",
+  "identity_policy": "preserve_existing_paths_and_evidence_identity",
+  "roles": {
+    "production": {
+      "description": "Current production-facing validation and canonical release evidence when the artifact's own status/provenance and docs/VALIDATION.md identify it as current.",
+      "anchors": [
+        "artifacts/validation/deployment-release/",
+        "artifacts/validation/deployment-release-receipt.json",
+        "artifacts/validation/formal_stress_958_acceptance_summary.json"
+      ]
+    },
+    "audit": {
+      "description": "Diagnostics, preregistration, root-cause, recovery and reproducibility evidence retained without implying current production acceptance.",
+      "paths": [
+        "artifacts/diagnostics/"
+      ]
+    },
+    "archive": {
+      "description": "Rejected or historical research remains at its original path and keeps its original rejected/invalid status.",
+      "paths": [
+        "artifacts/validation/candidates/*-rejected.json"
+      ]
+    }
+  },
+  "rules": [
+    "Directory membership alone never makes an artifact canonical.",
+    "Rejected or invalid artifacts must not be relabeled canonical.",
+    "Frozen evidence is not moved or rewritten merely for directory cleanup.",
+    "Engineering validation and economic acceptance remain separate.",
+    "This index is navigation metadata and never substitutes for an original artifact."
+  ]
+}
