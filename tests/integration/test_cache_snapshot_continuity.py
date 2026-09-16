@@ -156,12 +156,87 @@ def test_runtime_index_refresh_retries_then_fails_closed(tmp_path, monkeypatch):
 
     with pytest.raises(
         RuntimeError,
-        match=r"Unable to refresh index 000300: index provider failed after 3 attempts",
+        match=r"Unable to refresh index 000300: Eastmoney index provider failed after 3 attempts",
     ):
         contracts.refresh_regime_indices(tmp_path, end_date=end, strict=True)
 
     assert calls == 3
     assert not (tmp_path / "000300.csv").exists()
+
+
+def test_runtime_index_refresh_opt_in_fallback_uses_tencent(tmp_path, monkeypatch):
+    end = pd.Timestamp.today().strftime("%Y-%m-%d")
+    frame = _frame(end=end).reset_index()
+    eastmoney_calls = 0
+    tencent_symbols: list[str] = []
+
+    def eastmoney(**kwargs):
+        nonlocal eastmoney_calls
+        eastmoney_calls += 1
+        raise OSError("eastmoney unavailable")
+
+    def tencent(**kwargs):
+        tencent_symbols.append(str(kwargs["symbol"]))
+        return frame
+
+    def sina(**kwargs):
+        raise AssertionError("Sina should not run after a valid Tencent response")
+
+    monkeypatch.setattr(
+        contracts,
+        "ak",
+        SimpleNamespace(
+            stock_zh_index_daily_em=eastmoney,
+            stock_zh_index_daily_tx=tencent,
+            stock_zh_index_daily=sina,
+        ),
+    )
+    monkeypatch.setattr(contracts.time, "sleep", lambda _: None)
+
+    result = contracts.refresh_regime_indices(
+        tmp_path,
+        end_date=end,
+        strict=True,
+        allow_provider_fallback=True,
+    )
+
+    assert eastmoney_calls == 6
+    assert tencent_symbols == ["sh000300", "sh000682"]
+    assert all(item["provider"] == "Tencent" for item in result["indices"].values())
+
+
+def test_runtime_index_refresh_opt_in_fallback_reaches_sina(tmp_path, monkeypatch):
+    end = pd.Timestamp.today().strftime("%Y-%m-%d")
+    frame = _frame(end=end).reset_index()
+    sina_symbols: list[str] = []
+
+    def unavailable(**kwargs):
+        raise OSError("provider unavailable")
+
+    def sina(**kwargs):
+        sina_symbols.append(str(kwargs["symbol"]))
+        return frame
+
+    monkeypatch.setattr(
+        contracts,
+        "ak",
+        SimpleNamespace(
+            stock_zh_index_daily_em=unavailable,
+            stock_zh_index_daily_tx=unavailable,
+            stock_zh_index_daily=sina,
+        ),
+    )
+    monkeypatch.setattr(contracts.time, "sleep", lambda _: None)
+
+    result = contracts.refresh_regime_indices(
+        tmp_path,
+        end_date=end,
+        strict=True,
+        allow_provider_fallback=True,
+    )
+
+    assert sina_symbols == ["sh000300", "sh000682"]
+    assert all(item["provider"] == "Sina" for item in result["indices"].values())
 
 
 def test_published_snapshots_are_read_only_for_cache_and_indices(tmp_path):

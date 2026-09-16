@@ -51,6 +51,18 @@ jobs:
           if [ -d /tmp/trade-research-market ]; then
             (cd /tmp/trade-research-market && find . -maxdepth 1 -name '*.csv' -type f -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS)
           fi
+      - name: Prepare independent regime-index inputs
+        run: |
+          python - <<'PY'
+          from quantfusion.data.contracts import refresh_regime_indices
+
+          refresh_regime_indices(
+              "/tmp/trade-research-regime",
+              end_date="2026-09-15",
+              strict=True,
+              allow_provider_fallback=True,
+          )
+          PY
       - name: Replay Pool B F G through production causal routing
         run: |
           python -m scripts.compare_universes \

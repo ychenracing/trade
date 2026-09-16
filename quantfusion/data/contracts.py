@@ -151,7 +151,7 @@ def _fetch_index_frame(
     *,
     end_timestamp: pd.Timestamp,
 ) -> pd.DataFrame:
-    """Retry transient provider failures without weakening index validation."""
+    """Retry transient Eastmoney failures without weakening index validation."""
     if ak is None:
         raise RuntimeError("AKShare is required to refresh regime indices")
     errors: list[str] = []
@@ -167,9 +167,40 @@ def _fetch_index_frame(
             if attempt + 1 < _INDEX_REFRESH_ATTEMPTS:
                 time.sleep(_INDEX_REFRESH_RETRY_BASE_DELAY_SECONDS * (attempt + 1))
     raise RuntimeError(
-        f"index provider failed after {_INDEX_REFRESH_ATTEMPTS} attempts: "
+        f"Eastmoney index provider failed after {_INDEX_REFRESH_ATTEMPTS} attempts: "
         + "; ".join(errors)
     )
+
+
+def _fetch_fallback_index_frame(
+    code: str,
+    *,
+    end_timestamp: pd.Timestamp,
+) -> tuple[pd.DataFrame, str]:
+    """Fetch the same Shanghai index from independent providers for research only."""
+    if ak is None:
+        raise RuntimeError("AKShare is required to refresh regime indices")
+    symbol = f"sh{code}"
+    end_date = end_timestamp.strftime("%Y-%m-%d")
+    errors: list[str] = []
+
+    try:
+        frame = ak.stock_zh_index_daily_tx(
+            symbol=symbol,
+            start_date="20200101",
+            end_date=end_timestamp.strftime("%Y%m%d"),
+        )
+        return _normalize_index_frame(frame, end_date=end_date), "Tencent"
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
+        errors.append(f"Tencent: {exc}")
+
+    try:
+        frame = ak.stock_zh_index_daily(symbol=symbol)
+        return _normalize_index_frame(frame, end_date=end_date), "Sina"
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
+        errors.append(f"Sina: {exc}")
+
+    raise RuntimeError("independent index fallbacks failed: " + "; ".join(errors))
 
 
 def refresh_regime_indices(
@@ -177,6 +208,7 @@ def refresh_regime_indices(
     *,
     end_date: str,
     strict: bool = False,
+    allow_provider_fallback: bool = False,
 ) -> dict[str, Any]:
     """刷新两只固定指数；外部失败时保留最近一次完整文件。"""
     root = Path(data_dir).expanduser()
@@ -216,17 +248,33 @@ def refresh_regime_indices(
 
     for code, provider_symbol in INDEX_SYMBOLS.items():
         try:
-            frame = _fetch_index_frame(
-                provider_symbol,
-                end_timestamp=end_timestamp,
-            )
-            out = _normalize_index_frame(
-                frame,
-                end_date=end_timestamp.strftime("%Y-%m-%d"),
-            )
+            provider = "Eastmoney"
+            try:
+                frame = _fetch_index_frame(
+                    provider_symbol,
+                    end_timestamp=end_timestamp,
+                )
+                out = _normalize_index_frame(
+                    frame,
+                    end_date=end_timestamp.strftime("%Y-%m-%d"),
+                )
+            except (OSError, RuntimeError, TypeError, ValueError) as primary_exc:
+                if not allow_provider_fallback:
+                    raise
+                try:
+                    out, provider = _fetch_fallback_index_frame(
+                        code,
+                        end_timestamp=end_timestamp,
+                    )
+                except (OSError, RuntimeError, TypeError, ValueError) as fallback_exc:
+                    raise RuntimeError(
+                        f"primary index provider failed: {primary_exc}; "
+                        f"fallback providers failed: {fallback_exc}"
+                    ) from fallback_exc
             _atomic_csv(out, root / f"{code}.csv")
             status["indices"][code] = {
                 "status": "updated",
+                "provider": provider,
                 "last_date": out["date"].iloc[-1],
                 "rows": len(out),
             }
