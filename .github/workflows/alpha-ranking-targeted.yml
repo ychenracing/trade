@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   targeted:
@@ -49,4 +50,53 @@ jobs:
                   'trade_delta': int(result['total_trades']) - int(expected['total_trades']),
               }
           print('ALPHA_OPPORTUNITY_PROBE=' + json.dumps(rows, sort_keys=True))
+          PYCODE
+      - name: Download source-bound 2023-current research inputs
+        uses: actions/download-artifact@v4
+        with:
+          name: research-universe-validation-42122d4ca97388e14e920655c65eb21abee8bb1c
+          path: /tmp/research-artifact
+          repository: ychenracing/trade
+          run-id: '35058209928'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify retained research inputs
+        run: |
+          (cd /tmp/research-artifact/trade-research-market && sha256sum -c SHA256SUMS)
+          (cd /tmp/research-artifact/trade-research-regime && sha256sum -c SHA256SUMS)
+          (cd /tmp/research-artifact/universe-comparison && sha256sum -c SHA256SUMS)
+      - name: Replay Pool B F G on identical retained inputs
+        run: |
+          cp -a /tmp/research-artifact /tmp/research-run
+          python -m scripts.compare_universes \
+            --pool pool_b --pool pool_f --pool pool_g \
+            --start-date 2023-01-01 --end-date 2026-09-15 \
+            --data-dir /tmp/research-run/trade-research-market \
+            --regime-data-dir /tmp/research-run/trade-research-regime \
+            --output-dir /tmp/candidate-comparison
+      - name: Compare long-window economics with retained main baseline
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+
+          baseline_rows = json.loads(Path('/tmp/research-artifact/universe-comparison/comparison.json').read_text())
+          candidate_rows = json.loads(Path('/tmp/candidate-comparison/comparison.json').read_text())
+          baseline = {row['pool']: row for row in baseline_rows}
+          candidate = {row['pool']: row for row in candidate_rows}
+          metrics = (
+              'total_return', 'annual_return', 'max_drawdown', 'total_trades',
+              'turnover_ratio', 'all_cash_day_ratio', 'average_cash_ratio',
+              'holding_concentration_hhi_mean', 'max_concurrent_symbols',
+          )
+          report = {}
+          for pool in sorted(candidate):
+              report[pool] = {
+                  metric: {
+                      'baseline': baseline[pool][metric],
+                      'candidate': candidate[pool][metric],
+                      'delta': candidate[pool][metric] - baseline[pool][metric],
+                  }
+                  for metric in metrics
+              }
+          print('ALPHA_LONG_WINDOW_PROBE=' + json.dumps(report, sort_keys=True))
           PYCODE
