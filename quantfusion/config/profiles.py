@@ -347,7 +347,7 @@ SYMBOL_PROFILES: Mapping[str, str] = MappingProxyType({
     "300408": "semiconductor_material",  # 三环集团 - 电子陶瓷材料
     "688249": "advanced_packaging",  # 晶合集成 - 制造/封测
     "688347": "advanced_packaging",  # 华虹宏力 - 制造
-    "688825": "chip_design",  # 长鑫科技 - DRAM/存储芯片
+    "688825": "advanced_packaging",  # 长鑫科技 - DRAM/存储制造（复用现有制造画像）
     "300223": "chip_design",  # 北京君正 - 设计
     "688041": "chip_design",  # 海光信息 - 设计
 })
