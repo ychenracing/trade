@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from scripts.download_eastmoney_qfq import DEFAULT_SYMBOLS as DOWNLOAD_DEFAULTS
-from scripts.download_eastmoney_qfq import resolve_download_window, select_download_symbols
+from scripts.download_eastmoney_qfq import (
+    _url,
+    research_data_start,
+    resolve_download_window,
+    select_download_symbols,
+)
 from quantfusion.application.backtest_cli import build_argument_parser
 from quantfusion.config import profiles
 from quantfusion.config.overlay import RISK_BASKET, SYMBOL_SUB_INDUSTRY
@@ -103,6 +108,16 @@ def test_pool_download_uses_research_window_without_mutating_legacy_defaults() -
     assert resolve_download_window(
         "2025-04-01", "2025-12-31", research_selection=True, today="2026-09-16"
     ) == ("2025-04-01", "2025-12-31")
+
+
+def test_pool_download_includes_pre_window_warmup_without_changing_replay_start() -> None:
+    assert research_data_start(
+        "2023-01-01", research_selection=True, warmup_calendar_days=365
+    ) == "2022-01-01"
+    assert research_data_start(
+        "2024-01-01", research_selection=False, warmup_calendar_days=365
+    ) == "2024-01-01"
+    assert "lmt=2000" in _url("300308", "2022-01-01", "2026-09-16")
 
 
 def test_unknown_pool_fails_closed() -> None:
