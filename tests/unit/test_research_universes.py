@@ -112,6 +112,7 @@ def test_pool_download_includes_pre_window_warmup_without_changing_replay_start(
         "2024-01-01", research_selection=False, warmup_calendar_days=365
     ) == "2024-01-01"
     assert "lmt=2000" in download._url("300308", "2022-01-01", "2026-09-16")
+    assert download.DataFetcher._TENCENT_ROW_LIMIT >= 2000
 
 
 def test_research_fetch_reuses_existing_provider_failover(monkeypatch) -> None:
