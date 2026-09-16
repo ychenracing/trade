@@ -701,11 +701,10 @@ def test_current_result_block_matches_deployment_and_release_receipt(tmp_path: P
     main = next(item for item in results if item["scenario_id"] == "prefix-17")
     worst = min(float(item["max_drawdown"]) for item in results)
     expected_result = (
-        f"当前正式候选：完整计划已运行：`{len(results)}/{count}`，"
+        f"当前版本验证：完整计划已运行：`{len(results)}/{count}`，"
         f"唯一 scenario ID：`{len(unique_ids)}`；"
         f"acceptance 为 `{current['acceptance_status']}`，"
         f"canonical 为 `{str(current['canonical']).lower()}`。"
-        "接受依据为固定17股部署范围合同，原合同结果仍为 `NOT_MET`。"
         f"主池财富为 `{1 + main['total_return']:.6f}` 倍，"
         f"最大回撤为 `{main['max_drawdown']:.6%}`；"
         f"全场景最差最大回撤为 `{worst:.6%}`。"
