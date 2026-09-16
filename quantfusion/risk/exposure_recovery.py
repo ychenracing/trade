@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from enum import Enum
 from typing import Any
+
+
+BookId = tuple[int, str, str]
+PendingItem = tuple[Any, Any]
 
 
 class AB5RecoveryState(str, Enum):
@@ -43,7 +47,7 @@ def next_ab5_recovery_state(
     previous_state: AB5RecoveryState | str,
     *,
     previous_envelope: Mapping[str, Any] | None,
-    new_reduction_book_ids: Collection[tuple[int, str, str]],
+    new_reduction_book_ids: Collection[BookId],
 ) -> AB5RecoveryState:
     """Advance recovery using only filled reductions and the prior completed close."""
     state = AB5RecoveryState(previous_state)
@@ -56,3 +60,51 @@ def next_ab5_recovery_state(
     if state is AB5RecoveryState.AB5_REDUCED:
         return AB5RecoveryState.AB5_RECOVERY_PENDING
     return AB5RecoveryState.NORMAL
+
+
+def filled_ab5_reduction_book_ids(
+    states: Sequence[Any], date_str: str
+) -> set[BookId]:
+    """Return books whose AB5 reduction actually filled on this trading day."""
+    filled: set[BookId] = set()
+    for state_index, state in enumerate(states):
+        sleeve = getattr(state, "sleeve", None)
+        for trade in getattr(sleeve, "trades", ()):
+            if str(getattr(trade, "date", "")) != date_str:
+                continue
+            if str(getattr(trade, "direction", "")) != "sell":
+                continue
+            if str(getattr(trade, "reason", "")).split(":", 1)[0] != "account_budget_trim":
+                continue
+            filled.add(
+                (
+                    state_index,
+                    str(getattr(trade, "symbol", "")),
+                    str(getattr(trade, "strategy_name", "")),
+                )
+            )
+    return filled
+
+
+def filter_ab5_recovery_buys(
+    pending: Sequence[PendingItem],
+    *,
+    state_index: int,
+    blocked_book_ids: Collection[BookId],
+) -> tuple[list[PendingItem], list[PendingItem]]:
+    """Partition pending orders, blocking only buys owned by reduced AB5 books."""
+    blocked_books = set(blocked_book_ids)
+    retained: list[PendingItem] = []
+    blocked: list[PendingItem] = []
+    for item in pending:
+        signal, _ = item
+        book = (
+            state_index,
+            str(getattr(signal, "symbol", "")),
+            str(getattr(signal, "strategy_name", "")),
+        )
+        if str(getattr(signal, "direction", "")) == "buy" and book in blocked_books:
+            blocked.append(item)
+        else:
+            retained.append(item)
+    return retained, blocked
