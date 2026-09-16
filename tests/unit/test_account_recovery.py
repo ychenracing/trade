@@ -22,9 +22,8 @@ def _envelope(
     date: str = "2026-01-05",
     gross_cap: float = 60_000.0,
     gross_before: float = 50_000.0,
-    canonical_gross_cap: float | None = None,
     state: AB5RecoveryState | None = None,
-    recovery_cap: float | None = None,
+    recovery_buy_cap: float | None = None,
     risk_alert_active: bool = False,
     shock_episode_active: bool = False,
 ) -> dict:
@@ -36,12 +35,10 @@ def _envelope(
         "risk_alert_active": risk_alert_active,
         "shock_episode_active": shock_episode_active,
     }
-    if canonical_gross_cap is not None:
-        event["canonical_gross_cap"] = canonical_gross_cap
     if state is not None:
         event["ab5_recovery_state"] = state.value
-    if recovery_cap is not None:
-        event["ab5_recovery_gross_cap"] = recovery_cap
+    if recovery_buy_cap is not None:
+        event["ab5_recovery_buy_gross_cap"] = recovery_buy_cap
     return event
 
 
@@ -62,22 +59,81 @@ def _filled_trim(
     )
 
 
-def test_planner_recovery_ceiling_only_tightens_canonical_gross_cap() -> None:
+def _buy(shares: int = 2_000) -> Signal:
+    return Signal(
+        "300502",
+        "turtle_breakout",
+        "buy",
+        target_shares=shares,
+        price=10.0,
+        signal_date="2026-01-05",
+        reason="strategy entry",
+    )
+
+
+def _action_identity(actions: list) -> list[tuple]:
+    return [
+        (
+            action.state_index,
+            action.symbol,
+            action.strategy_name,
+            action.shares,
+            action.reason,
+        )
+        for action in actions
+    ]
+
+
+def test_recovery_buy_ceiling_limits_new_risk_without_creating_sell_relief() -> None:
     cfg = default_engine_config()
-    receipt, _ = plan_account_risk_budget(
+    books = [(0, "300308", "atr_channel", 5_000, 10.0)]
+    buys = [(0, _buy(), 20_000.0)]
+
+    receipt, actions = plan_account_risk_budget(
         100_000.0,
         100_000.0,
         cfg,
-        [],
+        books,
+        buys,
+        lambda _: 0.0,
+        date_str="2026-01-05",
+        buy_gross_cap_ceiling=30_000.0,
+    )
+
+    assert receipt["gross_cap"] > 50_000.0
+    assert actions == []
+    assert receipt["recovery_buy_gross_cap"] == 30_000.0
+    assert receipt["recovery_buy_gross_scale"] == 0.0
+    assert receipt["buy_scales"] == [0.0]
+
+
+def test_recovery_buy_ceiling_never_weakens_or_strengthens_canonical_sells() -> None:
+    cfg = default_engine_config()
+    books = [(0, "300308", "atr_channel", 8_000, 10.0)]
+
+    baseline, baseline_actions = plan_account_risk_budget(
+        90_000.0,
+        100_000.0,
+        cfg,
+        books,
         [],
         lambda _: 0.0,
         date_str="2026-01-05",
-        gross_cap_ceiling=30_000.0,
+    )
+    recovery, recovery_actions = plan_account_risk_budget(
+        90_000.0,
+        100_000.0,
+        cfg,
+        books,
+        [],
+        lambda _: 0.0,
+        date_str="2026-01-05",
+        buy_gross_cap_ceiling=10_000.0,
     )
 
-    assert receipt["canonical_gross_cap"] > 30_000.0
-    assert receipt["gross_cap"] == 30_000.0
-    assert receipt["recovery_gross_cap_ceiling"] == 30_000.0
+    assert baseline["gross_cap"] < 80_000.0
+    assert recovery["gross_cap"] == baseline["gross_cap"]
+    assert _action_identity(recovery_actions) == _action_identity(baseline_actions)
 
 
 def test_planner_without_recovery_ceiling_keeps_original_receipt_shape() -> None:
@@ -92,8 +148,8 @@ def test_planner_without_recovery_ceiling_keeps_original_receipt_shape() -> None
         date_str="2026-01-05",
     )
 
-    assert "canonical_gross_cap" not in receipt
-    assert "recovery_gross_cap_ceiling" not in receipt
+    assert "recovery_buy_gross_cap" not in receipt
+    assert "recovery_buy_gross_scale" not in receipt
 
 
 def test_filled_trim_owns_the_cap_from_its_signal_close() -> None:
@@ -113,21 +169,21 @@ def test_filled_trim_without_source_envelope_fails_closed() -> None:
         filled_ab5_reduction_caps([state], "2026-01-06", [])
 
 
-def test_filled_trim_enters_reduced_and_holds_source_cap() -> None:
+def test_filled_trim_enters_reduced_and_holds_source_buy_cap() -> None:
     decision = next_ab5_recovery_decision(
         previous_envelope=_envelope(),
         new_reduction_caps=[60_000.0],
     )
 
     assert decision.state is AB5RecoveryState.AB5_REDUCED
-    assert decision.gross_cap_ceiling == 60_000.0
+    assert decision.buy_gross_cap_ceiling == 60_000.0
 
 
 def test_reduced_requires_one_canonically_safe_close_before_pending() -> None:
     previous = _envelope(
-        canonical_gross_cap=80_000.0,
+        gross_cap=80_000.0,
         state=AB5RecoveryState.AB5_REDUCED,
-        recovery_cap=60_000.0,
+        recovery_buy_cap=60_000.0,
     )
 
     decision = next_ab5_recovery_decision(
@@ -136,14 +192,14 @@ def test_reduced_requires_one_canonically_safe_close_before_pending() -> None:
     )
 
     assert decision.state is AB5RecoveryState.AB5_RECOVERY_PENDING
-    assert decision.gross_cap_ceiling == 60_000.0
+    assert decision.buy_gross_cap_ceiling == 60_000.0
 
 
 def test_recovery_pending_requires_second_canonically_safe_close() -> None:
     previous = _envelope(
-        canonical_gross_cap=80_000.0,
+        gross_cap=80_000.0,
         state=AB5RecoveryState.AB5_RECOVERY_PENDING,
-        recovery_cap=60_000.0,
+        recovery_buy_cap=60_000.0,
     )
 
     decision = next_ab5_recovery_decision(
@@ -152,15 +208,15 @@ def test_recovery_pending_requires_second_canonically_safe_close() -> None:
     )
 
     assert decision.state is AB5RecoveryState.NORMAL
-    assert decision.gross_cap_ceiling is None
+    assert decision.buy_gross_cap_ceiling is None
 
 
 def test_underlying_risk_deterioration_returns_pending_to_reduced() -> None:
     previous = _envelope(
         gross_before=70_000.0,
-        canonical_gross_cap=65_000.0,
+        gross_cap=65_000.0,
         state=AB5RecoveryState.AB5_RECOVERY_PENDING,
-        recovery_cap=60_000.0,
+        recovery_buy_cap=60_000.0,
     )
 
     decision = next_ab5_recovery_decision(
@@ -169,16 +225,16 @@ def test_underlying_risk_deterioration_returns_pending_to_reduced() -> None:
     )
 
     assert decision.state is AB5RecoveryState.AB5_REDUCED
-    assert decision.gross_cap_ceiling == 60_000.0
+    assert decision.buy_gross_cap_ceiling == 60_000.0
 
 
 def test_active_alert_or_shock_is_not_recovery_safe() -> None:
     for flag in ("risk_alert_active", "shock_episode_active"):
         kwargs = {flag: True}
         previous = _envelope(
-            canonical_gross_cap=80_000.0,
+            gross_cap=80_000.0,
             state=AB5RecoveryState.AB5_RECOVERY_PENDING,
-            recovery_cap=60_000.0,
+            recovery_buy_cap=60_000.0,
             **kwargs,
         )
         decision = next_ab5_recovery_decision(
@@ -188,7 +244,7 @@ def test_active_alert_or_shock_is_not_recovery_safe() -> None:
         assert decision.state is AB5RecoveryState.AB5_REDUCED
 
 
-def test_adapter_holds_budget_without_mutating_strategy_queue(monkeypatch) -> None:
+def test_adapter_holds_buy_budget_without_mutating_strategy_queue(monkeypatch) -> None:
     current = "2026-01-06"
     buy = Signal(
         "300308",
@@ -213,13 +269,15 @@ def test_adapter_holds_budget_without_mutating_strategy_queue(monkeypatch) -> No
         assert peak == 120_000.0
         assert cfg == {"sentinel": True}
         assert score("300308") == 0.5
-        assert kwargs == {"shock_floor": 0.1, "gross_cap_ceiling": 60_000.0}
+        assert kwargs == {
+            "shock_floor": 0.1,
+            "buy_gross_cap_ceiling": 60_000.0,
+        }
         events.append(
             _envelope(
                 date=current,
                 gross_cap=55_000.0,
                 gross_before=50_000.0,
-                canonical_gross_cap=55_000.0,
             )
         )
 
@@ -239,21 +297,21 @@ def test_adapter_holds_budget_without_mutating_strategy_queue(monkeypatch) -> No
     assert state.pending == pending
     envelope = events[-1]
     assert envelope["ab5_recovery_state"] == AB5RecoveryState.AB5_REDUCED.value
-    assert envelope["ab5_recovery_gross_cap"] == 55_000.0
+    assert envelope["ab5_recovery_buy_gross_cap"] == 55_000.0
 
 
-def test_adapter_releases_ceiling_after_second_safe_close(monkeypatch) -> None:
+def test_adapter_releases_buy_ceiling_after_second_safe_close(monkeypatch) -> None:
     state = SimpleNamespace(sleeve=SimpleNamespace(trades=[]), pending=[])
     events = [
         _envelope(
-            canonical_gross_cap=80_000.0,
+            gross_cap=80_000.0,
             state=AB5RecoveryState.AB5_RECOVERY_PENDING,
-            recovery_cap=60_000.0,
+            recovery_buy_cap=60_000.0,
         )
     ]
 
     def fake_account_budget(states, date, assets, peak, cfg, score, events, **kwargs):
-        assert "gross_cap_ceiling" not in kwargs
+        assert "buy_gross_cap_ceiling" not in kwargs
         events.append(
             _envelope(
                 date="2026-01-06",
@@ -275,7 +333,7 @@ def test_adapter_releases_ceiling_after_second_safe_close(monkeypatch) -> None:
     )
 
     assert "ab5_recovery_state" not in events[-1]
-    assert "ab5_recovery_gross_cap" not in events[-1]
+    assert "ab5_recovery_buy_gross_cap" not in events[-1]
 
 
 def test_all_production_replay_paths_use_the_recovery_adapter() -> None:
