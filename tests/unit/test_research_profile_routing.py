@@ -7,7 +7,7 @@ from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
 def test_research_only_symbols_reuse_matching_existing_profiles() -> None:
     assert SYMBOL_SUB_INDUSTRY["688825"] == "memory"
     assert SYMBOL_SUB_INDUSTRY["688037"] == "equipment"
-    # Keep the existing manufacturing/foundry parameter profile for 长鑫科技;
-    # correcting its security identity must not retune its strategy economics.
+    # Correct security identity and risk grouping without retuning the frozen
+    # canonical parameter profiles used by the strategy engine.
     assert profiles.SYMBOL_PROFILES["688825"] == "advanced_packaging"
-    assert profiles.SYMBOL_PROFILES["688037"] == "semiconductor_equipment"
+    assert profiles.SYMBOL_PROFILES["688037"] == "test_measurement"

@@ -335,7 +335,7 @@ SYMBOL_PROFILES: Mapping[str, str] = MappingProxyType({
     "688082": "semiconductor_equipment",  # 盛美上海 - 设备
     "002371": "semiconductor_equipment",  # 北方华创 - 设备
     "688012": "semiconductor_equipment",  # 中微公司 - 设备
-    "688037": "semiconductor_equipment",  # 芯源微 - 半导体设备
+    "688037": "test_measurement",  # 芯源微 - 保留冻结测试设备画像
     "300604": "test_measurement",  # 长川科技 - 测试设备
     "688361": "test_measurement",  # 中科飞测 - 测试设备
     "300054": "semiconductor_material",  # 鼎龙股份 - 材料
