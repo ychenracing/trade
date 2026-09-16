@@ -5,7 +5,7 @@ text = p.read_text(encoding='utf-8')
 marker = '# Architecture contract should not see research identities in production engine files.\n'
 if text.count(marker) != 1:
     raise SystemExit('architecture contract marker changed')
-block = r'''# Finish research-test migration after the broad mechanical pass.
+block = r"""# Finish research-test migration after the broad mechanical pass.
 p, test_text = load("tests/c6_non_economic/test_c6_diagnostics.py")
 test_text = one(
     test_text,
@@ -141,6 +141,6 @@ new_budget = '''    from quantfusion.engine.replay import ProductionReplayEngine
 budget_text = one(budget_text, old_budget, new_budget, "budget adapter test")
 save(str(p), budget_text)
 
-'''
+"""
 text = text.replace(marker, block + marker, 1)
 p.write_text(text, encoding='utf-8')
