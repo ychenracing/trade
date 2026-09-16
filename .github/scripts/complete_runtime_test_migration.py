@@ -23,20 +23,6 @@ test_text = test_text.replace(
     "ProductionReplayEngine.validate_c6_diagnostic_request(request)",
     "validate_c6_diagnostic_request(request)",
 )
-old_ablation = '''def test_ablation_map_is_exact_and_production_defaults_full_on() -> None:
-    engine = object.__new__(BacktestEngine)
-    assert all(engine._c6_feature_enabled(item) for item in ("F0", "F1", "U"))
-    expected = {
-        "BASELINE": set(), "F0_ONLY": {"F0"}, "F0_F1": {"F0", "F1"},
-        "U_ONLY": {"U"}, "C6_BASE": {"F0", "F1", "U"},
-        "W3_REAL_INTENTS_FIXED_REFERENCE_U": {"U"},
-        "W4_FULL_BASE_PRODUCTION_POOL_RELATIVE": set(),
-        "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK": set(),
-    }
-    for intervention, enabled in expected.items():
-        engine._c6_diagnostic_request = {"intervention_id": intervention}
-        assert {item for item in ("F0", "F1", "U") if engine._c6_feature_enabled(item)} == enabled
-'''
 new_ablation = '''def test_ablation_map_is_exact_and_production_defaults_full_on() -> None:
     production = BacktestEngine()
     assert production._runtime_policy.state_local_books is True
@@ -62,7 +48,11 @@ new_ablation = '''def test_ablation_map_is_exact_and_production_defaults_full_on
         }
         assert actual == enabled
 '''
-test_text = one(test_text, old_ablation, new_ablation, "diagnostic feature-map test")
+start = test_text.find("def test_ablation_map_is_exact_and_production_defaults_full_on() -> None:\n")
+end = test_text.find("def test_s_counterpart_is_same_scenario_only() -> None:\n", start)
+if start < 0 or end < 0:
+    raise SystemExit("diagnostic feature-map function boundary changed")
+test_text = test_text[:start] + new_ablation + test_text[end:]
 test_text = test_text.replace(
     "from quantfusion.engine.ensemble_orchestration import capture_c6_warm_state",
     "from quantfusion.engine.ensemble_orchestration import capture_diagnostic_warm_state",
