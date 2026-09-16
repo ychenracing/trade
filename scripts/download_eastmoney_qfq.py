@@ -29,6 +29,9 @@ DEFAULT_RESEARCH_OUTPUT = PROJECT_ROOT / "data_cache" / "research_market"
 LEGACY_START_DATE = "2024-01-01"
 LEGACY_END_DATE = "2026-07-20"
 DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS = 365
+RESEARCH_INTER_SYMBOL_DELAY_SECONDS = 1.5
+RESEARCH_COOLDOWN_SECONDS = 20.0
+RESEARCH_MAX_PASSES = 5
 
 
 def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
@@ -99,10 +102,19 @@ def _url(symbol: str, start: str, end: str) -> str:
     return f"https://push2his.eastmoney.com/api/qt/stock/kline/get?{query}"
 
 
-def _download(symbol: str, start: str, end: str) -> tuple[pd.DataFrame, str]:
+def _download(
+    symbol: str,
+    start: str,
+    end: str,
+    *,
+    attempts: int = 5,
+    retry_base_delay: float = 1.5,
+) -> tuple[pd.DataFrame, str]:
     """Download one symbol with bounded retries and strict response checks."""
+    if attempts < 1:
+        raise ValueError("attempts must be positive")
     errors: list[str] = []
-    for attempt in range(5):
+    for attempt in range(attempts):
         try:
             request = urllib.request.Request(
                 _url(symbol, start, end),
@@ -153,9 +165,80 @@ def _download(symbol: str, start: str, end: str) -> tuple[pd.DataFrame, str]:
             return frame, name
         except Exception as error:  # External endpoint boundary.
             errors.append(f"attempt {attempt + 1}: {error}")
-            if attempt < 4:
-                time.sleep(1.5 * (attempt + 1))
+            if attempt + 1 < attempts:
+                time.sleep(retry_base_delay * (attempt + 1))
     raise RuntimeError(f"{symbol} download failed: {'; '.join(errors)}")
+
+
+def _store_symbol_snapshot(
+    output: Path,
+    symbol_manifest: dict[str, object],
+    symbol: str,
+    frame: pd.DataFrame,
+    name: str,
+) -> None:
+    """Persist one already-validated frame and its compact provenance row."""
+    path = output / f"{symbol}.csv"
+    frame.assign(date=frame["date"].dt.strftime("%Y-%m-%d")).to_csv(
+        path, index=False
+    )
+    symbol_manifest[symbol] = {
+        "name": name,
+        "rows": len(frame),
+        "first_date": frame["date"].iloc[0].strftime("%Y-%m-%d"),
+        "last_date": frame["date"].iloc[-1].strftime("%Y-%m-%d"),
+    }
+    print(
+        f"{symbol} {name}: {len(frame)} rows, "
+        f"{frame['date'].iloc[0].date()} to {frame['date'].iloc[-1].date()}"
+    )
+
+
+def _download_research_symbols(
+    symbols: tuple[str, ...],
+    *,
+    start: str,
+    end: str,
+    output: Path,
+    symbol_manifest: dict[str, object],
+) -> None:
+    """Throttle long research snapshots and resume after bounded provider cooldowns."""
+    pending = list(symbols)
+    last_error = ""
+    for pass_index in range(RESEARCH_MAX_PASSES):
+        if not pending:
+            return
+        next_pending: list[str] = []
+        for offset, symbol in enumerate(pending):
+            try:
+                frame, name = _download(
+                    symbol,
+                    start,
+                    end,
+                    attempts=3,
+                    retry_base_delay=2.0,
+                )
+            except RuntimeError as exc:
+                last_error = str(exc)
+                # Stop issuing new requests once throttling appears. Preserve all
+                # completed files and retry the failed/unattempted suffix only.
+                next_pending = pending[offset:]
+                print(
+                    f"{symbol}: provider throttled; deferring {len(next_pending)} "
+                    f"symbol(s) after pass {pass_index + 1}"
+                )
+                break
+            _store_symbol_snapshot(output, symbol_manifest, symbol, frame, name)
+            time.sleep(RESEARCH_INTER_SYMBOL_DELAY_SECONDS)
+        if not next_pending:
+            return
+        pending = next_pending
+        if pass_index + 1 < RESEARCH_MAX_PASSES:
+            time.sleep(RESEARCH_COOLDOWN_SECONDS)
+    raise RuntimeError(
+        "research snapshot download remained incomplete after bounded cooldowns; "
+        f"first pending symbol={pending[0] if pending else 'unknown'}; {last_error}"
+    )
 
 
 def main() -> int:
@@ -238,23 +321,19 @@ def main() -> int:
         "requested_end": end_date,
         "symbols": symbol_manifest,
     }
-    for symbol in symbols:
-        frame, name = _download(symbol, data_start, end_date)
-        path = output / f"{symbol}.csv"
-        frame.assign(date=frame["date"].dt.strftime("%Y-%m-%d")).to_csv(
-            path, index=False
+    if research_selection:
+        _download_research_symbols(
+            tuple(symbols),
+            start=data_start,
+            end=end_date,
+            output=output,
+            symbol_manifest=symbol_manifest,
         )
-        symbol_manifest[symbol] = {
-            "name": name,
-            "rows": len(frame),
-            "first_date": frame["date"].iloc[0].strftime("%Y-%m-%d"),
-            "last_date": frame["date"].iloc[-1].strftime("%Y-%m-%d"),
-        }
-        print(
-            f"{symbol} {name}: {len(frame)} rows, "
-            f"{frame['date'].iloc[0].date()} to {frame['date'].iloc[-1].date()}"
-        )
-        time.sleep(0.3)
+    else:
+        for symbol in symbols:
+            frame, name = _download(symbol, data_start, end_date)
+            _store_symbol_snapshot(output, symbol_manifest, symbol, frame, name)
+            time.sleep(0.3)
     (output / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
