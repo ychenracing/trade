@@ -1,0 +1,189 @@
+name: Alpha Candidate C economic check
+
+on:
+  push:
+    branches:
+      - agent/alpha-opportunity-consistency
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  economics:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Prepare exact pre-Candidate-C control
+        run: git worktree add --detach /tmp/alpha-control 1c0165215ea931f2a08fd265a5d45d875d3bde12
+      - name: Measure Candidate C fixed universes
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          from tests.regression.test_quant_fusion import UNIVERSES, run_quiet
+
+          rows = {}
+          for name, codes in UNIVERSES.items():
+              result = run_quiet(codes)
+              rows[name] = {
+                  'symbols': len(codes),
+                  'total_return': float(result['total_return']),
+                  'max_drawdown': float(result['max_drawdown']),
+                  'sharpe': float(result['sharpe']),
+                  'calmar': float(result['calmar']),
+                  'total_trades': int(result['total_trades']),
+                  'sell_trades': int(result['sell_trades']),
+                  'date_symbol_side_count': int(result['date_symbol_side_count']),
+              }
+          Path('/tmp/candidate-fixed.json').write_text(json.dumps(rows, sort_keys=True))
+          print('CANDIDATE_FIXED=' + json.dumps(rows, sort_keys=True))
+          PYCODE
+      - name: Measure exact control fixed universes
+        working-directory: /tmp/alpha-control
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          from tests.regression.test_quant_fusion import UNIVERSES, run_quiet
+
+          rows = {}
+          for name, codes in UNIVERSES.items():
+              result = run_quiet(codes)
+              rows[name] = {
+                  'symbols': len(codes),
+                  'total_return': float(result['total_return']),
+                  'max_drawdown': float(result['max_drawdown']),
+                  'sharpe': float(result['sharpe']),
+                  'calmar': float(result['calmar']),
+                  'total_trades': int(result['total_trades']),
+                  'sell_trades': int(result['sell_trades']),
+                  'date_symbol_side_count': int(result['date_symbol_side_count']),
+              }
+          Path('/tmp/control-fixed.json').write_text(json.dumps(rows, sort_keys=True))
+          print('CONTROL_FIXED=' + json.dumps(rows, sort_keys=True))
+          PYCODE
+      - name: Compare fixed universes
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+
+          candidate = json.loads(Path('/tmp/candidate-fixed.json').read_text())
+          control = json.loads(Path('/tmp/control-fixed.json').read_text())
+          report = {}
+          for name in sorted(candidate):
+              report[name] = {
+                  key: {
+                      'control': control[name][key],
+                      'candidate': candidate[name][key],
+                      'delta': candidate[name][key] - control[name][key],
+                  }
+                  for key in candidate[name]
+                  if key != 'symbols'
+              }
+              report[name]['symbols'] = candidate[name]['symbols']
+          print('CANDIDATE_C_FIXED_DELTA=' + json.dumps(report, sort_keys=True))
+          Path('/tmp/candidate-c-fixed-delta.json').write_text(
+              json.dumps(report, indent=2, sort_keys=True) + '\n'
+          )
+          PYCODE
+      - name: Download source-bound 2023-current research inputs
+        uses: actions/download-artifact@v4
+        with:
+          name: research-universe-validation-42122d4ca97388e14e920655c65eb21abee8bb1c
+          path: /tmp/research-artifact
+          repository: ychenracing/trade
+          run-id: '35058209928'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify retained research inputs
+        run: |
+          (cd /tmp/research-artifact/trade-research-market && sha256sum -c SHA256SUMS)
+          (cd /tmp/research-artifact/trade-research-regime && sha256sum -c SHA256SUMS)
+      - name: Replay Candidate C long-window pools
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          from scripts.compare_universes import _run_pool
+
+          rows = [
+              _run_pool(
+                  pool,
+                  start_date='2023-01-01',
+                  end_date='2026-09-15',
+                  data_dir=Path('/tmp/research-artifact/trade-research-market'),
+                  regime_data_dir=Path('/tmp/research-artifact/trade-research-regime'),
+                  initial_capital=2_000_000.0,
+                  indicator_state='warm',
+                  warmup_calendar_days=365,
+              )
+              for pool in ('pool_b', 'pool_f', 'pool_g')
+          ]
+          Path('/tmp/candidate-long.json').write_text(json.dumps(rows, sort_keys=True))
+          print('CANDIDATE_LONG=' + json.dumps(rows, sort_keys=True))
+          PYCODE
+      - name: Replay exact control long-window pools
+        working-directory: /tmp/alpha-control
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          from scripts.compare_universes import _run_pool
+
+          rows = [
+              _run_pool(
+                  pool,
+                  start_date='2023-01-01',
+                  end_date='2026-09-15',
+                  data_dir=Path('/tmp/research-artifact/trade-research-market'),
+                  regime_data_dir=Path('/tmp/research-artifact/trade-research-regime'),
+                  initial_capital=2_000_000.0,
+                  indicator_state='warm',
+                  warmup_calendar_days=365,
+              )
+              for pool in ('pool_b', 'pool_f', 'pool_g')
+          ]
+          Path('/tmp/control-long.json').write_text(json.dumps(rows, sort_keys=True))
+          print('CONTROL_LONG=' + json.dumps(rows, sort_keys=True))
+          PYCODE
+      - name: Compare long-window economics
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+
+          candidate_rows = json.loads(Path('/tmp/candidate-long.json').read_text())
+          control_rows = json.loads(Path('/tmp/control-long.json').read_text())
+          candidate = {row['pool']: row for row in candidate_rows}
+          control = {row['pool']: row for row in control_rows}
+          metrics = (
+              'total_return', 'annual_return', 'max_drawdown', 'total_trades',
+              'turnover_ratio', 'all_cash_day_ratio', 'average_cash_ratio',
+              'holding_concentration_hhi_mean', 'max_concurrent_symbols',
+          )
+          report = {
+              pool: {
+                  metric: {
+                      'control': control[pool][metric],
+                      'candidate': candidate[pool][metric],
+                      'delta': candidate[pool][metric] - control[pool][metric],
+                  }
+                  for metric in metrics
+              }
+              for pool in sorted(candidate)
+          }
+          print('CANDIDATE_C_LONG_DELTA=' + json.dumps(report, sort_keys=True))
+          Path('/tmp/candidate-c-long-delta.json').write_text(
+              json.dumps(report, indent=2, sort_keys=True) + '\n'
+          )
+          PYCODE
