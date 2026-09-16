@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "candidate_revision": "b37ca7e682eb8a8a67e060ce196d9973b9299ac1",
+  "baseline_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+  "workflow_run": 35163805512,
+  "workflow_artifact_id": 10473339957,
+  "window": ["2025-04-01", "2026-07-20"],
+  "indicator_state": "warm",
+  "result": "REJECTED_SAME_ECONOMIC_PATH_AS_OVERHOLD_CANDIDATE",
+  "candidate_metrics": {
+    "total_return": 3.8451261856632533,
+    "annual_return": 2.519728171158987,
+    "sharpe": 2.9296408388304274,
+    "calmar": 15.317180124336815,
+    "max_drawdown": -0.1645033975382648,
+    "fills": 559,
+    "sell_fills": 306,
+    "date_symbol_side_buckets": 176,
+    "turnover_over_mean_assets": 14.760199226542362,
+    "sell_rebuy_chains": 67,
+    "rebuy_within_20_sessions": 24,
+    "pure_ab5_rebuy_within_20_sessions": 12,
+    "ab5_sell_fills": 136
+  },
+  "recovery_diagnosis": {
+    "active_days": 68,
+    "reduced_days": 60,
+    "pending_days": 8,
+    "reduced_with_new_reduction_orders": 4,
+    "reduced_without_new_reduction_orders": 56,
+    "pending_with_new_reduction_orders": 0,
+    "pending_without_new_reduction_orders": 8,
+    "finding": "The long recovery hold is not primarily caused by canonical AB5 continuing to request reductions. On 56 of 60 REDUCED days, canonical AB5 requested zero new reduction orders. The recovery layer remained REDUCED because risk_alert_active (and shorter shock episodes) independently blocked state progression, duplicating controls already enforced by canonical AB5."
+  },
+  "next_design_constraint": "Do not let recovery hysteresis duplicate an active account alert. Canonical AB5 continues to own all alert-specific buy scaling and sell relief. Recovery may stay REDUCED for active shock episodes or new canonical reduction orders, but an alert with zero new canonical reduction orders must be eligible to progress."
+}
