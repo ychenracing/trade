@@ -7,7 +7,7 @@ import pandas as pd
 from quantfusion.data.feature_contract import validate_causal_feature_frame
 from quantfusion.domain.health import HealthState
 from quantfusion.domain.models import Signal
-from quantfusion.engine.replay import ProductionRouteController
+from quantfusion.engine.route_components import CashAllocator, ExecutionGuard
 from quantfusion.engine.signals import CoreSignalMixin
 from quantfusion.strategy.weak import PositiveMomentumHoldStrategy
 
@@ -143,7 +143,7 @@ def test_route_cash_migration_preserves_total_cash_and_rebases_external_flows() 
     states = [_state(1_500_000.0), _state(750_000.0), _state(750_000.0)]
     before_total = sum(float(state.sleeve.cash) for state in states)
 
-    ProductionRouteController._shift_free_cash(states, (1.0, 0.0, 0.0))
+    CashAllocator.shift_free_cash(states, (1.0, 0.0, 0.0))
 
     assert sum(float(state.sleeve.cash) for state in states) == before_total
     assert [state.sleeve.cash for state in states] == [3_000_000.0, 0.0, 0.0]
@@ -167,10 +167,10 @@ def test_route_liquidation_keeps_sell_queue_unique_and_positions_owned() -> None
         pending=[existing_trend_sell, existing_buy],
     )
 
-    ProductionRouteController._queue_liquidations(
+    ExecutionGuard.queue_liquidations(
         [state], "2026-09-16", weak_only=False
     )
-    ProductionRouteController._queue_liquidations(
+    ExecutionGuard.queue_liquidations(
         [state], "2026-09-16", weak_only=True
     )
 

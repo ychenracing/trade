@@ -20,9 +20,10 @@ from quantfusion.config.weak import weak_regime_config, weak_regime_policy
 from quantfusion.domain.health import HealthReport, unavailable_issue
 from quantfusion.domain.models import BarContext
 from quantfusion.domain.rules import require_finite
+from quantfusion.engine.route_components import CashAllocator, ExecutionGuard, LeaderSelector
 from quantfusion.engine.runtime import ReplayRuntimePolicy
-from quantfusion.engine.universe import BacktestEngine, SleeveBacktestEngine
 from quantfusion.engine.strategy_lifecycle import StrategyLifecycleRegistry
+from quantfusion.engine.universe import BacktestEngine, SleeveBacktestEngine
 from quantfusion.regime.evidence import (
     detect_regime,
     local_frame,
@@ -46,12 +47,14 @@ _normalized_timestamp = normalized_timestamp
 _weak_regime_config = weak_regime_config
 _weak_regime_policy = weak_regime_policy
 
+
 class ProductionRouteController:
     """Apply the daily outer route inside one persistent production ledger.
 
     The controller never injects an account snapshot and never replaces the
-    ensemble's execution engine. It filters or adds close-generated T+1 orders
-    while the existing sleeve cash, positions, pending orders, sticky state,
+    ensemble's execution engine. It orchestrates close-generated T+1 orders
+    while focused helpers own leader lookup, cash migration, and pending-order
+    guarding. Existing sleeve cash, positions, pending orders, sticky state,
     risk peaks, cooldowns, and strategy instances continue across every route
     transition.
     """
@@ -67,68 +70,17 @@ class ProductionRouteController:
             RegimeRoute.WEAK.value,
             RegimeRoute.CASH.value,
         }
-        self.leader_data_dir = str(leader_data_dir)
         self.previous_route: str | None = None
         self.events: list[dict[str, Any]] = []
         self.journal: list[dict[str, Any]] = []
-        self._leader_cache: dict[str, LeaderSelection] = {}
+        self._leader_selector = LeaderSelector(
+            leader_data_dir,
+            event_sink=self.events,
+        )
         self._weak_strategy_registry = StrategyLifecycleRegistry()
         self._weak_episode_leaders: tuple[str, ...] = ()
         self._carry_trend_book = False
         self._restoring_trend_cash = False
-
-    @staticmethod
-    def _drop_buys(states: list[Any]) -> None:
-        for state in states:
-            state.pending = [
-                item for item in state.pending if item[0].direction != "buy"
-            ]
-
-    @staticmethod
-    def _queue_liquidations(
-        states: list[Any], date_str: str, *, weak_only: bool
-    ) -> None:
-        for state in states:
-            liquidations = state.sleeve._generate_liquidation_signals(
-                date_str,
-                reason="production outer-route migration",
-            )
-            selected = [
-                item
-                for item in liquidations
-                if (
-                    item[0].strategy_name == PositiveMomentumHoldStrategy.name
-                ) == weak_only
-            ]
-            if not selected:
-                continue
-            state.pending = state.sleeve._dedupe_pending_signals(
-                [item for item in state.pending if item[0].direction == "sell"]
-                + selected
-            )
-
-    def _leaders(self, symbols: Sequence[str], date_str: str) -> tuple[str, ...]:
-        selection = self._leader_cache.get(date_str)
-        if selection is None:
-            selection = select_positive_momentum_leaders(
-                tuple(symbols),
-                data_dir=self.leader_data_dir,
-                as_of=date_str,
-            )
-            self._leader_cache[date_str] = selection
-        if selection.status != "READY":
-            self.events.append(
-                {
-                    "date": date_str,
-                    "event": "leader_selection_failure",
-                    "status": selection.status,
-                    "unavailable_symbols": list(selection.unavailable_symbols),
-                    "invalid_symbols": list(selection.invalid_symbols),
-                    "health": selection.health.as_dict(),
-                }
-            )
-        selection.require_ready("production route")
-        return tuple(selection.selected_symbols)
 
     def _append_weak_signals(
         self,
@@ -190,26 +142,6 @@ class ProductionRouteController:
             state.pending = state.sleeve._dedupe_pending_signals(state.pending)
         return leaders
 
-    @staticmethod
-    def _shift_free_cash(states: list[Any], weights: Sequence[float]) -> None:
-        """Move idle cash causally and neutralize the external flow in risk peaks."""
-        total_cash = sum(float(state.sleeve.cash) for state in states)
-        if total_cash <= 0:
-            return
-        targets = [total_cash * float(weight) for weight in weights]
-        targets[-1] = total_cash - sum(targets[:-1])
-        for state, target in zip(states, targets, strict=True):
-            old = float(state.sleeve.cash)
-            if not state.sleeve.equity_curve:
-                raise RuntimeError("route cash migration requires a closing equity sample")
-            closing = state.sleeve.equity_curve[-1]
-            assets_before = float(closing["assets"])
-            state.sleeve.cash = target
-            flow = target - old
-            state.sleeve.risk.rebase_after_cash_flow(assets_before, flow)
-            closing["assets"] = assets_before + flow
-            closing["cash"] = float(closing["cash"]) + flow
-
     def after_close(
         self,
         states: list[Any],
@@ -240,10 +172,10 @@ class ProductionRouteController:
             # strategy path and double-counts the same risk evidence.
             pass
         elif route == RegimeRoute.CASH.value:
-            self._drop_buys(states)
+            ExecutionGuard.drop_buys(states)
             if changed:
-                self._queue_liquidations(states, date_str, weak_only=False)
-                self._queue_liquidations(states, date_str, weak_only=True)
+                ExecutionGuard.queue_liquidations(states, date_str, weak_only=False)
+                ExecutionGuard.queue_liquidations(states, date_str, weak_only=True)
             self._carry_trend_book = False
             self._weak_episode_leaders = ()
         elif route in {
@@ -264,17 +196,17 @@ class ProductionRouteController:
                 # so route and overlay cannot multiply the same reduction.
                 pass
             else:
-                self._drop_buys(states)
+                ExecutionGuard.drop_buys(states)
                 if changed and not self._weak_episode_leaders:
                     # Freeze the leaders for this weak episode. Re-ranking every
                     # close turned the defensive book into a hidden rotation
                     # strategy, increasing trades precisely when conditions are
                     # least forgiving. A new weak episode receives a new,
                     # causal selection from its transition close.
-                    self._weak_episode_leaders = self._leaders(
+                    self._weak_episode_leaders = self._leader_selector.select(
                         tuple(symbols_dict), date_str
                     )
-                self._shift_free_cash(states, (1.0, 0.0, 0.0))
+                CashAllocator.shift_free_cash(states, (1.0, 0.0, 0.0))
                 leaders = self._append_weak_signals(states, date, symbols_dict)
         else:
             carried_trend_book = self._carry_trend_book
@@ -285,10 +217,10 @@ class ProductionRouteController:
                 RegimeRoute.CASH.value,
                 RegimeRoute.TRANSITION_TO_TREND.value,
             }:
-                self._queue_liquidations(states, date_str, weak_only=True)
+                ExecutionGuard.queue_liquidations(states, date_str, weak_only=True)
                 self._restoring_trend_cash = not carried_trend_book
             if self._restoring_trend_cash:
-                self._shift_free_cash(states, (1 / 3, 1 / 3, 1 / 3))
+                CashAllocator.shift_free_cash(states, (1 / 3, 1 / 3, 1 / 3))
                 weak_positions = any(
                     PositiveMomentumHoldStrategy.name in positions
                     for state in states
@@ -457,7 +389,6 @@ class ProductionReplayEngine:
         result["selected_symbols"] = sorted(symbols_dict)
         result["unavailable_symbols"] = []
         return result
-
 
 
 class RegimeAdaptiveBacktestEngine:
@@ -776,7 +707,7 @@ class RegimeAdaptiveBacktestEngine:
                 )
                 self.last_decision = decision
             else:
-                executed_symbols= tuple(sorted(tradable_symbols))
+                executed_symbols = tuple(sorted(tradable_symbols))
                 # Trend route keeps the default three-sleeve ensemble. The
                 # total capital (e.g. 2,000,000) is split across the fast,
                 # base and slow virtual sub-accounts; the sum never exceeds
