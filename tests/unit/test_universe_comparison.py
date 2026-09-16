@@ -9,6 +9,20 @@ from quantfusion.application.universe_comparison import summarize_universe_resul
 from quantfusion.domain.models import TradeRecord
 
 
+def _market_frame(closes: list[float]) -> pd.DataFrame:
+    index = pd.to_datetime(["2023-01-03", "2023-01-04", "2023-01-05"])
+    return pd.DataFrame(
+        {
+            "open": closes,
+            "high": closes,
+            "low": closes,
+            "close": closes,
+            "volume": [1_000_000.0] * 3,
+        },
+        index=index,
+    )
+
+
 def test_summarize_universe_result_uses_audited_engine_outputs() -> None:
     equity = pd.DataFrame(
         {
@@ -32,6 +46,11 @@ def test_summarize_universe_result_uses_audited_engine_outputs() -> None:
         "risk_events": [{"event": "sector_guard_on"}, {"event": "sector_guard_on"}, {"event": "risk_trim"}],
         "max_concurrent_symbols": 2,
     }
+    market_frames = {
+        "300308": _market_frame([50.0, 50.0, 50.0]),
+        "300502": _market_frame([50.0, 50.0, 50.0]),
+        "300394": _market_frame([50.0, 50.0, 50.0]),
+    }
 
     summary = summarize_universe_result(
         "pool_b",
@@ -39,6 +58,7 @@ def test_summarize_universe_result_uses_audited_engine_outputs() -> None:
         "2023-01-01",
         "2026-09-16",
         result,
+        market_frames=market_frames,
     )
 
     assert summary["pool"] == "pool_b"
@@ -52,7 +72,8 @@ def test_summarize_universe_result_uses_audited_engine_outputs() -> None:
     assert summary["turnover_ratio"] == pytest.approx(110.0 / 105.0)
     assert summary["all_cash_day_ratio"] == pytest.approx(1.0 / 3.0)
     assert summary["average_cash_ratio"] == pytest.approx((1.0 + 0.5 + 0.4) / 3.0)
-    assert summary["holding_concentration_proxy"] == pytest.approx(0.5)
+    assert summary["holding_concentration_hhi_mean"] == pytest.approx(0.75)
+    assert summary["holding_concentration_hhi_max"] == pytest.approx(1.0)
     assert summary["risk_event_count"] == 3
     assert summary["risk_event_types"] == {"risk_trim": 1, "sector_guard_on": 2}
 
