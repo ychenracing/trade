@@ -78,6 +78,48 @@ def test_summarize_universe_result_uses_audited_engine_outputs() -> None:
     assert summary["risk_event_types"] == {"risk_trim": 1, "sector_guard_on": 2}
 
 
+def test_hhi_uses_latest_close_known_by_date_for_suspended_holdings() -> None:
+    dates = pd.to_datetime(["2023-01-03", "2023-01-04", "2023-01-05"])
+    equity = pd.DataFrame(
+        {
+            "assets": [100.0, 100.0, 100.0],
+            "cash": [100.0, 50.0, 50.0],
+            "position_value": [0.0, 50.0, 50.0],
+        },
+        index=dates,
+    )
+    frame = _market_frame([50.0, 50.0, 50.0]).iloc[:2].copy()
+    summary = summarize_universe_result(
+        "pool_a",
+        {"300308": "中际旭创"},
+        "2023-01-01",
+        "2023-01-05",
+        {
+            "total_return": 0.0,
+            "annual_return": 0.0,
+            "max_drawdown": 0.0,
+            "total_trades": 1,
+            "equity_curve": equity,
+            "trades": [
+                TradeRecord(
+                    "300308",
+                    "trend",
+                    "buy",
+                    1,
+                    50.0,
+                    "2023-01-04",
+                    gross_value=50.0,
+                )
+            ],
+            "risk_events": [],
+            "max_concurrent_symbols": 1,
+        },
+        market_frames={"300308": frame},
+    )
+    assert summary["holding_concentration_hhi_mean"] == 1.0
+    assert summary["holding_concentration_hhi_max"] == 1.0
+
+
 def test_comparison_summary_rejects_missing_equity_audit_fields() -> None:
     with pytest.raises(ValueError, match="equity_curve"):
         summarize_universe_result(
