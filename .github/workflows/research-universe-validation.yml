@@ -24,13 +24,23 @@ jobs:
           cache-dependency-path: requirements-lock.txt
       - name: Install locked dependencies
         run: python -m pip install -r requirements-lock.txt
+      - name: Verify research-universe contracts
+        run: >-
+          python -m pytest -q
+          tests/unit/test_research_universes.py
+          tests/unit/test_universe_comparison.py
       - name: Download independent 2023-current research inputs
         run: |
           python -m scripts.download_eastmoney_qfq \
             --pool pool_b --pool pool_f --pool pool_g \
             --start 2023-01-01 --end 2026-09-15 \
             --output /tmp/trade-research-market
-          (cd /tmp/trade-research-market && sha256sum *.csv | sort > SHA256SUMS)
+      - name: Hash available market inputs
+        if: always()
+        run: |
+          if [ -d /tmp/trade-research-market ]; then
+            (cd /tmp/trade-research-market && find . -maxdepth 1 -name '*.csv' -type f -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS)
+          fi
       - name: Replay Pool B F G through production causal routing
         run: |
           python -m scripts.compare_universes \
@@ -39,34 +49,59 @@ jobs:
             --data-dir /tmp/trade-research-market \
             --regime-data-dir /tmp/trade-research-regime \
             --output-dir /tmp/universe-comparison
-          (cd /tmp/trade-research-regime && sha256sum 000300.csv 000682.csv | sort > SHA256SUMS)
-          (cd /tmp/universe-comparison && sha256sum comparison.json comparison.csv comparison.md | sort > SHA256SUMS)
-      - name: Record source identity
+      - name: Hash available regime and report evidence
+        if: always()
+        run: |
+          if [ -d /tmp/trade-research-regime ]; then
+            (cd /tmp/trade-research-regime && find . -maxdepth 1 -name '*.csv' -type f -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS)
+          fi
+          if [ -d /tmp/universe-comparison ]; then
+            (cd /tmp/universe-comparison && find . -maxdepth 1 \( -name 'comparison.json' -o -name 'comparison.csv' -o -name 'comparison.md' \) -type f -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS)
+          fi
+      - name: Record exact source and available evidence identity
+        if: always()
         env:
-          VALIDATION_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHECKOUT_SHA: ${{ github.sha }}
         run: |
           python - <<'PY'
           import json
           import os
           from pathlib import Path
+
+          market = Path('/tmp/trade-research-market')
+          regime = Path('/tmp/trade-research-regime')
+          report = Path('/tmp/universe-comparison')
+          report.mkdir(parents=True, exist_ok=True)
+
+          def read_text_lines(path: Path) -> list[str]:
+              return path.read_text(encoding='utf-8').splitlines() if path.is_file() else []
+
+          def read_json(path: Path):
+              return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
+
           payload = {
-              "source_revision": os.environ["VALIDATION_SHA"],
-              "start_date": "2023-01-01",
-              "end_date": "2026-09-15",
-              "pools": ["pool_b", "pool_f", "pool_g"],
-              "engine": "ProductionReplayEngine",
-              "deployment_policy": "production_daily_replay",
-              "market_manifest": json.loads(Path("/tmp/trade-research-market/manifest.json").read_text()),
-              "market_sha256s": Path("/tmp/trade-research-market/SHA256SUMS").read_text().splitlines(),
-              "regime_sha256s": Path("/tmp/trade-research-regime/SHA256SUMS").read_text().splitlines(),
-              "report_sha256s": Path("/tmp/universe-comparison/SHA256SUMS").read_text().splitlines(),
+              'pr_head_revision': os.environ['PR_HEAD_SHA'],
+              'checkout_revision': os.environ['CHECKOUT_SHA'],
+              'start_date': '2023-01-01',
+              'end_date': '2026-09-15',
+              'pools': ['pool_b', 'pool_f', 'pool_g'],
+              'engine': 'ProductionReplayEngine',
+              'deployment_policy': 'production_daily_replay',
+              'market_manifest': read_json(market / 'manifest.json'),
+              'market_sha256s': read_text_lines(market / 'SHA256SUMS'),
+              'regime_sha256s': read_text_lines(regime / 'SHA256SUMS'),
+              'report_sha256s': read_text_lines(report / 'SHA256SUMS'),
+              'comparison': read_json(report / 'comparison.json'),
+              'complete': (report / 'comparison.json').is_file(),
           }
-          Path("/tmp/universe-comparison/validation-receipt.json").write_text(
-              json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8",
+          (report / 'validation-receipt.json').write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
           )
           PY
-      - name: Upload exact research validation evidence
+      - name: Upload available research validation evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: research-universe-validation-${{ github.event.pull_request.head.sha }}
@@ -74,5 +109,5 @@ jobs:
             /tmp/trade-research-market
             /tmp/trade-research-regime
             /tmp/universe-comparison
-          if-no-files-found: error
-          retention-days: 30
+          if-no-files-found: warn
+          retention-days: 90
