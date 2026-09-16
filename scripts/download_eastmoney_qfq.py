@@ -28,6 +28,7 @@ DEFAULT_SYMBOLS = tuple(dict.fromkeys((*SYMBOL_NAMES, *PortfolioPolicy().regime_
 DEFAULT_RESEARCH_OUTPUT = PROJECT_ROOT / "data_cache" / "research_market"
 LEGACY_START_DATE = "2024-01-01"
 LEGACY_END_DATE = "2026-07-20"
+DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS = 365
 
 
 def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
@@ -50,12 +51,28 @@ def resolve_download_window(
     research_selection: bool,
     today: str,
 ) -> tuple[str, str]:
-    """Resolve pool research defaults without changing the retained legacy snapshot."""
+    """Resolve replay-window defaults without changing the retained legacy snapshot."""
     resolved_start = start or (
         DEFAULT_RESEARCH_START_DATE if research_selection else LEGACY_START_DATE
     )
     resolved_end = end or (today if research_selection else LEGACY_END_DATE)
     return resolved_start, resolved_end
+
+
+def research_data_start(
+    replay_start: str,
+    *,
+    research_selection: bool,
+    warmup_calendar_days: int = DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS,
+) -> str:
+    """Include causal pre-window data for warm indicators only in pool research mode."""
+    if not research_selection:
+        return replay_start
+    if warmup_calendar_days < 0:
+        raise ValueError("warmup_calendar_days must be non-negative")
+    return str(
+        (pd.Timestamp(replay_start) - pd.Timedelta(days=warmup_calendar_days)).date()
+    )
 
 
 def _market_id(symbol: str) -> str:
@@ -70,7 +87,9 @@ def _url(symbol: str, start: str, end: str) -> str:
             "secid": f"{_market_id(symbol)}.{symbol}",
             "klt": "101",
             "fqt": "1",
-            "lmt": "1000",
+            # 2023-current research additionally retains one calendar year of
+            # pre-window warmup, so the old 1000-row cap is not sufficient.
+            "lmt": "2000",
             "beg": start.replace("-", ""),
             "end": end.replace("-", ""),
             "fields1": "f1,f2,f3,f4,f5,f6",
@@ -146,7 +165,8 @@ def main() -> int:
         "--start",
         default="",
         help=(
-            "Snapshot start date. Research pools default to 2023-01-01; "
+            "Replay-window start date. Research pools default to 2023-01-01 and "
+            "automatically fetch one calendar year of pre-window warmup data; "
             "legacy non-pool mode retains 2024-01-01."
         ),
     )
@@ -190,11 +210,15 @@ def main() -> int:
         symbols = select_download_symbols(tuple(args.pools))
     else:
         symbols = DEFAULT_SYMBOLS
-    start_date, end_date = resolve_download_window(
+    replay_start, end_date = resolve_download_window(
         args.start,
         args.end,
         research_selection=research_selection,
         today=today_str(),
+    )
+    data_start = research_data_start(
+        replay_start,
+        research_selection=research_selection,
     )
     output = Path(
         args.output
@@ -206,12 +230,16 @@ def main() -> int:
         "provider": "Eastmoney push2his",
         "adjustment": "qfq",
         "volume_unit": "shares",
-        "requested_start": start_date,
+        "requested_start": data_start,
+        "research_window_start": replay_start,
+        "warmup_calendar_days": (
+            DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS if research_selection else 0
+        ),
         "requested_end": end_date,
         "symbols": symbol_manifest,
     }
     for symbol in symbols:
-        frame, name = _download(symbol, start_date, end_date)
+        frame, name = _download(symbol, data_start, end_date)
         path = output / f"{symbol}.csv"
         frame.assign(date=frame["date"].dt.strftime("%Y-%m-%d")).to_csv(
             path, index=False
