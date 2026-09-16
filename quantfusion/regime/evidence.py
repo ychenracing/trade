@@ -434,9 +434,10 @@ def select_positive_momentum_leaders(
         )
         if current_emerging_index is not None:
             current_emerging = selected[current_emerging_index]
+            current_quality = cast(float, current_emerging[1])
             if (
                 best_emerging[2] != current_emerging[2]
-                and best_emerging[1] > current_emerging[1]
+                and best_emerging[1] > current_quality
             ):
                 selected[current_emerging_index] = best_emerging
         elif len(selected) >= maximum and MAX_EMERGING_LEADERS > 0:
@@ -449,7 +450,8 @@ def select_positive_momentum_leaders(
                     key=lambda index: (selected[index][0], selected[index][2]),
                 )
                 weakest_mature = selected[weakest_index]
-                if best_emerging[1] > weakest_mature[1]:
+                weakest_quality = cast(float, weakest_mature[1])
+                if best_emerging[1] > weakest_quality:
                     selected[weakest_index] = best_emerging
 
     # Keep selected-return semantics on the established weak score. Replacement
