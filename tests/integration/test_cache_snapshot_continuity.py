@@ -112,6 +112,58 @@ def test_runtime_index_refresh_still_updates(tmp_path, monkeypatch):
     assert (tmp_path / "live_refresh_manifest.json").is_file()
 
 
+def test_runtime_index_refresh_retries_transient_provider_failure(tmp_path, monkeypatch):
+    end = pd.Timestamp.today().strftime("%Y-%m-%d")
+    frame = _frame(end=end).reset_index()
+    calls: list[str] = []
+    sleeps: list[float] = []
+
+    def fetch(**kwargs):
+        calls.append(str(kwargs["symbol"]))
+        if len(calls) == 1:
+            raise OSError("temporary disconnect")
+        return frame
+
+    monkeypatch.setattr(
+        contracts,
+        "ak",
+        SimpleNamespace(stock_zh_index_daily_em=fetch),
+    )
+    monkeypatch.setattr(contracts.time, "sleep", sleeps.append)
+
+    result = contracts.refresh_regime_indices(tmp_path, end_date=end, strict=True)
+
+    assert calls == ["csi000300", "csi000300", "csi000682"]
+    assert sleeps == [1.0]
+    assert all(item["status"] == "updated" for item in result["indices"].values())
+
+
+def test_runtime_index_refresh_retries_then_fails_closed(tmp_path, monkeypatch):
+    end = pd.Timestamp.today().strftime("%Y-%m-%d")
+    calls = 0
+
+    def unavailable(**kwargs):
+        nonlocal calls
+        calls += 1
+        raise OSError("provider unavailable")
+
+    monkeypatch.setattr(
+        contracts,
+        "ak",
+        SimpleNamespace(stock_zh_index_daily_em=unavailable),
+    )
+    monkeypatch.setattr(contracts.time, "sleep", lambda _: None)
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"Unable to refresh index 000300: index provider failed after 3 attempts",
+    ):
+        contracts.refresh_regime_indices(tmp_path, end_date=end, strict=True)
+
+    assert calls == 3
+    assert not (tmp_path / "000300.csv").exists()
+
+
 def test_published_snapshots_are_read_only_for_cache_and_indices(tmp_path):
     kwargs = _snapshot_inputs(tmp_path)
     snapshot.materialize_frozen_snapshot(**kwargs)
