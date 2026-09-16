@@ -6,7 +6,7 @@ import pandas as pd
 
 from quantfusion.data.feature_contract import validate_causal_feature_frame
 from quantfusion.domain.health import HealthState
-from quantfusion.engine.route_components import CashAllocator
+from quantfusion.engine.replay import ProductionRouteController
 
 
 class _RiskRecorder:
@@ -88,11 +88,11 @@ def test_causal_feature_contract_degrades_when_history_is_insufficient() -> None
     assert contract.validation_status is HealthState.DEGRADED
 
 
-def test_cash_allocator_preserves_total_cash_and_rebases_external_flows() -> None:
+def test_route_cash_migration_preserves_total_cash_and_rebases_external_flows() -> None:
     states = [_state(1_500_000.0), _state(750_000.0), _state(750_000.0)]
     before_total = sum(float(state.sleeve.cash) for state in states)
 
-    CashAllocator.shift_free_cash(states, (1.0, 0.0, 0.0))
+    ProductionRouteController._shift_free_cash(states, (1.0, 0.0, 0.0))
 
     assert sum(float(state.sleeve.cash) for state in states) == before_total
     assert [state.sleeve.cash for state in states] == [3_000_000.0, 0.0, 0.0]
