@@ -209,7 +209,7 @@ def write_universe_comparison(
         encoding="utf-8",
     )
 
-    scalar_fields = (
+    scalar_fields: tuple[str, ...] = (
         "pool",
         "symbol_count",
         "members",
