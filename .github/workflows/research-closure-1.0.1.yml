@@ -130,6 +130,8 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin main
           test "$(git rev-parse origin/main)" = "$EXPECTED_MAIN"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           tree=$(git write-tree)
           final_commit=$(printf '%s\n\n%s\n' \
