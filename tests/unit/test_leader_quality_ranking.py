@@ -29,8 +29,7 @@ def _spiky_frame() -> pd.DataFrame:
     return frame
 
 
-def test_emerging_leader_can_challenge_mature_spike_on_broad_quality() -> None:
-    """A genuinely strong emerging leader may replace a weakening mature name."""
+def _challenge_frames() -> dict[str, pd.DataFrame]:
     frames = {
         code: _trend_frame(drift, volume_ratio)
         for code, drift, volume_ratio in zip(
@@ -44,6 +43,12 @@ def test_emerging_leader_can_challenge_mature_spike_on_broad_quality() -> None:
     # 120 observations: enough for the emerging channel but intentionally below
     # the 241-session mature-leader requirement.
     frames["consistent"] = _trend_frame(0.0011, 1.40, periods=120)
+    return frames
+
+
+def test_emerging_leader_can_challenge_mature_spike_on_broad_quality() -> None:
+    """A genuinely strong emerging leader may replace a weakening mature name."""
+    frames = _challenge_frames()
 
     def load(code: str, boundary: str) -> pd.DataFrame:
         del boundary
@@ -59,3 +64,26 @@ def test_emerging_leader_can_challenge_mature_spike_on_broad_quality() -> None:
 
     assert selection.status == "READY"
     assert selection.selected_symbols == ("consistent",)
+
+
+def test_invalid_reference_feature_contract_disables_optional_quality_enrichment() -> None:
+    """Malformed optional quality evidence must preserve the legacy leader path."""
+    frames = _challenge_frames()
+    malformed = frames[REFERENCE_SYMBOLS[0]].copy()
+    malformed.index = list(malformed.index[:-1]) + [malformed.index[-2]]
+    frames[REFERENCE_SYMBOLS[0]] = malformed
+
+    def load(code: str, boundary: str) -> pd.DataFrame:
+        del boundary
+        return frames[code].copy()
+
+    selection = select_positive_momentum_leaders(
+        ("spiky", "consistent"),
+        data_dir="unused",
+        as_of="2026-01-30",
+        maximum=1,
+        frame_loader=load,
+    )
+
+    assert selection.status == "READY"
+    assert selection.selected_symbols == ("spiky",)
