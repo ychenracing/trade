@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from quantfusion.domain.models import Signal, TradeRecord
 from quantfusion.risk.exposure_recovery import (
     AB5RecoveryState,
+    apply_ab5_recovery_hysteresis,
     filled_ab5_reduction_book_ids,
     filter_ab5_recovery_buys,
     next_ab5_recovery_state,
@@ -21,6 +22,18 @@ def _safe_envelope() -> dict:
         "risk_alert_active": False,
         "shock_episode_active": False,
     }
+
+
+def _buy(symbol: str = "300308", strategy_name: str = "atr_channel") -> Signal:
+    return Signal(
+        symbol,
+        strategy_name,
+        "buy",
+        target_shares=500,
+        price=10.0,
+        signal_date="2026-01-06",
+        reason="strategy entry",
+    )
 
 
 def test_new_filled_ab5_reduction_enters_reduced_state() -> None:
@@ -145,24 +158,8 @@ def test_recovery_ownership_comes_only_from_same_day_filled_ab5_sells() -> None:
 
 
 def test_recovery_filter_blocks_only_owned_buy_books_and_never_sells() -> None:
-    owned_buy = Signal(
-        "300308",
-        "atr_channel",
-        "buy",
-        target_shares=500,
-        price=10.0,
-        signal_date="2026-01-06",
-        reason="strategy entry",
-    )
-    unrelated_buy = Signal(
-        "300502",
-        "atr_channel",
-        "buy",
-        target_shares=600,
-        price=20.0,
-        signal_date="2026-01-06",
-        reason="strategy entry",
-    )
+    owned_buy = _buy()
+    unrelated_buy = _buy("300502")
     owned_sell = Signal(
         "300308",
         "atr_channel",
@@ -183,3 +180,84 @@ def test_recovery_filter_blocks_only_owned_buy_books_and_never_sells() -> None:
 
     assert retained == [(unrelated_buy, strategy), (owned_sell, None)]
     assert blocked == [(owned_buy, strategy)]
+
+
+def test_hysteresis_enters_reduced_on_filled_trim_and_blocks_same_book_rebuy() -> None:
+    current = "2026-01-06"
+    owned_buy = _buy()
+    unrelated_buy = _buy("300502")
+    strategy = SimpleNamespace(name="atr_channel")
+    sleeve = SimpleNamespace(
+        trades=[
+            TradeRecord(
+                "300308",
+                "atr_channel",
+                "sell",
+                200,
+                10.0,
+                current,
+                reason="account_budget_trim",
+            )
+        ],
+        _c6_orders=None,
+    )
+    state = SimpleNamespace(
+        sleeve=sleeve,
+        pending=[(owned_buy, strategy), (unrelated_buy, strategy)],
+    )
+    previous = _safe_envelope()
+    previous.update(
+        date="2026-01-05",
+        ab5_recovery_state=AB5RecoveryState.NORMAL.value,
+        ab5_recovery_book_ids=[],
+    )
+
+    decision = apply_ab5_recovery_hysteresis([state], current, [previous])
+
+    assert decision["state"] == AB5RecoveryState.AB5_REDUCED.value
+    assert decision["book_ids"] == [[0, "300308", "atr_channel"]]
+    assert decision["blocked_orders"] == 1
+    assert decision["blocked_shares"] == 500
+    assert state.pending == [(unrelated_buy, strategy)]
+
+
+def test_recovery_pending_keeps_owned_rebuy_blocked_for_second_safe_close() -> None:
+    owned_buy = _buy()
+    strategy = SimpleNamespace(name="atr_channel")
+    state = SimpleNamespace(
+        sleeve=SimpleNamespace(trades=[], _c6_orders=None),
+        pending=[(owned_buy, strategy)],
+    )
+    previous = _safe_envelope()
+    previous.update(
+        date="2026-01-05",
+        ab5_recovery_state=AB5RecoveryState.AB5_REDUCED.value,
+        ab5_recovery_book_ids=[[0, "300308", "atr_channel"]],
+    )
+
+    decision = apply_ab5_recovery_hysteresis([state], "2026-01-06", [previous])
+
+    assert decision["state"] == AB5RecoveryState.AB5_RECOVERY_PENDING.value
+    assert state.pending == []
+
+
+def test_second_safe_close_returns_normal_and_releases_owned_rebuy() -> None:
+    owned_buy = _buy()
+    strategy = SimpleNamespace(name="atr_channel")
+    state = SimpleNamespace(
+        sleeve=SimpleNamespace(trades=[], _c6_orders=None),
+        pending=[(owned_buy, strategy)],
+    )
+    previous = _safe_envelope()
+    previous.update(
+        date="2026-01-05",
+        ab5_recovery_state=AB5RecoveryState.AB5_RECOVERY_PENDING.value,
+        ab5_recovery_book_ids=[[0, "300308", "atr_channel"]],
+    )
+
+    decision = apply_ab5_recovery_hysteresis([state], "2026-01-06", [previous])
+
+    assert decision["state"] == AB5RecoveryState.NORMAL.value
+    assert decision["book_ids"] == []
+    assert decision["blocked_orders"] == 0
+    assert state.pending == [(owned_buy, strategy)]
