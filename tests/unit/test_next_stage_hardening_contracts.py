@@ -6,7 +6,10 @@ import pandas as pd
 
 from quantfusion.data.feature_contract import validate_causal_feature_frame
 from quantfusion.domain.health import HealthState
+from quantfusion.domain.models import Signal
 from quantfusion.engine.replay import ProductionRouteController
+from quantfusion.engine.signals import CoreSignalMixin
+from quantfusion.strategy.weak import PositiveMomentumHoldStrategy
 
 
 class _RiskRecorder:
@@ -31,6 +34,54 @@ def _state(cash: float) -> SimpleNamespace:
         risk=_RiskRecorder(),
     )
     return SimpleNamespace(sleeve=sleeve)
+
+
+def _sell(symbol: str, strategy_name: str) -> Signal:
+    return Signal(
+        symbol,
+        strategy_name,
+        "sell",
+        100,
+        10.0,
+        reason="route liquidation",
+        signal_date="2026-09-16",
+    )
+
+
+def _buy(symbol: str, strategy_name: str) -> Signal:
+    return Signal(
+        symbol,
+        strategy_name,
+        "buy",
+        100,
+        10.0,
+        reason="existing buy",
+        signal_date="2026-09-16",
+    )
+
+
+class _LiquidationSleeve:
+    _dedupe_pending_signals = staticmethod(CoreSignalMixin._dedupe_pending_signals)
+
+    def __init__(self) -> None:
+        self.positions = {
+            "trend": {"dual_ma": SimpleNamespace(shares=100)},
+            "weak": {
+                PositiveMomentumHoldStrategy.name: SimpleNamespace(shares=100)
+            },
+        }
+        self._generated = [
+            (_sell("trend", "dual_ma"), SimpleNamespace(name="dual_ma")),
+            (
+                _sell("weak", PositiveMomentumHoldStrategy.name),
+                SimpleNamespace(name=PositiveMomentumHoldStrategy.name),
+            ),
+        ]
+
+    def _generate_liquidation_signals(self, date_str: str, *, reason: str):
+        assert date_str == "2026-09-16"
+        assert reason == "production outer-route migration"
+        return list(self._generated)
 
 
 def test_causal_feature_contract_declares_required_metadata_and_ready_status() -> None:
@@ -104,3 +155,34 @@ def test_route_cash_migration_preserves_total_cash_and_rebases_external_flows() 
     assert sum(
         float(state.sleeve.equity_curve[-1]["assets"]) for state in states
     ) == before_total
+
+
+def test_route_liquidation_keeps_sell_queue_unique_and_positions_owned() -> None:
+    sleeve = _LiquidationSleeve()
+    positions = sleeve.positions
+    existing_trend_sell = (_sell("trend", "dual_ma"), SimpleNamespace(name="dual_ma"))
+    existing_buy = (_buy("candidate", "dual_ma"), SimpleNamespace(name="dual_ma"))
+    state = SimpleNamespace(
+        sleeve=sleeve,
+        pending=[existing_trend_sell, existing_buy],
+    )
+
+    ProductionRouteController._queue_liquidations(
+        [state], "2026-09-16", weak_only=False
+    )
+    ProductionRouteController._queue_liquidations(
+        [state], "2026-09-16", weak_only=True
+    )
+
+    keys = [
+        (signal.symbol, signal.strategy_name, signal.direction)
+        for signal, _strategy in state.pending
+    ]
+    assert keys == [
+        ("trend", "dual_ma", "sell"),
+        ("weak", PositiveMomentumHoldStrategy.name, "sell"),
+    ]
+    assert len(keys) == len(set(keys))
+    assert sleeve.positions is positions
+    assert sleeve.positions["trend"]["dual_ma"].shares == 100
+    assert sleeve.positions["weak"][PositiveMomentumHoldStrategy.name].shares == 100
