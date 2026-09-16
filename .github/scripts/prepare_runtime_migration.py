@@ -68,6 +68,24 @@ if text.count(old_orchestration) != 1:
     raise SystemExit('orchestration runtime import anchor changed')
 text = text.replace(old_orchestration, new_orchestration, 1)
 
+old_engine_runtime_state = '''text = one(
+    text,
+    "        self.sleeves: list[_EnsembleSleeveBacktestEngine] = []\\n        self.last_result: dict | None = None\\n",
+    "        self.sleeves: list[_EnsembleSleeveBacktestEngine] = []\\n        self.last_result: dict | None = None\\n        self._runtime_policy = ReplayRuntimePolicy()\\n",
+    "engine runtime state",
+)
+'''
+new_engine_runtime_state = '''text = one(
+    text,
+    "        self._adv_used: dict[tuple[str, str, str], int] = {}\\n        normalized_cfg = dict(cfg or {})\\n",
+    "        self._adv_used: dict[tuple[str, str, str], int] = {}\\n        self._runtime_policy = ReplayRuntimePolicy()\\n        normalized_cfg = dict(cfg or {})\\n",
+    "sleeve runtime state",
+)
+'''
+if text.count(old_engine_runtime_state) != 1:
+    raise SystemExit('engine runtime state anchor changed')
+text = text.replace(old_engine_runtime_state, new_engine_runtime_state, 1)
+
 old_formal_import = '''    "from quantfusion.engine.replay import ProductionReplayEngine\\nfrom quantfusion.research.c6_runtime import (\\n    c6_diagnostic_engine_config,\\n    runtime_policy_for_intervention,\\n    validate_c6_diagnostic_request,\\n)\\n",
 '''
 new_formal_import = '''    "from quantfusion.research.c6_runtime import (\\n    c6_diagnostic_engine_config,\\n    runtime_policy_for_intervention,\\n    validate_c6_diagnostic_request,\\n)\\n",
