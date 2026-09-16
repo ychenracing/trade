@@ -7,6 +7,8 @@ from collections.abc import Collection, Mapping, Sequence
 from enum import Enum
 from typing import Any
 
+from quantfusion.execution.c6_receipts import reconcile_close_queue
+
 
 BookId = tuple[int, str, str]
 PendingItem = tuple[Any, Any]
@@ -74,7 +76,10 @@ def filled_ab5_reduction_book_ids(
                 continue
             if str(getattr(trade, "direction", "")) != "sell":
                 continue
-            if str(getattr(trade, "reason", "")).split(":", 1)[0] != "account_budget_trim":
+            if (
+                str(getattr(trade, "reason", "")).split(":", 1)[0]
+                != "account_budget_trim"
+            ):
                 continue
             filled.add(
                 (
@@ -108,3 +113,93 @@ def filter_ab5_recovery_buys(
         else:
             retained.append(item)
     return retained, blocked
+
+
+def _latest_account_budget_envelope(
+    events: Sequence[Mapping[str, Any]],
+) -> Mapping[str, Any] | None:
+    for event in reversed(events):
+        if event.get("event") == "account_budget_envelope":
+            return event
+    return None
+
+
+def _recovery_book_ids(envelope: Mapping[str, Any] | None) -> set[BookId]:
+    if envelope is None:
+        return set()
+    raw = envelope.get("ab5_recovery_book_ids", ())
+    if raw is None:
+        return set()
+    if not isinstance(raw, (list, tuple)):
+        raise ValueError("ab5_recovery_book_ids must be a sequence")
+    books: set[BookId] = set()
+    for item in raw:
+        if not isinstance(item, (list, tuple)) or len(item) != 3:
+            raise ValueError("invalid AB5 recovery book identity")
+        state_index, symbol, strategy_name = item
+        if isinstance(state_index, bool) or not isinstance(state_index, int):
+            raise ValueError("AB5 recovery state_index must be an integer")
+        if state_index < 0 or not isinstance(symbol, str) or not symbol:
+            raise ValueError("invalid AB5 recovery book identity")
+        if not isinstance(strategy_name, str) or not strategy_name:
+            raise ValueError("invalid AB5 recovery book identity")
+        books.add((state_index, symbol, strategy_name))
+    return books
+
+
+def apply_ab5_recovery_hysteresis(
+    states: Sequence[Any],
+    date_str: str,
+    events: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Gate only recovery buys that re-open exposure actually reduced by AB5."""
+    previous = _latest_account_budget_envelope(events)
+    previous_state = (
+        previous.get("ab5_recovery_state", AB5RecoveryState.NORMAL.value)
+        if previous is not None
+        else AB5RecoveryState.NORMAL.value
+    )
+    carried_books = _recovery_book_ids(previous)
+    newly_reduced_books = filled_ab5_reduction_book_ids(states, date_str)
+    recovery_state = next_ab5_recovery_state(
+        previous_state,
+        previous_envelope=previous,
+        new_reduction_book_ids=newly_reduced_books,
+    )
+    active_books = (
+        carried_books | newly_reduced_books
+        if recovery_state is not AB5RecoveryState.NORMAL
+        else set()
+    )
+
+    blocked_orders = 0
+    blocked_shares = 0
+    if active_books:
+        for state_index, state in enumerate(states):
+            before = list(state.pending)
+            retained, blocked = filter_ab5_recovery_buys(
+                before,
+                state_index=state_index,
+                blocked_book_ids=active_books,
+            )
+            if not blocked:
+                continue
+            state.pending = retained
+            blocked_orders += len(blocked)
+            blocked_shares += sum(
+                int(getattr(signal, "target_shares", 0)) for signal, _ in blocked
+            )
+            reconcile_close_queue(
+                getattr(state, "sleeve", None),
+                before,
+                retained,
+                date_str,
+                "ab5_recovery_hysteresis",
+            )
+
+    return {
+        "state": recovery_state.value,
+        "book_ids": [list(book) for book in sorted(active_books)],
+        "blocked_orders": blocked_orders,
+        "blocked_shares": blocked_shares,
+    }
