@@ -1,4 +1,4 @@
-"""Download a reproducible Eastmoney forward-adjusted OHLCV snapshot."""
+"""Download reproducible forward-adjusted OHLCV research and legacy snapshots."""
 
 from __future__ import annotations
 
@@ -18,10 +18,12 @@ from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.research_universes import (
     DEFAULT_RESEARCH_START_DATE,
+    RESEARCH_SYMBOL_NAMES,
     UNIVERSE_POOLS,
     symbols_for_pool,
 )
 from quantfusion.config.universe import SYMBOL_NAMES
+from quantfusion.data.providers import DataFetcher
 
 
 DEFAULT_SYMBOLS = tuple(dict.fromkeys((*SYMBOL_NAMES, *PortfolioPolicy().regime_symbols)))
@@ -29,9 +31,9 @@ DEFAULT_RESEARCH_OUTPUT = PROJECT_ROOT / "data_cache" / "research_market"
 LEGACY_START_DATE = "2024-01-01"
 LEGACY_END_DATE = "2026-07-20"
 DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS = 365
-RESEARCH_INTER_SYMBOL_DELAY_SECONDS = 1.5
-RESEARCH_COOLDOWN_SECONDS = 20.0
-RESEARCH_MAX_PASSES = 5
+RESEARCH_INTER_SYMBOL_DELAY_SECONDS = 1.0
+RESEARCH_COOLDOWN_SECONDS = 10.0
+RESEARCH_MAX_PASSES = 3
 
 
 def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
@@ -84,14 +86,13 @@ def _market_id(symbol: str) -> str:
 
 
 def _url(symbol: str, start: str, end: str) -> str:
-    """Build the fixed Eastmoney daily forward-adjusted endpoint URL."""
+    """Build the retained Eastmoney daily forward-adjusted endpoint URL."""
     query = urllib.parse.urlencode(
         {
             "secid": f"{_market_id(symbol)}.{symbol}",
             "klt": "101",
             "fqt": "1",
-            # 2023-current research additionally retains one calendar year of
-            # pre-window warmup, so the old 1000-row cap is not sufficient.
+            # Long historical research can exceed the old 1000-row cap.
             "lmt": "2000",
             "beg": start.replace("-", ""),
             "end": end.replace("-", ""),
@@ -110,7 +111,7 @@ def _download(
     attempts: int = 5,
     retry_base_delay: float = 1.5,
 ) -> tuple[pd.DataFrame, str]:
-    """Download one symbol with bounded retries and strict response checks."""
+    """Retain the legacy Eastmoney-only snapshot path with bounded retries."""
     if attempts < 1:
         raise ValueError("attempts must be positive")
     errors: list[str] = []
@@ -145,8 +146,6 @@ def _download(
             )
             for column in ("open", "close", "high", "low", "volume_lots"):
                 frame[column] = pd.to_numeric(frame[column], errors="raise")
-            # Eastmoney reports A-share volume in board lots. The strategy's ADV
-            # participation control expects shares, so convert one lot to 100 shares.
             frame["volume"] = frame.pop("volume_lots") * 100.0
             frame = frame[["date", "open", "high", "low", "close", "volume"]]
             frame["date"] = pd.to_datetime(frame["date"], errors="raise")
@@ -170,27 +169,53 @@ def _download(
     raise RuntimeError(f"{symbol} download failed: {'; '.join(errors)}")
 
 
+def _fetch_research_symbol(
+    symbol: str, start: str, end: str
+) -> tuple[pd.DataFrame, str, str]:
+    """Use the existing validated Eastmoney/Sina/Tencent failover for research."""
+    frame = DataFetcher.fetch_stock_data(symbol, start, end)
+    provider = str(frame.attrs.get("volume_provider", "unknown"))
+    name = RESEARCH_SYMBOL_NAMES.get(symbol, symbol)
+    return frame, name, provider
+
+
+def _serializable_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return a stable CSV frame whether dates arrive as a column or index."""
+    if "date" in frame.columns:
+        out = frame.copy()
+    else:
+        out = frame.reset_index()
+        if "date" not in out.columns:
+            out.rename(columns={out.columns[0]: "date"}, inplace=True)
+    out["date"] = pd.to_datetime(out["date"], errors="raise")
+    return out
+
+
 def _store_symbol_snapshot(
     output: Path,
     symbol_manifest: dict[str, object],
     symbol: str,
     frame: pd.DataFrame,
     name: str,
+    *,
+    provider: str,
 ) -> None:
     """Persist one already-validated frame and its compact provenance row."""
+    serial = _serializable_frame(frame)
     path = output / f"{symbol}.csv"
-    frame.assign(date=frame["date"].dt.strftime("%Y-%m-%d")).to_csv(
+    serial.assign(date=serial["date"].dt.strftime("%Y-%m-%d")).to_csv(
         path, index=False
     )
     symbol_manifest[symbol] = {
         "name": name,
-        "rows": len(frame),
-        "first_date": frame["date"].iloc[0].strftime("%Y-%m-%d"),
-        "last_date": frame["date"].iloc[-1].strftime("%Y-%m-%d"),
+        "provider": provider,
+        "rows": len(serial),
+        "first_date": serial["date"].iloc[0].strftime("%Y-%m-%d"),
+        "last_date": serial["date"].iloc[-1].strftime("%Y-%m-%d"),
     }
     print(
-        f"{symbol} {name}: {len(frame)} rows, "
-        f"{frame['date'].iloc[0].date()} to {frame['date'].iloc[-1].date()}"
+        f"{symbol} {name}: {provider}, {len(serial)} rows, "
+        f"{serial['date'].iloc[0].date()} to {serial['date'].iloc[-1].date()}"
     )
 
 
@@ -202,7 +227,7 @@ def _download_research_symbols(
     output: Path,
     symbol_manifest: dict[str, object],
 ) -> None:
-    """Throttle long research snapshots and resume after bounded provider cooldowns."""
+    """Use provider failover, preserving completed symbols across bounded passes."""
     pending = list(symbols)
     last_error = ""
     for pass_index in range(RESEARCH_MAX_PASSES):
@@ -211,24 +236,23 @@ def _download_research_symbols(
         next_pending: list[str] = []
         for offset, symbol in enumerate(pending):
             try:
-                frame, name = _download(
-                    symbol,
-                    start,
-                    end,
-                    attempts=3,
-                    retry_base_delay=2.0,
-                )
+                frame, name, provider = _fetch_research_symbol(symbol, start, end)
             except RuntimeError as exc:
                 last_error = str(exc)
-                # Stop issuing new requests once throttling appears. Preserve all
-                # completed files and retry the failed/unattempted suffix only.
                 next_pending = pending[offset:]
                 print(
-                    f"{symbol}: provider throttled; deferring {len(next_pending)} "
-                    f"symbol(s) after pass {pass_index + 1}"
+                    f"{symbol}: all providers unavailable; deferring "
+                    f"{len(next_pending)} symbol(s) after pass {pass_index + 1}"
                 )
                 break
-            _store_symbol_snapshot(output, symbol_manifest, symbol, frame, name)
+            _store_symbol_snapshot(
+                output,
+                symbol_manifest,
+                symbol,
+                frame,
+                name,
+                provider=provider,
+            )
             time.sleep(RESEARCH_INTER_SYMBOL_DELAY_SECONDS)
         if not next_pending:
             return
@@ -236,8 +260,9 @@ def _download_research_symbols(
         if pass_index + 1 < RESEARCH_MAX_PASSES:
             time.sleep(RESEARCH_COOLDOWN_SECONDS)
     raise RuntimeError(
-        "research snapshot download remained incomplete after bounded cooldowns; "
-        f"first pending symbol={pending[0] if pending else 'unknown'}; {last_error}"
+        "research snapshot download remained incomplete after bounded provider "
+        f"failover; first pending symbol={pending[0] if pending else 'unknown'}; "
+        f"{last_error}"
     )
 
 
@@ -310,7 +335,11 @@ def main() -> int:
     output.mkdir(parents=True, exist_ok=True)
     symbol_manifest: dict[str, object] = {}
     manifest: dict[str, object] = {
-        "provider": "Eastmoney push2his",
+        "provider": (
+            "DataFetcher failover (Eastmoney/Sina/Tencent)"
+            if research_selection
+            else "Eastmoney push2his"
+        ),
         "adjustment": "qfq",
         "volume_unit": "shares",
         "requested_start": data_start,
@@ -332,7 +361,14 @@ def main() -> int:
     else:
         for symbol in symbols:
             frame, name = _download(symbol, data_start, end_date)
-            _store_symbol_snapshot(output, symbol_manifest, symbol, frame, name)
+            _store_symbol_snapshot(
+                output,
+                symbol_manifest,
+                symbol,
+                frame,
+                name,
+                provider="Eastmoney push2his",
+            )
             time.sleep(0.3)
     (output / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
