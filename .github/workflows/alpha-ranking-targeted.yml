@@ -21,8 +21,11 @@ jobs:
           cache-dependency-path: requirements-lock.txt
       - name: Install locked dependencies
         run: python -m pip install -r requirements-lock.txt
-      - name: Run opportunity ranking contract
-        run: python -m pytest -q tests/unit/test_opportunity_ranking.py
+      - name: Run opportunity and leader-health contracts
+        run: >-
+          python -m pytest -q
+          tests/unit/test_opportunity_ranking.py
+          tests/unit/test_leader_evidence_health.py
       - name: Measure fixed-universe economics
         run: |
           python - <<'PYCODE'
