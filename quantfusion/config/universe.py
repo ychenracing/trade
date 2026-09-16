@@ -1,4 +1,8 @@
-"""One authoritative ordered universe for daily scan and formal stress."""
+"""Authoritative production 17-symbol universe for daily scan and formal stress.
+
+Configurable research pools live in ``quantfusion.config.research_universes`` and
+must not mutate this production ordering or its retained validation prefixes.
+"""
 
 SYMBOL_NAMES = {
     "300308": "中际旭创",
