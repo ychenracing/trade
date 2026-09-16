@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Collection, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
 from enum import Enum
 from typing import Any
 
@@ -25,6 +26,10 @@ class AB5RecoveryState(str, Enum):
     NORMAL = "NORMAL"
     AB5_REDUCED = "AB5_REDUCED"
     AB5_RECOVERY_PENDING = "AB5_RECOVERY_PENDING"
+
+
+def _book_id(state_index: int, symbol: Any, strategy_name: Any) -> BookId:
+    return state_index, str(symbol), str(strategy_name).split(":")[-1]
 
 
 def _recovery_safe(envelope: Mapping[str, Any] | None) -> bool:
@@ -54,11 +59,11 @@ def next_ab5_recovery_state(
     previous_state: AB5RecoveryState | str,
     *,
     previous_envelope: Mapping[str, Any] | None,
-    new_reduction_book_ids: Collection[BookId],
+    new_reduction_shares: Mapping[BookId, int],
 ) -> AB5RecoveryState:
     """Advance recovery using only filled reductions and the prior completed close."""
     state = AB5RecoveryState(previous_state)
-    if new_reduction_book_ids:
+    if new_reduction_shares:
         return AB5RecoveryState.AB5_REDUCED
     if state is AB5RecoveryState.NORMAL:
         return state
@@ -69,11 +74,11 @@ def next_ab5_recovery_state(
     return AB5RecoveryState.NORMAL
 
 
-def filled_ab5_reduction_book_ids(
+def filled_ab5_reduction_shares(
     states: Sequence[Any], date_str: str
-) -> set[BookId]:
-    """Return books whose AB5 reduction actually filled on this trading day."""
-    filled: set[BookId] = set()
+) -> dict[BookId, int]:
+    """Return shares actually reduced by AB5 on this trading day, by book."""
+    filled: dict[BookId, int] = {}
     for state_index, state in enumerate(states):
         sleeve = getattr(state, "sleeve", None)
         for trade in getattr(sleeve, "trades", ()):
@@ -86,38 +91,51 @@ def filled_ab5_reduction_book_ids(
                 != "account_budget_trim"
             ):
                 continue
-            filled.add(
-                (
-                    state_index,
-                    str(getattr(trade, "symbol", "")),
-                    str(getattr(trade, "strategy_name", "")),
-                )
+            shares = getattr(trade, "shares", None)
+            if isinstance(shares, bool) or not isinstance(shares, int) or shares <= 0:
+                raise ValueError("filled AB5 reduction shares must be a positive integer")
+            book = _book_id(
+                state_index,
+                getattr(trade, "symbol", ""),
+                getattr(trade, "strategy_name", ""),
             )
+            filled[book] = filled.get(book, 0) + shares
     return filled
 
 
-def filter_ab5_recovery_buys(
+def apply_ab5_recovery_buy_ownership(
     pending: Sequence[PendingItem],
     *,
     state_index: int,
-    blocked_book_ids: Collection[BookId],
-) -> tuple[list[PendingItem], list[PendingItem]]:
-    """Partition pending orders, blocking only buys owned by reduced AB5 books."""
-    blocked_books = set(blocked_book_ids)
+    owned_shares: Mapping[BookId, int],
+) -> tuple[list[PendingItem], int, int]:
+    """Defer at most the AB5-owned share deficit while preserving excess buys."""
+    remaining = dict(owned_shares)
     retained: list[PendingItem] = []
-    blocked: list[PendingItem] = []
-    for item in pending:
-        signal, _ = item
-        book = (
+    deferred_orders = 0
+    deferred_shares = 0
+    for signal, strategy in pending:
+        book = _book_id(
             state_index,
-            str(getattr(signal, "symbol", "")),
-            str(getattr(signal, "strategy_name", "")),
+            getattr(signal, "symbol", ""),
+            getattr(signal, "strategy_name", ""),
         )
-        if str(getattr(signal, "direction", "")) == "buy" and book in blocked_books:
-            blocked.append(item)
-        else:
-            retained.append(item)
-    return retained, blocked
+        owned = remaining.get(book, 0)
+        if str(getattr(signal, "direction", "")) != "buy" or owned <= 0:
+            retained.append((signal, strategy))
+            continue
+        requested = int(getattr(signal, "target_shares", 0))
+        deferred = min(requested, owned)
+        if deferred <= 0:
+            retained.append((signal, strategy))
+            continue
+        deferred_orders += 1
+        deferred_shares += deferred
+        remaining[book] = owned - deferred
+        authorized = requested - deferred
+        if authorized > 0:
+            retained.append((replace(signal, target_shares=authorized), strategy))
+    return retained, deferred_orders, deferred_shares
 
 
 def _latest_account_budget_envelope(
@@ -129,27 +147,44 @@ def _latest_account_budget_envelope(
     return None
 
 
-def _recovery_book_ids(envelope: Mapping[str, Any] | None) -> set[BookId]:
+def _recovery_owned_shares(
+    envelope: Mapping[str, Any] | None,
+) -> dict[BookId, int]:
     if envelope is None:
-        return set()
-    raw = envelope.get("ab5_recovery_book_ids", ())
+        return {}
+    raw = envelope.get("ab5_recovery_owned_shares", ())
     if raw is None:
-        return set()
+        return {}
     if not isinstance(raw, (list, tuple)):
-        raise ValueError("ab5_recovery_book_ids must be a sequence")
-    books: set[BookId] = set()
+        raise ValueError("ab5_recovery_owned_shares must be a sequence")
+    owned: dict[BookId, int] = {}
     for item in raw:
-        if not isinstance(item, (list, tuple)) or len(item) != 3:
-            raise ValueError("invalid AB5 recovery book identity")
-        state_index, symbol, strategy_name = item
+        if not isinstance(item, (list, tuple)) or len(item) != 4:
+            raise ValueError("invalid AB5 recovery ownership entry")
+        state_index, symbol, strategy_name, shares = item
         if isinstance(state_index, bool) or not isinstance(state_index, int):
             raise ValueError("AB5 recovery state_index must be an integer")
         if state_index < 0 or not isinstance(symbol, str) or not symbol:
             raise ValueError("invalid AB5 recovery book identity")
         if not isinstance(strategy_name, str) or not strategy_name:
             raise ValueError("invalid AB5 recovery book identity")
-        books.add((state_index, symbol, strategy_name))
-    return books
+        if isinstance(shares, bool) or not isinstance(shares, int) or shares <= 0:
+            raise ValueError("AB5 recovery owned shares must be a positive integer")
+        book = _book_id(state_index, symbol, strategy_name)
+        if book in owned:
+            raise ValueError("duplicate AB5 recovery book identity")
+        owned[book] = shares
+    return owned
+
+
+def _merge_owned_shares(
+    carried: Mapping[BookId, int],
+    newly_reduced: Mapping[BookId, int],
+) -> dict[BookId, int]:
+    merged = dict(carried)
+    for book, shares in newly_reduced.items():
+        merged[book] = merged.get(book, 0) + shares
+    return merged
 
 
 def apply_ab5_recovery_hysteresis(
@@ -157,43 +192,41 @@ def apply_ab5_recovery_hysteresis(
     date_str: str,
     events: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
-    """Gate only recovery buys that re-open exposure actually reduced by AB5."""
+    """Preserve only the exposure gap created by filled AB5 reductions."""
     previous = _latest_account_budget_envelope(events)
     previous_state = (
         previous.get("ab5_recovery_state", AB5RecoveryState.NORMAL.value)
         if previous is not None
         else AB5RecoveryState.NORMAL.value
     )
-    carried_books = _recovery_book_ids(previous)
-    newly_reduced_books = filled_ab5_reduction_book_ids(states, date_str)
+    carried = _recovery_owned_shares(previous)
+    newly_reduced = filled_ab5_reduction_shares(states, date_str)
     recovery_state = next_ab5_recovery_state(
         previous_state,
         previous_envelope=previous,
-        new_reduction_book_ids=newly_reduced_books,
+        new_reduction_shares=newly_reduced,
     )
-    active_books = (
-        carried_books | newly_reduced_books
+    active = (
+        _merge_owned_shares(carried, newly_reduced)
         if recovery_state is not AB5RecoveryState.NORMAL
-        else set()
+        else {}
     )
 
-    blocked_orders = 0
-    blocked_shares = 0
-    if active_books:
+    deferred_orders = 0
+    deferred_shares = 0
+    if active:
         for state_index, state in enumerate(states):
             before = list(state.pending)
-            retained, blocked = filter_ab5_recovery_buys(
+            retained, order_count, share_count = apply_ab5_recovery_buy_ownership(
                 before,
                 state_index=state_index,
-                blocked_book_ids=active_books,
+                owned_shares=active,
             )
-            if not blocked:
+            if order_count == 0:
                 continue
             state.pending = retained
-            blocked_orders += len(blocked)
-            blocked_shares += sum(
-                int(getattr(signal, "target_shares", 0)) for signal, _ in blocked
-            )
+            deferred_orders += order_count
+            deferred_shares += share_count
             reconcile_close_queue(
                 getattr(state, "sleeve", None),
                 before,
@@ -204,9 +237,12 @@ def apply_ab5_recovery_hysteresis(
 
     return {
         "state": recovery_state.value,
-        "book_ids": [list(book) for book in sorted(active_books)],
-        "blocked_orders": blocked_orders,
-        "blocked_shares": blocked_shares,
+        "owned_shares": [
+            [state_index, symbol, strategy_name, shares]
+            for (state_index, symbol, strategy_name), shares in sorted(active.items())
+        ],
+        "deferred_orders": deferred_orders,
+        "deferred_shares": deferred_shares,
     }
 
 
@@ -260,7 +296,7 @@ def apply_account_risk_budget_with_recovery(
         raise RuntimeError("canonical AB5 did not publish its account budget envelope")
     envelope.update(
         ab5_recovery_state=decision["state"],
-        ab5_recovery_book_ids=decision["book_ids"],
-        ab5_recovery_blocked_orders=decision["blocked_orders"],
-        ab5_recovery_buy_shares_blocked=decision["blocked_shares"],
+        ab5_recovery_owned_shares=decision["owned_shares"],
+        ab5_recovery_deferred_buy_orders=decision["deferred_orders"],
+        ab5_recovery_deferred_buy_shares=decision["deferred_shares"],
     )
