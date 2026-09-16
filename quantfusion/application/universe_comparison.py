@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -22,12 +22,68 @@ def _equity_frame(result: Mapping[str, Any]) -> pd.DataFrame:
     return equity
 
 
+def _holding_concentration_hhi(
+    trades: list[Any],
+    dates: pd.DatetimeIndex,
+    market_frames: Mapping[str, pd.DataFrame],
+) -> tuple[float, float]:
+    """Rebuild close-marked symbol weights from executed fills and return mean/max HHI."""
+    trades_by_date: dict[pd.Timestamp, list[Any]] = defaultdict(list)
+    for trade in trades:
+        trade_date = pd.Timestamp(getattr(trade, "date"))
+        trades_by_date[trade_date].append(trade)
+
+    shares: dict[str, int] = defaultdict(int)
+    observed: list[float] = []
+    for date in pd.DatetimeIndex(dates):
+        for trade in trades_by_date.get(pd.Timestamp(date), []):
+            symbol = str(getattr(trade, "symbol"))
+            quantity = int(getattr(trade, "shares"))
+            direction = str(getattr(trade, "direction"))
+            if direction == "buy":
+                shares[symbol] += quantity
+            elif direction == "sell":
+                shares[symbol] -= quantity
+            else:
+                raise ValueError(f"unknown trade direction in comparison report: {direction}")
+            if shares[symbol] < 0:
+                raise ValueError(f"negative reconstructed holding for {symbol}")
+
+        values: list[float] = []
+        for symbol, quantity in shares.items():
+            if quantity <= 0:
+                continue
+            frame = market_frames.get(symbol)
+            if not isinstance(frame, pd.DataFrame) or "close" not in frame.columns:
+                raise ValueError(f"missing close-price frame for held symbol {symbol}")
+            timestamp = pd.Timestamp(date)
+            if timestamp not in frame.index:
+                raise ValueError(
+                    f"missing close price for held symbol {symbol} on {timestamp.date()}"
+                )
+            close = float(frame.loc[timestamp, "close"])
+            if not pd.notna(close) or close <= 0:
+                raise ValueError(
+                    f"invalid close price for held symbol {symbol} on {timestamp.date()}"
+                )
+            values.append(quantity * close)
+        total = sum(values)
+        if total > 0:
+            observed.append(sum((value / total) ** 2 for value in values))
+
+    if not observed:
+        return 0.0, 0.0
+    return float(sum(observed) / len(observed)), float(max(observed))
+
+
 def summarize_universe_result(
     pool_name: str,
     symbols: Mapping[str, str],
     start_date: str,
     end_date: str,
     result: Mapping[str, Any],
+    *,
+    market_frames: Mapping[str, pd.DataFrame] | None = None,
 ) -> dict[str, Any]:
     """Derive comparable research metrics without changing engine decisions."""
     equity = _equity_frame(result)
@@ -41,7 +97,9 @@ def summarize_universe_result(
     trades = result.get("trades")
     if not isinstance(trades, list):
         raise ValueError("comparison result requires a trades list")
-    gross_traded_value = sum(abs(float(getattr(trade, "gross_value", 0.0))) for trade in trades)
+    gross_traded_value = sum(
+        abs(float(getattr(trade, "gross_value", 0.0))) for trade in trades
+    )
 
     positive_assets = assets > 0
     if not bool(positive_assets.all()):
@@ -52,7 +110,15 @@ def summarize_universe_result(
     max_concurrent = int(result.get("max_concurrent_symbols", 0))
     if max_concurrent < 0:
         raise ValueError("max_concurrent_symbols must be non-negative")
-    concentration_proxy = 1.0 / max_concurrent if max_concurrent else 0.0
+    if market_frames is None:
+        hhi_mean: float | None = None
+        hhi_max: float | None = None
+    else:
+        hhi_mean, hhi_max = _holding_concentration_hhi(
+            trades,
+            pd.DatetimeIndex(equity.index),
+            market_frames,
+        )
 
     risk_events = result.get("risk_events")
     if not isinstance(risk_events, list):
@@ -76,10 +142,8 @@ def summarize_universe_result(
         "turnover_ratio": gross_traded_value / average_assets,
         "all_cash_day_ratio": all_cash_day_ratio,
         "average_cash_ratio": average_cash_ratio,
-        # The current immutable engine result does not retain per-symbol daily
-        # weights. This transparent structural proxy avoids fabricating HHI:
-        # it is the reciprocal of the observed peak concurrent holdings.
-        "holding_concentration_proxy": concentration_proxy,
+        "holding_concentration_hhi_mean": hhi_mean,
+        "holding_concentration_hhi_max": hhi_max,
         "max_concurrent_symbols": max_concurrent,
         "risk_event_count": len(risk_events),
         "risk_event_types": dict(sorted(event_types.items())),
@@ -114,7 +178,8 @@ def write_universe_comparison(
         "turnover_ratio",
         "all_cash_day_ratio",
         "average_cash_ratio",
-        "holding_concentration_proxy",
+        "holding_concentration_hhi_mean",
+        "holding_concentration_hhi_max",
         "max_concurrent_symbols",
         "risk_event_count",
     )
@@ -137,7 +202,8 @@ def write_universe_comparison(
         "Turnover",
         "Cash days",
         "Avg cash",
-        "Concentration proxy",
+        "Avg HHI",
+        "Peak HHI",
         "Risk events",
     )
     lines = [
@@ -147,6 +213,8 @@ def write_universe_comparison(
         "| " + " | ".join(["---"] * len(headers)) + " |",
     ]
     for record in records:
+        hhi_mean = record["holding_concentration_hhi_mean"]
+        hhi_max = record["holding_concentration_hhi_max"]
         lines.append(
             "| "
             + " | ".join(
@@ -161,7 +229,8 @@ def write_universe_comparison(
                     f"{float(record['turnover_ratio']):.2f}",
                     f"{float(record['all_cash_day_ratio']):.2%}",
                     f"{float(record['average_cash_ratio']):.2%}",
-                    f"{float(record['holding_concentration_proxy']):.2%}",
+                    "N/A" if hhi_mean is None else f"{float(hhi_mean):.2%}",
+                    "N/A" if hhi_max is None else f"{float(hhi_max):.2%}",
                     str(record["risk_event_count"]),
                 )
             )
@@ -170,7 +239,7 @@ def write_universe_comparison(
     lines.extend(
         [
             "",
-            "`holding_concentration_proxy` is `1 / max_concurrent_symbols`; the engine does not retain per-symbol daily weights, so this report does not label the proxy as HHI.",
+            "HHI is reconstructed from executed fills and same-day closing prices; cash-only days are reported separately and excluded from the HHI average.",
             "",
         ]
     )
