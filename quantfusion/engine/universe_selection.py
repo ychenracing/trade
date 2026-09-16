@@ -1,4 +1,4 @@
-"""Stable universe routing and opportunity-quality candidate selection."""
+"""Stable universe routing and sticky candidate selection."""
 
 from __future__ import annotations
 
@@ -10,21 +10,6 @@ import math
 import pandas as pd
 
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager
-
-
-def _consistent_percentile_score(percentiles: list[float]) -> float:
-    """Combine horizon percentiles without letting one hot horizon dominate."""
-    if not percentiles:
-        return 0.0
-    if any(
-        not math.isfinite(value) or value < 0.0 or value > 1.0
-        for value in percentiles
-    ):
-        raise ValueError("candidate percentiles must be finite values in [0, 1]")
-    product = math.prod(percentiles)
-    if product <= 0.0:
-        return 0.0
-    return product ** (1.0 / len(percentiles))
 
 
 class UniverseSelectionMixin:
@@ -240,9 +225,10 @@ class UniverseSelectionMixin:
     def _candidate_reference_scores(
         self, date: pd.Timestamp, symbols: list[str] | set[str]
     ) -> dict[str, float]:
-        """Score current-close strength against a fixed basket across horizons."""
+        """Score symbols against the fixed basket, independent of pool makeup."""
         requested = sorted(symbols)
-        percentiles: dict[str, list[float]] = {code: [] for code in requested}
+        totals = {code: 0.0 for code in requested}
+        observations = {code: 0 for code in requested}
         for window in self.policy.candidate_lookbacks:
             reference_values: list[float] = []
             for code in self.policy.regime_symbols:
@@ -262,58 +248,13 @@ class UniverseSelectionMixin:
                 value = float(series.loc[date])
                 if not math.isfinite(value):
                     continue
-                percentiles[code].append(
-                    sum(reference <= value for reference in reference_values)
-                    / len(reference_values)
-                )
+                percentile = sum(
+                    reference <= value for reference in reference_values
+                ) / len(reference_values)
+                totals[code] += percentile
+                observations[code] += 1
         return {
-            code: _consistent_percentile_score(percentiles[code])
+            code: totals[code] / observations[code]
             for code in requested
-            if percentiles[code]
+            if observations[code]
         }
-
-    def _fixed_reference_scores(
-        self, date: pd.Timestamp, symbols: set[str] | list[str]
-    ) -> dict[str, float]:
-        """Score prior-close strength against the fixed basket across horizons.
-
-        Production admission is fail-closed: every configured horizon and every
-        fixed reference symbol must have a finite observation strictly before
-        the execution date.  Horizon percentiles are combined geometrically so
-        persistent relative strength outranks a candidate dominated by one hot
-        interval, while a one-horizon policy keeps its exact prior score.
-        """
-        date = pd.Timestamp(date)
-        score_series = getattr(self, "_candidate_score_series", {})
-
-        def prior_value(code: str, window: int) -> float | None:
-            series = score_series.get(code, {}).get(window)
-            if series is None or series.empty:
-                return None
-            position = int(series.index.searchsorted(date, side="left")) - 1
-            if position < 0:
-                return None
-            value = float(series.iloc[position])
-            return value if math.isfinite(value) else None
-
-        result: dict[str, float] = {}
-        for code in sorted(symbols):
-            percentiles: list[float] = []
-            for window in self.policy.candidate_lookbacks:
-                candidate = prior_value(code, window)
-                references = [
-                    prior_value(reference, window)
-                    for reference in self.policy.regime_symbols
-                ]
-                valid_references = [
-                    value for value in references if value is not None
-                ]
-                if candidate is None or len(valid_references) != len(references):
-                    break
-                percentiles.append(
-                    sum(value <= candidate for value in valid_references)
-                    / len(self.policy.regime_symbols)
-                )
-            if len(percentiles) == len(self.policy.candidate_lookbacks):
-                result[code] = _consistent_percentile_score(percentiles)
-        return result
