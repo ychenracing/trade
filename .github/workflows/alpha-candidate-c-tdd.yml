@@ -1,0 +1,27 @@
+name: Alpha Candidate C TDD
+
+on:
+  push:
+    branches:
+      - agent/alpha-opportunity-consistency
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Run Candidate C contracts
+        run: >-
+          python -m pytest -q
+          tests/unit/test_leader_quality_ranking.py
+          tests/unit/test_leader_evidence_health.py
