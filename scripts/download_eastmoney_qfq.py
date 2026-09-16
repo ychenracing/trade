@@ -17,6 +17,7 @@ from quantfusion.application.daily_support import today_str
 from quantfusion.config.overlay import RISK_BASKET
 from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT
 from quantfusion.config.portfolio import PortfolioPolicy
+from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.config.research_universes import (
     DEFAULT_RESEARCH_START_DATE,
     RESEARCH_SYMBOL_NAMES,
@@ -172,9 +173,27 @@ def _download(
 def _fetch_research_symbol(
     symbol: str, start: str, end: str
 ) -> tuple[pd.DataFrame, str, str]:
-    """Use the existing validated Eastmoney/Sina/Tencent failover for research."""
+    """Use provider failover and reject visibly truncated/stale research history."""
     frame = DataFetcher.fetch_stock_data(symbol, start, end)
+    if frame.empty:
+        raise RuntimeError(f"{symbol} provider failover returned no research rows")
     provider = str(frame.attrs.get("volume_provider", "unknown"))
+    start_ts = pd.Timestamp(start)
+    end_ts = pd.Timestamp(end)
+    visible = frame.loc[frame.index <= end_ts]
+    if visible.empty:
+        raise RuntimeError(f"{symbol} provider data contains no rows through {end}")
+    first = pd.Timestamp(visible.index[0])
+    latest = pd.Timestamp(visible.index[-1])
+    if (end_ts - latest).days > MAX_EVIDENCE_STALENESS_DAYS:
+        raise RuntimeError(
+            f"{symbol} provider data is stale: last={latest.date()} requested_end={end_ts.date()}"
+        )
+    if provider == "Tencent" and len(visible) >= 1000 and first > start_ts:
+        raise RuntimeError(
+            f"{symbol} Tencent fallback hit the 1000-row history cap; "
+            f"first={first.date()} requested_start={start_ts.date()}"
+        )
     name = RESEARCH_SYMBOL_NAMES.get(symbol, symbol)
     return frame, name, provider
 
@@ -201,12 +220,14 @@ def _store_symbol_snapshot(
     provider: str,
     include_sha256: bool = False,
 ) -> None:
-    """Persist one validated frame and its compact provenance row."""
+    """Atomically persist one validated frame and its compact provenance row."""
     serial = _serializable_frame(frame)
     path = output / f"{symbol}.csv"
+    temporary = output / f".{symbol}.csv.tmp"
     serial.assign(date=serial["date"].dt.strftime("%Y-%m-%d")).to_csv(
-        path, index=False
+        temporary, index=False
     )
+    temporary.replace(path)
     entry: dict[str, object] = {
         "name": name,
         "provider": provider,
@@ -245,7 +266,7 @@ def _download_research_symbols(
                 last_error = str(exc)
                 next_pending = pending[offset:]
                 print(
-                    f"{symbol}: all providers unavailable; deferring "
+                    f"{symbol}: research input unavailable; deferring "
                     f"{len(next_pending)} symbol(s) after pass {pass_index + 1}"
                 )
                 break
@@ -382,6 +403,10 @@ def main() -> int:
                 "missing_symbols": requested_symbols,
             }
         )
+        # Write the incomplete identity before external I/O. A hard interruption
+        # can therefore never leave an older successful manifest claiming that
+        # partially replaced CSVs are a complete research snapshot.
+        _write_manifest(output, manifest)
         try:
             _download_research_symbols(
                 tuple(symbols),
