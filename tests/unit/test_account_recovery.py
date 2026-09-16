@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pandas as pd
+
 from quantfusion.domain.models import Signal, TradeRecord
+from quantfusion.risk import exposure_recovery as recovery
 from quantfusion.risk.exposure_recovery import (
     AB5RecoveryState,
     apply_ab5_recovery_hysteresis,
+    apply_account_risk_budget_with_recovery,
     filled_ab5_reduction_book_ids,
     filter_ab5_recovery_buys,
     next_ab5_recovery_state,
@@ -261,3 +265,69 @@ def test_second_safe_close_returns_normal_and_releases_owned_rebuy() -> None:
     assert decision["book_ids"] == []
     assert decision["blocked_orders"] == 0
     assert state.pending == [(owned_buy, strategy)]
+
+
+def test_account_budget_adapter_gates_before_canonical_and_annotates_envelope(
+    monkeypatch,
+) -> None:
+    current = "2026-01-06"
+    owned_buy = _buy()
+    strategy = SimpleNamespace(name="atr_channel")
+    sleeve = SimpleNamespace(
+        trades=[
+            TradeRecord(
+                "300308",
+                "atr_channel",
+                "sell",
+                200,
+                10.0,
+                current,
+                reason="account_budget_trim",
+            )
+        ],
+        _c6_orders=None,
+    )
+    state = SimpleNamespace(sleeve=sleeve, pending=[(owned_buy, strategy)])
+    previous = _safe_envelope()
+    previous.update(
+        date="2026-01-05",
+        ab5_recovery_state=AB5RecoveryState.NORMAL.value,
+        ab5_recovery_book_ids=[],
+    )
+    events = [previous]
+
+    def fake_account_budget(states, date, assets, peak, cfg, score, events, **kwargs):
+        assert states[0].pending == []
+        assert date == pd.Timestamp(current)
+        assert assets == 100_000.0
+        assert peak == 120_000.0
+        assert cfg == {"sentinel": True}
+        assert score("300308") == 0.5
+        assert kwargs == {"shock_floor": 0.1}
+        events.append({
+            "date": current,
+            "event": "account_budget_envelope",
+            "gross_before": 80_000.0,
+            "gross_cap": 90_000.0,
+            "buy_scale": 1.0,
+            "new_reduction_orders": 0,
+        })
+
+    monkeypatch.setattr(recovery, "_apply_account_risk_budget", fake_account_budget)
+
+    apply_account_risk_budget_with_recovery(
+        [state],
+        pd.Timestamp(current),
+        100_000.0,
+        120_000.0,
+        {"sentinel": True},
+        lambda _: 0.5,
+        events,
+        shock_floor=0.1,
+    )
+
+    envelope = events[-1]
+    assert envelope["ab5_recovery_state"] == AB5RecoveryState.AB5_REDUCED.value
+    assert envelope["ab5_recovery_book_ids"] == [[0, "300308", "atr_channel"]]
+    assert envelope["ab5_recovery_blocked_orders"] == 1
+    assert envelope["ab5_recovery_buy_shares_blocked"] == 500
