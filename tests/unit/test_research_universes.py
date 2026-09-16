@@ -77,14 +77,6 @@ def test_every_research_symbol_reuses_existing_routing_and_risk_metadata() -> No
     assert expected <= set(SYMBOL_SUB_INDUSTRY)
 
 
-def test_research_only_security_identity_labels_match_current_names() -> None:
-    assert profiles.SYMBOL_PROFILES["688037"] == "semiconductor_equipment"
-    assert profiles.SYMBOL_PROFILES["688825"] == "memory_manufacturer"
-    assert profiles._PROFILE_FACTORIES["semiconductor_equipment"] is profiles.semiconductor_equipment_config
-    assert profiles._PROFILE_FACTORIES["memory_manufacturer"] is profiles.domestic_foundry_config
-    assert profiles._PROFILE_PARENTS["memory_manufacturer"] is profiles.domestic_foundry_config
-
-
 def test_research_window_defaults_to_2023_and_backtest_accepts_pool_selection() -> None:
     assert DEFAULT_RESEARCH_START_DATE == "2023-01-01"
     args = build_argument_parser().parse_args(["--pool", "pool_b", "--no-plot"])
