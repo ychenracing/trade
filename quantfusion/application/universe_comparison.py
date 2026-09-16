@@ -13,7 +13,9 @@ import pandas as pd
 
 def _equity_frame(result: Mapping[str, Any]) -> pd.DataFrame:
     equity = result.get("equity_curve")
-    if not isinstance(equity, pd.DataFrame) or equity.empty:
+    if not isinstance(equity, pd.DataFrame):
+        raise ValueError("comparison result requires a non-empty equity_curve DataFrame")
+    if equity.empty:
         raise ValueError("comparison result requires a non-empty equity_curve DataFrame")
     required = {"assets", "cash", "position_value"}
     missing = sorted(required - set(equity.columns))
@@ -64,7 +66,9 @@ def _holding_concentration_hhi(
             if quantity <= 0:
                 continue
             frame = market_frames.get(symbol)
-            if not isinstance(frame, pd.DataFrame) or "close" not in frame.columns:
+            if not isinstance(frame, pd.DataFrame):
+                raise ValueError(f"missing close-price frame for held symbol {symbol}")
+            if "close" not in frame.columns:
                 raise ValueError(f"missing close-price frame for held symbol {symbol}")
             close = _latest_close_on_or_before(frame, pd.Timestamp(date))
             if close <= 0:
