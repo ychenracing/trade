@@ -6,15 +6,18 @@ import csv
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, cast
 
 import pandas as pd
 
 
 def _equity_frame(result: Mapping[str, Any]) -> pd.DataFrame:
-    equity = result.get("equity_curve")
-    if not isinstance(equity, pd.DataFrame):
+    equity_value = result.get("equity_curve")
+    if equity_value is None:
         raise ValueError("comparison result requires a non-empty equity_curve DataFrame")
+    if not isinstance(equity_value, pd.DataFrame):
+        raise ValueError("comparison result requires a non-empty equity_curve DataFrame")
+    equity = cast(pd.DataFrame, equity_value)
     if equity.empty:
         raise ValueError("comparison result requires a non-empty equity_curve DataFrame")
     required = {"assets", "cash", "position_value"}
@@ -65,9 +68,10 @@ def _holding_concentration_hhi(
         for symbol, quantity in shares.items():
             if quantity <= 0:
                 continue
-            frame = market_frames.get(symbol)
-            if not isinstance(frame, pd.DataFrame):
+            frame_value = market_frames.get(symbol)
+            if frame_value is None:
                 raise ValueError(f"missing close-price frame for held symbol {symbol}")
+            frame = cast(pd.DataFrame, frame_value)
             if "close" not in frame.columns:
                 raise ValueError(f"missing close-price frame for held symbol {symbol}")
             close = _latest_close_on_or_before(frame, pd.Timestamp(date))
@@ -232,7 +236,7 @@ def write_universe_comparison(
     )
     csv_path = output / "comparison.csv"
     with csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=scalar_fields)
+        writer = csv.DictWriter(handle, fieldnames=list(scalar_fields))
         writer.writeheader()
         for record in records:
             csv_record = {field: record[field] for field in scalar_fields}
