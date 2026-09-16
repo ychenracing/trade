@@ -26,6 +26,7 @@ def _envelope(
     recovery_buy_cap: float | None = None,
     risk_alert_active: bool = False,
     shock_episode_active: bool = False,
+    new_reduction_orders: int = 0,
 ) -> dict:
     event = {
         "date": date,
@@ -34,6 +35,7 @@ def _envelope(
         "gross_cap": gross_cap,
         "risk_alert_active": risk_alert_active,
         "shock_episode_active": shock_episode_active,
+        "new_reduction_orders": new_reduction_orders,
     }
     if state is not None:
         event["ab5_recovery_state"] = state.value
@@ -211,12 +213,31 @@ def test_recovery_pending_requires_second_canonically_safe_close() -> None:
     assert decision.buy_gross_cap_ceiling is None
 
 
-def test_underlying_risk_deterioration_returns_pending_to_reduced() -> None:
+def test_mark_to_market_above_cap_can_progress_when_canonical_ab5_requests_no_more_reduction() -> None:
     previous = _envelope(
         gross_before=70_000.0,
         gross_cap=65_000.0,
+        state=AB5RecoveryState.AB5_REDUCED,
+        recovery_buy_cap=60_000.0,
+        new_reduction_orders=0,
+    )
+
+    decision = next_ab5_recovery_decision(
+        previous_envelope=previous,
+        new_reduction_caps=[],
+    )
+
+    assert decision.state is AB5RecoveryState.AB5_RECOVERY_PENDING
+    assert decision.buy_gross_cap_ceiling == 60_000.0
+
+
+def test_new_canonical_reduction_resets_pending_to_reduced() -> None:
+    previous = _envelope(
+        gross_before=50_000.0,
+        gross_cap=65_000.0,
         state=AB5RecoveryState.AB5_RECOVERY_PENDING,
         recovery_buy_cap=60_000.0,
+        new_reduction_orders=1,
     )
 
     decision = next_ab5_recovery_decision(
