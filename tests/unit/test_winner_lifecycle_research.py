@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from quantfusion.research.winner_lifecycle import (
     classify_winner_lifecycle,
     should_defer_atr_trailing_exit,
@@ -23,8 +25,8 @@ def test_existing_profit_lock_defines_strategic_winner_without_new_threshold() -
     assert state.strategic_winner is True
     assert state.profit_lock_active is True
     assert state.profit_lock_intact is True
-    assert state.peak_gain == 0.5
-    assert state.current_gain == 0.3
+    assert state.peak_gain == pytest.approx(0.5)
+    assert state.current_gain == pytest.approx(0.3)
 
 
 def test_atr_exit_can_only_be_deferred_while_existing_profit_lock_is_intact() -> None:
