@@ -1,4 +1,4 @@
-"""Causal recovery hysteresis for the AB5 account gross budget."""
+"""Causal recovery hysteresis for AB5 account buy headroom."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from quantfusion.risk.account_budget import (
 
 
 class AB5RecoveryState(str, Enum):
-    """Track whether a reduced AB5 account budget is ready to re-expand."""
+    """Track whether AB5-reduced exposure is ready to re-expand."""
 
     NORMAL = "NORMAL"
     AB5_REDUCED = "AB5_REDUCED"
@@ -25,10 +25,10 @@ class AB5RecoveryState(str, Enum):
 
 @dataclass(frozen=True)
 class AB5RecoveryDecision:
-    """One close-known recovery state and its optional gross-cap ceiling."""
+    """One close-known recovery state and its optional buy-cap ceiling."""
 
     state: AB5RecoveryState
-    gross_cap_ceiling: float | None
+    buy_gross_cap_ceiling: float | None
 
 
 def _finite_cap(label: str, value: Any) -> float:
@@ -73,7 +73,7 @@ def filled_ab5_reduction_caps(
     date_str: str,
     events: Sequence[Mapping[str, Any]],
 ) -> list[float]:
-    """Return the source-close gross caps for AB5 reductions filled today."""
+    """Return source-close canonical gross caps for AB5 reductions filled today."""
     caps: list[float] = []
     for state in states:
         sleeve = getattr(state, "sleeve", None)
@@ -107,22 +107,23 @@ def _active_recovery_cap(envelope: Mapping[str, Any] | None) -> float | None:
     )
     if state is AB5RecoveryState.NORMAL:
         return None
-    if "ab5_recovery_gross_cap" not in envelope:
-        raise ValueError("active AB5 recovery requires its retained gross cap")
+    if "ab5_recovery_buy_gross_cap" not in envelope:
+        raise ValueError("active AB5 recovery requires its retained buy gross cap")
     return _finite_cap(
-        "AB5 recovery gross cap", envelope.get("ab5_recovery_gross_cap")
+        "AB5 recovery buy gross cap",
+        envelope.get("ab5_recovery_buy_gross_cap"),
     )
 
 
 def _recovery_safe(envelope: Mapping[str, Any] | None) -> bool:
-    """Use the unconstrained canonical AB5 budget to judge recovery safety."""
+    """Judge recovery from the unchanged canonical AB5 gross budget."""
     if not envelope or envelope.get("event") != "account_budget_envelope":
         return False
     if envelope.get("risk_alert_active") or envelope.get("shock_episode_active"):
         return False
     try:
         gross = float(envelope["gross_before"])
-        canonical_cap = float(envelope["canonical_gross_cap"])
+        canonical_cap = float(envelope["gross_cap"])
     except (KeyError, TypeError, ValueError):
         return False
     return (
@@ -154,7 +155,7 @@ def next_ab5_recovery_decision(
     if previous_state is AB5RecoveryState.NORMAL:
         return AB5RecoveryDecision(AB5RecoveryState.NORMAL, None)
     if carried_cap is None:
-        raise ValueError("active AB5 recovery requires a retained gross cap")
+        raise ValueError("active AB5 recovery requires a retained buy gross cap")
     if not _recovery_safe(previous_envelope):
         return AB5RecoveryDecision(AB5RecoveryState.AB5_REDUCED, carried_cap)
     if previous_state is AB5RecoveryState.AB5_REDUCED:
@@ -176,7 +177,7 @@ def apply_account_risk_budget_with_recovery(
     risk_alert_active: bool | None = None,
     portfolio_evidence_buy_symbols: set[str] | None = None,
 ) -> None:
-    """Apply canonical AB5 while retaining a recently reduced gross budget."""
+    """Apply canonical AB5 while delaying re-expansion of account buy headroom."""
     date_str = date.strftime("%Y-%m-%d")
     previous = _latest_account_budget_envelope(events)
     source_caps = filled_ab5_reduction_caps(states, date_str, events)
@@ -195,8 +196,8 @@ def apply_account_risk_budget_with_recovery(
         options["risk_alert_active"] = risk_alert_active
     if portfolio_evidence_buy_symbols is not None:
         options["portfolio_evidence_buy_symbols"] = portfolio_evidence_buy_symbols
-    if decision.gross_cap_ceiling is not None:
-        options["gross_cap_ceiling"] = decision.gross_cap_ceiling
+    if decision.buy_gross_cap_ceiling is not None:
+        options["buy_gross_cap_ceiling"] = decision.buy_gross_cap_ceiling
 
     _apply_account_risk_budget(
         states,
@@ -219,9 +220,12 @@ def apply_account_risk_budget_with_recovery(
     )
     if envelope is None:
         raise RuntimeError("canonical AB5 did not publish its account budget envelope")
-    if decision.gross_cap_ceiling is not None:
-        effective_cap = _finite_cap("effective AB5 gross cap", envelope.get("gross_cap"))
+    if decision.buy_gross_cap_ceiling is not None:
+        canonical_cap = _finite_cap("canonical AB5 gross cap", envelope.get("gross_cap"))
         envelope.update(
             ab5_recovery_state=decision.state.value,
-            ab5_recovery_gross_cap=min(decision.gross_cap_ceiling, effective_cap),
+            ab5_recovery_buy_gross_cap=min(
+                decision.buy_gross_cap_ceiling,
+                canonical_cap,
+            ),
         )
