@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "candidate_revision": "2909ca5d809e49f2d1f44339c6feb6967ea157b9",
+  "baseline_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+  "design": "AB5 recovery constrains only new account buy headroom; canonical gross_cap and all sell/risk relief remain unchanged.",
+  "status": "MEASUREMENT_PENDING"
+}
