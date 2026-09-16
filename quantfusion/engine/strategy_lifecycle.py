@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Generic, Iterable, TypeVar
 
 from quantfusion.strategy.trend import BaseStrategy
+
+
+TStrategy = TypeVar("TStrategy", bound=BaseStrategy)
 
 
 class StrategyLifecycleState(str, Enum):
@@ -16,36 +19,38 @@ class StrategyLifecycleState(str, Enum):
 
 
 @dataclass(slots=True)
-class StrategyLifecycleEntry:
+class StrategyLifecycleEntry(Generic[TStrategy]):
     sleeve_name: str
     symbol: str
-    strategy: BaseStrategy
+    strategy: TStrategy
     state: StrategyLifecycleState = StrategyLifecycleState.INACTIVE
 
 
-class StrategyLifecycleRegistry:
+class StrategyLifecycleRegistry(Generic[TStrategy]):
     """Own registration and retirement for controller-created strategies.
 
     Inactive strategies stay owned by the registry so their cooldown state can
-    survive a later weak episode.  They are removed from a sleeve's external
+    survive a later weak episode. They are removed from a sleeve's external
     registry until a leader, live position, or pending order makes them active.
     Entries outside the current universe are retired only after they no longer
     own live or pending account state.
     """
 
     def __init__(self) -> None:
-        self._entries: dict[tuple[str, str], StrategyLifecycleEntry] = {}
+        self._entries: dict[tuple[str, str], StrategyLifecycleEntry[TStrategy]] = {}
         self._cleanup_events: list[dict[str, str]] = []
 
-    def get(self, sleeve_name: str, symbol: str) -> StrategyLifecycleEntry | None:
+    def get(
+        self, sleeve_name: str, symbol: str
+    ) -> StrategyLifecycleEntry[TStrategy] | None:
         return self._entries.get((sleeve_name, symbol))
 
     def acquire(
         self,
         sleeve_name: str,
         symbol: str,
-        factory: Callable[[], BaseStrategy],
-    ) -> StrategyLifecycleEntry:
+        factory: Callable[[], TStrategy],
+    ) -> StrategyLifecycleEntry[TStrategy]:
         key = (sleeve_name, symbol)
         entry = self._entries.get(key)
         if entry is None:
@@ -54,20 +59,24 @@ class StrategyLifecycleRegistry:
         return entry
 
     @staticmethod
-    def _registered(sleeve: Any, symbol: str, strategy: BaseStrategy) -> bool:
+    def _registered(sleeve: Any, symbol: str, strategy: TStrategy) -> bool:
         return any(
             owner is strategy
             for owner in sleeve.external_strategy_instances.get(symbol, ())
         )
 
     @classmethod
-    def _register(cls, sleeve: Any, entry: StrategyLifecycleEntry) -> None:
+    def _register(
+        cls, sleeve: Any, entry: StrategyLifecycleEntry[TStrategy]
+    ) -> None:
         registered = sleeve.external_strategy_instances.setdefault(entry.symbol, [])
         if not cls._registered(sleeve, entry.symbol, entry.strategy):
             registered.append(entry.strategy)
 
     @staticmethod
-    def _unregister(sleeve: Any, entry: StrategyLifecycleEntry) -> None:
+    def _unregister(
+        sleeve: Any, entry: StrategyLifecycleEntry[TStrategy]
+    ) -> None:
         registered = sleeve.external_strategy_instances.get(entry.symbol)
         if registered is None:
             return
@@ -77,13 +86,16 @@ class StrategyLifecycleRegistry:
         else:
             sleeve.external_strategy_instances.pop(entry.symbol, None)
 
-    def activate(self, sleeve: Any, entry: StrategyLifecycleEntry) -> None:
+    def activate(
+        self, sleeve: Any, entry: StrategyLifecycleEntry[TStrategy]
+    ) -> None:
         entry.state = StrategyLifecycleState.ACTIVE
         self._register(sleeve, entry)
 
     @staticmethod
     def _has_pending_owner(
-        entry: StrategyLifecycleEntry, pending: Iterable[tuple[Any, BaseStrategy]]
+        entry: StrategyLifecycleEntry[TStrategy],
+        pending: Iterable[tuple[Any, BaseStrategy]],
     ) -> bool:
         return any(owner is entry.strategy for _, owner in pending)
 
@@ -129,11 +141,8 @@ class StrategyLifecycleRegistry:
                 }
             )
 
-    def entries(self) -> tuple[StrategyLifecycleEntry, ...]:
-        return tuple(
-            self._entries[key]
-            for key in sorted(self._entries)
-        )
+    def entries(self) -> tuple[StrategyLifecycleEntry[TStrategy], ...]:
+        return tuple(self._entries[key] for key in sorted(self._entries))
 
     def snapshot(self) -> dict[str, list[dict[str, str]]]:
         return {
