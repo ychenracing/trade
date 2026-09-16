@@ -89,7 +89,7 @@ python -m scripts.release_tables artifacts/validation/deployment-release /tmp/tr
 
 账户快照的 `schema_version=3` 是输入数据协议，不是产品发行版本。账户、日期、金额、可卖数量、峰值和建仓证据均须真实合格。峰值证据不完整时披露 `PEAK_EVIDENCE_INCOMPLETE`，停用依赖该证据的保护；买入 `shares=0`，`indicative_target_shares` 仅为收盘估算。真实账户快照不进入历史回放，也不提供券商执行或跨日账本恢复。
 
-治理模块读取状态形成预热健康、独立风险意见、袖套共识和覆盖置信度，不直接修改交易账本；应用层另行消费预热状态，`NOT_READY` 抑制新增买入，`DEGRADED` 本身只提示。风险事件的 1／3／5／10／20 日结果和机会成本是事后分析，禁止回填为当时输入。边界与入口见 [README](../README.md) 和[诊断说明](DECISION_DIAGNOSTICS.md)。
+治理模块读取状态形成预热健康、独立风险意见、袖套共识和覆盖置信度，不直接修改交易账本；应用层另行消费预热状态，`INVALID` 抑制新增买入，`DEGRADED` 本身只提示，`READY` 表示该健康检查通过。风险事件的 1／3／5／10／20 日结果和机会成本是事后分析，禁止回填为当时输入。边界与入口见 [README](../README.md) 和[诊断说明](DECISION_DIAGNOSTICS.md)。
 
 ## 数据、因果与执行限制
 
