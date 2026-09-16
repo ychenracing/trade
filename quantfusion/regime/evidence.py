@@ -191,16 +191,8 @@ def select_positive_momentum_leaders(
             if issue.state is HealthState.INVALID:
                 invalid_codes.add(code)
             continue
-        # A symbol only needs the SHORT emerging-window history to
-        # be considered. Mature candidates require full long-horizon history;
-        # emerging candidates instead use short-horizon momentum and breakout.
-        if len(closes) < EMERGING_MIN_DAYS:
-            issues.append(
-                unavailable_issue(
-                    source,
-                    f"fewer than {EMERGING_MIN_DAYS} close observations",
-                )
-            )
+        if closes.empty:
+            issues.append(unavailable_issue(source, "no close observations"))
             continue
         observed_date = _normalized_timestamp(str(closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
@@ -211,7 +203,13 @@ def select_positive_momentum_leaders(
                 )
             )
             continue
+        # Fresh source data is observable even when a newly listed symbol has
+        # not accumulated enough sessions to enter the emerging-leader model.
+        # Insufficient lookback makes the symbol ineligible for ranking; it is
+        # not missing market evidence and must not degrade the whole route.
         observed_codes.add(code)
+        if len(closes) < EMERGING_MIN_DAYS:
+            continue
         close = float(closes.iloc[-1])
 
         # Mature-channel gate: needs the full 240-day history and positive
