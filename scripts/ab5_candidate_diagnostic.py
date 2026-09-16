@@ -80,7 +80,7 @@ def run() -> dict[str, Any]:
             START_DATE,
             END_DATE,
             data_dir=str(MARKET_DATA_DIR),
-            indicator_state="cold",
+            indicator_state="warm",
         )
     trades = list(result["trades"])
     equity_curve = result["equity_curve"]
