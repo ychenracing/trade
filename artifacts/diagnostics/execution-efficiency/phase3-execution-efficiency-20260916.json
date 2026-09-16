@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "title": "Trade Phase 3 - Execution Efficiency Research",
+  "source_main_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+  "window": ["2025-04-01", "2026-07-20"],
+  "initial_capital": 2000000.0,
+  "production_effect": "none",
+  "source_identity": {
+    "total_return": 8.610542744515504,
+    "max_drawdown": -0.15104978428469945,
+    "internal_sleeve_fills": 645,
+    "date_symbol_side_buckets": 190,
+    "sell_buckets": 109,
+    "sell_rebuy_chains": 82,
+    "rebuy_within_20_sessions": 40,
+    "rebuy_within_60_sessions": 67,
+    "all_matches_prior_retained_evidence": true
+  },
+  "sell_rebuy_chain_attribution": {
+    "low_value_definition": "Ex-post diagnostic only: a pure account_budget_trim sell bucket, followed by the next same-symbol buy within the already-retained 20-session churn horizon, where modeled direct costs plus reacquisition price effect exceed observed interim downside avoided on matched shares.",
+    "pure_ab5_low_value_candidate": {
+      "chains": 25,
+      "share_of_all_20_session_reentries": 0.625,
+      "median_gap_sessions": 6.0,
+      "matched_sell_notional": 6915107.97,
+      "realized_pnl_sell_buckets": 3758108.2829047297,
+      "modeled_direct_cost": 22069.14199299936,
+      "observed_interim_downside_avoided_value": 113896.0519999998,
+      "reacquisition_price_effect": 1024740.9469999992,
+      "modeled_net_chain_drag": 932914.0369929988,
+      "price_never_below_sell_chains": 12
+    },
+    "pure_ab5_protective_or_economic": {
+      "chains": 2,
+      "median_gap_sessions": 14.0,
+      "matched_sell_notional": 372746.88,
+      "realized_pnl_sell_buckets": 34316.483011000026,
+      "modeled_direct_cost": 1164.0022829999496,
+      "observed_interim_downside_avoided_value": 34606.88,
+      "reacquisition_price_effect": 26544.01199999997,
+      "modeled_net_chain_drag": -6898.865717000075,
+      "price_never_below_sell_chains": 0
+    },
+    "pure_ab5_later_reentry": {
+      "chains": 21,
+      "median_gap_sessions": 49.0,
+      "matched_sell_notional": 3898391.7060000002,
+      "realized_pnl_sell_buckets": 1881702.4532670944,
+      "modeled_direct_cost": 13244.62025649956,
+      "observed_interim_downside_avoided_value": 518230.82800000015,
+      "reacquisition_price_effect": 1215192.7699999998,
+      "modeled_net_chain_drag": 710206.5622564991,
+      "price_never_below_sell_chains": 1
+    },
+    "preserve_strategy_or_mixed": {
+      "chains": 34,
+      "median_gap_sessions": 33.0,
+      "matched_sell_notional": 11664079.245,
+      "realized_pnl_sell_buckets": 2572049.4336717823,
+      "modeled_direct_cost": 41003.1470129514,
+      "observed_interim_downside_avoided_value": 715048.991,
+      "reacquisition_price_effect": 4794176.568999999,
+      "modeled_net_chain_drag": 4120130.7250129506,
+      "price_never_below_sell_chains": 4,
+      "decision": "Preserve: these chains include strategy/mixed/hard-risk reasons and are not valid removal candidates from this diagnostic."
+    },
+    "representative_low_value_examples": [
+      {
+        "symbol": "300408",
+        "sell_date": "2026-06-09",
+        "rebuy_date": "2026-06-16",
+        "gap_sessions": 5,
+        "matched_shares": 6500,
+        "sell_price": 126.30357000000001,
+        "rebuy_price": 150.25009999999997,
+        "price_never_below_sell": true,
+        "modeled_direct_cost": 2657.331316249868,
+        "reacquisition_price_effect": 155652.44499999977,
+        "observed_interim_downside_avoided_value": 0.0,
+        "modeled_net_chain_drag": 158309.77631624966
+      },
+      {
+        "symbol": "603986",
+        "sell_date": "2025-10-15",
+        "rebuy_date": "2025-10-27",
+        "gap_sessions": 8,
+        "matched_shares": 4000,
+        "sell_price": 194.60520000000002,
+        "rebuy_price": 229.47924999999998,
+        "price_never_below_sell": true,
+        "modeled_direct_cost": 2509.4948499998627,
+        "reacquisition_price_effect": 139496.1999999998,
+        "observed_interim_downside_avoided_value": 0.0,
+        "modeled_net_chain_drag": 142005.69484999968
+      },
+      {
+        "symbol": "300308",
+        "sell_date": "2026-04-03",
+        "rebuy_date": "2026-04-09",
+        "gap_sessions": 3,
+        "matched_shares": 1300,
+        "sell_price": 598.401,
+        "rebuy_price": 681.6809999999999,
+        "price_never_below_sell": true,
+        "modeled_direct_cost": 2468.9872999999643,
+        "reacquisition_price_effect": 108263.99999999997,
+        "observed_interim_downside_avoided_value": 0.0,
+        "modeled_net_chain_drag": 110732.98729999994
+      },
+      {
+        "symbol": "300408",
+        "sell_date": "2026-04-03",
+        "rebuy_date": "2026-04-29",
+        "gap_sessions": 17,
+        "matched_shares": 3800,
+        "sell_price": 52.97697,
+        "rebuy_price": 80.91082999999999,
+        "price_never_below_sell": true,
+        "modeled_direct_cost": 736.5176529999674,
+        "reacquisition_price_effect": 106148.66799999996,
+        "observed_interim_downside_avoided_value": 0.0,
+        "modeled_net_chain_drag": 106885.18565299993
+      },
+      {
+        "symbol": "300308",
+        "sell_date": "2025-10-15",
+        "rebuy_date": "2025-10-22",
+        "gap_sessions": 5,
+        "matched_shares": 1000,
+        "sell_price": 343.656,
+        "rebuy_price": 435.5250899999999,
+        "price_never_below_sell": true,
+        "modeled_direct_cost": 1145.7132724999396,
+        "reacquisition_price_effect": 91869.08999999991,
+        "observed_interim_downside_avoided_value": 0.0,
+        "modeled_net_chain_drag": 93014.80327249985
+      }
+    ]
+  },
+  "order_fragmentation": {
+    "date_symbol_side_buckets": 190,
+    "multi_fill_buckets": 167,
+    "fills_inside_multi_fill_buckets": 622,
+    "excess_internal_fills_over_one_per_bucket": 455,
+    "multi_fill_by_side": {"buy": 66, "sell": 101},
+    "explicit_cost_in_multi_fill_buckets": 73116.55450075,
+    "same_day_symbol_with_both_buy_and_sell": 0,
+    "interpretation": "Internal sleeve accounting is highly fragmented relative to date-symbol-side actions, but these are not verified broker orders. This research does not authorize changing sleeve accounting or execution semantics."
+  },
+  "partial_adjustments": {
+    "partial_reduction_buckets": 76,
+    "explicit_cost": 36576.893673,
+    "reduction_fraction_min": 0.007874015748031496,
+    "reduction_fraction_median": 0.3162280701754386,
+    "reduction_fraction_max": 0.9777777777777777,
+    "examples_of_small_pure_ab5_reductions": [
+      {"symbol": "300308", "date": "2025-06-25", "shares": 300, "prior_symbol_shares": 12900, "reduction_fraction": 0.023255813953488372},
+      {"symbol": "002384", "date": "2025-12-17", "shares": 500, "prior_symbol_shares": 17000, "reduction_fraction": 0.029411764705882353},
+      {"symbol": "300502", "date": "2025-06-25", "shares": 600, "prior_symbol_shares": 16000, "reduction_fraction": 0.0375},
+      {"symbol": "688361", "date": "2025-12-17", "shares": 300, "prior_symbol_shares": 5800, "reduction_fraction": 0.05172413793103448}
+    ],
+    "interpretation": "Small adjustment size alone is not a valid suppression rule: the smallest observed reduction overall was a strategy exit, not AB5."
+  },
+  "phase_decision": {
+    "research_status": "CLOSED",
+    "production_promotion": "none",
+    "supported_findings": [
+      "A material subset of current short-horizon churn is concentrated in pure AB5 reductions: 25 of 40 retained <=20-session re-entry chains satisfy the strict ex-post low-value definition.",
+      "Those 25 chains have about 0.933 million of modeled net chain drag, dominated by reacquisition at higher prices rather than explicit transaction cost alone.",
+      "Twelve of those 25 chains never traded below the original sell price before the next buy, which is strong descriptive evidence of unnecessary exposure interruption in those historical cases.",
+      "Not all short-horizon AB5 churn is wasteful: two pure-AB5 short chains show observed protection large enough to offset modeled execution/reacquisition drag.",
+      "Internal fill fragmentation is substantial, but date-symbol-side consolidation is an operational representation issue unless internal accounting and all frozen execution semantics remain exact."
+    ],
+    "rejected_shortcuts": [
+      "Do not suppress all AB5 trims that would later be rebought; future re-entry is unavailable at decision time and would leak future information.",
+      "Do not suppress all small reductions; small size is not equivalent to low risk value.",
+      "Do not collapse internal sleeve fills merely to reduce the reported transaction count; 645 is not a verified broker-order count and accounting semantics are frozen."
+    ],
+    "next_research_target": "If a production improvement is pursued, derive a close-known AB5 re-risk/hysteresis or exposure-ownership signal that predicts the historical low-value churn cohort while preserving the protective cohort, then validate it causally against the unchanged risk/golden contracts."
+  },
+  "evidence_identity": {
+    "head_revision": "f76f67b8d99ea53ca1f1c97ffff74d58f59a253b",
+    "workflow_run": 35123286619,
+    "python312_receipt_job": 104886091825,
+    "python312_result": "1 intentional research receipt failure; 1278 other tests and 318 subtests passed",
+    "python311_result": "full suite success",
+    "typecheck_result": "success",
+    "security_dependency_audit_result": "success"
+  },
+  "limitations": [
+    "Low-value chain classification is retrospective and uses future rebuy/interim prices. It is evidence for mechanism discovery only, never a production decision rule.",
+    "Modeled downside avoided is a matched-share path attribution and is not a complete counterfactual risk guarantee.",
+    "A same-symbol future buy may belong to a different strategy/sleeve; symbol-level chaining intentionally measures economic reacquisition while retaining sell reasons for interpretation.",
+    "Internal sleeve fills and date-symbol-side buckets must not be represented as verified broker orders."
+  ]
+}
