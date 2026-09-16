@@ -416,12 +416,17 @@ def select_positive_momentum_leaders(
     # re-ordered relative to one another. Missing quality evidence leaves the
     # complete legacy result untouched.
     quality_complete = len(reference_quality) == len(reference_symbols)
-    quality_observations = [item for item in observations if item[1] is not None]
+    quality_observations: list[tuple[float, float, str, bool]] = []
+    for weak_score, quality_score, code, is_mature in observations:
+        if quality_score is not None:
+            quality_observations.append(
+                (weak_score, quality_score, code, is_mature)
+            )
     emerging_quality = [item for item in quality_observations if not item[3]]
     if quality_complete and emerging_quality and len(quality_observations) == len(observations):
         best_emerging = sorted(
             emerging_quality,
-            key=lambda item: (-float(item[1]), -item[0], item[2]),
+            key=lambda item: (-item[1], -item[0], item[2]),
         )[0]
         current_emerging_index = next(
             (index for index, item in enumerate(selected) if not item[3]),
@@ -431,7 +436,7 @@ def select_positive_momentum_leaders(
             current_emerging = selected[current_emerging_index]
             if (
                 best_emerging[2] != current_emerging[2]
-                and float(best_emerging[1]) > float(current_emerging[1])
+                and best_emerging[1] > current_emerging[1]
             ):
                 selected[current_emerging_index] = best_emerging
         elif len(selected) >= maximum and MAX_EMERGING_LEADERS > 0:
@@ -444,7 +449,7 @@ def select_positive_momentum_leaders(
                     key=lambda index: (selected[index][0], selected[index][2]),
                 )
                 weakest_mature = selected[weakest_index]
-                if float(best_emerging[1]) > float(weakest_mature[1]):
+                if best_emerging[1] > weakest_mature[1]:
                     selected[weakest_index] = best_emerging
 
     # Keep selected-return semantics on the established weak score. Replacement
