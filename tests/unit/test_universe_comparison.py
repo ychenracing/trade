@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import csv
+import json
+
 import pandas as pd
 import pytest
 
-from quantfusion.application.universe_comparison import summarize_universe_result
+from quantfusion.application.universe_comparison import (
+    summarize_universe_result,
+    write_universe_comparison,
+)
 from quantfusion.domain.models import TradeRecord
 
 
@@ -43,7 +49,11 @@ def test_summarize_universe_result_uses_audited_engine_outputs() -> None:
         "total_trades": 2,
         "equity_curve": equity,
         "trades": trades,
-        "risk_events": [{"event": "sector_guard_on"}, {"event": "sector_guard_on"}, {"event": "risk_trim"}],
+        "risk_events": [
+            {"event": "sector_guard_on"},
+            {"event": "sector_guard_on"},
+            {"event": "risk_trim"},
+        ],
         "max_concurrent_symbols": 2,
     }
     market_frames = {
@@ -63,6 +73,8 @@ def test_summarize_universe_result_uses_audited_engine_outputs() -> None:
 
     assert summary["pool"] == "pool_b"
     assert summary["symbol_count"] == 3
+    assert summary["symbols"] == ["300308", "300502", "300394"]
+    assert summary["symbol_names"] == ["中际旭创", "新易盛", "天孚通信"]
     assert summary["start_date"] == "2023-01-01"
     assert summary["end_date"] == "2026-09-16"
     assert summary["total_return"] == 0.05
@@ -118,6 +130,47 @@ def test_hhi_uses_latest_close_known_by_date_for_suspended_holdings() -> None:
     )
     assert summary["holding_concentration_hhi_mean"] == 1.0
     assert summary["holding_concentration_hhi_max"] == 1.0
+
+
+def test_report_outputs_include_members_and_risk_event_types(tmp_path) -> None:
+    row = {
+        "pool": "pool_b",
+        "symbol_count": 3,
+        "symbols": ["300308", "300502", "300394"],
+        "symbol_names": ["中际旭创", "新易盛", "天孚通信"],
+        "start_date": "2023-01-01",
+        "end_date": "2026-09-16",
+        "total_return": 1.0,
+        "annual_return": 0.25,
+        "max_drawdown": -0.15,
+        "total_trades": 12,
+        "turnover_ratio": 2.5,
+        "all_cash_day_ratio": 0.1,
+        "average_cash_ratio": 0.3,
+        "holding_concentration_hhi_mean": 0.55,
+        "holding_concentration_hhi_max": 0.9,
+        "max_concurrent_symbols": 3,
+        "risk_event_count": 4,
+        "risk_event_types": {"risk_trim": 1, "sector_guard_on": 3},
+    }
+
+    paths = write_universe_comparison([row], tmp_path)
+    payload = json.loads(paths["json"].read_text(encoding="utf-8"))
+    assert payload[0]["symbol_names"] == ["中际旭创", "新易盛", "天孚通信"]
+    assert payload[0]["risk_event_types"] == {"risk_trim": 1, "sector_guard_on": 3}
+
+    with paths["csv"].open(encoding="utf-8", newline="") as handle:
+        csv_row = next(csv.DictReader(handle))
+    assert csv_row["members"] == "300308 中际旭创; 300502 新易盛; 300394 天孚通信"
+    assert json.loads(csv_row["risk_event_types"]) == {
+        "risk_trim": 1,
+        "sector_guard_on": 3,
+    }
+
+    markdown = paths["markdown"].read_text(encoding="utf-8")
+    assert "中际旭创" in markdown
+    assert "risk_trim=1" in markdown
+    assert "sector_guard_on=3" in markdown
 
 
 def test_comparison_summary_rejects_missing_equity_audit_fields() -> None:
