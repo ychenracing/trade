@@ -10,7 +10,7 @@ old = '''def one(text: str, old: str, new: str, label: str) -> str:
 '''
 new = '''def one(text: str, old: str, new: str, label: str) -> str:
     count = text.count(old)
-    if label == "production runtime arg" and count >= 1:
+    if label in {"production runtime arg", "production runtime forwarding"} and count >= 1:
         return text.replace(old, new, 1)
     if count != 1:
         raise SystemExit(f"{label}: expected one match, got {count}")
