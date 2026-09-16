@@ -42,6 +42,17 @@ def _normalized_timestamp(value: str | pd.Timestamp) -> pd.Timestamp:
     return cast(pd.Timestamp, _timestamp(value).normalize())
 
 
+def _slice_to_boundary(frame: pd.DataFrame, boundary: pd.Timestamp) -> pd.DataFrame:
+    """Slice causally while retaining source coverage needed for pre-listing N/A."""
+    source_first_date: pd.Timestamp | None = None
+    if len(frame.index):
+        source_first_date = _normalized_timestamp(str(frame.index.min()))
+    sliced = frame.loc[frame.index <= boundary].copy()
+    if source_first_date is not None:
+        sliced.attrs["source_first_date"] = str(source_first_date.date())
+    return sliced
+
+
 def _local_frame(data_dir: str | Path, code: str, end_date: str) -> pd.DataFrame:
     """Load a local validated frame without reading beyond ``end_date``."""
     boundary = _normalized_timestamp(end_date)
@@ -54,8 +65,82 @@ def _local_frame(data_dir: str | Path, code: str, end_date: str) -> pd.DataFrame
         boundary.strftime("%Y-%m-%d"),
         data_dir=str(data_dir),
     )
-    return frame.loc[frame.index <= boundary].copy()
+    return _slice_to_boundary(frame, boundary)
 
+
+def _leader_quality_inputs(
+    frame: pd.DataFrame, closes: pd.Series
+) -> dict[str, float] | None:
+    """Return causal, scale-comparable opportunity-quality inputs."""
+    if len(closes) < 61 or "volume" not in frame.columns:
+        return None
+    daily_returns = closes.pct_change().dropna()
+    if len(daily_returns) < 60:
+        return None
+    ret20 = float(closes.iloc[-1] / closes.iloc[-21] - 1.0)
+    ret60 = float(closes.iloc[-1] / closes.iloc[-61] - 1.0)
+    vol20 = float(daily_returns.iloc[-20:].std())
+    vol60 = float(daily_returns.iloc[-60:].std())
+    high60 = float(closes.iloc[-60:].max())
+    breakout = float(closes.iloc[-1] / high60) if high60 > 0 else float("nan")
+    volumes = cast(pd.Series, pd.to_numeric(frame["volume"], errors="coerce"))
+    current_volume = float(volumes.iloc[-1])
+    average_volume = float(volumes.iloc[-21:-1].mean())
+    volume_ratio = (
+        current_volume / average_volume
+        if math.isfinite(current_volume)
+        and math.isfinite(average_volume)
+        and average_volume > 0
+        else float("nan")
+    )
+    if (
+        not all(
+            math.isfinite(value)
+            for value in (ret20, ret60, vol20, vol60, breakout, volume_ratio)
+        )
+        or vol20 <= 0
+        or vol60 <= 0
+    ):
+        return None
+    return {
+        "ret20": ret20,
+        "ret60": ret60,
+        "ra20": ret20 / (vol20 * math.sqrt(20.0)),
+        "ra60": ret60 / (vol60 * math.sqrt(60.0)),
+        "breakout": breakout,
+        "volume": volume_ratio,
+    }
+
+
+def _leader_quality_score(
+    inputs: dict[str, float],
+    reference_inputs: dict[str, dict[str, float]],
+) -> float | None:
+    """Rank broad opportunity quality by median fixed-reference percentile."""
+    if len(reference_inputs) != 5:
+        return None
+    reference_rows = tuple(reference_inputs.values())
+    reference_ret60 = float(np.mean([row["ret60"] for row in reference_rows]))
+    values = {
+        "ra20": inputs["ra20"],
+        "ra60": inputs["ra60"],
+        "rs60": inputs["ret60"] - reference_ret60,
+        "breakout": inputs["breakout"],
+        "volume": inputs["volume"],
+    }
+    reference_values = {
+        "ra20": [row["ra20"] for row in reference_rows],
+        "ra60": [row["ra60"] for row in reference_rows],
+        "rs60": [row["ret60"] - reference_ret60 for row in reference_rows],
+        "breakout": [row["breakout"] for row in reference_rows],
+        "volume": [row["volume"] for row in reference_rows],
+    }
+    percentiles = sorted(
+        sum(reference <= values[name] for reference in reference_values[name])
+        / len(reference_values[name])
+        for name in ("ra20", "ra60", "rs60", "breakout", "volume")
+    )
+    return float(percentiles[len(percentiles) // 2])
 
 
 def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
@@ -123,14 +208,17 @@ def select_positive_momentum_leaders(
     maximum: int = MAX_LEADERS,
     frame_loader: Callable[[str, str], pd.DataFrame] | None = None,
 ) -> LeaderSelection:
-    """Select positive long-horizon leaders with explicit input health.
+    """Select positive leaders while preserving mature ranking continuity.
 
-    Uses multi-factor weak-market scoring (section 12.2):
-    - 240-day momentum (25%)
-    - 120-day relative strength vs reference basket (25%)
-    - 60-day momentum (20%)
-    - Drawdown resilience (15%)
-    - Trend repair: 5-day vs 20-day momentum (15%)
+    Mature/emerging eligibility, leader count and the established blended weak
+    score remain unchanged. The legacy score first forms the candidate set and
+    keeps mature leaders in their existing order. Complete fixed-reference
+    quality evidence may only improve the single existing emerging-leader slot:
+    it can swap one emerging candidate for a better emerging candidate, or let
+    the best emerging candidate challenge the weakest selected mature leader
+    when its broad quality percentile is strictly higher. This narrows the alpha
+    change to earlier leader discovery without re-ranking established leaders or
+    introducing fitted weights, switches, thresholds, or new execution rules.
 
     Research callers receive degraded results plus diagnostics. Production
     callers decide whether to accept degradation via ``LeaderSelection`` rather
@@ -142,22 +230,23 @@ def select_positive_momentum_leaders(
     if maximum < 1:
         raise ValueError("maximum must be positive")
     boundary = _normalized_timestamp(as_of)
-    observations: list[tuple[float, str, bool]] = []
+    observations: list[tuple[float, float | None, str, bool]] = []
     observed_codes: set[str] = set()
+    pre_listing_codes: set[str] = set()
     invalid_codes: set[str] = set()
     issues: list[HealthIssue] = []
 
     def load_frame(code: str) -> pd.DataFrame:
         if frame_loader is None:
             return _local_frame(data_dir, code, str(boundary.date()))
-        frame = frame_loader(code, str(boundary.date()))
-        return frame.loc[frame.index <= boundary].copy()
+        return _slice_to_boundary(frame_loader(code, str(boundary.date())), boundary)
 
-    # The fixed reference basket is an optional ranking enrichment.  Preserve
-    # its established zero-baseline fallback when reference history is absent
-    # or incomplete; decision-critical health applies to requested symbols.
+    # The fixed reference basket is an optional ranking enrichment. Preserve
+    # the established weak score whenever reference quality is incomplete;
+    # decision-critical health applies only to requested symbols.
     reference_symbols = ("300308", "300502", "300394", "688008", "603986")
     ref_returns: list[float] = []
+    reference_quality: dict[str, dict[str, float]] = {}
     for ref_code in reference_symbols:
         try:
             ref_frame = load_frame(ref_code)
@@ -167,15 +256,18 @@ def select_positive_momentum_leaders(
             ).dropna()
         except (OSError, RuntimeError, ValueError, TypeError, KeyError):
             continue
-        if len(ref_closes) < 121:
+        if len(ref_closes) < 61:
             continue
         observed_date = _normalized_timestamp(str(ref_closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
             continue
-        ref_ret = float(ref_closes.iloc[-1] / ref_closes.iloc[-121] - 1.0)
-        if not math.isfinite(ref_ret):
-            continue
-        ref_returns.append(ref_ret)
+        if len(ref_closes) >= 121:
+            ref_ret = float(ref_closes.iloc[-1] / ref_closes.iloc[-121] - 1.0)
+            if math.isfinite(ref_ret):
+                ref_returns.append(ref_ret)
+        quality_inputs = _leader_quality_inputs(ref_frame, ref_closes)
+        if quality_inputs is not None:
+            reference_quality[ref_code] = quality_inputs
     ref_avg_return = float(np.mean(ref_returns)) if ref_returns else 0.0
 
     for code in normalized:
@@ -191,16 +283,12 @@ def select_positive_momentum_leaders(
             if issue.state is HealthState.INVALID:
                 invalid_codes.add(code)
             continue
-        # A symbol only needs the SHORT emerging-window history to
-        # be considered. Mature candidates require full long-horizon history;
-        # emerging candidates instead use short-horizon momentum and breakout.
-        if len(closes) < EMERGING_MIN_DAYS:
-            issues.append(
-                unavailable_issue(
-                    source,
-                    f"fewer than {EMERGING_MIN_DAYS} close observations",
-                )
-            )
+        if closes.empty:
+            first_date = frame.attrs.get("source_first_date")
+            if first_date is not None and _normalized_timestamp(first_date) > boundary:
+                pre_listing_codes.add(code)
+                continue
+            issues.append(unavailable_issue(source, "no close observations"))
             continue
         observed_date = _normalized_timestamp(str(closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
@@ -211,40 +299,45 @@ def select_positive_momentum_leaders(
                 )
             )
             continue
+        # Fresh source data is observable even when a newly listed symbol has
+        # not accumulated enough sessions to enter the emerging-leader model.
         observed_codes.add(code)
+        if len(closes) < EMERGING_MIN_DAYS:
+            continue
         close = float(closes.iloc[-1])
 
-        # Mature-channel gate: needs the full 240-day history and positive
-        # long-horizon momentum. Symbols that fail this gate are STILL eligible
-        # for the emerging channel.
         has_mature_history = len(closes) >= LEADER_LOOKBACK + 1
         momentum_240 = 0.0
         if has_mature_history:
-            momentum_240 = float(closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0)
-        is_mature = has_mature_history and math.isfinite(momentum_240) and momentum_240 > 0
+            momentum_240 = float(
+                closes.iloc[-1] / closes.iloc[-LEADER_LOOKBACK - 1] - 1.0
+            )
+        is_mature = (
+            has_mature_history
+            and math.isfinite(momentum_240)
+            and momentum_240 > 0
+        )
 
-        # Multi-factor scoring (mature + emerging dual channel).
-        # Both channels are scored against a FIXED technology reference pool (not the
-        # caller's pool) so adding/removing a symbol never changes an unchanged
-        # symbol's score.
-        if len(closes) >= 61:
-            momentum_60 = float(closes.iloc[-1] / closes.iloc[-61] - 1.0)
-        else:
-            momentum_60 = 0.0
-
-        if len(closes) >= 21:
-            momentum_20 = float(closes.iloc[-1] / closes.iloc[-21] - 1.0)
-        else:
-            momentum_20 = 0.0
-
+        momentum_60 = (
+            float(closes.iloc[-1] / closes.iloc[-61] - 1.0)
+            if len(closes) >= 61
+            else 0.0
+        )
+        momentum_20 = (
+            float(closes.iloc[-1] / closes.iloc[-21] - 1.0)
+            if len(closes) >= 21
+            else 0.0
+        )
         if len(closes) >= 20:
             high20 = float(closes.iloc[-20:].max())
             breakout_quality = close / high20 if high20 > 0 else 0.0
         else:
             breakout_quality = 0.0
         is_emerging = (
-            math.isfinite(momentum_60) and momentum_60 > 0
-            and math.isfinite(momentum_20) and momentum_20 > 0
+            math.isfinite(momentum_60)
+            and momentum_60 > 0
+            and math.isfinite(momentum_20)
+            and momentum_20 > 0
             and breakout_quality >= 0.90
         )
         if not (is_mature or is_emerging):
@@ -258,7 +351,9 @@ def select_positive_momentum_leaders(
 
         if len(closes) >= 60:
             peak_60 = float(closes.iloc[-60:].max())
-            drawdown_from_peak = 1.0 - float(closes.iloc[-1] / peak_60) if peak_60 > 0 else 0.0
+            drawdown_from_peak = (
+                1.0 - float(closes.iloc[-1] / peak_60) if peak_60 > 0 else 0.0
+            )
             resilience = 1.0 - min(1.0, drawdown_from_peak)
         else:
             resilience = 0.0
@@ -295,33 +390,81 @@ def select_positive_momentum_leaders(
             + 0.10 * max(0.0, trend_repair)
         )
         weak_score = 0.6 * mature_score + 0.4 * emerging_score
+        quality_inputs = _leader_quality_inputs(frame, closes)
+        quality_score = (
+            _leader_quality_score(quality_inputs, reference_quality)
+            if quality_inputs is not None
+            else None
+        )
         if math.isfinite(weak_score):
-            observations.append((weak_score, code, is_mature))
-    ranked = sorted(observations, key=lambda item: (-item[0], item[1]))
-    selected_codes: list[str] = []
+            observations.append((weak_score, quality_score, code, is_mature))
+
+    # Preserve the established selection as the baseline contract.
+    legacy_ranked = sorted(observations, key=lambda item: (-item[0], item[2]))
+    selected: list[tuple[float, float | None, str, bool]] = []
     emerging_selected = 0
-    for _, code, is_mature in ranked:
-        if not is_mature:
+    for item in legacy_ranked:
+        if not item[3]:
             if emerging_selected >= MAX_EMERGING_LEADERS:
                 continue
             emerging_selected += 1
-        selected_codes.append(code)
-        if len(selected_codes) >= maximum:
+        selected.append(item)
+        if len(selected) >= maximum:
             break
-    leaders = [
-        (score, code)
-        for score, code, _ in sorted(
-            observations, key=lambda item: (-item[0], item[1])
+
+    # Quality may only improve the one emerging slot. Mature leaders are never
+    # re-ordered relative to one another. Missing quality evidence leaves the
+    # complete legacy result untouched.
+    quality_complete = len(reference_quality) == len(reference_symbols)
+    quality_observations: list[tuple[float, float, str, bool]] = []
+    for weak_score, quality_score, code, is_mature in observations:
+        if quality_score is not None:
+            quality_observations.append(
+                (weak_score, quality_score, code, is_mature)
+            )
+    emerging_quality = [item for item in quality_observations if not item[3]]
+    if quality_complete and emerging_quality and len(quality_observations) == len(observations):
+        best_emerging = sorted(
+            emerging_quality,
+            key=lambda item: (-item[1], -item[0], item[2]),
+        )[0]
+        current_emerging_index = next(
+            (index for index, item in enumerate(selected) if not item[3]),
+            None,
         )
-        if code in selected_codes
-    ]
+        if current_emerging_index is not None:
+            current_emerging = selected[current_emerging_index]
+            current_quality = cast(float, current_emerging[1])
+            if (
+                best_emerging[2] != current_emerging[2]
+                and best_emerging[1] > current_quality
+            ):
+                selected[current_emerging_index] = best_emerging
+        elif len(selected) >= maximum and MAX_EMERGING_LEADERS > 0:
+            mature_indexes = [
+                index for index, item in enumerate(selected) if item[3]
+            ]
+            if mature_indexes:
+                weakest_index = min(
+                    mature_indexes,
+                    key=lambda index: (selected[index][0], selected[index][2]),
+                )
+                weakest_mature = selected[weakest_index]
+                weakest_quality = cast(float, weakest_mature[1])
+                if best_emerging[1] > weakest_quality:
+                    selected[weakest_index] = best_emerging
+
+    # Keep selected-return semantics on the established weak score. Replacement
+    # stays in the displaced slot so relative mature ordering remains stable.
     return LeaderSelection(
         as_of=str(_timestamp(as_of).date()),
         requested_symbols=normalized,
         observed_symbols=len(observed_codes),
-        selected_symbols=tuple(code for _, code in leaders),
-        selected_returns=tuple(score for score, _ in leaders),
-        unavailable_symbols=tuple(sorted(set(normalized) - observed_codes - invalid_codes)),
+        selected_symbols=tuple(item[2] for item in selected),
+        selected_returns=tuple(item[0] for item in selected),
+        unavailable_symbols=tuple(
+            sorted(set(normalized) - observed_codes - pre_listing_codes - invalid_codes)
+        ),
         invalid_symbols=tuple(sorted(invalid_codes)),
         health=HealthReport.from_issues(issues),
     )
