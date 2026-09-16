@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from scripts.download_eastmoney_qfq import DEFAULT_SYMBOLS as DOWNLOAD_DEFAULTS
+from scripts.download_eastmoney_qfq import select_download_symbols
 from quantfusion.application.backtest_cli import build_argument_parser
+from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.research_universes import (
     DEFAULT_RESEARCH_START_DATE,
     RESEARCH_SYMBOL_NAMES,
@@ -68,6 +71,13 @@ def test_research_window_defaults_to_2023_and_backtest_accepts_pool_selection() 
     args = build_argument_parser().parse_args(["--pool", "pool_b", "--no-plot"])
     assert args.pool == "pool_b"
     assert args.start == DEFAULT_RESEARCH_START_DATE
+
+
+def test_pool_download_selection_includes_fixed_regime_evidence() -> None:
+    selected = select_download_symbols(("pool_b",))
+    assert selected[:3] == tuple(symbols_for_pool("pool_b"))
+    assert set(PortfolioPolicy().regime_symbols) <= set(selected)
+    assert select_download_symbols(()) == DOWNLOAD_DEFAULTS
 
 
 def test_unknown_pool_fails_closed() -> None:
