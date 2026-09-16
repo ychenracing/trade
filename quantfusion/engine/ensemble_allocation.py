@@ -8,7 +8,7 @@ from __future__ import annotations
 import contextlib
 import io
 import math
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
@@ -37,6 +37,47 @@ _ESTABLISHED_EXPANSION_CORE = ESTABLISHED_EXPANSION_CORE
 _PreparedSleeveRun = PreparedSleeveRun
 _RunRequest = RunRequest
 _require_int = require_int
+
+
+@dataclass(frozen=True, slots=True)
+class AllocationScoreFailure:
+    sleeve: str
+    error_type: str
+    message: str
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "sleeve": self.sleeve,
+            "error_type": self.error_type,
+            "message": self.message,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AllocationScoreView:
+    """Callable allocation scores with structured degradation metadata."""
+
+    sleeve_scores: tuple[dict[str, float], ...]
+    failures: tuple[AllocationScoreFailure, ...] = ()
+
+    @property
+    def status(self) -> str:
+        return "degraded" if self.failures else "valid"
+
+    def __call__(self, symbol: str) -> float:
+        samples = [
+            float(scores.get(symbol, 0.0)) for scores in self.sleeve_scores
+        ]
+        return float(np.mean(samples)) if samples else 0.0
+
+    def as_event(self, date: str) -> dict[str, Any]:
+        return {
+            "date": date,
+            "event": "allocation_score_degraded",
+            "status": self.status,
+            "failed_sleeves": [failure.sleeve for failure in self.failures],
+            "failures": [failure.as_dict() for failure in self.failures],
+        }
 
 
 class EnsembleAllocationMixin:
@@ -367,16 +408,19 @@ class EnsembleAllocationMixin:
         )
 
     @staticmethod
-    def _overlay_allocation_score(states: list[_PreparedSleeveRun], date: pd.Timestamp):
-        """Mean held-book score across sleeves, used to rank laggards for trim.
+    def _overlay_allocation_score(
+        states: list[_PreparedSleeveRun], date: pd.Timestamp
+    ) -> AllocationScoreView:
+        """Mean held-book score with explicit, stable degradation semantics.
 
-        A risk exit compares live account holdings only.  Letting an unheld
-        add-one universe member into this cross-section can change the selected
-        trim without adding any position or risk, which makes the exit depend
-        on irrelevant candidate-pool composition.
+        The legacy zero-score fallback is retained so valid economic behavior
+        and degraded execution remain stable.  Failures are now represented as
+        data and emitted through each sleeve's existing risk-event channel.
         """
         held = EnsembleAllocationMixin._held_portfolio_symbols(states)
         sleeve_scores: list[dict[str, float]] = []
+        failures: list[AllocationScoreFailure] = []
+        failed_states: list[tuple[Any, AllocationScoreFailure]] = []
         for state in states:
             ranked_data = (
                 {
@@ -391,14 +435,39 @@ class EnsembleAllocationMixin:
                 sleeve_scores.append(
                     state.sleeve._allocation_scores(ranked_data, date)
                 )
-            except Exception:
+            except Exception as exc:
+                failure = AllocationScoreFailure(
+                    sleeve=str(getattr(state.sleeve, "sleeve_name", "unknown")),
+                    error_type=type(exc).__name__,
+                    message=str(exc),
+                )
+                failures.append(failure)
+                failed_states.append((state, failure))
                 sleeve_scores.append({})
 
-        def _score(symbol: str) -> float:
-            samples = [float(scores.get(symbol, 0.0)) for scores in sleeve_scores]
-            return float(np.mean(samples)) if samples else 0.0
-
-        return _score
+        view = AllocationScoreView(tuple(sleeve_scores), tuple(failures))
+        date_str = date.strftime("%Y-%m-%d")
+        for state, failure in failed_states:
+            risk_events = getattr(state.sleeve, "risk_events", None)
+            if not isinstance(risk_events, list):
+                continue
+            already_recorded = any(
+                item.get("event") == "allocation_score_degraded"
+                and item.get("date") == date_str
+                and item.get("sleeve_name") == failure.sleeve
+                for item in risk_events
+            )
+            if not already_recorded:
+                risk_events.append(
+                    {
+                        "date": date_str,
+                        "event": "allocation_score_degraded",
+                        "sleeve_name": failure.sleeve,
+                        "error_type": failure.error_type,
+                        "message": failure.message,
+                    }
+                )
+        return view
 
     def _authorize_portfolio_buys(
         self,
