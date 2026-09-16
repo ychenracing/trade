@@ -1,0 +1,65 @@
+name: Apply AB5 buy-headroom patch
+
+on:
+  push:
+    branches:
+      - agent/ab5-recovery-cleanup-20260917
+    paths:
+      - .github/workflows/ab5-buy-headroom-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/ab5-recovery-cleanup-20260917
+          fetch-depth: 0
+      - name: Apply narrow account-budget patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('quantfusion/risk/account_budget.py')
+          text = path.read_text(encoding='utf-8')
+          replacements = [
+              (
+                  "    crowded_shock_reduced_book_ids: set[tuple[int, str, str]] | None = None,\n    gross_cap_ceiling: float | None = None,\n) -> tuple[dict[str, Any], list[RiskAction]]:\n",
+                  "    crowded_shock_reduced_book_ids: set[tuple[int, str, str]] | None = None,\n    buy_gross_cap_ceiling: float | None = None,\n) -> tuple[dict[str, Any], list[RiskAction]]:\n",
+              ),
+              (
+                  "    if gross_cap_ceiling is not None:\n        ceiling = require_finite(\n            'AB5 recovery gross cap ceiling', gross_cap_ceiling, min_value=0.\n        )\n        receipt['canonical_gross_cap'] = receipt['gross_cap']\n        receipt['recovery_gross_cap_ceiling'] = ceiling\n        receipt['gross_cap'] = min(receipt['gross_cap'], ceiling)\n    cap = receipt[\"gross_cap\"]\n    requested = sum(value for _, _, value in buys)\n    binding = cap < receipt[\"ordinary_gross_cap\"] - 1e-8\n    gross_scale = min(1., max(0., cap-gross)/requested) if binding and requested else 1.\n",
+                  "    cap = receipt[\"gross_cap\"]\n    requested = sum(value for _, _, value in buys)\n    recovery_buy_cap = None\n    recovery_buy_scale = 1.\n    if buy_gross_cap_ceiling is not None:\n        ceiling = require_finite(\n            'AB5 recovery buy gross cap ceiling',\n            buy_gross_cap_ceiling,\n            min_value=0.,\n        )\n        recovery_buy_cap = min(cap, ceiling)\n        recovery_buy_scale = (\n            min(1., max(0., recovery_buy_cap-gross)/requested)\n            if requested else 1.\n        )\n    binding = cap < receipt[\"ordinary_gross_cap\"] - 1e-8\n    gross_scale = min(1., max(0., cap-gross)/requested) if binding and requested else 1.\n",
+              ),
+              (
+                  "    buy_scales = [\n        (\n            0.\n            if blocked\n            else 1.\n            if admitted\n            else gross_scale\n            if alert_proven\n            else base_buy_scale\n        )\n        for admitted, alert_proven, blocked in zip(\n            quality_admitted,\n            alert_proven_dual,\n            shock_reduced_pyramid,\n            strict=True,\n        )\n    ]\n    return {**receipt, \"gross_before\": gross, \"buy_envelope_binding\": binding,\n",
+                  "    buy_scales = [\n        (\n            0.\n            if blocked\n            else 1.\n            if admitted\n            else gross_scale\n            if alert_proven\n            else base_buy_scale\n        )\n        for admitted, alert_proven, blocked in zip(\n            quality_admitted,\n            alert_proven_dual,\n            shock_reduced_pyramid,\n            strict=True,\n        )\n    ]\n    recovery_receipt: dict[str, float] = {}\n    if recovery_buy_cap is not None:\n        buy_scales = [min(scale, recovery_buy_scale) for scale in buy_scales]\n        recovery_receipt = {\n            \"recovery_buy_gross_cap\": recovery_buy_cap,\n            \"recovery_buy_gross_scale\": recovery_buy_scale,\n        }\n    return {**receipt, **recovery_receipt,\n            \"gross_before\": gross, \"buy_envelope_binding\": binding,\n",
+              ),
+              (
+                  "    portfolio_evidence_buy_symbols: set[str] | None = None,\n    gross_cap_ceiling: float | None = None,\n) -> None:\n",
+                  "    portfolio_evidence_buy_symbols: set[str] | None = None,\n    buy_gross_cap_ceiling: float | None = None,\n) -> None:\n",
+              ),
+              (
+                  "        crowded_shock_reduced_book_ids=crowded_shock_reduced_book_ids,\n        gross_cap_ceiling=gross_cap_ceiling,\n    )\n",
+                  "        crowded_shock_reduced_book_ids=crowded_shock_reduced_book_ids,\n        buy_gross_cap_ceiling=buy_gross_cap_ceiling,\n    )\n",
+              ),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'patch anchor count {count}, expected 1: {old[:100]!r}')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          python -m compileall -q quantfusion/risk/account_budget.py quantfusion/risk/exposure_recovery.py
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add quantfusion/risk/account_budget.py
+          git commit -m "fix: keep AB5 recovery out of sell relief"
+          git push origin HEAD:agent/ab5-recovery-cleanup-20260917
