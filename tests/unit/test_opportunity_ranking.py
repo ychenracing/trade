@@ -4,8 +4,7 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-from quantfusion.engine.causal import CausalBacktestEngine
-from quantfusion.engine.universe import BacktestEngine
+from quantfusion.engine.universe import BacktestEngine, SleeveBacktestEngine
 
 
 def _series(value: float) -> pd.Series:
@@ -45,7 +44,7 @@ def _policy() -> SimpleNamespace:
 
 def test_fixed_reference_ranking_prefers_consistent_multi_horizon_strength() -> None:
     """One hot horizon must not outweigh weak evidence across the full trend path."""
-    engine = object.__new__(CausalBacktestEngine)
+    engine = object.__new__(SleeveBacktestEngine)
     engine.policy = _policy()
     engine._candidate_score_series = _score_series()
 
