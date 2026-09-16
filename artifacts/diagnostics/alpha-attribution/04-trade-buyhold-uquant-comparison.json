@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "title": "Trade Alpha Attribution - Trade vs BuyHold vs uquant Capability Comparison",
+  "trade_source_main_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+  "uquant_source_main_revision": "5742e7442a9f0a83ebcd1b7277d4417344c0287d",
+  "production_effect": "none",
+  "comparison_contract": {
+    "trade_vs_buy_hold": "matched current 17, window, initial capital and Trade cost assumptions",
+    "trade_vs_uquant": "structural only; universes/windows/contracts are not matched, so absolute wealth is not ranked or treated as causal evidence"
+  },
+  "trade_vs_buy_hold": {
+    "trade_total_return": 8.610542744515504,
+    "buy_hold_total_return": 4.633185289255749,
+    "trade_max_drawdown": -0.15104978428469945,
+    "buy_hold_max_drawdown": -0.28119502710777045,
+    "conclusion": "Trade outperforms this matched Buy & Hold path while experiencing shallower maximum drawdown. The research target is remaining upside loss inside Trade, not catching up to Buy & Hold."
+  },
+  "super_winner_exposure_examples": [
+    {"symbol": "688498", "buy_hold_window_return": 17.319848, "trade_exposure_fraction": 0.2911, "trade_first_buy": "2025-05-16", "trade_sell_buckets": 9},
+    {"symbol": "601869", "buy_hold_window_return": 10.420445, "trade_exposure_fraction": 0.3829, "trade_first_buy": "2025-04-30", "trade_sell_buckets": 9},
+    {"symbol": "300502", "buy_hold_window_return": 9.330302, "trade_exposure_fraction": 0.5285, "trade_first_buy": "2025-04-24", "trade_sell_buckets": 15},
+    {"symbol": "300308", "buy_hold_window_return": 9.326336, "trade_exposure_fraction": 0.6741, "trade_first_buy": "2025-06-24", "trade_sell_buckets": 18},
+    {"symbol": "002384", "buy_hold_window_return": 5.637549, "trade_exposure_fraction": 0.3924, "trade_first_buy": "2025-06-18", "trade_sell_buckets": 12},
+    {"symbol": "300604", "buy_hold_window_return": 5.362299, "trade_exposure_fraction": 0.0570, "trade_first_buy": "2025-09-29", "trade_sell_buckets": 3}
+  ],
+  "uquant_own_system_evidence": {
+    "wealth_multiple": 29.717004033008783,
+    "max_drawdown_percent": 27.147425947272153,
+    "order_count": 22,
+    "warning": "These are uquant's own-system figures and are not directly comparable to Trade's different production contract."
+  },
+  "uquant_mechanism_observations": [
+    "explicit strategic-cohort ownership",
+    "dominant-winner profit lock",
+    "staged exit bands",
+    "strategic restore after risk reduction",
+    "soft exits that can retain residual strategic shares",
+    "contribution concentration and holding-session attribution"
+  ],
+  "trade_mechanism_observations": [
+    "multi-sleeve and multi-strategy coordination",
+    "fine-grained account-risk budgeting and portfolio execution coordination",
+    "frequent reductions, scaling and re-entry",
+    "strong risk-event observability and execution constraints"
+  ],
+  "evidence_supported_relative_gap_hypotheses": [
+    {"factor": "winner_lifecycle_holding_period", "strength": "strong", "basis": "strong post-buy returns plus strong post-sell returns and frequent re-entry"},
+    {"factor": "position_management_account_risk_budget", "strength": "strong_causal_for_AB5", "basis": "existing AB5 on/off counterfactual"},
+    {"factor": "trading_frequency_churn", "strength": "strong_structural", "basis": "67 of 109 sell buckets re-enter within 60 sessions"},
+    {"factor": "opportunity_discovery_within_current_17", "strength": "not_leading_problem", "basis": "post-buy forward-return quality is already strong"},
+    {"factor": "concentration", "strength": "plausible_but_unquantified", "basis": "positive realized PnL is highly concentrated, but matched causal concentration replay was not performed"}
+  ],
+  "preserve_trade_capabilities": ["risk-state identification and explainability", "account/risk-state continuity", "close-to-next-tradable-open causality", "realistic cost/liquidity/portfolio constraints", "fail-closed inputs and transactional publication", "high-quality current entry capability", "hard-risk and catastrophic-risk protection"],
+  "next_research": "Use a Trade-native winner-lifecycle / AB5-efficiency contract. Borrow no uquant production rules directly; first test whether Trade can reduce avoidable intervention on confirmed winners while retaining its risk advantage.",
+  "limitation": "Do not quantify how much of any Trade-uquant return gap comes from entry timing, holding duration or concentration until both systems are replayed under a matched universe/window/capital/cost contract."
+}

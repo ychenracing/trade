@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "title": "Trade Alpha Attribution - Order Efficiency Report",
+  "source_main_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+  "production_effect": "none",
+  "counting_contract": {
+    "internal_sleeve_fills": 645,
+    "date_symbol_side_buckets": 190,
+    "sell_fills": 404,
+    "sell_buckets": 109,
+    "broker_order_statement": "Neither 645 nor 190 is a verified broker-order count. 645 is internal sleeve fills; 190 is a closer nettable-action proxy."
+  },
+  "executed_action_structure": {
+    "buy_buckets": 81,
+    "new_position_buckets": 33,
+    "add_position_buckets": 48,
+    "sell_buckets": 109,
+    "full_exit_buckets": 33,
+    "reduce_position_buckets": 76,
+    "low_absolute_realized_pnl_sell_buckets_under_2pct": 18
+  },
+  "churn_evidence": {
+    "buy_exited_within_10_sessions": 48,
+    "buy_exited_within_20_sessions": 69,
+    "sell_reentry_within_20_sessions": 40,
+    "sell_reentry_within_60_sessions": 67
+  },
+  "ab5_counterfactual": {
+    "sleeve_fills_on": 645,
+    "sleeve_fills_off": 289,
+    "fill_delta": 356,
+    "date_symbol_side_buckets_on": 190,
+    "date_symbol_side_buckets_off": 115,
+    "bucket_delta": 75,
+    "total_return_on_minus_off": -4.040567837919623,
+    "max_drawdown_on_minus_off": 0.013912921601769601
+  },
+  "direct_costs": {
+    "commission_plus_stamp_duty": 74192.392969,
+    "estimated_slippage_from_open": 139432.11799999347,
+    "total_modeled_direct_cost": 213624.51096899348,
+    "direct_cost_over_initial_capital": 0.10681225548449674,
+    "interpretation": "Cash friction is material but does not explain the AB5 return gap; AB5 ON explicit fees are slightly lower than OFF, so exposure-path opportunity cost dominates."
+  },
+  "order_event_diagnostics": {
+    "rejected_no_shared_batch_capacity": 1087,
+    "rejected_portfolio_symbol_limit": 598,
+    "account_budget_buy_reduced": 445,
+    "scaled_late_strategy_join": 138,
+    "scaled_for_fair_batch_allocation": 83,
+    "admitted_cross_sleeve_early_dual_transition": 47,
+    "blocked_market_risk_pyramid": 12,
+    "blocked_catastrophe_cooldown": 7,
+    "note": "These are decision events, not executed broker orders."
+  },
+  "low_value_candidate_definition": [
+    "same symbol is reduced/exited and then re-entered shortly afterwards",
+    "the longer-term trend remains intact after the exit",
+    "the action is driven by non-catastrophic budget/position adjustment rather than hard risk",
+    "a future preregistered counterfactual can remove or consolidate the action without materially worsening drawdown, tail risk or account continuity"
+  ],
+  "preserve": ["hard-risk liquidation", "stops proven to avoid catastrophic loss", "necessary profit protection", "liquidity/portfolio-limit/causal execution constraints"],
+  "decision": "Reduce evidence-proven low-value churn, not the transaction count as an end in itself."
+}

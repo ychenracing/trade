@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "title": "Trade Alpha Attribution - Return Attribution Report",
+  "source_main_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+  "window": ["2025-04-01", "2026-07-20"],
+  "initial_capital": 2000000.0,
+  "production_effect": "none",
+  "conclusion": "Current Trade does not underperform the matched equal-capital Buy & Hold benchmark in the frozen production window. The leading diagnosed opportunity is winner-lifecycle truncation and repeated exit/re-entry, with AB5 account-risk-budget showing the strongest direct causal opportunity cost.",
+  "matched_trade_vs_buy_hold": {
+    "trade": {"total_return": 8.610542744515504, "final_assets": 19221085.48903101, "max_drawdown": -0.15104978428469945},
+    "buy_hold": {"total_return": 4.633185289255749, "final_assets": 11266370.578511499, "max_drawdown": -0.28119502710777045},
+    "trade_minus_buy_hold_return_delta": 3.977357455259755,
+    "trade_minus_buy_hold_drawdown_delta": 0.130145242823071
+  },
+  "alpha_sources": {
+    "winning_sell_fills": 286,
+    "losing_sell_fills": 118,
+    "gross_positive_realized_pnl": 18415170.951312102,
+    "gross_negative_realized_pnl": -1194085.4622810946,
+    "top_10pct_positive_fill_share_of_positive_pnl": 0.560834524168015,
+    "largest_realized_contributors": {"300308": 7338529.445428751, "300502": 3088946.339651249, "300408": 2638810.3155117505, "002384": 1655191.40924625, "601869": 1024680.0164375014}
+  },
+  "buy_quality": {
+    "buy_buckets": 81,
+    "post_buy_20d_median": 0.09962693694751135,
+    "post_buy_60d_median": 0.36975680185070914,
+    "post_buy_60d_positive_rate": 0.8382352941176471,
+    "post_buy_120d_count": 48,
+    "post_buy_120d_median": 1.156561213549002,
+    "post_buy_120d_positive_rate": 1.0,
+    "interpretation": "Opportunity discovery inside the current production 17 is not the leading diagnosed weakness."
+  },
+  "largest_loss_sources": {
+    "winner_lifecycle": {"sell_buckets": 109, "premature_major_winner_classification": 90, "post_sell_60d_median": 0.3812950308665849, "post_sell_120d_median": 1.1371430906936328},
+    "repeated_exit_reentry": {"reentry_within_20_sessions": 40, "reentry_within_60_sessions": 67},
+    "cash_opportunity_cost": {"mean_cash_fraction": 0.29874385789832925, "cash_fraction_over_50pct_day_share": 0.3069620253164557},
+    "direct_transaction_friction": {"commission_plus_stamp_duty": 74192.392969, "estimated_slippage_from_open": 139432.11799999347, "total_modeled_direct_cost": 213624.51096899348}
+  },
+  "ab5_direct_counterfactual": {
+    "total_return_on": 8.610542744515504,
+    "total_return_off": 12.651110582435127,
+    "total_return_on_minus_off": -4.040567837919623,
+    "max_drawdown_on": -0.15104978428469945,
+    "max_drawdown_off": -0.16496270588646905,
+    "max_drawdown_on_minus_off": 0.013912921601769601,
+    "sleeve_fills_on": 645,
+    "sleeve_fills_off": 289,
+    "scope": "isolates existing AB5 account-risk-budget mechanism only; other risk logic remains active"
+  },
+  "decision": [
+    "Preserve Trade risk identification, causal execution, account/risk continuity and proven high-quality entry capability.",
+    "Prioritize winner-lifecycle and AB5 risk/return efficiency research before broad opportunity-discovery expansion.",
+    "Do not modify production behavior in this attribution stage."
+  ],
+  "limitations": [
+    "Forward returns are descriptive and overlapping; they cannot be summed as additive portfolio alpha loss.",
+    "Trade vs Buy & Hold is a matched capability comparison, not a pure causal risk-rule decomposition."
+  ]
+}

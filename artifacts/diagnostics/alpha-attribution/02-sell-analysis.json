@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "title": "Trade Alpha Attribution - Sell Analysis Report",
+  "source_main_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+  "production_effect": "none",
+  "conclusion": "The dominant structural pattern is early reduction or exit inside continuing long-term trends, followed by frequent re-entry. This is not evidence to remove all stops or risk controls.",
+  "sell_structure": {
+    "sell_buckets": 109,
+    "full_exit_buckets": 33,
+    "reduce_position_buckets": 76,
+    "premature_major_winner_classification": 90,
+    "mixed_or_censored_classification": 19,
+    "classification_rule": "post-sale 60-session return >=20% or 120-session return >=30%"
+  },
+  "post_sell_forward_returns": {
+    "10d": {"count": 109, "mean": 0.0700, "median": 0.0601, "positive_rate": 0.6881, "gt_20pct_rate": 0.1468},
+    "20d": {"count": 103, "mean": 0.1214, "median": 0.0654, "positive_rate": 0.6505, "gt_20pct_rate": 0.2913},
+    "40d": {"count": 97, "mean": 0.2813, "median": 0.2195, "positive_rate": 0.8144, "gt_20pct_rate": 0.5361},
+    "60d": {"count": 94, "mean": 0.5563899197359516, "median": 0.3812950308665849, "positive_rate": 0.9468085106382979, "gt_20pct_rate": 0.6915},
+    "120d": {"count": 68, "mean": 1.411815515407464, "median": 1.1371430906936328, "positive_rate": 1.0, "gt_20pct_rate": 0.9559}
+  },
+  "reentry": {"within_20_sessions": 40, "within_60_sessions": 67},
+  "selected_examples": [
+    {"date": "2025-06-25", "symbol": "300308", "reason": "account_budget_trim", "realized_pnl_pct": -0.013977594169528365, "reentry_sessions": 14, "post_60d": 2.2261560923981314, "post_120d": 3.544353270467921},
+    {"date": "2025-05-26", "symbol": "688498", "reason": "ATR trailing stop@88.94", "realized_pnl_pct": -0.05233537166384144, "reentry_sessions": 100, "post_60d": 1.1476785315260818, "post_120d": 3.4891761089583238},
+    {"date": "2025-12-30", "symbol": "601869", "reason": "ATR trailing stop@120.80 + account_budget_trim", "realized_pnl_pct": -0.037838429489991644, "reentry_sessions": 24, "post_60d": 1.9694480128237388, "post_120d": 3.002907986736842},
+    {"date": "2025-06-25", "symbol": "300502", "reason": "account_budget_trim", "realized_pnl_pct": 0.4794918090045171, "reentry_sessions": 1, "post_60d": 2.1862431913852403, "post_120d": 2.9017034774844253},
+    {"date": "2026-01-13", "symbol": "601869", "reason": "ATR trailing stop@111.56", "realized_pnl_pct": -0.0693439223679014, "reentry_sessions": 16, "post_60d": 2.3603664745974897, "post_120d": 2.879894116014091}
+  ],
+  "risk_value": {
+    "whole_trade_vs_buy_hold": {"trade_max_drawdown": -0.15104978428469945, "buy_hold_max_drawdown": -0.28119502710777045, "drawdown_delta": 0.130145242823071, "note": "capability comparison, not pure risk causality"},
+    "ab5_direct_counterfactual": {"max_drawdown_on": -0.15104978428469945, "max_drawdown_off": -0.16496270588646905, "drawdown_improvement": 0.013912921601769601, "return_cost": -4.040567837919623, "note": "clean counterfactual for AB5 only"}
+  },
+  "decision": "Research how strategic winners can retain lifecycle ownership while hard-risk actions remain authoritative; do not remove the risk framework wholesale.",
+  "limitations": ["Reason-group attribution is descriptive because one sell bucket may carry multiple reasons.", "Post-sale forward returns use future prices only for research diagnosis and must never enter production signals."]
+}
