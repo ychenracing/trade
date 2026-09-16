@@ -1,0 +1,78 @@
+name: Research universe validation
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: github.event.pull_request.head.ref == 'feat/configurable-universe-history'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Download independent 2023-current research inputs
+        run: |
+          python -m scripts.download_eastmoney_qfq \
+            --pool pool_b --pool pool_f --pool pool_g \
+            --start 2023-01-01 --end 2026-09-15 \
+            --output /tmp/trade-research-market
+          (cd /tmp/trade-research-market && sha256sum *.csv | sort > SHA256SUMS)
+      - name: Replay Pool B F G through production causal routing
+        run: |
+          python -m scripts.compare_universes \
+            --pool pool_b --pool pool_f --pool pool_g \
+            --start-date 2023-01-01 --end-date 2026-09-15 \
+            --data-dir /tmp/trade-research-market \
+            --regime-data-dir /tmp/trade-research-regime \
+            --output-dir /tmp/universe-comparison
+          (cd /tmp/trade-research-regime && sha256sum 000300.csv 000682.csv | sort > SHA256SUMS)
+          (cd /tmp/universe-comparison && sha256sum comparison.json comparison.csv comparison.md | sort > SHA256SUMS)
+      - name: Record source identity
+        env:
+          VALIDATION_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          payload = {
+              "source_revision": os.environ["VALIDATION_SHA"],
+              "start_date": "2023-01-01",
+              "end_date": "2026-09-15",
+              "pools": ["pool_b", "pool_f", "pool_g"],
+              "engine": "ProductionReplayEngine",
+              "deployment_policy": "production_daily_replay",
+              "market_manifest": json.loads(Path("/tmp/trade-research-market/manifest.json").read_text()),
+              "market_sha256s": Path("/tmp/trade-research-market/SHA256SUMS").read_text().splitlines(),
+              "regime_sha256s": Path("/tmp/trade-research-regime/SHA256SUMS").read_text().splitlines(),
+              "report_sha256s": Path("/tmp/universe-comparison/SHA256SUMS").read_text().splitlines(),
+          }
+          Path("/tmp/universe-comparison/validation-receipt.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Upload exact research validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-universe-validation-${{ github.event.pull_request.head.sha }}
+          path: |
+            /tmp/trade-research-market
+            /tmp/trade-research-regime
+            /tmp/universe-comparison
+          if-no-files-found: error
+          retention-days: 30
