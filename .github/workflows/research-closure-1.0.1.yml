@@ -76,7 +76,26 @@ jobs:
           new_call = '''    "def write_universe_comparison(",\n    "__EOF__",\n    """def _member_coverage_text'''
           if text.count(old_call) != 1:
               raise SystemExit('unexpected writer replacement call')
-          path.write_text(text.replace(old_call, new_call), encoding='utf-8')
+          text = text.replace(old_call, new_call)
+          # The one-shot patch stores target Python blocks in triple-quoted
+          # literals. Replace target docstrings with comments before parsing the
+          # patch script so nested triple quotes cannot terminate those literals.
+          for old_doc, new_doc in {
+              '    """Return whether the requested window ends before a known first trade."""':
+                  '    # Return whether the requested window ends before a known first trade.',
+              '    """Return configured pool members that can exist inside this research window."""':
+                  '    # Return configured pool members that can exist inside this research window.',
+              '    """Require source-attested complete research inputs before any comparison."""':
+                  '    # Require source-attested complete research inputs before any comparison.',
+              '    """Derive comparable research metrics without changing engine decisions."""':
+                  '    # Derive comparable research metrics without changing engine decisions.',
+              '    """Write JSON, CSV and human-readable Markdown research reports."""':
+                  '    # Write JSON, CSV and human-readable Markdown research reports.',
+          }.items():
+              if text.count(old_doc) != 1:
+                  raise SystemExit(f'unexpected target docstring count: {old_doc}')
+              text = text.replace(old_doc, new_doc)
+          path.write_text(text, encoding='utf-8')
           PY
           python scripts/_apply_research_closure_1_0_1.py
           rm -f \
