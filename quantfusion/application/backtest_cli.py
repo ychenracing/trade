@@ -20,8 +20,8 @@ _SYMBOL_RE = SYMBOL_RE
 
 DEFAULT_SYMBOLS = dict(list(SYMBOL_NAMES.items())[:5])
 
-# Retain the production-table public contract for existing callers/tests while
-# allowing research-only names to resolve through the separate research catalog.
+# Keep the production symbol table public contract unchanged while allowing
+# research-only names to resolve through the separate research catalog.
 SYMBOL_NAME_TABLE: dict[str, str] = dict(SYMBOL_NAMES)
 DEFAULT_SYMBOL_NAMES = {v: k for k, v in RESEARCH_SYMBOL_NAMES.items()}
 
@@ -64,9 +64,20 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default="",
         help="Configured research universe (pool_a through pool_j)",
     )
-    parser.add_argument("--start", default=DEFAULT_RESEARCH_START_DATE)
+    parser.add_argument(
+        "--start",
+        "--start-date",
+        dest="start",
+        default=DEFAULT_RESEARCH_START_DATE,
+        help=(
+            "Backtest start date YYYY-MM-DD "
+            f"(default: {DEFAULT_RESEARCH_START_DATE})"
+        ),
+    )
     parser.add_argument(
         "--end",
+        "--end-date",
+        dest="end",
         default="",
         help="Backtest end date YYYY-MM-DD (default: current Shanghai-market date)",
     )
