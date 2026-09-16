@@ -236,8 +236,8 @@ def write_universe_comparison(
     )
     csv_path = output / "comparison.csv"
     with csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(scalar_fields))
-        writer.writeheader()
+        writer = csv.writer(handle)
+        writer.writerow(scalar_fields)
         for record in records:
             csv_record = {field: record[field] for field in scalar_fields}
             csv_record["risk_event_types"] = json.dumps(
@@ -246,7 +246,7 @@ def write_universe_comparison(
                 sort_keys=True,
                 separators=(",", ":"),
             )
-            writer.writerow(csv_record)
+            writer.writerow([csv_record[field] for field in scalar_fields])
 
     markdown_path = output / "comparison.md"
     headers = (
