@@ -13,6 +13,7 @@ from pathlib import Path
 import pandas as pd
 
 from quantfusion.application.daily_support import today_str
+from quantfusion.config.overlay import RISK_BASKET
 from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.research_universes import (
@@ -30,7 +31,7 @@ LEGACY_END_DATE = "2026-07-20"
 
 
 def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
-    """Return a stable pool union plus fixed regime evidence symbols."""
+    """Return a stable pool union plus all fixed production risk evidence symbols."""
     pool_names = tuple(pools)
     if not pool_names:
         return DEFAULT_SYMBOLS
@@ -38,6 +39,7 @@ def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
     for pool_name in pool_names:
         ordered.extend(symbols_for_pool(pool_name))
     ordered.extend(PortfolioPolicy().regime_symbols)
+    ordered.extend(RISK_BASKET)
     return tuple(dict.fromkeys(ordered))
 
 
