@@ -94,4 +94,10 @@ if text.count(old_feature_new) != 1:
     raise SystemExit('formal feature test anchor changed')
 text = text.replace(old_feature_new, new_feature_new, 1)
 
+marker = '# Allocation consumes capabilities, never experiment identities.\n'
+universe_block = '''# Public universe coordinator must preserve the generic runtime contract.\np, universe_text = load("quantfusion/engine/universe.py")\nuniverse_text = one(\n    universe_text,\n    "from quantfusion.engine.ensemble import EnsembleBacktestEngine, EnsembleSleeveBacktestEngine\\n",\n    "from quantfusion.engine.ensemble import EnsembleBacktestEngine, EnsembleSleeveBacktestEngine\\nfrom quantfusion.engine.runtime import ReplayRuntimePolicy\\n",\n    "universe runtime import",\n)\nuniverse_text = one(\n    universe_text,\n    "        route_controller: Any | None = None,\\n    ) -> dict:\\n",\n    "        route_controller: Any | None = None,\\n        runtime_policy: ReplayRuntimePolicy | None = None,\\n    ) -> dict:\\n",\n    "universe runtime arg",\n)\nuniverse_text = one(\n    universe_text,\n    "                route_controller=route_controller,\\n            )\\n",\n    "                route_controller=route_controller,\\n                runtime_policy=runtime_policy,\\n            )\\n",\n    "universe runtime forwarding",\n)\nuniverse_text = one(\n    universe_text,\n    "        count = len(symbols_dict)\\n",\n    "        effective_runtime = runtime_policy or ReplayRuntimePolicy()\\n        self._runtime_policy = effective_runtime\\n        count = len(symbols_dict)\\n",\n    "universe single runtime",\n)\nuniverse_text = one(\n    universe_text,\n    "            sleeve_name=\\\"single\\\",\\n        )\\n        if risk_state:\\n",\n    "            sleeve_name=\\\"single\\\",\\n        )\\n        sleeve._runtime_policy = effective_runtime\\n        if risk_state:\\n",\n    "universe sleeve runtime",\n)\nsave(str(p), universe_text)\n\n\n'''
+if text.count(marker) != 1:
+    raise SystemExit('allocation section marker changed')
+text = text.replace(marker, universe_block + marker, 1)
+
 p.write_text(text, encoding='utf-8')
