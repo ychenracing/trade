@@ -335,7 +335,7 @@ SYMBOL_PROFILES: Mapping[str, str] = MappingProxyType({
     "688082": "semiconductor_equipment",  # 盛美上海 - 设备
     "002371": "semiconductor_equipment",  # 北方华创 - 设备
     "688012": "semiconductor_equipment",  # 中微公司 - 设备
-    "688037": "test_measurement",  # 华峰测控 - 测试设备
+    "688037": "semiconductor_equipment",  # 芯源微 - 半导体设备
     "300604": "test_measurement",  # 长川科技 - 测试设备
     "688361": "test_measurement",  # 中科飞测 - 测试设备
     "300054": "semiconductor_material",  # 鼎龙股份 - 材料
@@ -347,7 +347,7 @@ SYMBOL_PROFILES: Mapping[str, str] = MappingProxyType({
     "300408": "semiconductor_material",  # 三环集团 - 电子陶瓷材料
     "688249": "advanced_packaging",  # 晶合集成 - 制造/封测
     "688347": "advanced_packaging",  # 华虹宏力 - 制造
-    "688825": "advanced_packaging",  # 晶合集成(华虹系) - 制造
+    "688825": "chip_design",  # 长鑫科技 - DRAM/存储芯片
     "300223": "chip_design",  # 北京君正 - 设计
     "688041": "chip_design",  # 海光信息 - 设计
 })
