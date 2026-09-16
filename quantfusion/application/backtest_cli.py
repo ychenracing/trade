@@ -19,6 +19,8 @@ from quantfusion.engine.universe import BacktestEngine
 _SYMBOL_RE = SYMBOL_RE
 
 DEFAULT_SYMBOLS = dict(list(SYMBOL_NAMES.items())[:5])
+LEGACY_BACKTEST_START_DATE = "2025-04-01"
+LEGACY_BACKTEST_END_DATE = "2026-07-20"
 
 # Keep the production symbol table public contract unchanged while allowing
 # research-only names to resolve through the separate research catalog.
@@ -46,6 +48,19 @@ def parse_symbols(symbols_str: str) -> dict[str, str]:
     return result
 
 
+def resolve_backtest_window(
+    start: str,
+    end: str,
+    *,
+    pool_selected: bool,
+    today: str,
+) -> tuple[str, str]:
+    """Use 2023-to-current defaults only for configured pool research."""
+    if pool_selected:
+        return start or DEFAULT_RESEARCH_START_DATE, end or today
+    return start or LEGACY_BACKTEST_START_DATE, end or LEGACY_BACKTEST_END_DATE
+
+
 def build_argument_parser() -> argparse.ArgumentParser:
     """Build the standalone command-line interface."""
     parser = argparse.ArgumentParser(
@@ -68,10 +83,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--start",
         "--start-date",
         dest="start",
-        default=DEFAULT_RESEARCH_START_DATE,
+        default="",
         help=(
-            "Backtest start date YYYY-MM-DD "
-            f"(default: {DEFAULT_RESEARCH_START_DATE})"
+            "Backtest start date YYYY-MM-DD. Pool research defaults to "
+            f"{DEFAULT_RESEARCH_START_DATE}; legacy non-pool mode retains "
+            f"{LEGACY_BACKTEST_START_DATE}."
         ),
     )
     parser.add_argument(
@@ -79,7 +95,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--end-date",
         dest="end",
         default="",
-        help="Backtest end date YYYY-MM-DD (default: current Shanghai-market date)",
+        help=(
+            "Backtest end date YYYY-MM-DD. Pool research defaults to the current "
+            f"Shanghai-market date; legacy non-pool mode retains {LEGACY_BACKTEST_END_DATE}."
+        ),
     )
     parser.add_argument("--capital", type=float, default=2_000_000)
     parser.add_argument(
@@ -118,11 +137,16 @@ def main() -> dict | None:
         symbols = parse_symbols(args.symbol)
     else:
         symbols = dict(DEFAULT_SYMBOLS)
-    end_date = args.end or today_str()
+    start_date, end_date = resolve_backtest_window(
+        args.start,
+        args.end,
+        pool_selected=bool(args.pool),
+        today=today_str(),
+    )
     engine = BacktestEngine(args.capital)
     result = engine.run(
         symbols,
-        args.start,
+        start_date,
         end_date,
         data_dir=args.data_dir or None,
         cache_dir=args.cache_dir or None,
