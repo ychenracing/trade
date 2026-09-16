@@ -4,13 +4,13 @@
 
 ## 项目定位与使用边界
 
-当前系统使用固定 17 股科技股票池，提供趋势策略、市场状态切换、账户风险预算和收盘后决策报告。
+生产日扫和真实账户建议继续使用固定 17 股科技生产股票池；历史研究层另提供 Pool A–J，可在不修改策略源码的情况下切换研究股票池，并支持 `2023-01-01` 起的可配置窗口。两层股票池分离：`quantfusion/config/universe.py` 是生产 17 股事实源，`quantfusion/config/research_universes.py` 是研究股票池事实源。
 
 Quant Fusion 面向 A 股算力硬件、光通信和半导体产业链，提供日线研究、组合回放、收盘后扫描和真实账户人工决策支持。不连接券商、不自动下单、不托管账户，也不保证未来收益。全部 Python 实现位于 `quantfusion/`，工具以 `python -m scripts.<模块名>` 运行。
 
 信号只使用收盘及以前可见的数据，模拟订单最早在后续可交易日开盘执行。跳空、连续跌停、流动性和人工执行偏差都可能使实际损失超过触发线。模拟持仓不是真实持仓；真实账户快照不注入历史回放。
 
-当前版本已完成同一经济源码的 958 场景验证。固定 17 股主池在 2025-04-01 至 2026-07-20、初始资金 200 万元及既定费用和滑点下，期末财富为初始本金的 9.610543 倍，最大回撤为 15.104978%。完整结果与复核入口见[验证结果与证据](docs/VALIDATION.md#formal-stress-evidence)。
+当前版本已完成同一经济源码的 958 场景验证。固定 17 股主池在 2025-04-01 至 2026-07-20、初始资金 200 万元及既定费用和滑点下，期末财富为初始本金的 9.610543 倍，最大回撤为 15.104978%。完整结果与复核入口见[验证结果与证据](docs/VALIDATION.md#formal-stress-evidence)。这些正式结果继续绑定原生产股票池和原窗口，不因研究股票池扩展而改写。
 
 ## 快速开始
 
@@ -19,6 +19,7 @@ Quant Fusion 面向 A 股算力硬件、光通信和半导体产业链，提供�
 ```bash
 python -m pip install -r requirements.txt
 python -m quantfusion.application.backtest_cli --help
+python -m scripts.compare_universes --help
 python -m quantfusion.application.daily_scan --help
 ```
 
@@ -39,6 +40,32 @@ python -m quantfusion.application.backtest_cli \
 输入由仓库冻结数据与配置提供，先按[数据说明](data/README.md)核对清单和哈希。该入口是 `BacktestEngine` 趋势回测，打印终端报告，并由现有报告保存函数写入 `--save-dir`；它没有 `--regime-data-dir` 参数，不生成当天的账户建议或模拟日扫 `signals` 工件。`--no-plot` 关闭绘图，不关闭回测或结果保存。
 
 比较结果须同时匹配源码、数据、配置、窗口和场景身份；不得为匹配业绩表修改默认参数或覆盖黄金预期。
+
+### 多股票池历史研究
+
+研究股票池 A–J 由名称映射为六位代码，不通过修改策略源码切换。`backtest_cli` 支持 `--pool`，并同时接受 `--start/--end` 与 `--start-date/--end-date`；研究默认起点为 `2023-01-01`。生产日扫仍固定使用 17 股生产池，不读取研究 Pool 配置。
+
+Pool 模式的数据默认写入被忽略的 `data_cache/research_market`，不会覆盖 `data/market`。研究下载器会取得所选 Pool 的并集、固定信号参考和现有独立风险篮，并在请求窗口前多取 365 个自然日用于 warm 指标。研究路径复用既有 Eastmoney→Sina→Tencent 提供方切换；若返回数据陈旧、Tencent 1000 行上限导致长历史明显截断、文件写入中断或全部提供方失败，则保存 `complete=false` 的 manifest 并失败关闭。完整 manifest 为每个研究 CSV 保存 SHA-256；比较前会重新核验文件集合和哈希。
+
+```bash
+python -m scripts.download_eastmoney_qfq \
+  --pool pool_b --pool pool_f --pool pool_g \
+  --start-date 2023-01-01 --end-date YYYY-MM-DD \
+  --output ../trade-runtime/research-market
+
+python -m scripts.compare_universes \
+  --pool pool_b --pool pool_f --pool pool_g \
+  --start-date 2023-01-01 --end-date YYYY-MM-DD \
+  --data-dir ../trade-runtime/research-market \
+  --regime-data-dir ../trade-runtime/regime \
+  --output-dir ../trade-runtime/universe-comparison
+```
+
+`compare_universes` 使用 `ProductionReplayEngine` 的连续账户路由，不复制信号、费用、T+1、仓位或风险实现。运行前要求所选交易池、固定信号参考、固定风险篮与两只路由指数输入完整；两只指数还必须具有 MA120 所需的预热历史、窗口内一致日期覆盖和可接受的截止日新鲜度。缺失风险证据不会静默降级成“策略主动现金”。
+
+比较报告同时生成 JSON、CSV、Markdown，列出股票代码与名称、请求窗口、实际观察窗口、累计收益、年化收益、最大回撤、成交记录数、建模换手率、全现金日比例、平均现金比例、按实际成交与截至当日最后可见收盘价重建的持仓 HHI，以及风险事件类型和次数。JSON 还保留股票 manifest SHA-256 和两只固定指数 SHA-256。报告是研究输出，不改变生产交易决策，也不替代正式 17 股经济验收。
+
+较晚上市标的在上市前没有观测，不补造历史；只有真实行情出现后才参与对应日期的策略计算。请求窗口与实际观察窗口分别记录，不能把从 2024 才有数据的结果标成完整 2023 回放。完整研究证据须使用对应源码、实际数据和相同配置身份，不以旧 SHA、旧冻结样本或旧正式业绩证明新窗口。
 
 ### 日常人工决策支持
 
@@ -190,9 +217,11 @@ ATR 是价格波动尺度，不是百分比。所有计划只使用当时已知�
 
 ## 参数研究与股票池扩展
 
+研究股票池 A–J 与生产 17 股分离；新增股票必须具有名称映射、行业归属和可复用的合法参数画像，默认 `strict_unmapped=True`。研究扩池不修改固定信号参考、独立风险篮或经济阈值。Pool 比较必须使用相同引擎、费用、风险体系和请求窗口，并保存实际观察窗口与输入身份。
+
 优化器通过现有 `ProductionReplayEngine` 评价，按 `risk`、`turnover`、`return` 隔离参数族；三目标 Pareto 选择和普通／压力 holdout 的门限见验证说明。不同研究身份不能共享一个未标注的结果。策略、费用、数据或映射改动按照 [AGENTS.md](AGENTS.md) 与适用合同决定验证范围，不因阅读本页启动经济任务。
 
-新增股票须有行业映射与合适画像，默认 `strict_unmapped=True`，不以关闭映射校验作为日常修复。正式压力入口支持精确 ID、场景族、ID 文件和 shard 诊断；任何选择都不能成为正式发布结果。以下为研究命令模板，须先具备相应研究授权、核实输入并替换真实的 40 位源码 SHA；不是日常日扫步骤。
+正式压力入口支持精确 ID、场景族、ID 文件和 shard 诊断；任何选择都不能成为正式发布结果。以下为研究命令模板，须先具备相应研究授权、核实输入并替换真实的 40 位源码 SHA；不是日常日扫步骤。
 
 ```bash
 python -m quantfusion.application.optimizer --symbol 300308 --stage risk \
@@ -209,17 +238,17 @@ python -m quantfusion.application.stress --source-revision <verified-40-char-SHA
 
 | 入口 | 用途 |
 |---|---|
-| `quantfusion/` | 唯一规范实现；`config/` 是配置事实源，`engine/` 是模拟引擎，`application/` 是 CLI 与流程，`account/` 是账户输入与时点建议支持。 |
-| `scripts/` | 批量验证、股票下载与研究工具；统一用模块方式启动，先看各自 `--help`。 |
+| `quantfusion/` | 唯一规范实现；`config/universe.py` 保持生产 17 股事实源，`config/research_universes.py` 保存 Pool A–J 研究定义，`engine/` 是模拟引擎，`application/` 是 CLI 与流程，`account/` 是账户输入与时点建议支持。 |
+| `scripts/` | 批量验证、股票下载与研究工具；`download_eastmoney_qfq` 准备研究股票输入，`compare_universes` 运行跨 Pool 连续账户比较；统一用模块方式启动，先看各自 `--help`。 |
 | `tests/unit/`、`contract/`、`integration/`、`regression/` | 分别覆盖单元、契约、集成和经济回归；具体文件见架构与验证入口。 |
-| `data/market/`、`data/regime/` | 只读冻结输入，不是日常更新目录。 |
+| `data/market/`、`data/regime/` | 只读冻结输入，不是日常更新目录；Pool 研究默认使用独立 `data_cache/` 或仓库外目录。 |
 | `tests/fixtures/`、`artifacts/validation/` | 黄金预期与已审查证据；保留来源，不因文档整理而重新封存。 |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | 模块、状态、因果及发布边界，不重复回归成绩表。 |
 | [VALIDATION.md](docs/VALIDATION.md) | 证据分类、适用范围、完整结果及来源索引，不代替实时 PR/checks。 |
 | [data/README.md](data/README.md) | 文件格式、单位、冻结完整性与运行数据准备。 |
 | [AGENTS.md](AGENTS.md)、[项目 brief](.github/PROJECT_BRIEF.md) | 工程流程与恢复导航；动态状态在匹配 PR 正文。 |
 
-运行输出、缓存、优化结果和压力检查点不是正式证据的同义词。`daily_signals/`、`data_cache/`、`optimizer_output/` 等默认生成物不提交；真实账户文件也不入库。已审查工件的发布走既有校验与来源绑定，不能靠手工复制到 `artifacts/validation/` 获得接受身份。
+运行输出、缓存、优化结果和压力检查点不是正式证据的同义词。`daily_signals/`、`data_cache/`、`optimizer_output/`、`reports/universe_comparison/` 等默认生成物不提交；真实账户文件也不入库。已审查工件的发布走既有校验与来源绑定，不能靠手工复制到 `artifacts/validation/` 获得接受身份。
 
 ## 故障排查
 
@@ -227,6 +256,7 @@ python -m quantfusion.application.stress --source-revision <verified-40-char-SHA
 |---|---|---|
 | 指数陈旧、缺失或路由为现金 | 核对独立指数 CSV 的真实截止日、`live_refresh_manifest.json`、路由边界与健康原因；旧路由名称不是当前日期证明。 | 补齐合法运行输入，保持冻结目录不变；输入不充分时停止使用当前买入判断，不伪造日期或放宽容忍。 |
 | 股票获取失败／截止日不一致 | 模拟正常路径可中止；账户可能保存 `BLOCKED`／`DATA_ERROR` 防御结果。 | 检查提供方错误、实际日期、全部必要标的及缓存来源；不静默删掉缺失标的改变股票池。 |
+| Pool 比较拒绝 manifest、哈希、风险篮或指数覆盖 | 研究输入不完整、被修改、陈旧、提供方历史被截断，或固定风险／指数证据不足；这是输入失败，不是策略现金信号。 | 保留 `complete=false` manifest 和已下载文件，补齐真实输入后重新比较；不删除缺失标的、不改哈希、不放宽风险或窗口要求。 |
 | 预热未完成 | 模拟 `warmup_health=NOT_READY` 会抑制买入；`DEGRADED` 是降级提示。 | 准备真实预热数据，核对新上市边界；不把降级输出写成完整正常信号。 |
 | 账户文件被拒绝／峰值证据不足 | 看输入错误或 `PEAK_EVIDENCE_INCOMPLETE`；快照版本、账户、日期、金额、可卖数量都需真实合格。 | 核正快照与建仓后峰值依据；不删除字段、降低峰值或伪造建仓日期解除限制。 |
 | 风险状态身份不匹配 | 可禁止买入并保留旧状态，检查 `run_id`、配置／股票池身份和 `summary`。 | 查明是否误用了别的输出目录或配置；保全原状态，不能靠 `--reset-risk-state` 恢复原账户的买入权限。 |
@@ -237,11 +267,11 @@ python -m quantfusion.application.stress --source-revision <verified-40-char-SHA
 
 ## 优势
 
-规范引擎统一撮合与核算，模拟、研究和账户建议有明确边界；冻结输入、严格工件、风险回执与来源绑定使结果可追溯。现有中文报告解释已记录的支持与阻止原因，不另建一套决策。
+规范引擎统一撮合与核算，模拟、研究和账户建议有明确边界；冻结输入、严格工件、风险回执与来源绑定使结果可追溯。现有中文报告解释已记录的支持与阻止原因，不另建一套决策。研究 Pool A–J 复用同一经济实现，并把请求窗口、观察窗口与输入哈希分开披露，便于比较而不污染生产池。
 
 ## 缺点和已知限制
 
-科技历史样本有幸存者偏差与事后关注偏差，前复权数据可能重述，日线模型无法证明盘中成交路径。回测表现随股票池、窗口和成本变化，风险预算也会影响机会参与。日常指数使用独立运行目录，冻结输入受写保护；当前日决策拒绝 `unknown` 证据，入口校验交易日覆盖。日历范围有限，覆盖合格仍需结合预热、账户估值、风险状态及实际可执行性判断。
+科技历史样本有幸存者偏差与事后关注偏差，前复权数据可能重述，日线模型无法证明盘中成交路径。回测表现随股票池、窗口和成本变化，风险预算也会影响机会参与。日常指数使用独立运行目录，冻结输入受写保护；当前日决策拒绝 `unknown` 证据，入口校验交易日覆盖。日历范围有限，覆盖合格仍需结合预热、账户估值、风险状态及实际可执行性判断。Pool A–J 属于研究配置，尚不能仅凭一轮历史比较宣称未来泛化改善；较晚上市股票会缩短其自身可观察历史。
 
 ## 适用行情
 
@@ -253,7 +283,7 @@ python -m quantfusion.application.stress --source-revision <verified-40-char-SHA
 
 ## 健壮性与灵活性
 
-保留映射、输入、风险状态和正式发布校验；显式研究参数可调整，但普通日扫不提供任意旧配置兼容。完整参数可查不意味着任何组合都合理，配置与经济变化仍须按有效合同验证。
+保留映射、输入、风险状态和正式发布校验；显式研究参数可调整，Pool A–J 与日期窗口可切换，但普通日扫不提供任意旧配置兼容。完整参数可查不意味着任何组合都合理，配置与经济变化仍须按有效合同验证。
 
 ## 还能继续提升的方向
 
