@@ -77,6 +77,8 @@ def test_summarize_universe_result_uses_audited_engine_outputs() -> None:
     assert summary["symbol_names"] == ["中际旭创", "新易盛", "天孚通信"]
     assert summary["start_date"] == "2023-01-01"
     assert summary["end_date"] == "2026-09-16"
+    assert summary["observed_start_date"] == "2023-01-03"
+    assert summary["observed_end_date"] == "2023-01-05"
     assert summary["total_return"] == 0.05
     assert summary["annual_return"] == 0.20
     assert summary["max_drawdown"] == -0.10
@@ -140,6 +142,8 @@ def test_report_outputs_include_members_and_risk_event_types(tmp_path) -> None:
         "symbol_names": ["中际旭创", "新易盛", "天孚通信"],
         "start_date": "2023-01-01",
         "end_date": "2026-09-16",
+        "observed_start_date": "2023-01-03",
+        "observed_end_date": "2026-09-15",
         "total_return": 1.0,
         "annual_return": 0.25,
         "max_drawdown": -0.15,
@@ -162,12 +166,14 @@ def test_report_outputs_include_members_and_risk_event_types(tmp_path) -> None:
     with paths["csv"].open(encoding="utf-8", newline="") as handle:
         csv_row = next(csv.DictReader(handle))
     assert csv_row["members"] == "300308 中际旭创; 300502 新易盛; 300394 天孚通信"
+    assert csv_row["observed_end_date"] == "2026-09-15"
     assert json.loads(csv_row["risk_event_types"]) == {
         "risk_trim": 1,
         "sector_guard_on": 3,
     }
 
     markdown = paths["markdown"].read_text(encoding="utf-8")
+    assert "2023-01-03 → 2026-09-15" in markdown
     assert "中际旭创" in markdown
     assert "risk_trim=1" in markdown
     assert "sector_guard_on=3" in markdown
