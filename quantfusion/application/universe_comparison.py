@@ -115,6 +115,12 @@ def summarize_universe_result(
 ) -> dict[str, Any]:
     """Derive comparable research metrics without changing engine decisions."""
     equity = _equity_frame(result)
+    observed_dates = pd.DatetimeIndex(pd.to_datetime(equity.index, errors="raise"))
+    if observed_dates.hasnans or not observed_dates.is_monotonic_increasing:
+        raise ValueError("equity_curve index must be a monotonic finite date sequence")
+    observed_start = observed_dates[0].strftime("%Y-%m-%d")
+    observed_end = observed_dates[-1].strftime("%Y-%m-%d")
+
     assets = equity["assets"].astype(float)
     cash = equity["cash"].astype(float)
     position_value = equity["position_value"].astype(float)
@@ -125,6 +131,9 @@ def summarize_universe_result(
     trades = result.get("trades")
     if not isinstance(trades, list):
         raise ValueError("comparison result requires a trades list")
+    total_trades = int(result["total_trades"])
+    if total_trades != len(trades):
+        raise ValueError("comparison result total_trades does not match trades list")
     gross_traded_value = sum(abs(_trade_gross_value(trade)) for trade in trades)
 
     positive_assets = assets > 0
@@ -142,18 +151,16 @@ def summarize_universe_result(
     else:
         hhi_mean, hhi_max = _holding_concentration_hhi(
             trades,
-            pd.DatetimeIndex(equity.index),
+            observed_dates,
             market_frames,
         )
 
     risk_events = result.get("risk_events")
     if not isinstance(risk_events, list):
         raise ValueError("comparison result requires a risk_events list")
-    event_types = Counter(
-        str(item.get("event", "unknown"))
-        for item in risk_events
-        if isinstance(item, Mapping)
-    )
+    if any(not isinstance(item, Mapping) for item in risk_events):
+        raise ValueError("comparison result risk_events must contain mapping records")
+    event_types = Counter(str(item.get("event", "unknown")) for item in risk_events)
 
     return {
         "pool": pool_name,
@@ -162,10 +169,12 @@ def summarize_universe_result(
         "symbol_names": list(symbols.values()),
         "start_date": start_date,
         "end_date": end_date,
+        "observed_start_date": observed_start,
+        "observed_end_date": observed_end,
         "total_return": float(result["total_return"]),
         "annual_return": float(result["annual_return"]),
         "max_drawdown": float(result["max_drawdown"]),
-        "total_trades": int(result["total_trades"]),
+        "total_trades": total_trades,
         "turnover_ratio": gross_traded_value / average_assets,
         "all_cash_day_ratio": all_cash_day_ratio,
         "average_cash_ratio": average_cash_ratio,
@@ -202,6 +211,8 @@ def write_universe_comparison(
         "members",
         "start_date",
         "end_date",
+        "observed_start_date",
+        "observed_end_date",
         "total_return",
         "annual_return",
         "max_drawdown",
@@ -234,7 +245,8 @@ def write_universe_comparison(
         "Pool",
         "Stocks",
         "Members",
-        "Window",
+        "Requested window",
+        "Observed window",
         "Return",
         "Max DD",
         "Annual",
@@ -265,6 +277,7 @@ def write_universe_comparison(
                     str(record["symbol_count"]),
                     str(record["members"]),
                     f"{record['start_date']} → {record['end_date']}",
+                    f"{record['observed_start_date']} → {record['observed_end_date']}",
                     f"{float(record['total_return']):.2%}",
                     f"{float(record['max_drawdown']):.2%}",
                     f"{float(record['annual_return']):.2%}",
@@ -283,6 +296,7 @@ def write_universe_comparison(
     lines.extend(
         [
             "",
+            "Requested and observed windows are reported separately so a pre-close, suspended, or otherwise shorter data set cannot be mislabeled as full requested-date coverage.",
             "HHI is reconstructed from executed fills and the latest closing price known by each portfolio date; cash-only days are reported separately and excluded from the HHI average.",
             "Risk-event counts are descriptive replay evidence and do not change production decisions.",
             "",
