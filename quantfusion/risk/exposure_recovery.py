@@ -1,80 +1,81 @@
-"""Causal recovery hysteresis for exposure reduced by the AB5 account budget."""
+"""Causal recovery hysteresis for the AB5 account gross budget."""
 
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Collection, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
 import pandas as pd
 
-from quantfusion.execution.c6_receipts import reconcile_close_queue
 from quantfusion.risk.account_budget import (
     apply_account_risk_budget as _apply_account_risk_budget,
 )
 
 
-BookId = tuple[int, str, str]
-PendingItem = tuple[Any, Any]
-
-
 class AB5RecoveryState(str, Enum):
-    """Track whether AB5-reduced exposure is eligible to recover."""
+    """Track whether a reduced AB5 account budget is ready to re-expand."""
 
     NORMAL = "NORMAL"
     AB5_REDUCED = "AB5_REDUCED"
     AB5_RECOVERY_PENDING = "AB5_RECOVERY_PENDING"
 
 
-def _recovery_safe(envelope: Mapping[str, Any] | None) -> bool:
-    """Return whether one completed close is safe for recovery progression."""
-    if not envelope or envelope.get("event") != "account_budget_envelope":
-        return False
-    if envelope.get("new_reduction_orders"):
-        return False
-    if envelope.get("risk_alert_active") or envelope.get("shock_episode_active"):
-        return False
+@dataclass(frozen=True)
+class AB5RecoveryDecision:
+    """One close-known recovery state and its optional gross-cap ceiling."""
+
+    state: AB5RecoveryState
+    gross_cap_ceiling: float | None
+
+
+def _finite_cap(label: str, value: Any) -> float:
     try:
-        gross = float(envelope["gross_before"])
-        cap = float(envelope["gross_cap"])
-        buy_scale = float(envelope["buy_scale"])
-    except (KeyError, TypeError, ValueError):
-        return False
-    return (
-        math.isfinite(gross)
-        and math.isfinite(cap)
-        and math.isfinite(buy_scale)
-        and gross <= cap + 1e-8
-        and buy_scale >= 1.0 - 1e-12
+        cap = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be finite and non-negative") from exc
+    if not math.isfinite(cap) or cap < 0.0:
+        raise ValueError(f"{label} must be finite and non-negative")
+    return cap
+
+
+def _latest_account_budget_envelope(
+    events: Sequence[Mapping[str, Any]],
+) -> Mapping[str, Any] | None:
+    return next(
+        (
+            event
+            for event in reversed(events)
+            if event.get("event") == "account_budget_envelope"
+        ),
+        None,
     )
 
 
-def next_ab5_recovery_state(
-    previous_state: AB5RecoveryState | str,
-    *,
-    previous_envelope: Mapping[str, Any] | None,
-    new_reduction_book_ids: Collection[BookId],
-) -> AB5RecoveryState:
-    """Advance recovery using only filled reductions and the prior completed close."""
-    state = AB5RecoveryState(previous_state)
-    if new_reduction_book_ids:
-        return AB5RecoveryState.AB5_REDUCED
-    if state is AB5RecoveryState.NORMAL:
-        return state
-    if not _recovery_safe(previous_envelope):
-        return AB5RecoveryState.AB5_REDUCED
-    if state is AB5RecoveryState.AB5_REDUCED:
-        return AB5RecoveryState.AB5_RECOVERY_PENDING
-    return AB5RecoveryState.NORMAL
+def _envelope_for_date(
+    events: Sequence[Mapping[str, Any]], date_str: str
+) -> Mapping[str, Any] | None:
+    return next(
+        (
+            event
+            for event in reversed(events)
+            if event.get("event") == "account_budget_envelope"
+            and event.get("date") == date_str
+        ),
+        None,
+    )
 
 
-def filled_ab5_reduction_book_ids(
-    states: Sequence[Any], date_str: str
-) -> set[BookId]:
-    """Return books whose AB5 reduction actually filled on this trading day."""
-    filled: set[BookId] = set()
-    for state_index, state in enumerate(states):
+def filled_ab5_reduction_caps(
+    states: Sequence[Any],
+    date_str: str,
+    events: Sequence[Mapping[str, Any]],
+) -> list[float]:
+    """Return the source-close gross caps for AB5 reductions filled today."""
+    caps: list[float] = []
+    for state in states:
         sleeve = getattr(state, "sleeve", None)
         for trade in getattr(sleeve, "trades", ()):
             if str(getattr(trade, "date", "")) != date_str:
@@ -86,128 +87,79 @@ def filled_ab5_reduction_book_ids(
                 != "account_budget_trim"
             ):
                 continue
-            filled.add(
-                (
-                    state_index,
-                    str(getattr(trade, "symbol", "")),
-                    str(getattr(trade, "strategy_name", "")),
+            signal_date = str(getattr(trade, "signal_date", ""))
+            if not signal_date:
+                raise ValueError("filled AB5 reduction requires its source signal date")
+            source = _envelope_for_date(events, signal_date)
+            if source is None:
+                raise ValueError(
+                    "filled AB5 reduction requires its source account budget envelope"
                 )
-            )
-    return filled
+            caps.append(_finite_cap("source AB5 gross cap", source.get("gross_cap")))
+    return caps
 
 
-def filter_ab5_recovery_buys(
-    pending: Sequence[PendingItem],
-    *,
-    state_index: int,
-    blocked_book_ids: Collection[BookId],
-) -> tuple[list[PendingItem], list[PendingItem]]:
-    """Partition pending orders, blocking only buys owned by reduced AB5 books."""
-    blocked_books = set(blocked_book_ids)
-    retained: list[PendingItem] = []
-    blocked: list[PendingItem] = []
-    for item in pending:
-        signal, _ = item
-        book = (
-            state_index,
-            str(getattr(signal, "symbol", "")),
-            str(getattr(signal, "strategy_name", "")),
-        )
-        if str(getattr(signal, "direction", "")) == "buy" and book in blocked_books:
-            blocked.append(item)
-        else:
-            retained.append(item)
-    return retained, blocked
-
-
-def _latest_account_budget_envelope(
-    events: Sequence[Mapping[str, Any]],
-) -> Mapping[str, Any] | None:
-    for event in reversed(events):
-        if event.get("event") == "account_budget_envelope":
-            return event
-    return None
-
-
-def _recovery_book_ids(envelope: Mapping[str, Any] | None) -> set[BookId]:
+def _active_recovery_cap(envelope: Mapping[str, Any] | None) -> float | None:
     if envelope is None:
-        return set()
-    raw = envelope.get("ab5_recovery_book_ids", ())
-    if raw is None:
-        return set()
-    if not isinstance(raw, (list, tuple)):
-        raise ValueError("ab5_recovery_book_ids must be a sequence")
-    books: set[BookId] = set()
-    for item in raw:
-        if not isinstance(item, (list, tuple)) or len(item) != 3:
-            raise ValueError("invalid AB5 recovery book identity")
-        state_index, symbol, strategy_name = item
-        if isinstance(state_index, bool) or not isinstance(state_index, int):
-            raise ValueError("AB5 recovery state_index must be an integer")
-        if state_index < 0 or not isinstance(symbol, str) or not symbol:
-            raise ValueError("invalid AB5 recovery book identity")
-        if not isinstance(strategy_name, str) or not strategy_name:
-            raise ValueError("invalid AB5 recovery book identity")
-        books.add((state_index, symbol, strategy_name))
-    return books
+        return None
+    state = AB5RecoveryState(
+        envelope.get("ab5_recovery_state", AB5RecoveryState.NORMAL.value)
+    )
+    if state is AB5RecoveryState.NORMAL:
+        return None
+    if "ab5_recovery_gross_cap" not in envelope:
+        raise ValueError("active AB5 recovery requires its retained gross cap")
+    return _finite_cap(
+        "AB5 recovery gross cap", envelope.get("ab5_recovery_gross_cap")
+    )
 
 
-def apply_ab5_recovery_hysteresis(
-    states: Sequence[Any],
-    date_str: str,
-    events: Sequence[Mapping[str, Any]],
-) -> dict[str, Any]:
-    """Gate only recovery buys that re-open exposure actually reduced by AB5."""
-    previous = _latest_account_budget_envelope(events)
-    previous_state = (
-        previous.get("ab5_recovery_state", AB5RecoveryState.NORMAL.value)
-        if previous is not None
+def _recovery_safe(envelope: Mapping[str, Any] | None) -> bool:
+    """Use the unconstrained canonical AB5 budget to judge recovery safety."""
+    if not envelope or envelope.get("event") != "account_budget_envelope":
+        return False
+    if envelope.get("risk_alert_active") or envelope.get("shock_episode_active"):
+        return False
+    try:
+        gross = float(envelope["gross_before"])
+        canonical_cap = float(envelope["canonical_gross_cap"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return (
+        math.isfinite(gross)
+        and math.isfinite(canonical_cap)
+        and canonical_cap >= 0.0
+        and gross <= canonical_cap + 1e-8
+    )
+
+
+def next_ab5_recovery_decision(
+    *,
+    previous_envelope: Mapping[str, Any] | None,
+    new_reduction_caps: Sequence[float],
+) -> AB5RecoveryDecision:
+    """Advance the fixed recovery lifecycle without changing AB5 thresholds."""
+    previous_state = AB5RecoveryState(
+        previous_envelope.get("ab5_recovery_state", AB5RecoveryState.NORMAL.value)
+        if previous_envelope is not None
         else AB5RecoveryState.NORMAL.value
     )
-    carried_books = _recovery_book_ids(previous)
-    newly_reduced_books = filled_ab5_reduction_book_ids(states, date_str)
-    recovery_state = next_ab5_recovery_state(
-        previous_state,
-        previous_envelope=previous,
-        new_reduction_book_ids=newly_reduced_books,
-    )
-    active_books = (
-        carried_books | newly_reduced_books
-        if recovery_state is not AB5RecoveryState.NORMAL
-        else set()
-    )
-
-    blocked_orders = 0
-    blocked_shares = 0
-    if active_books:
-        for state_index, state in enumerate(states):
-            before = list(state.pending)
-            retained, blocked = filter_ab5_recovery_buys(
-                before,
-                state_index=state_index,
-                blocked_book_ids=active_books,
-            )
-            if not blocked:
-                continue
-            state.pending = retained
-            blocked_orders += len(blocked)
-            blocked_shares += sum(
-                int(getattr(signal, "target_shares", 0)) for signal, _ in blocked
-            )
-            reconcile_close_queue(
-                getattr(state, "sleeve", None),
-                before,
-                retained,
-                date_str,
-                "ab5_recovery_hysteresis",
-            )
-
-    return {
-        "state": recovery_state.value,
-        "book_ids": [list(book) for book in sorted(active_books)],
-        "blocked_orders": blocked_orders,
-        "blocked_shares": blocked_shares,
-    }
+    carried_cap = _active_recovery_cap(previous_envelope)
+    if new_reduction_caps:
+        source_cap = min(
+            _finite_cap("source AB5 gross cap", cap) for cap in new_reduction_caps
+        )
+        ceiling = source_cap if carried_cap is None else min(carried_cap, source_cap)
+        return AB5RecoveryDecision(AB5RecoveryState.AB5_REDUCED, ceiling)
+    if previous_state is AB5RecoveryState.NORMAL:
+        return AB5RecoveryDecision(AB5RecoveryState.NORMAL, None)
+    if carried_cap is None:
+        raise ValueError("active AB5 recovery requires a retained gross cap")
+    if not _recovery_safe(previous_envelope):
+        return AB5RecoveryDecision(AB5RecoveryState.AB5_REDUCED, carried_cap)
+    if previous_state is AB5RecoveryState.AB5_REDUCED:
+        return AB5RecoveryDecision(AB5RecoveryState.AB5_RECOVERY_PENDING, carried_cap)
+    return AB5RecoveryDecision(AB5RecoveryState.NORMAL, None)
 
 
 def apply_account_risk_budget_with_recovery(
@@ -224,9 +176,15 @@ def apply_account_risk_budget_with_recovery(
     risk_alert_active: bool | None = None,
     portfolio_evidence_buy_symbols: set[str] | None = None,
 ) -> None:
-    """Apply recovery hysteresis, then the unchanged canonical AB5 policy."""
+    """Apply canonical AB5 while retaining a recently reduced gross budget."""
     date_str = date.strftime("%Y-%m-%d")
-    decision = apply_ab5_recovery_hysteresis(states, date_str, events)
+    previous = _latest_account_budget_envelope(events)
+    source_caps = filled_ab5_reduction_caps(states, date_str, events)
+    decision = next_ab5_recovery_decision(
+        previous_envelope=previous,
+        new_reduction_caps=source_caps,
+    )
+
     event_start = len(events)
     options: dict[str, Any] = {}
     if shock_floor != 0.0:
@@ -237,6 +195,9 @@ def apply_account_risk_budget_with_recovery(
         options["risk_alert_active"] = risk_alert_active
     if portfolio_evidence_buy_symbols is not None:
         options["portfolio_evidence_buy_symbols"] = portfolio_evidence_buy_symbols
+    if decision.gross_cap_ceiling is not None:
+        options["gross_cap_ceiling"] = decision.gross_cap_ceiling
+
     _apply_account_risk_budget(
         states,
         date,
@@ -258,9 +219,9 @@ def apply_account_risk_budget_with_recovery(
     )
     if envelope is None:
         raise RuntimeError("canonical AB5 did not publish its account budget envelope")
-    envelope.update(
-        ab5_recovery_state=decision["state"],
-        ab5_recovery_book_ids=decision["book_ids"],
-        ab5_recovery_blocked_orders=decision["blocked_orders"],
-        ab5_recovery_buy_shares_blocked=decision["blocked_shares"],
-    )
+    if decision.gross_cap_ceiling is not None:
+        effective_cap = _finite_cap("effective AB5 gross cap", envelope.get("gross_cap"))
+        envelope.update(
+            ab5_recovery_state=decision.state.value,
+            ab5_recovery_gross_cap=min(decision.gross_cap_ceiling, effective_cap),
+        )
