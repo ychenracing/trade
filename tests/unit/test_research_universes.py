@@ -10,7 +10,12 @@ import pytest
 
 from scripts import compare_universes as compare
 from scripts import download_eastmoney_qfq as download
-from quantfusion.application.backtest_cli import build_argument_parser
+from quantfusion.application.backtest_cli import (
+    LEGACY_BACKTEST_END_DATE,
+    LEGACY_BACKTEST_START_DATE,
+    build_argument_parser,
+    resolve_backtest_window,
+)
 from quantfusion.config import profiles
 from quantfusion.config.overlay import RISK_BASKET, SYMBOL_SUB_INDUSTRY
 from quantfusion.config.portfolio import PortfolioPolicy
@@ -114,12 +119,24 @@ def test_every_research_symbol_reuses_existing_routing_and_risk_metadata() -> No
     assert SYMBOL_SUB_INDUSTRY["688037"] == "equipment"
 
 
-def test_research_window_defaults_to_2023_and_backtest_accepts_pool_selection() -> None:
+def test_research_window_defaults_to_2023_without_mutating_legacy_backtest_defaults() -> None:
     assert DEFAULT_RESEARCH_START_DATE == "2023-01-01"
     parser = build_argument_parser()
     args = parser.parse_args(["--pool", "pool_b", "--no-plot"])
     assert args.pool == "pool_b"
-    assert args.start == DEFAULT_RESEARCH_START_DATE
+    assert args.start == ""
+    assert resolve_backtest_window(
+        args.start,
+        args.end,
+        pool_selected=True,
+        today="2026-09-16",
+    ) == ("2023-01-01", "2026-09-16")
+    assert resolve_backtest_window(
+        "",
+        "",
+        pool_selected=False,
+        today="2026-09-16",
+    ) == (LEGACY_BACKTEST_START_DATE, LEGACY_BACKTEST_END_DATE)
 
     aliases = parser.parse_args(
         [
