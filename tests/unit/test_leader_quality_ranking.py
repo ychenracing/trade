@@ -9,8 +9,10 @@ from quantfusion.regime.evidence import select_positive_momentum_leaders
 REFERENCE_SYMBOLS = ("300308", "300502", "300394", "688008", "603986")
 
 
-def _trend_frame(drift: float, volume_ratio: float) -> pd.DataFrame:
-    dates = pd.bdate_range(end="2026-01-30", periods=260)
+def _trend_frame(
+    drift: float, volume_ratio: float, *, periods: int = 260
+) -> pd.DataFrame:
+    dates = pd.bdate_range(end="2026-01-30", periods=periods)
     close = 100.0 * np.exp(drift * np.arange(len(dates), dtype=float))
     volume = np.full(len(dates), 1_000_000.0)
     volume[-1] *= volume_ratio
@@ -18,7 +20,7 @@ def _trend_frame(drift: float, volume_ratio: float) -> pd.DataFrame:
 
 
 def _spiky_frame() -> pd.DataFrame:
-    """Long-horizon winner with a recent volatile, weakening transition."""
+    """Mature long-horizon winner with a recent weakening transition."""
     frame = _trend_frame(0.0025, 0.60)
     peak = float(frame["close"].iloc[-21])
     frame.loc[frame.index[-20:], "close"] = np.linspace(
@@ -27,8 +29,8 @@ def _spiky_frame() -> pd.DataFrame:
     return frame
 
 
-def test_leader_ranking_prefers_consistent_risk_adjusted_strength() -> None:
-    """One old long-horizon surge must not outrank broad current quality."""
+def test_emerging_leader_can_challenge_mature_spike_on_broad_quality() -> None:
+    """A genuinely strong emerging leader may replace a weakening mature name."""
     frames = {
         code: _trend_frame(drift, volume_ratio)
         for code, drift, volume_ratio in zip(
@@ -39,7 +41,9 @@ def test_leader_ranking_prefers_consistent_risk_adjusted_strength() -> None:
         )
     }
     frames["spiky"] = _spiky_frame()
-    frames["consistent"] = _trend_frame(0.0011, 1.40)
+    # 120 observations: enough for the emerging channel but intentionally below
+    # the 241-session mature-leader requirement.
+    frames["consistent"] = _trend_frame(0.0011, 1.40, periods=120)
 
     def load(code: str, boundary: str) -> pd.DataFrame:
         del boundary

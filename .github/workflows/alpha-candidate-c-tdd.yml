@@ -25,3 +25,4 @@ jobs:
           python -m pytest -q
           tests/unit/test_leader_quality_ranking.py
           tests/unit/test_leader_evidence_health.py
+          tests/regression/test_regime_adaptive.py::LeaderSelectionTests::test_frozen_boundary_selects_three_positive_leaders
