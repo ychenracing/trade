@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "title": "Trade Phase 2 - AB5 Risk/Return Efficiency Research",
+  "source_main_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+  "window": ["2025-04-01", "2026-07-20"],
+  "initial_capital": 2000000.0,
+  "production_effect": "none",
+  "frozen_contract": {
+    "trigger_threshold_changes": 0,
+    "risk_threshold_changes": 0,
+    "stock_universe_changes": 0,
+    "market_data_changes": 0,
+    "execution_semantics_changes": 0
+  },
+  "current": {
+    "total_return": 8.610542744515504,
+    "max_drawdown": -0.15104978428469945,
+    "sharpe": 3.7258627517994465,
+    "calmar": 33.61339205407966,
+    "fills": 645,
+    "date_symbol_side_buckets": 190,
+    "sell_buckets": 109,
+    "turnover_over_mean_assets": 16.00753130920448,
+    "explicit_fees": 74192.392969,
+    "mean_cash_fraction": 0.2987438578983292
+  },
+  "magnitude_sensitivity": {
+    "definition": "Scale only the magnitude of already-planned AB5 buy clipping and trim shares; AB5 triggers and source risk thresholds remain unchanged. This is a sensitivity point, not a production parameter proposal.",
+    "intensity_0_prior_direct_disabled_reference": {
+      "total_return": 12.651110582435127,
+      "max_drawdown": -0.16496270588646905,
+      "fills": 289,
+      "date_symbol_side_buckets": 115
+    },
+    "intensity_0_5": {
+      "total_return": 10.828076681022003,
+      "max_drawdown": -0.15786746597150475,
+      "sharpe": 3.7520318315171117,
+      "calmar": 39.09344832405534,
+      "fills": 560,
+      "date_symbol_side_buckets": 208,
+      "sell_buckets": 123,
+      "turnover_over_mean_assets": 15.33322385858689,
+      "explicit_fees": 84742.362956,
+      "mean_cash_fraction": 0.19883504628721935
+    },
+    "intensity_0_5_minus_current": {
+      "total_return": 2.2175339365064985,
+      "max_drawdown": -0.006817681686805299,
+      "sharpe": 0.026169079717665245,
+      "calmar": 5.480056269975677,
+      "fills": -85,
+      "date_symbol_side_buckets": 18,
+      "sell_buckets": 14,
+      "turnover_over_mean_assets": -0.6743074506175901,
+      "explicit_fees": 10549.969987000004,
+      "mean_cash_fraction": -0.09990881161110984
+    },
+    "interpretation": "Lower AB5 intervention magnitude materially restores return and exposure, but worsens maximum drawdown by about 0.68 percentage point. It also reduces internal fills while increasing date-symbol-side buckets and explicit fees because the changed exposure path creates different transactions. Therefore transaction count alone is not a valid objective."
+  },
+  "lifecycle_attribution_current_ab5": {
+    "envelope_events": 316,
+    "events_with_buy_clipping": 63,
+    "total_buy_shares_removed": 2215800,
+    "events_with_new_reduction_orders": 16,
+    "new_trim_actions_observed": 245,
+    "unique_date_symbol_strategy_actions": 98,
+    "unique_date_symbol_actions": 68,
+    "pnl_stage_counts": {"profitable": 196, "flat_or_losing": 49},
+    "market_state_counts": {"ordinary_capacity": 230, "observed_shock_confirmed": 8, "risk_alert_active": 7},
+    "book_level_super_winner": {
+      "actions": 65,
+      "action_value": 6508833.0,
+      "action_value_share": 0.30144396708030713,
+      "median_current_gain": 0.6214945497030484,
+      "definition": "existing profit-lock active + positive gain + close above short MA + short MA above long MA + close-known 60-session relative strength above fixed-universe median"
+    },
+    "ordinary_or_deteriorating": {
+      "actions": 180,
+      "action_value": 15083349.0,
+      "median_current_gain": 0.05739237973484801
+    },
+    "interpretation": "AB5 often intervenes in profitable holdings, and about 30.1% of observed trim notional is directed at book-level super-winners. Most trim actions nevertheless occur under ordinary capacity rather than an active alert or newly confirmed shock."
+  },
+  "equal_risk_lifecycle_reallocation": {
+    "candidate": "Keep AB5 triggers, caps, stress math, buy scales, required relief, shock handling and alert handling unchanged; only source ordinary trims from symbols containing close-known super-winner books after other symbols, with winners still reducible when necessary.",
+    "new_thresholds": 0,
+    "candidate_metrics": {
+      "total_return": 8.610542744515504,
+      "max_drawdown": -0.15104978428469945,
+      "sharpe": 3.7258627517994465,
+      "calmar": 33.61339205407966,
+      "fills": 645,
+      "date_symbol_side_buckets": 190,
+      "sell_buckets": 109,
+      "turnover_over_mean_assets": 16.00753130920448,
+      "explicit_fees": 74192.392969,
+      "mean_cash_fraction": 0.2987438578983292
+    },
+    "candidate_minus_current": {
+      "total_return": 0.0,
+      "max_drawdown": 0.0,
+      "sharpe": 0.0,
+      "calmar": 0.0,
+      "fills": 0,
+      "date_symbol_side_buckets": 0,
+      "sell_buckets": 0,
+      "turnover_over_mean_assets": 0.0,
+      "explicit_fees": 0.0,
+      "mean_cash_fraction": 0.0
+    },
+    "symbol_level_observed_trim_actions": {
+      "winner_symbol": 78,
+      "ordinary_symbol": 167,
+      "winner_symbol_action_value": 7737593.0,
+      "ordinary_symbol_action_value": 13854589.0
+    },
+    "decision": "NO_EFFECT. Do not continue with nearby winner-last score-ordering variants; the tested equal-risk ordering has no causal effect on the frozen portfolio path."
+  },
+  "phase_decision": {
+    "production_promotion": "none",
+    "reject": [
+      "Do not directly productionize a global 0.5 AB5 intensity; it weakens realized drawdown protection and would add a new production control.",
+      "Do not productionize the lifecycle-aware trim-source ordering candidate; it is economically identical to Current.",
+      "Do not search nearby AB5 intensity values or winner-order score variants merely to optimize this frozen window."
+    ],
+    "supported_inference": "The large AB5 opportunity cost is not explained by ordinary trim-source ordering alone. The evidence points more strongly to exposure suppression / buy clipping and subsequent churn as the next research target.",
+    "next_phase": "Phase 3 execution efficiency: attribute sell-rebuy chains, direct costs, interim downside avoided, reacquisition price effects, multi-fill buckets and low-value pure-AB5 churn without deleting effective risk actions."
+  },
+  "evidence_identity": {
+    "magnitude_sensitivity_head": "94b0e1c54b685d2cb882267e53fbbae41e2fd0a8",
+    "magnitude_sensitivity_workflow": 35119638406,
+    "magnitude_sensitivity_python312_job": 104873826316,
+    "magnitude_sensitivity_test_result": "1 intentional receipt failure; 1278 other tests and 318 subtests passed; Python 3.11, typecheck and security succeeded",
+    "equal_risk_reallocation_head": "6dd483ac8b5246f4a33e3071602d90b46df3918a",
+    "equal_risk_reallocation_workflow": 35121364366,
+    "equal_risk_reallocation_python312_job": 104879686076,
+    "equal_risk_reallocation_test_result": "1 intentional receipt failure; 1278 other tests and 318 subtests passed; Python 3.11, typecheck and security succeeded"
+  },
+  "limitations": [
+    "The 0.5 sensitivity point is not an approved production threshold and is not evidence that arbitrary weakening of AB5 is safe.",
+    "Book-level and symbol-level winner attribution use different units and therefore their action-value shares must not be conflated.",
+    "Internal sleeve fill counts and date-symbol-side buckets are diagnostic execution units, not verified broker-order counts."
+  ]
+}
