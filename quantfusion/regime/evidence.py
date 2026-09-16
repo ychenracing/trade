@@ -42,6 +42,17 @@ def _normalized_timestamp(value: str | pd.Timestamp) -> pd.Timestamp:
     return cast(pd.Timestamp, _timestamp(value).normalize())
 
 
+def _slice_to_boundary(frame: pd.DataFrame, boundary: pd.Timestamp) -> pd.DataFrame:
+    """Slice causally while retaining source coverage needed for pre-listing N/A."""
+    source_first_date: pd.Timestamp | None = None
+    if len(frame.index):
+        source_first_date = _normalized_timestamp(str(frame.index.min()))
+    sliced = frame.loc[frame.index <= boundary].copy()
+    if source_first_date is not None:
+        sliced.attrs["source_first_date"] = str(source_first_date.date())
+    return sliced
+
+
 def _local_frame(data_dir: str | Path, code: str, end_date: str) -> pd.DataFrame:
     """Load a local validated frame without reading beyond ``end_date``."""
     boundary = _normalized_timestamp(end_date)
@@ -54,8 +65,7 @@ def _local_frame(data_dir: str | Path, code: str, end_date: str) -> pd.DataFrame
         boundary.strftime("%Y-%m-%d"),
         data_dir=str(data_dir),
     )
-    return frame.loc[frame.index <= boundary].copy()
-
+    return _slice_to_boundary(frame, boundary)
 
 
 def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
@@ -144,14 +154,14 @@ def select_positive_momentum_leaders(
     boundary = _normalized_timestamp(as_of)
     observations: list[tuple[float, str, bool]] = []
     observed_codes: set[str] = set()
+    pre_listing_codes: set[str] = set()
     invalid_codes: set[str] = set()
     issues: list[HealthIssue] = []
 
     def load_frame(code: str) -> pd.DataFrame:
         if frame_loader is None:
             return _local_frame(data_dir, code, str(boundary.date()))
-        frame = frame_loader(code, str(boundary.date()))
-        return frame.loc[frame.index <= boundary].copy()
+        return _slice_to_boundary(frame_loader(code, str(boundary.date())), boundary)
 
     # The fixed reference basket is an optional ranking enrichment.  Preserve
     # its established zero-baseline fallback when reference history is absent
@@ -192,6 +202,10 @@ def select_positive_momentum_leaders(
                 invalid_codes.add(code)
             continue
         if closes.empty:
+            first_date = frame.attrs.get("source_first_date")
+            if first_date is not None and _normalized_timestamp(first_date) > boundary:
+                pre_listing_codes.add(code)
+                continue
             issues.append(unavailable_issue(source, "no close observations"))
             continue
         observed_date = _normalized_timestamp(str(closes.index[-1]))
@@ -319,7 +333,9 @@ def select_positive_momentum_leaders(
         observed_symbols=len(observed_codes),
         selected_symbols=tuple(code for _, code in leaders),
         selected_returns=tuple(score for score, _ in leaders),
-        unavailable_symbols=tuple(sorted(set(normalized) - observed_codes - invalid_codes)),
+        unavailable_symbols=tuple(
+            sorted(set(normalized) - observed_codes - pre_listing_codes - invalid_codes)
+        ),
         invalid_symbols=tuple(sorted(invalid_codes)),
         health=HealthReport.from_issues(issues),
     )
