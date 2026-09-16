@@ -185,14 +185,14 @@ def _fetch_research_symbol(
         raise RuntimeError(f"{symbol} provider data contains no rows through {end}")
     first = pd.Timestamp(visible.index[0])
     latest = pd.Timestamp(visible.index[-1])
-    if (end_ts - latest).days > MAX_EVIDENCE_STALENESS_DAYS:
-        raise RuntimeError(
-            f"{symbol} provider data is stale: last={latest.date()} requested_end={end_ts.date()}"
-        )
     if provider == "Tencent" and len(visible) >= 1000 and first > start_ts:
         raise RuntimeError(
             f"{symbol} Tencent fallback hit the 1000-row history cap; "
             f"first={first.date()} requested_start={start_ts.date()}"
+        )
+    if (end_ts - latest).days > MAX_EVIDENCE_STALENESS_DAYS:
+        raise RuntimeError(
+            f"{symbol} provider data is stale: last={latest.date()} requested_end={end_ts.date()}"
         )
     name = RESEARCH_SYMBOL_NAMES.get(symbol, symbol)
     return frame, name, provider
