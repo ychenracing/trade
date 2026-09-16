@@ -77,9 +77,6 @@ jobs:
           if text.count(old_call) != 1:
               raise SystemExit('unexpected writer replacement call')
           text = text.replace(old_call, new_call)
-          # The one-shot patch stores target Python blocks in triple-quoted
-          # literals. Replace target docstrings with comments before parsing the
-          # patch script so nested triple quotes cannot terminate those literals.
           for old_doc, new_doc in {
               '    """Return whether the requested window ends before a known first trade."""':
                   '    # Return whether the requested window ends before a known first trade.',
@@ -98,8 +95,10 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
           python scripts/_apply_research_closure_1_0_1.py
+          python scripts/_postprocess_research_closure_1_0_1.py
           rm -f \
             scripts/_apply_research_closure_1_0_1.py \
+            scripts/_postprocess_research_closure_1_0_1.py \
             .github/workflows/research-closure-1.0.1.yml \
             .github/workflows/actionable-boundary-research.yml \
             .github/workflows/no-waiver-boundary-study.yml \
