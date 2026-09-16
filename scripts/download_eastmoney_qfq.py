@@ -7,16 +7,35 @@ import json
 import time
 import urllib.parse
 import urllib.request
+from collections.abc import Iterable
 from pathlib import Path
 
 import pandas as pd
 
+from quantfusion.application.daily_support import today_str
 from quantfusion.config.paths import MARKET_DATA_DIR
 from quantfusion.config.portfolio import PortfolioPolicy
+from quantfusion.config.research_universes import (
+    DEFAULT_RESEARCH_START_DATE,
+    UNIVERSE_POOLS,
+    symbols_for_pool,
+)
 from quantfusion.config.universe import SYMBOL_NAMES
 
 
 DEFAULT_SYMBOLS = tuple(dict.fromkeys((*SYMBOL_NAMES, *PortfolioPolicy().regime_symbols)))
+
+
+def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
+    """Return a stable pool union plus fixed regime evidence symbols."""
+    pool_names = tuple(pools)
+    if not pool_names:
+        return DEFAULT_SYMBOLS
+    ordered: list[str] = []
+    for pool_name in pool_names:
+        ordered.extend(symbols_for_pool(pool_name))
+    ordered.extend(PortfolioPolicy().regime_symbols)
+    return tuple(dict.fromkeys(ordered))
 
 
 def _market_id(symbol: str) -> str:
@@ -103,12 +122,37 @@ def _download(symbol: str, start: str, end: str) -> tuple[pd.DataFrame, str]:
 def main() -> int:
     """Download all requested symbols and write a provenance manifest."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start", default="2024-01-01")
-    parser.add_argument("--end", default="2026-07-20")
+    parser.add_argument("--start", default=DEFAULT_RESEARCH_START_DATE)
+    parser.add_argument(
+        "--end",
+        default="",
+        help="Snapshot end date YYYY-MM-DD (default: current Shanghai-market date)",
+    )
     parser.add_argument("--output", default=str(MARKET_DATA_DIR))
-    parser.add_argument("--symbol", action="append", dest="symbols")
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--symbol", action="append", dest="symbols")
+    selection.add_argument(
+        "--pool",
+        action="append",
+        dest="pools",
+        choices=tuple(UNIVERSE_POOLS),
+        help="Configured research pool; repeat to download a union of pools.",
+    )
+    selection.add_argument(
+        "--all-pools",
+        action="store_true",
+        help="Download the union of all research pools A-J.",
+    )
     args = parser.parse_args()
-    symbols = tuple(args.symbols or DEFAULT_SYMBOLS)
+    if args.symbols:
+        symbols = tuple(args.symbols)
+    elif args.all_pools:
+        symbols = select_download_symbols(tuple(UNIVERSE_POOLS))
+    elif args.pools:
+        symbols = select_download_symbols(tuple(args.pools))
+    else:
+        symbols = DEFAULT_SYMBOLS
+    end_date = args.end or today_str()
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     symbol_manifest: dict[str, object] = {}
@@ -117,11 +161,11 @@ def main() -> int:
         "adjustment": "qfq",
         "volume_unit": "shares",
         "requested_start": args.start,
-        "requested_end": args.end,
+        "requested_end": end_date,
         "symbols": symbol_manifest,
     }
     for symbol in symbols:
-        frame, name = _download(symbol, args.start, args.end)
+        frame, name = _download(symbol, args.start, end_date)
         path = output / f"{symbol}.csv"
         frame.assign(date=frame["date"].dt.strftime("%Y-%m-%d")).to_csv(
             path, index=False
