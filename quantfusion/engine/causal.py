@@ -31,6 +31,7 @@ from quantfusion.domain.rules import (
     require_int,
 )
 from quantfusion.engine.core import CoreBacktestEngine
+from quantfusion.engine.runtime import runtime_policy
 from quantfusion.risk.managers import PersistentRiskManager
 from quantfusion.strategy.trend import BaseStrategy
 
@@ -138,8 +139,9 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
         self, data_map: dict[str, pd.DataFrame], date: pd.Timestamp
     ) -> dict[str, float]:
         """Average cached cross-sectional ranks of causal momentum signals."""
-        if getattr(self, "_c6_intervention", None) == "W1_DATA_MAP_ONLY":
-            data_map = {code: frame for code, frame in data_map.items() if code != "601869"}
+        exclusions = runtime_policy(self).allocation_data_exclusions
+        if exclusions:
+            data_map = {code: frame for code, frame in data_map.items() if code not in exclusions}
         date = pd.Timestamp(date)
         ranked_universe = tuple(sorted(data_map))
         cache_key = (date, ranked_universe)
@@ -578,7 +580,7 @@ class _CausalBacktestEngine(_CoreBacktestEngine):
     ) -> list[tuple[Signal, BaseStrategy]]:
         """Execute selected sides, batching same-symbol buys before any fill."""
         if buy_scores is None:
-            buy_scores = getattr(self, "_c6_buy_scores", None)
+            buy_scores = getattr(self, "_runtime_buy_scores", None)
         date_str = date.strftime("%Y-%m-%d")
         strategy_rank = {"turtle_breakout": 0, "dual_ma": 1, "atr_channel": 2}
         allocation_scores = self._allocation_scores(data_map, date)

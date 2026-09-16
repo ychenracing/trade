@@ -150,8 +150,9 @@ def _suppression(data: dict[str, Any], account: bool) -> list[str]:
         reasons = [description for key, description in (
             ("risk_state_identity_mismatch", "股票池或配置与上次不一致，不能确认风险状态连续性"),
             ("current_route_mismatch", "当前市场判断与历史回放结果不一致"),
-            ("warmup_not_ready", "计算信号所需的历史数据不足或指数依据不可用"),
         ) if summary.get(key) is True]
+        if (data.get("warmup_health") or {}).get("warmup_status") == "INVALID":
+            reasons.append("计算信号所需的历史数据不足或指数依据不可用")
         suppressed = summary.get("buys_suppressed")
     if suppressed is True and not reasons:
         reasons.append("本次已阻止买入，但未提供可确认的具体原因")
@@ -191,7 +192,7 @@ def _overview(data: dict[str, Any], account: bool, traces: list[str]) -> list[st
         lines.append(f"本次运行标识：{_text(data.get('run_id'))}；市场判断参考边界：{_text(decision.get('boundary'))}。")
         health = data.get("warmup_health") or {}
         label = {"READY": "所需历史数据已就绪", "DEGRADED": "数据有缺口，须谨慎核对",
-                 "NOT_READY": "历史数据不足或必要依据不可用，本次买入已被阻止"}.get(str(health.get("warmup_status", "")), "数据就绪情况未提供")
+                 "INVALID": "历史数据不足或必要依据不可用，本次买入已被阻止"}.get(str(health.get("warmup_status", "")), "数据就绪情况未提供")
         lines.append(f"数据情况：{label}。")
         for reason in health.get("reasons", []):
             lines.append(f"数据提示：{_explain(reason)}。")

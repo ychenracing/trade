@@ -112,7 +112,7 @@ class WarmupHealthTests(unittest.TestCase):
             regime_index_frames={"300308": _frame(calendar)},
             required_days=240,
         )
-        self.assertEqual(report.warmup_status, "NOT_READY")
+        self.assertEqual(report.warmup_status, "INVALID")
         self.assertEqual(report.indicator_ready_ratio, 0.0)
         self.assertFalse(report.sleeve_state_ready)
 
@@ -127,7 +127,7 @@ class WarmupHealthTests(unittest.TestCase):
             regime_index_frames={},
             required_days=240,
         )
-        self.assertEqual(report.warmup_status, "NOT_READY")
+        self.assertEqual(report.warmup_status, "INVALID")
         self.assertIn("regime_index_missing_or_stale", report.reasons)
 
     def test_stale_data_is_reported(self) -> None:

@@ -20,8 +20,8 @@ def test_regime_health_reports_valid_inputs() -> None:
     with patch.object(evidence, "_local_frame", return_value=_regime_frame()):
         result = evidence.detect_regime("unused", as_of="2026-01-30")
 
-    assert result.status == "valid"
-    assert asdict(result)["health"]["status"] == "valid"
+    assert result.status == "READY"
+    assert asdict(result)["health"]["state"] == "READY"
     assert result.regime == "trending"
 
 
@@ -34,7 +34,7 @@ def test_regime_health_distinguishes_unavailable_input() -> None:
         result = evidence.detect_regime("unused", as_of="2026-01-30")
 
     assert result.regime == "unknown"
-    assert result.status == "unavailable"
+    assert result.status == "DEGRADED"
     assert result.health.issues
 
 
@@ -47,7 +47,7 @@ def test_regime_health_distinguishes_invalid_input() -> None:
         result = evidence.detect_regime("unused", as_of="2026-01-30")
 
     assert result.regime == "unknown"
-    assert result.status == "invalid"
+    assert result.status == "INVALID"
     assert all(issue.source.startswith("regime_index:") for issue in result.health.issues)
 
 

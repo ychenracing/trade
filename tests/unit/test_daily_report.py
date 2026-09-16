@@ -69,7 +69,8 @@ class DailyReportTests(unittest.TestCase):
 
     def test_block_reason_uses_actual_summary_not_generic_legacy_label(self):
         data = simulation()
-        data["summary"].update(buys_suppressed=True, warmup_not_ready=True)
+        data["summary"].update(buys_suppressed=True)
+        data["warmup_health"]["warmup_status"] = "INVALID"
         data["blocked_signals"] = [signal("buy", "MA golden cross(RSI=60)", blocked=True,
                                         executable=False, blocked_reason="risk_state_identity_mismatch")]
         text = self.render(data)

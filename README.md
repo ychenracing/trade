@@ -117,8 +117,8 @@ python -m quantfusion.application.daily_scan \
 | `deployment.current_decision` | 当前时点部署的 `name`、`boundary`、`reason`；`deployment.decision` 为回放返回的判断。不一致时看 `current_route_buy_suppression`，不存在顶层 `route` 字段。 |
 | `signals` | 逐股 `code`、`name`、`signal`、`held_shares`、`strategies`、`industry`、`profile`；持股数来自模拟账本，不是带建议权重的真实账户候选列表。 |
 | `pending_signals`、`blocked_signals` | 未被应用层抑制的模拟挂单与被抑制买入分别保存；核对 `direction`、`strategy_name`、`target_shares`、`reason`、`blocked`、`executable`。可执行标记不保证成交。 |
-| `summary.buys_suppressed` | 结合 `risk_state_identity_mismatch`、`current_route_mismatch`、`warmup_not_ready` 判断本次为什么不允许新增买入。 |
-| `warmup_health.warmup_status` | `NOT_READY` 抑制全部新增买入；`DEGRADED` 本身仅提示，不覆盖其他限制，也不证明数据完全适用。 |
+| `summary.buys_suppressed` | 结合 `risk_state_identity_mismatch`、`current_route_mismatch` 与 `warmup_health.warmup_status` 判断本次为什么不允许新增买入。 |
+| `warmup_health.warmup_status` | `INVALID` 抑制全部新增买入；`DEGRADED` 本身仅提示，不覆盖其他限制，也不证明数据完全适用；`READY` 表示该健康检查通过。 |
 | `risk_opinion`、`portfolio` | 前者是独立环境意见，后者记录模拟绩效和风险状态；两者都不能单独替代最终信号限制。 |
 | `account_risk_budget` | 必须有实际评估的账户预算回执，不能只凭启用开关为真判断成功。 |
 | `deployment.requested_symbols`、`selected_symbols`、`unavailable_symbols` | 区分请求、入选与数据不可用集合；未入选不是缺失数据的同义词。 |
@@ -185,7 +185,7 @@ ATR 是价格波动尺度，不是百分比。所有计划只使用当时已知�
 
 ## 风险治理观测层
 
-`quantfusion.risk.governance` 从已有状态生成预热健康、独立风险意见、袖套共识、风险篮覆盖和风险事件校准等证据，计算本身不直接改写交易账本，`risk_opinion` 也不直接生成订单。但模拟日扫**另外消费** `warmup_health`：`NOT_READY` 抑制全部新增买入，`DEGRADED` 本身只提示。因此不能笼统称治理输出“完全不进入决策路径”。
+`quantfusion.risk.governance` 从已有状态生成预热健康、独立风险意见、袖套共识、风险篮覆盖和风险事件校准等证据，计算本身不直接改写交易账本，`risk_opinion` 也不直接生成订单。但模拟日扫**另外消费** `warmup_health`：`INVALID` 抑制全部新增买入，`DEGRADED` 本身只提示，`READY` 表示该健康检查通过。因此不能笼统称治理输出“完全不进入决策路径”。
 
 预热统计逐股历史、风险篮实际可观察范围和指数状态；不能把新上市股票与成熟股票视为同等证据。独立意见描述等级、置信度、市场环境、建议敞口与原因，最终仍须看应用层限制与实际信号。共识和覆盖不足是观察证据，不自动等于买入或卖出。
 

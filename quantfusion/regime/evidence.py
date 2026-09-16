@@ -17,11 +17,13 @@ from quantfusion.config.regime import (
     MAX_LEADERS,
     REGIME_INDEX_FILES,
 )
-from quantfusion.data.health import (
-    DataHealthIssue,
-    DataHealthReport,
-    DataHealthStatus,
+from quantfusion.domain.health import (
+    HealthIssue,
+    HealthReport,
+    HealthState,
+    invalid_issue,
     issue_from_exception,
+    unavailable_issue,
 )
 from quantfusion.data.providers import DataFetcher
 from quantfusion.regime.models import IndexTrend, LeaderSelection, RegimeEvidence
@@ -55,19 +57,12 @@ def _local_frame(data_dir: str | Path, code: str, end_date: str) -> pd.DataFrame
     return frame.loc[frame.index <= boundary].copy()
 
 
-def _unavailable_issue(source: str, message: str) -> DataHealthIssue:
-    return DataHealthIssue(source, DataHealthStatus.UNAVAILABLE, message)
-
-
-def _invalid_issue(source: str, message: str) -> DataHealthIssue:
-    return DataHealthIssue(source, DataHealthStatus.INVALID, message)
-
 
 def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
     """Require both fixed indices to have fresh, complete trend evidence."""
     boundary = _normalized_timestamp(as_of)
     observations: list[IndexTrend] = []
-    issues: list[DataHealthIssue] = []
+    issues: list[HealthIssue] = []
     for code in REGIME_INDEX_FILES.values():
         source = f"regime_index:{code}"
         try:
@@ -79,7 +74,7 @@ def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
             issues.append(issue_from_exception(source, exc))
             continue
         if len(closes) < 60:
-            issues.append(_unavailable_issue(source, "fewer than 60 close observations"))
+            issues.append(unavailable_issue(source, "fewer than 60 close observations"))
             continue
         close = float(closes.iloc[-1])
         ma20 = float(closes.tail(20).mean())
@@ -87,12 +82,12 @@ def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
         if not all(
             math.isfinite(value) and value > 0 for value in (close, ma20, ma60)
         ):
-            issues.append(_invalid_issue(source, "non-finite or non-positive trend inputs"))
+            issues.append(invalid_issue(source, "non-finite or non-positive trend inputs"))
             continue
         observed_date = _normalized_timestamp(str(closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
             issues.append(
-                _unavailable_issue(
+                unavailable_issue(
                     source,
                     f"stale evidence last observed {observed_date.date()}",
                 )
@@ -116,7 +111,7 @@ def detect_regime(data_dir: str | Path, *, as_of: str) -> RegimeEvidence:
         as_of=str(boundary.date()),
         regime=regime,
         observations=tuple(observations),
-        health=DataHealthReport.from_issues(issues),
+        health=HealthReport.from_issues(issues),
     )
 
 
@@ -150,7 +145,7 @@ def select_positive_momentum_leaders(
     observations: list[tuple[float, str, bool]] = []
     observed_codes: set[str] = set()
     invalid_codes: set[str] = set()
-    issues: list[DataHealthIssue] = []
+    issues: list[HealthIssue] = []
 
     def load_frame(code: str) -> pd.DataFrame:
         if frame_loader is None:
@@ -193,7 +188,7 @@ def select_positive_momentum_leaders(
         except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
             issue = issue_from_exception(source, exc)
             issues.append(issue)
-            if issue.status is DataHealthStatus.INVALID:
+            if issue.state is HealthState.INVALID:
                 invalid_codes.add(code)
             continue
         # A symbol only needs the SHORT emerging-window history to
@@ -201,7 +196,7 @@ def select_positive_momentum_leaders(
         # emerging candidates instead use short-horizon momentum and breakout.
         if len(closes) < EMERGING_MIN_DAYS:
             issues.append(
-                _unavailable_issue(
+                unavailable_issue(
                     source,
                     f"fewer than {EMERGING_MIN_DAYS} close observations",
                 )
@@ -210,7 +205,7 @@ def select_positive_momentum_leaders(
         observed_date = _normalized_timestamp(str(closes.index[-1]))
         if (boundary - observed_date).days > MAX_EVIDENCE_STALENESS_DAYS:
             issues.append(
-                _unavailable_issue(
+                unavailable_issue(
                     source,
                     f"stale evidence last observed {observed_date.date()}",
                 )
@@ -328,7 +323,7 @@ def select_positive_momentum_leaders(
         selected_returns=tuple(score for score, _ in leaders),
         unavailable_symbols=tuple(sorted(set(normalized) - observed_codes - invalid_codes)),
         invalid_symbols=tuple(sorted(invalid_codes)),
-        health=DataHealthReport.from_issues(issues),
+        health=HealthReport.from_issues(issues),
     )
 
 

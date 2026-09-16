@@ -10,6 +10,7 @@ from typing import Any, ClassVar
 
 from quantfusion.domain.rules import require_int
 from quantfusion.engine.ensemble import EnsembleBacktestEngine, EnsembleSleeveBacktestEngine
+from quantfusion.engine.runtime import ReplayRuntimePolicy
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RiskManager
 
@@ -278,6 +279,7 @@ class BacktestEngine(
         allocation_mode: str | None = None,
         risk_state: dict | None = None,
         route_controller: Any | None = None,
+        runtime_policy: ReplayRuntimePolicy | None = None,
     ) -> dict:
         """Run one or several portfolio sleeves under the same effective policy formula."""
         mode = str(allocation_mode or self.policy.allocation_mode).lower()
@@ -296,11 +298,14 @@ class BacktestEngine(
                 allocation_mode="ensemble",
                 risk_state=risk_state,
                 route_controller=route_controller,
+                runtime_policy=runtime_policy,
             )
         if mode != "single":
             raise ValueError("allocation_mode must be 'single' or 'ensemble'")
         if route_controller is not None:
             raise ValueError("route_controller requires allocation_mode='ensemble'")
+        effective_runtime = runtime_policy or ReplayRuntimePolicy()
+        self._runtime_policy = effective_runtime
         count = len(symbols_dict)
         effective_policy = replace(
             self._effective_policy(count), allocation_mode="single"
@@ -312,6 +317,7 @@ class BacktestEngine(
             allocation_lookbacks=effective_policy.single_lookbacks,
             sleeve_name="single",
         )
+        sleeve._runtime_policy = effective_runtime
         if risk_state:
             sleeve.cfg = dict(sleeve.cfg)
             sleeve.cfg["_initial_risk_state"] = risk_state

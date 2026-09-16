@@ -439,14 +439,14 @@ def _run_main() -> int:
         print("  (上次成功的信号文件未被覆盖)")
         return 1
 
-    # NOT_READY suppresses buys. DEGRADED preserves valid risk opinions.
+    # INVALID suppresses buys. DEGRADED preserves valid risk opinions.
     warmup_health = result.get("warmup_health") or {}
     warmup_status = str(warmup_health.get("warmup_status", "UNKNOWN"))
     risk_opinion = result.get("risk_opinion")
-    warmup_not_ready = warmup_status == "NOT_READY"
-    if warmup_not_ready:
+    warmup_invalid = warmup_status == "INVALID"
+    if warmup_invalid:
         suppress_buys = True
-        print("  ✗ 预热健康契约: NOT_READY — 输出不可作为正式交易信号。")
+        print("  ✗ 预热健康契约: INVALID — 输出不可作为正式交易信号。")
         print(
             "    原因: "
             + "; ".join(warmup_health.get("reasons", []) or ["unknown"])
@@ -573,7 +573,6 @@ def _run_main() -> int:
             "buys_suppressed": suppress_buys,
             "risk_state_identity_mismatch": risk_identity_mismatch,
             "current_route_mismatch": live_route_mismatch,
-            "warmup_not_ready": warmup_not_ready,
         },
         "warmup_health": warmup_health,
         "risk_opinion": risk_opinion,

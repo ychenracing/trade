@@ -8,7 +8,7 @@ from __future__ import annotations
 import contextlib
 import io
 import math
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -18,9 +18,14 @@ from quantfusion.config.universe import (
     ESTABLISHED_BASE_CORE,
     ESTABLISHED_EXPANSION_CORE,
 )
+from quantfusion.domain.health import (
+    HealthReport,
+    invalid_calculation_issue,
+)
 from quantfusion.domain.models import Signal
 from quantfusion.domain.rules import require_int
 from quantfusion.engine.ensemble import PreparedSleeveRun, RunRequest
+from quantfusion.engine.runtime import runtime_policy
 from quantfusion.execution.priorities import EXECUTION_PRIORITY
 from quantfusion.execution.c6_receipts import begin_order, reconcile_close_queue
 from quantfusion.config.portfolio import PortfolioPolicy
@@ -59,10 +64,11 @@ class AllocationScoreView:
 
     sleeve_scores: tuple[dict[str, float], ...]
     failures: tuple[AllocationScoreFailure, ...] = ()
+    health: HealthReport = field(default_factory=HealthReport)
 
     @property
     def status(self) -> str:
-        return "degraded" if self.failures else "valid"
+        return self.health.state.value
 
     def __call__(self, symbol: str) -> float:
         samples = [
@@ -83,9 +89,9 @@ class AllocationScoreView:
 class EnsembleAllocationMixin:
     """Sleeve preparation, buy authorization, execution, and finalization."""
 
-    def _record_c6_exposure(self, states: list[_PreparedSleeveRun], date: pd.Timestamp,
+    def _record_diagnostic_exposure(self, states: list[_PreparedSleeveRun], date: pd.Timestamp,
                             phase: str) -> None:
-        trace = getattr(self, "_c6_exposure_trace", None)
+        trace = getattr(self, "_diagnostic_exposure_trace", None)
         if trace is None:
             return
         from quantfusion.config.overlay import SYMBOL_SUB_INDUSTRY
@@ -114,33 +120,6 @@ class EnsembleAllocationMixin:
                       "assets": nav, "gross_notional": gross, "gross_ratio": gross / nav,
                       "symbol_notionals": symbols, "cluster_notionals": clusters,
                       "positions": positions})
-
-    def _c6_feature_enabled(self, feature: str) -> bool:
-        """Return the explicit diagnostic ablation state; production is full-on."""
-        request = getattr(self, "_c6_diagnostic_request", None)
-        if request is None:
-            return True
-        enabled = {
-            "BASELINE": set(),
-            "F0_ONLY": {"F0"},
-            "F0_F1": {"F0", "F1"},
-            "U_ONLY": {"U"},
-            "C6_BASE": {"F0", "F1", "U"},
-            "C6_BASE_PLUS_S": {"F0", "F1", "U", "S"},
-            "C6_BASE_AB5": {"F0", "F1", "U"},
-            "C6_BASE_AB5_PLUS_S": {"F0", "F1", "U", "S"},
-            "W0_NO_601869": set(),
-            "W1_DATA_MAP_ONLY": set(),
-            "W2_POOL_DENOMINATOR_ONLY": set(),
-            "W3_REAL_INTENTS_FIXED_REFERENCE_U": {"U"},
-            "W4_FULL_BASE_PRODUCTION_POOL_RELATIVE": set(),
-            "W5_FULL_BASE_PRODUCTION_POOL_RELATIVE_NO_LOCK": set(),
-        }
-        return feature in enabled[str(request["intervention_id"])]
-
-    def _c6_intervention_id(self) -> str | None:
-        request = getattr(self, "_c6_diagnostic_request", None)
-        return None if request is None else str(request["intervention_id"])
 
     def _assess_run_warmup_health(
         self,
@@ -275,9 +254,9 @@ class EnsembleAllocationMixin:
                 allocation_lookbacks=lookbacks,
                 sleeve_name=name,
             )
-            diagnostic = getattr(self, "_c6_diagnostic_request", None)
-            sleeve._c6_intervention = self._c6_intervention_id()
-            if diagnostic is not None and diagnostic["recording_mode"] != "OFF":
+            runtime = runtime_policy(self)
+            sleeve._runtime_policy = runtime
+            if runtime.recording_enabled:
                 sleeve._c6_action_lifecycle = []
                 sleeve._c6_action_by_signal = {}
                 sleeve._c6_action_sequence = action_sequence
@@ -420,6 +399,7 @@ class EnsembleAllocationMixin:
         held = EnsembleAllocationMixin._held_portfolio_symbols(states)
         sleeve_scores: list[dict[str, float]] = []
         failures: list[AllocationScoreFailure] = []
+        health_issues = []
         failed_states: list[tuple[Any, AllocationScoreFailure]] = []
         for state in states:
             ranked_data = (
@@ -442,10 +422,20 @@ class EnsembleAllocationMixin:
                     message=str(exc),
                 )
                 failures.append(failure)
+                health_issues.append(
+                    invalid_calculation_issue(
+                        f"allocation:{failure.sleeve}",
+                        f"{failure.error_type}: {failure.message}",
+                    )
+                )
                 failed_states.append((state, failure))
                 sleeve_scores.append({})
 
-        view = AllocationScoreView(tuple(sleeve_scores), tuple(failures))
+        view = AllocationScoreView(
+            tuple(sleeve_scores),
+            tuple(failures),
+            HealthReport.from_issues(health_issues),
+        )
         date_str = date.strftime("%Y-%m-%d")
         for state, failure in failed_states:
             risk_events = getattr(state.sleeve, "risk_events", None)
@@ -558,6 +548,7 @@ class EnsembleAllocationMixin:
         score_samples = {symbol: [] for symbol in candidate_symbols}
         missing_scores: set[str] = set()
         score_receipts = []
+        runtime = runtime_policy(self)
         for state_index, state in enumerate(states):
             candidates = {
                 signal.symbol
@@ -567,24 +558,22 @@ class EnsembleAllocationMixin:
                 and signal.symbol in state.data_map
                 and (preview_only or date in state.data_map[signal.symbol].index)
             }
-            score_data_map = state.data_map
-            if self._c6_intervention_id() == "W1_DATA_MAP_ONLY":
-                score_data_map = {
-                    symbol: frame
-                    for symbol, frame in state.data_map.items()
-                    if symbol != "601869"
-                }
+            score_data_map = {
+                symbol: frame
+                for symbol, frame in state.data_map.items()
+                if symbol not in runtime.allocation_data_exclusions
+            }
             scores = (
                 state.sleeve._fixed_reference_scores(date, candidates)
-                if self._c6_feature_enabled("U")
+                if runtime.use_fixed_reference_scores
                 else state.sleeve._allocation_scores(score_data_map, date)
             )
             if (
                 not preview_only
-                and getattr(self, "_c6_score_trace", None) is not None
+                and getattr(self, "_diagnostic_score_trace", None) is not None
             ):
-                receipt = {"decision_timestamp": date.strftime("%Y-%m-%d"), "state_index": state_index, "sleeve_name": state.sleeve.sleeve_name, "fixed_reference": self._c6_feature_enabled("U"), "pool_members": sorted(score_data_map), "scores": {symbol: float(scores[symbol]) for symbol in sorted(scores)}}
-                if (self._c6_intervention_id() or "").startswith("W"):
+                receipt = {"decision_timestamp": date.strftime("%Y-%m-%d"), "state_index": state_index, "sleeve_name": state.sleeve.sleeve_name, "fixed_reference": runtime.use_fixed_reference_scores, "pool_members": sorted(score_data_map), "scores": {symbol: float(scores[symbol]) for symbol in sorted(scores)}}
+                if runtime.compare_score_families:
                     # These read-only queries use the same prior-close inputs,
                     # independently of which score family authorizes this path.
                     receipt["fixed_reference_scores"] = state.sleeve._fixed_reference_scores(date, set(score_data_map))
@@ -600,12 +589,12 @@ class EnsembleAllocationMixin:
                                                      "value": value if value is not None and math.isfinite(value) else None})
                     receipt["reference_inputs"] = reference_inputs
                     receipt["candidate_symbols"] = sorted(candidates)
-                self._c6_score_trace.append(receipt)
+                self._diagnostic_score_trace.append(receipt)
                 score_receipts.append(receipt)
             for symbol in candidates:
                 if symbol in scores:
                     score_samples[symbol].append(scores[symbol])
-                elif self._c6_feature_enabled("U"):
+                elif runtime.use_fixed_reference_scores:
                     missing_scores.add(symbol)
         date_str = date.strftime("%Y-%m-%d")
         route_migrations = {
@@ -903,7 +892,8 @@ class EnsembleAllocationMixin:
         # have. Opposite same-day fills therefore execute on both sides and pay
         # their respective modeled costs; sells still execute before buys.
         carried_symbols = self._held_portfolio_symbols(states)
-        self._record_c6_exposure(states, date, "batch_start")
+        runtime = runtime_policy(self)
+        self._record_diagnostic_exposure(states, date, "batch_start")
         for state in states:
             for signal, strategy in state.pending:
                 begin_order(state.sleeve, signal, date.strftime("%Y-%m-%d"),
@@ -928,8 +918,8 @@ class EnsembleAllocationMixin:
                 state.date_to_pos,
                 frozenset({"sell"}),
             )
-        self._record_c6_exposure(states, date, "after_sells")
-        if self._c6_feature_enabled("F1"):
+        self._record_diagnostic_exposure(states, date, "after_sells")
+        if runtime.block_retained_defensive_rebuy:
             date_str = date.strftime("%Y-%m-%d")
             for state_index, state in enumerate(states):
                 sleeve_name = str(state.sleeve.sleeve_name)
@@ -965,10 +955,10 @@ class EnsembleAllocationMixin:
             states,
             date,
             cm_overlay.risk_level if cm_overlay is not None else 0,
-            carried_symbols if self._c6_feature_enabled("U") else None,
+            carried_symbols if runtime.use_fixed_reference_scores else None,
         )
         for state in states:
-            setattr(state.sleeve, "_c6_buy_scores", admission_scores if self._c6_feature_enabled("U") else None)
+            setattr(state.sleeve, "_runtime_buy_scores", admission_scores if runtime.use_fixed_reference_scores else None)
             state.pending = state.sleeve._execute_pending_signals(
                 state.pending,
                 state.data_map,
@@ -976,8 +966,8 @@ class EnsembleAllocationMixin:
                 state.date_to_pos,
                 frozenset({"buy"}),
             )
-            delattr(state.sleeve, "_c6_buy_scores")
-        self._record_c6_exposure(states, date, "after_buys")
+            delattr(state.sleeve, "_runtime_buy_scores")
+        self._record_diagnostic_exposure(states, date, "after_buys")
         if len(self._held_portfolio_symbols(states)) > int(self.cfg["max_positions"]):
             raise RuntimeError("portfolio symbol limit exceeded after buy execution")
 
