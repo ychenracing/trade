@@ -249,20 +249,40 @@ def test_new_canonical_reduction_resets_pending_to_reduced() -> None:
     assert decision.buy_gross_cap_ceiling == 60_000.0
 
 
-def test_active_alert_or_shock_is_not_recovery_safe() -> None:
-    for flag in ("risk_alert_active", "shock_episode_active"):
-        kwargs = {flag: True}
-        previous = _envelope(
-            gross_cap=80_000.0,
-            state=AB5RecoveryState.AB5_RECOVERY_PENDING,
-            recovery_buy_cap=60_000.0,
-            **kwargs,
-        )
-        decision = next_ab5_recovery_decision(
-            previous_envelope=previous,
-            new_reduction_caps=[],
-        )
-        assert decision.state is AB5RecoveryState.AB5_REDUCED
+def test_active_alert_does_not_duplicate_canonical_ab5_lock() -> None:
+    previous = _envelope(
+        gross_cap=80_000.0,
+        state=AB5RecoveryState.AB5_RECOVERY_PENDING,
+        recovery_buy_cap=60_000.0,
+        risk_alert_active=True,
+        new_reduction_orders=0,
+    )
+
+    decision = next_ab5_recovery_decision(
+        previous_envelope=previous,
+        new_reduction_caps=[],
+    )
+
+    assert decision.state is AB5RecoveryState.NORMAL
+    assert decision.buy_gross_cap_ceiling is None
+
+
+def test_active_shock_is_not_recovery_safe() -> None:
+    previous = _envelope(
+        gross_cap=80_000.0,
+        state=AB5RecoveryState.AB5_RECOVERY_PENDING,
+        recovery_buy_cap=60_000.0,
+        shock_episode_active=True,
+        new_reduction_orders=0,
+    )
+
+    decision = next_ab5_recovery_decision(
+        previous_envelope=previous,
+        new_reduction_caps=[],
+    )
+
+    assert decision.state is AB5RecoveryState.AB5_REDUCED
+    assert decision.buy_gross_cap_ceiling == 60_000.0
 
 
 def test_adapter_holds_buy_budget_without_mutating_strategy_queue(monkeypatch) -> None:
