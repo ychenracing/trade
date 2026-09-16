@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from enum import Enum
 from typing import Any
 
+import pandas as pd
+
 from quantfusion.execution.c6_receipts import reconcile_close_queue
+from quantfusion.risk.account_budget import (
+    apply_account_risk_budget as _apply_account_risk_budget,
+)
 
 
 BookId = tuple[int, str, str]
@@ -203,3 +208,59 @@ def apply_ab5_recovery_hysteresis(
         "blocked_orders": blocked_orders,
         "blocked_shares": blocked_shares,
     }
+
+
+def apply_account_risk_budget_with_recovery(
+    states: Sequence[Any],
+    date: pd.Timestamp,
+    assets: float,
+    peak: float,
+    cfg: Mapping[str, Any],
+    score: Callable[[str], float],
+    events: list[dict[str, Any]],
+    *,
+    shock_floor: float = 0.0,
+    preserve_strategy_valid_holdings: bool = False,
+    risk_alert_active: bool | None = None,
+    portfolio_evidence_buy_symbols: set[str] | None = None,
+) -> None:
+    """Apply recovery hysteresis, then the unchanged canonical AB5 policy."""
+    date_str = date.strftime("%Y-%m-%d")
+    decision = apply_ab5_recovery_hysteresis(states, date_str, events)
+    event_start = len(events)
+    options: dict[str, Any] = {}
+    if shock_floor != 0.0:
+        options["shock_floor"] = shock_floor
+    if preserve_strategy_valid_holdings:
+        options["preserve_strategy_valid_holdings"] = True
+    if risk_alert_active is not None:
+        options["risk_alert_active"] = risk_alert_active
+    if portfolio_evidence_buy_symbols is not None:
+        options["portfolio_evidence_buy_symbols"] = portfolio_evidence_buy_symbols
+    _apply_account_risk_budget(
+        states,
+        date,
+        assets,
+        peak,
+        cfg,
+        score,
+        events,
+        **options,
+    )
+    envelope = next(
+        (
+            event
+            for event in reversed(events[event_start:])
+            if event.get("event") == "account_budget_envelope"
+            and event.get("date") == date_str
+        ),
+        None,
+    )
+    if envelope is None:
+        raise RuntimeError("canonical AB5 did not publish its account budget envelope")
+    envelope.update(
+        ab5_recovery_state=decision["state"],
+        ab5_recovery_book_ids=decision["book_ids"],
+        ab5_recovery_blocked_orders=decision["blocked_orders"],
+        ab5_recovery_buy_shares_blocked=decision["blocked_shares"],
+    )
