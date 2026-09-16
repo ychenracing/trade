@@ -13,7 +13,7 @@ from pathlib import Path
 import pandas as pd
 
 from quantfusion.application.daily_support import today_str
-from quantfusion.config.paths import MARKET_DATA_DIR
+from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.research_universes import (
     DEFAULT_RESEARCH_START_DATE,
@@ -24,6 +24,7 @@ from quantfusion.config.universe import SYMBOL_NAMES
 
 
 DEFAULT_SYMBOLS = tuple(dict.fromkeys((*SYMBOL_NAMES, *PortfolioPolicy().regime_symbols)))
+DEFAULT_RESEARCH_OUTPUT = PROJECT_ROOT / "data_cache" / "research_market"
 
 
 def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
@@ -128,7 +129,14 @@ def main() -> int:
         default="",
         help="Snapshot end date YYYY-MM-DD (default: current Shanghai-market date)",
     )
-    parser.add_argument("--output", default=str(MARKET_DATA_DIR))
+    parser.add_argument(
+        "--output",
+        default="",
+        help=(
+            "Output directory. Pool downloads default to data_cache/research_market; "
+            "legacy non-pool downloads keep the retained data/market default."
+        ),
+    )
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--symbol", action="append", dest="symbols")
     selection.add_argument(
@@ -144,6 +152,7 @@ def main() -> int:
         help="Download the union of all research pools A-J.",
     )
     args = parser.parse_args()
+    research_selection = bool(args.pools or args.all_pools)
     if args.symbols:
         symbols = tuple(args.symbols)
     elif args.all_pools:
@@ -153,7 +162,10 @@ def main() -> int:
     else:
         symbols = DEFAULT_SYMBOLS
     end_date = args.end or today_str()
-    output = Path(args.output)
+    output = Path(
+        args.output
+        or (DEFAULT_RESEARCH_OUTPUT if research_selection else MARKET_DATA_DIR)
+    ).expanduser()
     output.mkdir(parents=True, exist_ok=True)
     symbol_manifest: dict[str, object] = {}
     manifest: dict[str, object] = {
