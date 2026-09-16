@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "artifact_status": "research_only",
+  "canonical": false,
+  "kind": "trade_alpha_attribution",
+  "task": "Trade Alpha Attribution Research",
+  "production_effect": "none",
+  "source": {
+    "repository": "ychenracing/trade",
+    "main_revision": "85cce57e370b1d8097f2931ffc4ea76c01ae7c86",
+    "research_branch": "agent/alpha-attribution-research",
+    "research_probe_revision": "ff54ae47f270fe0d91ed3092b8c4d33ab2f2bfe9",
+    "workflow_run_id": 35112307421,
+    "workflow_job_id": 104848895134,
+    "receipt_transport": "controlled Python 3.12 collection failure after read-only replay",
+    "config_sha256": "1ad634265bec392c34340a8d3b9b2f168c013249e7d6e966e172abcb61edfcbb"
+  },
+  "contract": {
+    "window": ["2025-04-01", "2026-07-20"],
+    "initial_capital": 2000000.0,
+    "production_universe_size": 17,
+    "parameter_optimization": false,
+    "strategy_change": false,
+    "risk_rule_change": false,
+    "execution_semantics_change": false,
+    "market_data_change": false
+  },
+  "headline": {
+    "buy_hold_premise": "REJECTED_FOR_THIS_FROZEN_WINDOW",
+    "primary_causal_cost": "account_risk_budget_AB5",
+    "primary_structural_opportunity": "winner_lifecycle_and_repeated_exit_reentry",
+    "buy_signal_quality": "generally_strong_in_post_hoc_forward_return_diagnostics",
+    "production_decision": "NO_PRODUCTION_CHANGE_IN_THIS_STAGE"
+  },
+  "trade": {
+    "final_assets": 19221085.48903101,
+    "total_return": 8.610542744515504,
+    "max_drawdown": -0.15104978428469945,
+    "sharpe": 3.7258627517994465,
+    "calmar": 33.61339205407966,
+    "sleeve_fills": 645,
+    "sell_fills": 404,
+    "date_symbol_side_buckets": 190,
+    "sell_date_symbol_side_buckets": 109,
+    "explicit_fees": 74192.392969
+  },
+  "buy_hold_same_universe_window": {
+    "method": "equal capital across current production 17; first available opening buy using native buy slippage and commission; terminal mark-to-market without forced terminal sale",
+    "entry_trades": 17,
+    "final_assets": 11266370.578511499,
+    "total_return": 4.633185289255749,
+    "max_drawdown": -0.28119502710777045,
+    "trade_minus_buy_hold_return_delta": 3.977357455259755,
+    "trade_minus_buy_hold_drawdown_delta": 0.130145242823071,
+    "interpretation": "Trade outperformed this matched Buy & Hold benchmark while experiencing a materially shallower maximum drawdown. This is a capability comparison, not an additive causal decomposition."
+  },
+  "account_risk_budget_counterfactual": {
+    "mechanism": "existing AB5 account-risk-budget toggle only",
+    "with_ab5": {
+      "total_return": 8.610542744515504,
+      "max_drawdown": -0.15104978428469945,
+      "sleeve_fills": 645,
+      "date_symbol_side_buckets": 190,
+      "explicit_fees": 74192.392969
+    },
+    "without_ab5": {
+      "total_return": 12.651110582435127,
+      "max_drawdown": -0.16496270588646905,
+      "sleeve_fills": 289,
+      "date_symbol_side_buckets": 115,
+      "explicit_fees": 75362.44312975
+    },
+    "on_minus_off": {
+      "total_return_delta": -4.040567837919623,
+      "max_drawdown_delta": 0.013912921601769601,
+      "sleeve_fill_delta": 356,
+      "date_symbol_side_bucket_delta": 75,
+      "explicit_fee_delta": -1170.0501607500046
+    },
+    "interpretation": "In this frozen window AB5 bought about 1.39 percentage points of maximum-drawdown improvement at an opportunity cost of about 404.06 percentage points of total return and 356 additional internal sleeve fills. This does not identify the value of the rest of the risk stack."
+  },
+  "winner_lifecycle": {
+    "buy_buckets": 81,
+    "new_position_buckets": 33,
+    "add_position_buckets": 48,
+    "buy_exited_within_10_sessions": 48,
+    "buy_exited_within_20_sessions": 69,
+    "sell_buckets": 109,
+    "full_exit_buckets": 33,
+    "reduce_position_buckets": 76,
+    "premature_major_winner_classification": 90,
+    "mixed_or_censored_classification": 19,
+    "reentry_within_20_sessions": 40,
+    "reentry_within_60_sessions": 67,
+    "post_sell_60d": {
+      "count": 94,
+      "median_return": 0.3812950308665849,
+      "mean_return": 0.5563899197359516,
+      "positive_rate": 0.9468085106382979
+    },
+    "post_sell_120d": {
+      "count": 68,
+      "median_return": 1.1371430906936328,
+      "mean_return": 1.411815515407464,
+      "positive_rate": 1.0
+    },
+    "classification_rule": "premature_major_winner if post-sale 60-session return >=20% or 120-session return >=30%; forward returns are descriptive and non-additive"
+  },
+  "buy_quality": {
+    "post_buy_20d_median": 0.09962693694751135,
+    "post_buy_60d_median": 0.36975680185070914,
+    "post_buy_60d_positive_rate": 0.8382352941176471,
+    "post_buy_120d_count": 48,
+    "post_buy_120d_median": 1.156561213549002,
+    "post_buy_120d_positive_rate": 1.0,
+    "interpretation": "Opportunity discovery inside the current 17-symbol universe is not the leading diagnosed weakness; many entries precede durable advances."
+  },
+  "pnl_concentration": {
+    "winning_sell_fills": 286,
+    "losing_sell_fills": 118,
+    "gross_positive_realized_pnl": 18415170.951312102,
+    "gross_negative_realized_pnl": -1194085.4622810946,
+    "top_10pct_positive_fill_share_of_positive_pnl": 0.560834524168015,
+    "largest_realized_contributors": {
+      "300308": 7338529.445428751,
+      "300502": 3088946.339651249,
+      "300408": 2638810.3155117505,
+      "002384": 1655191.40924625,
+      "601869": 1024680.0164375014
+    }
+  },
+  "cost_and_cash": {
+    "commission_plus_stamp_duty": 74192.392969,
+    "estimated_slippage_from_open": 139432.11799999347,
+    "total_modeled_direct_cost": 213624.51096899348,
+    "direct_cost_over_initial_capital": 0.10681225548449674,
+    "mean_cash_fraction": 0.29874385789832925,
+    "median_cash_fraction": 0.052230113967300096,
+    "cash_fraction_over_50pct_day_share": 0.3069620253164557
+  },
+  "selected_premature_exit_examples": [
+    {"date": "2025-06-25", "symbol": "300308", "reason": "account_budget_trim", "realized_pnl_pct": -0.013977594169528365, "reentry_sessions": 14, "post_20d": 0.472650994943989, "post_60d": 2.2261560923981314, "post_120d": 3.544353270467921},
+    {"date": "2025-05-26", "symbol": "688498", "reason": "ATR trailing stop@88.94", "realized_pnl_pct": -0.05233537166384144, "reentry_sessions": 100, "post_20d": 0.2858820708185501, "post_60d": 1.1476785315260818, "post_120d": 3.4891761089583238},
+    {"date": "2025-12-30", "symbol": "601869", "reason": "ATR trailing stop@120.80 + account_budget_trim", "realized_pnl_pct": -0.037838429489991644, "reentry_sessions": 24, "post_20d": 0.1404481209922126, "post_60d": 1.9694480128237388, "post_120d": 3.002907986736842},
+    {"date": "2025-06-25", "symbol": "300502", "reason": "account_budget_trim", "realized_pnl_pct": 0.4794918090045171, "reentry_sessions": 1, "post_20d": 0.5918991365706878, "post_60d": 2.1862431913852403, "post_120d": 2.9017034774844253},
+    {"date": "2026-01-13", "symbol": "601869", "reason": "ATR trailing stop@111.56", "realized_pnl_pct": -0.0693439223679014, "reentry_sessions": 16, "post_20d": 0.9272622973963114, "post_60d": 2.3603664745974897, "post_120d": 2.879894116014091}
+  ],
+  "next_research_direction": {
+    "priority_1": "winner lifecycle: distinguish protective exits from avoidable truncation and repeated exit/re-entry",
+    "priority_2": "AB5 risk-return efficiency: preserve risk-state/account continuity while testing lower intervention frequency or better winner protection under a preregistered contract",
+    "priority_3": "order consolidation only where it removes low-value churn; do not suppress high-value entries or hard-risk actions",
+    "not_first_priority": "broad opportunity-discovery expansion inside the current production 17, because entry forward-return diagnostics are already strong"
+  },
+  "limitations": [
+    "Post-sale and post-buy forward returns are descriptive opportunity diagnostics. They overlap and capital is reused, so they must not be summed as portfolio alpha impact.",
+    "TradeRecord counts are internal sleeve fills. Date-symbol-side buckets are closer to nettable broker actions but are still not broker-order records.",
+    "The equal-capital Buy & Hold path is a matched capability benchmark, not a causal decomposition of risk protection because allocation and entry/exit paths differ.",
+    "The AB5 on/off comparison is the clean causal counterfactual in this study and isolates only the existing account-risk-budget mechanism; all other risk logic remains active.",
+    "The uquant comparison is structural unless both systems are replayed on a matched universe, window, capital and cost contract."
+  ]
+}
