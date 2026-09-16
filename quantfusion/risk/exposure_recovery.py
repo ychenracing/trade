@@ -116,22 +116,15 @@ def _active_recovery_cap(envelope: Mapping[str, Any] | None) -> float | None:
 
 
 def _recovery_safe(envelope: Mapping[str, Any] | None) -> bool:
-    """Judge recovery from the unchanged canonical AB5 gross budget."""
+    """Advance only after canonical AB5 requests no new reduction at the close."""
     if not envelope or envelope.get("event") != "account_budget_envelope":
         return False
     if envelope.get("risk_alert_active") or envelope.get("shock_episode_active"):
         return False
-    try:
-        gross = float(envelope["gross_before"])
-        canonical_cap = float(envelope["gross_cap"])
-    except (KeyError, TypeError, ValueError):
+    orders = envelope.get("new_reduction_orders")
+    if isinstance(orders, bool) or not isinstance(orders, int) or orders < 0:
         return False
-    return (
-        math.isfinite(gross)
-        and math.isfinite(canonical_cap)
-        and canonical_cap >= 0.0
-        and gross <= canonical_cap + 1e-8
-    )
+    return orders == 0
 
 
 def next_ab5_recovery_decision(
