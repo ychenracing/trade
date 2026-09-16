@@ -8,7 +8,7 @@ from __future__ import annotations
 import contextlib
 import io
 import math
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -17,6 +17,10 @@ import pandas as pd
 from quantfusion.config.universe import (
     ESTABLISHED_BASE_CORE,
     ESTABLISHED_EXPANSION_CORE,
+)
+from quantfusion.domain.health import (
+    HealthReport,
+    invalid_calculation_issue,
 )
 from quantfusion.domain.models import Signal
 from quantfusion.domain.rules import require_int
@@ -59,10 +63,11 @@ class AllocationScoreView:
 
     sleeve_scores: tuple[dict[str, float], ...]
     failures: tuple[AllocationScoreFailure, ...] = ()
+    health: HealthReport = field(default_factory=HealthReport)
 
     @property
     def status(self) -> str:
-        return "degraded" if self.failures else "valid"
+        return self.health.state.value
 
     def __call__(self, symbol: str) -> float:
         samples = [
@@ -420,6 +425,7 @@ class EnsembleAllocationMixin:
         held = EnsembleAllocationMixin._held_portfolio_symbols(states)
         sleeve_scores: list[dict[str, float]] = []
         failures: list[AllocationScoreFailure] = []
+        health_issues = []
         failed_states: list[tuple[Any, AllocationScoreFailure]] = []
         for state in states:
             ranked_data = (
@@ -442,10 +448,20 @@ class EnsembleAllocationMixin:
                     message=str(exc),
                 )
                 failures.append(failure)
+                health_issues.append(
+                    invalid_calculation_issue(
+                        f"allocation:{failure.sleeve}",
+                        f"{failure.error_type}: {failure.message}",
+                    )
+                )
                 failed_states.append((state, failure))
                 sleeve_scores.append({})
 
-        view = AllocationScoreView(tuple(sleeve_scores), tuple(failures))
+        view = AllocationScoreView(
+            tuple(sleeve_scores),
+            tuple(failures),
+            HealthReport.from_issues(health_issues),
+        )
         date_str = date.strftime("%Y-%m-%d")
         for state, failure in failed_states:
             risk_events = getattr(state.sleeve, "risk_events", None)

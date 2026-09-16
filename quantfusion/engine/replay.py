@@ -155,7 +155,7 @@ class ProductionRouteController:
                 as_of=date_str,
             )
             self._leader_cache[date_str] = selection
-        if selection.status != "valid":
+        if selection.status != "READY":
             self.events.append(
                 {
                     "date": date_str,
@@ -166,7 +166,7 @@ class ProductionRouteController:
                     "health": selection.health.as_dict(),
                 }
             )
-        selection.require_valid("production route")
+        selection.require_ready("production route")
         return tuple(selection.selected_symbols)
 
     def _append_weak_signals(
@@ -714,7 +714,7 @@ class RegimeAdaptiveBacktestEngine:
             as_of=when,
             frame_loader=leader_frame_loader,
         )
-        leaders.require_valid("current production decision")
+        leaders.require_ready("current production decision")
         name = (
             "positive_momentum_hold" if leaders.selected_symbols else "cash_preservation"
         )
@@ -761,7 +761,7 @@ class RegimeAdaptiveBacktestEngine:
             as_of=boundary,
         )
         if not allow_degraded_leaders:
-            leaders.require_valid("deployment decision")
+            leaders.require_ready("deployment decision")
         name = "positive_momentum_hold" if leaders.selected_symbols else "cash_preservation"
         reason = (
             "fixed-index trend was not confirmed; selected only positive "
@@ -877,7 +877,7 @@ class RegimeAdaptiveBacktestEngine:
                 as_of=decision.boundary,
             )
             if not allow_unavailable_symbols:
-                leaders.require_valid("forced weak deployment")
+                leaders.require_ready("forced weak deployment")
             decision = replace(
                 decision,
                 name=(

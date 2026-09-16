@@ -41,7 +41,7 @@ def test_leader_selection_distinguishes_valid_empty_result() -> None:
     )
 
     assert selection.selected_symbols == ()
-    assert getattr(selection, "status", None) == "valid"
+    assert getattr(selection, "status", None) == "READY"
 
 
 def test_leader_selection_distinguishes_unavailable_data() -> None:
@@ -60,7 +60,7 @@ def test_leader_selection_distinguishes_unavailable_data() -> None:
 
     assert selection.selected_symbols == ()
     assert selection.unavailable_symbols == ("600000",)
-    assert getattr(selection, "status", None) == "unavailable"
+    assert getattr(selection, "status", None) == "DEGRADED"
 
 
 def test_leader_selection_distinguishes_invalid_data() -> None:
@@ -78,7 +78,7 @@ def test_leader_selection_distinguishes_invalid_data() -> None:
     )
 
     assert selection.selected_symbols == ()
-    assert getattr(selection, "status", None) == "invalid"
+    assert getattr(selection, "status", None) == "INVALID"
 
 
 def test_production_route_rejects_unavailable_leader_evidence(tmp_path) -> None:
@@ -123,7 +123,7 @@ def test_overlay_allocation_failure_retains_fallback_but_is_observable() -> None
     )
 
     assert score("held") == 0.0
-    assert getattr(score, "status", None) == "degraded"
+    assert getattr(score, "status", None) == "DEGRADED"
     event = score.as_event("2026-01-05")
     assert event["event"] == "allocation_score_degraded"
     assert event["failed_sleeves"] == ["fast"]

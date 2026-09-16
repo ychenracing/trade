@@ -481,7 +481,7 @@ def _synthetic_daily_signals(directory, *, ready, opinion):
 
 def test_readiness_not_ready_suppresses_buys_but_preserves_sells(tmp_path):
     ready = _synthetic_daily_signals(tmp_path / 'ready', ready='READY', opinion=None)
-    blocked = _synthetic_daily_signals(tmp_path / 'blocked', ready='NOT_READY', opinion=None)
+    blocked = _synthetic_daily_signals(tmp_path / 'blocked', ready='INVALID', opinion=None)
     assert ready['summary']['buy'] == 1
     assert blocked['summary']['buy'] == 0
     assert blocked['summary']['warmup_not_ready'] is True

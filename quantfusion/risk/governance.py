@@ -1,7 +1,7 @@
 """风险治理层：预热健康、独立风险意见、袖套共识和事后风险事件校准。
 
 本模块读取既有状态，输出可序列化的观测数据，不直接修改交易账本或生成订单。
-应用层独立消费预热健康门：NOT_READY 会抑制新增买入，不能把纯观测实现
+应用层独立消费预热健康门：INVALID 会抑制新增买入，不能把纯观测实现
 误解为其输出永远不被决策入口使用。风险事件的后续收益和机会成本只用于
 事后研究，不回填到当时可见的信号。风险篮覆盖不足通过置信度及原因披露。
 """
@@ -14,6 +14,8 @@ from typing import Any, Iterable, Sequence, cast
 import numpy as np
 import pandas as pd
 
+from quantfusion.domain.health import HealthIssue, HealthReport, HealthState
+
 # 一只股票被认为"指标就绪"所需的最少预热交易日数。最长指标窗口为
 # 弱市 240 日动量与 120 日相对强度，240 个交易日覆盖全部指标需求。
 REQUIRED_WARMUP_TRADING_DAYS = 240
@@ -22,8 +24,8 @@ REQUIRED_WARMUP_TRADING_DAYS = 240
 # quantfusion.config.regime.MAX_EVIDENCE_STALENESS_DAYS 保持一致。
 WARMUP_STALENESS_DAYS = 10
 
-# 分级阈值。指标就绪比例低于该值时整体判为 NOT_READY。
-NOT_READY_INDICATOR_RATIO = 0.5
+# 分级阈值。指标就绪比例低于该值时整体判为 INVALID。
+INVALID_INDICATOR_RATIO = 0.5
 
 # 判定"已实现冲击"(realized shock) 的前瞻窗口与回撤阈值。阈值与
 # overlay 的 L2 账户回撤门槛 (RISK_LEVEL2_DRAWDOWN=0.08) 对齐。
@@ -71,12 +73,12 @@ class WarmupHealthReport:
     """预热健康报告：回测/生产运行的数据预热质量契约。
 
     生产规则：
-    - ``NOT_READY``：禁止把输出当成正式交易信号；
+    - ``INVALID``：禁止把输出当成正式交易信号；
     - ``DEGRADED``：风险判断可保留，新增风险动作降级/人工确认；
     - ``READY``：正常使用。
     """
 
-    warmup_status: str
+    health: HealthReport
     required_days: int
     indicator_ready_ratio: float
     reference_basket_ready_ratio: float
@@ -89,10 +91,15 @@ class WarmupHealthReport:
     stale_symbols: tuple[str, ...] = ()
     reasons: tuple[str, ...] = ()
 
+    @property
+    def warmup_status(self) -> str:
+        return self.health.state.value
+
     def as_dict(self) -> dict[str, Any]:
         """返回 JSON 可序列化的字典表示。"""
         return {
             "warmup_status": self.warmup_status,
+            "health": self.health.as_dict(),
             "required_days": int(self.required_days),
             "indicator_ready_ratio": round(self.indicator_ready_ratio, 4),
             "reference_basket_ready_ratio": round(
@@ -126,13 +133,13 @@ def assess_warmup_health(
 
     逐股票统计回测开始日之前的可用交易日数；新上市（预热不足）股票不会
     静默获得与成熟股票相同的置信度，而是把整体状态降级为 DEGRADED。
-    regime 证据完全缺失或指标就绪比例过低时判为 NOT_READY。
+    regime 证据完全缺失或指标就绪比例过低时判为 INVALID。
 
     - ``reference_symbols`` / ``reference_frames``：独立风险篮（23 股）。
       传入 ``reference_frames`` 时就绪度按篮内实际可观察帧计算（缺失成分
       显式计入未就绪），否则退回交易池内的参考成分。
     - ``regime_index_frames``：本次运行实际可用的 regime 证据帧（袖套
-      regime 参考篮在场成员，或外层双指数帧）。完全缺失时判 NOT_READY
+      regime 参考篮在场成员，或外层双指数帧）。完全缺失时判 INVALID
       （风险层失明，失败关闭）；存在但陈旧/历史不足时仅降级为 DEGRADED
       并输出 ``regime_index_stale`` 原因（数据质量问题显式可见）。
     """
@@ -188,22 +195,45 @@ def assess_warmup_health(
     if ref_ratio < 1.0:
         reasons.append("reference_basket_incomplete")
 
-    # 失败关闭层级：regime 证据完全缺失（风险层失明）或指标就绪比例过低
-    # 时判 NOT_READY；陈旧/缺参考成分等数据质量问题降级为 DEGRADED。
-    if regime_missing or ratio < NOT_READY_INDICATOR_RATIO:
-        status = "NOT_READY"
-    elif reasons:
-        status = "DEGRADED"
-    else:
-        status = "READY"
+    # One domain health model owns the aggregate state. Missing decision-critical
+    # regime evidence or a severely cold indicator set is INVALID; incomplete
+    # but still inspectable evidence is DEGRADED.
+    issues: list[HealthIssue] = []
+    if regime_missing:
+        issues.append(
+            HealthIssue(
+                "warmup:regime",
+                HealthState.INVALID,
+                "regime_evidence_unavailable",
+                "regime evidence is unavailable",
+            )
+        )
+    if ratio < INVALID_INDICATOR_RATIO:
+        issues.append(
+            HealthIssue(
+                "warmup:indicators",
+                HealthState.INVALID,
+                "indicator_history_insufficient",
+                f"indicator readiness ratio {ratio:.4f} is below the usable threshold",
+            )
+        )
+    invalid_codes = {issue.code for issue in issues}
+    for reason in reasons:
+        code = reason.split(":", 1)[0]
+        if code in {"regime_index_missing_or_stale", "indicator_warmup_incomplete"} and invalid_codes:
+            continue
+        issues.append(
+            HealthIssue("warmup", HealthState.DEGRADED, code, reason)
+        )
+    health = HealthReport.from_issues(issues)
 
     return WarmupHealthReport(
-        warmup_status=status,
+        health=health,
         required_days=int(required_days),
         indicator_ready_ratio=ratio,
         reference_basket_ready_ratio=ref_ratio,
         regime_index_ready=regime_ready,
-        sleeve_state_ready=ratio >= NOT_READY_INDICATOR_RATIO and regime_ready,
+        sleeve_state_ready=ratio >= INVALID_INDICATOR_RATIO and regime_ready,
         new_symbol_count=len(new_symbols),
         stale_symbol_count=len(stale),
         history_days_available=history,
