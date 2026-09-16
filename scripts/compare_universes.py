@@ -61,7 +61,24 @@ def _manifest_payload(path: Path) -> dict | None:
     return payload
 
 
-def validate_market_data_directory(data_dir: Path, pools: tuple[str, ...]) -> None:
+def _latest_observation_on_or_before(path: Path, end: pd.Timestamp) -> pd.Timestamp:
+    try:
+        raw = pd.read_csv(path, usecols=["date"])
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"invalid date column in research market data {path}: {exc}") from exc
+    dates = pd.DatetimeIndex(pd.to_datetime(raw["date"], errors="coerce")).dropna()
+    dates = dates[dates <= end]
+    if dates.empty:
+        raise ValueError(f"research market data has no observation through {end.date()}: {path}")
+    return pd.Timestamp(dates.max())
+
+
+def validate_market_data_directory(
+    data_dir: Path,
+    pools: tuple[str, ...],
+    *,
+    end_date: str | None = None,
+) -> None:
     """Reject incomplete research inputs before risk logic can silently degrade."""
     if not data_dir.is_dir():
         raise ValueError(
@@ -76,31 +93,45 @@ def validate_market_data_directory(data_dir: Path, pools: tuple[str, ...]) -> No
         )
 
     manifest = _manifest_payload(data_dir / "manifest.json")
-    if manifest is None:
-        return
-    if manifest.get("complete") is False:
-        raise ValueError("incomplete research market-data manifest")
-    entries = manifest.get("symbols")
-    if not isinstance(entries, dict):
-        raise ValueError("invalid research market-data manifest: symbols must be an object")
-    absent = [code for code in required if code not in entries]
-    if absent:
-        raise ValueError(
-            "research market-data manifest omits required symbols: "
-            + ", ".join(absent)
-        )
+    if manifest is not None:
+        if manifest.get("complete") is False:
+            raise ValueError("incomplete research market-data manifest")
+        entries = manifest.get("symbols")
+        if not isinstance(entries, dict):
+            raise ValueError("invalid research market-data manifest: symbols must be an object")
+        absent = [code for code in required if code not in entries]
+        if absent:
+            raise ValueError(
+                "research market-data manifest omits required symbols: "
+                + ", ".join(absent)
+            )
 
-    if manifest.get("complete") is True:
+        if manifest.get("complete") is True:
+            for code in required:
+                entry = entries.get(code)
+                if not isinstance(entry, dict):
+                    raise ValueError(f"invalid research market-data manifest entry for {code}")
+                expected_hash = entry.get("sha256")
+                if not isinstance(expected_hash, str) or len(expected_hash) != 64:
+                    raise ValueError(f"research market-data manifest lacks sha256 for {code}")
+                actual_hash = hashlib.sha256((data_dir / f"{code}.csv").read_bytes()).hexdigest()
+                if actual_hash != expected_hash:
+                    raise ValueError(f"research market-data sha256 mismatch for {code}")
+
+    if end_date is not None:
+        end = pd.Timestamp(end_date)
+        if end is pd.NaT:
+            raise ValueError("research market-data end_date must be valid")
+        stale: list[str] = []
         for code in required:
-            entry = entries.get(code)
-            if not isinstance(entry, dict):
-                raise ValueError(f"invalid research market-data manifest entry for {code}")
-            expected_hash = entry.get("sha256")
-            if not isinstance(expected_hash, str) or len(expected_hash) != 64:
-                raise ValueError(f"research market-data manifest lacks sha256 for {code}")
-            actual_hash = hashlib.sha256((data_dir / f"{code}.csv").read_bytes()).hexdigest()
-            if actual_hash != expected_hash:
-                raise ValueError(f"research market-data sha256 mismatch for {code}")
+            latest = _latest_observation_on_or_before(data_dir / f"{code}.csv", end)
+            if (end - latest).days > MAX_EVIDENCE_STALENESS_DAYS:
+                stale.append(f"{code}:{latest.date()}")
+        if stale:
+            raise ValueError(
+                "research market-data coverage is stale at requested end: "
+                + ", ".join(stale)
+            )
 
 
 def validate_regime_data_directory(
@@ -134,7 +165,7 @@ def validate_regime_data_directory(
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             raise ValueError(f"invalid regime-index evidence for {code}: {exc}") from exc
         dates = pd.DatetimeIndex(frame.index)
-        dates = dates[(dates <= end)]
+        dates = dates[dates <= end]
         if dates.empty or dates.has_duplicates or not dates.is_monotonic_increasing:
             raise ValueError(f"invalid regime-index date sequence for {code}")
         warmup_count = int((dates < start).sum())
@@ -165,6 +196,10 @@ def validate_regime_data_directory(
         "observed_start_date": shared[0].strftime("%Y-%m-%d"),
         "observed_end_date": min(latest_dates.values()).strftime("%Y-%m-%d"),
         "index_codes": list(REGIME_INDEX_FILES.values()),
+        "sha256": {
+            code: hashlib.sha256((regime_data_dir / f"{code}.csv").read_bytes()).hexdigest()
+            for code in REGIME_INDEX_FILES.values()
+        },
     }
 
 
@@ -209,7 +244,7 @@ def _run_pool(
     if result.get("unavailable_symbols") not in ([], ()):
         raise ValueError(f"{pool_name} replay reported unavailable symbols")
 
-    return summarize_universe_result(
+    row = summarize_universe_result(
         pool_name,
         symbols,
         start_date,
@@ -217,6 +252,21 @@ def _run_pool(
         result,
         market_frames=market_frames,
     )
+    requested_start = pd.Timestamp(start_date)
+    requested_end = pd.Timestamp(end_date)
+    observed_start = pd.Timestamp(row["observed_start_date"])
+    observed_end = pd.Timestamp(row["observed_end_date"])
+    if (observed_start - requested_start).days > MAX_EVIDENCE_STALENESS_DAYS:
+        raise ValueError(
+            f"{pool_name} observed replay begins too late: "
+            f"{observed_start.date()} vs requested {requested_start.date()}"
+        )
+    if (requested_end - observed_end).days > MAX_EVIDENCE_STALENESS_DAYS:
+        raise ValueError(
+            f"{pool_name} observed replay ends too early: "
+            f"{observed_end.date()} vs requested {requested_end.date()}"
+        )
+    return row
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
@@ -263,7 +313,7 @@ def main() -> int:
     end_date = args.end_date or today_str()
     data_dir = Path(args.data_dir).expanduser()
     regime_data_dir = Path(args.regime_data_dir).expanduser()
-    validate_market_data_directory(data_dir, pools)
+    validate_market_data_directory(data_dir, pools, end_date=end_date)
     market_data_contracts.refresh_regime_indices(
         regime_data_dir,
         end_date=end_date,
@@ -273,6 +323,12 @@ def main() -> int:
         regime_data_dir,
         start_date=args.start_date,
         end_date=end_date,
+    )
+    manifest_path = data_dir / "manifest.json"
+    market_manifest_sha256 = (
+        hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        if manifest_path.is_file()
+        else None
     )
 
     rows = [
@@ -289,6 +345,7 @@ def main() -> int:
         for pool_name in pools
     ]
     for row in rows:
+        row["market_manifest_sha256"] = market_manifest_sha256
         row["regime_evidence"] = dict(regime_coverage)
     paths = write_universe_comparison(rows, args.output_dir)
     for row in rows:
