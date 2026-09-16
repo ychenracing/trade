@@ -18,11 +18,37 @@ Quant Fusion 是面向 A 股科技、算力硬件、光通信和半导体产业�
 
 **可追溯研究。** 冻结数据、来源指纹、精确事件回归和 958 场景正式计划覆盖前缀、留一、逐一加入、随机子集与顺序置换；诊断结果与正式发布隔离。离线建议评价使用实际保存的建议及明确因果日期，事后收益不回填为当时信号。
 
+**多股票池历史研究。** 生产日扫仍使用原 17 股主池；研究层另提供 Pool A–J，不需要修改策略源码即可切换光通信、半导体及完整科技产业链组合。研究回放默认起点为 `2023-01-01`，也可显式指定起止日期。研究股票数据写入独立缓存，并继续加载既有固定指数参考和独立风险篮；新增研究标的复用已有行业画像、路由和风险规则，不修改原阈值。
+
 ## 实用优势
 
 优势在于把信号、组合、风险、数据和执行约束放在可以核验的同一调用链内，而不是只展示回测收益。费用、滑点、T+1、涨跌停、手数及成交量容量进入模拟；收盘到下一可交易开盘的因果边界明确。多层限制及失败关闭有助于识别不具备行动条件的情形，但不能消除市场风险。
 
 单进程模块化结构、统一实现入口、独立运行缓存和来源绑定报告适合个人维护及人工复核。固定基线、股票池扩展与顺序扰动检验有助于暴露路径敏感性，不代表已经证明任意股票池或未来市场的泛化优势。
+
+## 多股票池研究入口
+
+Pool A–J 的名称和代码映射集中在 `quantfusion/config/research_universes.py`。旧的生产 17 股 `SYMBOL_NAMES` 不因研究池扩展而改变。单池趋势回测可直接使用 `--pool`；Pool B/F/G 或其他多池比较使用同一 `ProductionReplayEngine` 连续账户路由，不复制交易信号、费用、风险或执行实现。
+
+研究数据应放在独立目录。以下命令准备 Pool B/F/G 的股票、固定信号参考和现有独立风险篮；未指定 `--output` 时，Pool 模式默认使用 `data_cache/research_market`，不会覆盖仓库冻结 `data/market`。`YYYY-MM-DD` 应替换为已经完成收盘且数据可获得的截止日。
+
+```bash
+python -m scripts.download_eastmoney_qfq \
+  --pool pool_b --pool pool_f --pool pool_g \
+  --start 2023-01-01 --end YYYY-MM-DD \
+  --output ../trade-runtime/research-market
+
+python -m scripts.compare_universes \
+  --pool pool_b --pool pool_f --pool pool_g \
+  --start-date 2023-01-01 --end-date YYYY-MM-DD \
+  --data-dir ../trade-runtime/research-market \
+  --regime-data-dir ../trade-runtime/regime \
+  --output-dir ../trade-runtime/universe-comparison
+```
+
+比较输出同时保存 JSON、CSV 和 Markdown，包含股票数量、窗口、累计／年化收益、最大回撤、成交记录数、建模换手率、空仓比例、平均现金比例、依据实际成交与同日收盘价重建的持仓 HHI，以及风险事件统计。该报告是研究输出，不改变生产交易决策，也不是新的策略晋级门。
+
+研究窗口支持从 `2023-01-01` 开始，不代表仓库旧冻结样本已经覆盖 2023。现有 `data/market` 的发布清单主要从 2024 年开始，原 17 股正式经济证据仍绑定 2025-04-01 至 2026-07-20。较晚上市标的在上市前没有观测，不补造历史；只有真实数据出现后才参与回放。历史比较必须保存实际数据来源、窗口、源码和报告身份，不能用旧 SHA 或旧冻结业绩证明新窗口。
 
 ## 证据与风险限制
 
@@ -37,6 +63,7 @@ Quant Fusion 是面向 A 股科技、算力硬件、光通信和半导体产业�
 ```bash
 python -m quantfusion.application.daily_scan --help
 python -m quantfusion.application.backtest_cli --help
+python -m scripts.compare_universes --help
 python -m scripts.decision_diagnostics --help
 ```
 
