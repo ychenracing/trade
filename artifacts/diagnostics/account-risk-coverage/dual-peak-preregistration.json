@@ -8,8 +8,8 @@
     "tree": "f5277ef281ad6baee60590a931f474be942f22dd"
   },
   "candidate": {
-    "source_sha": "f8d65ee8d46b9110e64824376aeb2be74016e96c",
-    "source_tree": "82e08c8d7cbbda0ed5dc57a0281ffeb2d2f27495",
+    "source_sha": "b540a9bbcae32f923e233b6a3933ce260c91cede",
+    "source_tree": "514c3a597383a2d31e98ba654e63d18f3ad6cfda",
     "branch": "agent/dual-peak-account-risk-coverage",
     "changed_paths": [
       "quantfusion/risk/account_budget.py",
@@ -45,6 +45,18 @@
       "artifact_id": 10499487031,
       "artifact_zip_length": 3212,
       "artifact_zip_sha256": "33e58f2130814df8173347b69c94eeb739e983bd9dee0be42206628dc5d7b107",
+      "economic_result_exposed": false
+    },
+    {
+      "workflow_run_id": 35227858643,
+      "gate_commit": "0faedac8353a89d893717cad7c71dec4c0a11bc6",
+      "source_sha": "f8d65ee8d46b9110e64824376aeb2be74016e96c",
+      "source_tree": "82e08c8d7cbbda0ed5dc57a0281ffeb2d2f27495",
+      "result": "FAILED_BEFORE_ECONOMIC_REPLAY",
+      "reason": "Targeted test required an explicit float narrowing for the gross_cap assertion under Pyright",
+      "artifact_id": 10499901995,
+      "artifact_zip_length": 4089,
+      "artifact_zip_sha256": "be84415ae768e9c878343b68062395911448e9479de9529d11ad751259a27966",
       "economic_result_exposed": false
     }
   ],
