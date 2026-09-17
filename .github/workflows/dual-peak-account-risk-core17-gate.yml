@@ -38,10 +38,10 @@ jobs:
           set -euo pipefail
           BASE_SHA=7d5efe5e4ea2159f82b9deb0ff4810730d8de15f
           BASE_TREE=f5277ef281ad6baee60590a931f474be942f22dd
-          SOURCE_SHA=f8d65ee8d46b9110e64824376aeb2be74016e96c
-          SOURCE_TREE=82e08c8d7cbbda0ed5dc57a0281ffeb2d2f27495
+          SOURCE_SHA=b540a9bbcae32f923e233b6a3933ce260c91cede
+          SOURCE_TREE=514c3a597383a2d31e98ba654e63d18f3ad6cfda
           CONTRACT=artifacts/diagnostics/account-risk-coverage/dual-peak-preregistration.json
-          CONTRACT_BLOB=0afbe799aef3aec7bb7e4a0d8f66583dcf4939a6
+          CONTRACT_BLOB=427aeb2312f4a7da7689a75527eb9b290981bbd9
           EVIDENCE_DIR="$RUNNER_TEMP/dual-peak-core17"
           INCUMBENT_ROOT="$RUNNER_TEMP/incumbent"
           CANDIDATE_ROOT="$RUNNER_TEMP/candidate"
@@ -80,8 +80,8 @@ jobs:
               "tree": "f5277ef281ad6baee60590a931f474be942f22dd",
           }
           candidate = contract["candidate"]
-          assert candidate["source_sha"] == "f8d65ee8d46b9110e64824376aeb2be74016e96c"
-          assert candidate["source_tree"] == "82e08c8d7cbbda0ed5dc57a0281ffeb2d2f27495"
+          assert candidate["source_sha"] == "b540a9bbcae32f923e233b6a3933ce260c91cede"
+          assert candidate["source_tree"] == "514c3a597383a2d31e98ba654e63d18f3ad6cfda"
           assert candidate["economic_design"]["cycle_floor_fraction"] == 0.82
           assert candidate["economic_design"]["planned_sell_credit"] is False
           assert candidate["economic_design"]["second_candidate_allowed"] is False
@@ -90,7 +90,7 @@ jobs:
           assert contract["core17_hard_gate"]["wealth_ratio_min"] == 1.05
           assert contract["failure_policy"]["stop_on_first_failed_economic_layer"] is True
           history = contract["engineering_preflight_history"]
-          assert history[-1]["workflow_run_id"] == 35226893772
+          assert history[-1]["workflow_run_id"] == 35227858643
           assert history[-1]["economic_result_exposed"] is False
           PY
 
@@ -424,8 +424,8 @@ jobs:
           payload = {
               "workflow_run_id": os.environ["GITHUB_RUN_ID"],
               "gate_commit": os.environ["GITHUB_SHA"],
-              "candidate_source_sha": "f8d65ee8d46b9110e64824376aeb2be74016e96c",
-              "candidate_source_tree": "82e08c8d7cbbda0ed5dc57a0281ffeb2d2f27495",
+              "candidate_source_sha": "b540a9bbcae32f923e233b6a3933ce260c91cede",
+              "candidate_source_tree": "514c3a597383a2d31e98ba654e63d18f3ad6cfda",
               "files": files,
           }
           (root / "manifest.json").write_text(
