@@ -24,6 +24,17 @@ class ExecutionContext:
     queued_sell_books: frozenset[tuple[int, str, str]]
     rearm_consumption_ready: bool
     rearm_pending_validation: bool
+    active_target_identities: frozenset[str] = frozenset()
+
+
+def _stable_identity(payload: Mapping[str, Any]) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def _fits_reallocation_target(
@@ -77,6 +88,19 @@ def _plan_capacity_reallocation(
         (state, symbol, strategy): shares
         for state, symbol, strategy, shares, _ in books
     }
+    account_state = [
+        {
+            "state_index": state,
+            "symbol": symbol,
+            "strategy": strategy,
+            "held_shares": shares,
+        }
+        for state, symbol, strategy, shares, _ in sorted(
+            books,
+            key=lambda book: (book[1], book[0], book[2]),
+        )
+        if shares > 0
+    ]
     planned: dict[tuple[int, str, str], int] = {}
     restored_values: list[tuple[str, float]] = [
         (signal.symbol, value * scale)
@@ -84,7 +108,6 @@ def _plan_capacity_reallocation(
         if value * scale > _EPSILON
     ]
     plans: list[dict[str, Any]] = []
-    outstanding_total = unmet_total
     buy_order = sorted(
         range(len(buys)),
         key=lambda index: (
@@ -100,6 +123,25 @@ def _plan_capacity_reallocation(
         missing = max(0.0, requested - approved)
         if missing <= _EPSILON:
             continue
+        signal_date = str(signal.signal_date or date_str)
+        target_payload = {
+            "signal_date": signal_date,
+            "target_state": target_state,
+            "target_symbol": signal.symbol,
+            "target_strategy": signal.strategy_name,
+            "target_shares": int(signal.target_shares),
+        }
+        target_identity = _stable_identity(target_payload)
+        if target_identity[:16] in execution.active_target_identities:
+            continue
+        deficit_payload = {
+            **target_payload,
+            "requested_value": round(requested, 8),
+            "approved_value": round(approved, 8),
+            "gross_cap": round(float(receipt["gross_cap"]), 8),
+            "source_account_state": account_state,
+        }
+        deficit_identity = _stable_identity(deficit_payload)
         target_score = _finite_score(score, signal.symbol)
         candidates = sorted(
             (
@@ -110,9 +152,13 @@ def _plan_capacity_reallocation(
                 not in execution.queued_sell_books
                 and symbol != signal.symbol
                 and _finite_score(score, symbol) < target_score
-                and int(execution.sellable_shares.get(
-                    (state, symbol, strategy), 0
-                )) - planned.get((state, symbol, strategy), 0) >= 100
+                and int(
+                    execution.sellable_shares.get(
+                        (state, symbol, strategy), 0
+                    )
+                )
+                - planned.get((state, symbol, strategy), 0)
+                >= 100
             ),
             key=lambda book: (
                 _finite_score(score, book[1]),
@@ -141,33 +187,25 @@ def _plan_capacity_reallocation(
             if source is None:
                 planned = before
                 break
-            lot_value = 100 * price_by_book[source]
-            if lot_value > outstanding_total + _EPSILON and planned == before:
-                planned = before
-                break
             planned[source] = planned.get(source, 0) + 100
             if planned[source] > shares_by_book[source]:
                 planned = before
                 break
+            incremental_release = sum(
+                max(0, planned.get(book, 0) - before.get(book, 0))
+                * price_by_book[book]
+                for book in planned
+            )
+            # Capacity reallocation may release only the target's missing
+            # notional. One unavoidable final lot is allowed only when that lot
+            # immediately makes the full target feasible.
+            if incremental_release > missing + _EPSILON and not _fits_reallocation_target(
+                books, target_buys, planned, cfg, receipt
+            ):
+                planned = before
+                break
         else:
             restored_values.append((signal.symbol, missing))
-            outstanding_total = max(0.0, outstanding_total - missing)
-            deficit_payload = {
-                "date": date_str,
-                "target_state": target_state,
-                "target_symbol": signal.symbol,
-                "target_strategy": signal.strategy_name,
-                "requested_value": round(requested, 8),
-                "approved_value": round(approved, 8),
-                "gross_cap": round(float(receipt["gross_cap"]), 8),
-            }
-            identity = hashlib.sha256(
-                json.dumps(
-                    deficit_payload,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                ).encode("utf-8")
-            ).hexdigest()
             sources = []
             for source, shares in sorted(
                 (
@@ -193,42 +231,37 @@ def _plan_capacity_reallocation(
                 )
             plans.append(
                 {
+                    "decision_date": date_str,
                     **deficit_payload,
-                    "deficit_identity": identity,
-                    "source_account_state": [
-                        {
-                            "state_index": state,
-                            "symbol": symbol,
-                            "strategy": strategy,
-                            "held_shares": shares_by_book[(state, symbol, strategy)],
-                            "sellable_shares": int(
-                                execution.sellable_shares.get(
-                                    (state, symbol, strategy), 0
-                                )
-                            ),
-                        }
-                        for state, symbol, strategy in candidates
-                    ],
+                    "target_identity": target_identity,
+                    "deficit_identity": deficit_identity,
                     "release_sources": sources,
                 }
             )
     actions = []
-    identity_by_source: dict[tuple[int, str, str], str] = {}
+    target_ids_by_source: dict[tuple[int, str, str], set[str]] = {}
+    deficit_ids_by_source: dict[tuple[int, str, str], set[str]] = {}
     for plan in plans:
         for source in plan["release_sources"]:
-            identity_by_source[
-                (
-                    int(source["state_index"]),
-                    str(source["symbol"]),
-                    str(source["strategy"]),
-                )
-            ] = str(plan["deficit_identity"])
+            book = (
+                int(source["state_index"]),
+                str(source["symbol"]),
+                str(source["strategy"]),
+            )
+            target_ids_by_source.setdefault(book, set()).add(
+                str(plan["target_identity"])[:16]
+            )
+            deficit_ids_by_source.setdefault(book, set()).add(
+                str(plan["deficit_identity"])[:16]
+            )
     for book, shares in sorted(
         planned.items(), key=lambda item: (item[0][1], item[0][0], item[0][2])
     ):
         if shares <= 0:
             continue
         state, symbol, strategy = book
+        targets = ",".join(sorted(target_ids_by_source.get(book, ())))
+        deficits = ",".join(sorted(deficit_ids_by_source.get(book, ())))
         actions.append(
             RiskAction(
                 symbol=symbol,
@@ -238,7 +271,7 @@ def _plan_capacity_reallocation(
                 signal_date=date_str,
                 reason="capacity_reallocation",
                 priority=_CAPACITY_REALLOCATION_PRIORITY,
-                extra=f"deficit={identity_by_source.get(book, '')[:16]}",
+                extra=f"targets={targets};deficits={deficits}",
                 state_index=state,
             )
         )

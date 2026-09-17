@@ -17,11 +17,11 @@ from quantfusion.risk.account_risk_capacity import (
     _validated_snapshot,
     account_budget_capacity,
 )
+from quantfusion.risk.account_risk_epoch import consume_account_risk_epoch
 from quantfusion.risk.account_risk_reallocation import (
     ExecutionContext,
     _plan_capacity_reallocation,
 )
-from quantfusion.risk.account_risk_epoch import consume_account_risk_epoch
 from quantfusion.risk.overlay.models import RiskAction
 
 _LEGACY_PLAN = _legacy.plan_account_risk_budget
@@ -290,6 +290,23 @@ def _latest_snapshot(
     )
 
 
+def _active_capacity_target_identities(states: Sequence[Any]) -> frozenset[str]:
+    identities: set[str] = set()
+    for state in states:
+        for signal, _ in state.pending:
+            reason = str(getattr(signal, "reason", ""))
+            if not reason.startswith("capacity_reallocation:"):
+                continue
+            metadata = reason.split(":", 1)[1]
+            for field in metadata.split(";"):
+                key, separator, value = field.partition("=")
+                if separator and key == "targets":
+                    identities.update(
+                        identity for identity in value.split(",") if identity
+                    )
+    return frozenset(identities)
+
+
 def _execution_context(
     states: Sequence[Any],
     date_str: str,
@@ -353,6 +370,7 @@ def _execution_context(
         queued_sell_books=queued,
         rearm_consumption_ready=ready,
         rearm_pending_validation=pending_validation,
+        active_target_identities=_active_capacity_target_identities(states),
     )
 
 

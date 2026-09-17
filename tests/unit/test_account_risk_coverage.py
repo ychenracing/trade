@@ -13,6 +13,10 @@ from quantfusion.risk.account_budget import (
     plan_account_risk_budget,
 )
 from quantfusion.risk.account_risk_epoch import consume_account_risk_epoch
+from quantfusion.risk.account_risk_reallocation import (
+    ExecutionContext,
+    _plan_capacity_reallocation,
+)
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager
 
 
@@ -161,6 +165,108 @@ def test_reallocation_does_not_sell_an_equal_or_better_holding() -> None:
     assert receipt["buy_scale"] < 1.0
     assert actions == []
 
+
+
+def test_reallocation_does_not_correct_preexisting_overcap_beyond_buy_need() -> None:
+    cfg = _cfg(
+        max_total_weight=0.50,
+        slippage=0.0,
+        commission_rate=0.0,
+        stamp_duty=0.0,
+        min_commission=0.0,
+    )
+    books = [(0, "603986", "turtle_breakout", 9_000, 10.0)]
+    buy = Signal(
+        "688072",
+        "atr_channel",
+        "buy",
+        target_shares=2_000,
+        price=10.0,
+        signal_date="2026-01-05",
+    )
+    scores = {"603986": 1.0, "688072": 10.0}
+    receipt, actions = plan_account_risk_budget(
+        100_000.0,
+        100_000.0,
+        cfg,
+        books,
+        [(0, buy, 20_000.0)],
+        scores.__getitem__,
+        date_str="2026-01-05",
+        preserve_strategy_valid_holdings=True,
+        cycle_peak_assets=100_000.0,
+        lifetime_peak_assets=100_000.0,
+        terminal_drawdown=0.28,
+        sellable_shares_by_book={(0, "603986", "turtle_breakout"): 9_000},
+    )
+    assert receipt["gross_before"] > receipt["gross_cap"]
+    assert receipt["buy_scale"] == 0.0
+    assert actions == []
+
+
+def test_pending_capacity_sell_deduplicates_same_target_intent() -> None:
+    cfg = _cfg(
+        max_total_weight=1.0,
+        slippage=0.0,
+        commission_rate=0.0,
+        stamp_duty=0.0,
+        min_commission=0.0,
+    )
+    books = [
+        (0, "603986", "turtle_breakout", 2_000, 10.0),
+        (0, "300308", "dual_ma", 7_000, 10.0),
+    ]
+    buy = Signal(
+        "688072",
+        "atr_channel",
+        "buy",
+        target_shares=2_000,
+        price=10.0,
+        signal_date="2026-01-05",
+    )
+    buys = [(0, buy, 20_000.0)]
+    scores = {"603986": 1.0, "300308": 9.0, "688072": 10.0}
+    receipt, actions = plan_account_risk_budget(
+        100_000.0,
+        100_000.0,
+        cfg,
+        books,
+        buys,
+        scores.__getitem__,
+        date_str="2026-01-05",
+        preserve_strategy_valid_holdings=True,
+        cycle_peak_assets=100_000.0,
+        lifetime_peak_assets=100_000.0,
+        terminal_drawdown=0.28,
+        sellable_shares_by_book={
+            (0, "603986", "turtle_breakout"): 2_000,
+            (0, "300308", "dual_ma"): 7_000,
+        },
+    )
+    assert actions
+    plan = receipt["capacity_reallocation_plans"][0]
+    execution = ExecutionContext(
+        sellable_shares={
+            (0, "603986", "turtle_breakout"): 2_000,
+            (0, "300308", "dual_ma"): 7_000,
+        },
+        queued_sell_books=frozenset(),
+        rearm_consumption_ready=True,
+        rearm_pending_validation=False,
+        active_target_identities=frozenset({str(plan["target_identity"])[:16]}),
+    )
+    repeated_actions, repeated_plans = _plan_capacity_reallocation(
+        books,
+        buys,
+        receipt["buy_scales"],
+        scores.__getitem__,
+        cfg,
+        receipt,
+        date_str="2026-01-06",
+        execution=execution,
+    )
+    assert repeated_actions == []
+    assert repeated_plans == []
 
 def test_manager_publishes_distinct_peaks_after_cycle_rearm() -> None:
     policy = replace(PortfolioPolicy(), rearm_trading_days=1)
