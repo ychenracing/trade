@@ -13,6 +13,7 @@ from quantfusion.engine.ensemble import EnsembleBacktestEngine, EnsembleSleeveBa
 from quantfusion.engine.runtime import ReplayRuntimePolicy
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.risk.managers import RiskManager
+from quantfusion.risk.account_budget_observer import observe_account_risk_budget
 
 _EnsembleBacktestEngine = EnsembleBacktestEngine
 _EnsembleSleeveBacktestEngine = EnsembleSleeveBacktestEngine
@@ -145,6 +146,34 @@ class BacktestEngine(
         self._new_candidate_intent_streak: dict[str, int] = {}
         self._tail_guard_active = False
         self._tail_guard_policies: dict[str, PortfolioPolicy] = {}
+
+    def _apply_account_risk_budget(
+        self,
+        states: list[Any],
+        date: Any,
+        assets: float,
+        peak: float,
+        events: list[dict[str, Any]],
+        *,
+        shock_floor: float = 0.0,
+        preserve_strategy_valid_holdings: bool = False,
+        risk_alert_active: bool | None = None,
+        portfolio_evidence_buy_symbols: set[str] | None = None,
+    ) -> None:
+        """Observe the combined-account AB5 budget without modifying execution."""
+        observe_account_risk_budget(
+            states,
+            date,
+            assets,
+            peak,
+            self.cfg,
+            self._overlay_allocation_score(states, date),
+            events,
+            shock_floor=shock_floor,
+            preserve_strategy_valid_holdings=preserve_strategy_valid_holdings,
+            risk_alert_active=risk_alert_active,
+            portfolio_evidence_buy_symbols=portfolio_evidence_buy_symbols,
+        )
 
     def _effective_policy(self, tradable_count: int) -> PortfolioPolicy:
         """Tighten drawdown gates smoothly as diversification approaches one."""
