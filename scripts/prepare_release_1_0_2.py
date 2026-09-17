@@ -1,0 +1,98 @@
+"""Prepare the bounded 1.0.2 release metadata update."""
+from __future__ import annotations
+
+from pathlib import Path
+
+
+def replace_once(path: str, old: str, new: str) -> None:
+    target = Path(path)
+    text = target.read_text(encoding="utf-8")
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(
+            f"{path}: expected one occurrence of {old!r}, found {count}"
+        )
+    target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+replace_once(
+    "quantfusion/__init__.py",
+    '__version__ = "1.0.1"',
+    '__version__ = "1.0.2"',
+)
+replace_once(
+    "README.md",
+    "当前版本：`1.0.1`。",
+    "当前版本：`1.0.2`。",
+)
+
+contract = Path("tests/contract/test_repository_hygiene.py")
+contract_text = contract.read_text(encoding="utf-8")
+if contract_text.count('"1.0.1"') != 2:
+    raise SystemExit(
+        "unexpected 1.0.1 assertion count in repository hygiene contract"
+    )
+contract.write_text(
+    contract_text.replace('"1.0.1"', '"1.0.2"'),
+    encoding="utf-8",
+)
+
+release = Path("docs/RELEASE.md")
+current = release.read_text(encoding="utf-8")
+marker = "## 量化特性\n"
+if current.count(marker) != 1:
+    raise SystemExit(
+        "docs/RELEASE.md does not contain one stable product-details marker"
+    )
+suffix = marker + current.split(marker, 1)[1]
+prefix = """# Quant Fusion 1.0.2 发布说明
+
+## 产品定位
+
+Quant Fusion 是面向 A 股科技、算力硬件、光通信和半导体产业链的日线量化研究与人工决策支持系统。`main` 是唯一维护入口，产品版本为 `1.0.2`，版本标签固定对应发布源码提交。它不连接券商、不自动下单、不托管账户，也不保证未来收益。
+
+## 相比 1.0.1 的主要变化
+
+`1.0.2` 在 `1.0.1` 的研究可复现性和发布身份修订基础上，增加生产可靠性、弱市机会发现和架构边界增强，并清理旧接口与兼容路径。固定 17 股生产池、既定风险阈值、交易费用、收盘后决策到下一可交易日执行、冻结黄金指标和既有正式 958 场景证据均未被改写。
+
+### 新增与增强
+
+- **弱市新兴龙头发现增强。** 保留成熟龙头原有资格与相对顺序，只在既有单个新兴龙头位置使用五类时点可见质量证据改进候选：20 日和 60 日风险调整动量、60 日相对强度、60 日突破位置与成交量确认。证据不完整时回退到原路径，不新增用户参数或拟合阈值。
+- **统一输入健康与失败关闭语义。** 数据、市场状态、预热和分配降级统一使用 `READY / DEGRADED / INVALID`，区分合法空结果、证据不足和无效输入；弱策略具有明确的启用、停用和清理生命周期。
+- **因果特征契约。** 新增特征名称、决策时点、所需历史、来源列和健康状态契约，拒绝未来数据、重复或无序时间索引及缺失来源列；历史不足只标记降级，不伪造可用证据。
+- **生产路由职责收敛。** 龙头选择与缓存、空闲现金迁移与风险基准重建、买入抑制与清仓队列去重分别归明确组件所有；补齐现金、持仓、挂单、风险峰值和策略生命周期守恒验证。
+- **生产与冻结研究边界分离。** 生产回放只接受通用运行策略；历史 C6 干预身份和冻结诊断映射收敛到研究边界，避免生产引擎继续累积阶段化分支。
+- **证据导航增强。** 新增 `artifacts/INDEX.json`，明确区分当前生产证据、审计诊断和历史拒绝结果；目录位置本身不能把失败工件提升为 canonical。
+
+### 用户可见接口变化
+
+- 回测日期参数统一为 `--start-date/--end-date`，删除旧 `--start/--end` 别名、固定旧窗口和 argparse 隐式缩写兼容。
+- 历史行情入口统一为供应商中立的 `python -m scripts.download_market_data`，删除旧 `download_eastmoney_qfq` 兼容入口，并统一使用现有提供方回退和因果预热路径。
+- 日扫删除无实际作用的 `--allow-stale` 参数；交易日覆盖、提供方新鲜度和失败关闭校验保持有效。
+
+### 经济与研究证据
+
+- 固定 1、3、5、13、17 股冻结回归在收益、回撤、风险调整指标、成交和经济指纹上保持精确一致。
+- 新兴龙头能力的长窗口研究中，Pool F 的累计收益由约 `22.55%` 提高到 `42.68%`，成交记录由 `296` 降至 `238`，建模换手率由约 `8.99` 降至 `8.01`；Pool G 收益近似持平，同时成交、换手和持仓集中度下降。这些是指定研究股票池与窗口的证据，不代表未来收益保证。
+- 动态候选股票池研究未满足预注册的短周期和分段稳定性条件，已作为 rejected evidence 保留，没有进入生产，也没有改变固定 Core17。
+
+### 相对 1.0.1 未改变
+
+- 固定 17 股生产股票池及已发布主池经济结果；
+- 账户风险预算、策略退出和组合风险阈值；
+- 交易费用、滑点、T+1、涨跌停、整手和成交容量模型；
+- 正式场景、seed、黄金指标及 canonical evidence identity；
+- 不连接券商、不自动下单、只提供人工决策支持的产品边界。
+
+"""
+release.write_text(prefix + suffix, encoding="utf-8")
+
+expected = {
+    "quantfusion/__init__.py": '__version__ = "1.0.2"',
+    "README.md": "当前版本：`1.0.2`。",
+    "docs/RELEASE.md": "# Quant Fusion 1.0.2 发布说明",
+    "tests/contract/test_repository_hygiene.py": '"1.0.2"',
+}
+for path, token in expected.items():
+    if token not in Path(path).read_text(encoding="utf-8"):
+        raise SystemExit(f"{path}: missing expected release token")
