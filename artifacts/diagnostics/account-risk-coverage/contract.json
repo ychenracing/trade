@@ -1,0 +1,176 @@
+{
+  "kind": "core17_first_account_risk_coverage_acceptance_contract",
+  "schema_version": 1,
+  "status": "FROZEN_BEFORE_ECONOMIC_RUN",
+  "frozen_at": "2026-09-17",
+  "authority": {
+    "task": "Trade Core17-First account risk coverage integration",
+    "repository": "ychenracing/trade",
+    "scope": "One bounded limited-protection candidate; no second candidate, parameter search, stock/date/scenario exception, live trading or broker order placement.",
+    "product_position": "Core17-first, broad but non-universal generalization"
+  },
+  "baseline": {
+    "main_revision": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+    "main_tree": "f5277ef281ad6baee60590a931f474be942f22dd",
+    "incumbent": "current complete active AB5",
+    "core17_fact_source": {
+      "path": "quantfusion/config/universe.py",
+      "git_blob": "ce7af1ad901d2ff1ac5f0ba81ee4cfaa84a60353"
+    },
+    "pool_fact_source": {
+      "path": "quantfusion/config/research_universes.py",
+      "git_blob": "985a1962ae0bd1dafc6ccc94d69599c510bf0a7b"
+    }
+  },
+  "candidate": {
+    "name_for_research_only": "limited-protection",
+    "source_pr": 113,
+    "source_head": "ea3e1ba2ddc7e89faa44bdee9aebe6b9fb7c06e9",
+    "patch_path": "artifacts/diagnostics/account-budget-convergence/limited-protection-candidate.patch",
+    "patch_git_blob": "b5acdde4bd66331e593d8dbc03715312bc12c779",
+    "policy": {
+      "retain": [
+        "account risk capacity and budget calculation",
+        "budget/stress/gap/risk-state observations",
+        "new-risk admission and buy sizing constraints",
+        "confirmed-shock held-risk action",
+        "account-risk-alert held-risk action",
+        "existing concentration, strategy exit, ATR exit, portfolio lock and disaster protection",
+        "close-known decision and next-tradable-day execution",
+        "T+1, lot, fees, slippage, ADV, price limits, account continuity and fail-closed"
+      ],
+      "remove": [
+        "ordinary held-position proportional trimming caused only by small account-budget deviation",
+        "the directly related trim-and-rebuy loop"
+      ]
+    },
+    "forbidden_alternatives": [
+      "observation-only production",
+      "partial AB5 strength",
+      "winner-last",
+      "recovery or hysteresis",
+      "ATR delay",
+      "new winner lifecycle",
+      "new lot-allocation variant",
+      "AB6",
+      "AB7",
+      "second economic candidate",
+      "parameter grid",
+      "stock/date/scenario exception"
+    ]
+  },
+  "formal_inputs": {
+    "engine": "ProductionReplayEngine",
+    "initial_capital": 2000000.0,
+    "indicator_state": "warm",
+    "costs": {
+      "slippage": 0.001,
+      "commission_rate": 0.00025,
+      "stamp_duty": 0.0005,
+      "min_commission": 5.0,
+      "max_order_adv_ratio": 0.005
+    },
+    "core17": {
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "market_tree": "e769818ab0d00ce56d05cc9d176999dc72b89046",
+      "market_manifest_path": "data/market/manifest.json",
+      "market_manifest_git_blob": "4cd8eb9301edcf4a6f7e09ca9ac6daee9a2ed41d",
+      "calendar_path": "data/trading_calendar.json",
+      "calendar_git_blob": "411eefd9bea778ecae5e8088cc685a4504b31867",
+      "existing_data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975"
+    },
+    "pools_a_j": {
+      "start_date": "2023-01-01",
+      "end_date": "2026-07-20",
+      "pools": ["pool_a", "pool_b", "pool_c", "pool_d", "pool_e", "pool_f", "pool_g", "pool_h", "pool_i", "pool_j"],
+      "input_identity_path": "artifacts/diagnostics/account-risk-coverage/pool-input-identity.json",
+      "requirement": "The input identity must be committed and frozen before any Pool A-J economic replay. It must list actual members, pre-listing N/A entries, exact observed window, calendar/index identities and every market/regime file SHA-256."
+    },
+    "stress_958": {
+      "start_date": "2025-04-01",
+      "end_date": "2026-07-20",
+      "scenario_count": 958,
+      "families": {
+        "prefix": 17,
+        "leave_one_out": 17,
+        "add_one": 24,
+        "random_subset": 750,
+        "permutation": 150
+      },
+      "seeds": [20260807, 20260817, 20260827],
+      "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880"
+    }
+  },
+  "acceptance": {
+    "core17": {
+      "wealth_ratio_min": 1.10,
+      "candidate_max_drawdown_absolute_max": 0.19,
+      "candidate_max_drawdown_degradation_max": 0.01,
+      "date_symbol_side_bucket_reduction_min": 0.20,
+      "active_trading_day_reduction_min": 0.15,
+      "turnover_over_average_equity_not_higher": true,
+      "sleeve_fills_must_decline": true,
+      "correctness_required": true
+    },
+    "pools_a_j": {
+      "per_pool_acceptable": {
+        "wealth_ratio_min": 0.90,
+        "max_drawdown_degradation_max": 0.01,
+        "max_drawdown_absolute_max": 0.22,
+        "date_symbol_side_bucket_ratio_max": 1.05,
+        "correctness_required": true
+      },
+      "per_pool_strictly_improved": {
+        "wealth_ratio_strictly_above": 1.0,
+        "max_drawdown_degradation_max": 0.01,
+        "date_symbol_side_bucket_ratio_max": 1.0
+      },
+      "overall": {
+        "acceptable_count_min": 7,
+        "strictly_improved_count_min": 6,
+        "wealth_ratio_median_min": 1.0,
+        "wealth_ratio_q25_min": 0.90,
+        "non_increasing_bucket_count_min": 7,
+        "bucket_ratio_median_max": 0.90
+      },
+      "catastrophic_rejection": {
+        "wealth_ratio_below": 0.60,
+        "max_drawdown_degradation_above": 0.03,
+        "max_drawdown_absolute_above": 0.25,
+        "any_correctness_failure": true
+      }
+    },
+    "stress_958": {
+      "each_family_wealth_ratio_median_min": 0.90,
+      "all_scenarios_wealth_ratio_at_least_0_80_fraction_min": 0.70,
+      "all_scenarios_wealth_ratio_below_0_60_fraction_max": 0.10,
+      "random_subset_mdd_p90_degradation_max": 0.02,
+      "random_subset_mdd_p90_absolute_max": 0.22,
+      "random_subset_mdd_worst_absolute_max": 0.25,
+      "complete_unique_finite_and_correct": true
+    }
+  },
+  "execution_order": [
+    "restore candidate identity and affected call chain",
+    "reproduce historical limited-protection Core17 identity",
+    "run formal Core17 gate",
+    "only after Core17 pass run Pool A-J",
+    "only after Pool A-J pass run one complete stable 958",
+    "only after the first three layers pass run cost/cross-window review",
+    "only after all economic gates pass perform production integration, golden updates, final validation and merge"
+  ],
+  "failure_boundaries": {
+    "core17_failure": "Stop; do not run Pool A-J or 958; do not change candidate or thresholds; preserve evidence and close PR.",
+    "pool_failure": "Stop; do not run 958; do not add pool-specific rules; preserve evidence and close PR.",
+    "stress_958_failure": "Stop; do not create a second candidate or lower the stress gates; preserve evidence and close PR."
+  },
+  "immutability": {
+    "threshold_adjustment_after_results": false,
+    "candidate_adjustment_after_results": false,
+    "core17_member_or_order_change": false,
+    "pool_member_or_order_change": false,
+    "scenario_seed_metric_or_cost_change": false,
+    "golden_update_before_candidate_acceptance": false
+  }
+}
