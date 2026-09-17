@@ -1,0 +1,78 @@
+{
+  "candidate_source_sha": "b540a9bbcae32f923e233b6a3933ce260c91cede",
+  "candidate_source_tree": "514c3a597383a2d31e98ba654e63d18f3ad6cfda",
+  "files": [
+    {
+      "length": 1181,
+      "name": "SHA256SUMS",
+      "sha256": "6bf6d9fd99dc0adca2b5495f1d587b14f8ad6625a826cadfbf678204a67f80c7"
+    },
+    {
+      "length": 2071,
+      "name": "candidate-core17.json",
+      "sha256": "4b2fff265647aa1238fbdcbf0fab59eba9f538049825aff890931cecb36f8ea6"
+    },
+    {
+      "length": 2335,
+      "name": "candidate-core17.log",
+      "sha256": "493987481db0227b0ee0b3ba8b2faabceb2363ae67448259708d12773cb6994e"
+    },
+    {
+      "length": 14326,
+      "name": "candidate-equity-curve.csv",
+      "sha256": "5b07d4ed34f4b2ef75cd64aab5cf9ff4c9aaba4d753ccf7ffc7638b1fa2757b3"
+    },
+    {
+      "length": 308261,
+      "name": "candidate-trades.jsonl",
+      "sha256": "28ae9318c8a95d28de8cb8304ba6da5a839aba4812e16350c9eb8d6b9ae29c2e"
+    },
+    {
+      "length": 4803,
+      "name": "core17-gate.json",
+      "sha256": "c62304b44243125d94015234ede0829c0bc1b1fbd449ae005c1ff4626c9e5628"
+    },
+    {
+      "length": 308,
+      "name": "development-checks.log",
+      "sha256": "ee6d1f5267c2db7cecb6bc124edb2e305f6041b438ae9d2bdfdcc8b04236492e"
+    },
+    {
+      "length": 1351,
+      "name": "incumbent-core17.json",
+      "sha256": "417ce283c8cd008871a1cedd5f3c27c26e4cefa443ce8ba07ea49fb5ea3fa83f"
+    },
+    {
+      "length": 1714,
+      "name": "incumbent-core17.log",
+      "sha256": "7e1b77e22bf4c2ac795bbcc1ebcc314c3dc9b3dd45bef0e5e457647e01f86cd0"
+    },
+    {
+      "length": 14367,
+      "name": "incumbent-equity-curve.csv",
+      "sha256": "c3d41983194df951f7bda3a4ae381f2373f921771e1e9d55be1bf196e33b3ec3"
+    },
+    {
+      "length": 308998,
+      "name": "incumbent-trades.jsonl",
+      "sha256": "8a2517ce860af36531ae00192960ad17e3d4b407abf0eb6a156a5b547b9a27d4"
+    },
+    {
+      "length": 5745,
+      "name": "preregistration.json",
+      "sha256": "b87e36200255cc86ddb84400cf24577cda17fd84b2cbdba784d6483fdd6ba120"
+    },
+    {
+      "length": 470,
+      "name": "source-identity.json",
+      "sha256": "d183f6917c5cc1a640b42e9c6f4b4493370225a18afd9be5321f3441a8701076"
+    },
+    {
+      "length": 1370,
+      "name": "third-preflight-receipt.json",
+      "sha256": "77c5adab5e9a5bc83d8a5e77caa4d72c232f92ada3ed155f7a2b6d8f3b716bdf"
+    }
+  ],
+  "gate_commit": "c396bfdedd135bee22ad1639ded55f3e19cc44ee",
+  "workflow_run_id": "35230353642"
+}

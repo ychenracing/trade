@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "contract": "dual_peak_account_risk_epoch_and_opportunity_driven_minimal_capacity_reallocation",
+  "status": "FROZEN_PRE_ECONOMIC",
+  "frozen_date": "2026-09-17",
+  "base": {
+    "sha": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+    "tree": "f5277ef281ad6baee60590a931f474be942f22dd"
+  },
+  "candidate": {
+    "source_sha": "b540a9bbcae32f923e233b6a3933ce260c91cede",
+    "source_tree": "514c3a597383a2d31e98ba654e63d18f3ad6cfda",
+    "branch": "agent/dual-peak-account-risk-coverage",
+    "changed_paths": [
+      "quantfusion/risk/account_budget.py",
+      "quantfusion/risk/account_budget_legacy.py",
+      "quantfusion/risk/account_risk_capacity.py",
+      "quantfusion/risk/account_risk_coverage.py",
+      "quantfusion/risk/account_risk_epoch.py",
+      "quantfusion/risk/account_risk_reallocation.py",
+      "quantfusion/risk/managers.py",
+      "quantfusion/risk/managers_legacy.py",
+      "tests/unit/test_account_risk_coverage.py"
+    ],
+    "economic_design": {
+      "cycle_floor_fraction": 0.82,
+      "terminal_drawdown": 0.28,
+      "ordinary_capacity_is_admission_only": true,
+      "ordinary_trim_without_qualified_buy": false,
+      "release_source_must_have_strictly_lower_allocation_score": true,
+      "whole_lot_minimal_release": true,
+      "planned_sell_credit": false,
+      "second_candidate_allowed": false,
+      "parameter_search_allowed": false
+    }
+  },
+  "engineering_preflight_history": [
+    {
+      "workflow_run_id": 35226893772,
+      "gate_commit": "14c40cd34e9887f7c3be7f58584bffdeb0d19cb8",
+      "source_sha": "e9d89a9ee0c835428b2f99454f0a133003c004ea",
+      "source_tree": "71fb69f129dc91826f391c901c2cf2b293551bf8",
+      "result": "FAILED_BEFORE_ECONOMIC_REPLAY",
+      "reason": "Ruff scope included preserved legacy blobs and reported formatting plus one loop-closure warning in new code",
+      "artifact_id": 10499487031,
+      "artifact_zip_length": 3212,
+      "artifact_zip_sha256": "33e58f2130814df8173347b69c94eeb739e983bd9dee0be42206628dc5d7b107",
+      "economic_result_exposed": false
+    },
+    {
+      "workflow_run_id": 35227858643,
+      "gate_commit": "0faedac8353a89d893717cad7c71dec4c0a11bc6",
+      "source_sha": "f8d65ee8d46b9110e64824376aeb2be74016e96c",
+      "source_tree": "82e08c8d7cbbda0ed5dc57a0281ffeb2d2f27495",
+      "result": "FAILED_BEFORE_ECONOMIC_REPLAY",
+      "reason": "Targeted test required an explicit float narrowing for the gross_cap assertion under Pyright",
+      "artifact_id": 10499901995,
+      "artifact_zip_length": 4089,
+      "artifact_zip_sha256": "be84415ae768e9c878343b68062395911448e9479de9529d11ad751259a27966",
+      "economic_result_exposed": false
+    }
+  ],
+  "historical_stop": {
+    "pull_request": 116,
+    "conclusion": "STOP",
+    "evidence_head": "75924bed1661f5087ec0d6fcc7ea6872a0e40d4a",
+    "formal_source_head": "35b2423778e936f9e6d594617350e0c4bd53d0bf",
+    "artifact_id": 10495490488,
+    "artifact_sha256": "a72694c9222326b78512bd05ad1652b151a78b8d9c4244209272950aa5e3359e",
+    "receipt_path": "artifacts/diagnostics/account-risk-coverage/root-cause-stop.json",
+    "receipt_git_blob": "4f731b9ba8244e38a57a28a5244bbcb6f85f641b"
+  },
+  "inputs": {
+    "repository_data_tree": "7c2669b5dc6997f548b44c0fc4db5b9998f95050",
+    "core17_universe_blob": "24be52e302160095988ae11254446ca79574d4f4",
+    "named_pool_blob": "0d5747e52eb270f12a5b60d03a10b9df95540197",
+    "market_dir": "data/market",
+    "regime_dir": "data/regime",
+    "indicator_state": "warm",
+    "initial_capital": 2000000.0,
+    "seed": 20240318,
+    "costs": {
+      "commission_rate": 0.00025,
+      "stamp_duty": 0.0005,
+      "slippage": 0.001,
+      "min_commission": 5.0
+    },
+    "windows": {
+      "core17_and_common_pool": ["2025-04-01", "2026-07-20"],
+      "long": ["2023-01-01", "2026-07-20"]
+    },
+    "stress_families": {
+      "prefix": 17,
+      "leave_one_out": 17,
+      "add_one": 24,
+      "random_subset": 750,
+      "permutation": 150,
+      "total": 958
+    }
+  },
+  "metric_definitions": {
+    "wealth_multiple": "1 + total_return, including principal",
+    "maximum_drawdown": "absolute value of replay max_drawdown",
+    "operation_bucket": "unique date-symbol-side bucket",
+    "active_fill_day": "unique date with an actual sleeve fill",
+    "turnover_over_average_equity": "sum absolute gross traded value divided by mean replay assets",
+    "fees": "commission plus stamp duty",
+    "paired_ratio": "candidate metric divided by incumbent metric using identical inputs"
+  },
+  "core17_hard_gate": {
+    "window": ["2025-04-01", "2026-07-20"],
+    "wealth_ratio_min": 1.05,
+    "mdd_degradation_max_absolute": 0.01,
+    "candidate_mdd_max_absolute": 0.19,
+    "bucket_reduction_min": 0.15,
+    "active_fill_day_reduction_min": 0.10,
+    "turnover_ratio_max": 1.0,
+    "sleeve_fills_must_decrease": true,
+    "fees_must_not_increase_unexplained": true,
+    "cash_position_equity_fee_conservation": true,
+    "t_plus_one": true,
+    "planned_sell_credit": false,
+    "future_data": false,
+    "fail_closed_on_incomplete_state": true
+  },
+  "economic_sequence": [
+    "core17",
+    "pool_a_to_j_common_window",
+    "core17_and_pool_a_to_j_long_window",
+    "formal_stress_958",
+    "cost_and_adjacent_window_review",
+    "production_fusion",
+    "final_engineering_verification",
+    "merge_main"
+  ],
+  "failure_policy": {
+    "stop_on_first_failed_economic_layer": true,
+    "modify_formula_after_result": false,
+    "modify_threshold_after_result": false,
+    "add_candidate_after_result": false,
+    "pool_symbol_or_date_exception": false,
+    "update_golden_on_failure": false,
+    "merge_on_failure": false,
+    "main_must_remain_unchanged": true,
+    "close_pull_request_on_failure": true
+  }
+}

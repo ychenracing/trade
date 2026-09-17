@@ -1,0 +1,15 @@
+{
+  "artifact_id": 10501455305,
+  "artifact_length": 109062,
+  "artifact_name": "dual-peak-account-risk-core17-v2-35230353642",
+  "artifact_sha256": "4ac5a79ec754644281ed25094a355a6f59a004baeda6a87ec7c60d050d1869b3",
+  "candidate_source_sha": "b540a9bbcae32f923e233b6a3933ce260c91cede",
+  "candidate_source_tree": "514c3a597383a2d31e98ba654e63d18f3ad6cfda",
+  "decision": "FAIL",
+  "gate_commit": "c396bfdedd135bee22ad1639ded55f3e19cc44ee",
+  "internal_sha256sums_verified": true,
+  "next_layer_allowed": false,
+  "schema_version": 1,
+  "status": "ARCHIVED_VERIFIED_CORE17_STOP",
+  "workflow_run_id": 35230353642
+}
