@@ -1,0 +1,250 @@
+name: Account risk coverage Pool input
+
+on:
+  push:
+    branches:
+      - agent/core17-account-risk-coverage
+    paths:
+      - .github/workflows/account-risk-coverage-pool-input.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-risk-coverage-pool-input
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout frozen candidate branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+
+      - name: Download complete Pool A-J market snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          SNAPSHOT_ROOT="$RUNNER_TEMP/pool-input"
+          mkdir -p "$SNAPSHOT_ROOT/market" "$SNAPSHOT_ROOT/regime"
+          python -m scripts.download_market_data \
+            --all-pools \
+            --start-date 2023-01-01 \
+            --end-date 2026-07-20 \
+            --output "$SNAPSHOT_ROOT/market" \
+            | tee "$SNAPSHOT_ROOT/download.log"
+          cp data/regime/000300.csv "$SNAPSHOT_ROOT/regime/000300.csv"
+          cp data/regime/000682.csv "$SNAPSHOT_ROOT/regime/000682.csv"
+          cp data/trading_calendar.json "$SNAPSHOT_ROOT/trading_calendar.json"
+          echo "SNAPSHOT_ROOT=$SNAPSHOT_ROOT" >> "$GITHUB_ENV"
+
+      - name: Validate and write frozen input identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          import pandas as pd
+
+          from quantfusion.config.research_universes import (
+              RESEARCH_FIRST_TRADING_DATES,
+              UNIVERSE_POOLS,
+              symbols_for_pool,
+          )
+          from quantfusion.data.sessions import load_calendar
+          from scripts.compare_universes import (
+              active_symbols_for_pool,
+              validate_market_data_directory,
+              validate_regime_data_directory,
+          )
+
+          root = Path(os.environ["SNAPSHOT_ROOT"])
+          market = root / "market"
+          regime = root / "regime"
+          pools = tuple(UNIVERSE_POOLS)
+          start_date = "2023-01-01"
+          end_date = "2026-07-20"
+
+          validate_market_data_directory(market, pools, end_date=end_date)
+          regime_coverage = validate_regime_data_directory(
+              regime,
+              start_date=start_date,
+              end_date=end_date,
+          )
+          manifest_path = market / "manifest.json"
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          entries = manifest["symbols"]
+
+          pool_records = {}
+          for pool_name in pools:
+              configured = symbols_for_pool(pool_name)
+              active = active_symbols_for_pool(pool_name, market, end_date=end_date)
+              members = {}
+              for code, name in configured.items():
+                  entry = entries[code]
+                  status = str(entry["status"])
+                  first_observation = None
+                  last_observation = None
+                  if code in active:
+                      dates = pd.DatetimeIndex(
+                          pd.to_datetime(
+                              pd.read_csv(market / f"{code}.csv", usecols=["date"])["date"],
+                              errors="raise",
+                          )
+                      )
+                      current = dates[
+                          (dates >= pd.Timestamp(start_date))
+                          & (dates <= pd.Timestamp(end_date))
+                      ]
+                      if current.empty:
+                          raise ValueError(f"{pool_name}:{code} has no in-window data")
+                      first_observation = pd.Timestamp(current[0]).strftime("%Y-%m-%d")
+                      last_observation = pd.Timestamp(current[-1]).strftime("%Y-%m-%d")
+                      known_first = RESEARCH_FIRST_TRADING_DATES.get(code)
+                      if known_first and pd.Timestamp(known_first) > pd.Timestamp(start_date):
+                          status = "late_listing"
+                      else:
+                          status = "observed"
+                  members[code] = {
+                      "name": name,
+                      "status": status,
+                      "first_trading_date": RESEARCH_FIRST_TRADING_DATES.get(code),
+                      "first_observation": first_observation,
+                      "last_observation": last_observation,
+                      "market_file_sha256": entry.get("sha256"),
+                  }
+              pool_records[pool_name] = {
+                  "configured_members": list(configured),
+                  "active_members": list(active),
+                  "members": members,
+              }
+
+          market_files = {}
+          for code, entry in sorted(entries.items()):
+              record = dict(entry)
+              path = market / f"{code}.csv"
+              if path.is_file():
+                  actual_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+                  if actual_sha != record.get("sha256"):
+                      raise ValueError(f"market sha256 mismatch for {code}")
+                  record["bytes"] = path.stat().st_size
+              market_files[code] = record
+
+          regime_files = {}
+          for path in sorted(regime.glob("*.csv")):
+              frame = pd.read_csv(path, usecols=["date"])
+              dates = pd.DatetimeIndex(pd.to_datetime(frame["date"], errors="raise"))
+              regime_files[path.stem] = {
+                  "bytes": path.stat().st_size,
+                  "rows": len(frame),
+                  "first_date": pd.Timestamp(dates[0]).strftime("%Y-%m-%d"),
+                  "last_date": pd.Timestamp(dates[-1]).strftime("%Y-%m-%d"),
+                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+              }
+
+          calendar_path = root / "trading_calendar.json"
+          calendar = load_calendar(calendar_path)
+          identity = {
+              "kind": "account_risk_coverage_pool_input_identity",
+              "schema_version": 1,
+              "status": "FROZEN_BEFORE_POOL_ECONOMIC_REPLAY",
+              "source": {
+                  "workflow_head": os.environ["GITHUB_SHA"],
+                  "production_base": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+                  "production_tree": "f5277ef281ad6baee60590a931f474be942f22dd",
+                  "candidate_source_head": "ea3e1ba2ddc7e89faa44bdee9aebe6b9fb7c06e9",
+                  "candidate_patch_git_blob": "b5acdde4bd66331e593d8dbc03715312bc12c779",
+                  "research_universes_git_blob": subprocess.check_output(
+                      ["git", "rev-parse", "HEAD:quantfusion/config/research_universes.py"],
+                      text=True,
+                  ).strip(),
+                  "core17_git_blob": subprocess.check_output(
+                      ["git", "rev-parse", "HEAD:quantfusion/config/universe.py"],
+                      text=True,
+                  ).strip(),
+              },
+              "window": {
+                  "requested_start": start_date,
+                  "requested_end": end_date,
+                  "download_start_with_warmup": manifest["requested_start"],
+                  "warmup_calendar_days": manifest["warmup_calendar_days"],
+              },
+              "market": {
+                  "provider": manifest["provider"],
+                  "adjustment": manifest["adjustment"],
+                  "volume_unit": manifest["volume_unit"],
+                  "complete": manifest["complete"],
+                  "requested_symbols": manifest["requested_symbols"],
+                  "downloaded_symbols": manifest["downloaded_symbols"],
+                  "not_applicable_symbols": manifest["not_applicable_symbols"],
+                  "missing_symbols": manifest["missing_symbols"],
+                  "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+                  "files": market_files,
+              },
+              "regime": {
+                  "validation": regime_coverage,
+                  "files": regime_files,
+              },
+              "calendar": {
+                  "market": "SSE_SZSE_A_SHARES",
+                  "timezone": "Asia/Shanghai",
+                  "coverage_start": calendar.coverage_start,
+                  "coverage_end": calendar.coverage_end,
+                  "sha256": calendar.sha256,
+                  "git_blob": subprocess.check_output(
+                      ["git", "rev-parse", "HEAD:data/trading_calendar.json"],
+                      text=True,
+                  ).strip(),
+              },
+              "pools": pool_records,
+              "economic_results_present": False,
+          }
+          output = root / "pool-input-identity.json"
+          output.write_text(
+              json.dumps(identity, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
+              + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps({
+              "pool_count": len(pool_records),
+              "market_file_count": len(market_files),
+              "regime_file_count": len(regime_files),
+              "identity_sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
+              "economic_results_present": False,
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Build snapshot checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$SNAPSHOT_ROOT"
+          find . -type f ! -name SHA256SUMS -printf '%P\n' \
+            | sort \
+            | while read -r path; do sha256sum "$path"; done > SHA256SUMS
+
+      - name: Upload frozen Pool input snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-risk-coverage-pool-input-${{ github.sha }}
+          path: ${{ runner.temp }}/pool-input
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
