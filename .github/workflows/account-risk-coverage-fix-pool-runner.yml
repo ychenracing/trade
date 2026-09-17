@@ -1,0 +1,65 @@
+name: Account risk coverage fix Pool runner
+
+on:
+  push:
+    branches:
+      - agent/core17-account-risk-coverage
+    paths:
+      - .github/workflows/account-risk-coverage-fix-pool-runner.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: account-risk-coverage-fix-pool-runner
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout candidate branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/core17-account-risk-coverage
+
+      - name: Apply exact harness-only correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path(".github/workflows/account-risk-coverage-pools.yml")
+          text = path.read_text(encoding="utf-8")
+
+          path_anchor = "      - .github/workflows/account-risk-coverage-pools.yml\n"
+          trigger_line = (
+              "      - artifacts/diagnostics/account-risk-coverage/pool-run.trigger\n"
+          )
+          if text.count(path_anchor) != 1:
+              raise SystemExit("unexpected Pool workflow path anchor")
+          if trigger_line in text:
+              raise SystemExit("Pool trigger path already present")
+          text = text.replace(path_anchor, path_anchor + trigger_line, 1)
+
+          old_runner = '              python "$RUNNER" ' + "\\" + "\n"
+          new_runner = (
+              '              PYTHONPATH="$root" python "$RUNNER" '
+              + "\\"
+              + "\n"
+          )
+          if text.count(old_runner) != 1:
+              raise SystemExit("unexpected Pool runner invocation")
+          text = text.replace(old_runner, new_runner, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+          git diff --check
+          git diff -- .github/workflows/account-risk-coverage-pools.yml
+          git add .github/workflows/account-risk-coverage-pools.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "ci: bind Pool replay subprocesses to exact worktrees"
+          git push origin HEAD:agent/core17-account-risk-coverage
