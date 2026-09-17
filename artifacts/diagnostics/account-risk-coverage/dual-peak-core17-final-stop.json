@@ -1,0 +1,119 @@
+{
+  "artifact": {
+    "core17_gate_sha256": "c62304b44243125d94015234ede0829c0bc1b1fbd449ae005c1ff4626c9e5628",
+    "id": 10501455305,
+    "incumbent_identity_reproduced": true,
+    "internal_sha256sums_match": true,
+    "manifest_sha256": "16873830525981a32e3bc5c2db388f0c36b4fb874fed99056511ce05de84053f",
+    "name": "dual-peak-account-risk-core17-v2-35230353642",
+    "source_identity_matches": true,
+    "zip_integrity": true,
+    "zip_length": 109062,
+    "zip_sha256": "4ac5a79ec754644281ed25094a355a6f59a004baeda6a87ec7c60d050d1869b3"
+  },
+  "base": {
+    "sha": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+    "tree": "f5277ef281ad6baee60590a931f474be942f22dd"
+  },
+  "candidate": {
+    "contract_git_blob": "427aeb2312f4a7da7689a75527eb9b290981bbd9",
+    "gate_commit": "c396bfdedd135bee22ad1639ded55f3e19cc44ee",
+    "source_sha": "b540a9bbcae32f923e233b6a3933ce260c91cede",
+    "source_tree": "514c3a597383a2d31e98ba654e63d18f3ad6cfda"
+  },
+  "contract_actions": {
+    "formula_changed_after_result": false,
+    "golden_updated": false,
+    "main_must_remain_unchanged": true,
+    "merged": false,
+    "pool_symbol_or_date_exception_added": false,
+    "pull_request_must_close_unmerged": true,
+    "second_candidate_created": false,
+    "threshold_changed_after_result": false
+  },
+  "date": "2026-09-17",
+  "decision": "FAIL",
+  "failed_gates": [
+    "active_day_reduction_at_least_10pct",
+    "bucket_reduction_at_least_15pct",
+    "fees_no_significant_increase",
+    "turnover_not_above_incumbent",
+    "wealth_ratio_at_least_1_05"
+  ],
+  "failed_layer": "core17",
+  "final_conclusion": "在当前唯一双峰风险周期与机会驱动容量重配设计、当前风险偏好和单一生产路径要求下，没有获得可晋级生产的结果。",
+  "gates": {
+    "active_day_reduction_at_least_10pct": false,
+    "bucket_reduction_at_least_15pct": false,
+    "candidate_mdd_at_most_19pct": true,
+    "correctness": true,
+    "fees_no_significant_increase": false,
+    "incumbent_identity_reproduced": true,
+    "mdd_degradation_at_most_1pp": true,
+    "sleeve_fills_decrease": true,
+    "turnover_not_above_incumbent": false,
+    "wealth_ratio_at_least_1_05": false
+  },
+  "metrics": {
+    "candidate": {
+      "active_fill_days": 196,
+      "commission_plus_stamp": 91284.27098100001,
+      "date_symbol_side_buckets": 335,
+      "max_drawdown": 0.14921340700704003,
+      "sleeve_fills": 617,
+      "turnover_over_average_equity": 33.0596528154388,
+      "wealth_multiple": 6.083201681009505
+    },
+    "comparisons": {
+      "active_fill_day_reduction": -1.1304347826086958,
+      "bucket_reduction": -0.763157894736842,
+      "fee_ratio": 1.230372378191677,
+      "mdd_delta": -0.0018363772776594234,
+      "turnover_ratio": 2.065256170789383,
+      "wealth_ratio": 0.6329717106227987
+    },
+    "incumbent": {
+      "active_fill_days": 92,
+      "commission_plus_stamp": 74192.39296900001,
+      "date_symbol_side_buckets": 190,
+      "max_drawdown": 0.15104978428469945,
+      "sleeve_fills": 645,
+      "turnover_over_average_equity": 16.00753130920448,
+      "wealth_multiple": 9.610542744515504
+    }
+  },
+  "next_layer_allowed": false,
+  "pull_request": 117,
+  "schema_version": 1,
+  "status": "FINAL_STOP",
+  "stopped_layers": [
+    "pool_a_to_j_common_window",
+    "core17_and_pool_a_to_j_long_window",
+    "formal_stress_958",
+    "cost_and_adjacent_window_review",
+    "production_fusion",
+    "final_engineering_verification",
+    "merge_main"
+  ],
+  "task": "dual_peak_account_risk_epoch_and_opportunity_driven_minimal_capacity_reallocation",
+  "window": [
+    "2025-04-01",
+    "2026-07-20"
+  ],
+  "workflow": {
+    "conclusion": "failure",
+    "development_checks": {
+      "compile": "PASS",
+      "pyright": "PASS",
+      "ruff": "PASS",
+      "targeted_tests": {
+        "passed": 8,
+        "result": "PASS"
+      }
+    },
+    "hard_gate_assessment_completed": true,
+    "job_id": 105232524382,
+    "paired_replays_completed": true,
+    "run_id": 35230353642
+  }
+}
