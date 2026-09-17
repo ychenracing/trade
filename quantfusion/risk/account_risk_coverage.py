@@ -135,7 +135,7 @@ def plan_account_risk_budget(
         snapshot.state_complete
         and (execution is None or execution.rearm_consumption_ready)
     )
-    receipt = account_budget_capacity(
+    receipt: dict[str, Any] = account_budget_capacity(
         equity,
         snapshot.lifetime_peak_assets,
         cfg,
@@ -161,7 +161,10 @@ def plan_account_risk_budget(
             - float(legacy_receipt["cost_rate"])
         ),
     )
-    blocked_indexes = set(legacy_receipt.get("shock_reduced_pyramid_buy_indexes", ()))
+    blocked_indexes: set[int] = {
+        int(index)
+        for index in legacy_receipt.get("shock_reduced_pyramid_buy_indexes", ())
+    }
     scales, current_gap, requested_gap = _allocate_buys(
         books,
         buys,

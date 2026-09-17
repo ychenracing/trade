@@ -215,6 +215,7 @@ def _group_debit(
     sold_shares: Mapping[tuple[int, str, str], int] | None = None,
 ) -> float:
     sold = sold_shares or {}
+    resolved_cfg = dict(cfg)
     base_rate = stress_fraction + cost_rate
     group_gap: dict[str, float] = {}
     group_base: dict[str, float] = {}
@@ -225,7 +226,7 @@ def _group_debit(
         gross += value
         group = SYMBOL_SUB_INDUSTRY.get(symbol, symbol)
         group_gap[group] = group_gap.get(group, 0.0) + value * (
-            limit_pct_for_code(symbol, cfg) + cost_rate
+            limit_pct_for_code(symbol, resolved_cfg) + cost_rate
         )
         group_base[group] = group_base.get(group, 0.0) + value * base_rate
     for symbol, value in buy_values:
@@ -234,7 +235,7 @@ def _group_debit(
         gross += value
         group = SYMBOL_SUB_INDUSTRY.get(symbol, symbol)
         group_gap[group] = group_gap.get(group, 0.0) + value * (
-            limit_pct_for_code(symbol, cfg) + cost_rate
+            limit_pct_for_code(symbol, resolved_cfg) + cost_rate
         )
         group_base[group] = group_base.get(group, 0.0) + value * base_rate
     excess = max(
