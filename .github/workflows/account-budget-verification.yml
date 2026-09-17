@@ -1,0 +1,31 @@
+name: Account budget verification inputs
+on:
+  push:
+    branches: [agent/ab5-observer-production]
+    paths: [.github/workflows/account-budget-verification.yml]
+jobs:
+  inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Preserve source and verified Git identities
+        run: |
+          mkdir -p "$RUNNER_TEMP/account-budget-inputs"
+          git archive --format=tar HEAD | gzip -n > "$RUNNER_TEMP/account-budget-inputs/candidate.tar.gz"
+          git archive --format=tar 7d5efe5e4ea2159f82b9deb0ff4810730d8de15f | gzip -n > "$RUNNER_TEMP/account-budget-inputs/baseline.tar.gz"
+          git rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/account-budget-inputs/source.txt"
+          git ls-tree -r HEAD > "$RUNNER_TEMP/account-budget-inputs/candidate-tree.txt"
+          git ls-tree -r 7d5efe5e4ea2159f82b9deb0ff4810730d8de15f > "$RUNNER_TEMP/account-budget-inputs/baseline-tree.txt"
+          cd "$RUNNER_TEMP/account-budget-inputs"
+          sha256sum candidate.tar.gz baseline.tar.gz source.txt candidate-tree.txt baseline-tree.txt > SHA256SUMS
+          wc -c candidate.tar.gz baseline.tar.gz > sizes.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: account-budget-inputs-${{ github.sha }}
+          path: ${{ runner.temp }}/account-budget-inputs/
+          if-no-files-found: error
+          retention-days: 30
