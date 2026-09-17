@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "kind": "rejected_evidence_original_byte_readback",
+  "pr": 113,
+  "economic_acceptance": false,
+  "canonical": false,
+  "transport_commit": "8dca38d51c7929562c59205c27dc10caaf962ef7",
+  "transport_tree": "4973cca8494a88844e3ad5c01b8d61ebfa3dbc61",
+  "artifact_id": 10481968288,
+  "run_id": 35186914548,
+  "original_file_count": 31,
+  "original_total_bytes": 18228539,
+  "all_original_files_equal_local_bytes": true,
+  "all_original_lengths_sha256_and_git_blob_ids_verified": true,
+  "source_archive_and_16_transport_parts_byte_equal": true,
+  "archive_size": 1931712,
+  "archive_sha256": "52dbf72d900c58d1d90988e2978017a80ad0ab2a9772913eb423f1b092316f45",
+  "zip_size": 1932797,
+  "zip_sha256": "27c097527b9b2578c2a9bb5fd85510a61cf360c89134e3ed53edf94c1c3e198a",
+  "expires_at": "2026-12-16T05:44:19Z",
+  "raw_git_tree_saved": false,
+  "inherited_actions_contents_permission": "read",
+  "permissions_modified": false,
+  "prior_attempt": {
+    "run_id": 35183732237,
+    "artifact_id": 10481223429,
+    "status": "REPRODUCED_BYTES_DIFFERED_NOT_ORIGINALS",
+    "subsequent_use": "immutable_transport_base_only"
+  },
+  "recovery": "The new artifact contains all31 complete original result files, original source identity archive and decoder/transport fragments; no replay is needed to read the full originals.",
+  "retention": "The complete raw corpus is stored in a90day Actions artifact, not permanently in a Git tree. Retain or migrate the full downloadable archive before expiry."
+}
