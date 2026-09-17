@@ -1,0 +1,164 @@
+t.get("account_risk_budget") if isinstance(result, dict) else None
+-    if (not isinstance(budget_status, dict) or budget_status.get("enabled") is not True
+-            or budget_status.get("mechanism") != "AB5" or budget_status.get("status") != "APPLIED"):
+-        result_invalid_fields.append("account_risk_budget: default AB5 was not evaluated")
++    if (
++        not isinstance(budget_status, dict)
++        or budget_status.get("enabled") is not True
++        or budget_status.get("mechanism") != "AB5"
++        or budget_status.get("policy_mode") != "OBSERVE_ONLY"
++        or budget_status.get("health_status") != "EVALUATED"
++        or budget_status.get("status") != "OBSERVED"
++    ):
++        result_invalid_fields.append(
++            "account_risk_budget: AB5 observation policy was not evaluated"
++        )
+     result_is_valid = len(result_invalid_fields) == 0
+ 
+     if not result_is_valid:
+--- a/quantfusion/engine/core.py
++++ b/quantfusion/engine/core.py
+@@ -69,6 +69,7 @@
+         self.pending_signals: list[tuple[Signal, BaseStrategy]] = []
+         self.fusion_events: list[dict] = []
+         self.risk_events: list[dict] = []
++        self.account_budget_observations: list[dict] = []
+         self.sector_guard_active = False
+         self._safe_mode_active: bool = False  # audit-only flag; no dynamic parameter changes
+         self._sector_shock_positions: list[int] = []
+--- a/quantfusion/engine/ensemble_allocation.py
++++ b/quantfusion/engine/ensemble_allocation.py
+@@ -30,7 +30,7 @@
+ from quantfusion.execution.c6_receipts import begin_order, reconcile_close_queue
+ from quantfusion.config.portfolio import PortfolioPolicy
+ from quantfusion.risk.managers import RecoverableDrawdownRiskManager
+-from quantfusion.risk.account_budget import apply_account_risk_budget
++from quantfusion.risk.account_budget import observe_account_risk_budget
+ from quantfusion.risk.overlay.adapter import (
+     apply_cooldown_buy_gate,
+     apply_risk_buy_gate,
+@@ -856,16 +856,17 @@
+                 }
+             )
+ 
+-    def _apply_account_risk_budget(
++    def _observe_account_risk_budget(
+         self, states: list[_PreparedSleeveRun], date: pd.Timestamp,
+         assets: float, peak: float, events: list[dict[str, Any]],
+         *, shock_floor: float = 0., preserve_strategy_valid_holdings: bool = False,
+         risk_alert_active: bool | None = None,
+         portfolio_evidence_buy_symbols: set[str] | None = None,
+     ) -> None:
+-        """Apply the canonical budget once to the combined account, never per sleeve."""
+-        apply_account_risk_budget(states, date, assets, peak, self.cfg,
++        """Observe the canonical combined-account budget without editing its queues."""
++        observe_account_risk_budget(states, date, assets, peak, self.cfg,
+                                   self._overlay_allocation_score(states, date), events,
++                                  self.account_budget_observations,
+                                   shock_floor=shock_floor,
+                                   preserve_strategy_valid_holdings=preserve_strategy_valid_holdings,
+                                   risk_alert_active=risk_alert_active,
+--- a/quantfusion/engine/ensemble_orchestration.py
++++ b/quantfusion/engine/ensemble_orchestration.py
+@@ -152,6 +152,7 @@
+ 
+     def _run_ensemble(self, request: _RunRequest) -> dict:
+         """Replay fixed-capital sleeves on one synchronized portfolio calendar."""
++        self.account_budget_observations = []
+         self._sleeve_weight_events = []
+         self._last_sleeve_weight_regime = None
+         tradable_count = len(request.symbols_dict)
+@@ -360,7 +361,7 @@
+                     )
+                 _, portfolio_evidence_buy_symbols = preview
+             if self.cfg.get("account_risk_budget_enabled", False):
+-                self._apply_account_risk_budget(
++                self._observe_account_risk_budget(
+                     states, date, assets, float(portfolio_risk.lifetime_peak_assets),
+                     portfolio_risk_events,
+                     shock_floor=float(portfolio_risk.peak_assets) * (1. - min(
+@@ -557,6 +558,7 @@
+                 "exposure_trace": self._diagnostic_exposure_trace,
+             }
+         combined["account_risk_budget"] = account_budget_status(
+-            portfolio_risk_events, bool(self.cfg["account_risk_budget_enabled"]))
++            self.account_budget_observations, bool(self.cfg["account_risk_budget_enabled"]))
++        combined["account_budget_observations"] = list(self.account_budget_observations)
+         self.last_result = combined
+         return combined
+--- a/quantfusion/engine/replay_loop.py
++++ b/quantfusion/engine/replay_loop.py
+@@ -7,7 +7,7 @@
+ # pyright: reportAttributeAccessIssue=false
+ 
+ from types import SimpleNamespace
+-from quantfusion.risk.account_budget import apply_account_risk_budget
++from quantfusion.risk.account_budget import observe_account_risk_budget
+ 
+ import pandas as pd
+ 
+@@ -292,10 +292,10 @@
+     ) -> list[tuple[Signal, BaseStrategy]]:
+         """Execute prior-close orders, then evaluate today's close."""
+         self._start_trading_day()
+-        if pending and self.cfg["account_risk_budget_enabled"]:
+-            # Standalone/forced-weak runs own one real book. Preserve the same
+-            # retained defensive sell-wins boundary as the ensemble: an active
+-            # winner owns this batch even when filled or deferred at the open.
++        if pending:
++            # Standalone/forced-weak runs own one real book. Sell-first
++            # execution is an account/execution invariant, not an AB5 power;
++            # keep it identical whether AB5 observation is enabled or absent.
+             defensive_books = {
+                 (signal.symbol, signal.strategy_name)
+                 for signal, strategy in pending
+@@ -317,8 +317,6 @@
+             pending = self._execute_pending_signals(
+                 retained, data_map, date, date_to_pos, frozenset({"buy"})
+             )
+-        elif pending:
+-            pending = self._execute_pending_signals(pending, data_map, date, date_to_pos)
+         pending = self._evaluate_trading_day(
+             symbols_dict, data_map, indicator_map, all_dates, date_to_pos, date, pending,
+         )
+@@ -331,9 +329,16 @@
+             scorer = getattr(self, "_allocation_scores", None)
+             scores = scorer(data_map, date) if scorer is not None else {}
+             state = SimpleNamespace(sleeve=self, data_map=data_map, pending=pending)
+-            apply_account_risk_budget([state], date, assets, peak, self.cfg,
+-                                      lambda symbol: float(scores.get(symbol, 0.)), self.risk_events)
+-            pending = state.pending
++            observe_account_risk_budget(
++                [state],
++                date,
++                assets,
++                peak,
++                self.cfg,
++                lambda symbol: float(scores.get(symbol, 0.)),
++                self.risk_events,
++                self.account_budget_observations,
++            )
+         return pending
+ 
+     def run(
+--- a/quantfusion/engine/results.py
++++ b/quantfusion/engine/results.py
+@@ -79,7 +79,9 @@
+         open_position_value = max(float(final_assets - self.cash), 0.0)
+         return {
+             "account_risk_budget": account_budget_status(
+-                self.risk_events, bool(self.cfg["account_risk_budget_enabled"])),
++                self.account_budget_observations, bool(self.cfg["account_risk_budget_enabled"])
++            ),
++            "account_budget_observations": list(self.account_budget_observations),
+             "initial_capital": self.initial_capital,
+             "final_assets": final_assets,
+             "total_return": total_return,
+--- a/quantfusion/engine/signals.py
++++ b/quantfusion/engine/signals.py
+@@ -249,6 +249,7 @@
+         self.pending_signals = []
+         self.fusion_events = []
+         self.risk_events = []
++        self.account_budget_observations = []
+         se

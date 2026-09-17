@@ -1,0 +1,12 @@
+{
+  "source": "observe-candidate.patch",
+  "total_bytes": 33730,
+  "sha256": "7549e2501a1bfb3c0a35bc802f8077dbf7c31a12e1a76f686919fbe6e6177983",
+  "parts": [
+    {"path":"observe-only-candidate.patch.part000","offset":0,"bytes":8000,"sha256":"2d5e3d5035b7412cb6d04b4b9f6bdcfafb5a2031756aaa67d0ccf64d56510e97"},
+    {"path":"observe-only-candidate.patch.part001","offset":8000,"bytes":8000,"sha256":"b5787cc20d4cbd592e01bac271812797fdcb54d925de7af659572eef790e362d"},
+    {"path":"observe-only-candidate.patch.part002","offset":16000,"bytes":8000,"sha256":"1ec9f17c8ee78631e3795a68d69f3a3011723fb31a85555189b6b385063117c5"},
+    {"path":"observe-only-candidate.patch.part003","offset":24000,"bytes":8000,"sha256":"ca99458540eaf6f2075e4735d68470701e83ecfe2ecf51b69d00393c1a269828"},
+    {"path":"observe-only-candidate.patch.part004","offset":32000,"bytes":1730,"sha256":"64d1b653cab2bb6dde666a7306d26f3afdb70cfcb18ca58ab5276a3dc4652c88"}
+  ]
+}

@@ -1,0 +1,145 @@
+--- a/.github/workflows/account-budget-verification.yml
++++ b/.github/workflows/account-budget-verification.yml
+@@ -0,0 +1,31 @@
++name: Account budget verification inputs
++on:
++  push:
++    branches: [agent/ab5-observer-production]
++    paths: [.github/workflows/account-budget-verification.yml]
++jobs:
++  inputs:
++    runs-on: ubuntu-latest
++    timeout-minutes: 5
++    steps:
++      - uses: actions/checkout@v4
++        with:
++          fetch-depth: 0
++          persist-credentials: false
++      - name: Preserve source and verified Git identities
++        run: |
++          mkdir -p "$RUNNER_TEMP/account-budget-inputs"
++          git archive --format=tar HEAD | gzip -n > "$RUNNER_TEMP/account-budget-inputs/candidate.tar.gz"
++          git archive --format=tar 7d5efe5e4ea2159f82b9deb0ff4810730d8de15f | gzip -n > "$RUNNER_TEMP/account-budget-inputs/baseline.tar.gz"
++          git rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/account-budget-inputs/source.txt"
++          git ls-tree -r HEAD > "$RUNNER_TEMP/account-budget-inputs/candidate-tree.txt"
++          git ls-tree -r 7d5efe5e4ea2159f82b9deb0ff4810730d8de15f > "$RUNNER_TEMP/account-budget-inputs/baseline-tree.txt"
++          cd "$RUNNER_TEMP/account-budget-inputs"
++          sha256sum candidate.tar.gz baseline.tar.gz source.txt candidate-tree.txt baseline-tree.txt > SHA256SUMS
++          wc -c candidate.tar.gz baseline.tar.gz > sizes.txt
++      - uses: actions/upload-artifact@v4
++        with:
++          name: account-budget-inputs-${{ github.sha }}
++          path: ${{ runner.temp }}/account-budget-inputs/
++          if-no-files-found: error
++          retention-days: 30
+--- a/quantfusion/application/__init__.py
++++ b/quantfusion/application/__init__.py
+@@ -1,2 +1 @@
+ """Use-case orchestration for CLI entry points."""
+-
+--- a/quantfusion/application/account_scan.py
++++ b/quantfusion/application/account_scan.py
+@@ -36,6 +36,7 @@
+     observed_direct_losses,
+     observed_shock_stress,
+     plan_account_risk_budget,
++    budget_observation,
+ )
+ from quantfusion.config.profiles import config_for_symbol, get_symbol_profile
+ from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
+@@ -251,11 +252,11 @@
+         return candidates
+ 
+     @staticmethod
+-    def _apply_account_budget(
++    def _observe_account_budget(
+         snapshot: AccountSnapshot, prepared: dict[str, _PreparedMarket],
+         actions: list[dict[str, Any]], *, equity: float, as_of: str,
+     ) -> dict[str, Any]:
+-        """Apply AB5 to actual aggregate holdings, never invent historical sleeves.
++        """Observe AB5 on actual aggregate holdings without altering manual advice.
+ 
+         The required snapshot peak and today's complete valuation supply the
+         high-water mark. Only a newly observed high can increase that mark.
+@@ -293,35 +294,9 @@
+                 frames, evidence_date, cfg,
+             ),
+         )
+-        for reduction in reductions:
+-            row = by_symbol[reduction.symbol]
+-            existing = int(row.get("recommended_shares", 0))+int(row.get("blocked_shares", 0))
+-            desired = max(existing, reduction.shares)
+-            executable = min(desired, row["sellable_shares"])
+-            # Existing full-position advisories keep their original T+1
+-            # semantics; a new partial reduction uses executable board lots.
+-            if desired < row["shares"]:
+-                executable = floor_to_lot(executable)
+-            row.update(action="SELL" if row["action"] == "SELL" else "REDUCE_REVIEW",
+-                       recommended_shares=executable, blocked_shares=desired-executable,
+-                       execution_status=("EXECUTABLE" if executable == desired else
+-                                         "PARTIALLY_T1_BLOCKED" if executable else "T1_BLOCKED"),
+-                       reason=row["reason"]+"; account_budget_trim (close-known plan, not a fill)")
+-        for row in buy_rows:
+-            if receipt["buy_scale"] >= 1.:
+-                continue
+-            original = row["indicative_target_shares"]
+-            quantity = floor_to_lot(original*receipt["buy_scale"])
+-            row.update(indicative_target_shares=quantity,
+-                       original_indicative_target_shares=original,
+-                       target_weight=quantity*row["close"]/equity if equity else 0.,
+-                       reason=row["reason"]+"; account_budget_buy_reduced; queued sells give no credit")
+-            if not quantity:
+-                row.update(action="BLOCKED", execution_status="RISK_BUDGET_BLOCKED")
+-        return {"enabled": True, "mechanism": "AB5", "status": "APPLIED",
+-                "scope": "actual_account_snapshot_books", "planned_not_filled": True,
+-                "input_peak_equity": snapshot.peak_equity, **receipt,
+-                "planned_reductions": [asdict(a) for a in reductions]}
++        return {"enabled": True, "scope": "actual_account_snapshot_books",
++                "input_peak_equity": snapshot.peak_equity,
++                **budget_observation(receipt, as_of, len(buys), len(reductions))}
+ 
+     def run(
+         self,
+@@ -804,14 +779,14 @@
+             snapshot.cash + priced_market_value if valuation_complete else None
+         )
+         if valuation_complete and data_complete:
+-            account_budget = self._apply_account_budget(
++            account_budget = self._observe_account_budget(
+                 snapshot, prepared, actions, equity=snapshot.cash+priced_market_value, as_of=as_of,
+             )
+-            if account_budget["buy_scale"] == 0.:
+-                buys_suppressed = True
+-                buy_suppression_reasons.append("ACCOUNT_RISK_BUDGET")
+         else:
+-            account_budget = {"enabled": True, "mechanism": "AB5", "status": "NOT_READY",
++            account_budget = {"enabled": True, "mechanism": "AB5", "status": "NOT_EVALUATED",
++                              "policy_mode": "OBSERVE_ONLY",
++                              "health_status": "NOT_EVALUATED",
++                              "trade_intervention_allowed": False,
+                               "reason": "incomplete account valuation or market evidence"}
+ 
+         advice_by_symbol = {row["symbol"]: row for row in actions}
+--- a/quantfusion/application/daily_report.py
++++ b/quantfusion/application/daily_report.py
+@@ -206,11 +206,13 @@
+         _trace(traces, "账户买入限制", reason)
+     budget = data.get("account_risk_budget") or {}
+     latest = budget.get("latest") or budget
+-    budget_label = {"APPLIED": "已实际评估（不代表成交或回撤保证）", "NOT_READY": "数据不足，不能据此新增风险",
++    budget_label = {"OBSERVED": "仅观测，不裁剪买入或主动减仓；不保留原预算干预的保护效果", "APPLIED": "已实际评估（不代表成交或回撤保证）", "NOT_READY": "数据不足，不能据此新增风险",
+                     "NOT_EVALUATED": "未完成评估", "DISABLED_DIAGNOSTIC": "已关闭，仅作诊断"}.get(str(budget.get("status", "")), "未提供有效评估状态")
+     lines.extend(["", "## 风险与限制", "", f"账户整体风险预算：{budget_label}。"])
+     if latest.get("date"):
+         lines.append(f"预算观察日：{_text(latest['date'])}。")
++    if "observed_counterfactual_buy_scale" in latest:
++        lines.append(f"假设执行预算时的买入比例：{_number(latest['observed_counterfactual_buy_scale'], percent=True)}；仅作风险解释，不用于当前交易。")
+     if "buy_scale" in latest:
+         lines.append(f"预算计划保留原买入量的比例：{_number(latest['buy_scale'], percent=True)}；仅用于已有计划裁剪，不是建议仓位。")
+     if "gross_cap" in latest:
+--- a/quantfusion/application/daily_scan.py
++++ b/quantfusion/application/daily_scan.py
+@@ -393,9 +393,17 @@
+     # Validate before formatting, publishing, or replacing the old risk state.
+     result_invalid_fields = _validate_result_fields(result)
+     budget_status = resul

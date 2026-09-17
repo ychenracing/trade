@@ -26,13 +26,32 @@ jobs:
           git worktree add --detach /tmp/ab5-baseline a2a21c377808794fe41e694dac321abddbf9cd69
           git worktree add --detach /tmp/ab5-observe a2a21c377808794fe41e694dac321abddbf9cd69
           git worktree add --detach /tmp/ab5-protective a2a21c377808794fe41e694dac321abddbf9cd69
-          gzip -dc "$ROOT/artifacts/diagnostics/account-budget-convergence/observe-only-candidate.patch.gz" > /tmp/observe-only-candidate.patch
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ['GITHUB_WORKSPACE']) / 'artifacts/diagnostics/account-budget-convergence'
+          manifest = json.loads((root / 'observe-only-candidate.patch.manifest.json').read_text())
+          assembled = bytearray()
+          expected_offset = 0
+          for item in manifest['parts']:
+              assert item['offset'] == expected_offset, (item, expected_offset)
+              data = (root / item['path']).read_bytes()
+              assert len(data) == item['bytes'], item['path']
+              assert hashlib.sha256(data).hexdigest() == item['sha256'], item['path']
+              assembled.extend(data)
+              expected_offset += len(data)
+          assert len(assembled) == manifest['total_bytes']
+          assert hashlib.sha256(assembled).hexdigest() == manifest['sha256']
+          Path('/tmp/observe-only-candidate.patch').write_bytes(assembled)
+          print('verified multipart observe patch', len(assembled), manifest['sha256'])
+          PY
           (cd /tmp/ab5-observe && git apply /tmp/observe-only-candidate.patch && git add -A)
           (cd /tmp/ab5-protective && git apply "$ROOT/artifacts/diagnostics/account-budget-convergence/limited-protection-candidate.patch" && git add -A)
           mkdir -p "$RUNNER_TEMP/account-budget-rejection-evidence"
           git -C /tmp/ab5-baseline rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/account-budget-rejection-evidence/baseline-source.txt"
           git -C /tmp/ab5-observe write-tree > "$RUNNER_TEMP/account-budget-rejection-evidence/observe-tree.txt"
           git -C /tmp/ab5-protective write-tree > "$RUNNER_TEMP/account-budget-rejection-evidence/protective-tree.txt"
+          sha256sum /tmp/observe-only-candidate.patch "$ROOT/artifacts/diagnostics/account-budget-convergence/limited-protection-candidate.patch" > "$RUNNER_TEMP/account-budget-rejection-evidence/source-patch-sha256.txt"
       - name: Reproduce paired screening outputs
         run: |
           set -euo pipefail

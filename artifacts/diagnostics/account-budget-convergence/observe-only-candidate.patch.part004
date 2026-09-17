@@ -1,0 +1,37 @@
+status"] == "EVALUATED"
++    assert receipt["status"] == "OBSERVED"
++    assert receipt["trade_intervention_allowed"] is False
++    assert receipt["buy_shares_removed"] == 0
++    assert receipt["new_reduction_orders"] == 0
++
++
++def test_observer_keeps_real_history_and_observation_episode_separate():
++    engine, state, day = _state()
++    history = [{"date": "2026-01-02", "event": "account_budget_envelope",
++                "observed_shock_confirmed": True, "new_reduction_orders": 1,
++                "shock_episode_active": True}]
++    before = deepcopy(history)
++    engine._observe_account_risk_budget([state], day, 90_000., 100_000., history)
++    assert history == before
++    assert len(engine.account_budget_observations) == 1
++    assert engine.account_budget_observations[0]["event"] == "account_budget_observation"
++    assert not any(signal.reason == "account_budget_trim" for signal, _ in state.pending)
++
++
++def test_invalid_budget_inputs_leave_observation_and_execution_untouched():
++    import pytest
++    for field, value in (("assets", float("nan")), ("peak", float("inf")),
++                         ("slippage", float("nan"))):
++        engine, state, day = _state()
++        before = deepcopy(state.pending)
++        assets, peak = 90_000., 100_000.
++        if field == "assets": assets = value
++        elif field == "peak": peak = value
++        else: state.sleeve.cfg[field] = value
++        observations = []
++        with pytest.raises(ValueError):
++            observe_account_risk_budget([state], day, assets, peak,
++                engine.cfg, lambda _: 1., [], observations)
++        assert observations == []
++        assert state.pending == before
++        assert state.sleeve.cash == 10_000.

@@ -1,0 +1,165 @@
+lf.sector_guard_active = False
+         self._safe_mode_active = False
+         self._sector_shock_positions = []
+--- a/quantfusion/engine/universe.py
++++ b/quantfusion/engine/universe.py
+@@ -145,6 +145,7 @@
+         self._new_candidate_intent_streak: dict[str, int] = {}
+         self._tail_guard_active = False
+         self._tail_guard_policies: dict[str, PortfolioPolicy] = {}
++
+ 
+     def _effective_policy(self, tradable_count: int) -> PortfolioPolicy:
+         """Tighten drawdown gates smoothly as diversification approaches one."""
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -3,7 +3,6 @@
+ 
+ import math
+ from collections.abc import Callable, Mapping, Sequence
+-from dataclasses import replace
+ 
+ import pandas as pd
+ from typing import Any
+@@ -14,8 +13,6 @@
+     RISK_ACTION_PRIORITY,
+     SYMBOL_SUB_INDUSTRY,
+ )
+-from quantfusion.execution.c6_receipts import reconcile_close_queue
+-from quantfusion.risk.overlay.adapter import apply_risk_actions
+ from quantfusion.risk.overlay.models import RiskAction
+ from quantfusion.config.engine import EARLY_DUAL_TRANSITION_RSI_MAX
+ 
+@@ -674,14 +671,20 @@
+             if SYMBOL_SUB_INDUSTRY.get(symbol, symbol) in shocked}
+ 
+ 
+-def apply_account_risk_budget(
++def observe_account_risk_budget(
+     states: Sequence[Any], date: pd.Timestamp, assets: float, peak: float,
+-    cfg: Mapping[str, Any], score: Callable[[str], float], events: list[dict[str, Any]],
++    cfg: Mapping[str, Any], score: Callable[[str], float], events: Sequence[Mapping[str, Any]],
++    observations: list[dict[str, Any]],
+     *, shock_floor: float = 0., preserve_strategy_valid_holdings: bool = False,
+     risk_alert_active: bool | None = None,
+     portfolio_evidence_buy_symbols: set[str] | None = None,
+ ) -> None:
+-    """Adapt the shared plan to the existing replay books and order queues."""
++    """Observe canonical close-known budget without touching queues or risk state.
++
++    ``events`` contains actual historical events and is read-only here. The
++    independent ``observations`` own the hypothetical shock episode; no
++    observer receipt is consumed by the production trading event stream.
++    """
+     if risk_alert_active is None:
+         latest_alert = next((
+             event for event in reversed(events)
+@@ -708,8 +711,8 @@
+         )
+     previous_handoff_symbols = set(next((
+         event.get('strategy_handoff_symbols', ())
+-        for event in reversed(events)
+-        if event.get('event') == 'account_budget_envelope'
++        for event in reversed(observations)
++        if event.get('event') == 'account_budget_observation'
+     ), ()))
+     books, buys = [], []
+     buy_slots: list[tuple[int, int]] = []
+@@ -748,7 +751,8 @@
+     costs = dict(cfg)
+     for state_index, state in enumerate(states):
+         for key in ("slippage", "commission_rate", "stamp_duty", "min_commission"):
+-            costs[key] = max(costs[key], state.sleeve.cfg[key])
++            costs[key] = max(require_finite(key, costs[key], min_value=0.),
++                             require_finite(key, state.sleeve.cfg[key], min_value=0.))
+         cycle_shares: dict[tuple[str, str], int] = {}
+         confirmed_live_cycles: set[tuple[str, str]] = set()
+         shock_reduced_live_cycles: set[tuple[str, str]] = set()
+@@ -976,8 +980,8 @@
+         stress_by_symbol=observed_shock_stress(shock_frames, date, costs),
+         direct_loss_by_symbol=observed_direct_losses(shock_frames, date, costs),
+         shock_episode_active=bool(next((event.get('shock_episode_active', False)
+-            for event in reversed(events)
+-            if event.get('event') == 'account_budget_envelope'), False)),
++            for event in reversed(observations)
++            if event.get('event') == 'account_budget_observation'), False)),
+         shock_floor=shock_floor,
+         preserve_strategy_valid_holdings=preserve_strategy_valid_holdings,
+         risk_alert_active=risk_alert_active,
+@@ -999,51 +1003,55 @@
+     receipt['portfolio_excluded_buy_slots'] = [
+         list(slot) for slot in excluded_buy_slots
+     ]
+-    cap = receipt["gross_cap"]
+-    buy_scales = receipt["buy_scales"]
+-    if len(buy_scales) != len(buy_slots):
+-        raise RuntimeError('account budget buy scales lost queue alignment')
+-    scale_by_slot = dict(zip(buy_slots, buy_scales, strict=True))
+-    actions = [action for action in planned_actions if not any(
+-        signal.direction == "sell" and signal.symbol == action.symbol
+-        and signal.strategy_name == action.strategy_name
+-        and signal.target_shares >= action.shares
+-        for signal, _ in states[action.state_index].pending
+-    )]
+-    # Validate and plan the entire batch before changing any pending queue.
+-    previous = [list(state.pending) for state in states]
+-    clipped = 0
+-    for state_index, state in enumerate(states):
+-        retained = []
+-        for pending_index, (signal, strategy) in enumerate(state.pending):
+-            buy_scale = scale_by_slot.get((state_index, pending_index), 1.)
+-            if signal.direction == "buy" and buy_scale < 1.:
+-                quantity = floor_to_lot(signal.target_shares * buy_scale)
+-                clipped += signal.target_shares - quantity
+-                state.sleeve._record_order_event(
+-                    date=date_str, signal=signal, event="account_budget_buy_reduced",
+-                    requested_shares=int(signal.target_shares),
+-                    authorized_shares=quantity, close_gross_cap=cap,
+-                )
+-                if not quantity:
+-                    continue
+-                signal = replace(signal, target_shares=quantity)
+-            retained.append((signal, strategy))
+-        state.pending = retained
+-    apply_risk_actions(actions, states, date_str=date_str, events=events,
+-                       state_local_books=True)
+-    for state, before in zip(states, previous):
+-        reconcile_close_queue(state.sleeve, before, state.pending, date_str, "account_budget_envelope")
+-    events.append({"date": date_str, "event": "account_budget_envelope",
+-                   "mechanism": "AB5", "planned_not_filled": True, **receipt,
+-                   "buy_shares_removed": clipped,
+-                   "new_reduction_orders": len(actions)})
+-
+-
+-def account_budget_status(events: Sequence[Mapping[str, Any]], enabled: bool) -> dict[str, Any]:
+-    """Report actual evaluation rather than claiming success from a config flag."""
+-    last = next((dict(e) for e in reversed(events) if e.get("event") == "account_budget_envelope"), None)
+-    return {"enabled": enabled, "mechanism": "AB5",
+-            "status": "APPLIED" if enabled and last is not None else
+-                      "NOT_EVALUATED" if enabled else "DISABLED_DIAGNOSTIC",
+-            "latest": last}
++    observations.append(budget_observation(
++        receipt, date_str, len(buy_slots), len(planned_actions),
++    ))
++
++
++def budget_observation(
++    receipt: Mapping[str, Any], date: str, buy_count: int, reduction_count: int,
++) -> dict[str, Any]:
++    """Label hypothetical budget effects, never executable quantities or actions."""
++    observation = dict(receipt)
++    scales = list(observation.pop("buy_scales"))
++    scale = require_finite("budget buy scale", observation.pop("buy_scale"),
++                           min_value=0., max_value=1.)
++    if len(scales) != buy_count:
++        raise RuntimeError("account budget observation lost buy alignment")
++    for value in scales:
++        require_finite("budget buy scale", value, min_value=0., max_value=1.)
++    observation.update(
++        date=date, event="account_budget_observation", mechanism="AB5",
++        policy_mode="OBSERVE_ONLY", health_status="EVALUATED", status="OBSERVED",
++        trade_intervention_allowed=False,
++        observed_counterfactual_buy_scale=scale,
++        observed_counterfactual_buy_scales=scales,
++        observed_counterfactual_reduction_count=reduction_count,
++        buy_shares_rem
