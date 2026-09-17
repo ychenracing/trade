@@ -1,118 +1,336 @@
 {
-  "schema_version": 1,
-  "kind": "account_budget_responsibility_convergence_rejection",
+  "schema_version": 2,
+  "kind": "account_budget_responsibility_convergence_final_decision",
   "status": "NO_CANDIDATE_PROMOTED",
   "pr": 113,
-  "initial_prompt_main_revision": "a2a21c377808794fe41e694dac321abddbf9cd69",
-  "paired_main_revision": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
-  "paired_main_tree": "f5277ef281ad6baee60590a931f474be942f22dd",
-  "baseline_local_source": "262e8738846478c195e339092ff488742eb8b079",
-  "engine": "ProductionReplayEngine",
-  "window": ["2025-04-01", "2026-07-20"],
-  "initial_capital": 2000000,
-  "contract": {
-    "path": "artifacts/diagnostics/no_waiver/production-primary/contract.json",
-    "sha256": "12cc8e1e475b5c8dbf51c588c6f1b2251dd2fa78ae37896a3f3c45144fa260e7",
-    "formal_scenarios": 958,
-    "fixed_incumbent_payload_sha256": "ba9f63ab834c49ba00ae9c724f3ab37beec38f9f545205f94e5651e8a43debdb",
-    "nonrandom_mdd_max": 0.18,
-    "nonrandom_individual_wealth_ratio_min": 0.65,
-    "production_mdd_no_worse_than_fixed_incumbent": true
+  "task_authority": {
+    "date": "2026-09-17",
+    "only_candidate_allowed": "AB5 observation-only",
+    "nonrandom_mdd_limit_old": 0.18,
+    "nonrandom_mdd_limit_revised": 0.19,
+    "random_rules_unchanged": true,
+    "other_thresholds_unchanged": true,
+    "no_third_candidate": true,
+    "no_parameter_search_after_958": true
   },
-  "preferred_observe_only": {
-    "source_revision_local": "88e800caffec21c76577d155bd70d509a321ac12",
-    "source_tree_local": "0143739fce753e56cacfea71c3350e59654c4388",
-    "equivalent_to_execution_absent": {
-      "all_complete_result_fields_equal_except": ["account_risk_budget", "account_budget_observations"],
-      "observe_count": 316,
-      "absent_observe_count": 0
+  "main_identity": {
+    "revision": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+    "tree": "f5277ef281ad6baee60590a931f474be942f22dd",
+    "production_behavior_changed_by_this_pr": false
+  },
+  "contract_history": {
+    "previous_contract_sha256": "12cc8e1e475b5c8dbf51c588c6f1b2251dd2fa78ae37896a3f3c45144fa260e7",
+    "previous_nonrandom_mdd_limit": 0.18,
+    "prefix_01_mdd": 0.1834136674871038,
+    "previous_contract_result": "failed",
+    "effective_contract_sha256": "6f90ecaa310a5f3b54c7d74bf501987ad99b2707dd36628752734ab19c3e1e24",
+    "effective_nonrandom_mdd_limit": 0.19,
+    "prefix_01_effective_contract_result": "passed_this_gate",
+    "post_observation_risk_preference_revision": true,
+    "not_claimed_as_unseen_validation": true,
+    "not_claimed_as_passing_the_previous_18pct_contract": true
+  },
+  "observation_only": {
+    "production_semantics": {
+      "computes_account_risk_budget": true,
+      "publishes_budget_pressure_capacity_gap_and_health": true,
+      "creates_active_reduction_orders": false,
+      "clips_deletes_or_scales_buy_intents": false,
+      "mutates_cash_positions_pending_queue_risk_peak_or_strategy_state": false
     },
-    "main_pair": {
-      "baseline_wealth": 9.610542744515504,
-      "candidate_wealth": 13.651110582435127,
-      "baseline_mdd": -0.15104978428469945,
-      "candidate_mdd": -0.16496270588646905,
-      "fixed_incumbent_wealth": 8.937340455326881,
-      "fixed_incumbent_mdd": -0.16872315265587953,
-      "primary_relative_risk_gate_passed": true,
-      "baseline_operation_days": 92,
+    "registered_source_revision": "88e800caffec21c76577d155bd70d509a321ac12",
+    "formal_reconstructed_source_revision": "f678cce0e2c1ca04fac0a058cea7efa4a15c7b25",
+    "formal_source_fingerprint": "d82b6b938afd9f87ea051bf7834edc91f8bdf2728eac60abccdef347f359af69",
+    "patch_sha256": "7549e2501a1bfb3c0a35bc802f8077dbf7c31a12e1a76f686919fbe6e6177983",
+    "economic_path_equivalence": {
+      "comparison": "observation-only versus complete AB5 execution absence",
+      "all_complete_result_fields_equal_except": [
+        "account_risk_budget",
+        "account_budget_observations"
+      ],
+      "verified_before_formal_958": true
+    },
+    "primary_17_pair": {
+      "current_main_wealth_multiple": 9.610542744515504,
+      "candidate_wealth_multiple": 13.651110582435127,
+      "current_main_max_drawdown": -0.15104978428469945,
+      "candidate_max_drawdown": -0.16496270588646905,
+      "current_main_date_symbol_side_buckets": 190,
+      "candidate_date_symbol_side_buckets": 115,
+      "current_main_operation_days": 92,
       "candidate_operation_days": 75,
-      "baseline_fills": 645,
-      "candidate_fills": 289,
-      "baseline_action_buckets": 190,
-      "candidate_action_buckets": 115,
-      "baseline_turnover": 16.00753130920448,
-      "candidate_turnover": 12.360716591625142,
-      "baseline_commission_plus_stamp": 74192.392969,
+      "current_main_sleeve_fills": 645,
+      "candidate_sleeve_fills": 289,
+      "current_main_turnover_over_average_equity": 16.00753130920448,
+      "candidate_turnover_over_average_equity": 12.360716591625142,
+      "current_main_commission_plus_stamp": 74192.392969,
       "candidate_commission_plus_stamp": 75362.44312975
     },
-    "decision": "REJECTED_BEFORE_FULL_958",
-    "reason": "prefix-01 maximum drawdown18.34136674871038% exceeds the structured-family18% hard gate. Main-pool drawdown does NOT fail the fixed incumbent relative-risk gate.",
-    "risk_failure": {"scenario": "prefix-01", "candidate_mdd": -0.1834136674871038},
-    "fallback_causal_trigger": {
-      "same_account_and_trades_through": "2025-09-04",
-      "shock_confirmed_at_close": true,
-      "risk_alert_active_at_close": false,
-      "first_execution_divergence": "2025-09-05",
-      "missing_existing_protective_fills": 6,
-      "missing_existing_protective_shares": 6600,
-      "symbol": "300308"
-    }
+    "full_958": {
+      "workflow_run_id": 35189361384,
+      "workflow_revision": "26a9d74b25f6fd4288660503a401a9cf5eba3b9b",
+      "formal_candidate_revision": "f678cce0e2c1ca04fac0a058cea7efa4a15c7b25",
+      "artifact_receipt": "artifacts/diagnostics/account-budget-convergence/decision.json",
+      "scenario_count": 958,
+      "family_counts": {
+        "add_one": 24,
+        "leave_one_out": 17,
+        "permutation": 150,
+        "prefix": 17,
+        "random_subset": 750
+      },
+      "acceptance_status": "rejected",
+      "formal_exit_code": 2,
+      "revised_nonrandom_mdd": {
+        "limit": 0.19,
+        "prefix_worst": -0.1834136674871038,
+        "prefix_worst_scenario": "prefix-01",
+        "leave_one_out_worst": -0.19126603614675625,
+        "leave_one_out_worst_scenario": "leave-one-out-603986",
+        "add_one_worst": -0.18295458150259974,
+        "add_one_worst_scenario": "add-one-13-300408",
+        "permutation_worst": -0.16496270588646905,
+        "permutation_worst_scenario": "permutation-20260807-001",
+        "passed": false
+      },
+      "paired_family_wealth": {
+        "prefix": {
+          "minimum": 0.9415342760171418,
+          "p10": 1.102922809081835,
+          "median": 1.8502104143458518
+        },
+        "leave_one_out": {
+          "minimum": 0.41763095592922245,
+          "p10": 0.6270039332940631,
+          "median": 1.686443453800586
+        },
+        "add_one": {
+          "minimum": 0.8247977204457584,
+          "p10": 1.4413751963329382,
+          "median": 2.152060085741093
+        },
+        "random_subset": {
+          "minimum": 0.3449517948889893,
+          "p10": 0.6367350167522902,
+          "median": 1.065876297151549
+        },
+        "permutation": {
+          "minimum": 1.527424254527388,
+          "p10": 1.527424254527388,
+          "median": 1.527424254527388
+        }
+      },
+      "random_drawdown_comparison": {
+        "candidate": {
+          "maximum": 0.2230577800996561,
+          "p90": 0.19732386885505354,
+          "count_above_18pct": 319
+        },
+        "incumbent": {
+          "maximum": 0.2110621724651241,
+          "p90": 0.18513920209708096,
+          "count_above_18pct": 151
+        }
+      },
+      "rejection_reasons": [
+        {
+          "gate_family": "absolute_hard_gates",
+          "gate": "deployment_and_structured_sensitivity_drawdown_at_most_19pct"
+        },
+        {
+          "gate_family": "promotion_gates",
+          "gate": "leave_one_out_paired_wealth_p10"
+        },
+        {
+          "gate_family": "promotion_gates",
+          "gate": "leave_one_out_paired_wealth_minimum"
+        },
+        {
+          "gate_family": "promotion_gates",
+          "gate": "random_subset_paired_wealth_p10"
+        },
+        {
+          "gate_family": "promotion_gates",
+          "gate": "random_drawdown_maximum_not_worse"
+        },
+        {
+          "gate_family": "promotion_gates",
+          "gate": "random_drawdown_p90_not_worse"
+        },
+        {
+          "gate_family": "promotion_gates",
+          "gate": "random_drawdown_count_above_18pct_not_worse"
+        }
+      ],
+      "identity": {
+        "engine": "ProductionReplayEngine",
+        "window": [
+          "2025-04-01",
+          "2026-07-20"
+        ],
+        "initial_capital": 2000000,
+        "production_universe_size": 17,
+        "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+        "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+        "run_signature": "b17608077b1b06feaed4526486e6ad8f68a7c4dc198e9db537275917b1ee0c73",
+        "random_seeds": [
+          20260807,
+          20260817,
+          20260827
+        ],
+        "locked_dependencies": true,
+        "costs_slippage_adv_t_plus_1_and_matching": "unchanged_from_effective_contract"
+      }
+    },
+    "decision": "REJECTED_AFTER_COMPLETE_958",
+    "reason": "The candidate fails the revised effective contract: leave-one-out worst MDD is 19.126603614675625%, LOO and random-subset paired wealth tails fail, and random maximum/P90/count-above-18% drawdown are worse than the fixed incumbent."
   },
   "limited_protection": {
-    "source_revision_local": "40185f4088aad9fdc52ed01ce770fe179a849a05",
-    "source_tree_local": "c68675608665a3f72b917ba9f88dab60f80cb767",
-    "patch_sha256": "3ab253195c0758ac4fc460c5479c4b279def395cecf11cb772d8ea9964c9b092",
-    "main_pair": {
-      "baseline_wealth": 9.610542744515504,
-      "candidate_wealth": 11.194244202966377,
-      "baseline_mdd": -0.15104978428469945,
-      "candidate_mdd": -0.14888875743400234,
-      "baseline_action_buckets": 190,
-      "candidate_action_buckets": 122,
-      "baseline_operation_days": 92,
-      "candidate_operation_days": 73,
-      "baseline_fills": 645,
-      "candidate_fills": 388,
-      "baseline_turnover": 16.00753130920448,
-      "candidate_turnover": 13.459480051458625,
-      "baseline_commission_plus_stamp": 74192.392969,
-      "candidate_commission_plus_stamp": 70737.13506725
-    },
-    "prefix01_repair": {"wealth": 4.928538056569, "mdd": -0.12468509293898083, "action_buckets": 7},
+    "status": "PERMANENTLY_REJECTED_NOT_REOPENED",
+    "source_revision": "40185f4088aad9fdc52ed01ce770fe179a849a05",
     "sensitive_failures": [
-      {"scenario": "leave-one-out-603986", "candidate_wealth": 3.9946184801897506, "paired_main_wealth": 8.301496752048255, "fixed_incumbent_wealth": 9.316274984794251, "wealth_ratio_to_paired_main": 0.48119256075166755, "wealth_ratio_to_fixed_incumbent": 0.4287785071511574, "candidate_mdd": -0.18530399728342153},
-      {"scenario": "add-one-05-002384", "candidate_wealth": 4.999227728870127, "paired_main_wealth": 8.47396787738613, "fixed_incumbent_wealth": 10.806478528465629, "wealth_ratio_to_paired_main": 0.589951224881464, "wealth_ratio_to_fixed_incumbent": 0.46261395103886344, "candidate_mdd": -0.18282257226088386}
+      {
+        "scenario": "leave-one-out-603986",
+        "wealth_ratio_to_fixed_incumbent": 0.4287785071511574,
+        "max_drawdown": -0.18530399728342153
+      },
+      {
+        "scenario": "add-one-05-002384",
+        "wealth_ratio_to_fixed_incumbent": 0.46261395103886344,
+        "max_drawdown": -0.18282257226088386
+      }
     ],
-    "decision": "REJECTED_BEFORE_FULL_958",
-    "reason": "Both registered sensitive non-random scenarios breach18% drawdown and65% wealth retention against the fixed incumbent. No further economic candidate is authorized."
+    "reason": "The revised 19% MDD limit does not repair the severe wealth-retention failures."
+  },
+  "evidence": {
+    "formal_958_artifact": {
+      "run_id": 35189361384,
+      "artifact_id": 10484215536,
+      "artifact_name": "account-budget-observation-958-26a9d74b25f6fd4288660503a401a9cf5eba3b9b",
+      "artifact_digest": "sha256:ff94de99c6a3cfdc67c90ab643c7093945369c2c32d67e1caef6933195fcc1d6",
+      "download_readback_verified": true,
+      "internal_hashes_verified": true,
+      "expires_at": "2026-12-16T06:20:01Z",
+      "receipt_path": "artifacts/diagnostics/account-budget-convergence/decision.json",
+      "artifact_bytes": 537800,
+      "downloaded_zip_bytes": 537800,
+      "downloaded_zip_sha256": "ff94de99c6a3cfdc67c90ab643c7093945369c2c32d67e1caef6933195fcc1d6",
+      "digest_matches_download": true,
+      "readback_verified_at_utc": "2026-09-17T06:51:23Z",
+      "internal_files": [
+        {
+          "path": "SHA256SUMS",
+          "bytes": 960,
+          "sha256": "a2ae0e410a19b77f625560357d3c35780cea1ea7a26d28f64f5e380f290fc899"
+        },
+        {
+          "path": "aggregate.log",
+          "bytes": 454,
+          "sha256": "47e103c6e21c69ef2a4fb158d2af7c1cf06b10a2ac0178c2a9f89b6d1142f82e"
+        },
+        {
+          "path": "effective-contract.json",
+          "bytes": 15711,
+          "sha256": "6f90ecaa310a5f3b54c7d74bf501987ad99b2707dd36628752734ab19c3e1e24"
+        },
+        {
+          "path": "formal-assessment.log",
+          "bytes": 26129,
+          "sha256": "672c41fe463a11ec199a1672bd2cd2ecf712f6a02cb19358d9c89892846735bc"
+        },
+        {
+          "path": "formal-checkpoint.json",
+          "bytes": 3850369,
+          "sha256": "370d45217ae8aa000f6f2f928dc3a752deda5222672f9335930aa308e7c5a8c1"
+        },
+        {
+          "path": "formal-exit-code.txt",
+          "bytes": 2,
+          "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+        },
+        {
+          "path": "observe-only-candidate.patch",
+          "bytes": 33730,
+          "sha256": "7549e2501a1bfb3c0a35bc802f8077dbf7c31a12e1a76f686919fbe6e6177983"
+        },
+        {
+          "path": "previous-contract.json",
+          "bytes": 14860,
+          "sha256": "12cc8e1e475b5c8dbf51c588c6f1b2251dd2fa78ae37896a3f3c45144fa260e7"
+        },
+        {
+          "path": "rejected-candidate.json",
+          "bytes": 3938381,
+          "sha256": "a19cbd038f13f88fd4ae399ea1305b0d10056328c6c039ae44afcdeb31c6f521"
+        },
+        {
+          "path": "shard-manifest.json",
+          "bytes": 36522,
+          "sha256": "f1cd43a47dd2e8f9651901b9331be0c62ef54c5e9fd5414b27d5ff19647f9606"
+        },
+        {
+          "path": "source-identity.json",
+          "bytes": 1012,
+          "sha256": "3d2780ddaa3b18ff38fc30b7619284fb93551332e33f7624c8dfd4dada6d623a"
+        },
+        {
+          "path": "summary.json",
+          "bytes": 6635,
+          "sha256": "85378ddab59d9c389b15aa273df310934712f6f55fda58ead2f07fedf152724c"
+        }
+      ],
+      "integrity_checks": {
+        "artifact_internal_SHA256SUMS_checked": true,
+        "scenario_count": 958,
+        "unique_scenario_ids": 958,
+        "family_counts": {
+          "add_one": 24,
+          "leave_one_out": 17,
+          "permutation": 150,
+          "prefix": 17,
+          "random_subset": 750
+        },
+        "expected_family_counts": {
+          "prefix": 17,
+          "leave_one_out": 17,
+          "add_one": 24,
+          "random_subset": 750,
+          "permutation": 150
+        },
+        "complete": true,
+        "all_16_shards_and_aggregate_jobs_successful": true
+      }
+    },
+    "prior_original_capture_preservation": {
+      "branch": "evidence/account-budget-originals-20260917",
+      "receipt_commit": "9270014018d36526d9299a5569d1c97b1e3b3ec5",
+      "receipt_path": "artifacts/diagnostics/account-budget-convergence/originals-preservation-receipt.json",
+      "run_id": 35186914548,
+      "artifact_id": 10481968288,
+      "complete_files": 31,
+      "complete_original_bytes": 18228539,
+      "readback_status": "31_OF_31_BYTE_IDENTICAL",
+      "expires_at": "2026-12-16T05:44:19Z"
+    }
   },
   "validation_scope": {
-    "targeted_local_tests": "30 passed,6 subtests passed,1 old AB5 action expectation failed; not relabeled a pass",
-    "matched_fallback_snapshots": "8 original-vs-limited policy cases; buy constraints and retained protective actions equal",
-    "raw_ledger_audit": "28 distinct result sets,31 physical original pickle/gzip files",
-    "formal_plan_expansion": "Observer halted after7/958 completed scenes at a necessary hard failure; additional preregistered screens are separate",
-    "registered_cross_window12": "NOT_RUN_AFTER_NECESSARY_FAILURES",
-    "new_2023_pool_comparisons": "NOT_RUN",
-    "full_type_security_exact_regression": "NOT_COMPLETED_FOR_REJECTED_CANDIDATES",
+    "complete_958": "COMPLETED_AND_REJECTED",
+    "cost_and_cross_window_followup": "NOT_RUN_BECAUSE_958_FAILED",
+    "production_integration": "NOT_STARTED_AFTER_REJECTION",
     "goldens_updated": false,
-    "production_behavior_to_merge": false
+    "production_exact_regression_updated": false,
+    "third_candidate_or_additional_tuning": "NOT_AUTHORIZED_AND_NOT_RUN"
   },
-  "original_identity_preservation": {
-    "branch": "evidence/account-budget-originals-20260917",
-    "source_transport_commit": "4b7aaca1579494494aa6f50c1c048c92576b36e2",
-    "manifest": "artifacts/diagnostics/account-budget-convergence/original-identity/identity-transport-manifest.json",
-    "archive_bytes": 16512,
-    "archive_sha256": "96e99d0eaf54230ccc6e80ada231c4cbd4d46245503d387a63406db27a3d8082",
-    "original_runtime": {"python": "3.13.5", "numpy": "2.3.5", "pandas": "2.2.3"},
-    "source_tree_and_commit_recovery": "LOCALLY_VERIFIED_EXACT",
-    "raw_preservation_run": 35183732237,
-    "raw_remote_readback": "PENDING_NOT_CLAIMED_SAVED"
+  "production_disposition": {
+    "merge_pr_113": false,
+    "close_pr_113_unmerged": true,
+    "main_revision_remains": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+    "main_retains_full_active_ab5": true,
+    "observation_only_promoted": false,
+    "limited_protection_promoted": false
   },
-  "corrections": {
-    "prior_record": "da91d8d24916709812eba6ac5bcba587392ac27b:artifacts/diagnostics/account-budget-convergence/decision.json",
-    "primary_reference": "Prior reason incorrectly treated current-main15.104978% as the frozen incumbent risk gate; corrected without changing any economic threshold or measurement.",
-    "sensitivity_ratios": "Prior0.48119/0.58995 values are current-main comparisons; explicit fixed-incumbent ratios are now provided separately.",
-    "runtime_identity": "Python3.12 reproduction is separate evidence, not the original Python3.13.5 captures unless full bytes match."
+  "supersession": {
+    "pr_111": "research complete; superseded by PR #113; no production promotion from PR #111",
+    "prior_decision_record_revision": "97440408212fc7aebbdea2fc83503b4088b22c27"
   }
 }
