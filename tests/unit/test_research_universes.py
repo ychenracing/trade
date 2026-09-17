@@ -8,11 +8,7 @@ import json
 import pandas as pd
 import pytest
 
-from scripts import compare_universes as compare
-from scripts import download_eastmoney_qfq as download
 from quantfusion.application.backtest_cli import (
-    LEGACY_BACKTEST_END_DATE,
-    LEGACY_BACKTEST_START_DATE,
     build_argument_parser,
     resolve_backtest_window,
 )
@@ -26,7 +22,8 @@ from quantfusion.config.research_universes import (
     symbols_for_pool,
 )
 from quantfusion.config.universe import SYMBOL_NAMES
-
+from scripts import compare_universes as compare
+from scripts import download_eastmoney_qfq as download
 
 EXPECTED_NAMES = {
     "pool_a": ("中际旭创",),
@@ -119,26 +116,20 @@ def test_every_research_symbol_reuses_existing_routing_and_risk_metadata() -> No
     assert SYMBOL_SUB_INDUSTRY["688037"] == "equipment"
 
 
-def test_research_window_defaults_to_2023_without_mutating_legacy_backtest_defaults() -> None:
+def test_research_window_defaults_to_current_contract() -> None:
     assert DEFAULT_RESEARCH_START_DATE == "2023-01-01"
     parser = build_argument_parser()
     args = parser.parse_args(["--pool", "pool_b", "--no-plot"])
     assert args.pool == "pool_b"
-    assert args.start == ""
+    assert args.start_date == ""
+    assert args.end_date == ""
     assert resolve_backtest_window(
-        args.start,
-        args.end,
-        pool_selected=True,
+        args.start_date,
+        args.end_date,
         today="2026-09-16",
     ) == ("2023-01-01", "2026-09-16")
-    assert resolve_backtest_window(
-        "",
-        "",
-        pool_selected=False,
-        today="2026-09-16",
-    ) == (LEGACY_BACKTEST_START_DATE, LEGACY_BACKTEST_END_DATE)
 
-    aliases = parser.parse_args(
+    explicit = parser.parse_args(
         [
             "--pool",
             "pool_f",
@@ -149,11 +140,11 @@ def test_research_window_defaults_to_2023_without_mutating_legacy_backtest_defau
             "--no-plot",
         ]
     )
-    assert aliases.start == "2024-01-01"
-    assert aliases.end == "2025-12-31"
+    assert explicit.start_date == "2024-01-01"
+    assert explicit.end_date == "2025-12-31"
 
 
-def test_download_cli_accepts_start_date_and_end_date_aliases() -> None:
+def test_download_cli_uses_current_date_flags() -> None:
     args = download.build_argument_parser().parse_args(
         [
             "--pool",
@@ -164,8 +155,8 @@ def test_download_cli_accepts_start_date_and_end_date_aliases() -> None:
             "2026-09-15",
         ]
     )
-    assert args.start == "2023-01-01"
-    assert args.end == "2026-09-15"
+    assert args.start_date == "2023-01-01"
+    assert args.end_date == "2026-09-15"
     assert args.pools == ["pool_g"]
 
 
@@ -231,26 +222,19 @@ def test_regime_validation_requires_shared_warm_and_current_index_coverage(tmp_p
         )
 
 
-def test_pool_download_uses_research_window_without_mutating_legacy_defaults() -> None:
+def test_download_uses_one_current_window() -> None:
     assert download.resolve_download_window(
-        "", "", research_selection=True, today="2026-09-16"
+        "", "", today="2026-09-16"
     ) == ("2023-01-01", "2026-09-16")
     assert download.resolve_download_window(
-        "", "", research_selection=False, today="2026-09-16"
-    ) == ("2024-01-01", "2026-07-20")
-    assert download.resolve_download_window(
-        "2025-04-01", "2025-12-31", research_selection=True, today="2026-09-16"
+        "2025-04-01", "2025-12-31", today="2026-09-16"
     ) == ("2025-04-01", "2025-12-31")
 
 
-def test_pool_download_includes_pre_window_warmup_without_changing_replay_start() -> None:
+def test_download_includes_pre_window_warmup() -> None:
     assert download.research_data_start(
-        "2023-01-01", research_selection=True, warmup_calendar_days=365
+        "2023-01-01", warmup_calendar_days=365
     ) == "2022-01-01"
-    assert download.research_data_start(
-        "2024-01-01", research_selection=False, warmup_calendar_days=365
-    ) == "2024-01-01"
-    assert "lmt=1000" in download._url("300308", "2022-01-01", "2026-09-16")
 
 
 def test_research_fetch_reuses_existing_provider_failover(monkeypatch) -> None:
@@ -263,15 +247,8 @@ def test_research_fetch_reuses_existing_provider_failover(monkeypatch) -> None:
         "fetch_stock_data",
         lambda symbol, start, end: frame,
     )
-    monkeypatch.setattr(
-        download,
-        "_download",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("research mode must not call the legacy Eastmoney-only path")
-        ),
-    )
 
-    actual, name, provider = download._fetch_research_symbol(
+    actual, name, provider = download._fetch_symbol(
         "300308", "2022-01-01", "2022-01-05"
     )
     assert actual is frame
@@ -289,7 +266,7 @@ def test_research_fetch_rejects_tencent_history_truncated_at_provider_cap(monkey
         lambda symbol, start, end: frame,
     )
     with pytest.raises(RuntimeError, match="1000-row history cap"):
-        download._fetch_research_symbol("300308", "2022-01-01", "2026-09-15")
+        download._fetch_symbol("300308", "2022-01-01", "2026-09-15")
 
 
 def test_research_snapshot_records_content_hash(tmp_path) -> None:

@@ -1,10 +1,9 @@
 """Exercise real acquisition, snapshot and publication boundaries offline."""
 
-from collections import Counter
 import hashlib
 import json
+from collections import Counter
 from pathlib import Path
-import sys
 from types import SimpleNamespace
 
 import pandas as pd
@@ -15,6 +14,7 @@ from quantfusion.config import paths
 from quantfusion.config.daily import DEFAULT_REGIME_DATA_DIR
 from quantfusion.data import contracts, snapshot
 from quantfusion.data.providers import DataFetcher
+
 from .test_daily_regime_snapshot import scan_inputs as scan_inputs
 
 
@@ -170,9 +170,8 @@ def test_index_refresh_preserves_retained_evidence(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("failure", ["error", "empty"])
-def test_allow_stale_does_not_allow_missing_trade_symbols(scan_inputs, failure):
+def test_missing_trade_symbols_fail_closed(scan_inputs, failure):
     scan_inputs.failures["688072"] = failure
-    sys.argv.append("--allow-stale")
     assert dss.main() == 1
     assert not (scan_inputs.output / "signals_2026-09-12.json").exists()
 
