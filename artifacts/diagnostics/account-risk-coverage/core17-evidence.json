@@ -1,0 +1,89 @@
+{
+  "kind": "account_risk_coverage_core17_evidence",
+  "schema_version": 1,
+  "status": "PASS",
+  "source_identity": {
+    "base_revision": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+    "base_tree": "f5277ef281ad6baee60590a931f474be942f22dd",
+    "source_pr": 113,
+    "source_head": "ea3e1ba2ddc7e89faa44bdee9aebe6b9fb7c06e9",
+    "patch_git_blob": "b5acdde4bd66331e593d8dbc03715312bc12c779",
+    "patch_sha256": "3ab253195c0758ac4fc460c5479c4b279def395cecf11cb772d8ea9964c9b092",
+    "candidate_tree": "c68675608665a3f72b917ba9f88dab60f80cb767",
+    "changed_files": [
+      "quantfusion/application/account_scan.py",
+      "quantfusion/risk/account_budget.py"
+    ]
+  },
+  "responsibility_boundaries": {
+    "ordinary_budget_deviation_generates_held_reduction": false,
+    "buy_capacity_remains_binding": true,
+    "account_alert_generates_held_reduction": true,
+    "confirmed_shock_generates_held_reduction": true,
+    "policy_mode": "LIMITED_PROTECTION",
+    "health_schema": "EVALUATED"
+  },
+  "affected_tests": {
+    "passed": 44,
+    "failed": 0,
+    "duration_seconds": 9.31,
+    "log_sha256": "62876ccad73561b24ddeb50a6ceabdc388db70e86ecc507b211b4da0e60ae298"
+  },
+  "incumbent": {
+    "wealth_multiple": 9.610542744515504,
+    "max_drawdown": 0.15104978428469945,
+    "date_symbol_side_buckets": 190,
+    "active_fill_days": 92,
+    "sleeve_fills": 645,
+    "turnover_over_average_equity": 16.00753130920448,
+    "commission_plus_stamp": 74192.39296900001,
+    "minimum_cash": 753.7869980045634,
+    "maximum_conservation_error": 3.725290298461914e-09
+  },
+  "candidate": {
+    "wealth_multiple": 11.194244202966377,
+    "max_drawdown": 0.14888875743400234,
+    "date_symbol_side_buckets": 122,
+    "active_fill_days": 73,
+    "sleeve_fills": 388,
+    "turnover_over_average_equity": 13.459480051458625,
+    "commission_plus_stamp": 70737.13506725,
+    "minimum_cash": 1330.609876000447,
+    "maximum_conservation_error": 3.725290298461914e-09
+  },
+  "comparison": {
+    "wealth_ratio": 1.1647879313948895,
+    "max_drawdown_change": -0.0021610268506971064,
+    "date_symbol_side_bucket_reduction": 0.35789473684210527,
+    "active_fill_day_reduction": 0.2065217391304348,
+    "turnover_ratio": 0.840821722692449,
+    "sleeve_fill_ratio": 0.6015503875968993,
+    "commission_plus_stamp_delta": -3455.25790175001
+  },
+  "gates": {
+    "incumbent_identity_reproduced": true,
+    "candidate_identity_reproduced": true,
+    "wealth_ratio_at_least_1_10": true,
+    "max_drawdown_degradation_at_most_1pp": true,
+    "candidate_max_drawdown_at_most_19pct": true,
+    "bucket_reduction_at_least_20pct": true,
+    "active_fill_day_reduction_at_least_15pct": true,
+    "turnover_not_higher": true,
+    "sleeve_fills_decline": true,
+    "fees_do_not_increase": true,
+    "account_and_metric_correctness": true
+  },
+  "workflow_receipt": {
+    "verified_branch_head": "f252ce3c9e2f115ece210a2c58975772636c1a2b",
+    "run_id": 35201092089,
+    "job_id": 105135755751,
+    "artifact_id": 10488051674,
+    "artifact_name": "account-risk-coverage-core17-gate-f252ce3c9e2f115ece210a2c58975772636c1a2b",
+    "artifact_size_bytes": 7666,
+    "artifact_digest": "sha256:aa2492148d4a7e82ba64f45a331d386b4b8baae0c110ff8283629ff47c7119a9",
+    "downloaded_zip_sha256": "aa2492148d4a7e82ba64f45a331d386b4b8baae0c110ff8283629ff47c7119a9",
+    "download_readback_verified": true,
+    "internal_sha256_verified": true,
+    "core17_assessment_sha256": "f669564741d6741a5ec04d2bdebc64ebba75fce8b7e4cb41328a296308ff8c2c"
+  }
+}
