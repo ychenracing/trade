@@ -1,0 +1,1558 @@
+{
+  "artifact_receipt": {
+    "artifact_digest": "sha256:ebcd442b401291cb22d5c74005a8614e5ea8da47cbc9b0c65f41ef4d12ce81a8",
+    "artifact_id": 10487519568,
+    "artifact_name": "account-risk-coverage-pool-input-4fae001c6db8c88ac90d4c80d683275cfcbf8e45",
+    "artifact_size_bytes": 643706,
+    "downloaded_zip_sha256": "ebcd442b401291cb22d5c74005a8614e5ea8da47cbc9b0c65f41ef4d12ce81a8",
+    "external_download_readback_verified": true,
+    "internal_sha256_verified": true,
+    "raw_identity_sha256": "862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006",
+    "workflow_job_id": 105137238322,
+    "workflow_run_id": 35201549781
+  },
+  "calendar": {
+    "coverage_end": "2026-12-31",
+    "coverage_start": "2024-01-01",
+    "git_blob": "411eefd9bea778ecae5e8088cc685a4504b31867",
+    "market": "SSE_SZSE_A_SHARES",
+    "sha256": "9177f84dd29811a0f4a56c922b4482fc41b5e999c654bacb6862515bdfe9e34e",
+    "timezone": "Asia/Shanghai"
+  },
+  "economic_results_present": false,
+  "kind": "account_risk_coverage_pool_input_identity",
+  "market": {
+    "adjustment": "qfq",
+    "complete": true,
+    "downloaded_symbols": [
+      "300308",
+      "300502",
+      "300394",
+      "688008",
+      "603986",
+      "688347",
+      "688256",
+      "688072",
+      "002409",
+      "688300",
+      "300054",
+      "688120",
+      "688361",
+      "300604",
+      "601869",
+      "688498",
+      "002384",
+      "002281",
+      "300223",
+      "688041",
+      "002371",
+      "688012",
+      "688082",
+      "688037",
+      "688019",
+      "300666",
+      "688268",
+      "300776",
+      "688205",
+      "920045",
+      "688535",
+      "688249",
+      "600206",
+      "688409"
+    ],
+    "files": {
+      "002281": {
+        "bytes": 49952,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "光迅科技",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "251a0f52e5a6acc61831af70a80b0f4543b7d3f4c8ea2f6cd8fc142a0df47a13",
+        "status": "observed"
+      },
+      "002371": {
+        "bytes": 53641,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "北方华创",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "d87a9d559d641f7f04f6722802096693d41d615cfd3d2e119c67b0360bb61183",
+        "status": "observed"
+      },
+      "002384": {
+        "bytes": 50320,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "东山精密",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "6eb03819ee1417f944687794a088d1150dc6c81bc4e0a5485e3c7549a5f1eb4e",
+        "status": "observed"
+      },
+      "002409": {
+        "bytes": 49617,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "雅克科技",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "c294a68b1fdd91a8cd2defa8263571f409694b02397e13d9c1df0cfcf696d977",
+        "status": "observed"
+      },
+      "300054": {
+        "bytes": 49699,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "鼎龙股份",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "cf3cf86897ac3a6991cc09397517cf09e88755c7fe023a03cd8948336ae1fdda",
+        "status": "observed"
+      },
+      "300223": {
+        "bytes": 50284,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "北京君正",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "bc29af1dae8780d467cc2f3078f57d5fce883c0c92d15d4cbb5d107a717f41ef",
+        "status": "observed"
+      },
+      "300308": {
+        "bytes": 51742,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "中际旭创",
+        "provider": "Eastmoney",
+        "rows": 1099,
+        "sha256": "0185620496ac371c50681cf2cffc4d632e7739b3bc318194205f441709022645",
+        "status": "observed"
+      },
+      "300394": {
+        "bytes": 49801,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "天孚通信",
+        "provider": "Eastmoney",
+        "rows": 1099,
+        "sha256": "d49e356da021880d30806ac6b182f6c48deaaa36a972e3b03cdc8cc4f04ace46",
+        "status": "observed"
+      },
+      "300502": {
+        "bytes": 50120,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "新易盛",
+        "provider": "Eastmoney",
+        "rows": 1099,
+        "sha256": "74397c375eb94bdb1e6b4df881abfe47d356664d4dea77e887262f5d6c156741",
+        "status": "observed"
+      },
+      "300604": {
+        "bytes": 49917,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "长川科技",
+        "provider": "Sina",
+        "rows": 1089,
+        "sha256": "db9c1dff2ec11838be95d3e1c8a5ea777c0a2ecd88662934366533ac02944406",
+        "status": "observed"
+      },
+      "300666": {
+        "bytes": 49601,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "江丰电子",
+        "provider": "Sina",
+        "rows": 1094,
+        "sha256": "5e1252fd6eaa70958adaa2f202522ecd161af14f093eab9a8e3ae9097a311a25",
+        "status": "observed"
+      },
+      "300776": {
+        "bytes": 49740,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "帝尔激光",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "45d7328372aa8e0f58ea71fc4e53a1e5076aa2ce0d71556f53831af4ae154d6b",
+        "status": "observed"
+      },
+      "600206": {
+        "bytes": 49501,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "600206",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "9ea91cb7e417f83113e442c0b0fca62104895a37a83fdfa93addea289812eb1d",
+        "status": "observed"
+      },
+      "601869": {
+        "bytes": 49875,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "长飞光纤",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "a011b8869e50931a8d04fc3998921f52cdb79833a9cd8769b2fe4ca5dba01b2e",
+        "status": "observed"
+      },
+      "603986": {
+        "bytes": 52811,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "兆易创新",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "8dcad2ee20f0ce42c8641d9509775bccdd2dda04bd1d3afb46ec71d9e61d492d",
+        "status": "observed"
+      },
+      "688008": {
+        "bytes": 50808,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "澜起科技",
+        "provider": "Eastmoney",
+        "rows": 1099,
+        "sha256": "c07f2464800476f133e78ac7e50b63acf4771be21c659ff32f8ae27097e4a140",
+        "status": "observed"
+      },
+      "688012": {
+        "bytes": 51303,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "中微公司",
+        "provider": "Sina",
+        "rows": 1090,
+        "sha256": "a8633e536fafadf7b731220f2dcc70979b5f7df95787958b4be0bb0ee5be2244",
+        "status": "observed"
+      },
+      "688019": {
+        "bytes": 49967,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "安集科技",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "c4c85b1c7b4e2aacfc501085a9528670dcc25fb41d1ab1e7420dfa674923891b",
+        "status": "observed"
+      },
+      "688037": {
+        "bytes": 50772,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "芯源微",
+        "provider": "Sina",
+        "rows": 1096,
+        "sha256": "20c8a640c291a47ea1277cc73a21a0fb198727cd1841416d7280975b81fcad61",
+        "status": "observed"
+      },
+      "688041": {
+        "bytes": 44540,
+        "first_date": "2022-08-12",
+        "last_date": "2026-07-20",
+        "name": "海光信息",
+        "provider": "Sina",
+        "rows": 942,
+        "sha256": "8f0b78fe6baf4dcda5ad92623a9c649a608434b09fefb140c8f5ede3e6cd6b90",
+        "status": "observed"
+      },
+      "688072": {
+        "bytes": 49146,
+        "first_date": "2022-04-20",
+        "last_date": "2026-07-20",
+        "name": "拓荆科技",
+        "provider": "Sina",
+        "rows": 1020,
+        "sha256": "a3ce5b80a9c509266984798071582b31bcb4aacbf191256c91fa9824e4a4d7c6",
+        "status": "observed"
+      },
+      "688082": {
+        "bytes": 51492,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "盛美上海",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "81fb18b82e25f71588653f084450460e2ecf18b5ab05e0cb0c5005c5ee239ffb",
+        "status": "observed"
+      },
+      "688120": {
+        "bytes": 45200,
+        "first_date": "2022-06-08",
+        "last_date": "2026-07-20",
+        "name": "华海清科",
+        "provider": "Sina",
+        "rows": 999,
+        "sha256": "62dc503592e7f4e88d5490dc43b42d6b765626141c30bb1b938b0b5192f8cdf1",
+        "status": "observed"
+      },
+      "688205": {
+        "bytes": 43442,
+        "first_date": "2022-08-09",
+        "last_date": "2026-07-20",
+        "name": "688205",
+        "provider": "Sina",
+        "rows": 955,
+        "sha256": "ec822ec0645a0037907954ed6577f4d80b4fbc075ef3a2eba901d36594bbb715",
+        "status": "observed"
+      },
+      "688249": {
+        "bytes": 35060,
+        "first_date": "2023-05-05",
+        "last_date": "2026-07-20",
+        "name": "688249",
+        "provider": "Sina",
+        "rows": 778,
+        "sha256": "98d4f6a6e12f6779aab6695a727e4077be19265f39aca3fa3f504b528be5d936",
+        "status": "observed"
+      },
+      "688256": {
+        "bytes": 52324,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "寒武纪",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "e59d72c5d2def99deb784d43eae28a47819bc1007c37cf30ee5f7f54ef25241d",
+        "status": "observed"
+      },
+      "688268": {
+        "bytes": 49170,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "华特气体",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "6429f7f9334f651d5d8132df888f4c6dc3bf7c3a330c1794bf4e72f3be9ae29e",
+        "status": "observed"
+      },
+      "688300": {
+        "bytes": 48927,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-20",
+        "name": "联瑞新材",
+        "provider": "Sina",
+        "rows": 1099,
+        "sha256": "0cc188e734455c138cacdb02241cc06e94e995985b9f74f0eb8ec234db2b8504",
+        "status": "observed"
+      },
+      "688347": {
+        "bytes": 32178,
+        "first_date": "2023-08-07",
+        "last_date": "2026-07-20",
+        "name": "华虹宏力",
+        "provider": "Sina",
+        "rows": 704,
+        "sha256": "9610d733bb1532c7cd10d498d8fb192cab41a235a7b5d20e0c73e54abedafe68",
+        "status": "observed"
+      },
+      "688361": {
+        "bytes": 34761,
+        "first_date": "2023-05-19",
+        "last_date": "2026-07-20",
+        "name": "中科飞测",
+        "provider": "Sina",
+        "rows": 768,
+        "sha256": "eb38e6bb92036ffb55d8724d426390ec6e37b344d90142badcb9af623ba44566",
+        "status": "observed"
+      },
+      "688409": {
+        "bytes": 40978,
+        "first_date": "2022-10-10",
+        "last_date": "2026-07-20",
+        "name": "688409",
+        "provider": "Sina",
+        "rows": 917,
+        "sha256": "9151b39bc5a473dd6cdd1d46a4cfebbbaa78b14461af456ca2086cd94c1ab7c8",
+        "status": "observed"
+      },
+      "688498": {
+        "bytes": 40793,
+        "first_date": "2022-12-21",
+        "last_date": "2026-07-20",
+        "name": "源杰科技",
+        "provider": "Sina",
+        "rows": 865,
+        "sha256": "eec02d9df53b5e7538962f5a4490dd4163b0b6b21a498367489456504a81334c",
+        "status": "observed"
+      },
+      "688535": {
+        "bytes": 35311,
+        "first_date": "2023-04-04",
+        "last_date": "2026-07-20",
+        "name": "688535",
+        "provider": "Sina",
+        "rows": 787,
+        "sha256": "071306d25f66e2d039f0ad770b5624fc841416f237d584198d44c158167a0c55",
+        "status": "observed"
+      },
+      "688825": {
+        "first_date": null,
+        "first_trading_date": "2026-07-27",
+        "last_date": null,
+        "name": "长鑫科技",
+        "provider": null,
+        "rows": 0,
+        "status": "not_applicable_pre_listing"
+      },
+      "920045": {
+        "bytes": 6365,
+        "first_date": "2025-12-31",
+        "last_date": "2026-07-20",
+        "name": "920045",
+        "provider": "Sina",
+        "rows": 131,
+        "sha256": "cd5096e9395fdd844424b1ae2feded781fda6002aa1d092bca101d8181cd7af6",
+        "status": "observed"
+      }
+    },
+    "manifest_sha256": "1cfc2f0ef0c6248b82517d5e640508e0af0ce2405b439b9369131e3933610b1b",
+    "missing_symbols": [],
+    "not_applicable_symbols": [
+      "688825"
+    ],
+    "provider": "DataFetcher failover (Eastmoney/Sina/Tencent)",
+    "requested_symbols": [
+      "300308",
+      "300502",
+      "300394",
+      "688008",
+      "603986",
+      "688347",
+      "688256",
+      "688072",
+      "002409",
+      "688300",
+      "300054",
+      "688120",
+      "688361",
+      "300604",
+      "601869",
+      "688498",
+      "002384",
+      "002281",
+      "300223",
+      "688825",
+      "688041",
+      "002371",
+      "688012",
+      "688082",
+      "688037",
+      "688019",
+      "300666",
+      "688268",
+      "300776",
+      "688205",
+      "920045",
+      "688535",
+      "688249",
+      "600206",
+      "688409"
+    ],
+    "volume_unit": "shares"
+  },
+  "pools": {
+    "pool_a": {
+      "active_members": [
+        "300308"
+      ],
+      "configured_members": [
+        "300308"
+      ],
+      "members": {
+        "300308": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0185620496ac371c50681cf2cffc4d632e7739b3bc318194205f441709022645",
+          "name": "中际旭创",
+          "status": "observed"
+        }
+      }
+    },
+    "pool_b": {
+      "active_members": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "configured_members": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "members": {
+        "300308": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0185620496ac371c50681cf2cffc4d632e7739b3bc318194205f441709022645",
+          "name": "中际旭创",
+          "status": "observed"
+        },
+        "300394": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "d49e356da021880d30806ac6b182f6c48deaaa36a972e3b03cdc8cc4f04ace46",
+          "name": "天孚通信",
+          "status": "observed"
+        },
+        "300502": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "74397c375eb94bdb1e6b4df881abfe47d356664d4dea77e887262f5d6c156741",
+          "name": "新易盛",
+          "status": "observed"
+        }
+      }
+    },
+    "pool_c": {
+      "active_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "configured_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "members": {
+        "300308": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0185620496ac371c50681cf2cffc4d632e7739b3bc318194205f441709022645",
+          "name": "中际旭创",
+          "status": "observed"
+        },
+        "300394": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "d49e356da021880d30806ac6b182f6c48deaaa36a972e3b03cdc8cc4f04ace46",
+          "name": "天孚通信",
+          "status": "observed"
+        },
+        "300502": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "74397c375eb94bdb1e6b4df881abfe47d356664d4dea77e887262f5d6c156741",
+          "name": "新易盛",
+          "status": "observed"
+        },
+        "603986": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "8dcad2ee20f0ce42c8641d9509775bccdd2dda04bd1d3afb46ec71d9e61d492d",
+          "name": "兆易创新",
+          "status": "observed"
+        },
+        "688008": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c07f2464800476f133e78ac7e50b63acf4771be21c659ff32f8ae27097e4a140",
+          "name": "澜起科技",
+          "status": "observed"
+        }
+      }
+    },
+    "pool_d": {
+      "active_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "688347",
+        "688256",
+        "688072"
+      ],
+      "configured_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "688347",
+        "688256",
+        "688072"
+      ],
+      "members": {
+        "300308": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0185620496ac371c50681cf2cffc4d632e7739b3bc318194205f441709022645",
+          "name": "中际旭创",
+          "status": "observed"
+        },
+        "300394": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "d49e356da021880d30806ac6b182f6c48deaaa36a972e3b03cdc8cc4f04ace46",
+          "name": "天孚通信",
+          "status": "observed"
+        },
+        "300502": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "74397c375eb94bdb1e6b4df881abfe47d356664d4dea77e887262f5d6c156741",
+          "name": "新易盛",
+          "status": "observed"
+        },
+        "603986": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "8dcad2ee20f0ce42c8641d9509775bccdd2dda04bd1d3afb46ec71d9e61d492d",
+          "name": "兆易创新",
+          "status": "observed"
+        },
+        "688008": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c07f2464800476f133e78ac7e50b63acf4771be21c659ff32f8ae27097e4a140",
+          "name": "澜起科技",
+          "status": "observed"
+        },
+        "688072": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a3ce5b80a9c509266984798071582b31bcb4aacbf191256c91fa9824e4a4d7c6",
+          "name": "拓荆科技",
+          "status": "observed"
+        },
+        "688256": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "e59d72c5d2def99deb784d43eae28a47819bc1007c37cf30ee5f7f54ef25241d",
+          "name": "寒武纪",
+          "status": "observed"
+        },
+        "688347": {
+          "first_observation": "2023-08-07",
+          "first_trading_date": "2023-08-07",
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "9610d733bb1532c7cd10d498d8fb192cab41a235a7b5d20e0c73e54abedafe68",
+          "name": "华虹宏力",
+          "status": "late_listing"
+        }
+      }
+    },
+    "pool_e": {
+      "active_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688120",
+        "688361",
+        "300604",
+        "688347"
+      ],
+      "configured_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688120",
+        "688361",
+        "300604",
+        "688347"
+      ],
+      "members": {
+        "002409": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c294a68b1fdd91a8cd2defa8263571f409694b02397e13d9c1df0cfcf696d977",
+          "name": "雅克科技",
+          "status": "observed"
+        },
+        "300054": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "cf3cf86897ac3a6991cc09397517cf09e88755c7fe023a03cd8948336ae1fdda",
+          "name": "鼎龙股份",
+          "status": "observed"
+        },
+        "300308": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0185620496ac371c50681cf2cffc4d632e7739b3bc318194205f441709022645",
+          "name": "中际旭创",
+          "status": "observed"
+        },
+        "300394": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "d49e356da021880d30806ac6b182f6c48deaaa36a972e3b03cdc8cc4f04ace46",
+          "name": "天孚通信",
+          "status": "observed"
+        },
+        "300502": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "74397c375eb94bdb1e6b4df881abfe47d356664d4dea77e887262f5d6c156741",
+          "name": "新易盛",
+          "status": "observed"
+        },
+        "300604": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "db9c1dff2ec11838be95d3e1c8a5ea777c0a2ecd88662934366533ac02944406",
+          "name": "长川科技",
+          "status": "observed"
+        },
+        "603986": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "8dcad2ee20f0ce42c8641d9509775bccdd2dda04bd1d3afb46ec71d9e61d492d",
+          "name": "兆易创新",
+          "status": "observed"
+        },
+        "688008": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c07f2464800476f133e78ac7e50b63acf4771be21c659ff32f8ae27097e4a140",
+          "name": "澜起科技",
+          "status": "observed"
+        },
+        "688072": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a3ce5b80a9c509266984798071582b31bcb4aacbf191256c91fa9824e4a4d7c6",
+          "name": "拓荆科技",
+          "status": "observed"
+        },
+        "688120": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "62dc503592e7f4e88d5490dc43b42d6b765626141c30bb1b938b0b5192f8cdf1",
+          "name": "华海清科",
+          "status": "observed"
+        },
+        "688300": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0cc188e734455c138cacdb02241cc06e94e995985b9f74f0eb8ec234db2b8504",
+          "name": "联瑞新材",
+          "status": "observed"
+        },
+        "688347": {
+          "first_observation": "2023-08-07",
+          "first_trading_date": "2023-08-07",
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "9610d733bb1532c7cd10d498d8fb192cab41a235a7b5d20e0c73e54abedafe68",
+          "name": "华虹宏力",
+          "status": "late_listing"
+        },
+        "688361": {
+          "first_observation": "2023-05-19",
+          "first_trading_date": "2023-05-19",
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eb38e6bb92036ffb55d8724d426390ec6e37b344d90142badcb9af623ba44566",
+          "name": "中科飞测",
+          "status": "late_listing"
+        }
+      }
+    },
+    "pool_f": {
+      "active_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688120",
+        "688361",
+        "688256",
+        "601869",
+        "688498",
+        "002384"
+      ],
+      "configured_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688120",
+        "688361",
+        "688256",
+        "601869",
+        "688498",
+        "002384"
+      ],
+      "members": {
+        "002384": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "6eb03819ee1417f944687794a088d1150dc6c81bc4e0a5485e3c7549a5f1eb4e",
+          "name": "东山精密",
+          "status": "observed"
+        },
+        "002409": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c294a68b1fdd91a8cd2defa8263571f409694b02397e13d9c1df0cfcf696d977",
+          "name": "雅克科技",
+          "status": "observed"
+        },
+        "300054": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "cf3cf86897ac3a6991cc09397517cf09e88755c7fe023a03cd8948336ae1fdda",
+          "name": "鼎龙股份",
+          "status": "observed"
+        },
+        "300308": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0185620496ac371c50681cf2cffc4d632e7739b3bc318194205f441709022645",
+          "name": "中际旭创",
+          "status": "observed"
+        },
+        "300394": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "d49e356da021880d30806ac6b182f6c48deaaa36a972e3b03cdc8cc4f04ace46",
+          "name": "天孚通信",
+          "status": "observed"
+        },
+        "300502": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "74397c375eb94bdb1e6b4df881abfe47d356664d4dea77e887262f5d6c156741",
+          "name": "新易盛",
+          "status": "observed"
+        },
+        "601869": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a011b8869e50931a8d04fc3998921f52cdb79833a9cd8769b2fe4ca5dba01b2e",
+          "name": "长飞光纤",
+          "status": "observed"
+        },
+        "603986": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "8dcad2ee20f0ce42c8641d9509775bccdd2dda04bd1d3afb46ec71d9e61d492d",
+          "name": "兆易创新",
+          "status": "observed"
+        },
+        "688008": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c07f2464800476f133e78ac7e50b63acf4771be21c659ff32f8ae27097e4a140",
+          "name": "澜起科技",
+          "status": "observed"
+        },
+        "688072": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a3ce5b80a9c509266984798071582b31bcb4aacbf191256c91fa9824e4a4d7c6",
+          "name": "拓荆科技",
+          "status": "observed"
+        },
+        "688120": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "62dc503592e7f4e88d5490dc43b42d6b765626141c30bb1b938b0b5192f8cdf1",
+          "name": "华海清科",
+          "status": "observed"
+        },
+        "688256": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "e59d72c5d2def99deb784d43eae28a47819bc1007c37cf30ee5f7f54ef25241d",
+          "name": "寒武纪",
+          "status": "observed"
+        },
+        "688300": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0cc188e734455c138cacdb02241cc06e94e995985b9f74f0eb8ec234db2b8504",
+          "name": "联瑞新材",
+          "status": "observed"
+        },
+        "688361": {
+          "first_observation": "2023-05-19",
+          "first_trading_date": "2023-05-19",
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eb38e6bb92036ffb55d8724d426390ec6e37b344d90142badcb9af623ba44566",
+          "name": "中科飞测",
+          "status": "late_listing"
+        },
+        "688498": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eec02d9df53b5e7538962f5a4490dd4163b0b6b21a498367489456504a81334c",
+          "name": "源杰科技",
+          "status": "observed"
+        }
+      }
+    },
+    "pool_g": {
+      "active_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688498",
+        "002281",
+        "601869",
+        "688008",
+        "603986",
+        "300223",
+        "688256",
+        "688041",
+        "002371",
+        "688012",
+        "688072",
+        "688082",
+        "688120",
+        "688037",
+        "688361",
+        "300604",
+        "688019",
+        "300054",
+        "002409",
+        "300666",
+        "688268",
+        "688300",
+        "300776"
+      ],
+      "configured_members": [
+        "300308",
+        "300502",
+        "300394",
+        "688498",
+        "002281",
+        "601869",
+        "688008",
+        "603986",
+        "300223",
+        "688825",
+        "688256",
+        "688041",
+        "002371",
+        "688012",
+        "688072",
+        "688082",
+        "688120",
+        "688037",
+        "688361",
+        "300604",
+        "688019",
+        "300054",
+        "002409",
+        "300666",
+        "688268",
+        "688300",
+        "300776"
+      ],
+      "members": {
+        "002281": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "251a0f52e5a6acc61831af70a80b0f4543b7d3f4c8ea2f6cd8fc142a0df47a13",
+          "name": "光迅科技",
+          "status": "observed"
+        },
+        "002371": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "d87a9d559d641f7f04f6722802096693d41d615cfd3d2e119c67b0360bb61183",
+          "name": "北方华创",
+          "status": "observed"
+        },
+        "002409": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c294a68b1fdd91a8cd2defa8263571f409694b02397e13d9c1df0cfcf696d977",
+          "name": "雅克科技",
+          "status": "observed"
+        },
+        "300054": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "cf3cf86897ac3a6991cc09397517cf09e88755c7fe023a03cd8948336ae1fdda",
+          "name": "鼎龙股份",
+          "status": "observed"
+        },
+        "300223": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "bc29af1dae8780d467cc2f3078f57d5fce883c0c92d15d4cbb5d107a717f41ef",
+          "name": "北京君正",
+          "status": "observed"
+        },
+        "300308": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0185620496ac371c50681cf2cffc4d632e7739b3bc318194205f441709022645",
+          "name": "中际旭创",
+          "status": "observed"
+        },
+        "300394": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "d49e356da021880d30806ac6b182f6c48deaaa36a972e3b03cdc8cc4f04ace46",
+          "name": "天孚通信",
+          "status": "observed"
+        },
+        "300502": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "74397c375eb94bdb1e6b4df881abfe47d356664d4dea77e887262f5d6c156741",
+          "name": "新易盛",
+          "status": "observed"
+        },
+        "300604": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "db9c1dff2ec11838be95d3e1c8a5ea777c0a2ecd88662934366533ac02944406",
+          "name": "长川科技",
+          "status": "observed"
+        },
+        "300666": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "5e1252fd6eaa70958adaa2f202522ecd161af14f093eab9a8e3ae9097a311a25",
+          "name": "江丰电子",
+          "status": "observed"
+        },
+        "300776": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "45d7328372aa8e0f58ea71fc4e53a1e5076aa2ce0d71556f53831af4ae154d6b",
+          "name": "帝尔激光",
+          "status": "observed"
+        },
+        "601869": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a011b8869e50931a8d04fc3998921f52cdb79833a9cd8769b2fe4ca5dba01b2e",
+          "name": "长飞光纤",
+          "status": "observed"
+        },
+        "603986": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "8dcad2ee20f0ce42c8641d9509775bccdd2dda04bd1d3afb46ec71d9e61d492d",
+          "name": "兆易创新",
+          "status": "observed"
+        },
+        "688008": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c07f2464800476f133e78ac7e50b63acf4771be21c659ff32f8ae27097e4a140",
+          "name": "澜起科技",
+          "status": "observed"
+        },
+        "688012": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a8633e536fafadf7b731220f2dcc70979b5f7df95787958b4be0bb0ee5be2244",
+          "name": "中微公司",
+          "status": "observed"
+        },
+        "688019": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c4c85b1c7b4e2aacfc501085a9528670dcc25fb41d1ab1e7420dfa674923891b",
+          "name": "安集科技",
+          "status": "observed"
+        },
+        "688037": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "20c8a640c291a47ea1277cc73a21a0fb198727cd1841416d7280975b81fcad61",
+          "name": "芯源微",
+          "status": "observed"
+        },
+        "688041": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "8f0b78fe6baf4dcda5ad92623a9c649a608434b09fefb140c8f5ede3e6cd6b90",
+          "name": "海光信息",
+          "status": "observed"
+        },
+        "688072": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a3ce5b80a9c509266984798071582b31bcb4aacbf191256c91fa9824e4a4d7c6",
+          "name": "拓荆科技",
+          "status": "observed"
+        },
+        "688082": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "81fb18b82e25f71588653f084450460e2ecf18b5ab05e0cb0c5005c5ee239ffb",
+          "name": "盛美上海",
+          "status": "observed"
+        },
+        "688120": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "62dc503592e7f4e88d5490dc43b42d6b765626141c30bb1b938b0b5192f8cdf1",
+          "name": "华海清科",
+          "status": "observed"
+        },
+        "688256": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "e59d72c5d2def99deb784d43eae28a47819bc1007c37cf30ee5f7f54ef25241d",
+          "name": "寒武纪",
+          "status": "observed"
+        },
+        "688268": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "6429f7f9334f651d5d8132df888f4c6dc3bf7c3a330c1794bf4e72f3be9ae29e",
+          "name": "华特气体",
+          "status": "observed"
+        },
+        "688300": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0cc188e734455c138cacdb02241cc06e94e995985b9f74f0eb8ec234db2b8504",
+          "name": "联瑞新材",
+          "status": "observed"
+        },
+        "688361": {
+          "first_observation": "2023-05-19",
+          "first_trading_date": "2023-05-19",
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eb38e6bb92036ffb55d8724d426390ec6e37b344d90142badcb9af623ba44566",
+          "name": "中科飞测",
+          "status": "late_listing"
+        },
+        "688498": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eec02d9df53b5e7538962f5a4490dd4163b0b6b21a498367489456504a81334c",
+          "name": "源杰科技",
+          "status": "observed"
+        },
+        "688825": {
+          "first_observation": null,
+          "first_trading_date": "2026-07-27",
+          "last_observation": null,
+          "market_file_sha256": null,
+          "name": "长鑫科技",
+          "status": "not_applicable_pre_listing"
+        }
+      }
+    },
+    "pool_h": {
+      "active_members": [
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688120",
+        "688361",
+        "688256",
+        "601869",
+        "688498",
+        "002384"
+      ],
+      "configured_members": [
+        "688008",
+        "603986",
+        "002409",
+        "688072",
+        "688300",
+        "300054",
+        "688120",
+        "688361",
+        "688256",
+        "601869",
+        "688498",
+        "002384"
+      ],
+      "members": {
+        "002384": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "6eb03819ee1417f944687794a088d1150dc6c81bc4e0a5485e3c7549a5f1eb4e",
+          "name": "东山精密",
+          "status": "observed"
+        },
+        "002409": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c294a68b1fdd91a8cd2defa8263571f409694b02397e13d9c1df0cfcf696d977",
+          "name": "雅克科技",
+          "status": "observed"
+        },
+        "300054": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "cf3cf86897ac3a6991cc09397517cf09e88755c7fe023a03cd8948336ae1fdda",
+          "name": "鼎龙股份",
+          "status": "observed"
+        },
+        "601869": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a011b8869e50931a8d04fc3998921f52cdb79833a9cd8769b2fe4ca5dba01b2e",
+          "name": "长飞光纤",
+          "status": "observed"
+        },
+        "603986": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "8dcad2ee20f0ce42c8641d9509775bccdd2dda04bd1d3afb46ec71d9e61d492d",
+          "name": "兆易创新",
+          "status": "observed"
+        },
+        "688008": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "c07f2464800476f133e78ac7e50b63acf4771be21c659ff32f8ae27097e4a140",
+          "name": "澜起科技",
+          "status": "observed"
+        },
+        "688072": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a3ce5b80a9c509266984798071582b31bcb4aacbf191256c91fa9824e4a4d7c6",
+          "name": "拓荆科技",
+          "status": "observed"
+        },
+        "688120": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "62dc503592e7f4e88d5490dc43b42d6b765626141c30bb1b938b0b5192f8cdf1",
+          "name": "华海清科",
+          "status": "observed"
+        },
+        "688256": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "e59d72c5d2def99deb784d43eae28a47819bc1007c37cf30ee5f7f54ef25241d",
+          "name": "寒武纪",
+          "status": "observed"
+        },
+        "688300": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0cc188e734455c138cacdb02241cc06e94e995985b9f74f0eb8ec234db2b8504",
+          "name": "联瑞新材",
+          "status": "observed"
+        },
+        "688361": {
+          "first_observation": "2023-05-19",
+          "first_trading_date": "2023-05-19",
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eb38e6bb92036ffb55d8724d426390ec6e37b344d90142badcb9af623ba44566",
+          "name": "中科飞测",
+          "status": "late_listing"
+        },
+        "688498": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eec02d9df53b5e7538962f5a4490dd4163b0b6b21a498367489456504a81334c",
+          "name": "源杰科技",
+          "status": "observed"
+        }
+      }
+    },
+    "pool_i": {
+      "active_members": [
+        "688072",
+        "688300",
+        "300054",
+        "688120",
+        "688361",
+        "688256",
+        "601869",
+        "688498",
+        "002384"
+      ],
+      "configured_members": [
+        "688072",
+        "688300",
+        "300054",
+        "688120",
+        "688361",
+        "688256",
+        "601869",
+        "688498",
+        "002384"
+      ],
+      "members": {
+        "002384": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "6eb03819ee1417f944687794a088d1150dc6c81bc4e0a5485e3c7549a5f1eb4e",
+          "name": "东山精密",
+          "status": "observed"
+        },
+        "300054": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "cf3cf86897ac3a6991cc09397517cf09e88755c7fe023a03cd8948336ae1fdda",
+          "name": "鼎龙股份",
+          "status": "observed"
+        },
+        "601869": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a011b8869e50931a8d04fc3998921f52cdb79833a9cd8769b2fe4ca5dba01b2e",
+          "name": "长飞光纤",
+          "status": "observed"
+        },
+        "688072": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a3ce5b80a9c509266984798071582b31bcb4aacbf191256c91fa9824e4a4d7c6",
+          "name": "拓荆科技",
+          "status": "observed"
+        },
+        "688120": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "62dc503592e7f4e88d5490dc43b42d6b765626141c30bb1b938b0b5192f8cdf1",
+          "name": "华海清科",
+          "status": "observed"
+        },
+        "688256": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "e59d72c5d2def99deb784d43eae28a47819bc1007c37cf30ee5f7f54ef25241d",
+          "name": "寒武纪",
+          "status": "observed"
+        },
+        "688300": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "0cc188e734455c138cacdb02241cc06e94e995985b9f74f0eb8ec234db2b8504",
+          "name": "联瑞新材",
+          "status": "observed"
+        },
+        "688361": {
+          "first_observation": "2023-05-19",
+          "first_trading_date": "2023-05-19",
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eb38e6bb92036ffb55d8724d426390ec6e37b344d90142badcb9af623ba44566",
+          "name": "中科飞测",
+          "status": "late_listing"
+        },
+        "688498": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eec02d9df53b5e7538962f5a4490dd4163b0b6b21a498367489456504a81334c",
+          "name": "源杰科技",
+          "status": "observed"
+        }
+      }
+    },
+    "pool_j": {
+      "active_members": [
+        "688256",
+        "601869",
+        "688498",
+        "002384"
+      ],
+      "configured_members": [
+        "688256",
+        "601869",
+        "688498",
+        "002384"
+      ],
+      "members": {
+        "002384": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "6eb03819ee1417f944687794a088d1150dc6c81bc4e0a5485e3c7549a5f1eb4e",
+          "name": "东山精密",
+          "status": "observed"
+        },
+        "601869": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "a011b8869e50931a8d04fc3998921f52cdb79833a9cd8769b2fe4ca5dba01b2e",
+          "name": "长飞光纤",
+          "status": "observed"
+        },
+        "688256": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "e59d72c5d2def99deb784d43eae28a47819bc1007c37cf30ee5f7f54ef25241d",
+          "name": "寒武纪",
+          "status": "observed"
+        },
+        "688498": {
+          "first_observation": "2023-01-03",
+          "first_trading_date": null,
+          "last_observation": "2026-07-20",
+          "market_file_sha256": "eec02d9df53b5e7538962f5a4490dd4163b0b6b21a498367489456504a81334c",
+          "name": "源杰科技",
+          "status": "observed"
+        }
+      }
+    }
+  },
+  "regime": {
+    "files": {
+      "000300": {
+        "bytes": 77750,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-28",
+        "rows": 1105,
+        "sha256": "99ea69b6e8f8153699b9a7f5440192ba4e136599a5383077821cc85b5ccfd80f"
+      },
+      "000682": {
+        "bytes": 73713,
+        "first_date": "2022-01-04",
+        "last_date": "2026-07-28",
+        "rows": 1105,
+        "sha256": "bd1ace8833bee06a0c248d3e254d55297d3c3bbbd9a2971d091a3b0568cabd93"
+      }
+    },
+    "validation": {
+      "index_codes": [
+        "000300",
+        "000682"
+      ],
+      "observed_end_date": "2026-07-20",
+      "observed_start_date": "2023-01-03",
+      "sha256": {
+        "000300": "99ea69b6e8f8153699b9a7f5440192ba4e136599a5383077821cc85b5ccfd80f",
+        "000682": "bd1ace8833bee06a0c248d3e254d55297d3c3bbbd9a2971d091a3b0568cabd93"
+      },
+      "warmup_sessions": 242
+    }
+  },
+  "schema_version": 1,
+  "source": {
+    "candidate_patch_git_blob": "b5acdde4bd66331e593d8dbc03715312bc12c779",
+    "candidate_source_head": "ea3e1ba2ddc7e89faa44bdee9aebe6b9fb7c06e9",
+    "core17_git_blob": "ce7af1ad901d2ff1ac5f0ba81ee4cfaa84a60353",
+    "production_base": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+    "production_tree": "f5277ef281ad6baee60590a931f474be942f22dd",
+    "research_universes_git_blob": "985a1962ae0bd1dafc6ccc94d69599c510bf0a7b",
+    "workflow_head": "4fae001c6db8c88ac90d4c80d683275cfcbf8e45"
+  },
+  "status": "FROZEN_BEFORE_POOL_ECONOMIC_REPLAY",
+  "window": {
+    "download_start_with_warmup": "2022-01-01",
+    "requested_end": "2026-07-20",
+    "requested_start": "2023-01-01",
+    "warmup_calendar_days": 365
+  }
+}
