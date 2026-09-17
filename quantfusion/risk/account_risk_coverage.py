@@ -21,6 +21,7 @@ from quantfusion.risk.account_risk_reallocation import (
     ExecutionContext,
     _plan_capacity_reallocation,
 )
+from quantfusion.risk.account_risk_epoch import consume_account_risk_epoch
 from quantfusion.risk.overlay.models import RiskAction
 
 _LEGACY_PLAN = _legacy.plan_account_risk_budget
@@ -248,7 +249,6 @@ def plan_account_risk_budget(
 
 
 def _latest_snapshot(
-    events: Sequence[Mapping[str, Any]],
     *,
     date_str: str,
     assets: float,
@@ -257,16 +257,12 @@ def _latest_snapshot(
     shock_floor: float,
     risk_alert_active: bool | None,
 ) -> AccountRiskSnapshot:
-    event = next(
-        (
-            item
-            for item in reversed(events)
-            if item.get("event") == "account_risk_epoch_snapshot"
-            and str(item.get("date", "")) <= date_str
-        ),
-        None,
+    published = consume_account_risk_epoch(
+        date=date_str,
+        equity=assets,
+        lifetime_peak_assets=peak,
     )
-    if event is None:
+    if published is None:
         # Direct unit/research callers keep an explicit single-peak fallback.
         return _validated_snapshot(
             assets,
@@ -276,21 +272,20 @@ def _latest_snapshot(
             risk_alert_active=bool(risk_alert_active),
             source="legacy_explicit_fallback",
         )
-    alert = bool(event.get("risk_alert_active", False))
+    alert = published.risk_alert_active
     if risk_alert_active is not None:
         alert = bool(risk_alert_active)
     return _validated_snapshot(
         assets,
         peak,
         cfg,
-        cycle_peak_assets=float(event["cycle_peak_assets"]),
-        lifetime_peak_assets=float(event["lifetime_peak_assets"]),
-        terminal_drawdown=float(event["terminal_drawdown"]),
+        cycle_peak_assets=published.cycle_peak_assets,
+        lifetime_peak_assets=published.lifetime_peak_assets,
+        terminal_drawdown=published.terminal_drawdown,
         shock_floor=shock_floor,
         risk_alert_active=alert,
-        terminal_lock_active=bool(event.get("terminal_lock_active", False)),
-        cycle_lock_active=bool(event.get("cycle_lock_active", False)),
-        state_complete=bool(event.get("risk_state_complete", True)),
+        terminal_lock_active=published.terminal_lock_active,
+        cycle_lock_active=published.cycle_lock_active,
         source="risk_manager_snapshot",
     )
 
@@ -309,8 +304,7 @@ def _execution_context(
     sellable: dict[tuple[int, str, str], int] = {}
     has_positions = False
     has_executable_pending = any(
-        signal.direction == "sell"
-        or (signal.direction == "buy" and str(signal.signal_date) < date_str)
+        signal.direction in {"buy", "sell"}
         for state in states
         for signal, _ in state.pending
     )
@@ -379,7 +373,6 @@ def apply_account_risk_budget(
     """Apply the unified plan through the existing queue and fill adapter."""
     date_str = date.strftime("%Y-%m-%d")
     snapshot = _latest_snapshot(
-        events,
         date_str=date_str,
         assets=assets,
         peak=peak,

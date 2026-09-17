@@ -12,6 +12,7 @@ from quantfusion.risk.account_budget import (
     account_budget_capacity,
     plan_account_risk_budget,
 )
+from quantfusion.risk.account_risk_epoch import consume_account_risk_epoch
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager
 
 
@@ -183,8 +184,14 @@ def test_manager_publishes_distinct_peaks_after_cycle_rearm() -> None:
     assert manager.peak_assets == 80_000.0
     assert manager.lifetime_peak_assets == 100_000.0
     events = manager.drain_audit_events()
-    snapshot = events[-1]
-    assert snapshot["event"] == "account_risk_epoch_snapshot"
-    assert snapshot["cycle_peak_assets"] == 80_000.0
-    assert snapshot["lifetime_peak_assets"] == 100_000.0
-    assert snapshot["terminal_lock_active"] is False
+    assert any(event["event"] == "portfolio_drawdown_rearmed" for event in events)
+    assert all(event["event"] != "account_risk_epoch_snapshot" for event in events)
+    snapshot = consume_account_risk_epoch(
+        date="2026-01-06",
+        equity=80_000.0,
+        lifetime_peak_assets=100_000.0,
+    )
+    assert snapshot is not None
+    assert snapshot.cycle_peak_assets == 80_000.0
+    assert snapshot.lifetime_peak_assets == 100_000.0
+    assert snapshot.terminal_lock_active is False
