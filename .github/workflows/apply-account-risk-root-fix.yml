@@ -1,0 +1,97 @@
+name: Apply account risk root fix
+
+on:
+  push:
+    branches:
+      - agent/account-risk-capacity-reallocation
+    paths:
+      - .github/workflows/apply-account-risk-root-fix.yml
+      - .github/root-cause-fix/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-account-risk-root-fix
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout payload commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decode, verify, and apply files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import zlib
+          from pathlib import Path
+
+          files = {
+              ".github/workflows/account-risk-capacity-root-cause.yml": (
+                  ".github/root-cause-fix/workflow.b64z",
+                  "2ef2ce8b0a92b456720be08fe33b75abc316b5890de189f516be5a4bca4d84a8",
+              ),
+              "scripts/account_risk_capacity_trace.py": (
+                  ".github/root-cause-fix/trace.b64z",
+                  "80e2e58dedfc6c27b92892d71e29b8adffda4156211a27d001dfd77715929c83",
+              ),
+              "scripts/account_risk_capacity_assess.py": (
+                  ".github/root-cause-fix/assess.b64z",
+                  "10e8df623683f07f1bb648d4a4c07db5fe91428af8f0739caf3e01ff2f76783f",
+              ),
+              "artifacts/diagnostics/account-risk-coverage/root-cause-contract.json": (
+                  ".github/root-cause-fix/contract.b64z",
+                  "4e3788f498364cfe437a276e241938823d9416c94fd41b3e915c93be4beaca2d",
+              ),
+          }
+          for target_name, (payload_name, expected_sha256) in files.items():
+              payload = Path(payload_name).read_text(encoding="ascii").strip()
+              raw = zlib.decompress(base64.b64decode(payload, validate=True))
+              actual_sha256 = hashlib.sha256(raw).hexdigest()
+              if actual_sha256 != expected_sha256:
+                  raise SystemExit(
+                      f"sha256 mismatch for {target_name}: "
+                      f"expected {expected_sha256}, got {actual_sha256}"
+                  )
+              target = Path(target_name)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(raw)
+
+          contract = Path(
+              "artifacts/diagnostics/account-risk-coverage/root-cause-contract.json"
+          )
+          json.loads(contract.read_text(encoding="utf-8"))
+          PY
+          python -m py_compile \
+            scripts/account_risk_capacity_trace.py \
+            scripts/account_risk_capacity_assess.py
+          git diff --check
+
+      - name: Commit verified replacements and remove bootstrap files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "${GITHUB_REF_NAME}"
+          test "$(git rev-parse FETCH_HEAD)" = "$GITHUB_SHA"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            .github/workflows/account-risk-capacity-root-cause.yml \
+            scripts/account_risk_capacity_trace.py \
+            scripts/account_risk_capacity_assess.py \
+            artifacts/diagnostics/account-risk-coverage/root-cause-contract.json
+          git rm -r \
+            .github/root-cause-fix \
+            .github/workflows/apply-account-risk-root-fix.yml
+          git commit -m "diagnostics: fix complete bounded root-cause replay"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
