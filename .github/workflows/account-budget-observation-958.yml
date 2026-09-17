@@ -1,0 +1,182 @@
+name: Account budget observation-only 958 acceptance
+
+on:
+  push:
+    branches: [agent/ab5-observer-production]
+    paths:
+      - .github/workflows/account-budget-observation-958.yml
+      - scripts/reconstruct_account_budget_observer.py
+      - scripts/aggregate_account_budget_958.py
+      - artifacts/diagnostics/account-budget-convergence/observe-only-candidate.patch.*
+
+permissions:
+  contents: read
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        index: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Reconstruct exact candidate and replay deterministic shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/account-budget-958-shard-${{ matrix.index }}"
+          candidate="$RUNNER_TEMP/account-budget-observer-source"
+          mkdir -p "$out"
+          source_sha=$(python scripts/reconstruct_account_budget_observer.py \
+            --repository "$GITHUB_WORKSPACE" \
+            --worktree "$candidate" \
+            --identity "$out/source-identity-${{ matrix.index }}.json")
+          (
+            cd "$candidate"
+            python -m quantfusion.application.stress \
+              --workers 4 \
+              --source-revision "$source_sha" \
+              --shard-index '${{ matrix.index }}' \
+              --shard-count 16 \
+              --diagnostic-checkpoint "$out/checkpoint-${{ matrix.index }}.json" \
+              --diagnostic-output "$out/result-${{ matrix.index }}.json" \
+              > "$out/stdout-${{ matrix.index }}.log"
+          )
+          cd "$out"
+          sha256sum checkpoint-*.json result-*.json source-identity-*.json stdout-*.log > SHA256SUMS
+          wc -c checkpoint-*.json result-*.json source-identity-*.json stdout-*.log > sizes.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: account-budget-958-shard-${{ matrix.index }}
+          path: ${{ runner.temp }}/account-budget-958-shard-${{ matrix.index }}/
+          if-no-files-found: error
+          retention-days: 90
+
+  aggregate:
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: account-budget-958-shard-*
+          path: ${{ runner.temp }}/account-budget-958-shards
+          merge-multiple: true
+      - name: Reconstruct, assemble and formally assess all 958 scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/account-budget-958-complete"
+          candidate="$RUNNER_TEMP/account-budget-observer-source"
+          mkdir -p "$out"
+          source_sha=$(python scripts/reconstruct_account_budget_observer.py \
+            --repository "$GITHUB_WORKSPACE" \
+            --worktree "$candidate" \
+            --identity "$out/source-identity.json")
+          SOURCE_SHA="$source_sha" python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'account-budget-958-shards'
+          expected = os.environ['SOURCE_SHA']
+          identities = sorted(root.glob('source-identity-*.json'))
+          assert len(identities) == 16, len(identities)
+          for path in identities:
+              payload = json.loads(path.read_text())
+              assert payload['candidate_revision'] == expected, (path, payload['candidate_revision'], expected)
+          PY
+          PYTHONPATH="$candidate" python scripts/aggregate_account_budget_958.py \
+            --input "$RUNNER_TEMP/account-budget-958-shards" \
+            --checkpoint "$out/formal-checkpoint.json" \
+            --manifest "$out/shard-manifest.json" \
+            --source-revision "$source_sha" \
+            > "$out/aggregate.log"
+          set +e
+          (
+            cd "$candidate"
+            python -m quantfusion.application.stress \
+              --workers 1 \
+              --source-revision "$source_sha" \
+              --checkpoint "$out/formal-checkpoint.json" \
+              > "$out/formal-assessment.log" 2>&1
+          )
+          rc=$?
+          set -e
+          if [[ "$rc" != 0 && "$rc" != 2 ]]; then
+            cat "$out/formal-assessment.log"
+            exit "$rc"
+          fi
+          echo "$rc" > "$out/formal-exit-code.txt"
+          candidate_result="$candidate/artifacts/validation/candidates/stress-${source_sha}-rejected.json"
+          if [[ -f "$candidate_result" ]]; then
+            cp "$candidate_result" "$out/rejected-candidate.json"
+          else
+            cp "$candidate/artifacts/validation/universe_stress.json" "$out/accepted-universe.json"
+            cp "$candidate/artifacts/validation/prefix_stress.json" "$out/accepted-prefix.json"
+          fi
+          cp "$candidate/artifacts/diagnostics/no_waiver/production-primary/contract.json" "$out/effective-contract.json"
+          cp "$candidate/artifacts/diagnostics/no_waiver/production-primary/contract-before-nonrandom-mdd19.json" "$out/previous-contract.json"
+          SOURCE_SHA="$source_sha" python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          out = Path(os.environ['RUNNER_TEMP']) / 'account-budget-958-complete'
+          result_path = out / ('rejected-candidate.json' if (out/'rejected-candidate.json').is_file() else 'accepted-universe.json')
+          result = json.loads(result_path.read_text())
+          rows = result['results']
+          family = {}
+          for name in sorted({row['scenario_type'] for row in rows}):
+              values = [row for row in rows if row['scenario_type'] == name]
+              worst = min(values, key=lambda row: row['max_drawdown'])
+              family[name] = {
+                  'count': len(values),
+                  'minimum_wealth': min(1.0 + row['total_return'] for row in values),
+                  'worst_mdd': worst['max_drawdown'],
+                  'worst_mdd_scenario': worst['scenario_id'],
+              }
+          primary = next(row for row in rows if row['scenario_id'] == 'prefix-17')
+          summary = {
+              'schema_version': 1,
+              'candidate_source_revision': os.environ['SOURCE_SHA'],
+              'workflow_source_revision': os.environ['GITHUB_SHA'],
+              'acceptance_status': result.get('acceptance_status'),
+              'scenario_count': len(rows),
+              'primary': primary,
+              'family': family,
+              'production_pool_acceptance': result.get('production_pool_acceptance'),
+              'native_joint_acceptance': result.get('native_joint_acceptance'),
+              'rejection_reasons': result.get('rejection_reasons', []),
+          }
+          (out/'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False)+'\n')
+          lines=[]
+          for path in sorted(out.iterdir()):
+              if path.is_file() and path.name != 'SHA256SUMS':
+                  lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}")
+          (out/'SHA256SUMS').write_text('\n'.join(lines)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: account-budget-observation-958-${{ github.sha }}
+          path: ${{ runner.temp }}/account-budget-958-complete/
+          if-no-files-found: error
+          retention-days: 90
