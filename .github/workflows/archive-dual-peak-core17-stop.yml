@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   archive:
-    if: ${{ github.event.head_commit.message == 'evidence: add one-shot Core17 artifact archiver' }}
+    if: "${{ github.event.head_commit.message == 'evidence: fix one-shot Core17 artifact archiver' }}"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
