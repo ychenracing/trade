@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "kind": "account_risk_capacity_root_cause_contract",
+  "frozen_at": "2026-09-17",
+  "task": "bounded_root_cause_confirmation",
+  "source": {
+    "repository": "ychenracing/trade",
+    "incumbent_revision": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+    "incumbent_tree": "f5277ef281ad6baee60590a931f474be942f22dd",
+    "limited_protection_source_pr": 113,
+    "limited_protection_head": "ea3e1ba2ddc7e89faa44bdee9aebe6b9fb7c06e9",
+    "limited_protection_patch_path": "artifacts/diagnostics/account-budget-convergence/limited-protection-candidate.patch",
+    "limited_protection_patch_git_blob": "b5acdde4bd66331e593d8dbc03715312bc12c779"
+  },
+  "inputs": {
+    "pool_input_artifact_id": 10487519568,
+    "pool_input_artifact_name": "account-risk-coverage-pool-input-4fae001c6db8c88ac90d4c80d683275cfcbf8e45",
+    "pool_input_workflow_run": 35201549781,
+    "pool_input_identity_sha256": "862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006",
+    "prior_long_evidence_artifact_id": 10489081492,
+    "prior_long_evidence_artifact_name": "account-risk-coverage-pools-rerun-b78f5a47662241eb0b462b2d974174d016fa1589",
+    "prior_long_evidence_workflow_run": 35202568919
+  },
+  "replays": {
+    "pools": ["core17", "pool_b", "pool_d", "pool_g", "pool_f"],
+    "windows": {
+      "long": ["2023-01-01", "2026-07-20"],
+      "common": ["2025-04-01", "2026-07-20"]
+    },
+    "policies": ["incumbent", "candidate"],
+    "expected_count": 20,
+    "engine": "ProductionReplayEngine",
+    "capital": 2000000.0,
+    "indicator_state": "warm",
+    "warmup_calendar_days": 365
+  },
+  "observer": {
+    "read_only": true,
+    "production_economic_behavior_must_not_change": true,
+    "capture": [
+      "equity",
+      "lifetime_peak",
+      "cash",
+      "gross_exposure",
+      "gross_caps",
+      "remaining_loss_budget",
+      "current_gap_debit",
+      "requested_buy_gap_debit",
+      "gross_gap_shock_alert_scales",
+      "risk_state_and_route",
+      "books",
+      "effective_buy_intents_after_existing_admission",
+      "budget_clipped_or_removed_buys",
+      "ordinary_account_budget_trim_plans",
+      "actual_fills",
+      "pending_queues",
+      "allocation_scores",
+      "first_economic_divergence",
+      "subsequent_cash_holdings_return_and_risk_differences"
+    ]
+  },
+  "definitions": {
+    "common_window_failure": "limited_protection wealth / incumbent wealth < 0.90",
+    "material_buy_clip": "an already admitted pending buy has authorized_shares / requested_shares < 0.50",
+    "near_capacity": "gross_before >= 0.95 * gross_cap, or the already-admitted buy authorization ratio is below 0.50",
+    "nearby_incumbent_trim": "an ordinary account_budget_trim was planned on the same close or one of the previous five replay sessions and actually filled no later than five replay sessions after the clipped intent",
+    "higher_effective_capacity": "on the clipped close incumbent authorization exceeds limited protection by at least 0.25, or incumbent buys at least one additional board lot of the same symbol and strategy during the next twenty replay sessions",
+    "pre_divergence_identity": "cash, gross, held books and pending economic intents are equal on the final common budget close before the first incumbent ordinary trim",
+    "linked_positive_gap_share": "share of positive daily increases in incumbent-minus-limited equity gap occurring while incumbent has more close-known exposure to symbols in qualifying clipped-buy chains",
+    "capacity_chain_major_source": "a qualifying capacity chain exists, the pre-divergence state is identical, the first trade divergence is not earlier than the first incumbent ordinary trim, and linked_positive_gap_share >= 0.35",
+    "gap_formed_by_2024_share": "positive incumbent-minus-limited asset gap at the final 2024 session divided by the positive terminal asset gap",
+    "non_trend_positive_gap_growth_share": "share of positive daily increases in incumbent-minus-limited asset gap occurring when the existing production route is not TREND"
+  },
+  "path_a": {
+    "priority": 1,
+    "requirements": [
+      "at least two of pool_b, pool_d, pool_g fail in the common window",
+      "failed pools contain real already-admitted buys clipped below 50 percent",
+      "those buys occur while capacity is near or binding",
+      "incumbent ordinary trims were planned and actually filled near the blocked opportunities",
+      "incumbent subsequently had materially higher effective capacity",
+      "capacity chains are a major source in at least two of pool_b, pool_d, pool_g",
+      "no data, account, fee, causality or execution correctness failure"
+    ]
+  },
+  "path_b": {
+    "priority": 2,
+    "requirements": [
+      "path A is not supported",
+      "at least two of pool_b, pool_d, pool_g have common-window wealth ratio >= 0.90",
+      "at least two of pool_b, pool_d, pool_g form at least 70 percent of the terminal gap by the end of 2024",
+      "at least two of pool_b, pool_d, pool_g form at least 70 percent of positive gap growth in an existing non-TREND route",
+      "no capacity-chain major-source pool",
+      "no new regime indicator or threshold is needed",
+      "no correctness failure"
+    ]
+  },
+  "stop": {
+    "when": "neither path A nor path B satisfies every frozen requirement",
+    "effect": "do not implement an economic candidate; preserve evidence; close the PR; leave main unchanged"
+  },
+  "prohibitions": [
+    "no additional pools",
+    "no additional windows",
+    "no third policy",
+    "no parameter or threshold search",
+    "no pool, symbol or date exceptions",
+    "no candidate implementation before the selected path is frozen",
+    "no result-dependent contract edits"
+  ]
+}
