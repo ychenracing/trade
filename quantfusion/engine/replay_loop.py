@@ -7,7 +7,7 @@ from quantfusion.execution.c6_receipts import reconcile_close_queue
 # pyright: reportAttributeAccessIssue=false
 
 from types import SimpleNamespace
-from quantfusion.risk.account_budget import apply_account_risk_budget
+from quantfusion.risk.account_budget_observer import observe_account_risk_budget
 
 import pandas as pd
 
@@ -292,10 +292,10 @@ class CoreReplayLoopMixin:
     ) -> list[tuple[Signal, BaseStrategy]]:
         """Execute prior-close orders, then evaluate today's close."""
         self._start_trading_day()
-        if pending and self.cfg["account_risk_budget_enabled"]:
-            # Standalone/forced-weak runs own one real book. Preserve the same
-            # retained defensive sell-wins boundary as the ensemble: an active
-            # winner owns this batch even when filled or deferred at the open.
+        if pending:
+            # Standalone/forced-weak runs own one real book. Sell-first
+            # execution is an account/execution invariant, not an AB5 power;
+            # keep it identical whether AB5 observation is enabled or absent.
             defensive_books = {
                 (signal.symbol, signal.strategy_name)
                 for signal, strategy in pending
@@ -317,8 +317,6 @@ class CoreReplayLoopMixin:
             pending = self._execute_pending_signals(
                 retained, data_map, date, date_to_pos, frozenset({"buy"})
             )
-        elif pending:
-            pending = self._execute_pending_signals(pending, data_map, date, date_to_pos)
         pending = self._evaluate_trading_day(
             symbols_dict, data_map, indicator_map, all_dates, date_to_pos, date, pending,
         )
@@ -331,8 +329,15 @@ class CoreReplayLoopMixin:
             scorer = getattr(self, "_allocation_scores", None)
             scores = scorer(data_map, date) if scorer is not None else {}
             state = SimpleNamespace(sleeve=self, data_map=data_map, pending=pending)
-            apply_account_risk_budget([state], date, assets, peak, self.cfg,
-                                      lambda symbol: float(scores.get(symbol, 0.)), self.risk_events)
+            observe_account_risk_budget(
+                [state],
+                date,
+                assets,
+                peak,
+                self.cfg,
+                lambda symbol: float(scores.get(symbol, 0.)),
+                self.risk_events,
+            )
             pending = state.pending
         return pending
 

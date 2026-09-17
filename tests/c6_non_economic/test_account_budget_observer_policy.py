@@ -6,6 +6,8 @@ from types import SimpleNamespace
 
 import pandas as pd
 
+from quantfusion.account.models import AccountPosition, AccountSnapshot
+from quantfusion.application import account_scan
 from quantfusion.config.engine import default_engine_config
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.domain.models import Position, Signal
@@ -123,3 +125,78 @@ def test_account_budget_status_separates_policy_from_evaluation_health():
     assert status["policy_mode"] == "OBSERVE_ONLY"
     assert status["health_status"] == "EVALUATED"
     assert status["status"] == "OBSERVED"
+
+
+def test_account_budget_status_fails_closed_for_incomplete_observation():
+    status = account_budget_observer_status(
+        [{"event": "account_budget_envelope", "mechanism": "AB5"}], True
+    )
+
+    assert status["policy_mode"] is None
+    assert status["health_status"] is None
+    assert status["status"] == "INVALID_OBSERVATION"
+
+
+def test_real_account_observer_does_not_rewrite_manual_advice():
+    dates = pd.date_range("2025-10-01", periods=100, freq="D")
+    frame = pd.DataFrame(
+        {
+            "open": [10.0] * len(dates),
+            "close": [10.0] * len(dates),
+            "high": [10.0] * len(dates),
+            "low": [10.0] * len(dates),
+            "volume": [1e8] * len(dates),
+        },
+        index=dates,
+    )
+    as_of = dates[-1].strftime("%Y-%m-%d")
+    snapshot = AccountSnapshot(
+        schema_version=3,
+        account_id="main",
+        snapshot_date=as_of,
+        cash=10_000.0,
+        peak_equity=100_000.0,
+        positions=(
+            AccountPosition(
+                symbol="300308",
+                shares=8_000,
+                sellable_shares=8_000,
+                avg_cost=10.0,
+                entry_date=dates[0].strftime("%Y-%m-%d"),
+                highest_close=10.0,
+            ),
+        ),
+    )
+    actions = [
+        {
+            "symbol": "300308",
+            "action": "HOLD",
+            "shares": 8_000,
+            "sellable_shares": 8_000,
+            "recommended_shares": 0,
+            "blocked_shares": 0,
+            "execution_status": "NO_ACTION",
+            "close": 10.0,
+            "reason": "original advice",
+        }
+    ]
+    prepared = {
+        "300308": (frame, as_of, default_engine_config(), {}),
+    }
+    before = deepcopy(actions)
+
+    receipt = account_scan.AccountSignalEngine._apply_account_budget(
+        snapshot,
+        prepared,
+        actions,
+        equity=90_000.0,
+        as_of=as_of,
+    )
+
+    assert actions == before
+    assert receipt["policy_mode"] == "OBSERVE_ONLY"
+    assert receipt["health_status"] == "EVALUATED"
+    assert receipt["status"] == "OBSERVED"
+    assert receipt["trade_intervention_allowed"] is False
+    assert receipt["buy_shares_removed"] == 0
+    assert receipt["new_reduction_orders"] == 0
