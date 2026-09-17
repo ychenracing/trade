@@ -1,0 +1,314 @@
+name: Dual-peak account risk Core17 gate
+
+on:
+  push:
+    branches: [agent/dual-peak-account-risk-coverage]
+    paths:
+      - .github/workflows/dual-peak-account-risk-core17-gate.yml
+      - artifacts/diagnostics/account-risk-coverage/dual-peak-preregistration.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dual-peak-account-risk-core17-gate
+  cancel-in-progress: false
+
+jobs:
+  core17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+
+      - name: Reconstruct frozen candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA=7d5efe5e4ea2159f82b9deb0ff4810730d8de15f
+          BASE_TREE=f5277ef281ad6baee60590a931f474be942f22dd
+          SOURCE_SHA=e9d89a9ee0c835428b2f99454f0a133003c004ea
+          SOURCE_TREE=71fb69f129dc91826f391c901c2cf2b293551bf8
+          CONTRACT=artifacts/diagnostics/account-risk-coverage/dual-peak-preregistration.json
+          CONTRACT_BLOB=7581dd8a5321f657ed95a5ea5c9c54788b0effb4
+          EVIDENCE_DIR="$RUNNER_TEMP/dual-peak-core17"
+          INCUMBENT_ROOT="$RUNNER_TEMP/incumbent"
+          CANDIDATE_ROOT="$RUNNER_TEMP/candidate"
+          mkdir -p "$EVIDENCE_DIR"
+          test "$(git rev-parse "$BASE_SHA^{tree}")" = "$BASE_TREE"
+          test "$(git rev-parse "$SOURCE_SHA^{tree}")" = "$SOURCE_TREE"
+          test "$(git hash-object "$CONTRACT")" = "$CONTRACT_BLOB"
+          git worktree add --detach "$INCUMBENT_ROOT" "$BASE_SHA"
+          git worktree add --detach "$CANDIDATE_ROOT" "$SOURCE_SHA"
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" "$SOURCE_SHA" | sort)
+          expected=(
+            quantfusion/risk/account_budget.py
+            quantfusion/risk/account_budget_legacy.py
+            quantfusion/risk/account_risk_capacity.py
+            quantfusion/risk/account_risk_coverage.py
+            quantfusion/risk/account_risk_epoch.py
+            quantfusion/risk/account_risk_reallocation.py
+            quantfusion/risk/managers.py
+            quantfusion/risk/managers_legacy.py
+            tests/unit/test_account_risk_coverage.py
+          )
+          test "${changed[*]}" = "${expected[*]}"
+          python - "$CONTRACT" <<'PY'
+          import json, sys
+          from pathlib import Path
+          c = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          assert c["status"] == "FROZEN_PRE_ECONOMIC"
+          assert c["base"]["sha"] == "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f"
+          assert c["base"]["tree"] == "f5277ef281ad6baee60590a931f474be942f22dd"
+          assert c["candidate"]["source_sha"] == "e9d89a9ee0c835428b2f99454f0a133003c004ea"
+          assert c["candidate"]["source_tree"] == "71fb69f129dc91826f391c901c2cf2b293551bf8"
+          assert c["candidate"]["economic_design"]["cycle_floor_fraction"] == 0.82
+          assert c["candidate"]["economic_design"]["planned_sell_credit"] is False
+          assert c["candidate"]["economic_design"]["second_candidate_allowed"] is False
+          assert c["inputs"]["repository_data_tree"] == "7c2669b5dc6997f548b44c0fc4db5b9998f95050"
+          assert c["inputs"]["seed"] == 20240318
+          assert c["core17_hard_gate"]["wealth_ratio_min"] == 1.05
+          assert c["failure_policy"]["stop_on_first_failed_economic_layer"] is True
+          PY
+          cat > "$EVIDENCE_DIR/source-identity.json" <<EOF
+          {"base_sha":"$BASE_SHA","base_tree":"$BASE_TREE","candidate_source_sha":"$SOURCE_SHA","candidate_source_tree":"$SOURCE_TREE","contract_git_blob":"$CONTRACT_BLOB","gate_commit":"$GITHUB_SHA","workflow_run_id":"$GITHUB_RUN_ID"}
+          EOF
+          cp "$CONTRACT" "$EVIDENCE_DIR/preregistration.json"
+          echo "INCUMBENT_ROOT=$INCUMBENT_ROOT" >> "$GITHUB_ENV"
+          echo "CANDIDATE_ROOT=$CANDIDATE_ROOT" >> "$GITHUB_ENV"
+          echo "EVIDENCE_DIR=$EVIDENCE_DIR" >> "$GITHUB_ENV"
+
+      - name: Run frozen development checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$CANDIDATE_ROOT"
+          python -m compileall -q quantfusion/risk
+          python -m ruff check \
+            quantfusion/risk/account_budget.py \
+            quantfusion/risk/account_budget_legacy.py \
+            quantfusion/risk/account_risk_capacity.py \
+            quantfusion/risk/account_risk_coverage.py \
+            quantfusion/risk/account_risk_epoch.py \
+            quantfusion/risk/account_risk_reallocation.py \
+            quantfusion/risk/managers.py \
+            quantfusion/risk/managers_legacy.py \
+            tests/unit/test_account_risk_coverage.py
+          python -m pyright \
+            quantfusion/risk/account_budget.py \
+            quantfusion/risk/account_risk_capacity.py \
+            quantfusion/risk/account_risk_coverage.py \
+            quantfusion/risk/account_risk_epoch.py \
+            quantfusion/risk/account_risk_reallocation.py \
+            quantfusion/risk/managers.py \
+            tests/unit/test_account_risk_coverage.py
+          python -m pytest -q tests/unit/test_account_risk_coverage.py \
+            | tee "$EVIDENCE_DIR/targeted-tests.log"
+
+      - name: Run paired Core17 replays
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_one() {
+            local root="$1" label="$2"
+            (
+              cd "$root"
+              python - "$EVIDENCE_DIR" "$label" <<'PY'
+          import dataclasses, hashlib, json, math, sys
+          from pathlib import Path
+          import numpy as np
+          from quantfusion.config.universe import SYMBOL_NAMES
+          from quantfusion.engine.replay import ProductionReplayEngine
+
+          evidence, label = Path(sys.argv[1]), sys.argv[2]
+          result = ProductionReplayEngine(2_000_000.0).run(
+              SYMBOL_NAMES, "2025-04-01", "2026-07-20",
+              data_dir="data/market", regime_data_dir="data/regime",
+              indicator_state="warm",
+          )
+          trades = list(result["trades"])
+          curve = result["equity_curve"].copy()
+          traded = sum(abs(float(t.gross_value or t.shares * t.price)) for t in trades)
+          commission = sum(float(t.commission) for t in trades)
+          stamp = sum(float(t.stamp_duty_cost) for t in trades)
+          mean_nav = float(curve["assets"].mean())
+          conservation = float(
+              (curve["assets"] - curve["cash"] - curve["position_value"]).abs().max()
+          )
+          risk = result["account_risk_budget"]
+          payload = {
+              "label": label,
+              "window": ["2025-04-01", "2026-07-20"],
+              "initial_capital": 2_000_000.0,
+              "symbol_order": list(SYMBOL_NAMES),
+              "wealth_multiple": 1.0 + float(result["total_return"]),
+              "max_drawdown": abs(float(result["max_drawdown"])),
+              "date_symbol_side_buckets": int(result["date_symbol_side_count"]),
+              "active_fill_days": len({str(t.date) for t in trades}),
+              "sleeve_fills": int(result["sleeve_fill_count"]),
+              "trade_records": int(result["total_trades"]),
+              "gross_traded_value": traded,
+              "mean_nav": mean_nav,
+              "turnover_over_average_equity": traded / mean_nav,
+              "commission": commission,
+              "stamp_duty": stamp,
+              "commission_plus_stamp": commission + stamp,
+              "minimum_cash": float(curve["cash"].min()),
+              "maximum_conservation_error": conservation,
+              "equity_rows": int(len(curve)),
+              "finite": bool(
+                  np.isfinite(curve[["assets", "cash", "position_value"]].to_numpy()).all()
+                  and all(math.isfinite(float(v)) for v in (
+                      result["total_return"], result["max_drawdown"], traded,
+                      mean_nav, commission, stamp,
+                  ))
+              ),
+              "account_risk_budget_enabled": bool(risk["enabled"]),
+              "account_risk_budget_status": str(risk["status"]),
+              "account_risk_budget_mechanism": str(risk.get("mechanism", "")),
+              "account_risk_production_mechanism": str(
+                  (risk.get("latest") or {}).get("production_mechanism", "")
+              ),
+              "source_files": {
+                  str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                  for path in sorted(Path("quantfusion/risk").glob("account_risk_*.py"))
+              },
+          }
+          (evidence / f"{label}-core17.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          curve.to_csv(evidence / f"{label}-equity-curve.csv", index=False)
+          with (evidence / f"{label}-trades.jsonl").open("w", encoding="utf-8") as fh:
+              for trade in trades:
+                  record = dataclasses.asdict(trade) if dataclasses.is_dataclass(trade) else {
+                      name: getattr(trade, name, None)
+                      for name in ("date", "symbol", "strategy_name", "direction", "shares", "price", "gross_value", "commission", "stamp_duty_cost", "reason")
+                  }
+                  fh.write(json.dumps(record, ensure_ascii=False, sort_keys=True, default=str) + "\n")
+          print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+          PY
+            )
+          }
+          run_one "$INCUMBENT_ROOT" incumbent | tee "$EVIDENCE_DIR/incumbent-core17.log"
+          run_one "$CANDIDATE_ROOT" candidate | tee "$EVIDENCE_DIR/candidate-core17.log"
+
+      - name: Assess preregistered hard gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, math, os
+          from pathlib import Path
+          root = Path(os.environ["EVIDENCE_DIR"])
+          incumbent = json.loads((root / "incumbent-core17.json").read_text())
+          candidate = json.loads((root / "candidate-core17.json").read_text())
+          expected = {
+              "wealth_multiple": 9.610542744515504,
+              "max_drawdown": 0.15104978428469945,
+              "date_symbol_side_buckets": 190,
+              "active_fill_days": 92,
+              "sleeve_fills": 645,
+              "turnover_over_average_equity": 16.00753130920448,
+              "commission_plus_stamp": 74192.392969,
+          }
+          identity = {
+              key: (
+                  incumbent[key] == value if isinstance(value, int)
+                  else math.isclose(float(incumbent[key]), float(value), rel_tol=1e-11, abs_tol=1e-8)
+              )
+              for key, value in expected.items()
+          }
+          wealth_ratio = candidate["wealth_multiple"] / incumbent["wealth_multiple"]
+          mdd_delta = candidate["max_drawdown"] - incumbent["max_drawdown"]
+          bucket_reduction = 1.0 - candidate["date_symbol_side_buckets"] / incumbent["date_symbol_side_buckets"]
+          day_reduction = 1.0 - candidate["active_fill_days"] / incumbent["active_fill_days"]
+          turnover_ratio = candidate["turnover_over_average_equity"] / incumbent["turnover_over_average_equity"]
+          fee_ratio = candidate["commission_plus_stamp"] / incumbent["commission_plus_stamp"]
+          correctness = bool(
+              incumbent["finite"] and candidate["finite"]
+              and incumbent["minimum_cash"] >= -1e-6 and candidate["minimum_cash"] >= -1e-6
+              and incumbent["maximum_conservation_error"] <= 1e-6
+              and candidate["maximum_conservation_error"] <= 1e-6
+              and incumbent["account_risk_budget_enabled"]
+              and candidate["account_risk_budget_enabled"]
+              and candidate["account_risk_budget_status"] == "APPLIED"
+              and candidate["account_risk_production_mechanism"] == "account_risk_coverage"
+          )
+          gates = {
+              "incumbent_identity_reproduced": all(identity.values()),
+              "wealth_ratio_at_least_1_05": wealth_ratio >= 1.05,
+              "mdd_degradation_at_most_1pp": mdd_delta <= 0.01,
+              "candidate_mdd_at_most_19pct": candidate["max_drawdown"] <= 0.19,
+              "bucket_reduction_at_least_15pct": bucket_reduction >= 0.15,
+              "active_day_reduction_at_least_10pct": day_reduction >= 0.10,
+              "turnover_not_above_incumbent": turnover_ratio <= 1.0 + 1e-12,
+              "sleeve_fills_decrease": candidate["sleeve_fills"] < incumbent["sleeve_fills"],
+              "fees_no_significant_increase": fee_ratio <= 1.02,
+              "correctness": correctness,
+          }
+          decision = "PASS" if all(gates.values()) else "FAIL"
+          payload = {
+              "layer": "core17", "decision": decision,
+              "identity_checks": identity, "gates": gates,
+              "comparisons": {
+                  "wealth_ratio": wealth_ratio, "mdd_delta": mdd_delta,
+                  "bucket_reduction": bucket_reduction,
+                  "active_fill_day_reduction": day_reduction,
+                  "turnover_ratio": turnover_ratio, "fee_ratio": fee_ratio,
+              },
+              "incumbent": incumbent, "candidate": candidate,
+              "next_layer_allowed": decision == "PASS",
+          }
+          (root / "core17-gate.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+          if decision != "PASS":
+              raise SystemExit(1)
+          PY
+
+      - name: Build evidence manifest
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$EVIDENCE_DIR"
+          find . -maxdepth 1 -type f ! -name SHA256SUMS ! -name manifest.json -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ["EVIDENCE_DIR"])
+          files = []
+          for path in sorted(root.iterdir()):
+              if path.is_file() and path.name != "manifest.json":
+                  data = path.read_bytes()
+                  files.append({"name": path.name, "length": len(data), "sha256": hashlib.sha256(data).hexdigest()})
+          payload = {
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "gate_commit": os.environ["GITHUB_SHA"],
+              "candidate_source_sha": "e9d89a9ee0c835428b2f99454f0a133003c004ea",
+              "candidate_source_tree": "71fb69f129dc91826f391c901c2cf2b293551bf8",
+              "files": files,
+          }
+          (root / "manifest.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+          PY
+
+      - name: Upload frozen evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-peak-account-risk-core17-${{ github.run_id }}
+          path: ${{ env.EVIDENCE_DIR }}
+          if-no-files-found: error
+          retention-days: 30
