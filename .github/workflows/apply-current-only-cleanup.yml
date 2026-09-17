@@ -27,6 +27,32 @@ jobs:
       - run: python -m pip install -r requirements-lock.txt
       - name: Apply deterministic cleanup
         run: python .github/current_only_cleanup_apply.py
+      - name: Disable removed option abbreviation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              "quantfusion/application/backtest_cli.py": (
+                  '    parser = argparse.ArgumentParser(\n        description="Quant Fusion standalone backtester"\n    )',
+                  '    parser = argparse.ArgumentParser(\n        description="Quant Fusion standalone backtester",\n        allow_abbrev=False,\n    )',
+              ),
+              "scripts/download_eastmoney_qfq.py": (
+                  '    parser = argparse.ArgumentParser()',
+                  '    parser = argparse.ArgumentParser(allow_abbrev=False)',
+              ),
+              "quantfusion/application/daily_scan.py": (
+                  '    parser = argparse.ArgumentParser(description="Daily technology-sector signal scan")',
+                  '    parser = argparse.ArgumentParser(\n        description="Daily technology-sector signal scan", allow_abbrev=False\n    )',
+              ),
+          }
+          for filename, (old, new) in replacements.items():
+              path = Path(filename)
+              text = path.read_text(encoding="utf-8")
+              if text.count(old) != 1:
+                  raise SystemExit(f"{filename}: expected one parser constructor, found {text.count(old)}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
       - name: Normalize safe import edits
         run: >-
           python -m ruff check --select=I,F401 --fix
