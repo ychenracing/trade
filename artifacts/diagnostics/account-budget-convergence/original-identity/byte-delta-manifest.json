@@ -1,0 +1,20 @@
+{
+  "kind": "exact_original_bytes_transport",
+  "size": 77208,
+  "sha256": "4a27e7077751fc5eda5d50199ff1ad68c8f1ccbc8605951670c99246870f88ea",
+  "parts": [
+    {"path":"byte-delta-000.bin","offset":0,"size":6144,"sha256":"979da62c810e5ce7ad5d1201cd1155b860d5628fe1c9205aed110c67fcd69744","git_blob_sha1":"a21496ad1be63580c0b597c261388769b1168076"},
+    {"path":"byte-delta-001.bin","offset":6144,"size":6144,"sha256":"87181da50fb4ed97d4655f05727f05c20374c320b0c30bfea6227ce7ae921fce","git_blob_sha1":"3951886571fd267d6b4a04b01e000382a7afc45a"},
+    {"path":"byte-delta-002.bin","offset":12288,"size":6144,"sha256":"6c2319d9dc5b2ee33a450547e1be638b87b050842f999f09bf7d5d183adcff08","git_blob_sha1":"34c1a284dae31bd12a3bfc0a56b0717e283d26b9"},
+    {"path":"byte-delta-003.bin","offset":18432,"size":6144,"sha256":"f193f62632cacfdd0b9d8f17a2060b5b56bc498a467e942d6f5d04452379a201","git_blob_sha1":"8ece99eedab519996aa6cff18827039bbd7c30f4"},
+    {"path":"byte-delta-004.bin","offset":24576,"size":6144,"sha256":"4b6a21137195b2f4406a7262da30e3c918ac7f68ec2d9daebada135647b659cd","git_blob_sha1":"dac7a3e1ff2f632674e69e64042566920f15c319"},
+    {"path":"byte-delta-005.bin","offset":30720,"size":6144,"sha256":"0cbd3e8bb29e3d373d11b43e2ad9343f0da3be8ad4b323f3be5c93eba4cb99ca","git_blob_sha1":"5ba0d7c38c40b0bbd3fcc29ad4c4c55da2d87724"},
+    {"path":"byte-delta-006.bin","offset":36864,"size":6144,"sha256":"8c4e57db8b5746c05c1918d579146bf4774c50f579b0cb878e03e21523fcbd9a","git_blob_sha1":"e6d2d6e8ec5aada01e01fffc89ac9f6094e46d2d"},
+    {"path":"byte-delta-007.bin","offset":43008,"size":6144,"sha256":"04a8a133acac72b5d5d7e865d67846424a12ce281bbe07efe08825de6275e0a1","git_blob_sha1":"4c5c89fc687fbacce50d5e03c8b189912b23ab76"},
+    {"path":"byte-delta-008.bin","offset":49152,"size":6144,"sha256":"13a5e2140622e628edfdcfb00c069814305005f8c7880d43f506e4056b5dc8e5","git_blob_sha1":"8aa8def4ef1bc38df2117c5b88d7cda23464eb4c"},
+    {"path":"byte-delta-009.bin","offset":55296,"size":6144,"sha256":"c123e0c2e2d9178f5a4fd4f4ccc3c164541a67d0b6bc094c3a2cfb97b9204cf5","git_blob_sha1":"99866ec7740814499e23a8ee5a0356db3ad8a51c"},
+    {"path":"byte-delta-010.bin","offset":61440,"size":6144,"sha256":"9b7b21e0ee6c3a341a7a68509d36be4198987ec87e8800b604bfb503836d2aa4","git_blob_sha1":"989b7131c44ebaf7439ec76dcc3e7efa7f589d41"},
+    {"path":"byte-delta-011.bin","offset":67584,"size":6144,"sha256":"6702adb8bdd5216996d23602f8c58b034b88f54296cc06c148aa596938ff5850","git_blob_sha1":"c8d78c988de41fed47fa4f8eafc110f762bb378f"},
+    {"path":"byte-delta-012.bin","offset":73728,"size":3480,"sha256":"c1dbcb3605ab9a8b9617d166e212816c997ea9cc8bc422b3555e8ade764928a4","git_blob_sha1":"b0a3cdf75616909fe3779c86beb3897b66a76bc9"}
+  ]
+}
