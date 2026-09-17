@@ -1,0 +1,28 @@
+{
+  "file": "source-and-raw-identities.tar.xz",
+  "size": 16512,
+  "sha256": "96e99d0eaf54230ccc6e80ada231c4cbd4d46245503d387a63406db27a3d8082",
+  "parts": [
+    {
+      "path": "identity-part-000.bin",
+      "offset": 0,
+      "size": 6144,
+      "sha256": "ae2f74b2fa253412371f8d4c884e408d96d42352996d92eac502ad6cf6c0ca00",
+      "git_blob_sha1": "d3dbd38e0bf9541f4f9534ef4f0e5c5cbeecdde9"
+    },
+    {
+      "path": "identity-part-001.bin",
+      "offset": 6144,
+      "size": 6144,
+      "sha256": "08db34b390304c11dfc5467be4661d5395ea57e5eca738698eb81c0bfd8d04fa",
+      "git_blob_sha1": "922e919082d5aa6f624d907f728a52d6f2715f37"
+    },
+    {
+      "path": "identity-part-002.bin",
+      "offset": 12288,
+      "size": 4224,
+      "sha256": "4131136102bcaa121c813b5c26940b89923cb0c41fb344b47e5b1d7ea1f0ba4b",
+      "git_blob_sha1": "313a03a28a496018bd1f1b0b076540c36a1793ce"
+    }
+  ]
+}
