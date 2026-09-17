@@ -25,8 +25,8 @@ jobs:
           tar \
             --exclude='./.git' \
             --exclude='./artifacts' \
-            --exclude='./trade-source.tar.gz' \
-            -czf trade-source.tar.gz .
+            -czf /tmp/trade-source.tar.gz .
+          cp /tmp/trade-source.tar.gz trade-source.tar.gz
           sha256sum trade-source.tar.gz > SOURCE_SHA256SUMS
           stat --printf='%s trade-source.tar.gz\n' trade-source.tar.gz > SOURCE_SIZE
       - name: Upload source snapshot
