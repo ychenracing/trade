@@ -105,8 +105,8 @@ jobs:
           current_test = Path("tests/unit/test_current_only_cli.py")
           text = current_test.read_text(encoding="utf-8")
           marker = "def test_download_cli_keeps_only_current_date_flags() -> None:\n"
-          if "test_old_provider_specific_downloader_is_removed" not in text:
-              insertion = '''def test_old_provider_specific_downloader_is_removed() -> None:\n    root = Path(__file__).resolve().parents[2]\n    assert (root / "scripts" / "download_market_data.py").is_file()\n    assert not (root / "scripts" / "download_eastmoney_qfq.py").exists()\n\n\n'''
+          if "test_market_data_entrypoint_is_unique" not in text:
+              insertion = '''def test_market_data_entrypoint_is_unique() -> None:\n    root = Path(__file__).resolve().parents[2]\n    downloaders = {path.name for path in (root / "scripts").glob("download_*.py")}\n    assert downloaders == {"download_market_data.py"}\n\n\n'''
               if marker not in text:
                   raise SystemExit("current-only test insertion marker missing")
               text = text.replace(marker, insertion + marker, 1)
