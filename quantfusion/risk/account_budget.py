@@ -65,7 +65,6 @@ def plan_account_risk_budget(
     shock_reduced_book_ids: set[tuple[int, str, str]] | None = None,
     confirmed_shock_reduced_book_ids: set[tuple[int, str, str]] | None = None,
     crowded_shock_reduced_book_ids: set[tuple[int, str, str]] | None = None,
-    buy_gross_cap_ceiling: float | None = None,
 ) -> tuple[dict[str, Any], list[RiskAction]]:
     """Plan the same AB5 reductions for real snapshot books or replay books.
 
@@ -175,19 +174,6 @@ def plan_account_risk_budget(
     )
     cap = receipt["gross_cap"]
     requested = sum(value for _, _, value in buys)
-    recovery_buy_cap = None
-    recovery_buy_scale = 1.
-    if buy_gross_cap_ceiling is not None:
-        ceiling = require_finite(
-            'AB5 recovery buy gross cap ceiling',
-            buy_gross_cap_ceiling,
-            min_value=0.,
-        )
-        recovery_buy_cap = min(cap, ceiling)
-        recovery_buy_scale = (
-            min(1., max(0., recovery_buy_cap-gross)/requested)
-            if requested else 1.
-        )
     binding = cap < receipt["ordinary_gross_cap"] - 1e-8
     gross_scale = min(1., max(0., cap-gross)/requested) if binding and requested else 1.
     base_gap_rate = receipt["stress_fraction"] + receipt["cost_rate"]
@@ -579,15 +565,7 @@ def plan_account_risk_budget(
             strict=True,
         )
     ]
-    recovery_receipt: dict[str, float] = {}
-    if recovery_buy_cap is not None:
-        buy_scales = [min(scale, recovery_buy_scale) for scale in buy_scales]
-        recovery_receipt = {
-            "recovery_buy_gross_cap": recovery_buy_cap,
-            "recovery_buy_gross_scale": recovery_buy_scale,
-        }
-    return {**receipt, **recovery_receipt,
-            "gross_before": gross, "buy_envelope_binding": binding,
+    return {**receipt, "gross_before": gross, "buy_envelope_binding": binding,
             "buy_gross_scale": gross_scale, "current_gap_debit": current_gap,
             "requested_buy_gap_debit": buy_gap, "buy_gap_scale": gap_scale,
             "observed_shock_candidates": candidates,
@@ -702,7 +680,6 @@ def apply_account_risk_budget(
     *, shock_floor: float = 0., preserve_strategy_valid_holdings: bool = False,
     risk_alert_active: bool | None = None,
     portfolio_evidence_buy_symbols: set[str] | None = None,
-    buy_gross_cap_ceiling: float | None = None,
 ) -> None:
     """Adapt the shared plan to the existing replay books and order queues."""
     if risk_alert_active is None:
@@ -1011,7 +988,6 @@ def apply_account_risk_budget(
         shock_reduced_book_ids=shock_reduced_book_ids,
         confirmed_shock_reduced_book_ids=confirmed_shock_reduced_book_ids,
         crowded_shock_reduced_book_ids=crowded_shock_reduced_book_ids,
-        buy_gross_cap_ceiling=buy_gross_cap_ceiling,
     )
     receipt['protected_handoff_book_ids'] = sorted(protected_handoff_book_ids)
     receipt['protected_proven_dual_book_ids'] = sorted(

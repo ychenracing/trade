@@ -7,9 +7,7 @@ from quantfusion.execution.c6_receipts import reconcile_close_queue
 # pyright: reportAttributeAccessIssue=false
 
 from types import SimpleNamespace
-from quantfusion.risk.exposure_recovery import (
-    apply_account_risk_budget_with_recovery as apply_account_risk_budget,
-)
+from quantfusion.risk.account_budget import apply_account_risk_budget
 
 import pandas as pd
 
