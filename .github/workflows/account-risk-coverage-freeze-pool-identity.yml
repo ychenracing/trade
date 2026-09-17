@@ -1,0 +1,85 @@
+name: Account risk coverage freeze Pool identity
+
+on:
+  push:
+    branches:
+      - agent/core17-account-risk-coverage
+    paths:
+      - .github/workflows/account-risk-coverage-freeze-pool-identity.yml
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: account-risk-coverage-freeze-pool-identity
+  cancel-in-progress: false
+
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout identity-freeze commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/core17-account-risk-coverage
+
+      - name: Download already verified Pool input artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: account-risk-coverage-pool-input-4fae001c6db8c88ac90d4c80d683275cfcbf8e45
+          path: ${{ runner.temp }}/pool-input
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ychenracing/trade
+          run-id: 35201549781
+
+      - name: Verify and freeze identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/pool-input"
+          cd "$ROOT"
+          sha256sum -c SHA256SUMS
+          test "$(sha256sum pool-input-identity.json | cut -d' ' -f1)" = \
+            862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p artifacts/diagnostics/account-risk-coverage
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source = Path(os.environ["RUNNER_TEMP"]) / "pool-input" / "pool-input-identity.json"
+          payload = json.loads(source.read_text(encoding="utf-8"))
+          if payload.get("economic_results_present") is not False:
+              raise SystemExit("Pool identity unexpectedly contains economic results")
+          if payload.get("status") != "FROZEN_BEFORE_POOL_ECONOMIC_REPLAY":
+              raise SystemExit("Pool input status is not pre-economic frozen")
+          payload["artifact_receipt"] = {
+              "workflow_run_id": 35201549781,
+              "workflow_job_id": 105137238322,
+              "artifact_id": 10487519568,
+              "artifact_name": "account-risk-coverage-pool-input-4fae001c6db8c88ac90d4c80d683275cfcbf8e45",
+              "artifact_size_bytes": 643706,
+              "artifact_digest": "sha256:ebcd442b401291cb22d5c74005a8614e5ea8da47cbc9b0c65f41ef4d12ce81a8",
+              "downloaded_zip_sha256": "ebcd442b401291cb22d5c74005a8614e5ea8da47cbc9b0c65f41ef4d12ce81a8",
+              "raw_identity_sha256": "862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006",
+              "external_download_readback_verified": True,
+              "internal_sha256_verified": True
+          }
+          target = Path("artifacts/diagnostics/account-risk-coverage/pool-input-identity.json")
+          target.write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
+              + "\n",
+              encoding="utf-8",
+          )
+          PY
+          git diff --check
+          git add artifacts/diagnostics/account-risk-coverage/pool-input-identity.json
+          test -n "$(git status --porcelain)"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "research: freeze verified Pool A-J input identity"
+          git push origin HEAD:agent/core17-account-risk-coverage
