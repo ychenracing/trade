@@ -34,10 +34,10 @@ Quant Fusion 是面向 A 股科技、算力硬件、光通信和半导体产业�
 
 Pool A–J 的名称和代码映射集中在 `quantfusion/config/research_universes.py`。旧的生产 17 股 `SYMBOL_NAMES` 不因研究池扩展而改变。单池趋势回测可直接使用 `--pool`；`backtest_cli` 日期参数统一为 `--start-date/--end-date`。Pool B/F/G 或其他多池比较使用同一 `ProductionReplayEngine` 连续账户路由，不复制交易信号、费用、风险或执行实现。
 
-研究数据应放在独立目录。以下命令准备 Pool B/F/G 的股票、固定信号参考和现有独立风险篮；未指定 `--output` 时，Pool 模式默认使用 `data_cache/research_market`，不会覆盖仓库冻结 `data/market`。Pool 模式会在研究窗口前额外保留 365 个自然日的真实行情用于 warm 指标预热，但收益、回撤和报告窗口仍从指定的 `--start-date` 开始。`YYYY-MM-DD` 应替换为已经完成收盘且数据可获得的截止日。
+研究数据应放在独立目录。以下命令准备 Pool B/F/G 的股票、固定信号参考和现有独立风险篮；未指定 `--output` 时，下载器默认使用 `data_cache/research_market`，不会覆盖仓库冻结 `data/market`。下载器会在回放窗口前额外保留 365 个自然日的真实行情用于 warm 指标预热，但收益、回撤和报告窗口仍从指定的 `--start-date` 开始。`YYYY-MM-DD` 应替换为已经完成收盘且数据可获得的截止日。
 
 ```bash
-python -m scripts.download_eastmoney_qfq \
+python -m scripts.download_market_data \
   --pool pool_b --pool pool_f --pool pool_g \
   --start-date 2023-01-01 --end-date YYYY-MM-DD \
   --output ../trade-runtime/research-market

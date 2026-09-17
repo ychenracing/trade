@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
-from scripts.download_eastmoney_qfq import DEFAULT_SYMBOLS as DOWNLOAD_SYMBOLS
 from quantfusion.application.backtest_cli import DEFAULT_SYMBOLS as BACKTEST_DEFAULTS
 from quantfusion.application.backtest_cli import SYMBOL_NAME_TABLE
 from quantfusion.config import daily, profiles
@@ -22,7 +21,7 @@ from quantfusion.config.universe import (
 )
 from quantfusion.engine.universe import BacktestEngine
 from quantfusion.execution.priorities import EXECUTION_PRIORITY
-
+from scripts.download_market_data import DEFAULT_SYMBOLS as DOWNLOAD_SYMBOLS
 
 EXPECTED_SYMBOLS = (
     "300308",

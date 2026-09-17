@@ -23,7 +23,7 @@ from quantfusion.config.research_universes import (
 )
 from quantfusion.config.universe import SYMBOL_NAMES
 from scripts import compare_universes as compare
-from scripts import download_eastmoney_qfq as download
+from scripts import download_market_data as download
 
 EXPECTED_NAMES = {
     "pool_a": ("中际旭创",),

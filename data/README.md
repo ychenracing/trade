@@ -51,7 +51,7 @@ Pool 历史比较复用同一两只指数，但不能把指数缺失导致的 `C
 
 模拟日扫先获取并校验交易池与 `PortfolioPolicy.regime_symbols` 的去重并集。当前完整输入包含 17 只生产交易股票和池外参考股 `688008`，因此股票快照含 18 个 CSV；参考股不进入交易候选、逐股报告或风险状态身份。缺失或为空的必需行情必须中止，不允许缩小股票池或缺失参考篮子。
 
-`scripts.download_eastmoney_qfq.py` 统一使用当前 provider failover、2023 起默认窗口和独立运行缓存；显式 `--symbol` 仍只下载指定标的。Pool 研究模式另支持可重复 `--pool` 与 `--all-pools`，默认研究窗口起点为 `2023-01-01`、默认输出为被忽略的 `data_cache/research_market`，不会覆盖仓库冻结证据。它下载所选 Pool 并集、`PortfolioPolicy.regime_symbols` 和现有固定 `RISK_BASKET`，并把研究起点前 365 个自然日作为指标预热输入。
+`scripts.download_market_data.py` 统一使用当前 provider failover、2023 起默认窗口和独立运行缓存；默认输出为被忽略的 `data_cache/research_market`，不会覆盖仓库冻结证据，显式 `--symbol` 仍只下载指定标的。研究入口另支持可重复 `--pool` 与 `--all-pools`；选择 Pool 时下载所选 Pool 并集、`PortfolioPolicy.regime_symbols` 和现有固定 `RISK_BASKET`。所有模式都把回放起点前 365 个自然日作为指标预热输入。
 
 Pool 研究路径复用现有 Eastmoney→Sina→Tencent 股票提供方切换。下载器会拒绝超过既有新鲜度界限的结果；若 Tencent 回退恰好达到其 1000 行历史上限且显然未覆盖请求起点，也拒绝把截断历史当成功。较晚上市标的保留真实首日，不补造上市前 K 线；请求结束日早于已核验首个交易日时，manifest 明确记为 `not_applicable_pre_listing`，不创建占位 CSV。
 

@@ -14,7 +14,7 @@ import pytest
 from quantfusion.application import daily_scan as dss
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.universe import SYMBOL_NAMES
-from scripts import download_eastmoney_qfq as download
+from scripts import download_market_data as download
 
 
 class ReplayInputsLoaded(Exception):

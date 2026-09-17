@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from quantfusion.application import backtest_cli, daily_scan
 from quantfusion.config.research_universes import DEFAULT_RESEARCH_START_DATE
-from scripts import download_eastmoney_qfq as download
+from scripts import download_market_data as download
 
 
 def test_backtest_cli_keeps_only_current_date_flags() -> None:
@@ -26,6 +28,12 @@ def test_backtest_window_has_one_current_default() -> None:
     ) == (DEFAULT_RESEARCH_START_DATE, "2026-09-17")
     assert not hasattr(backtest_cli, "LEGACY_BACKTEST_START_DATE")
     assert not hasattr(backtest_cli, "LEGACY_BACKTEST_END_DATE")
+
+
+def test_market_data_entrypoint_is_unique() -> None:
+    root = Path(__file__).resolve().parents[2]
+    downloaders = {path.name for path in (root / "scripts").glob("download_*.py")}
+    assert downloaders == {"download_market_data.py"}
 
 
 def test_download_cli_keeps_only_current_date_flags() -> None:
