@@ -39,7 +39,7 @@ def test_dual_peak_uses_cycle_floor_without_erasing_lifetime_terminal_floor() ->
     assert capacity["cycle_floor"] == pytest.approx(65_600.0)
     assert capacity["lifetime_terminal_floor"] == pytest.approx(72_000.0)
     assert capacity["effective_policy_floor"] == pytest.approx(72_000.0)
-    assert capacity["gross_cap"] > 0.0
+    assert float(capacity["gross_cap"]) > 0.0
 
 
 def test_terminal_lock_never_rearms_deployable_capacity() -> None:
