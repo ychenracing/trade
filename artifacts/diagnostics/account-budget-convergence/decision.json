@@ -3,7 +3,7 @@
   "kind": "account_budget_responsibility_convergence_rejection",
   "status": "NO_CANDIDATE_PROMOTED",
   "base_main_revision": "a2a21c377808794fe41e694dac321abddbf9cd69",
-  "base_main_tree": "f5277ef281ad6baee60590a931f474be942f22dd",
+  "base_main_tree": "1260f93312defd8723ea1fd661cb21918595824c",
   "pr": 113,
   "contract": {
     "path": "artifacts/diagnostics/no_waiver/production-primary/contract.json",
@@ -17,29 +17,8 @@
     "source_revision_local": "88e800caffec21c76577d155bd70d509a321ac12",
     "source_tree_local": "0143739fce753e56cacfea71c3350e59654c4388",
     "patch_sha256": "7549e2501a1bfb3c0a35bc802f8077dbf7c31a12e1a76f686919fbe6e6177983",
-    "equivalent_to_execution_absent": {
-      "terminal_wealth_equal": true,
-      "max_drawdown_equal": true,
-      "action_buckets_equal": true,
-      "observe_count": 316,
-      "absent_observe_count": 0
-    },
-    "main_pair": {
-      "baseline_wealth": 9.610542744515504,
-      "candidate_wealth": 13.651110582435127,
-      "baseline_mdd": -0.15104978428469945,
-      "candidate_mdd": -0.16496270588646905,
-      "baseline_operation_days": 92,
-      "candidate_operation_days": 75,
-      "baseline_fills": 645,
-      "candidate_fills": 289,
-      "baseline_action_buckets": 190,
-      "candidate_action_buckets": 115,
-      "baseline_turnover": 16.00753130920448,
-      "candidate_turnover": 12.360716591625142,
-      "baseline_commission_plus_stamp": 74192.39296900001,
-      "candidate_commission_plus_stamp": 75362.44312975
-    },
+    "equivalent_to_execution_absent": {"terminal_wealth_equal":true,"max_drawdown_equal":true,"action_buckets_equal":true,"observe_count":316,"absent_observe_count":0},
+    "main_pair": {"baseline_wealth":9.610542744515504,"candidate_wealth":13.651110582435127,"baseline_mdd":-0.15104978428469945,"candidate_mdd":-0.16496270588646905,"baseline_operation_days":92,"candidate_operation_days":75,"baseline_fills":645,"candidate_fills":289,"baseline_action_buckets":190,"candidate_action_buckets":115,"baseline_turnover":16.00753130920448,"candidate_turnover":12.360716591625142,"baseline_commission_plus_stamp":74192.39296900001,"candidate_commission_plus_stamp":75362.44312975},
     "decision": "REJECTED_BEFORE_FULL_958",
     "reason": "Main-pool maximum drawdown is worse than the fixed incumbent, violating the active production relative-risk gate."
   },
@@ -47,64 +26,25 @@
     "source_revision_local": "40185f4088aad9fdc52ed01ce770fe179a849a05",
     "source_tree_local": "c68675608665a3f72b917ba9f88dab60f80cb767",
     "patch_sha256": "3ab253195c0758ac4fc460c5479c4b279def395cecf11cb772d8ea9964c9b092",
-    "main_pair": {
-      "baseline_wealth": 9.610542744515504,
-      "candidate_wealth": 11.194244202966377,
-      "baseline_mdd": -0.15104978428469945,
-      "candidate_mdd": -0.14888875743400234,
-      "baseline_action_buckets": 190,
-      "candidate_action_buckets": 122,
-      "baseline_operation_days": 92,
-      "candidate_operation_days": 73,
-      "baseline_fills": 645,
-      "candidate_fills": 388,
-      "baseline_turnover": 16.00753130920448,
-      "candidate_turnover": 13.459480051458625,
-      "baseline_commission_plus_stamp": 74192.39296900001,
-      "candidate_commission_plus_stamp": 70737.13506725
-    },
+    "main_pair": {"baseline_wealth":9.610542744515504,"candidate_wealth":11.194244202966377,"baseline_mdd":-0.15104978428469945,"candidate_mdd":-0.14888875743400234,"baseline_action_buckets":190,"candidate_action_buckets":122,"baseline_operation_days":92,"candidate_operation_days":73,"baseline_fills":645,"candidate_fills":388,"baseline_turnover":16.00753130920448,"candidate_turnover":13.459480051458625,"baseline_commission_plus_stamp":74192.39296900001,"candidate_commission_plus_stamp":70737.13506725},
     "sensitive_failures": [
-      {
-        "scenario": "leave-one-out-603986",
-        "wealth_ratio": 0.48119256075166755,
-        "candidate_mdd": -0.18530399728342153,
-        "mdd_limit": -0.18,
-        "individual_wealth_ratio_min": 0.65
-      },
-      {
-        "scenario": "add-one-05-002384",
-        "wealth_ratio": 0.589951224881464,
-        "candidate_mdd": -0.18282257226088386,
-        "mdd_limit": -0.18,
-        "individual_wealth_ratio_min": 0.65
-      }
+      {"scenario":"leave-one-out-603986","wealth_ratio":0.48119256075166755,"candidate_mdd":-0.18530399728342153,"mdd_limit":-0.18,"individual_wealth_ratio_min":0.65},
+      {"scenario":"add-one-05-002384","wealth_ratio":0.589951224881464,"candidate_mdd":-0.18282257226088386,"mdd_limit":-0.18,"individual_wealth_ratio_min":0.65}
     ],
     "decision": "REJECTED_BEFORE_FULL_958",
     "reason": "Pre-registered non-random sensitive scenarios breach both the 18% MDD hard gate and 65% paired wealth floor."
   },
-  "validation_scope": {
-    "new_observer_contract_tests": "6 passed locally on Python 3.13.5",
-    "full_958": "NOT_RUN_BY_DESIGN_AFTER_HARD_SCREEN_FAILURE",
-    "goldens_updated": false,
-    "production_behavior_to_merge": false
-  },
+  "validation_scope": {"new_observer_contract_tests":"6 passed locally on Python 3.13.5","full_958":"NOT_RUN_BY_DESIGN_AFTER_HARD_SCREEN_FAILURE","goldens_updated":false,"production_behavior_to_merge":false},
   "raw_local_manifest": [
-    {"name":"baseline-prefix-17.json","bytes":935,"sha256":"68b954e952ac758dafa693bb69c026d519a590f000404947d501142b5e7a9b03"},
     {"name":"baseline-prefix-17.pickle","bytes":1015195,"sha256":"f57f883b46457e643530d46d016d1d081c35f204a1608e3f3e85c9f973798af0"},
-    {"name":"observe-prefix-17.json","bytes":943,"sha256":"30487ff92df0a544258a14a01d97e0a6509712ee1671b13e111618a00ba6daad"},
     {"name":"observe-prefix-17.pickle","bytes":917548,"sha256":"d68200bdd8bd1666cc84a3bf8da5bfc7e28c998e3ede93c20a3680f2d67df5b8"},
-    {"name":"absent-prefix-17.json","bytes":941,"sha256":"2f5aebca52faa892e911d70c9c9af0c0537098d469d9d4aa2d99334c6f33c2e3"},
     {"name":"absent-prefix-17.pickle","bytes":669141,"sha256":"4437c1afb2c2d5070526216746fbb95535467e2444602fb801faf1317f0a4d13"},
-    {"name":"protective-prefix-17.json","bytes":1494,"sha256":"faeadaa0123ddc29584c1b6ade137d383fef0fae98795d148bbbb4bf2e16836d"},
     {"name":"protective-prefix-17.pickle","bytes":960767,"sha256":"6695e07cdd796cbb72bcf8e3b91f9b81c356b273164c9105e2fa31029482e2b7"},
-    {"name":"baseline-leave-one-out-603986.json","bytes":1523,"sha256":"baf8f7f75a9cc2758154754031eafeccb2a2cd8881bc01df1a68e72d83037861"},
     {"name":"baseline-leave-one-out-603986.pickle","bytes":1003262,"sha256":"1e701d6107802aae6c4da883ff86a10970644582c1ffb38220c506ae770d74a5"},
-    {"name":"protective-leave-one-out-603986.json","bytes":1523,"sha256":"d74f9fc985f9a4a92db232e725f5d608f075e90adb7eec1cbaf119be26cd3979"},
     {"name":"protective-leave-one-out-603986.pickle","bytes":698744,"sha256":"bb7ff6f33dd61ab134ae58ba520e784011a9bf9d5833c47a184e3c0dae60d9ec"},
-    {"name":"baseline-add-one-05-002384.json","bytes":1379,"sha256":"7514de5927fcffbf112edfa820de6535e7ae6c853e0c7aba81d9d7efb9e022c5"},
     {"name":"baseline-add-one-05-002384.pickle","bytes":737600,"sha256":"3626082ac66088eb945f23a1c03011be5a56563507b12b3c724eca92075aa822"},
-    {"name":"protective-add-one-05-002384.json","bytes":1373,"sha256":"8147956b1a04013e70a044548e9110ff3402cdecaee3e2cbe8816de1c7423290"},
     {"name":"protective-add-one-05-002384.pickle","bytes":647005,"sha256":"d91c238703c14be29f29498f04332491d45b76425679e1cb7afa6cd4506b0fa4"}
   ],
-  "remote_preservation": "Workflow regenerates and uploads the complete pickle/json originals from frozen main plus the preserved source patches; no large original is transported through model text."
+  "remote_preservation": "Workflow regenerates and uploads complete pickle/json originals from exact main@a2a21c3 plus preserved source patches; no large original is transported through model text.",
+  "local_screening_note": "Initial local screening used an executable-equivalent tree that differed from base only by repository instructions; remote reproduction reconstructs exact main@a2a21c3 before applying preserved candidate patches."
 }
