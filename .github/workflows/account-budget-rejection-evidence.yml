@@ -1,7 +1,7 @@
 name: Account budget rejected-evidence preservation
 on:
   push:
-    branches: [agent/ab5-observer-production]
+    branches: [evidence/account-budget-originals-20260917]
     paths: [.github/workflows/account-budget-rejection-evidence.yml]
 jobs:
   preserve:
@@ -25,7 +25,7 @@ jobs:
       - name: Save verified originals using inherited Git authorization
         run: |
           set -eu
-          BRANCH=agent/ab5-observer-production
+          BRANCH=evidence/account-budget-originals-20260917
           test "$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)" = "$GITHUB_SHA"
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = 7d5efe5e4ea2159f82b9deb0ff4810730d8de15f
           DEST=artifacts/diagnostics/account-budget-convergence/originals
