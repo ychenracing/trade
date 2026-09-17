@@ -157,7 +157,7 @@ class Observer:
     def score_wrapper(self, original: Any) -> Any:
         @wraps(original)
         def call(owner: Any, states: Sequence[Any], date: Any) -> Any:
-            view = original(owner, states, date)
+            view = original(states, date)
             symbols = sorted(
                 {s for state in states for s in state.sleeve.positions}
                 | {signal.symbol for state in states for signal, _ in state.pending}
