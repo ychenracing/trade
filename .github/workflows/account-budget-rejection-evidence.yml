@@ -1,0 +1,75 @@
+name: Account budget rejected-candidate evidence
+on:
+  push:
+    branches: [agent/ab5-observer-production]
+    paths:
+      - .github/workflows/account-budget-rejection-evidence.yml
+      - artifacts/diagnostics/account-budget-convergence/**
+jobs:
+  preserve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frozen dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Reconstruct bounded candidates from main
+        run: |
+          set -euo pipefail
+          ROOT="$GITHUB_WORKSPACE"
+          git worktree add --detach /tmp/ab5-baseline a2a21c377808794fe41e694dac321abddbf9cd69
+          git worktree add --detach /tmp/ab5-observe a2a21c377808794fe41e694dac321abddbf9cd69
+          git worktree add --detach /tmp/ab5-protective a2a21c377808794fe41e694dac321abddbf9cd69
+          gzip -dc "$ROOT/artifacts/diagnostics/account-budget-convergence/observe-only-candidate.patch.gz" > /tmp/observe-only-candidate.patch
+          (cd /tmp/ab5-observe && git apply /tmp/observe-only-candidate.patch && git add -A)
+          (cd /tmp/ab5-protective && git apply "$ROOT/artifacts/diagnostics/account-budget-convergence/limited-protection-candidate.patch" && git add -A)
+          mkdir -p "$RUNNER_TEMP/account-budget-rejection-evidence"
+          git -C /tmp/ab5-baseline rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/account-budget-rejection-evidence/baseline-source.txt"
+          git -C /tmp/ab5-observe write-tree > "$RUNNER_TEMP/account-budget-rejection-evidence/observe-tree.txt"
+          git -C /tmp/ab5-protective write-tree > "$RUNNER_TEMP/account-budget-rejection-evidence/protective-tree.txt"
+      - name: Reproduce paired screening outputs
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/account-budget-rejection-evidence"
+          RUN="$GITHUB_WORKSPACE/artifacts/diagnostics/account-budget-convergence/reproduce_screen.py"
+          python "$RUN" /tmp/ab5-baseline baseline prefix-17 "$OUT"
+          python "$RUN" /tmp/ab5-observe observe prefix-17 "$OUT"
+          python "$RUN" /tmp/ab5-observe absent prefix-17 "$OUT"
+          python "$RUN" /tmp/ab5-baseline baseline leave-one-out-603986 "$OUT"
+          python "$RUN" /tmp/ab5-protective protective leave-one-out-603986 "$OUT"
+          python "$RUN" /tmp/ab5-baseline baseline add-one-05-002384 "$OUT"
+          python "$RUN" /tmp/ab5-protective protective add-one-05-002384 "$OUT"
+          python "$RUN" /tmp/ab5-protective protective prefix-17 "$OUT"
+          cd "$OUT"
+          sha256sum *.pickle *.json *.txt > SHA256SUMS
+          wc -c *.pickle *.json *.txt > sizes.txt
+      - name: Verify bounded decision gates
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          out=Path(os.environ['RUNNER_TEMP'])/'account-budget-rejection-evidence'
+          load=lambda name: json.loads((out/f'{name}.json').read_text())
+          b=load('baseline-prefix-17'); o=load('observe-prefix-17'); a=load('absent-prefix-17'); p=load('protective-prefix-17')
+          assert (o['terminal_wealth'],o['max_drawdown'],o['date_symbol_side_count']) == (a['terminal_wealth'],a['max_drawdown'],a['date_symbol_side_count'])
+          assert o['observation_count'] > 0 and a['observation_count'] == 0
+          assert o['terminal_wealth'] > b['terminal_wealth'] and o['date_symbol_side_count'] < b['date_symbol_side_count']
+          assert abs(o['max_drawdown']) > abs(b['max_drawdown'])
+          for sid in ('leave-one-out-603986','add-one-05-002384'):
+              base=load('baseline-'+sid); cand=load('protective-'+sid)
+              assert abs(cand['max_drawdown']) > .18 or cand['terminal_wealth']/base['terminal_wealth'] < .65
+          assert p['terminal_wealth'] > b['terminal_wealth'] and p['date_symbol_side_count'] < b['date_symbol_side_count']
+          print('bounded rejection evidence reproduced')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: account-budget-rejection-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/account-budget-rejection-evidence/
+          if-no-files-found: error
+          retention-days: 30

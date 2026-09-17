@@ -1,0 +1,101 @@
+--- a/quantfusion/application/account_scan.py
++++ b/quantfusion/application/account_scan.py
+@@ -812,6 +812,8 @@
+                 buy_suppression_reasons.append("ACCOUNT_RISK_BUDGET")
+         else:
+             account_budget = {"enabled": True, "mechanism": "AB5", "status": "NOT_READY",
++                              "policy_mode": "LIMITED_PROTECTION",
++                              "health_status": "NOT_EVALUATED",
+                               "reason": "incomplete account valuation or market evidence"}
+ 
+         advice_by_symbol = {row["symbol"]: row for row in actions}
+--- a/quantfusion/risk/account_budget.py
++++ b/quantfusion/risk/account_budget.py
+@@ -234,7 +234,6 @@
+     held_stress = sum(shares * price * stresses[symbol] for _, symbol, _, shares, price in books)
+     buy_stress = sum(value * systemic_stress_fraction for _, signal, value in buys)
+     shock_scale = 0. if shock_episode and buy_stress else 1.
+-    stress_relief = max(0., held_stress - receipt['remaining_loss_budget']) if observed else 0.
+     ordinary_buy_scale = min(gross_scale, gap_scale)
+     # An alert governs the amount of new risk; it is not a permanent entry
+     # lock.  Once prior reductions have actually filled, admit only the risk
+@@ -299,12 +298,9 @@
+         )
+         else None
+     )
++    # Only the existing confirmed-shock and account-alert branches may
++    # reduce held risk; ordinary capacity still governs new-risk admission.
+     actions = []
+-    relief = (
+-        0.
+-        if preserve_strategy_valid_holdings and not shock_confirmed
+-        else max(0., gross-cap)
+-    )
+     if reduction_suspended:
+         pass
+     elif shock_confirmed and gross:
+@@ -356,21 +352,6 @@
+             append_pro_rata_relief(residual_books, residual_relief)
+         else:
+             append_pro_rata_relief(ordered_books, required_relief)
+-    elif preserve_strategy_valid_holdings and not risk_alert_active and gross > cap:
+-        # Fund the unchanged two-session reserve before a cycle alert. Share
+-        # the necessary close-known reduction across books so score ordering
+-        # does not erase one still-valid opportunity. These are plans, not fills.
+-        fraction = (gross - cap) / gross
+-        for state, symbol, strategy, shares, price in sorted(
+-            books, key=lambda book: (book[1], book[0], book[2]),
+-        ):
+-            reduction = min(shares, math.ceil(shares * fraction / 100.) * 100)
+-            if reduction:
+-                actions.append(RiskAction(
+-                    symbol, strategy, reduction, price, date_str,
+-                    "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
+-                    state_index=state,
+-                ))
+     elif risk_alert_active:
+         for state, symbol, strategy, shares, price in sorted(
+             books, key=lambda book: (book[1], book[0], book[2]),
+@@ -424,23 +405,6 @@
+                         RISK_ACTION_PRIORITY["account_budget_trim"],
+                         state_index=state,
+                     ))
+-    else:
+-        for state, symbol, strategy, shares, price in sorted(
+-            books, key=lambda book: (score(book[1]), book[1], book[0], book[2]),
+-        ):
+-            reduction = min(
+-                shares,
+-                math.ceil(max(relief/price, stress_relief/price/stresses[symbol])/100.)*100,
+-            )
+-            if not reduction:
+-                continue
+-            actions.append(RiskAction(
+-                symbol, strategy, reduction, price, date_str,
+-                "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
+-                state_index=state,
+-            ))
+-            relief = max(0., relief-reduction*price)
+-            stress_relief = max(0., stress_relief - reduction * price * stresses[symbol])
+     held_groups = {
+         SYMBOL_SUB_INDUSTRY.get(symbol, symbol) for _, symbol, _, shares, _ in books
+         if shares
+@@ -565,7 +529,8 @@
+             strict=True,
+         )
+     ]
+-    return {**receipt, "gross_before": gross, "buy_envelope_binding": binding,
++    return {**receipt, "policy_mode": "LIMITED_PROTECTION",
++            "health_status": "EVALUATED", "gross_before": gross, "buy_envelope_binding": binding,
+             "buy_gross_scale": gross_scale, "current_gap_debit": current_gap,
+             "requested_buy_gap_debit": buy_gap, "buy_gap_scale": gap_scale,
+             "observed_shock_candidates": candidates,
+@@ -1044,6 +1009,8 @@
+     """Report actual evaluation rather than claiming success from a config flag."""
+     last = next((dict(e) for e in reversed(events) if e.get("event") == "account_budget_envelope"), None)
+     return {"enabled": enabled, "mechanism": "AB5",
++            "policy_mode": "LIMITED_PROTECTION",
++            "health_status": "EVALUATED" if enabled and last is not None else "NOT_EVALUATED",
+             "status": "APPLIED" if enabled and last is not None else
+                       "NOT_EVALUATED" if enabled else "DISABLED_DIAGNOSTIC",
+             "latest": last}

@@ -393,17 +393,9 @@ def _run_main() -> int:
     # Validate before formatting, publishing, or replacing the old risk state.
     result_invalid_fields = _validate_result_fields(result)
     budget_status = result.get("account_risk_budget") if isinstance(result, dict) else None
-    if (
-        not isinstance(budget_status, dict)
-        or budget_status.get("enabled") is not True
-        or budget_status.get("mechanism") != "AB5"
-        or budget_status.get("policy_mode") != "OBSERVE_ONLY"
-        or budget_status.get("health_status") != "EVALUATED"
-        or budget_status.get("status") != "OBSERVED"
-    ):
-        result_invalid_fields.append(
-            "account_risk_budget: AB5 observation policy was not evaluated"
-        )
+    if (not isinstance(budget_status, dict) or budget_status.get("enabled") is not True
+            or budget_status.get("mechanism") != "AB5" or budget_status.get("status") != "APPLIED"):
+        result_invalid_fields.append("account_risk_budget: default AB5 was not evaluated")
     result_is_valid = len(result_invalid_fields) == 0
 
     if not result_is_valid:

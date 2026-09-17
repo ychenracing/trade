@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from quantfusion.risk.account_budget_observer import account_budget_observer_status
+from quantfusion.risk.account_budget import account_budget_status
 
 # pyright: reportAttributeAccessIssue=false
 
@@ -78,9 +78,8 @@ class CoreResultsMixin:
         )
         open_position_value = max(float(final_assets - self.cash), 0.0)
         return {
-            "account_risk_budget": account_budget_observer_status(
-                self.risk_events, bool(self.cfg["account_risk_budget_enabled"])
-            ),
+            "account_risk_budget": account_budget_status(
+                self.risk_events, bool(self.cfg["account_risk_budget_enabled"])),
             "initial_capital": self.initial_capital,
             "final_assets": final_assets,
             "total_return": total_return,
