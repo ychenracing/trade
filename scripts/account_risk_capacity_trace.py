@@ -387,7 +387,6 @@ def run(args: argparse.Namespace) -> None:
         "order_events": plain(result.get("order_events", [])),
         "risk_events": plain(result.get("risk_events", [])),
         "route_sequence": plain(result.get("route_sequence", [])),
-        "regime_state_series": plain(result.get("regime_state_series", [])),
         "budget_ledger": observer.rows,
         "allocation_score_ledger": observer.scores,
     }
