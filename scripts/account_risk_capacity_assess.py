@@ -258,8 +258,9 @@ def non_trend_gap_share(
     inc = {str(row["date"]): float(row["assets"]) for row in incumbent["equity_curve"]}
     can = {str(row["date"]): float(row["assets"]) for row in candidate["equity_curve"]}
     routes = {
-        str(row.get("date")): str(row.get("route", "UNKNOWN"))
+        str(row.get("date")): str(row.get("route", "")).lower()
         for row in incumbent.get("route_sequence", [])
+        if row.get("date") and row.get("route")
     }
     dates = common_dates(inc, can)
     if len(dates) < 2:
@@ -270,10 +271,23 @@ def non_trend_gap_share(
         gap = inc[date] - can[date]
         increase = max(0.0, gap - previous)
         positive += increase
-        if increase and routes.get(date, "UNKNOWN") != "TREND":
+        route = routes.get(date)
+        if increase and route is not None and route != "trend":
             non_trend += increase
         previous = gap
     return non_trend / positive if positive else 0.0
+
+
+def route_coverage(result: Mapping[str, Any]) -> float:
+    routes = {
+        str(row.get("date"))
+        for row in result.get("route_sequence", [])
+        if row.get("date") and str(row.get("route", "")).lower() in {
+            "trend", "weak", "cash", "transition_to_trend", "transition_to_weak"
+        }
+    }
+    dates = {str(row["date"]) for row in result.get("equity_curve", [])}
+    return len(routes & dates) / len(dates) if dates else 0.0
 
 
 def assess_pair(
@@ -299,11 +313,15 @@ def assess_pair(
         and first_difference >= first_trim and prior_equal and gap_share >= 0.35
     )
     left, right = incumbent["metrics"], candidate["metrics"]
+    incumbent_route_coverage = route_coverage(incumbent)
+    candidate_route_coverage = route_coverage(candidate)
     correct = bool(
         left["finite"] and right["finite"]
         and left["minimum_cash"] >= -1e-6 and right["minimum_cash"] >= -1e-6
         and left["maximum_conservation_error"] <= 1e-6
         and right["maximum_conservation_error"] <= 1e-6
+        and incumbent_route_coverage >= 0.99
+        and candidate_route_coverage >= 0.99
     )
     return {
         "wealth_ratio": right["wealth_multiple"] / left["wealth_multiple"],
@@ -319,6 +337,8 @@ def assess_pair(
         "non_trend_positive_gap_growth_share": non_trend_gap_share(
             incumbent, candidate
         ),
+        "incumbent_route_coverage": incumbent_route_coverage,
+        "candidate_route_coverage": candidate_route_coverage,
         "correctness": correct,
         "qualifying_capacity_chains": qualifying[:20],
     }
