@@ -1,0 +1,43 @@
+name: Source Export
+
+on:
+  push:
+    branches:
+      - feat/dual-peak-account-risk-epoch
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Package exact source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$GITHUB_SHA" > SOURCE_SHA
+          tar \
+            --exclude='./.git' \
+            --exclude='./artifacts' \
+            --exclude='./trade-source.tar.gz' \
+            -czf trade-source.tar.gz .
+          sha256sum trade-source.tar.gz > SOURCE_SHA256SUMS
+          stat --printf='%s trade-source.tar.gz\n' trade-source.tar.gz > SOURCE_SIZE
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: trade-source-${{ github.sha }}
+          path: |
+            trade-source.tar.gz
+            SOURCE_SHA
+            SOURCE_SHA256SUMS
+            SOURCE_SIZE
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
