@@ -27,9 +27,21 @@ jobs:
       - run: python -m pip install -r requirements-lock.txt
       - name: Apply deterministic cleanup
         run: python .github/current_only_cleanup_apply.py
-      - name: Lint affected Python
+      - name: Normalize safe import edits
         run: >-
-          python -m ruff check
+          python -m ruff check --select=I,F401 --fix
+          quantfusion/application/backtest_cli.py
+          quantfusion/application/daily_scan.py
+          scripts/download_eastmoney_qfq.py
+          tests/unit/test_current_only_cli.py
+          tests/unit/test_research_universes.py
+          tests/integration/test_market_data_dependencies.py
+          tests/integration/test_daily_regime_snapshot.py
+          tests/integration/test_input_evidence_boundaries.py
+          tests/integration/test_trading_day_coverage.py
+      - name: Lint affected Python with repository CI contract
+        run: >-
+          python -m ruff check --select=E,F,W --ignore=E501,E402,E731,E741
           quantfusion/application/backtest_cli.py
           quantfusion/application/daily_scan.py
           scripts/download_eastmoney_qfq.py
