@@ -1,0 +1,27 @@
+{
+  "artifact": {
+    "id": 10500810508,
+    "manifest_sha256": "acd86f88d8fe0f08431800b2c1fbe4a5eb10c71345c62ddd8df7d86d75cfc9ea",
+    "name": "dual-peak-account-risk-core17-35228695369",
+    "zip_length": 4610,
+    "zip_sha256": "03de7dc40d172c072fc9261b0f04c54d908397f33af45c5530c1b9599a16d979"
+  },
+  "candidate_source_sha": "b540a9bbcae32f923e233b6a3933ce260c91cede",
+  "candidate_source_tree": "514c3a597383a2d31e98ba654e63d18f3ad6cfda",
+  "gate_commit": "962d91a896c160ab7817ff9f7685ae6c4ece0adb",
+  "permitted_fix": "Workflow-only: hash only source files that exist in each frozen worktree. Candidate production source and economic contract remain unchanged.",
+  "reason": "The incumbent replay completed, but evidence serialization attempted to hash candidate-only source files in the incumbent worktree and raised FileNotFoundError before writing incumbent metrics. The candidate replay did not run.",
+  "result": "FAILED_BEFORE_COMPARATIVE_ECONOMIC_RESULT",
+  "schema_version": 1,
+  "verification": {
+    "artifact_digest_matches_actions": true,
+    "candidate_replay_started": false,
+    "comparative_economic_result_exposed": false,
+    "development_checks_passed": true,
+    "incumbent_metrics_serialized": false,
+    "internal_sha256sums_match": true,
+    "source_identity_matches": true,
+    "zip_integrity": true
+  },
+  "workflow_run_id": 35228695369
+}

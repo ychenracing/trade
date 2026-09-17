@@ -1,0 +1,201 @@
+name: Dual-peak account risk Core17 gate v2
+
+on:
+  push:
+    branches: [agent/dual-peak-account-risk-coverage]
+    paths:
+      - .github/workflows/dual-peak-account-risk-core17-gate-v2.yml
+      - scripts/research/dual_peak_core17_gate.py
+      - artifacts/diagnostics/account-risk-coverage/dual-peak-third-preflight.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dual-peak-account-risk-core17-gate-v2
+  cancel-in-progress: false
+
+jobs:
+  core17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+
+      - name: Verify frozen identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA=7d5efe5e4ea2159f82b9deb0ff4810730d8de15f
+          BASE_TREE=f5277ef281ad6baee60590a931f474be942f22dd
+          SOURCE_SHA=b540a9bbcae32f923e233b6a3933ce260c91cede
+          SOURCE_TREE=514c3a597383a2d31e98ba654e63d18f3ad6cfda
+          CONTRACT=artifacts/diagnostics/account-risk-coverage/dual-peak-preregistration.json
+          CONTRACT_BLOB=427aeb2312f4a7da7689a75527eb9b290981bbd9
+          RECEIPT=artifacts/diagnostics/account-risk-coverage/dual-peak-third-preflight.json
+          RECEIPT_BLOB=895015610ba07169361338cca1007ff0c030b658
+          EVIDENCE_DIR="$RUNNER_TEMP/dual-peak-core17-v2"
+          INCUMBENT_ROOT="$RUNNER_TEMP/incumbent-v2"
+          CANDIDATE_ROOT="$RUNNER_TEMP/candidate-v2"
+          mkdir -p "$EVIDENCE_DIR"
+
+          test "$(git rev-parse "$BASE_SHA^{tree}")" = "$BASE_TREE"
+          test "$(git rev-parse "$SOURCE_SHA^{tree}")" = "$SOURCE_TREE"
+          test "$(git hash-object "$CONTRACT")" = "$CONTRACT_BLOB"
+          test "$(git hash-object "$RECEIPT")" = "$RECEIPT_BLOB"
+
+          mapfile -t changed < <(
+            git diff --name-only "$BASE_SHA" "$SOURCE_SHA" -- \
+              quantfusion/risk tests/unit/test_account_risk_coverage.py | sort
+          )
+          expected=(
+            quantfusion/risk/account_budget.py
+            quantfusion/risk/account_budget_legacy.py
+            quantfusion/risk/account_risk_capacity.py
+            quantfusion/risk/account_risk_coverage.py
+            quantfusion/risk/account_risk_epoch.py
+            quantfusion/risk/account_risk_reallocation.py
+            quantfusion/risk/managers.py
+            quantfusion/risk/managers_legacy.py
+            tests/unit/test_account_risk_coverage.py
+          )
+          test "${changed[*]}" = "${expected[*]}"
+
+          python - "$CONTRACT" "$RECEIPT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          contract = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          receipt = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          assert contract["status"] == "FROZEN_PRE_ECONOMIC"
+          assert contract["candidate"]["source_sha"] == "b540a9bbcae32f923e233b6a3933ce260c91cede"
+          assert contract["candidate"]["source_tree"] == "514c3a597383a2d31e98ba654e63d18f3ad6cfda"
+          assert contract["candidate"]["economic_design"]["cycle_floor_fraction"] == 0.82
+          assert contract["candidate"]["economic_design"]["planned_sell_credit"] is False
+          assert contract["candidate"]["economic_design"]["second_candidate_allowed"] is False
+          assert contract["core17_hard_gate"]["wealth_ratio_min"] == 1.05
+          assert contract["failure_policy"]["stop_on_first_failed_economic_layer"] is True
+          assert receipt["workflow_run_id"] == 35228695369
+          assert receipt["verification"]["candidate_replay_started"] is False
+          assert receipt["verification"]["comparative_economic_result_exposed"] is False
+          PY
+
+          git worktree add --detach "$INCUMBENT_ROOT" "$BASE_SHA"
+          git worktree add --detach "$CANDIDATE_ROOT" "$SOURCE_SHA"
+          cp "$CONTRACT" "$EVIDENCE_DIR/preregistration.json"
+          cp "$RECEIPT" "$EVIDENCE_DIR/third-preflight-receipt.json"
+          cat > "$EVIDENCE_DIR/source-identity.json" <<EOF
+          {"base_sha":"$BASE_SHA","base_tree":"$BASE_TREE","candidate_source_sha":"$SOURCE_SHA","candidate_source_tree":"$SOURCE_TREE","contract_git_blob":"$CONTRACT_BLOB","third_preflight_receipt_blob":"$RECEIPT_BLOB","gate_commit":"$GITHUB_SHA","workflow_run_id":"$GITHUB_RUN_ID"}
+          EOF
+          echo "INCUMBENT_ROOT=$INCUMBENT_ROOT" >> "$GITHUB_ENV"
+          echo "CANDIDATE_ROOT=$CANDIDATE_ROOT" >> "$GITHUB_ENV"
+          echo "EVIDENCE_DIR=$EVIDENCE_DIR" >> "$GITHUB_ENV"
+
+      - name: Run frozen development checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/research/dual_peak_core17_gate.py
+          cd "$CANDIDATE_ROOT"
+          {
+            python -m compileall -q quantfusion/risk
+            python -m ruff check \
+              quantfusion/risk/account_budget.py \
+              quantfusion/risk/account_risk_capacity.py \
+              quantfusion/risk/account_risk_coverage.py \
+              quantfusion/risk/account_risk_epoch.py \
+              quantfusion/risk/account_risk_reallocation.py \
+              quantfusion/risk/managers.py \
+              tests/unit/test_account_risk_coverage.py
+            python -m pyright \
+              quantfusion/risk/account_budget.py \
+              quantfusion/risk/account_risk_capacity.py \
+              quantfusion/risk/account_risk_coverage.py \
+              quantfusion/risk/account_risk_epoch.py \
+              quantfusion/risk/account_risk_reallocation.py \
+              quantfusion/risk/managers.py \
+              tests/unit/test_account_risk_coverage.py
+            python -m pytest -q tests/unit/test_account_risk_coverage.py
+          } 2>&1 | tee "$EVIDENCE_DIR/development-checks.log"
+
+      - name: Run paired Core17 replays
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT="$GITHUB_WORKSPACE/scripts/research/dual_peak_core17_gate.py"
+          python "$SCRIPT" run-one \
+            --root "$INCUMBENT_ROOT" \
+            --evidence "$EVIDENCE_DIR" \
+            --label incumbent \
+            | tee "$EVIDENCE_DIR/incumbent-core17.log"
+          python "$SCRIPT" run-one \
+            --root "$CANDIDATE_ROOT" \
+            --evidence "$EVIDENCE_DIR" \
+            --label candidate \
+            | tee "$EVIDENCE_DIR/candidate-core17.log"
+
+      - name: Assess preregistered Core17 hard gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/research/dual_peak_core17_gate.py assess \
+            --evidence "$EVIDENCE_DIR"
+
+      - name: Build evidence manifest
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$EVIDENCE_DIR"
+          find . -maxdepth 1 -type f \
+            ! -name SHA256SUMS ! -name manifest.json -print0 \
+            | sort -z | xargs -0 sha256sum > SHA256SUMS
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ["EVIDENCE_DIR"])
+          files = []
+          for path in sorted(root.iterdir()):
+              if path.is_file() and path.name != "manifest.json":
+                  data = path.read_bytes()
+                  files.append({
+                      "name": path.name,
+                      "length": len(data),
+                      "sha256": hashlib.sha256(data).hexdigest(),
+                  })
+          payload = {
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "gate_commit": os.environ["GITHUB_SHA"],
+              "candidate_source_sha": "b540a9bbcae32f923e233b6a3933ce260c91cede",
+              "candidate_source_tree": "514c3a597383a2d31e98ba654e63d18f3ad6cfda",
+              "files": files,
+          }
+          (root / "manifest.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload frozen Core17 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-peak-account-risk-core17-v2-${{ github.run_id }}
+          path: ${{ env.EVIDENCE_DIR }}
+          if-no-files-found: error
+          retention-days: 30
