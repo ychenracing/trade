@@ -1,7 +1,17 @@
 """Reproduce the bounded AB5 candidate screen from a reconstructed source tree."""
 from __future__ import annotations
-import contextlib, hashlib, io, json, os, pickle, subprocess, sys, time
+
+import contextlib
+import hashlib
+import io
+import json
+import os
+import pickle
+import subprocess
+import sys
+import time
 from pathlib import Path
+
 
 def run(root: str, mode: str, scenario_id: str, out: str) -> None:
     os.chdir(root)
@@ -9,6 +19,7 @@ def run(root: str, mode: str, scenario_id: str, out: str) -> None:
     from quantfusion.application.stress_scenarios import _multi_seed_scenarios
     from quantfusion.config.universe import SYMBOL_NAMES
     from quantfusion.engine.replay import ProductionReplayEngine
+
     scenarios = _multi_seed_scenarios(
         random_samples=50, permutation_samples=50,
         seeds=(20260807, 20260817, 20260827),
@@ -24,12 +35,14 @@ def run(root: str, mode: str, scenario_id: str, out: str) -> None:
             data_dir=f"{root}/data/market", regime_data_dir=f"{root}/data/regime",
             indicator_state="warm",
         )
-    out_dir = Path(out); out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
     name = f"{mode}-{scenario_id}"
     raw = out_dir / f"{name}.pickle"
     with raw.open("wb") as handle:
         pickle.dump(result, handle, protocol=5)
-    curve = result["equity_curve"]; trades = result["trades"]
+    curve = result["equity_curve"]
+    trades = result["trades"]
     source_tree = subprocess.check_output(["git", "write-tree"], text=True).strip()
     summary = {k: result[k] for k in (
         "total_return", "annual_return", "max_drawdown", "sharpe", "calmar",
@@ -58,6 +71,7 @@ def run(root: str, mode: str, scenario_id: str, out: str) -> None:
     print(json.dumps({"name": name, "terminal_wealth": summary["terminal_wealth"],
                       "max_drawdown": summary["max_drawdown"],
                       "buckets": summary["date_symbol_side_count"]}))
+
 
 if __name__ == "__main__":
     run(*sys.argv[1:])

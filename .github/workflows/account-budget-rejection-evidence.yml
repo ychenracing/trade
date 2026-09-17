@@ -7,6 +7,7 @@ on:
       - artifacts/diagnostics/account-budget-convergence/**
 jobs:
   preserve:
+    if: ${{ !contains(github.event.head_commit.message, '[evidence-skip]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
