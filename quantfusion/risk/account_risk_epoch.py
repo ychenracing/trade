@@ -94,6 +94,6 @@ def consume_account_risk_epoch(
 
 __all__ = [
     "PublishedRiskEpoch",
-    "publish_account_risk_epoch",
     "consume_account_risk_epoch",
+    "publish_account_risk_epoch",
 ]

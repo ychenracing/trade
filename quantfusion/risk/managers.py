@@ -7,8 +7,10 @@ from quantfusion.risk.account_risk_epoch import publish_account_risk_epoch
 from quantfusion.risk.managers_legacy import (
     ConfirmedDrawdownRiskManager,
     PersistentRiskManager,
-    RecoverableDrawdownRiskManager as _LegacyRecoverableDrawdownRiskManager,
     RiskManager,
+)
+from quantfusion.risk.managers_legacy import (
+    RecoverableDrawdownRiskManager as _LegacyRecoverableDrawdownRiskManager,
 )
 
 
@@ -33,8 +35,8 @@ class RecoverableDrawdownRiskManager(_LegacyRecoverableDrawdownRiskManager):
 
 
 __all__ = [
-    "RiskManager",
-    "PersistentRiskManager",
     "ConfirmedDrawdownRiskManager",
+    "PersistentRiskManager",
     "RecoverableDrawdownRiskManager",
+    "RiskManager",
 ]

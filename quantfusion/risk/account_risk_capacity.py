@@ -248,6 +248,24 @@ def _group_debit(
     return base_rate * gross + excess
 
 
+def _buy_value_fits(
+    books: Sequence[tuple[int, str, str, int, float]],
+    accepted: Sequence[tuple[str, float]],
+    target_symbol: str,
+    value: float,
+    cfg: Mapping[str, Any],
+    receipt: Mapping[str, Any],
+) -> bool:
+    debit = _group_debit(
+        books,
+        [*accepted, (target_symbol, value)],
+        cfg,
+        cost_rate=float(receipt["cost_rate"]),
+        stress_fraction=float(receipt["stress_fraction"]),
+    )
+    return debit <= float(receipt["remaining_loss_budget"]) + _EPSILON
+
+
 def _allocate_buys(
     books: Sequence[tuple[int, str, str, int, float]],
     buys: Sequence[tuple[int, Signal, float]],
@@ -300,24 +318,27 @@ def _allocate_buys(
         upper = min(requested, gross_room)
         if upper <= _EPSILON:
             continue
-
-        def fits(value: float) -> bool:
-            debit = _group_debit(
-                books,
-                [*accepted, (signal.symbol, value)],
-                cfg,
-                cost_rate=float(receipt["cost_rate"]),
-                stress_fraction=float(receipt["stress_fraction"]),
-            )
-            return debit <= float(receipt["remaining_loss_budget"]) + _EPSILON
-
-        if fits(upper):
+        if _buy_value_fits(
+            books,
+            accepted,
+            signal.symbol,
+            upper,
+            cfg,
+            receipt,
+        ):
             approved = upper
         else:
             low, high = 0.0, upper
             for _ in range(60):
                 middle = (low + high) / 2.0
-                if fits(middle):
+                if _buy_value_fits(
+                    books,
+                    accepted,
+                    signal.symbol,
+                    middle,
+                    cfg,
+                    receipt,
+                ):
                     low = middle
                 else:
                     high = middle
