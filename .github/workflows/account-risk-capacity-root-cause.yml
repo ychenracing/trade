@@ -9,6 +9,7 @@ on:
       - scripts/account_risk_capacity_trace.py
       - scripts/account_risk_capacity_assess.py
       - artifacts/diagnostics/account-risk-coverage/root-cause-contract.json
+      - artifacts/diagnostics/account-risk-coverage/root-cause-rerun-trigger.txt
 
 permissions:
   actions: read
@@ -67,6 +68,10 @@ jobs:
           PATCH_PATH=artifacts/diagnostics/account-budget-convergence/limited-protection-candidate.patch
           PATCH_BLOB=b5acdde4bd66331e593d8dbc03715312bc12c779
           CANDIDATE_TREE=c68675608665a3f72b917ba9f88dab60f80cb767
+          ORIGINAL_INPUT_ID=862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006
+          COMPOSITE_INPUT_ID=51a1a91232331808904c6a03aa9597150b79b23cc64aa7afe601d797779109cb
+          SUPPLEMENT_PATH=data/market/300408.csv
+          SUPPLEMENT_BLOB=9c121573d661561fb4ab4f7d3d8bad6608415cbc
           INPUT_ROOT="$RUNNER_TEMP/pool-input"
           PRIOR_ROOT="$RUNNER_TEMP/prior-pool-evidence"
           INCUMBENT_ROOT="$RUNNER_TEMP/incumbent"
@@ -77,7 +82,7 @@ jobs:
           cd "$INPUT_ROOT"
           sha256sum -c SHA256SUMS
           test "$(sha256sum pool-input-identity.json | cut -d' ' -f1)" = \
-            862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006
+            "$ORIGINAL_INPUT_ID"
           cd "$PRIOR_ROOT"
           sha256sum -c SHA256SUMS
 
@@ -89,6 +94,10 @@ jobs:
           test "$(git hash-object "$EVIDENCE_DIR/limited-protection.patch")" = "$PATCH_BLOB"
           git worktree add --detach "$INCUMBENT_ROOT" "$BASE"
           git worktree add --detach "$CANDIDATE_ROOT" "$BASE"
+          test "$(git -C "$INCUMBENT_ROOT" hash-object "$SUPPLEMENT_PATH")" = \
+            "$SUPPLEMENT_BLOB"
+          cp "$INCUMBENT_ROOT/$SUPPLEMENT_PATH" "$INPUT_ROOT/market/300408.csv"
+
           git -C "$CANDIDATE_ROOT" apply --check "$EVIDENCE_DIR/limited-protection.patch"
           git -C "$CANDIDATE_ROOT" apply "$EVIDENCE_DIR/limited-protection.patch"
           mapfile -t changed < <(git -C "$CANDIDATE_ROOT" diff --name-only | sort)
@@ -97,15 +106,82 @@ jobs:
           git -C "$CANDIDATE_ROOT" add -A
           test "$(git -C "$CANDIDATE_ROOT" write-tree)" = "$CANDIDATE_TREE"
 
+          python - <<'PY'
+          import csv
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          input_root = Path(os.environ["INPUT_ROOT"])
+          market_file = input_root / "market" / "300408.csv"
+          rows = list(csv.DictReader(market_file.open(encoding="utf-8")))
+          if not rows:
+              raise RuntimeError("supplemental 300408 market file is empty")
+          digest = hashlib.sha256(market_file.read_bytes()).hexdigest()
+          manifest_path = input_root / "market" / "manifest.json"
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          manifest["symbols"]["300408"] = {
+              "name": "三环集团",
+              "status": "observed",
+              "provider": "pinned repository file",
+              "rows": len(rows),
+              "first_date": rows[0]["date"],
+              "last_date": rows[-1]["date"],
+              "sha256": digest,
+          }
+          manifest["root_cause_supplement"] = {
+              "symbol": "300408",
+              "source_revision": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+              "git_blob": "9c121573d661561fb4ab4f7d3d8bad6608415cbc",
+              "sha256": digest,
+          }
+          manifest_path.write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          identity = {
+              "kind": "account_risk_capacity_root_cause_input_identity",
+              "pool_input_identity_sha256": os.environ["ORIGINAL_INPUT_ID"],
+              "composite_input_identity_sha256": os.environ["COMPOSITE_INPUT_ID"],
+              "supplemental_market_file": {
+                  "symbol": "300408",
+                  "source_revision": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+                  "git_blob": "9c121573d661561fb4ab4f7d3d8bad6608415cbc",
+                  "sha256": digest,
+                  "bytes": market_file.stat().st_size,
+                  "rows": len(rows),
+                  "first_date": rows[0]["date"],
+                  "last_date": rows[-1]["date"],
+              },
+              "augmented_market_manifest_sha256": hashlib.sha256(
+                  manifest_path.read_bytes()
+              ).hexdigest(),
+          }
+          output = Path(os.environ["EVIDENCE_DIR"]) / "root-cause-input-identity.json"
+          output.write_text(
+              json.dumps(identity, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          cp scripts/account_risk_capacity_trace.py \
+            "$INCUMBENT_ROOT/scripts/account_risk_capacity_trace.py"
+          cp scripts/account_risk_capacity_trace.py \
+            "$CANDIDATE_ROOT/scripts/account_risk_capacity_trace.py"
           python -m py_compile \
             scripts/account_risk_capacity_trace.py \
-            scripts/account_risk_capacity_assess.py
+            scripts/account_risk_capacity_assess.py \
+            "$INCUMBENT_ROOT/scripts/account_risk_capacity_trace.py" \
+            "$CANDIDATE_ROOT/scripts/account_risk_capacity_trace.py"
           cp artifacts/diagnostics/account-risk-coverage/root-cause-contract.json \
             "$EVIDENCE_DIR/root-cause-contract.json"
           cp scripts/account_risk_capacity_trace.py \
             "$EVIDENCE_DIR/account_risk_capacity_trace.py"
           cp scripts/account_risk_capacity_assess.py \
             "$EVIDENCE_DIR/account_risk_capacity_assess.py"
+          SUPPLEMENT_SHA256=$(sha256sum "$INPUT_ROOT/market/300408.csv" | cut -d' ' -f1)
+          AUGMENTED_MANIFEST_SHA256=$(sha256sum "$INPUT_ROOT/market/manifest.json" | cut -d' ' -f1)
           cat > "$EVIDENCE_DIR/source-identity.json" <<EOF
           {
             "base_revision": "$BASE",
@@ -113,16 +189,31 @@ jobs:
             "limited_protection_head": "$PR_HEAD",
             "limited_protection_patch_git_blob": "$PATCH_BLOB",
             "limited_protection_tree": "$CANDIDATE_TREE",
-            "input_identity_sha256": "862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006",
+            "pool_input_identity_sha256": "$ORIGINAL_INPUT_ID",
+            "composite_input_identity_sha256": "$COMPOSITE_INPUT_ID",
+            "supplemental_300408_git_blob": "$SUPPLEMENT_BLOB",
+            "supplemental_300408_sha256": "$SUPPLEMENT_SHA256",
+            "augmented_market_manifest_sha256": "$AUGMENTED_MANIFEST_SHA256",
             "prior_pool_artifact_id": 10489081492,
             "diagnostic_commit": "$GITHUB_SHA"
           }
           EOF
+          (
+            cd "$INPUT_ROOT"
+            sha256sum market/300408.csv market/manifest.json \
+              > "$EVIDENCE_DIR/ROOT_CAUSE_INPUT_SHA256SUMS"
+          )
           echo "INPUT_ROOT=$INPUT_ROOT" >> "$GITHUB_ENV"
           echo "PRIOR_ROOT=$PRIOR_ROOT" >> "$GITHUB_ENV"
           echo "INCUMBENT_ROOT=$INCUMBENT_ROOT" >> "$GITHUB_ENV"
           echo "CANDIDATE_ROOT=$CANDIDATE_ROOT" >> "$GITHUB_ENV"
           echo "EVIDENCE_DIR=$EVIDENCE_DIR" >> "$GITHUB_ENV"
+          echo "COMPOSITE_INPUT_ID=$COMPOSITE_INPUT_ID" >> "$GITHUB_ENV"
+        env:
+          INPUT_ROOT: ${{ runner.temp }}/pool-input
+          EVIDENCE_DIR: ${{ runner.temp }}/account-risk-capacity-root-cause
+          ORIGINAL_INPUT_ID: 862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006
+          COMPOSITE_INPUT_ID: 51a1a91232331808904c6a03aa9597150b79b23cc64aa7afe601d797779109cb
 
       - name: Validate frozen market and regime data through production loaders
         shell: bash
@@ -130,11 +221,15 @@ jobs:
           set -euo pipefail
           cd "$INCUMBENT_ROOT"
           python - <<'PY'
+          import hashlib
           import json
           import os
           from pathlib import Path
 
+          import pandas as pd
+
           from quantfusion.config.research_universes import UNIVERSE_POOLS
+          from quantfusion.config.universe import SYMBOL_NAMES
           from scripts.compare_universes import (
               validate_market_data_directory,
               validate_regime_data_directory,
@@ -144,6 +239,17 @@ jobs:
           validate_market_data_directory(
               root / "market", tuple(UNIVERSE_POOLS), end_date="2026-07-20"
           )
+          supplemental = root / "market" / "300408.csv"
+          frame = pd.read_csv(supplemental)
+          required = {"date", "open", "high", "low", "close", "volume"}
+          if set(frame.columns) != required:
+              raise RuntimeError(f"unexpected 300408 columns: {list(frame.columns)}")
+          if frame.empty or frame["date"].duplicated().any():
+              raise RuntimeError("invalid 300408 market data")
+          if frame["date"].iloc[-1] < "2026-07-20":
+              raise RuntimeError("300408 does not cover the frozen end date")
+          if "300408" not in SYMBOL_NAMES:
+              raise RuntimeError("300408 is not a member of frozen Core17")
           regime = validate_regime_data_directory(
               root / "regime", start_date="2023-01-01", end_date="2026-07-20"
           )
@@ -153,6 +259,10 @@ jobs:
                   {
                       "market_validation": "PASS",
                       "regime_validation": "PASS",
+                      "core17_supplement_validation": "PASS",
+                      "core17_supplement_sha256": hashlib.sha256(
+                          supplemental.read_bytes()
+                      ).hexdigest(),
                       "regime": regime,
                   },
                   ensure_ascii=False,
@@ -194,22 +304,22 @@ jobs:
               root="$CANDIDATE_ROOT"
             fi
             local name="${window}-${pool}-${mode}"
-            python "$GITHUB_WORKSPACE/scripts/account_risk_capacity_trace.py" \
-              --source-root "$root" \
-              --market-dir "$INPUT_ROOT/market" \
-              --regime-dir "$INPUT_ROOT/regime" \
-              --mode "$mode" \
-              --pool "$pool" \
-              --window "$window" \
-              --start "$start" \
-              --end "$end" \
-              --input-identity-sha256 \
-                862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006 \
-              --output "$EVIDENCE_DIR/results/${name}.json.gz" \
-              > "$EVIDENCE_DIR/logs/${name}.log" 2>&1
+            (
+              cd "$root"
+              python -m scripts.account_risk_capacity_trace \
+                --market-dir "$INPUT_ROOT/market" \
+                --regime-dir "$INPUT_ROOT/regime" \
+                --mode "$mode" \
+                --pool "$pool" \
+                --window "$window" \
+                --start "$start" \
+                --end "$end" \
+                --input-identity-sha256 "$COMPOSITE_INPUT_ID" \
+                --output "$EVIDENCE_DIR/results/${name}.json.gz"
+            ) > "$EVIDENCE_DIR/logs/${name}.log" 2>&1
           }
           export -f run_one
-          export GITHUB_WORKSPACE INPUT_ROOT INCUMBENT_ROOT CANDIDATE_ROOT EVIDENCE_DIR
+          export INPUT_ROOT INCUMBENT_ROOT CANDIDATE_ROOT EVIDENCE_DIR COMPOSITE_INPUT_ID
           xargs -P 4 -n 5 bash -c 'run_one "$@"' _ < "$TASKS"
           test "$(find "$EVIDENCE_DIR/results" -maxdepth 1 -name '*.json.gz' | wc -l)" -eq 20
 
@@ -217,7 +327,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python scripts/account_risk_capacity_assess.py \
+          python -m scripts.account_risk_capacity_assess \
             --results-dir "$EVIDENCE_DIR/results" \
             --previous-evidence-dir "$PRIOR_ROOT" \
             --contract "$EVIDENCE_DIR/root-cause-contract.json" \
