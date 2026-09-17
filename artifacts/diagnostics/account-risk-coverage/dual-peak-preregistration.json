@@ -8,8 +8,8 @@
     "tree": "f5277ef281ad6baee60590a931f474be942f22dd"
   },
   "candidate": {
-    "source_sha": "e9d89a9ee0c835428b2f99454f0a133003c004ea",
-    "source_tree": "71fb69f129dc91826f391c901c2cf2b293551bf8",
+    "source_sha": "f8d65ee8d46b9110e64824376aeb2be74016e96c",
+    "source_tree": "82e08c8d7cbbda0ed5dc57a0281ffeb2d2f27495",
     "branch": "agent/dual-peak-account-risk-coverage",
     "changed_paths": [
       "quantfusion/risk/account_budget.py",
@@ -34,6 +34,20 @@
       "parameter_search_allowed": false
     }
   },
+  "engineering_preflight_history": [
+    {
+      "workflow_run_id": 35226893772,
+      "gate_commit": "14c40cd34e9887f7c3be7f58584bffdeb0d19cb8",
+      "source_sha": "e9d89a9ee0c835428b2f99454f0a133003c004ea",
+      "source_tree": "71fb69f129dc91826f391c901c2cf2b293551bf8",
+      "result": "FAILED_BEFORE_ECONOMIC_REPLAY",
+      "reason": "Ruff scope included preserved legacy blobs and reported formatting plus one loop-closure warning in new code",
+      "artifact_id": 10499487031,
+      "artifact_zip_length": 3212,
+      "artifact_zip_sha256": "33e58f2130814df8173347b69c94eeb739e983bd9dee0be42206628dc5d7b107",
+      "economic_result_exposed": false
+    }
+  ],
   "historical_stop": {
     "pull_request": 116,
     "conclusion": "STOP",
