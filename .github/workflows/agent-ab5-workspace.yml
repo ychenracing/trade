@@ -1,0 +1,28 @@
+name: Agent AB5 Workspace Export
+
+on:
+  push:
+    branches:
+      - agent/ab5-trend-efficiency
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Pack source workspace
+        run: |
+          git rev-parse HEAD > WORKSPACE_HEAD
+          tar --exclude=.git -czf /tmp/trade-workspace.tgz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ab5-workspace-${{ github.sha }}
+          path: /tmp/trade-workspace.tgz
+          if-no-files-found: error
+          retention-days: 1
