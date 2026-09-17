@@ -1,0 +1,441 @@
+name: Account risk coverage Core17
+
+on:
+  push:
+    branches:
+      - agent/core17-account-risk-coverage
+    paths:
+      - .github/workflows/account-risk-coverage-core17.yml
+      - artifacts/diagnostics/account-risk-coverage/contract.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-risk-coverage-core17
+  cancel-in-progress: false
+
+jobs:
+  core17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout candidate branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+
+      - name: Freeze runtime identity and reconstruct exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/account-risk-coverage"
+          BASE=7d5efe5e4ea2159f82b9deb0ff4810730d8de15f
+          PR_HEAD=ea3e1ba2ddc7e89faa44bdee9aebe6b9fb7c06e9
+          PATCH_PATH=artifacts/diagnostics/account-budget-convergence/limited-protection-candidate.patch
+          PATCH_BLOB=b5acdde4bd66331e593d8dbc03715312bc12c779
+          git fetch --no-tags origin refs/pull/113/head:refs/remotes/origin/pr113
+          test "$(git rev-parse refs/remotes/origin/pr113)" = "$PR_HEAD"
+          test "$(git rev-parse "$BASE^{tree}")" = f5277ef281ad6baee60590a931f474be942f22dd
+          git show "$PR_HEAD:$PATCH_PATH" > "$RUNNER_TEMP/account-risk-coverage/limited-protection.patch"
+          test "$(git hash-object "$RUNNER_TEMP/account-risk-coverage/limited-protection.patch")" = "$PATCH_BLOB"
+          git worktree add --detach "$RUNNER_TEMP/incumbent" "$BASE"
+          git worktree add --detach "$RUNNER_TEMP/candidate" "$BASE"
+          git -C "$RUNNER_TEMP/candidate" apply --check "$RUNNER_TEMP/account-risk-coverage/limited-protection.patch"
+          git -C "$RUNNER_TEMP/candidate" apply "$RUNNER_TEMP/account-risk-coverage/limited-protection.patch"
+          mapfile -t changed < <(git -C "$RUNNER_TEMP/candidate" diff --name-only | sort)
+          expected=(quantfusion/application/account_scan.py quantfusion/risk/account_budget.py)
+          test "${changed[*]}" = "${expected[*]}"
+          git -C "$RUNNER_TEMP/candidate" add -A
+          CANDIDATE_TREE=$(git -C "$RUNNER_TEMP/candidate" write-tree)
+          PATCH_SHA256=$(sha256sum "$RUNNER_TEMP/account-risk-coverage/limited-protection.patch" | cut -d' ' -f1)
+          cat > "$RUNNER_TEMP/account-risk-coverage/source-identity.json" <<EOF
+          {
+            "base_revision": "$BASE",
+            "base_tree": "f5277ef281ad6baee60590a931f474be942f22dd",
+            "source_pr": 113,
+            "source_head": "$PR_HEAD",
+            "patch_path": "$PATCH_PATH",
+            "patch_git_blob": "$PATCH_BLOB",
+            "patch_sha256": "$PATCH_SHA256",
+            "candidate_tree": "$CANDIDATE_TREE",
+            "changed_files": [
+              "quantfusion/application/account_scan.py",
+              "quantfusion/risk/account_budget.py"
+            ]
+          }
+          EOF
+          echo "INCUMBENT_ROOT=$RUNNER_TEMP/incumbent" >> "$GITHUB_ENV"
+          echo "CANDIDATE_ROOT=$RUNNER_TEMP/candidate" >> "$GITHUB_ENV"
+          echo "EVIDENCE_DIR=$RUNNER_TEMP/account-risk-coverage" >> "$GITHUB_ENV"
+
+      - name: Verify candidate responsibility boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$CANDIDATE_ROOT"
+          python - <<'PY'
+          import json
+          from quantfusion.config.engine import default_engine_config
+          from quantfusion.domain.models import Signal
+          from quantfusion.risk.account_budget import plan_account_risk_budget
+
+          cfg = default_engine_config()
+          ordinary_books = [(0, "300308", "turtle_breakout", 8_000, 10.0)]
+          ordinary, ordinary_actions = plan_account_risk_budget(
+              90_000.0,
+              100_000.0,
+              cfg,
+              ordinary_books,
+              [],
+              lambda _: 1.0,
+              date_str="2026-01-05",
+              preserve_strategy_valid_holdings=True,
+          )
+          assert ordinary["gross_before"] > ordinary["gross_cap"]
+          assert ordinary_actions == []
+          assert ordinary["policy_mode"] == "LIMITED_PROTECTION"
+          assert ordinary["health_status"] == "HEALTHY"
+
+          buy = Signal(
+              "603986",
+              "turtle_breakout",
+              "buy",
+              target_shares=1_000,
+              price=10.0,
+              signal_date="2026-01-05",
+          )
+          constrained, _ = plan_account_risk_budget(
+              90_000.0,
+              100_000.0,
+              cfg,
+              ordinary_books,
+              [(0, buy, 10_000.0)],
+              lambda _: 1.0,
+              date_str="2026-01-05",
+              preserve_strategy_valid_holdings=True,
+          )
+          assert constrained["buy_envelope_binding"] is True
+          assert constrained["buy_scale"] < 1.0
+
+          alert, alert_actions = plan_account_risk_budget(
+              90_000.0,
+              100_000.0,
+              cfg,
+              ordinary_books,
+              [],
+              lambda _: 1.0,
+              date_str="2026-01-05",
+              preserve_strategy_valid_holdings=True,
+              risk_alert_active=True,
+              weak_book_ids={(0, "300308", "turtle_breakout")},
+          )
+          assert alert["health_status"] == "RISK_ALERT_ACTIVE"
+          assert alert_actions
+          assert sum(action.shares for action in alert_actions) == 8_000
+
+          shock_books = [
+              (0, "300308", "turtle_breakout", 7_000, 10.0),
+              (0, "603986", "turtle_breakout", 1_000, 10.0),
+          ]
+          shock, shock_actions = plan_account_risk_budget(
+              90_000.0,
+              100_000.0,
+              cfg,
+              shock_books,
+              [],
+              lambda _: 1.0,
+              date_str="2026-01-05",
+              stress_by_symbol={"300308": 0.11, "603986": 0.11},
+              preserve_strategy_valid_holdings=True,
+          )
+          assert shock["observed_shock_confirmed"] is True
+          assert shock["health_status"] == "SHOCK_CONFIRMED"
+          assert shock_actions
+
+          evidence = {
+              "ordinary_budget_deviation_generates_held_reduction": False,
+              "buy_capacity_remains_binding": True,
+              "account_alert_generates_held_reduction": True,
+              "confirmed_shock_generates_held_reduction": True,
+              "policy_mode": ordinary["policy_mode"],
+          }
+          with open("/tmp/account-risk-coverage/behavior.json", "w", encoding="utf-8") as handle:
+              json.dump(evidence, handle, ensure_ascii=False, indent=2, sort_keys=True)
+          PY
+
+      - name: Run affected correctness tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$CANDIDATE_ROOT"
+          python -m pytest -q \
+            tests/unit/test_observed_shock_budget.py \
+            tests/c6_non_economic/test_account_risk_budget.py::test_nonbinding_budget_leaves_existing_buy_batch_unchanged \
+            tests/c6_non_economic/test_account_risk_budget.py::test_binding_budget_retains_bounded_buy_batch_without_sell_credit \
+            tests/c6_non_economic/test_account_risk_budget.py::test_binding_budget_zero_headroom_vetoes_buys_without_sell_credit \
+            tests/c6_non_economic/test_account_risk_budget.py::test_invalid_equity_fails_closed_before_queue_mutation \
+            tests/c6_non_economic/test_account_risk_budget.py::test_missing_held_mark_fails_closed \
+            tests/c6_non_economic/test_account_risk_budget.py::test_future_prices_cannot_change_close_decision \
+            tests/c6_non_economic/test_account_risk_budget.py::test_portfolio_alert_uses_current_indicators_to_exit_weak_book \
+            tests/unit/test_default_account_budget.py::test_account_budget_no_loss_room_blocks_buy_candidates \
+            tests/unit/test_default_account_budget.py::test_account_new_high_is_observed_not_a_fabricated_history_reset \
+            tests/unit/test_default_account_budget.py::test_every_production_replay_entry_evaluates_budget_by_default \
+            tests/unit/test_default_account_budget.py::test_standalone_retained_risk_sell_cannot_be_bought_back_in_same_batch \
+            | tee "$EVIDENCE_DIR/affected-tests.log"
+
+      - name: Run paired Core17 replays
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_one() {
+            local root="$1"
+            local output="$2"
+            (
+              cd "$root"
+              python - "$output" <<'PY'
+          import hashlib
+          import json
+          import math
+          import sys
+          from pathlib import Path
+
+          import numpy as np
+
+          from quantfusion.config.universe import SYMBOL_NAMES
+          from quantfusion.engine.replay import ProductionReplayEngine
+
+          output = Path(sys.argv[1])
+          engine = ProductionReplayEngine(2_000_000.0)
+          result = engine.run(
+              SYMBOL_NAMES,
+              "2025-04-01",
+              "2026-07-20",
+              data_dir="data/market",
+              regime_data_dir="data/regime",
+              indicator_state="warm",
+          )
+          trades = list(result["trades"])
+          curve = result["equity_curve"]
+          gross_traded_value = sum(
+              abs(float(trade.gross_value or trade.shares * trade.price))
+              for trade in trades
+          )
+          commission = sum(float(trade.commission) for trade in trades)
+          stamp_duty = sum(float(trade.stamp_duty_cost) for trade in trades)
+          mean_nav = float(curve["assets"].mean())
+          conservation_error = float(
+              (curve["assets"] - curve["cash"] - curve["position_value"]).abs().max()
+          )
+          payload = {
+              "wealth_multiple": 1.0 + float(result["total_return"]),
+              "max_drawdown": abs(float(result["max_drawdown"])),
+              "date_symbol_side_buckets": int(result["date_symbol_side_count"]),
+              "active_fill_days": len({str(trade.date) for trade in trades}),
+              "sleeve_fills": int(result["sleeve_fill_count"]),
+              "trade_records": int(result["total_trades"]),
+              "gross_traded_value": gross_traded_value,
+              "mean_nav": mean_nav,
+              "turnover_over_average_equity": gross_traded_value / mean_nav,
+              "commission": commission,
+              "stamp_duty": stamp_duty,
+              "commission_plus_stamp": commission + stamp_duty,
+              "minimum_cash": float(curve["cash"].min()),
+              "maximum_conservation_error": conservation_error,
+              "equity_rows": int(len(curve)),
+              "finite": bool(
+                  np.isfinite(curve[["assets", "cash", "position_value"]].to_numpy()).all()
+                  and all(
+                      math.isfinite(float(value))
+                      for value in (
+                          result["total_return"],
+                          result["max_drawdown"],
+                          gross_traded_value,
+                          mean_nav,
+                          commission,
+                          stamp_duty,
+                      )
+                  )
+              ),
+              "account_risk_budget_enabled": bool(
+                  result["account_risk_budget"]["enabled"]
+              ),
+              "account_risk_budget_status": str(
+                  result["account_risk_budget"]["status"]
+              ),
+              "source_files": {
+                  path: hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                  for path in (
+                      "quantfusion/application/account_scan.py",
+                      "quantfusion/risk/account_budget.py",
+                  )
+              },
+          }
+          output.write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+          PY
+            )
+          }
+          run_one "$INCUMBENT_ROOT" "$EVIDENCE_DIR/incumbent-core17.json" \
+            | tee "$EVIDENCE_DIR/incumbent-core17.log"
+          run_one "$CANDIDATE_ROOT" "$EVIDENCE_DIR/candidate-core17.json" \
+            | tee "$EVIDENCE_DIR/candidate-core17.log"
+
+      - name: Assess identity and frozen Core17 hard gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import math
+          from pathlib import Path
+
+          root = Path("/tmp/account-risk-coverage")
+          incumbent = json.loads((root / "incumbent-core17.json").read_text())
+          candidate = json.loads((root / "candidate-core17.json").read_text())
+
+          expected_incumbent = {
+              "wealth_multiple": 9.610542744515504,
+              "max_drawdown": 0.15104978428469945,
+              "date_symbol_side_buckets": 190,
+              "active_fill_days": 92,
+              "sleeve_fills": 645,
+              "turnover_over_average_equity": 16.00753130920448,
+              "commission_plus_stamp": 74192.392969,
+          }
+          expected_candidate = {
+              "wealth_multiple": 11.194244202966377,
+              "max_drawdown": 0.14888875743400234,
+              "date_symbol_side_buckets": 122,
+              "active_fill_days": 73,
+              "sleeve_fills": 388,
+              "turnover_over_average_equity": 13.459480051458625,
+              "commission_plus_stamp": 70737.13506725,
+          }
+
+          def identity(actual, expected):
+              checks = {}
+              for key, expected_value in expected.items():
+                  actual_value = actual[key]
+                  if isinstance(expected_value, int):
+                      checks[key] = actual_value == expected_value
+                  else:
+                      checks[key] = math.isclose(
+                          float(actual_value), float(expected_value),
+                          rel_tol=1e-11, abs_tol=1e-8,
+                      )
+              return checks
+
+          incumbent_identity = identity(incumbent, expected_incumbent)
+          candidate_identity = identity(candidate, expected_candidate)
+          wealth_ratio = candidate["wealth_multiple"] / incumbent["wealth_multiple"]
+          bucket_reduction = 1.0 - (
+              candidate["date_symbol_side_buckets"]
+              / incumbent["date_symbol_side_buckets"]
+          )
+          active_day_reduction = 1.0 - (
+              candidate["active_fill_days"] / incumbent["active_fill_days"]
+          )
+          correctness = bool(
+              incumbent["finite"]
+              and candidate["finite"]
+              and incumbent["minimum_cash"] >= -1e-6
+              and candidate["minimum_cash"] >= -1e-6
+              and incumbent["maximum_conservation_error"] <= 1e-6
+              and candidate["maximum_conservation_error"] <= 1e-6
+              and incumbent["account_risk_budget_enabled"]
+              and candidate["account_risk_budget_enabled"]
+          )
+          gates = {
+              "incumbent_identity_reproduced": all(incumbent_identity.values()),
+              "candidate_identity_reproduced": all(candidate_identity.values()),
+              "wealth_ratio_at_least_1_10": wealth_ratio >= 1.10,
+              "mdd_degradation_at_most_1pp": (
+                  candidate["max_drawdown"] - incumbent["max_drawdown"] <= 0.01
+              ),
+              "candidate_mdd_at_most_19pct": candidate["max_drawdown"] <= 0.19,
+              "bucket_reduction_at_least_20pct": bucket_reduction >= 0.20,
+              "active_day_reduction_at_least_15pct": active_day_reduction >= 0.15,
+              "turnover_not_higher": (
+                  candidate["turnover_over_average_equity"]
+                  <= incumbent["turnover_over_average_equity"]
+              ),
+              "sleeve_fills_decline": (
+                  candidate["sleeve_fills"] < incumbent["sleeve_fills"]
+              ),
+              "fees_do_not_increase": (
+                  candidate["commission_plus_stamp"]
+                  <= incumbent["commission_plus_stamp"]
+              ),
+              "account_and_metric_correctness": correctness,
+          }
+          assessment = {
+              "schema_version": 1,
+              "kind": "account_risk_coverage_core17_assessment",
+              "status": "PASS" if all(gates.values()) else "FAIL",
+              "identity": {
+                  "incumbent": incumbent_identity,
+                  "candidate": candidate_identity,
+              },
+              "comparison": {
+                  "wealth_ratio": wealth_ratio,
+                  "mdd_change": (
+                      candidate["max_drawdown"] - incumbent["max_drawdown"]
+                  ),
+                  "bucket_reduction": bucket_reduction,
+                  "active_fill_day_reduction": active_day_reduction,
+                  "turnover_ratio": (
+                      candidate["turnover_over_average_equity"]
+                      / incumbent["turnover_over_average_equity"]
+                  ),
+                  "sleeve_fill_ratio": (
+                      candidate["sleeve_fills"] / incumbent["sleeve_fills"]
+                  ),
+                  "fee_delta": (
+                      candidate["commission_plus_stamp"]
+                      - incumbent["commission_plus_stamp"]
+                  ),
+              },
+              "gates": gates,
+              "incumbent": incumbent,
+              "candidate": candidate,
+          }
+          (root / "core17-assessment.json").write_text(
+              json.dumps(assessment, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(assessment, ensure_ascii=False, indent=2, sort_keys=True))
+          if assessment["status"] != "PASS":
+              raise SystemExit(1)
+          PY
+
+      - name: Build evidence checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$EVIDENCE_DIR"
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' \
+            | sort \
+            | xargs -r sha256sum > SHA256SUMS
+
+      - name: Upload Core17 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-risk-coverage-core17-${{ github.sha }}
+          path: ${{ runner.temp }}/account-risk-coverage
+          if-no-files-found: error
+          retention-days: 90
