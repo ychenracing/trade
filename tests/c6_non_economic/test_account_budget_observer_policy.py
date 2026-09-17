@@ -11,7 +11,7 @@ from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.domain.models import Position, Signal
 from quantfusion.engine.ensemble import EnsembleSleeveBacktestEngine
 from quantfusion.engine.universe import BacktestEngine
-from quantfusion.risk.account_budget import account_budget_status
+from quantfusion.risk.account_budget_observer import account_budget_observer_status
 
 
 def _state() -> tuple[BacktestEngine, SimpleNamespace, pd.Timestamp]:
@@ -116,7 +116,7 @@ def test_account_budget_status_separates_policy_from_evaluation_health():
         }
     ]
 
-    status = account_budget_status(events, True)
+    status = account_budget_observer_status(events, True)
 
     assert status["enabled"] is True
     assert status["mechanism"] == "AB5"
