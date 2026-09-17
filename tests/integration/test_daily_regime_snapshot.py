@@ -1,10 +1,10 @@
 """Daily acquisition must freeze signal-only references without trading them."""
 
+import json
+import sys
 from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
-import json
-import sys
 
 import pandas as pd
 import pytest
@@ -97,17 +97,12 @@ def test_daily_scan_freezes_references_but_keeps_seventeen_trade_symbols(scan_in
     assert risk["symbols_hash"] == dss._compute_identity_hash(dss.SYMBOLS, fingerprint)
 
 
-@pytest.mark.parametrize("failure,allow_stale", [
-    ("error", False), ("empty", False), ("stale", False), ("lagging", False),
-    ("error", True), ("empty", True),
-])
+@pytest.mark.parametrize("failure", ["error", "empty", "stale", "lagging"])
 def test_unusable_reference_fails_before_publication(
-    scan_inputs, failure, allow_stale, capsys
+    scan_inputs, failure, capsys
 ):
     inputs = scan_inputs
     inputs.failures["688008"] = failure
-    if allow_stale:
-        sys.argv.append("--allow-stale")
     inputs.output.mkdir()
     previous_signal = inputs.output / "signals_2026-09-12.json"
     previous_signal.write_text('{"last_good": true}\n', encoding="utf-8")

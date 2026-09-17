@@ -6,7 +6,6 @@ import ast
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "quantfusion"
 FORBIDDEN_ROOT_FILES = {
@@ -16,7 +15,7 @@ FORBIDDEN_ROOT_FILES = {
     "benchmark_validation.py",
     "cross_market_overlay.py",
     "daily_signal_scan.py",
-    "download_eastmoney_qfq.py",
+    "download_market_data.py",
     "market_data_contracts.py",
     "quant_fusion.py",
     "quant_fusion_optimizer.py",

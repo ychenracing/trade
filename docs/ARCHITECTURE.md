@@ -46,7 +46,7 @@ flowchart TD
 
 `quantfusion/application/backtest_cli.py` 可选择单个 `--pool`，但仍调用原 `BacktestEngine`；`scripts/compare_universes.py` 通过 `ProductionReplayEngine` 做连续账户比较，并复用相同费用、T+1、撮合、风险与路由。股票池配置层不实现策略分叉，也不为每个 Pool 复制策略代码。
 
-Pool 数据准备由 `scripts/download_eastmoney_qfq.py` 的研究模式完成，默认写入被忽略的独立缓存；旧无 Pool 路径保持原冻结快照语义。研究 manifest 在外部 I/O 前先标记不完整，每个 CSV 原子替换并记录 SHA-256；只有全部交易池、固定参考和风险篮股票完成才可形成完整输入。`scripts.compare_universes.py` 在回放前重新核验完整 manifest、文件哈希、股票截止日覆盖和两只固定指数的路由预热／同步覆盖，避免数据缺口被当成策略现金防御。
+市场数据准备统一由 `scripts/download_market_data.py` 完成，默认写入被忽略的独立缓存并复用当前 provider failover；不存在单独的旧无 Pool 下载分支。manifest 在外部 I/O 前先标记不完整，每个 CSV 原子替换并记录 SHA-256；只有全部请求股票完成才可形成完整输入，Pool 请求还必须覆盖对应固定参考和风险篮股票。`scripts.compare_universes.py` 在回放前重新核验完整 manifest、文件哈希、股票截止日覆盖和两只固定指数的路由预热／同步覆盖，避免数据缺口被当成策略现金防御。
 
 比较报告属于只读应用派生物。它从实际引擎结果和成交重建换手、现金比例、风险事件与持仓 HHI，分别保存请求窗口和实际观察窗口；不写策略状态、不更新生产风险状态、不改 canonical 工件。默认 `reports/universe_comparison/` 是被忽略的运行输出目录。
 

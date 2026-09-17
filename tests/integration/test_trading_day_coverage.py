@@ -1,10 +1,10 @@
 """Exercise sourced-session coverage through both public scan paths offline."""
 
-from dataclasses import asdict
-from datetime import datetime
 import json
 import shutil
 import sys
+from dataclasses import asdict
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -59,7 +59,7 @@ def test_all_inputs_one_day_late_cannot_certify_each_other(scan_inputs, failure)
         for code in dss.ra.REGIME_INDEX_FILES.values():
             inputs.frame.iloc[:-1].to_csv(inputs.regime / f"{code}.csv")
     before = _preserve_success(inputs)
-    sys.argv.extend(["--allow-stale", "--reset-risk-state"])
+    sys.argv.append("--reset-risk-state")
     assert dss.main() == 1
     assert all(p.read_bytes() == content for p, content in before.items())
     assert not inputs.snapshot.exists()
@@ -70,7 +70,7 @@ def test_missing_target_bar_preserves_state_even_with_reset(scan_inputs, code):
     inputs = scan_inputs
     inputs.failures[code] = "lagging"
     before = _preserve_success(inputs)
-    sys.argv.extend(["--allow-stale", "--reset-risk-state"])
+    sys.argv.append("--reset-risk-state")
     assert dss.main() == 1
     assert all(p.read_bytes() == content for p, content in before.items())
     assert not inputs.snapshot.exists()

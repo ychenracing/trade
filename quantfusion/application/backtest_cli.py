@@ -19,8 +19,6 @@ from quantfusion.engine.universe import BacktestEngine
 _SYMBOL_RE = SYMBOL_RE
 
 DEFAULT_SYMBOLS = dict(list(SYMBOL_NAMES.items())[:5])
-LEGACY_BACKTEST_START_DATE = "2025-04-01"
-LEGACY_BACKTEST_END_DATE = "2026-07-20"
 
 # Keep the production symbol table public contract unchanged while allowing
 # research-only names to resolve through the separate research catalog.
@@ -49,22 +47,20 @@ def parse_symbols(symbols_str: str) -> dict[str, str]:
 
 
 def resolve_backtest_window(
-    start: str,
-    end: str,
+    start_date: str,
+    end_date: str,
     *,
-    pool_selected: bool,
     today: str,
 ) -> tuple[str, str]:
-    """Use 2023-to-current defaults only for configured pool research."""
-    if pool_selected:
-        return start or DEFAULT_RESEARCH_START_DATE, end or today
-    return start or LEGACY_BACKTEST_START_DATE, end or LEGACY_BACKTEST_END_DATE
+    """Resolve the single current research window contract."""
+    return start_date or DEFAULT_RESEARCH_START_DATE, end_date or today
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
     """Build the standalone command-line interface."""
     parser = argparse.ArgumentParser(
-        description="Quant Fusion standalone backtester"
+        description="Quant Fusion standalone backtester",
+        allow_abbrev=False,
     )
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument(
@@ -80,25 +76,17 @@ def build_argument_parser() -> argparse.ArgumentParser:
         help="Configured research universe (pool_a through pool_j)",
     )
     parser.add_argument(
-        "--start",
         "--start-date",
-        dest="start",
         default="",
         help=(
-            "Backtest start date YYYY-MM-DD. Pool research defaults to "
-            f"{DEFAULT_RESEARCH_START_DATE}; legacy non-pool mode retains "
-            f"{LEGACY_BACKTEST_START_DATE}."
+            "Backtest start date YYYY-MM-DD. Defaults to "
+            f"{DEFAULT_RESEARCH_START_DATE}."
         ),
     )
     parser.add_argument(
-        "--end",
         "--end-date",
-        dest="end",
         default="",
-        help=(
-            "Backtest end date YYYY-MM-DD. Pool research defaults to the current "
-            f"Shanghai-market date; legacy non-pool mode retains {LEGACY_BACKTEST_END_DATE}."
-        ),
+        help="Backtest end date YYYY-MM-DD. Defaults to the current Shanghai-market date.",
     )
     parser.add_argument("--capital", type=float, default=2_000_000)
     parser.add_argument(
@@ -138,9 +126,8 @@ def main() -> dict | None:
     else:
         symbols = dict(DEFAULT_SYMBOLS)
     start_date, end_date = resolve_backtest_window(
-        args.start,
-        args.end,
-        pool_selected=bool(args.pool),
+        args.start_date,
+        args.end_date,
         today=today_str(),
     )
     engine = BacktestEngine(args.capital)

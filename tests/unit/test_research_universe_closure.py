@@ -10,9 +10,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts import compare_universes as compare
-from scripts import download_eastmoney_qfq as download
 from quantfusion.application.universe_comparison import summarize_universe_result
+from scripts import compare_universes as compare
+from scripts import download_market_data as download
 
 
 def _write_market_csv(path: Path, dates: pd.DatetimeIndex) -> str:

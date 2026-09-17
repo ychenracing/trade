@@ -137,7 +137,7 @@ def validate_market_data_directory(
     if not data_dir.is_dir():
         raise ValueError(
             f"Research market-data directory does not exist: {data_dir}. "
-            "Run scripts.download_eastmoney_qfq with the same pool selection first."
+            "Run scripts.download_market_data with the same pool selection first."
         )
     required = required_market_symbols(pools)
     manifest_path = data_dir / "manifest.json"

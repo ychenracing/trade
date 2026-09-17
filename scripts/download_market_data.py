@@ -6,8 +6,6 @@ import argparse
 import hashlib
 import json
 import time
-import urllib.parse
-import urllib.request
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -15,7 +13,7 @@ import pandas as pd
 
 from quantfusion.application.daily_support import today_str
 from quantfusion.config.overlay import RISK_BASKET
-from quantfusion.config.paths import MARKET_DATA_DIR, PROJECT_ROOT
+from quantfusion.config.paths import PROJECT_ROOT
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.regime import MAX_EVIDENCE_STALENESS_DAYS
 from quantfusion.config.research_universes import (
@@ -28,11 +26,8 @@ from quantfusion.config.research_universes import (
 from quantfusion.config.universe import SYMBOL_NAMES
 from quantfusion.data.providers import DataFetcher
 
-
 DEFAULT_SYMBOLS = tuple(dict.fromkeys((*SYMBOL_NAMES, *PortfolioPolicy().regime_symbols)))
 DEFAULT_RESEARCH_OUTPUT = PROJECT_ROOT / "data_cache" / "research_market"
-LEGACY_START_DATE = "2024-01-01"
-LEGACY_END_DATE = "2026-07-20"
 DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS = 365
 RESEARCH_INTER_SYMBOL_DELAY_SECONDS = 1.0
 RESEARCH_COOLDOWN_SECONDS = 10.0
@@ -53,29 +48,21 @@ def select_download_symbols(pools: Iterable[str]) -> tuple[str, ...]:
 
 
 def resolve_download_window(
-    start: str,
-    end: str,
+    start_date: str,
+    end_date: str,
     *,
-    research_selection: bool,
     today: str,
 ) -> tuple[str, str]:
-    """Resolve replay-window defaults without changing the retained legacy snapshot."""
-    resolved_start = start or (
-        DEFAULT_RESEARCH_START_DATE if research_selection else LEGACY_START_DATE
-    )
-    resolved_end = end or (today if research_selection else LEGACY_END_DATE)
-    return resolved_start, resolved_end
+    """Resolve the single current market-data window."""
+    return start_date or DEFAULT_RESEARCH_START_DATE, end_date or today
 
 
 def research_data_start(
     replay_start: str,
     *,
-    research_selection: bool,
     warmup_calendar_days: int = DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS,
 ) -> str:
-    """Include causal pre-window data for warm indicators only in pool research mode."""
-    if not research_selection:
-        return replay_start
+    """Include causal pre-window data for warm indicators."""
     if warmup_calendar_days < 0:
         raise ValueError("warmup_calendar_days must be non-negative")
     return str(
@@ -94,95 +81,8 @@ def prelisting_not_applicable(symbol: str, end_date: str) -> bool:
     return end.normalize() < pd.Timestamp(first_trading)
 
 
-def _market_id(symbol: str) -> str:
-    """Return the Eastmoney market identifier for an A-share symbol."""
-    return "0" if symbol.startswith(("0", "2", "3", "4", "8", "9")) else "1"
 
-
-def _url(symbol: str, start: str, end: str) -> str:
-    """Build the retained Eastmoney daily forward-adjusted endpoint URL."""
-    query = urllib.parse.urlencode(
-        {
-            "secid": f"{_market_id(symbol)}.{symbol}",
-            "klt": "101",
-            "fqt": "1",
-            "lmt": "1000",
-            "beg": start.replace("-", ""),
-            "end": end.replace("-", ""),
-            "fields1": "f1,f2,f3,f4,f5,f6",
-            "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
-        }
-    )
-    return f"https://push2his.eastmoney.com/api/qt/stock/kline/get?{query}"
-
-
-def _download(
-    symbol: str,
-    start: str,
-    end: str,
-    *,
-    attempts: int = 5,
-    retry_base_delay: float = 1.5,
-) -> tuple[pd.DataFrame, str]:
-    """Retain the legacy Eastmoney-only snapshot path with bounded retries."""
-    if attempts < 1:
-        raise ValueError("attempts must be positive")
-    errors: list[str] = []
-    for attempt in range(attempts):
-        try:
-            request = urllib.request.Request(
-                _url(symbol, start, end),
-                headers={"User-Agent": "Mozilla/5.0"},
-            )
-            with urllib.request.urlopen(request, timeout=30) as response:  # nosec B310
-                payload = json.loads(response.read().decode("utf-8"))
-            data = payload.get("data")
-            rows = data.get("klines", []) if isinstance(data, dict) else []
-            if not rows:
-                raise ValueError(f"empty kline response: {payload!r}")
-            values = [row.split(",") for row in rows]
-            frame = pd.DataFrame(
-                values,
-                columns=(
-                    "date",
-                    "open",
-                    "close",
-                    "high",
-                    "low",
-                    "volume_lots",
-                    "amount",
-                    "amplitude",
-                    "change_pct",
-                    "change",
-                    "turnover",
-                ),
-            )
-            for column in ("open", "close", "high", "low", "volume_lots"):
-                frame[column] = pd.to_numeric(frame[column], errors="raise")
-            frame["volume"] = frame.pop("volume_lots") * 100.0
-            frame = frame[["date", "open", "high", "low", "close", "volume"]]
-            frame["date"] = pd.to_datetime(frame["date"], errors="raise")
-            frame = frame.loc[
-                frame["date"].between(pd.Timestamp(start), pd.Timestamp(end))
-            ].copy()
-            if frame.empty or frame["date"].duplicated().any():
-                raise ValueError("empty or duplicate-dated normalized response")
-            if (frame[["open", "high", "low", "close"]] <= 0).any().any():
-                raise ValueError("non-positive price in normalized response")
-            if (frame["high"] < frame[["open", "close"]].max(axis=1)).any():
-                raise ValueError("invalid high price in normalized response")
-            if (frame["low"] > frame[["open", "close"]].min(axis=1)).any():
-                raise ValueError("invalid low price in normalized response")
-            name = str(data.get("name", ""))
-            return frame, name
-        except Exception as error:  # External endpoint boundary.
-            errors.append(f"attempt {attempt + 1}: {error}")
-            if attempt + 1 < attempts:
-                time.sleep(retry_base_delay * (attempt + 1))
-    raise RuntimeError(f"{symbol} download failed: {'; '.join(errors)}")
-
-
-def _fetch_research_symbol(
+def _fetch_symbol(
     symbol: str, start: str, end: str
 ) -> tuple[pd.DataFrame, str, str]:
     """Use provider failover and reject visibly truncated/stale research history."""
@@ -257,7 +157,7 @@ def _store_symbol_snapshot(
     )
 
 
-def _download_research_symbols(
+def _download_symbols(
     symbols: tuple[str, ...],
     *,
     start: str,
@@ -290,7 +190,7 @@ def _download_research_symbols(
                 )
                 continue
             try:
-                frame, name, provider = _fetch_research_symbol(symbol, start, end)
+                frame, name, provider = _fetch_symbol(symbol, start, end)
             except RuntimeError as exc:
                 last_error = str(exc)
                 next_pending = pending[offset:]
@@ -322,7 +222,7 @@ def _download_research_symbols(
 
 
 def _write_manifest(output: Path, manifest: dict[str, object]) -> None:
-    """Replace the research/legacy manifest atomically within one output directory."""
+    """Replace the market-data manifest atomically within one output directory."""
     payload = json.dumps(manifest, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
     temporary = output / ".manifest.json.tmp"
     temporary.write_text(payload, encoding="utf-8")
@@ -330,28 +230,20 @@ def _write_manifest(output: Path, manifest: dict[str, object]) -> None:
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
-    """Build legacy-compatible and pool-aware historical data arguments."""
-    parser = argparse.ArgumentParser()
+    """Build the current historical market-data arguments."""
+    parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument(
-        "--start",
         "--start-date",
-        dest="start",
         default="",
         help=(
-            "Replay-window start date. Research pools default to 2023-01-01 and "
-            "automatically fetch one calendar year of pre-window warmup data; "
-            "legacy non-pool mode retains 2024-01-01."
+            "Replay-window start date. Defaults to 2023-01-01 and automatically "
+            "fetches one calendar year of pre-window warmup data."
         ),
     )
     parser.add_argument(
-        "--end",
         "--end-date",
-        dest="end",
         default="",
-        help=(
-            "Snapshot end date. Research pools default to the current Shanghai-market "
-            "date; legacy non-pool mode retains 2026-07-20."
-        ),
+        help="Snapshot end date. Defaults to the current Shanghai-market date.",
     )
     parser.add_argument(
         "--output",
@@ -379,9 +271,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-    """Download all requested symbols and write a provenance manifest."""
+    """Download current market data and write a fail-closed provenance manifest."""
     args = build_argument_parser().parse_args()
-    research_selection = bool(args.pools or args.all_pools)
     if args.symbols:
         symbols = tuple(args.symbols)
     elif args.all_pools:
@@ -391,82 +282,40 @@ def main() -> int:
     else:
         symbols = DEFAULT_SYMBOLS
     replay_start, end_date = resolve_download_window(
-        args.start,
-        args.end,
-        research_selection=research_selection,
+        args.start_date,
+        args.end_date,
         today=today_str(),
     )
-    data_start = research_data_start(
-        replay_start,
-        research_selection=research_selection,
-    )
-    output = Path(
-        args.output
-        or (DEFAULT_RESEARCH_OUTPUT if research_selection else MARKET_DATA_DIR)
-    ).expanduser()
+    data_start = research_data_start(replay_start)
+    output = Path(args.output or DEFAULT_RESEARCH_OUTPUT).expanduser()
     output.mkdir(parents=True, exist_ok=True)
     symbol_manifest: dict[str, object] = {}
+    requested_symbols = list(symbols)
     manifest: dict[str, object] = {
-        "provider": (
-            "DataFetcher failover (Eastmoney/Sina/Tencent)"
-            if research_selection
-            else "Eastmoney push2his"
-        ),
+        "provider": "DataFetcher failover (Eastmoney/Sina/Tencent)",
         "adjustment": "qfq",
         "volume_unit": "shares",
         "requested_start": data_start,
         "research_window_start": replay_start,
-        "warmup_calendar_days": (
-            DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS if research_selection else 0
-        ),
+        "warmup_calendar_days": DEFAULT_RESEARCH_WARMUP_CALENDAR_DAYS,
         "requested_end": end_date,
         "symbols": symbol_manifest,
+        "complete": False,
+        "requested_symbols": requested_symbols,
+        "downloaded_symbols": [],
+        "not_applicable_symbols": [],
+        "missing_symbols": requested_symbols,
     }
-    if research_selection:
-        requested_symbols = list(symbols)
-        manifest.update(
-            {
-                "complete": False,
-                "requested_symbols": requested_symbols,
-                "downloaded_symbols": [],
-                "not_applicable_symbols": [],
-                "missing_symbols": requested_symbols,
-            }
+    _write_manifest(output, manifest)
+    try:
+        _download_symbols(
+            tuple(symbols),
+            start=data_start,
+            end=end_date,
+            output=output,
+            symbol_manifest=symbol_manifest,
         )
-        # Write the incomplete identity before external I/O. A hard interruption
-        # can therefore never leave an older successful manifest claiming that
-        # partially replaced CSVs are a complete research snapshot.
-        _write_manifest(output, manifest)
-        try:
-            _download_research_symbols(
-                tuple(symbols),
-                start=data_start,
-                end=end_date,
-                output=output,
-                symbol_manifest=symbol_manifest,
-            )
-        except Exception as exc:
-            downloaded = [
-                code
-                for code, entry in symbol_manifest.items()
-                if isinstance(entry, dict) and entry.get("status") == "observed"
-            ]
-            not_applicable = [
-                code
-                for code, entry in symbol_manifest.items()
-                if isinstance(entry, dict)
-                and entry.get("status") == "not_applicable_pre_listing"
-            ]
-            manifest.update(
-                {
-                    "downloaded_symbols": downloaded,
-                    "not_applicable_symbols": not_applicable,
-                    "missing_symbols": [code for code in symbols if code not in symbol_manifest],
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
-            )
-            _write_manifest(output, manifest)
-            raise
+    except Exception as exc:
         downloaded = [
             code
             for code, entry in symbol_manifest.items()
@@ -480,26 +329,33 @@ def main() -> int:
         ]
         manifest.update(
             {
-                "complete": True,
                 "downloaded_symbols": downloaded,
                 "not_applicable_symbols": not_applicable,
-                "missing_symbols": [],
+                "missing_symbols": [code for code in symbols if code not in symbol_manifest],
+                "error": f"{type(exc).__name__}: {exc}",
             }
         )
         _write_manifest(output, manifest)
-    else:
-        for symbol in symbols:
-            frame, name = _download(symbol, data_start, end_date)
-            _store_symbol_snapshot(
-                output,
-                symbol_manifest,
-                symbol,
-                frame,
-                name,
-                provider="Eastmoney push2his",
-            )
-            time.sleep(0.3)
-        _write_manifest(output, manifest)
+        raise
+    downloaded = [
+        code
+        for code, entry in symbol_manifest.items()
+        if isinstance(entry, dict) and entry.get("status") == "observed"
+    ]
+    not_applicable = [
+        code
+        for code, entry in symbol_manifest.items()
+        if isinstance(entry, dict) and entry.get("status") == "not_applicable_pre_listing"
+    ]
+    manifest.update(
+        {
+            "complete": True,
+            "downloaded_symbols": downloaded,
+            "not_applicable_symbols": not_applicable,
+            "missing_symbols": [],
+        }
+    )
+    _write_manifest(output, manifest)
     return 0
 
 

@@ -11,13 +11,12 @@ import sys
 import unittest
 from pathlib import Path
 
-from quantfusion.config.engine import default_engine_config
-from quantfusion.config.portfolio import PortfolioPolicy
-from quantfusion.config.paths import PROJECT_ROOT
 from quantfusion.config import paths as repository_paths
-from scripts.run_regime_validation import _golden_bull
+from quantfusion.config.engine import default_engine_config
+from quantfusion.config.paths import PROJECT_ROOT
+from quantfusion.config.portfolio import PortfolioPolicy
 from scripts.backtest_universes import UNIVERSES
-
+from scripts.run_regime_validation import _golden_bull
 
 ROOT = PROJECT_ROOT
 THIS_FILE = Path(__file__).resolve().relative_to(ROOT)
@@ -222,6 +221,7 @@ class RepositoryHygieneTests(unittest.TestCase):
 
     def test_formal_stress_baseline_has_valid_native_release_evidence(self) -> None:
         import hashlib
+
         from quantfusion.application.c6_contract import canonical_payload_hash
         from quantfusion.application.stress_artifacts import _load_incumbent
 
@@ -343,7 +343,7 @@ class RepositoryHygieneTests(unittest.TestCase):
             "scripts.backtest_cambricon_universe",
             "scripts.backtest_universes",
             "scripts.benchmark_validation",
-            "scripts.download_eastmoney_qfq",
+            "scripts.download_market_data",
             "scripts.run_regime_validation",
             "scripts.validate_basket",
         )

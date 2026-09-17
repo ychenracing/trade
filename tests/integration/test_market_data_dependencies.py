@@ -14,7 +14,7 @@ import pytest
 from quantfusion.application import daily_scan as dss
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.config.universe import SYMBOL_NAMES
-from scripts import download_eastmoney_qfq as download
+from scripts import download_market_data as download
 
 
 class ReplayInputsLoaded(Exception):
@@ -35,7 +35,7 @@ def _frame(last: str = "2026-09-11") -> pd.DataFrame:
 
 
 def _scan(monkeypatch, tmp_path: Path, *, failures=None, dates=None,
-          stale=(), allow_stale=False, mode="auto"):
+          stale=(), mode="auto"):
     cache = tmp_path / "cache"
     regime = tmp_path / "regime"
     output = tmp_path / "output"
@@ -48,8 +48,6 @@ def _scan(monkeypatch, tmp_path: Path, *, failures=None, dates=None,
         "--cache-dir", str(cache), "--regime-data-dir", str(regime),
         "--output-dir", str(output), "--deployment-mode", mode,
     ]
-    if allow_stale:
-        argv.append("--allow-stale")
     monkeypatch.setattr(sys, "argv", argv)
     monkeypatch.setattr(dss.market_data_contracts, "refresh_regime_indices",
                         lambda *args, **kwargs: {})
@@ -111,12 +109,11 @@ def test_daily_scan_freezes_references_without_trading_them(monkeypatch, tmp_pat
 
 @pytest.mark.parametrize("code", ["688008", "300308", "688256"])
 @pytest.mark.parametrize("failure", ["empty", "error"])
-@pytest.mark.parametrize("allow_stale", [False, True])
 def test_missing_required_data_never_shrinks_the_universe(
-    monkeypatch, tmp_path, code, failure, allow_stale
+    monkeypatch, tmp_path, code, failure
 ):
     _, captured, output, _ = _scan(
-        monkeypatch, tmp_path, failures={code: failure}, allow_stale=allow_stale
+        monkeypatch, tmp_path, failures={code: failure}
     )
     previous = output / "signals_2026-09-12.json"
     previous.write_bytes(b"previous-success")
@@ -128,20 +125,15 @@ def test_missing_required_data_never_shrinks_the_universe(
 
 
 @pytest.mark.parametrize("kind", ["stale", "lagging"])
-@pytest.mark.parametrize("allow_stale", [False, True])
 def test_reference_stale_or_missing_target_session_always_fails_closed(
-    monkeypatch, tmp_path, kind, allow_stale
+    monkeypatch, tmp_path, kind
 ):
     _, captured, _, _ = _scan(
         monkeypatch, tmp_path,
         stale=("688008",) if kind == "stale" else (),
         dates={"688008": "2026-09-10"} if kind == "lagging" else {},
-        allow_stale=allow_stale,
     )
-    # The current input contract deliberately does not let --allow-stale
-    # authorize new risk from provider-stale evidence or a missing required
-    # trading-session bar. The flag remains accepted for compatibility with
-    # its narrower natural-age role, but these two conditions fail closed.
+    # Provider-stale evidence and missing required trading-session bars fail closed.
     assert dss.main() == 1
     assert captured == {}
 
@@ -179,20 +171,22 @@ def test_snapshot_freezes_validated_frames_not_mutable_cache(monkeypatch, tmp_pa
 
 
 @pytest.mark.parametrize("explicit", [False, True])
-def test_offline_download_default_includes_reference_only_data(
+def test_current_download_default_includes_reference_only_data(
     monkeypatch, tmp_path, explicit
 ):
     requested = []
 
-    def fake_download(code, start, end):
+    def fake_fetch(code, start, end):
         requested.append(code)
-        return _frame().reset_index(), code
+        frame = _frame().reset_index().set_index("date")
+        frame.attrs["volume_provider"] = "Sina"
+        return frame, code, "Sina"
 
     argv = ["download", "--output", str(tmp_path / "download")]
     if explicit:
         argv += ["--symbol", "300308"]
     monkeypatch.setattr(sys, "argv", argv)
-    monkeypatch.setattr(download, "_download", fake_download)
+    monkeypatch.setattr(download, "_fetch_symbol", fake_fetch)
     monkeypatch.setattr(download.time, "sleep", lambda seconds: None)
     assert download.main() == 0
     expected = ({"300308"} if explicit else

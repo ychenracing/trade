@@ -14,7 +14,9 @@ from typing import Any, cast
 
 import pandas as pd
 
-from quantfusion.application import account_scan, engine_api as qf, regime_api as ra
+from quantfusion.application import account_scan
+from quantfusion.application import engine_api as qf
+from quantfusion.application import regime_api as ra
 from quantfusion.application.daily_report import publish_daily_report
 from quantfusion.application.daily_signals import (
     apply_buy_suppression,
@@ -75,8 +77,11 @@ def _scan_title() -> str:
     return f"科技板块 {len(SYMBOLS)} 标的每日信号扫描"
 
 
-def _run_main() -> int:
-    parser = argparse.ArgumentParser(description="Daily technology-sector signal scan")
+def build_argument_parser() -> argparse.ArgumentParser:
+    """Build the current daily decision-support CLI."""
+    parser = argparse.ArgumentParser(
+        description="Daily technology-sector signal scan", allow_abbrev=False
+    )
     parser.add_argument(
         "--end-date",
         default="",
@@ -91,11 +96,6 @@ def _run_main() -> int:
         "--output-dir",
         default=DEFAULT_OUTPUT_DIR,
         help=f"Output directory for results (default: {DEFAULT_OUTPUT_DIR})",
-    )
-    parser.add_argument(
-        "--allow-stale",
-        action="store_true",
-        help="Does not override mandatory trading-session coverage or provider-stale rejection.",
     )
     parser.add_argument(
         "--calendar-file",
@@ -141,7 +141,11 @@ def _run_main() -> int:
         "validated run. The previous file is retained on failure; this is not "
         "a release of an existing real-account risk lock.",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def _run_main() -> int:
+    args = build_argument_parser().parse_args()
 
     end_date = args.end_date or _today_str()
     start_date = args.start_date or START_DATE
@@ -293,16 +297,13 @@ def _run_main() -> int:
             print(f"    {code} {name}: {reason}")
     print("-" * 72)
 
-    # Session coverage and the original natural-day/provider checks are
-    # independent. An override cannot turn stale inputs into trade advice.
+    # Session coverage and provider-age checks are independent and fail closed.
     if stale_symbols:
         print("=" * 72)
         print("  ✗ PROVIDER_STALE_OR_AGE: 数据过期 — 拒绝生成信号 (fail-closed)")
         print("=" * 72)
         for code, name, last_date in stale_symbols:
             print(f"    {code} {name}: 缓存截止 {last_date}（网络获取失败或超过日期容忍）")
-        if args.allow_stale:
-            print("  --allow-stale 不覆盖提供方 stale 标记或交易日完整性要求。")
         return 1
 
     if not tradable:
