@@ -10,7 +10,6 @@ import io
 import json
 import math
 import os
-import sys
 from collections import defaultdict
 from dataclasses import asdict, is_dataclass
 from functools import wraps
@@ -347,11 +346,16 @@ def equity_rows(result: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 
 def run(args: argparse.Namespace) -> None:
-    source_root = Path(args.source_root).resolve()
-    market_dir, regime_dir = Path(args.market_dir).resolve(), Path(args.regime_dir).resolve()
+    source_root = Path.cwd().resolve()
+    script_root = Path(__file__).resolve().parents[1]
+    if script_root != source_root:
+        raise RuntimeError(
+            f"diagnostic must run as a module from its frozen source root: "
+            f"cwd={source_root}, script_root={script_root}"
+        )
+    market_dir = Path(args.market_dir).resolve()
+    regime_dir = Path(args.regime_dir).resolve()
     output = Path(args.output).resolve()
-    sys.path.insert(0, str(source_root))
-    os.chdir(source_root)
     from quantfusion.engine.replay import ProductionReplayEngine
 
     universe = symbols(args.pool, market_dir, args.end)
@@ -411,7 +415,6 @@ def run(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source-root", required=True)
     parser.add_argument("--market-dir", required=True)
     parser.add_argument("--regime-dir", required=True)
     parser.add_argument("--mode", choices=("incumbent", "candidate"), required=True)

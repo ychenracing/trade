@@ -145,8 +145,9 @@ def capacity_chains(
         can_shares = sum(int(row.get("shares", 0) or 0) for row in can_matches)
         cap, gross = blocked.get("gross_cap"), blocked.get("gross_before")
         near_capacity = bool(
-            cap is not None and gross is not None
-            and (float(gross) >= 0.95 * float(cap) or can_ratio < 0.50)
+            cap is not None
+            and gross is not None
+            and float(gross) >= 0.95 * float(cap)
         )
         output.append({
             "blocked": blocked,
@@ -178,7 +179,7 @@ def holdings(result: Mapping[str, Any]) -> dict[str, dict[str, float]]:
     return output
 
 
-def linked_gap_share(
+def linked_positive_gap_growth_share(
     incumbent: Mapping[str, Any], candidate: Mapping[str, Any],
     chains: Sequence[Mapping[str, Any]],
 ) -> float:
@@ -206,6 +207,38 @@ def linked_gap_share(
         previous = gap
     return linked / positive if positive else 0.0
 
+
+
+def linked_terminal_gap_share(
+    incumbent: Mapping[str, Any], candidate: Mapping[str, Any],
+    chains: Sequence[Mapping[str, Any]],
+) -> float:
+    """Attribute the signed terminal gap to dates with linked extra exposure."""
+    symbols = {str(chain["blocked"].get("symbol")) for chain in chains}
+    if not symbols:
+        return 0.0
+    inc = {str(row["date"]): float(row["assets"]) for row in incumbent["equity_curve"]}
+    can = {str(row["date"]): float(row["assets"]) for row in candidate["equity_curve"]}
+    inc_hold, can_hold = holdings(incumbent), holdings(candidate)
+    dates = common_dates(inc, can)
+    if len(dates) < 2:
+        return 0.0
+    initial_gap = inc[dates[0]] - can[dates[0]]
+    terminal_gap = (inc[dates[-1]] - can[dates[-1]]) - initial_gap
+    if terminal_gap <= 0.0:
+        return 0.0
+    linked = 0.0
+    previous = initial_gap
+    for date in dates[1:]:
+        gap = inc[date] - can[date]
+        if any(
+            inc_hold.get(date, {}).get(symbol, 0.0)
+            > can_hold.get(date, {}).get(symbol, 0.0) + 1e-6
+            for symbol in symbols
+        ):
+            linked += gap - previous
+        previous = gap
+    return min(1.0, max(0.0, linked / terminal_gap))
 
 def pre_state_equal(
     incumbent: Mapping[str, Any], candidate: Mapping[str, Any], first_trim: str | None
@@ -249,7 +282,9 @@ def gap_by_2024(incumbent: Mapping[str, Any], candidate: Mapping[str, Any]) -> f
         return 0.0
     final_gap = inc[dates[-1]] - can[dates[-1]]
     cutoff_gap = inc[cutoff[-1]] - can[cutoff[-1]]
-    return max(0.0, cutoff_gap) / final_gap if final_gap > 0 else 0.0
+    if final_gap <= 0.0:
+        return 0.0
+    return min(1.0, max(0.0, cutoff_gap / final_gap))
 
 
 def non_trend_gap_share(
@@ -301,7 +336,12 @@ def assess_pair(
         and chain["incumbent_actual_trim_fills"]
         and chain["incumbent_had_higher_capacity"]
     ]
-    gap_share = linked_gap_share(incumbent, candidate, qualifying)
+    positive_gap_growth_share = linked_positive_gap_growth_share(
+        incumbent, candidate, qualifying
+    )
+    terminal_gap_share = linked_terminal_gap_share(
+        incumbent, candidate, qualifying
+    )
     first_difference = first_trade_difference(incumbent, candidate)
     first_trim = min(
         (str(row.get("signal_date")) for row in ordinary_trim_fills(incumbent)),
@@ -310,7 +350,9 @@ def assess_pair(
     prior_equal = pre_state_equal(incumbent, candidate, first_trim)
     major = bool(
         qualifying and first_difference and first_trim
-        and first_difference >= first_trim and prior_equal and gap_share >= 0.35
+        and first_difference >= first_trim
+        and prior_equal
+        and terminal_gap_share >= 0.50
     )
     left, right = incumbent["metrics"], candidate["metrics"]
     incumbent_route_coverage = route_coverage(incumbent)
@@ -331,7 +373,8 @@ def assess_pair(
         "candidate_clipped_buy_count": len(clipped_buys(candidate)),
         "capacity_chain_count": len(chains),
         "qualifying_capacity_chain_count": len(qualifying),
-        "linked_positive_gap_share": gap_share,
+        "linked_positive_gap_growth_share": positive_gap_growth_share,
+        "linked_terminal_gap_share": terminal_gap_share,
         "capacity_chain_major_source": major,
         "gap_formed_by_2024_share": gap_by_2024(incumbent, candidate),
         "non_trend_positive_gap_growth_share": non_trend_gap_share(
