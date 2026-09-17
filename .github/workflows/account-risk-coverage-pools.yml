@@ -1,0 +1,538 @@
+name: Account risk coverage Pool A-J
+
+on:
+  push:
+    branches:
+      - agent/core17-account-risk-coverage
+    paths:
+      - .github/workflows/account-risk-coverage-pools.yml
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: account-risk-coverage-pools
+  cancel-in-progress: false
+
+jobs:
+  pools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout frozen acceptance branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-lock.txt
+
+      - name: Download frozen Pool input artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: account-risk-coverage-pool-input-4fae001c6db8c88ac90d4c80d683275cfcbf8e45
+          path: ${{ runner.temp }}/pool-input
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ychenracing/trade
+          run-id: 35201549781
+
+      - name: Verify inputs and reconstruct exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT_ROOT="$RUNNER_TEMP/pool-input"
+          EVIDENCE_DIR="$RUNNER_TEMP/pool-acceptance"
+          INCUMBENT_ROOT="$RUNNER_TEMP/incumbent"
+          CANDIDATE_ROOT="$RUNNER_TEMP/candidate"
+          mkdir -p "$EVIDENCE_DIR/results"
+          cd "$INPUT_ROOT"
+          sha256sum -c SHA256SUMS
+          test "$(sha256sum pool-input-identity.json | cut -d' ' -f1)" = \
+            862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006
+          cd "$GITHUB_WORKSPACE"
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          raw_path = Path(os.environ["RUNNER_TEMP"]) / "pool-input" / "pool-input-identity.json"
+          committed_path = Path(
+              "artifacts/diagnostics/account-risk-coverage/pool-input-identity.json"
+          )
+          raw = json.loads(raw_path.read_text(encoding="utf-8"))
+          committed = json.loads(committed_path.read_text(encoding="utf-8"))
+          receipt = committed.pop("artifact_receipt")
+          canonical = (
+              json.dumps(committed, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
+              + "\n"
+          ).encode("utf-8")
+          assert hashlib.sha256(canonical).hexdigest() == receipt["raw_identity_sha256"]
+          assert raw == committed
+          assert raw["status"] == "FROZEN_BEFORE_POOL_ECONOMIC_REPLAY"
+          assert raw["economic_results_present"] is False
+          assert raw["market"]["complete"] is True
+          assert raw["market"]["missing_symbols"] == []
+          assert len(raw["pools"]) == 10
+          assert receipt["artifact_id"] == 10487519568
+          assert receipt["artifact_digest"] == (
+              "sha256:ebcd442b401291cb22d5c74005a8614e5ea8da47cbc9b0c65f41ef4d12ce81a8"
+          )
+          PY
+
+          BASE=7d5efe5e4ea2159f82b9deb0ff4810730d8de15f
+          PR_HEAD=ea3e1ba2ddc7e89faa44bdee9aebe6b9fb7c06e9
+          PATCH_PATH=artifacts/diagnostics/account-budget-convergence/limited-protection-candidate.patch
+          PATCH_BLOB=b5acdde4bd66331e593d8dbc03715312bc12c779
+          git fetch --no-tags origin refs/pull/113/head:refs/remotes/origin/pr113
+          test "$(git rev-parse refs/remotes/origin/pr113)" = "$PR_HEAD"
+          test "$(git rev-parse "$BASE^{tree}")" = f5277ef281ad6baee60590a931f474be942f22dd
+          git show "$PR_HEAD:$PATCH_PATH" > "$EVIDENCE_DIR/limited-protection.patch"
+          test "$(git hash-object "$EVIDENCE_DIR/limited-protection.patch")" = "$PATCH_BLOB"
+          git worktree add --detach "$INCUMBENT_ROOT" "$BASE"
+          git worktree add --detach "$CANDIDATE_ROOT" "$BASE"
+          git -C "$CANDIDATE_ROOT" apply --check "$EVIDENCE_DIR/limited-protection.patch"
+          git -C "$CANDIDATE_ROOT" apply "$EVIDENCE_DIR/limited-protection.patch"
+          mapfile -t changed < <(git -C "$CANDIDATE_ROOT" diff --name-only | sort)
+          expected=(quantfusion/application/account_scan.py quantfusion/risk/account_budget.py)
+          test "${changed[*]}" = "${expected[*]}"
+          git -C "$CANDIDATE_ROOT" add -A
+          test "$(git -C "$CANDIDATE_ROOT" write-tree)" = c68675608665a3f72b917ba9f88dab60f80cb767
+
+          cat > "$EVIDENCE_DIR/source-identity.json" <<EOF
+          {
+            "base_revision": "$BASE",
+            "base_tree": "f5277ef281ad6baee60590a931f474be942f22dd",
+            "candidate_source_head": "$PR_HEAD",
+            "candidate_patch_git_blob": "$PATCH_BLOB",
+            "candidate_tree": "c68675608665a3f72b917ba9f88dab60f80cb767",
+            "pool_input_artifact_id": 10487519568,
+            "pool_input_artifact_digest": "sha256:ebcd442b401291cb22d5c74005a8614e5ea8da47cbc9b0c65f41ef4d12ce81a8",
+            "pool_input_raw_identity_sha256": "862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006"
+          }
+          EOF
+          echo "INPUT_ROOT=$INPUT_ROOT" >> "$GITHUB_ENV"
+          echo "EVIDENCE_DIR=$EVIDENCE_DIR" >> "$GITHUB_ENV"
+          echo "INCUMBENT_ROOT=$INCUMBENT_ROOT" >> "$GITHUB_ENV"
+          echo "CANDIDATE_ROOT=$CANDIDATE_ROOT" >> "$GITHUB_ENV"
+
+      - name: Validate frozen data through production loaders
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$INCUMBENT_ROOT"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from quantfusion.config.research_universes import UNIVERSE_POOLS
+          from scripts.compare_universes import (
+              validate_market_data_directory,
+              validate_regime_data_directory,
+          )
+
+          root = Path(os.environ["INPUT_ROOT"])
+          pools = tuple(UNIVERSE_POOLS)
+          validate_market_data_directory(root / "market", pools, end_date="2026-07-20")
+          regime = validate_regime_data_directory(
+              root / "regime", start_date="2023-01-01", end_date="2026-07-20"
+          )
+          output = Path(os.environ["EVIDENCE_DIR"]) / "loader-validation.json"
+          output.write_text(
+              json.dumps(
+                  {
+                      "market_validation": "PASS",
+                      "regime_validation": "PASS",
+                      "regime": regime,
+                  },
+                  ensure_ascii=False,
+                  indent=2,
+                  sort_keys=True,
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Run paired Pool A-J replays
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUNNER="$RUNNER_TEMP/pool-runner.py"
+          cat > "$RUNNER" <<'PY'
+          from __future__ import annotations
+
+          import contextlib
+          import hashlib
+          import io
+          import json
+          import math
+          import sys
+          from pathlib import Path
+
+          import numpy as np
+
+          from quantfusion.config.research_universes import symbols_for_pool
+          from quantfusion.engine.replay import ProductionReplayEngine
+          from scripts.compare_universes import active_symbols_for_pool
+
+          START = "2023-01-01"
+          END = "2026-07-20"
+
+          pool_name = sys.argv[1]
+          data_dir = Path(sys.argv[2])
+          regime_dir = Path(sys.argv[3])
+          output = Path(sys.argv[4])
+          mode = sys.argv[5]
+          input_identity_sha256 = sys.argv[6]
+
+          configured = symbols_for_pool(pool_name)
+          active = active_symbols_for_pool(pool_name, data_dir, end_date=END)
+          with contextlib.redirect_stdout(io.StringIO()):
+              result = ProductionReplayEngine(2_000_000.0).run(
+                  active,
+                  START,
+                  END,
+                  data_dir=str(data_dir),
+                  regime_data_dir=str(regime_dir),
+                  indicator_state="warm",
+                  warmup_calendar_days=365,
+              )
+
+          expected_symbols = sorted(active)
+          trades = list(result["trades"])
+          curve = result["equity_curve"]
+          gross_traded_value = sum(
+              abs(float(trade.gross_value or trade.shares * trade.price))
+              for trade in trades
+          )
+          commission = sum(float(trade.commission) for trade in trades)
+          stamp_duty = sum(float(trade.stamp_duty_cost) for trade in trades)
+          mean_nav = float(curve["assets"].mean())
+          conservation_error = float(
+              (curve["assets"] - curve["cash"] - curve["position_value"]).abs().max()
+          )
+          trade_values_finite = all(
+              math.isfinite(float(value))
+              for trade in trades
+              for value in (
+                  trade.price,
+                  trade.shares,
+                  trade.gross_value,
+                  trade.commission,
+                  trade.stamp_duty_cost,
+              )
+          )
+          identity_ok = bool(
+              result.get("requested_symbols") == expected_symbols
+              and result.get("selected_symbols") == expected_symbols
+              and result.get("unavailable_symbols") in ([], ())
+          )
+          account_budget = dict(result["account_risk_budget"])
+          correctness = bool(
+              identity_ok
+              and int(result["total_trades"]) == len(trades)
+              and int(result["sleeve_fill_count"]) == len(trades)
+              and np.isfinite(
+                  curve[["assets", "cash", "position_value"]].to_numpy(dtype=float)
+              ).all()
+              and trade_values_finite
+              and mean_nav > 0.0
+              and float(curve["assets"].min()) > 0.0
+              and float(curve["cash"].min()) >= -1e-6
+              and conservation_error <= 1e-6
+              and commission >= 0.0
+              and stamp_duty >= 0.0
+              and bool(account_budget["enabled"])
+              and str(account_budget["status"]) == "APPLIED"
+          )
+          payload = {
+              "mode": mode,
+              "pool": pool_name,
+              "configured_members": list(configured),
+              "active_members": list(active),
+              "start_date": START,
+              "end_date": END,
+              "observed_start_date": str(curve.index[0].date()),
+              "observed_end_date": str(curve.index[-1].date()),
+              "input_identity_sha256": input_identity_sha256,
+              "market_manifest_sha256": hashlib.sha256(
+                  (data_dir / "manifest.json").read_bytes()
+              ).hexdigest(),
+              "wealth_multiple": 1.0 + float(result["total_return"]),
+              "max_drawdown": abs(float(result["max_drawdown"])),
+              "date_symbol_side_buckets": int(result["date_symbol_side_count"]),
+              "active_fill_days": len({str(trade.date) for trade in trades}),
+              "sleeve_fills": int(result["sleeve_fill_count"]),
+              "gross_traded_value": gross_traded_value,
+              "mean_nav": mean_nav,
+              "turnover_over_average_equity": gross_traded_value / mean_nav,
+              "commission": commission,
+              "stamp_duty": stamp_duty,
+              "commission_plus_stamp": commission + stamp_duty,
+              "minimum_cash": float(curve["cash"].min()),
+              "maximum_conservation_error": conservation_error,
+              "account_risk_budget_enabled": bool(account_budget["enabled"]),
+              "account_risk_budget_status": str(account_budget["status"]),
+              "requested_symbols": result.get("requested_symbols"),
+              "selected_symbols": result.get("selected_symbols"),
+              "unavailable_symbols": result.get("unavailable_symbols"),
+              "correctness": correctness,
+              "source_files": {
+                  path: hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                  for path in (
+                      "quantfusion/application/account_scan.py",
+                      "quantfusion/risk/account_budget.py",
+                  )
+              },
+          }
+          output.write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
+              + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(payload, ensure_ascii=False, sort_keys=True, allow_nan=False))
+          if not correctness:
+              raise SystemExit(2)
+          PY
+
+          export RUNNER INPUT_ROOT EVIDENCE_DIR INCUMBENT_ROOT CANDIDATE_ROOT
+          export INPUT_IDENTITY_SHA256=862a77cc24da9181a7a7d29f896d7cddeb1e6a5c417406919d9aca047dafb006
+          {
+            for mode in incumbent candidate; do
+              for pool in pool_a pool_b pool_c pool_d pool_e pool_f pool_g pool_h pool_i pool_j; do
+                printf '%s:%s\n' "$mode" "$pool"
+              done
+            done
+          } > "$EVIDENCE_DIR/tasks.txt"
+
+          run_task() {
+            set -euo pipefail
+            item="$1"
+            mode="${item%%:*}"
+            pool="${item#*:}"
+            if [[ "$mode" == incumbent ]]; then
+              root="$INCUMBENT_ROOT"
+            else
+              root="$CANDIDATE_ROOT"
+            fi
+            output="$EVIDENCE_DIR/results/${mode}-${pool}.json"
+            log="$EVIDENCE_DIR/results/${mode}-${pool}.log"
+            (
+              cd "$root"
+              python "$RUNNER" \
+                "$pool" \
+                "$INPUT_ROOT/market" \
+                "$INPUT_ROOT/regime" \
+                "$output" \
+                "$mode" \
+                "$INPUT_IDENTITY_SHA256"
+            ) > "$log" 2>&1
+          }
+          export -f run_task
+          xargs -P 4 -I{} bash -c 'run_task "$1"' _ {} < "$EVIDENCE_DIR/tasks.txt"
+          test "$(find "$EVIDENCE_DIR/results" -name '*.json' | wc -l)" -eq 20
+
+      - name: Assess frozen Pool A-J contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import math
+          import os
+          from pathlib import Path
+
+          import numpy as np
+
+          evidence = Path(os.environ["EVIDENCE_DIR"])
+          input_identity = json.loads(
+              Path(
+                  "artifacts/diagnostics/account-risk-coverage/pool-input-identity.json"
+              ).read_text(encoding="utf-8")
+          )
+          results = evidence / "results"
+          pool_names = [f"pool_{letter}" for letter in "abcdefghij"]
+          rows = []
+
+          def bucket_ratio(candidate: int, incumbent: int) -> float:
+              if incumbent == 0:
+                  return 0.0 if candidate == 0 else math.inf
+              return candidate / incumbent
+
+          for pool in pool_names:
+              incumbent = json.loads(
+                  (results / f"incumbent-{pool}.json").read_text(encoding="utf-8")
+              )
+              candidate = json.loads(
+                  (results / f"candidate-{pool}.json").read_text(encoding="utf-8")
+              )
+              frozen = input_identity["pools"][pool]
+              input_ok = bool(
+                  incumbent["input_identity_sha256"]
+                  == candidate["input_identity_sha256"]
+                  == input_identity["artifact_receipt"]["raw_identity_sha256"]
+                  and incumbent["market_manifest_sha256"]
+                  == candidate["market_manifest_sha256"]
+                  == input_identity["market"]["manifest_sha256"]
+                  and incumbent["configured_members"]
+                  == candidate["configured_members"]
+                  == frozen["configured_members"]
+                  and incumbent["active_members"]
+                  == candidate["active_members"]
+                  == frozen["active_members"]
+                  and incumbent["start_date"] == candidate["start_date"] == "2023-01-01"
+                  and incumbent["end_date"] == candidate["end_date"] == "2026-07-20"
+              )
+              correctness = bool(
+                  input_ok and incumbent["correctness"] and candidate["correctness"]
+              )
+              wealth_ratio = (
+                  candidate["wealth_multiple"] / incumbent["wealth_multiple"]
+              )
+              mdd_degradation = (
+                  candidate["max_drawdown"] - incumbent["max_drawdown"]
+              )
+              action_ratio = bucket_ratio(
+                  candidate["date_symbol_side_buckets"],
+                  incumbent["date_symbol_side_buckets"],
+              )
+              acceptable = bool(
+                  wealth_ratio >= 0.90
+                  and mdd_degradation <= 0.01
+                  and candidate["max_drawdown"] <= 0.22
+                  and action_ratio <= 1.05
+                  and correctness
+              )
+              strictly_improved = bool(
+                  wealth_ratio > 1.0
+                  and mdd_degradation <= 0.01
+                  and action_ratio <= 1.0
+                  and correctness
+              )
+              catastrophic = bool(
+                  wealth_ratio < 0.60
+                  or mdd_degradation > 0.03
+                  or candidate["max_drawdown"] > 0.25
+                  or not correctness
+              )
+              rows.append(
+                  {
+                      "pool": pool,
+                      "configured_member_count": len(frozen["configured_members"]),
+                      "active_member_count": len(frozen["active_members"]),
+                      "wealth_ratio": wealth_ratio,
+                      "max_drawdown_degradation": mdd_degradation,
+                      "date_symbol_side_bucket_ratio": action_ratio,
+                      "acceptable": acceptable,
+                      "strictly_improved": strictly_improved,
+                      "catastrophic": catastrophic,
+                      "input_identity_ok": input_ok,
+                      "correctness": correctness,
+                      "incumbent": incumbent,
+                      "candidate": candidate,
+                  }
+              )
+
+          wealth_ratios = np.array([row["wealth_ratio"] for row in rows], dtype=float)
+          action_ratios = np.array(
+              [row["date_symbol_side_bucket_ratio"] for row in rows], dtype=float
+          )
+          acceptable_count = sum(row["acceptable"] for row in rows)
+          strictly_improved_count = sum(row["strictly_improved"] for row in rows)
+          non_increasing_count = sum(
+              row["date_symbol_side_bucket_ratio"] <= 1.0 for row in rows
+          )
+          wealth_median = float(np.median(wealth_ratios))
+          wealth_q25 = float(np.quantile(wealth_ratios, 0.25, method="linear"))
+          action_median = float(np.median(action_ratios))
+          gates = {
+              "acceptable_count_at_least_7": acceptable_count >= 7,
+              "strictly_improved_count_at_least_6": strictly_improved_count >= 6,
+              "wealth_ratio_median_at_least_1_00": wealth_median >= 1.00,
+              "wealth_ratio_q25_at_least_0_90": wealth_q25 >= 0.90,
+              "non_increasing_bucket_count_at_least_7": non_increasing_count >= 7,
+              "bucket_ratio_median_at_most_0_90": action_median <= 0.90,
+              "no_catastrophic_pool": not any(row["catastrophic"] for row in rows),
+              "all_metrics_finite": all(
+                  math.isfinite(value)
+                  for row in rows
+                  for value in (
+                      row["wealth_ratio"],
+                      row["max_drawdown_degradation"],
+                      row["date_symbol_side_bucket_ratio"],
+                  )
+              ),
+          }
+          assessment = {
+              "kind": "account_risk_coverage_pool_a_j_assessment",
+              "schema_version": 1,
+              "status": "PASS" if all(gates.values()) else "FAIL",
+              "source": {
+                  "branch_head": os.environ["GITHUB_SHA"],
+                  "base_revision": "7d5efe5e4ea2159f82b9deb0ff4810730d8de15f",
+                  "candidate_source_head": "ea3e1ba2ddc7e89faa44bdee9aebe6b9fb7c06e9",
+                  "candidate_patch_git_blob": "b5acdde4bd66331e593d8dbc03715312bc12c779",
+                  "candidate_tree": "c68675608665a3f72b917ba9f88dab60f80cb767",
+                  "pool_input_artifact_id": 10487519568,
+                  "pool_input_raw_identity_sha256": input_identity["artifact_receipt"][
+                      "raw_identity_sha256"
+                  ],
+              },
+              "summary": {
+                  "acceptable_count": acceptable_count,
+                  "strictly_improved_count": strictly_improved_count,
+                  "wealth_ratio_median": wealth_median,
+                  "wealth_ratio_q25": wealth_q25,
+                  "non_increasing_bucket_count": non_increasing_count,
+                  "bucket_ratio_median": action_median,
+                  "catastrophic_count": sum(row["catastrophic"] for row in rows),
+              },
+              "gates": gates,
+              "pools": rows,
+          }
+          output = evidence / "pool-assessment.json"
+          output.write_text(
+              json.dumps(
+                  assessment,
+                  ensure_ascii=False,
+                  indent=2,
+                  sort_keys=True,
+                  allow_nan=False,
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(assessment["summary"], indent=2, sort_keys=True))
+          print(json.dumps(gates, indent=2, sort_keys=True))
+          if assessment["status"] != "PASS":
+              raise SystemExit(1)
+          PY
+
+      - name: Build evidence checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$EVIDENCE_DIR"
+          find . -type f ! -name SHA256SUMS -printf '%P\n' \
+            | sort \
+            | while read -r path; do sha256sum "$path"; done > SHA256SUMS
+
+      - name: Upload Pool A-J evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-risk-coverage-pools-${{ github.sha }}
+          path: ${{ runner.temp }}/pool-acceptance
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
