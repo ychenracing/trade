@@ -32,7 +32,7 @@ def _indexed_frame(days: int, *, end: str, start_price: float = 10.0) -> pd.Data
 
 
 def _loader_for(*, short_end: str):
-    reference_symbols = {"300308", "300502", "300394", "688008", "603986"}
+    reference_symbols = {"300308", "300502", "300394", "688256", "603986"}
 
     def load(code: str, boundary: str) -> pd.DataFrame:
         if code in reference_symbols:

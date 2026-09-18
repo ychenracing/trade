@@ -97,7 +97,8 @@ def test_daily_scan_freezes_references_without_trading_them(monkeypatch, tmp_pat
         dss.main()
     required = set(SYMBOL_NAMES) | set(PortfolioPolicy().regime_symbols)
     assert len(SYMBOL_NAMES) == 17
-    assert "688008" in required - set(SYMBOL_NAMES)
+    assert required == set(SYMBOL_NAMES)
+    assert set(PortfolioPolicy().regime_symbols) <= set(SYMBOL_NAMES)
     assert captured["current_symbols"] == SYMBOL_NAMES
     assert captured["replay_symbols"] == SYMBOL_NAMES
     assert captured["manifest"]["symbols"] == sorted(required)
@@ -107,7 +108,7 @@ def test_daily_scan_freezes_references_without_trading_them(monkeypatch, tmp_pat
     assert captured["as_of"] == "2026-09-12"
 
 
-@pytest.mark.parametrize("code", ["688008", "300308", "688256"])
+@pytest.mark.parametrize("code", ["300308", "688256", "603986"])
 @pytest.mark.parametrize("failure", ["empty", "error"])
 def test_missing_required_data_never_shrinks_the_universe(
     monkeypatch, tmp_path, code, failure
@@ -130,8 +131,8 @@ def test_reference_stale_or_missing_target_session_always_fails_closed(
 ):
     _, captured, _, _ = _scan(
         monkeypatch, tmp_path,
-        stale=("688008",) if kind == "stale" else (),
-        dates={"688008": "2026-09-10"} if kind == "lagging" else {},
+        stale=("688256",) if kind == "stale" else (),
+        dates={"688256": "2026-09-10"} if kind == "lagging" else {},
     )
     # Provider-stale evidence and missing required trading-session bars fail closed.
     assert dss.main() == 1

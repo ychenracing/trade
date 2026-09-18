@@ -21,7 +21,7 @@ import pandas as pd
 from quantfusion.application import engine_api as qf
 from quantfusion.config.paths import MARKET_DATA_DIR
 
-REGIME_BASKET = ("300308", "300502", "300394", "688008", "603986")
+REGIME_BASKET = ("300308", "300502", "300394", "688256", "603986")
 BROAD_INDEX = "000300"  # 沪深300
 
 

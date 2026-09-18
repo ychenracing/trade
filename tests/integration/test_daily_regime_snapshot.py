@@ -79,7 +79,7 @@ def test_daily_scan_freezes_references_but_keeps_seventeen_trade_symbols(scan_in
     required = set(dss.SYMBOLS) | set(dss.qf.PortfolioPolicy().regime_symbols)
     manifest = dss._verify_frozen_snapshot(inputs.snapshot)
     assert set(manifest["symbols"]) == required
-    assert len(required) == 18
+    assert len(required) == 17
     assert {p.stem for p in (inputs.snapshot / "market_data").glob("*.csv")} == required
     assert inputs.calls == Counter({code: 1 for code in required})
     artifact = json.loads((inputs.output / "signals_2026-09-12.json").read_text())
@@ -102,7 +102,7 @@ def test_unusable_reference_fails_before_publication(
     scan_inputs, failure, capsys
 ):
     inputs = scan_inputs
-    inputs.failures["688008"] = failure
+    inputs.failures["688256"] = failure
     inputs.output.mkdir()
     previous_signal = inputs.output / "signals_2026-09-12.json"
     previous_signal.write_text('{"last_good": true}\n', encoding="utf-8")
@@ -120,7 +120,7 @@ def test_unusable_reference_fails_before_publication(
     assert previous_signal.read_bytes() == original_signal
     assert previous_risk.read_bytes() == original_risk
     assert not inputs.snapshot.exists()
-    assert "688008" in capsys.readouterr().out
+    assert "688256" in capsys.readouterr().out
 
 
 def test_incomplete_existing_snapshot_is_rejected_without_rewriting(scan_inputs):

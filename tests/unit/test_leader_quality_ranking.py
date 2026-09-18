@@ -6,7 +6,7 @@ import pandas as pd
 from quantfusion.regime.evidence import select_positive_momentum_leaders
 
 
-REFERENCE_SYMBOLS = ("300308", "300502", "300394", "688008", "603986")
+REFERENCE_SYMBOLS = ("300308", "300502", "300394", "688256", "603986")
 
 
 def _trend_frame(

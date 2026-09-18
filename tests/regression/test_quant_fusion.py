@@ -40,7 +40,7 @@ from quantfusion.config.paths import (
     PROJECT_ROOT,
     VALIDATION_ARTIFACT_DIR,
 )
-from quantfusion.config.universe import ESTABLISHED_EXPANSION_CORE
+from quantfusion.config.universe import ESTABLISHED_BASE_CORE, ESTABLISHED_EXPANSION_CORE
 from quantfusion.data.providers import DataFetcher
 from quantfusion.domain.models import (
     EngineState,
@@ -106,10 +106,13 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(len(ESTABLISHED_EXPANSION_CORE), 13)
         self.assertEqual(
             policy.regime_symbols,
-            ("300308", "300502", "300394", "688008", "603986"),
+            ("300308", "300502", "300394", "688256", "603986"),
         )
-        self.assertFalse(
+        self.assertTrue(
             set(policy.regime_symbols).issubset(ESTABLISHED_EXPANSION_CORE)
+        )
+        self.assertEqual(
+            set(policy.regime_symbols), set(ESTABLISHED_BASE_CORE)
         )
 
     def test_invalid_regime_symbols_are_rejected(self) -> None:

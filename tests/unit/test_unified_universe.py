@@ -46,7 +46,7 @@ FIXED_SIGNAL_REFERENCE = (
     "300308",
     "300502",
     "300394",
-    "688008",
+    "688256",
     "603986",
 )
 
@@ -56,8 +56,8 @@ def test_current_entry_points_share_one_ordered_universe() -> None:
     assert tuple(daily.SYMBOLS) == EXPECTED_SYMBOLS
     assert daily.SYMBOLS == SYMBOL_NAMES
     assert tuple(EXECUTION_PRIORITY) == EXPECTED_SYMBOLS
-    # Market-data dependencies include the fixed signal-only reference.
-    assert tuple(DOWNLOAD_SYMBOLS) == (*EXPECTED_SYMBOLS, "688008")
+    # Regime referee basket is the production front-5; no extra download code.
+    assert tuple(DOWNLOAD_SYMBOLS) == EXPECTED_SYMBOLS
     assert tuple(SYMBOL_NAME_TABLE) == EXPECTED_SYMBOLS
     assert tuple(BACKTEST_DEFAULTS) == EXPECTED_SYMBOLS[:5]
 

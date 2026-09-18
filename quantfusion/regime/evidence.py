@@ -255,7 +255,7 @@ def select_positive_momentum_leaders(
     # The fixed reference basket is an optional ranking enrichment. Preserve
     # the established weak score whenever reference quality is incomplete;
     # decision-critical health applies only to requested symbols.
-    reference_symbols = ("300308", "300502", "300394", "688008", "603986")
+    reference_symbols = ("300308", "300502", "300394", "688256", "603986")
     ref_returns: list[float] = []
     reference_quality: dict[str, dict[str, float]] = {}
     for ref_code in reference_symbols:

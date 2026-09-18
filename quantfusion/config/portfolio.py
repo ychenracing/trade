@@ -155,7 +155,7 @@ class PortfolioPolicy(_PortfolioPolicyBase):
         "300308",
         "300502",
         "300394",
-        "688008",
+        "688256",
         "603986",
     )
     # Market regime recognition controls (propagated to cfg at runtime so the
