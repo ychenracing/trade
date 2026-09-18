@@ -1,4 +1,4 @@
-name: Agent AB5 Candidate Recovery
+name: Agent AB5 Candidate Maintenance
 
 on:
   push:
@@ -9,11 +9,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: agent-ab5-candidate-recovery
+  group: agent-ab5-candidate-maintenance
   cancel-in-progress: false
 
 jobs:
-  recover:
+  maintain:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -22,30 +22,50 @@ jobs:
         with:
           fetch-depth: 0
           ref: agent/ab5-trend-efficiency
-      - name: Verify and apply staged candidate
+      - name: Apply source-bound CI fixes
         shell: bash
         run: |
           set -euo pipefail
-          staged='artifacts/diagnostics/ab5-trend-efficiency/candidate.patch.gz.b64'
-          test -f "$staged"
-          base64 --decode "$staged" > /tmp/candidate.patch.gz
-          echo 'c0ec2050c287515842718e2bf019c6b68d34ddfd2ce0947239e7b4a72ab27617  /tmp/candidate.patch.gz' | sha256sum -c -
-          gzip --decompress --stdout /tmp/candidate.patch.gz > /tmp/candidate.patch
-          echo '43079040adf579900340b31fe2fd9e80700c51bd2a2760e2cdf62c7e0592a15a  /tmp/candidate.patch' | sha256sum -c -
-          git apply --check /tmp/candidate.patch
-          git apply /tmp/candidate.patch
-          rm "$staged"
+          python - <<'PY'
+          from pathlib import Path
+
+          rules = Path('quantfusion/domain/rules.py')
+          text = rules.read_text()
+          text = text.replace(
+              'from __future__ import annotations\n\nimport re\n',
+              'from __future__ import annotations\n\nfrom collections.abc import Mapping\nimport re\n',
+              1,
+          )
+          old = 'def limit_pct_for_code(code: str, cfg: dict | None = None, name: str = "") -> float:'
+          new = 'def limit_pct_for_code(\n    code: str, cfg: Mapping[str, object] | None = None, name: str = ""\n) -> float:'
+          if old not in text:
+              raise SystemExit('limit_pct_for_code signature no longer matches expected source')
+          rules.write_text(text.replace(old, new, 1))
+
+          test = Path('tests/unit/test_account_budget_executable_loss.py')
+          text = test.read_text()
+          marker = '\nimport pytest\n'
+          if marker not in text:
+              raise SystemExit('expected unused pytest import is absent')
+          test.write_text(text.replace(marker, '\n', 1))
+
+          staged = Path('artifacts/diagnostics/ab5-trend-efficiency/candidate.patch.gz.b64')
+          if not staged.is_file():
+              raise SystemExit('conflicting staged patch is absent')
+          staged.unlink()
+          PY
           git diff --check
           python -m py_compile \
+            quantfusion/domain/rules.py \
             quantfusion/risk/account_budget.py \
-            quantfusion/risk/account_budget_ordinary.py \
-            quantfusion/application/account_scan.py
-      - name: Commit recovered production candidate
+            quantfusion/application/account_scan.py \
+            tests/unit/test_account_budget_executable_loss.py
+      - name: Commit maintenance result
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'feat: allocate ordinary AB5 by executable loss'
+          git commit -m 'fix: close AB5 candidate CI gaps'
           git push origin HEAD:agent/ab5-trend-efficiency
