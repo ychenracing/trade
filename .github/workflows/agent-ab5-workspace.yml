@@ -1,4 +1,4 @@
-name: Agent AB5 Candidate Maintenance
+name: Agent AB5 Workspace Export
 
 on:
   push:
@@ -6,66 +6,23 @@ on:
       - agent/ab5-trend-efficiency
 
 permissions:
-  contents: write
-
-concurrency:
-  group: agent-ab5-candidate-maintenance
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  maintain:
-    if: github.actor != 'github-actions[bot]'
+  export:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: agent/ab5-trend-efficiency
-      - name: Apply source-bound CI fixes
-        shell: bash
+      - name: Pack source workspace
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-
-          rules = Path('quantfusion/domain/rules.py')
-          text = rules.read_text()
-          text = text.replace(
-              'from __future__ import annotations\n\nimport re\n',
-              'from __future__ import annotations\n\nfrom collections.abc import Mapping\nimport re\n',
-              1,
-          )
-          old = 'def limit_pct_for_code(code: str, cfg: dict | None = None, name: str = "") -> float:'
-          new = 'def limit_pct_for_code(\n    code: str, cfg: Mapping[str, object] | None = None, name: str = ""\n) -> float:'
-          if old not in text:
-              raise SystemExit('limit_pct_for_code signature no longer matches expected source')
-          rules.write_text(text.replace(old, new, 1))
-
-          test = Path('tests/unit/test_account_budget_executable_loss.py')
-          text = test.read_text()
-          marker = '\nimport pytest\n'
-          if marker not in text:
-              raise SystemExit('expected unused pytest import is absent')
-          test.write_text(text.replace(marker, '\n', 1))
-
-          staged = Path('artifacts/diagnostics/ab5-trend-efficiency/candidate.patch.gz.b64')
-          if not staged.is_file():
-              raise SystemExit('conflicting staged patch is absent')
-          staged.unlink()
-          PY
-          git diff --check
-          python -m py_compile \
-            quantfusion/domain/rules.py \
-            quantfusion/risk/account_budget.py \
-            quantfusion/application/account_scan.py \
-            tests/unit/test_account_budget_executable_loss.py
-      - name: Commit maintenance result
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'fix: close AB5 candidate CI gaps'
-          git push origin HEAD:agent/ab5-trend-efficiency
+          git rev-parse HEAD > WORKSPACE_HEAD
+          tar --exclude=.git -czf /tmp/trade-workspace.tgz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ab5-workspace-${{ github.sha }}
+          path: /tmp/trade-workspace.tgz
+          if-no-files-found: error
+          retention-days: 1
