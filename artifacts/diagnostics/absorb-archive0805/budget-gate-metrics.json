@@ -2,7 +2,6 @@
   "status": "DIRECTIONAL_PROGRESS",
   "as_of": "2026-09-18T13:53+0800",
   "branch": "agent/absorb-archive0805-ordinary-ab5",
-  "head_pre_commit": "d1fa15c1796f35c04431c5e57521a7ffc72045b6",
   "mechanism": {
     "name": "ordinary_budget_overshoot_gate",
     "plain_language": "In ordinary preserve (not alert/shock), defer pro-rata held trims only when (1) gross overshoot is immaterial (\u2264 daily_loss_limit \u00d7 equity), (2) remaining_loss_budget \u2265 0.85 \u00d7 equity \u00d7 stress_fraction (85% of ordinary two-session stress envelope), and (3) equity/peak \u2264 0.925 (exclude near-peak razor band where gross_cap first binds). No sub-industry group-count gate. Buy envelope still min(gross_scale, gap_scale). Hard paths unchanged.",
@@ -224,5 +223,7 @@
         "buy_clips": 63
       }
     }
-  }
+  },
+  "head": "7b22259cd876f5114c00fe989296f30546541f83",
+  "tree": "093e93715d7a44649f88e060d4a7751e890b460e"
 }
