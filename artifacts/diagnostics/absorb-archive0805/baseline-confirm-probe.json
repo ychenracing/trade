@@ -1,0 +1,58 @@
+{
+  "tag": "baseline-confirm",
+  "verdict": "LAND",
+  "fail_reasons": [],
+  "improved": 2,
+  "worsened": 0,
+  "flat": 2,
+  "rows": {
+    "common-5": {
+      "TR": 9.351672960887004,
+      "maxDD": -0.140024999442075,
+      "fills": 375,
+      "trims": 95,
+      "buy_clips": 11,
+      "soft_gap_blends": 0,
+      "deferrals": 3,
+      "elapsed": 16.3,
+      "dMain_TR": 1.3671859608870047,
+      "dPrior_TR": -3.911299550907188e-08
+    },
+    "common-17": {
+      "TR": 8.610542744515504,
+      "maxDD": -0.15104978428469945,
+      "fills": 645,
+      "trims": 245,
+      "buy_clips": 63,
+      "soft_gap_blends": 0,
+      "deferrals": 0,
+      "elapsed": 29.35,
+      "dMain_TR": -2.5548449578138843e-07,
+      "dPrior_TR": -2.5548449578138843e-07
+    },
+    "pool_j": {
+      "TR": 4.0091356254576285,
+      "maxDD": -0.15687186518004215,
+      "fills": 588,
+      "trims": 180,
+      "buy_clips": 35,
+      "soft_gap_blends": 0,
+      "deferrals": 0,
+      "elapsed": 16.85,
+      "dMain_TR": -3.7454237133971446e-07,
+      "dPrior_TR": -3.7454237133971446e-07
+    },
+    "pool_h": {
+      "TR": 2.069154197025501,
+      "maxDD": -0.13928699551191961,
+      "fills": 603,
+      "trims": 266,
+      "buy_clips": 19,
+      "soft_gap_blends": 0,
+      "deferrals": 5,
+      "elapsed": 23.58,
+      "dMain_TR": 1.001205197025501,
+      "dPrior_TR": 1.9702550080324954e-07
+    }
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "tag": "topic-d-intensity85",
+  "verdict": "REVERT",
+  "fail_reasons": [
+    "pool_j worse than main",
+    "net-negative vs prior on most measured pools"
+  ],
+  "improved": 5,
+  "worsened": 2,
+  "flat": 0,
+  "rows": {
+    "common-5": {
+      "TR": 9.351672960887004,
+      "maxDD": -0.140024999442075,
+      "fills": 375,
+      "trims": 95,
+      "buy_clips": 11,
+      "soft_gap_blends": 0,
+      "deferrals": 3,
+      "elapsed": 16.13,
+      "dMain_TR": 1.3671859608870047,
+      "dPrior_TR": -3.911299550907188e-08
+    },
+    "common-17": {
+      "TR": 8.253727816107004,
+      "maxDD": -0.15154024569780525,
+      "fills": 717,
+      "trims": 299,
+      "buy_clips": 61,
+      "soft_gap_blends": 0,
+      "deferrals": 0,
+      "elapsed": 28.79,
+      "dMain_TR": -0.35681518389299605,
+      "dPrior_TR": -0.35681518389299605
+    },
+    "pool_j": {
+      "TR": 3.355899809107127,
+      "maxDD": -0.15804510589462487,
+      "fills": 628,
+      "trims": 225,
+      "buy_clips": 44,
+      "soft_gap_blends": 0,
+      "deferrals": 0,
+      "elapsed": 16.68,
+      "dMain_TR": -0.6532361908928728,
+      "dPrior_TR": -0.6532361908928728
+    },
+    "pool_e": {
+      "TR": 7.933762182506754,
+      "maxDD": -0.14709252370892925,
+      "fills": 604,
+      "trims": 194,
+      "buy_clips": 24,
+      "soft_gap_blends": 0,
+      "deferrals": 1,
+      "elapsed": 24.07,
+      "dMain_TR": 0.8833541825067543,
+      "dPrior_TR": 1.825067545979664e-07
+    },
+    "pool_h": {
+      "TR": 2.069154197025501,
+      "maxDD": -0.13928699551191961,
+      "fills": 603,
+      "trims": 266,
+      "buy_clips": 19,
+      "soft_gap_blends": 0,
+      "deferrals": 5,
+      "elapsed": 23.73,
+      "dMain_TR": 1.001205197025501,
+      "dPrior_TR": 1.9702550080324954e-07
+    },
+    "pool_i": {
+      "TR": 3.0514957713756274,
+      "maxDD": -0.12851447330087665,
+      "fills": 488,
+      "trims": 167,
+      "buy_clips": 8,
+      "soft_gap_blends": 0,
+      "deferrals": 2,
+      "elapsed": 21.55,
+      "dMain_TR": 0.6073197713756273,
+      "dPrior_TR": -0.022205228624372353
+    },
+    "pool_f": {
+      "TR": 8.592847421762002,
+      "maxDD": -0.13958738595698109,
+      "fills": 745,
+      "trims": 342,
+      "buy_clips": 56,
+      "soft_gap_blends": 0,
+      "deferrals": 2,
+      "elapsed": 26.59,
+      "dMain_TR": 0.25319742176200144,
+      "dPrior_TR": 0.018747421762002503
+    }
+  }
+}
