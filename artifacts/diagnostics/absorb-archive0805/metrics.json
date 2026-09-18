@@ -1,0 +1,274 @@
+{
+  "as_of": "2026-09-18T13:15+0800",
+  "status": "DIRECTIONAL_PROGRESS",
+  "branch": "agent/absorb-archive0805-ordinary-ab5",
+  "base_main": "fa4ef7bafe7fdb9f513c7c07443c193624fa114c",
+  "archive_ref": "c158435f66034f370c031353cfb419fd3b469811",
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "initial_capital": 2000000.0,
+  "indicator_state": "warm",
+  "mechanism": {
+    "name": "ordinary_multi_group_immaterial_overshoot_deferral",
+    "plain_language": "In ordinary preserve state (not alert/shock), multi-group books tolerate a gross-cap overshoot up to one daily_loss_limit without pro-rata held trims; single-group concentrated books and material overshoots keep main pro-rata reserve funding. Buy envelope still uses min(gross_scale, gap_scale). Hard alert/shock/direct-loss/locks/concentration/fail-closed paths unchanged.",
+    "hard_paths_untouched": true,
+    "learned_from_pr120": "Do not tighten scarce/gap buy blocking; full ordinary trim removal hurt common-3; deferral must stay concentrated-book aware."
+  },
+  "pools": {
+    "common-1": {
+      "symbols": [
+        "300308"
+      ],
+      "main": {
+        "total_return": 3.928538056569,
+        "wealth_multiple": 4.928538056569,
+        "max_drawdown": -0.12468509293898083,
+        "sleeve_fills": 36,
+        "date_symbol_side_buckets": 7,
+        "sell_buckets": 4,
+        "active_operation_days": 7,
+        "turnover_over_average_equity": 2.8260074377022417,
+        "commission_plus_stamp_duty": 9579.110862000001,
+        "ordinary_ab5_held_trims": {
+          "count": 6,
+          "symbol_count": 1,
+          "notional": 2483206.3079999997,
+          "envelope_trim_evaluations_sum": 0
+        },
+        "ordinary_ab5_buy_clipping": {
+          "intent_count": 188,
+          "removed_shares": 806200,
+          "removed_notional": null
+        }
+      },
+      "candidate": {
+        "total_return": 3.928538056569,
+        "wealth_multiple": 4.928538056569,
+        "max_drawdown": -0.12468509293898083,
+        "sleeve_fills": 36,
+        "date_symbol_side_buckets": 7,
+        "sell_buckets": 4,
+        "active_operation_days": 7,
+        "turnover_over_average_equity": 2.8260074377022417,
+        "commission_plus_stamp_duty": 9579.110862000001,
+        "ordinary_ab5_held_trims": {
+          "count": 6,
+          "symbol_count": 1,
+          "notional": 2483206.3079999997,
+          "envelope_trim_evaluations_sum": 0
+        },
+        "ordinary_ab5_buy_clipping": {
+          "intent_count": 188,
+          "removed_shares": 806200,
+          "removed_notional": null
+        },
+        "sha": "fa4ef7bafe7fdb9f513c7c07443c193624fa114c",
+        "tree": "0b55602e5fa19a08fd11954e8e331d1bd0a0c974"
+      },
+      "archive": {
+        "total_return": 5.308949754885,
+        "wealth_multiple": 6.308949754885,
+        "max_drawdown": -0.1834136674871038,
+        "sleeve_fills": 24,
+        "date_symbol_side_buckets": 5,
+        "sell_buckets": 3,
+        "active_operation_days": 5,
+        "turnover_over_average_equity": 2.404100881967993,
+        "commission_plus_stamp_duty": 10227.97023,
+        "ordinary_ab5_held_trims": {
+          "count": 0,
+          "symbol_count": 0,
+          "notional": 0,
+          "envelope_trim_evaluations_sum": 0
+        },
+        "ordinary_ab5_buy_clipping": {
+          "intent_count": 0,
+          "removed_shares": 0,
+          "removed_notional": null
+        }
+      },
+      "delta_candidate_minus_main": {
+        "total_return": 0.0,
+        "sleeve_fills": 0,
+        "trims": 0,
+        "buy_clip_intents": 0,
+        "max_drawdown_pp": 0.0
+      },
+      "archive_gap_recovery_ratio": 0.0
+    },
+    "common-3": {
+      "symbols": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "main": {
+        "total_return": 6.707950188316252,
+        "wealth_multiple": 7.707950188316252,
+        "max_drawdown": -0.16162524913761778,
+        "sleeve_fills": 342,
+        "date_symbol_side_buckets": 96,
+        "sell_buckets": 47,
+        "active_operation_days": 63,
+        "turnover_over_average_equity": 15.617892647214285,
+        "commission_plus_stamp_duty": 67094.90636749999,
+        "ordinary_ab5_held_trims": {
+          "count": 59,
+          "symbol_count": 3,
+          "notional": 11697557.733000003,
+          "envelope_trim_evaluations_sum": 0
+        },
+        "ordinary_ab5_buy_clipping": {
+          "intent_count": 24,
+          "removed_shares": 544400,
+          "removed_notional": null
+        }
+      },
+      "candidate": {
+        "total_return": 6.707950188316252,
+        "wealth_multiple": 7.707950188316252,
+        "max_drawdown": -0.16162524913761778,
+        "sleeve_fills": 342,
+        "date_symbol_side_buckets": 96,
+        "sell_buckets": 47,
+        "active_operation_days": 63,
+        "turnover_over_average_equity": 15.617892647214285,
+        "commission_plus_stamp_duty": 67094.90636749999,
+        "ordinary_ab5_held_trims": {
+          "count": 59,
+          "symbol_count": 3,
+          "notional": 11697557.733000003,
+          "envelope_trim_evaluations_sum": 0
+        },
+        "ordinary_ab5_buy_clipping": {
+          "intent_count": 24,
+          "removed_shares": 544400,
+          "removed_notional": null
+        },
+        "sha": "fa4ef7bafe7fdb9f513c7c07443c193624fa114c",
+        "tree": "0b55602e5fa19a08fd11954e8e331d1bd0a0c974"
+      },
+      "archive": {
+        "total_return": 10.836973326659502,
+        "wealth_multiple": 11.836973326659502,
+        "max_drawdown": -0.17918987929749075,
+        "sleeve_fills": 194,
+        "date_symbol_side_buckets": 71,
+        "sell_buckets": 35,
+        "active_operation_days": 53,
+        "turnover_over_average_equity": 13.407450822093624,
+        "commission_plus_stamp_duty": 76505.28768099999,
+        "ordinary_ab5_held_trims": {
+          "count": 0,
+          "symbol_count": 0,
+          "notional": 0,
+          "envelope_trim_evaluations_sum": 0
+        },
+        "ordinary_ab5_buy_clipping": {
+          "intent_count": 0,
+          "removed_shares": 0,
+          "removed_notional": null
+        }
+      },
+      "delta_candidate_minus_main": {
+        "total_return": 0.0,
+        "sleeve_fills": 0,
+        "trims": 0,
+        "buy_clip_intents": 0,
+        "max_drawdown_pp": 0.0
+      },
+      "archive_gap_recovery_ratio": 0.0
+    },
+    "common-5": {
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "603986"
+      ],
+      "main": {
+        "total_return": 7.984486994216379,
+        "wealth_multiple": 8.984486994216379,
+        "max_drawdown": -0.1408826929934694,
+        "sleeve_fills": 437,
+        "date_symbol_side_buckets": 130,
+        "sell_buckets": 67,
+        "active_operation_days": 80,
+        "turnover_over_average_equity": 17.80793824848783,
+        "commission_plus_stamp_duty": 82722.58656725,
+        "ordinary_ab5_held_trims": {
+          "count": 121,
+          "symbol_count": 5,
+          "notional": 16803890.289000012,
+          "envelope_trim_evaluations_sum": 0
+        },
+        "ordinary_ab5_buy_clipping": {
+          "intent_count": 14,
+          "removed_shares": 316800,
+          "removed_notional": null
+        }
+      },
+      "candidate": {
+        "total_return": 9.351672960887004,
+        "wealth_multiple": 10.351672960887004,
+        "max_drawdown": -0.140024999442075,
+        "sleeve_fills": 375,
+        "date_symbol_side_buckets": 115,
+        "sell_buckets": 59,
+        "active_operation_days": 73,
+        "turnover_over_average_equity": 16.448346574131406,
+        "commission_plus_stamp_duty": 83110.79622600002,
+        "ordinary_ab5_held_trims": {
+          "count": 95,
+          "symbol_count": 5,
+          "notional": 15494638.850999989,
+          "envelope_trim_evaluations_sum": 0
+        },
+        "ordinary_ab5_buy_clipping": {
+          "intent_count": 11,
+          "removed_shares": 253500,
+          "removed_notional": null
+        },
+        "sha": "fa4ef7bafe7fdb9f513c7c07443c193624fa114c",
+        "tree": "0b55602e5fa19a08fd11954e8e331d1bd0a0c974"
+      },
+      "archive": {
+        "total_return": 11.279153887013873,
+        "wealth_multiple": 12.279153887013873,
+        "max_drawdown": -0.18961300879370643,
+        "sleeve_fills": 243,
+        "date_symbol_side_buckets": 99,
+        "sell_buckets": 43,
+        "active_operation_days": 67,
+        "turnover_over_average_equity": 13.458713584716548,
+        "commission_plus_stamp_duty": 70793.83997224997,
+        "ordinary_ab5_held_trims": {
+          "count": 0,
+          "symbol_count": 0,
+          "notional": 0,
+          "envelope_trim_evaluations_sum": 0
+        },
+        "ordinary_ab5_buy_clipping": {
+          "intent_count": 0,
+          "removed_shares": 0,
+          "removed_notional": null
+        }
+      },
+      "delta_candidate_minus_main": {
+        "total_return": 1.3671859666706254,
+        "sleeve_fills": -62,
+        "trims": -26,
+        "buy_clip_intents": -3,
+        "max_drawdown_pp": 0.08576935513943951
+      },
+      "archive_gap_recovery_ratio": 0.41496940697083673
+    }
+  },
+  "candidate_head": "a64b2173c605c915b4a013639181fd725222359a",
+  "candidate_tree": "7005c41f20b79416af779eff84cb37282743f3c8",
+  "main_unmerged": true,
+  "pushed": true
+}

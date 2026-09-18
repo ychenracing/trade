@@ -1,0 +1,153 @@
+{
+  "common-5": {
+    "TR": 9.351672960887004,
+    "deferral_count": 3,
+    "deferrals": [
+      {
+        "date": "2025-09-17",
+        "equity_over_peak": 0.9226893836474178,
+        "overshoot": 242892.5003536567,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 971842.5092577739
+      },
+      {
+        "date": "2025-12-31",
+        "equity_over_peak": 0.911337699921725,
+        "overshoot": 297359.2880224278,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 949343.7538101226
+      },
+      {
+        "date": "2026-06-05",
+        "equity_over_peak": 0.9242950432276219,
+        "overshoot": 936638.4291097559,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 2068787.511364296
+      }
+    ],
+    "min_eq_peak": 0.911337699921725,
+    "max_eq_peak": 0.9242950432276219
+  },
+  "pool_j": {
+    "TR": 3.451856778282128,
+    "deferral_count": 2,
+    "deferrals": [
+      {
+        "date": "2025-09-25",
+        "equity_over_peak": 0.9248055924122748,
+        "overshoot": 59825.76710795425,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 551447.2562073106
+      },
+      {
+        "date": "2026-05-29",
+        "equity_over_peak": 0.9131458825927921,
+        "overshoot": 57045.3334940467,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 794421.8901808113
+      }
+    ],
+    "min_eq_peak": 0.9131458825927921,
+    "max_eq_peak": 0.9248055924122748
+  },
+  "pool_e": {
+    "TR": 7.933762182506754,
+    "deferral_count": 1,
+    "deferrals": [
+      {
+        "date": "2025-12-31",
+        "equity_over_peak": 0.9103816021006588,
+        "overshoot": 203025.2005858589,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 886417.934450049
+      }
+    ],
+    "min_eq_peak": 0.9103816021006588,
+    "max_eq_peak": 0.9103816021006588
+  },
+  "pool_h": {
+    "TR": 2.069154197025501,
+    "deferral_count": 5,
+    "deferrals": [
+      {
+        "date": "2025-08-04",
+        "equity_over_peak": 0.923579827049691,
+        "overshoot": 141554.49905289058,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 269486.815013085
+      },
+      {
+        "date": "2025-08-15",
+        "equity_over_peak": 0.9162694541170565,
+        "overshoot": 83290.31119242357,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 253641.62164362473
+      },
+      {
+        "date": "2025-08-21",
+        "equity_over_peak": 0.9160891052748481,
+        "overshoot": 53434.89148346102,
+        "buy_shares_removed": 8000,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 253076.19335687486
+      },
+      {
+        "date": "2025-09-26",
+        "equity_over_peak": 0.9216122782827462,
+        "overshoot": 142930.72600837564,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 336034.97491460014
+      },
+      {
+        "date": "2026-04-30",
+        "equity_over_peak": 0.9244605615628024,
+        "overshoot": 242545.95815251302,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 520602.63139659027
+      }
+    ],
+    "min_eq_peak": 0.9160891052748481,
+    "max_eq_peak": 0.9244605615628024
+  },
+  "pool_i": {
+    "TR": 3.0737009659167516,
+    "deferral_count": 2,
+    "deferrals": [
+      {
+        "date": "2025-08-15",
+        "equity_over_peak": 0.9194223620607148,
+        "overshoot": 7419.799199327361,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 283684.99137560045
+      },
+      {
+        "date": "2025-12-31",
+        "equity_over_peak": 0.9215159066019267,
+        "overshoot": 156984.5666474863,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0,
+        "remaining_loss_budget": 409221.1045422903
+      }
+    ],
+    "min_eq_peak": 0.9194223620607148,
+    "max_eq_peak": 0.9215159066019267
+  },
+  "common-17": {
+    "TR": 8.610542744515504,
+    "deferral_count": 0,
+    "deferrals": [],
+    "min_eq_peak": null,
+    "max_eq_peak": null
+  }
+}

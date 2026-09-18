@@ -1,0 +1,102 @@
+{
+  "label": "archive",
+  "sha": "c158435f66034f370c031353cfb419fd3b469811",
+  "tree": "1ba398ec376eee8063a3df21c8bef4432872fc11",
+  "engine": "archive_BacktestEngine",
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "symbols": [
+    "300308",
+    "300502",
+    "300394",
+    "688008",
+    "603986",
+    "002409",
+    "688072",
+    "688300",
+    "300054",
+    "688120",
+    "688361",
+    "688256",
+    "601869",
+    "688498",
+    "002384"
+  ],
+  "symbol_names": {
+    "300308": "\u4e2d\u9645\u65ed\u521b",
+    "300502": "\u65b0\u6613\u76db",
+    "300394": "\u5929\u5b5a\u901a\u4fe1",
+    "688008": "\u6f9c\u8d77\u79d1\u6280",
+    "603986": "\u5146\u6613\u521b\u65b0",
+    "002409": "\u96c5\u514b\u79d1\u6280",
+    "688072": "\u62d3\u8346\u79d1\u6280",
+    "688300": "\u8054\u745e\u65b0\u6750",
+    "300054": "\u9f0e\u9f99\u80a1\u4efd",
+    "688120": "\u534e\u6d77\u6e05\u79d1",
+    "688361": "\u4e2d\u79d1\u98de\u6d4b",
+    "688256": "\u5bd2\u6b66\u7eaa",
+    "601869": "\u957f\u98de\u5149\u7ea4",
+    "688498": "\u6e90\u6770\u79d1\u6280",
+    "002384": "\u4e1c\u5c71\u7cbe\u5bc6"
+  },
+  "elapsed_sec": 168.5551,
+  "final_assets": 25215402.815873254,
+  "wealth_multiple": 12.607701407936627,
+  "total_return": 11.607701407936627,
+  "max_drawdown": -0.21196298751068635,
+  "sharpe": 3.7917494561630836,
+  "calmar": 30.88320197245294,
+  "sleeve_fills": 285,
+  "total_trades": 285,
+  "date_symbol_side_buckets": 124,
+  "sell_buckets": 56,
+  "active_operation_days": 75,
+  "turnover_over_average_equity": 12.00214132147615,
+  "commission_plus_stamp_duty": 68006.63412675,
+  "commission": 31126.49618174999,
+  "stamp_duty": 36880.137945,
+  "modeled_slippage": 0.0,
+  "gross_traded_value": 124237142.33000001,
+  "ordinary_ab5_held_trims": {
+    "count": 0,
+    "symbol_count": 0,
+    "notional": 0,
+    "envelope_trim_evaluations_sum": 0
+  },
+  "ordinary_ab5_buy_clipping": {
+    "intent_count": 0,
+    "removed_shares": 0,
+    "removed_notional": null
+  },
+  "alert_shock_direct_loss_events": {
+    "portfolio_drawdown_alert_off": 4,
+    "portfolio_drawdown_alert_on": 4,
+    "sector_shock": 36
+  },
+  "hard_action_trade_reasons": {},
+  "sell_rebuy_chains_posthoc": {
+    "approx_20_session": 34,
+    "approx_60_session": 68,
+    "note": "calendar-day proxy; attribution only"
+  },
+  "protection_book_counts_sum_over_days": {
+    "complete": 0,
+    "fallback": 0
+  },
+  "allocator": {
+    "ordinary_allocator_active_days": 0,
+    "feasibility_evaluations_sum": 0,
+    "envelope_days": 0
+  },
+  "risk_event_type_counts": {
+    "portfolio_drawdown_alert_off": 4,
+    "portfolio_drawdown_alert_on": 4,
+    "sector_guard_on": 3,
+    "sector_shock": 36
+  },
+  "account_risk_budget": null,
+  "status": "OK",
+  "pool": "research_pool_f"
+}

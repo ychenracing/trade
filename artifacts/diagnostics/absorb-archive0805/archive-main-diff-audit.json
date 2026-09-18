@@ -1,0 +1,169 @@
+{
+  "as_of": "2026-09-18T15:16+0800",
+  "main": "fa4ef7ba @ /workspace/trade-main",
+  "archive": "c158435 @ /workspace/trade-archive_0805",
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20",
+    "capital": 2000000.0,
+    "warm": true
+  },
+  "pools": {
+    "common-3": {
+      "economics": {
+        "main_tr": 6.707950188316252,
+        "archive_tr": 10.836973326659502,
+        "delta_archive_minus_main": 4.12902313834325,
+        "main_dd": -0.16162524913761778,
+        "archive_dd": -0.17918987929749075
+      },
+      "counts": {
+        "sleeve_fills": {
+          "main": 342,
+          "archive": 194,
+          "delta_arc_minus_main": -148
+        },
+        "ordinary_trims_main": 59,
+        "ordinary_trims_archive": 0,
+        "buy_clip_intents_main": 24,
+        "buy_clip_intents_archive": 0,
+        "main_trim_notional": 11697557.73
+      },
+      "first_divergences": {
+        "first_fill_day": "2025-04-24",
+        "first_buy_day": "2025-04-24",
+        "first_equity": {
+          "index": 16,
+          "main": {
+            "date": "2025-04-24",
+            "equity": 1985088.2
+          },
+          "archive": {
+            "date": "2025-04-24",
+            "equity": 1985119.52
+          },
+          "delta_main_minus_archive": -31.32
+        },
+        "first_main_only_trim": {
+          "date": "2025-09-03",
+          "symbol": "300394",
+          "side": "sell",
+          "shares": 100,
+          "price": 141.4984,
+          "reason": "account_budget_trim",
+          "gross": 14149.84
+        },
+        "first_buy_size_diff": {
+          "date": "2025-04-24",
+          "symbol": "300394",
+          "main_shares": 27100,
+          "archive_shares": 27000
+        }
+      }
+    },
+    "common-5": {
+      "economics": {
+        "main_tr": 7.984486994216379,
+        "archive_tr": 11.279153887013873,
+        "delta_archive_minus_main": 3.294666892797494,
+        "main_dd": -0.1408826929934694,
+        "archive_dd": -0.18961300879370643
+      },
+      "counts": {
+        "sleeve_fills": {
+          "main": 437,
+          "archive": 243,
+          "delta_arc_minus_main": -194
+        },
+        "ordinary_trims_main": 121,
+        "ordinary_trims_archive": 0,
+        "buy_clip_intents_main": 14,
+        "buy_clip_intents_archive": 0,
+        "main_trim_notional": 16803890.29
+      },
+      "first_divergences": {
+        "first_fill_day": "2025-04-24",
+        "first_buy_day": "2025-04-24",
+        "first_equity": {
+          "index": 16,
+          "main": {
+            "date": "2025-04-24",
+            "equity": 1989755.57
+          },
+          "archive": {
+            "date": "2025-04-24",
+            "equity": 1985119.52
+          },
+          "delta_main_minus_archive": 4636.04
+        },
+        "first_main_only_trim": {
+          "date": "2025-06-25",
+          "symbol": "300308",
+          "side": "sell",
+          "shares": 100,
+          "price": 125.4744,
+          "reason": "account_budget_trim",
+          "gross": 12547.44
+        },
+        "first_buy_size_diff": {
+          "date": "2025-04-24",
+          "symbol": "300394",
+          "main_shares": 12200,
+          "archive_shares": 27000
+        }
+      }
+    },
+    "common-17": {
+      "economics": {
+        "main_tr": 8.610542744515504,
+        "archive_tr": 13.423482867451627,
+        "delta_archive_minus_main": 4.812940122936123,
+        "main_dd": -0.15104978428469945,
+        "archive_dd": -0.21661283467687903
+      },
+      "counts": {
+        "sleeve_fills": {
+          "main": 645,
+          "archive": 257,
+          "delta_arc_minus_main": -388
+        },
+        "ordinary_trims_main": 245,
+        "ordinary_trims_archive": 0,
+        "buy_clip_intents_main": 63,
+        "buy_clip_intents_archive": 0,
+        "main_trim_notional": 21663104.21
+      },
+      "first_divergences": {
+        "first_fill_day": "2025-04-24",
+        "first_buy_day": "2025-04-24",
+        "first_equity": {
+          "index": 16,
+          "main": {
+            "date": "2025-04-24",
+            "equity": 1993577.17
+          },
+          "archive": {
+            "date": "2025-04-24",
+            "equity": 1990757.96
+          },
+          "delta_main_minus_archive": 2819.22
+        },
+        "first_main_only_trim": {
+          "date": "2025-06-25",
+          "symbol": "002384",
+          "side": "sell",
+          "shares": 100,
+          "price": 36.6733,
+          "reason": "account_budget_trim",
+          "gross": 3667.33
+        },
+        "first_buy_size_diff": {
+          "date": "2025-04-24",
+          "symbol": "300394",
+          "main_shares": 0,
+          "archive_shares": 9000
+        }
+      }
+    }
+  }
+}

@@ -13,11 +13,11 @@
     "regime_state_count": 316,
     "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
     "risk_event_count": 371,
-    "risk_events_sha256": "507f6ebe6bdd4b0708a7dd1ff7b2a5c17176b2785f8fbcc51dd7c6435024235c",
+    "risk_events_sha256": "b7e69cc180ce0a1eca737a77937321c0d0baea17ea5562a65bcc020e56c62832",
     "sell_trades": 24,
     "sleeve_fill_count": 36,
     "sleeve_sell_fill_count": 24,
-    "source_revision": "d152b1948ea90b74c366a7a6059ee12659a47e86",
+    "source_revision": "b9add4cb6e9386c9a6299d4a70de3152c0b305d8",
     "start_date": "2025-04-01",
     "symbols": [
       "300308"
@@ -41,11 +41,11 @@
     "regime_state_count": 316,
     "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
     "risk_event_count": 386,
-    "risk_events_sha256": "fa29b273aadbb857a9930ba71ecd38fa01b2d54a8dbedb543629a7e278833950",
+    "risk_events_sha256": "dfa3e1fcd36a2fed6ddb382c1e0e3c053d8e41df480639dd85b8fc83354531fd",
     "sell_trades": 415,
     "sleeve_fill_count": 657,
     "sleeve_sell_fill_count": 415,
-    "source_revision": "d152b1948ea90b74c366a7a6059ee12659a47e86",
+    "source_revision": "b9add4cb6e9386c9a6299d4a70de3152c0b305d8",
     "start_date": "2025-04-01",
     "symbols": [
       "300308",
@@ -81,11 +81,11 @@
     "regime_state_count": 316,
     "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
     "risk_event_count": 401,
-    "risk_events_sha256": "942d19d68828381aa9fa9d129d799bf4c0bdcdd0263341e1f39868ac0f908416",
+    "risk_events_sha256": "507c791cfb38a8740fb4c35d085f5377fd40fc6c5fa4fec76acb1fa03deebbd2",
     "sell_trades": 404,
     "sleeve_fill_count": 645,
     "sleeve_sell_fill_count": 404,
-    "source_revision": "d152b1948ea90b74c366a7a6059ee12659a47e86",
+    "source_revision": "b9add4cb6e9386c9a6299d4a70de3152c0b305d8",
     "start_date": "2025-04-01",
     "symbols": [
       "300308",
@@ -125,11 +125,11 @@
     "regime_state_count": 316,
     "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
     "risk_event_count": 384,
-    "risk_events_sha256": "d8d3a47d04bdb51f1b8b1963d3d72fe9ed44eeada2260c6b3e3ede29c5a73b63",
+    "risk_events_sha256": "e3a467089f0b3edf1ee084987ba7416077350f459169f01916b2efa1264a8a47",
     "sell_trades": 179,
     "sleeve_fill_count": 342,
     "sleeve_sell_fill_count": 179,
-    "source_revision": "d152b1948ea90b74c366a7a6059ee12659a47e86",
+    "source_revision": "b9add4cb6e9386c9a6299d4a70de3152c0b305d8",
     "start_date": "2025-04-01",
     "symbols": [
       "300308",
@@ -142,24 +142,24 @@
     "trades_sha256": "7dfff4fad47d89d29bc1955b5d1b713d6fbd087daa6dcfc2b210e9512dfbb2a9"
   },
   "5": {
-    "date_symbol_sell_side_count": 67,
-    "date_symbol_side_count": 130,
+    "date_symbol_sell_side_count": 59,
+    "date_symbol_side_count": 115,
     "end_date": "2026-07-20",
-    "fusion_event_count": 819,
-    "fusion_events_sha256": "3e828fe32b6926244463ffcbac6a289293a0afe2651d433d0fb4b8dfaec40039",
-    "max_drawdown": -0.1408826929934694,
-    "order_event_count": 926,
-    "order_events_sha256": "10c0538f5eb263f18f6b22595228b77849ed1379ced915fab7f281f6ac38a948",
+    "fusion_event_count": 832,
+    "fusion_events_sha256": "aff2f8e142c0794a5be7df1bf051a59bc2f10d4ecf7a8cc1a500e926297cdf31",
+    "max_drawdown": -0.140024999442075,
+    "order_event_count": 949,
+    "order_events_sha256": "89dbf8f228890af1201a5710e6fd5e442f7eb6fad6c4539f9dcb531f455c6c45",
     "pending_signal_count": 0,
     "regime_route_sha256": "cedb8518156cc1aa226da68efcb31e620dfb94dc38c8ab7bc92ab963638269db",
     "regime_state_count": 316,
     "regime_state_series_sha256": "d9c6204aa32b9f88444ea7192df2dd4dbde7c4e761933113d61e5f4dae3e31a6",
-    "risk_event_count": 382,
-    "risk_events_sha256": "ffbf3821c7b1449c7f9064759ad214406ab8870e3d338fb6268173702b9db0b3",
-    "sell_trades": 250,
-    "sleeve_fill_count": 437,
-    "sleeve_sell_fill_count": 250,
-    "source_revision": "d152b1948ea90b74c366a7a6059ee12659a47e86",
+    "risk_event_count": 381,
+    "risk_events_sha256": "8bfbb704df75d252967a95fecb9d564db1e68c3ed246a817cad6988e280dc12d",
+    "sell_trades": 215,
+    "sleeve_fill_count": 375,
+    "sleeve_sell_fill_count": 215,
+    "source_revision": "b9add4cb6e9386c9a6299d4a70de3152c0b305d8",
     "start_date": "2025-04-01",
     "symbols": [
       "300308",
@@ -168,10 +168,10 @@
       "688256",
       "603986"
     ],
-    "total_return": 7.984486994216379,
-    "total_trades": 437,
-    "trade_fill_count": 437,
-    "trades_sha256": "4b3025e30d6d02e7e09a955981218121f69bf669d3e9344738d54dc3ec9bc35c"
+    "total_return": 9.351672960887004,
+    "total_trades": 375,
+    "trade_fill_count": 375,
+    "trades_sha256": "76724835d8049153807a553995484ff135b245bf656d22763f2de449fd798013"
   },
   "_adaptive_bull": {
     "date_symbol_sell_side_count": 4,
@@ -187,11 +187,11 @@
     "regime_state_count": 302,
     "regime_state_series_sha256": "4f2deebb58201ea7a6bf08e6134171563e2a9546ed75431d12d9f4ed3b37060a",
     "risk_event_count": 343,
-    "risk_events_sha256": "1c46ffb06a2437f670f69277fd5cc100331572e76a45d697a5d02fa9fa8e45ce",
+    "risk_events_sha256": "490b454a2366504d49e87680f0e66d3eba30d025001144ee5d27f1be1253c853",
     "sell_trades": 24,
     "sleeve_fill_count": 36,
     "sleeve_sell_fill_count": 24,
-    "source_revision": "d152b1948ea90b74c366a7a6059ee12659a47e86",
+    "source_revision": "b9add4cb6e9386c9a6299d4a70de3152c0b305d8",
     "start_date": "2025-04-01",
     "symbols": [
       "300308"
@@ -219,7 +219,7 @@
     "sell_trades": 14,
     "sleeve_fill_count": 24,
     "sleeve_sell_fill_count": 14,
-    "source_revision": "d152b1948ea90b74c366a7a6059ee12659a47e86",
+    "source_revision": "b9add4cb6e9386c9a6299d4a70de3152c0b305d8",
     "start_date": "2024-01-02",
     "symbols": [
       "002409",
@@ -236,11 +236,11 @@
   "_source_binding": {
     "economic_acceptance": "NOT_MET",
     "kind": "authorized_strategy_regression_refresh",
-    "measured_source_revision": "d152b1948ea90b74c366a7a6059ee12659a47e86",
+    "measured_source_revision": "b9add4cb6e9386c9a6299d4a70de3152c0b305d8",
     "prior_golden_path": "artifacts/diagnostics/no_waiver/production-primary/acceptance-verification/goldens-before-strategy-revision.json",
     "prior_golden_sha256": "bd0b2a092ac5c6e163c1cf911fa016fe4321be38434802558ad91c218fd572f2",
     "proof_path": "artifacts/diagnostics/no_waiver/production-primary/acceptance-verification/regression-reconciliation.json",
-    "proof_sha256": "8f8800ae0de516648029665aef9462f263b8d00f401ad5dcd7866e9cdfb5b465",
-    "reason": "Authorized PR101 strategy and risk changes invalidate historical scalar/trade path expectations. Reconciled raw cash, equity, drawdown, fills and causal dates independently; frozen economic acceptance references and thresholds unchanged."
+    "proof_sha256": "f0b2778ada84f9d82798f72ba4adc58133e3b0b9d028f3c0aaa6a6fd1ab53a48",
+    "reason": "Authorized absorb-archive0805 ordinary-AB5 held-trim deferral / budget-gate / near-peak razor refresh. Intentional economic change; regenerate frozen fingerprints on Python 3.12 lockfile runtime for universes 1/3/5/13/17 plus adaptive windows. Economic acceptance remains NOT_MET; formal stress incumbent unchanged."
   }
 }

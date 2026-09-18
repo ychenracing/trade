@@ -1,0 +1,166 @@
+{
+  "tag": "early-buy-virgin-cash-only",
+  "as_of": "2026-09-18T15:49+0800",
+  "summary": {
+    "improved_vs_main": 7,
+    "worsened_vs_main": 5,
+    "flat_vs_main": 2,
+    "worse_vs_prior": 7
+  },
+  "pools": {
+    "common-5": {
+      "TR": 7.625756085389503,
+      "maxDD": -0.1405769454125804,
+      "fills": 432,
+      "trims": 135,
+      "buy_clips": 12,
+      "deferrals": 1,
+      "elapsed": 15.79,
+      "dMain_TR": -0.3587309146104971,
+      "dPrior_TR": -1.7259169146104973
+    },
+    "common-17": {
+      "TR": 11.058594291425004,
+      "maxDD": -0.14335602794919472,
+      "fills": 701,
+      "trims": 305,
+      "buy_clips": 42,
+      "deferrals": 0,
+      "elapsed": 27.88,
+      "dMain_TR": 2.4480512914250045,
+      "dPrior_TR": 2.4480512914250045
+    },
+    "common-3": {
+      "TR": 6.024809076026002,
+      "maxDD": -0.1582362027024291,
+      "fills": 394,
+      "trims": 71,
+      "buy_clips": 19,
+      "deferrals": 0,
+      "elapsed": 13.78,
+      "dMain_TR": -0.6831409239739985,
+      "dPrior_TR": -0.6831409239739985
+    },
+    "common-13": {
+      "TR": 7.386837800497252,
+      "maxDD": -0.14565341139184554,
+      "fills": 626,
+      "trims": 221,
+      "buy_clips": 40,
+      "deferrals": 3,
+      "elapsed": 24.76,
+      "dMain_TR": -0.09153319950274774,
+      "dPrior_TR": -0.09153319950274774
+    },
+    "common-1": {
+      "TR": 3.928538056569,
+      "maxDD": -0.12468509293898083,
+      "fills": 36,
+      "trims": 6,
+      "buy_clips": 188,
+      "deferrals": 0,
+      "elapsed": 11.76,
+      "dMain_TR": 5.65689997067409e-08,
+      "dPrior_TR": 5.65689997067409e-08
+    },
+    "pool_j": {
+      "TR": 4.130471835853003,
+      "maxDD": -0.1642060827431446,
+      "fills": 513,
+      "trims": 149,
+      "buy_clips": 51,
+      "deferrals": 1,
+      "elapsed": 17.57,
+      "dMain_TR": 0.121335835853003,
+      "dPrior_TR": 0.121335835853003
+    },
+    "pool_e": {
+      "TR": 7.253016438182131,
+      "maxDD": -0.1600279167916816,
+      "fills": 732,
+      "trims": 300,
+      "buy_clips": 39,
+      "deferrals": 0,
+      "elapsed": 24.23,
+      "dMain_TR": 0.20260843818213115,
+      "dPrior_TR": -0.6807455618178686
+    },
+    "pool_h": {
+      "TR": 1.722635666737251,
+      "maxDD": -0.13866533565852004,
+      "fills": 693,
+      "trims": 349,
+      "buy_clips": 23,
+      "deferrals": 3,
+      "elapsed": 23.19,
+      "dMain_TR": 0.6546866667372511,
+      "dPrior_TR": -0.34651833326274906
+    },
+    "pool_i": {
+      "TR": 3.1612688142457523,
+      "maxDD": -0.1284461677502678,
+      "fills": 521,
+      "trims": 193,
+      "buy_clips": 5,
+      "deferrals": 5,
+      "elapsed": 21.52,
+      "dMain_TR": 0.7170928142457522,
+      "dPrior_TR": 0.08756781424575255
+    },
+    "pool_f": {
+      "TR": 3.521648016110256,
+      "maxDD": -0.17313991806634646,
+      "fills": 657,
+      "trims": 274,
+      "buy_clips": 95,
+      "deferrals": 1,
+      "elapsed": 24.71,
+      "dMain_TR": -4.8180019838897445,
+      "dPrior_TR": -5.0524519838897435
+    },
+    "pool_c": {
+      "TR": 8.976766804243878,
+      "maxDD": -0.1393951756644656,
+      "fills": 520,
+      "trims": 188,
+      "buy_clips": 23,
+      "deferrals": 3,
+      "elapsed": 15.72,
+      "dMain_TR": 0.4433708042438784,
+      "dPrior_TR": 0.4433708042438784
+    },
+    "pool_d": {
+      "TR": 4.629324250863626,
+      "maxDD": -0.13843462878981316,
+      "fills": 465,
+      "trims": 119,
+      "buy_clips": 64,
+      "deferrals": 0,
+      "elapsed": 18.55,
+      "dMain_TR": 1.2137212508636264,
+      "dPrior_TR": 1.2137212508636264
+    },
+    "pool_a": {
+      "TR": 3.928538056569,
+      "maxDD": -0.12468509293898083,
+      "fills": 36,
+      "trims": 6,
+      "buy_clips": 188,
+      "deferrals": 0,
+      "elapsed": 11.55,
+      "dMain_TR": 5.65689997067409e-08,
+      "dPrior_TR": 5.65689997067409e-08
+    },
+    "pool_b": {
+      "TR": 6.024809076026002,
+      "maxDD": -0.1582362027024291,
+      "fills": 394,
+      "trims": 71,
+      "buy_clips": 19,
+      "deferrals": 0,
+      "elapsed": 13.89,
+      "dMain_TR": -0.6831409239739985,
+      "dPrior_TR": -0.6831409239739985
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "tag": "topic-c-intensity",
+  "verdict": "REVERT",
+  "fail_reasons": [
+    "pool_j worse than main"
+  ],
+  "improved": 5,
+  "worsened": 1,
+  "flat": 1,
+  "rows": {
+    "common-5": {
+      "TR": 9.351672960887004,
+      "maxDD": -0.140024999442075,
+      "fills": 375,
+      "trims": 95,
+      "buy_clips": 11,
+      "soft_gap_blends": 0,
+      "deferrals": 3,
+      "elapsed": 16.46,
+      "dMain_TR": 1.3671859608870047,
+      "dPrior_TR": -3.911299550907188e-08
+    },
+    "common-17": {
+      "TR": 8.610542744515504,
+      "maxDD": -0.15104978428469945,
+      "fills": 645,
+      "trims": 245,
+      "buy_clips": 63,
+      "soft_gap_blends": 0,
+      "deferrals": 0,
+      "elapsed": 28.62,
+      "dMain_TR": -2.5548449578138843e-07,
+      "dPrior_TR": -2.5548449578138843e-07
+    },
+    "pool_j": {
+      "TR": 3.2453566391521287,
+      "maxDD": -0.16102128298255614,
+      "fills": 539,
+      "trims": 153,
+      "buy_clips": 42,
+      "soft_gap_blends": 0,
+      "deferrals": 2,
+      "elapsed": 17.84,
+      "dMain_TR": -0.7637793608478711,
+      "dPrior_TR": -0.7637793608478711
+    },
+    "pool_e": {
+      "TR": 7.933762182506754,
+      "maxDD": -0.14709252370892925,
+      "fills": 604,
+      "trims": 194,
+      "buy_clips": 24,
+      "soft_gap_blends": 0,
+      "deferrals": 1,
+      "elapsed": 24.03,
+      "dMain_TR": 0.8833541825067543,
+      "dPrior_TR": 1.825067545979664e-07
+    },
+    "pool_h": {
+      "TR": 2.2253232646718764,
+      "maxDD": -0.13936357791946316,
+      "fills": 649,
+      "trims": 292,
+      "buy_clips": 19,
+      "soft_gap_blends": 0,
+      "deferrals": 4,
+      "elapsed": 24.53,
+      "dMain_TR": 1.1573742646718763,
+      "dPrior_TR": 0.1561692646718762
+    },
+    "pool_i": {
+      "TR": 3.0737009659167516,
+      "maxDD": -0.12851447330087665,
+      "fills": 490,
+      "trims": 166,
+      "buy_clips": 9,
+      "soft_gap_blends": 0,
+      "deferrals": 2,
+      "elapsed": 21.65,
+      "dMain_TR": 0.6295249659167514,
+      "dPrior_TR": -3.408324822373743e-08
+    },
+    "pool_f": {
+      "TR": 8.536095761669506,
+      "maxDD": -0.13958738595698109,
+      "fills": 744,
+      "trims": 339,
+      "buy_clips": 58,
+      "soft_gap_blends": 0,
+      "deferrals": 2,
+      "elapsed": 26.62,
+      "dMain_TR": 0.196445761669505,
+      "dPrior_TR": -0.038004238330493934
+    }
+  }
+}

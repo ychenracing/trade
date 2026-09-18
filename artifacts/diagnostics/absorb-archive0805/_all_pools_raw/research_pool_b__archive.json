@@ -1,0 +1,78 @@
+{
+  "label": "archive",
+  "sha": "c158435f66034f370c031353cfb419fd3b469811",
+  "tree": "1ba398ec376eee8063a3df21c8bef4432872fc11",
+  "engine": "archive_BacktestEngine",
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "symbols": [
+    "300308",
+    "300502",
+    "300394"
+  ],
+  "symbol_names": {
+    "300308": "\u4e2d\u9645\u65ed\u521b",
+    "300502": "\u65b0\u6613\u76db",
+    "300394": "\u5929\u5b5a\u901a\u4fe1"
+  },
+  "elapsed_sec": 126.553,
+  "final_assets": 23673946.653319005,
+  "wealth_multiple": 11.836973326659502,
+  "total_return": 10.836973326659502,
+  "max_drawdown": -0.17918987929749075,
+  "sharpe": 3.685288563669437,
+  "calmar": 34.465590496941225,
+  "sleeve_fills": 194,
+  "total_trades": 194,
+  "date_symbol_side_buckets": 71,
+  "sell_buckets": 35,
+  "active_operation_days": 53,
+  "turnover_over_average_equity": 13.407450822093624,
+  "commission_plus_stamp_duty": 76505.28768099999,
+  "commission": 35572.38305950001,
+  "stamp_duty": 40932.90462149998,
+  "modeled_slippage": 0.0,
+  "gross_traded_value": 141981166.54499996,
+  "ordinary_ab5_held_trims": {
+    "count": 0,
+    "symbol_count": 0,
+    "notional": 0,
+    "envelope_trim_evaluations_sum": 0
+  },
+  "ordinary_ab5_buy_clipping": {
+    "intent_count": 0,
+    "removed_shares": 0,
+    "removed_notional": null
+  },
+  "alert_shock_direct_loss_events": {
+    "portfolio_drawdown_alert_off": 3,
+    "portfolio_drawdown_alert_on": 3,
+    "sector_shock": 36
+  },
+  "hard_action_trade_reasons": {},
+  "sell_rebuy_chains_posthoc": {
+    "approx_20_session": 60,
+    "approx_60_session": 80,
+    "note": "calendar-day proxy; attribution only"
+  },
+  "protection_book_counts_sum_over_days": {
+    "complete": 0,
+    "fallback": 0
+  },
+  "allocator": {
+    "ordinary_allocator_active_days": 0,
+    "feasibility_evaluations_sum": 0,
+    "envelope_days": 0
+  },
+  "risk_event_type_counts": {
+    "portfolio_drawdown_alert_off": 3,
+    "portfolio_drawdown_alert_on": 3,
+    "sector_guard_on": 3,
+    "sector_shock": 36
+  },
+  "account_risk_budget": null,
+  "status": "OK",
+  "pool": "research_pool_b"
+}

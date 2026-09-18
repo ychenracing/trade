@@ -1,0 +1,10 @@
+{
+  "tag": "early-buy-selection-passthrough+virgin-cash",
+  "status": "REVERTED",
+  "note": "Partial measure before abort; common-5 collapsed vs main/prior. Full virgin-cash-only probe in early-buy-virgin-cash-probe.json also REVERTED.",
+  "partial_pools": {
+    "common-5": {"TR": 6.886411, "dMain_TR": -1.098076, "dPrior_TR": -2.465262},
+    "common-17": {"TR": 11.058594, "dMain_TR": 2.448051, "dPrior_TR": 2.448051}
+  },
+  "verdict": "net-negative on absorb baseline; mechanism reverted"
+}

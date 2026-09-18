@@ -1,0 +1,318 @@
+{
+  "pool_j": [
+    {
+      "date": "2025-09-04",
+      "overshoot": 632788.15,
+      "eq_peak": 0.912454,
+      "deferred": false,
+      "new_reductions": 18,
+      "rlb": 428021.3
+    },
+    {
+      "date": "2025-09-08",
+      "overshoot": 679213.91,
+      "eq_peak": 0.87914,
+      "deferred": false,
+      "new_reductions": 0,
+      "rlb": 273801.6
+    },
+    {
+      "date": "2025-09-09",
+      "overshoot": 27658.42,
+      "eq_peak": 0.898212,
+      "deferred": false,
+      "new_reductions": 0,
+      "rlb": 362145.6
+    },
+    {
+      "date": "2025-09-15",
+      "overshoot": 65075.91,
+      "eq_peak": 0.929048,
+      "deferred": false,
+      "new_reductions": 17,
+      "rlb": 504935.9
+    },
+    {
+      "date": "2025-09-25",
+      "overshoot": 59825.77,
+      "eq_peak": 0.924806,
+      "deferred": false,
+      "new_reductions": 13,
+      "rlb": 551447.3
+    },
+    {
+      "date": "2025-09-26",
+      "overshoot": 708517.45,
+      "eq_peak": 0.888892,
+      "deferred": false,
+      "new_reductions": 6,
+      "rlb": 362503.8
+    },
+    {
+      "date": "2025-10-10",
+      "overshoot": 220360.36,
+      "eq_peak": 0.865672,
+      "deferred": false,
+      "new_reductions": 3,
+      "rlb": 240313.0
+    },
+    {
+      "date": "2025-10-31",
+      "overshoot": 374931.67,
+      "eq_peak": 0.85738,
+      "deferred": false,
+      "new_reductions": 6,
+      "rlb": 196589.9
+    },
+    {
+      "date": "2025-11-14",
+      "overshoot": 205235.57,
+      "eq_peak": 0.846366,
+      "deferred": false,
+      "new_reductions": 3,
+      "rlb": 138651.4
+    },
+    {
+      "date": "2025-12-15",
+      "overshoot": 172441.38,
+      "eq_peak": 0.858184,
+      "deferred": false,
+      "new_reductions": 0,
+      "rlb": 200759.1
+    },
+    {
+      "date": "2025-12-18",
+      "overshoot": 978277.35,
+      "eq_peak": 0.868193,
+      "deferred": false,
+      "new_reductions": 12,
+      "rlb": 253441.9
+    },
+    {
+      "date": "2025-12-26",
+      "overshoot": 462451.73,
+      "eq_peak": 0.905876,
+      "deferred": false,
+      "new_reductions": 17,
+      "rlb": 451808.2
+    },
+    {
+      "date": "2025-12-31",
+      "overshoot": 22992.42,
+      "eq_peak": 0.884091,
+      "deferred": false,
+      "new_reductions": 13,
+      "rlb": 337199.0
+    },
+    {
+      "date": "2026-01-06",
+      "overshoot": 406439.33,
+      "eq_peak": 0.869937,
+      "deferred": false,
+      "new_reductions": 9,
+      "rlb": 262709.6
+    },
+    {
+      "date": "2026-01-12",
+      "overshoot": 208066.4,
+      "eq_peak": 0.858591,
+      "deferred": false,
+      "new_reductions": 0,
+      "rlb": 202932.7
+    },
+    {
+      "date": "2026-03-23",
+      "overshoot": 394962.83,
+      "eq_peak": 0.920961,
+      "deferred": false,
+      "new_reductions": 12,
+      "rlb": 615658.3
+    },
+    {
+      "date": "2026-05-15",
+      "overshoot": 747763.55,
+      "eq_peak": 0.919618,
+      "deferred": false,
+      "new_reductions": 13,
+      "rlb": 922966.4
+    },
+    {
+      "date": "2026-06-01",
+      "overshoot": 4219611.34,
+      "eq_peak": 0.85216,
+      "deferred": false,
+      "new_reductions": 8,
+      "rlb": 297816.9
+    },
+    {
+      "date": "2026-06-05",
+      "overshoot": 1515695.54,
+      "eq_peak": 0.908778,
+      "deferred": false,
+      "new_reductions": 17,
+      "rlb": 822532.9
+    },
+    {
+      "date": "2026-06-08",
+      "overshoot": 11495.91,
+      "eq_peak": 0.90277,
+      "deferred": false,
+      "new_reductions": 13,
+      "rlb": 766870.7
+    }
+  ],
+  "common-17": [
+    {
+      "date": "2025-06-24",
+      "overshoot": 45502.87,
+      "eq_peak": 0.929007,
+      "deferred": false,
+      "new_reductions": 11,
+      "rlb": 330886.0
+    },
+    {
+      "date": "2025-09-02",
+      "overshoot": 1150809.17,
+      "eq_peak": 0.934397,
+      "deferred": false,
+      "new_reductions": 8,
+      "rlb": 1055439.6
+    },
+    {
+      "date": "2025-09-04",
+      "overshoot": 2805767.95,
+      "eq_peak": 0.874551,
+      "deferred": false,
+      "new_reductions": 0,
+      "rlb": 526238.7
+    },
+    {
+      "date": "2025-09-08",
+      "overshoot": 762829.1,
+      "eq_peak": 0.88081,
+      "deferred": false,
+      "new_reductions": 0,
+      "rlb": 586671.9
+    },
+    {
+      "date": "2025-09-09",
+      "overshoot": 1748083.33,
+      "eq_peak": 0.866965,
+      "deferred": false,
+      "new_reductions": 0,
+      "rlb": 453081.9
+    },
+    {
+      "date": "2025-10-13",
+      "overshoot": 812280.59,
+      "eq_peak": 0.91911,
+      "deferred": false,
+      "new_reductions": 17,
+      "rlb": 956033.6
+    },
+    {
+      "date": "2025-10-14",
+      "overshoot": 3919701.56,
+      "eq_peak": 0.860658,
+      "deferred": false,
+      "new_reductions": 11,
+      "rlb": 392191.3
+    },
+    {
+      "date": "2025-10-31",
+      "overshoot": 973094.22,
+      "eq_peak": 0.917512,
+      "deferred": false,
+      "new_reductions": 19,
+      "rlb": 956741.3
+    },
+    {
+      "date": "2025-11-12",
+      "overshoot": 13683.73,
+      "eq_peak": 0.925233,
+      "deferred": false,
+      "new_reductions": 21,
+      "rlb": 1032531.4
+    },
+    {
+      "date": "2025-11-14",
+      "overshoot": 3178098.75,
+      "eq_peak": 0.8731,
+      "deferred": false,
+      "new_reductions": 14,
+      "rlb": 520919.9
+    },
+    {
+      "date": "2025-12-11",
+      "overshoot": 1743300.95,
+      "eq_peak": 0.906909,
+      "deferred": false,
+      "new_reductions": 24,
+      "rlb": 852609.0
+    },
+    {
+      "date": "2025-12-16",
+      "overshoot": 132941.87,
+      "eq_peak": 0.888435,
+      "deferred": false,
+      "new_reductions": 18,
+      "rlb": 671401.5
+    },
+    {
+      "date": "2025-12-29",
+      "overshoot": 39720.57,
+      "eq_peak": 0.893452,
+      "deferred": false,
+      "new_reductions": 20,
+      "rlb": 720614.4
+    },
+    {
+      "date": "2026-02-02",
+      "overshoot": 393544.56,
+      "eq_peak": 0.870096,
+      "deferred": false,
+      "new_reductions": 14,
+      "rlb": 491285.3
+    },
+    {
+      "date": "2026-03-06",
+      "overshoot": 1364008.84,
+      "eq_peak": 0.892918,
+      "deferred": false,
+      "new_reductions": 20,
+      "rlb": 762803.3
+    },
+    {
+      "date": "2026-03-17",
+      "overshoot": 1423130.42,
+      "eq_peak": 0.851176,
+      "deferred": false,
+      "new_reductions": 4,
+      "rlb": 273681.8
+    },
+    {
+      "date": "2026-03-23",
+      "overshoot": 225683.07,
+      "eq_peak": 0.84895,
+      "deferred": false,
+      "new_reductions": 3,
+      "rlb": 250459.6
+    },
+    {
+      "date": "2026-04-02",
+      "overshoot": 2457345.69,
+      "eq_peak": 0.883011,
+      "deferred": false,
+      "new_reductions": 18,
+      "rlb": 659234.4
+    },
+    {
+      "date": "2026-06-08",
+      "overshoot": 3582837.06,
+      "eq_peak": 0.903909,
+      "deferred": false,
+      "new_reductions": 23,
+      "rlb": 1499246.6
+    }
+  ]
+}

@@ -1,0 +1,1311 @@
+{
+  "as_of": "2026-09-18T15:16+0800",
+  "pools": {
+    "common-3": {
+      "pool": "common-3",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "elapsed_sec": {
+        "main": 13.54,
+        "archive": 22.52
+      },
+      "economics": {
+        "main_tr": 6.707950188316252,
+        "archive_tr": 10.836973326659502,
+        "delta_archive_minus_main": 4.12902313834325,
+        "main_dd": -0.16162524913761778,
+        "archive_dd": -0.17918987929749075
+      },
+      "counts": {
+        "sleeve_fills": {
+          "main": 342,
+          "archive": 194,
+          "delta_arc_minus_main": -148
+        },
+        "buys": {
+          "main": 163,
+          "archive": 101
+        },
+        "sells": {
+          "main": 179,
+          "archive": 93
+        },
+        "ordinary_trims": {
+          "main": 59,
+          "archive": 0,
+          "main_notional": 11697557.73,
+          "main_trim_days": 8
+        },
+        "buy_clips": {
+          "main": {
+            "intent_count": 24,
+            "removed_shares": 544400,
+            "first_date": "2025-09-03",
+            "sample_days": [
+              {
+                "date": "2025-09-03",
+                "removed": 28100,
+                "gap_scale": 1.0,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-10-21",
+                "removed": 1200,
+                "gap_scale": 0.5814751329655313,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-10-22",
+                "removed": 22300,
+                "gap_scale": 0.04595451211754436,
+                "gross_scale": 0.6168810177009753,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-10-24",
+                "removed": 4800,
+                "gap_scale": 0.2651609447120586,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-10-27",
+                "removed": 56800,
+                "gap_scale": 0.06365184484615631,
+                "gross_scale": 0.36301005762747407,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-12-02",
+                "removed": 8100,
+                "gap_scale": 0.3807141134969117,
+                "gross_scale": 0.9432079358448324,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-12-03",
+                "removed": 25700,
+                "gap_scale": 0.0,
+                "gross_scale": 0.4930307011635298,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-12-04",
+                "removed": 53600,
+                "gap_scale": 0.0,
+                "gross_scale": 0.25452444772532745,
+                "ordinary_buy_scale": null
+              }
+            ]
+          },
+          "archive": {
+            "intent_count": 0,
+            "removed_shares": 0,
+            "first_date": null,
+            "sample_days": []
+          }
+        }
+      },
+      "first_divergences": {
+        "first_fill_day": "2025-04-24",
+        "fill_day_detail": {
+          "date": "2025-04-24",
+          "main_trades": [
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 9500,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 328933.6
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 5400,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 186972.79
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 12200,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 422420.0
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6300,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 286621.33
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 3600,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 163783.62
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 8100,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 368513.14
+            }
+          ],
+          "archive_trades": [
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 9000,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 311621.31
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 9000,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 311621.31
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 9000,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 311621.31
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6000,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 272972.7
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6000,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 272972.7
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6000,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 272972.7
+            }
+          ],
+          "main_only_keys": [
+            {
+              "key": [
+                "2025-04-24",
+                "300394",
+                "buy",
+                9500
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300394",
+                "buy",
+                5400
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300394",
+                "buy",
+                12200
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                6300
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                3600
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                8100
+              ],
+              "n": 1
+            }
+          ],
+          "archive_only_keys": [
+            {
+              "key": [
+                "2025-04-24",
+                "300394",
+                "buy",
+                9000
+              ],
+              "n": 3
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                6000
+              ],
+              "n": 3
+            }
+          ],
+          "main_count": 6,
+          "archive_count": 6
+        },
+        "first_buy_day": "2025-04-24",
+        "first_buy_size_diff_through_first_eq": {
+          "date": "2025-04-24",
+          "symbol": "300394",
+          "main_shares": 27100,
+          "archive_shares": 27000
+        },
+        "buy_size_diff_count_through_first_eq": 1,
+        "first_main_only_trim": {
+          "date": "2025-09-03",
+          "symbol": "300394",
+          "side": "sell",
+          "shares": 100,
+          "price": 141.4984,
+          "reason": "account_budget_trim",
+          "gross": 14149.84
+        },
+        "first_sorted_soft_mismatch": {
+          "index": 0,
+          "main": {
+            "date": "2025-04-24",
+            "symbol": "300394",
+            "side": "buy",
+            "shares": 5400,
+            "price": 34.6246,
+            "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+            "gross": 186972.79
+          },
+          "archive": {
+            "date": "2025-04-24",
+            "symbol": "300394",
+            "side": "buy",
+            "shares": 9000,
+            "price": 34.6246,
+            "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+            "gross": 311621.31
+          }
+        },
+        "first_equity_diff": {
+          "index": 16,
+          "main": {
+            "date": "2025-04-24",
+            "equity": 1985088.2
+          },
+          "archive": {
+            "date": "2025-04-24",
+            "equity": 1985119.52
+          },
+          "delta_main_minus_archive": -31.32
+        }
+      },
+      "sell_reason_histogram": {
+        "main": {
+          "Donchian exit@33.48": 3,
+          "Donchian exit@93.20": 3,
+          "ATR trailing stop@89.30": 3,
+          "Donchian exit@56.91": 3,
+          "Donchian exit@50.27": 3,
+          "ATR trailing stop@52.44": 1,
+          "account_budget_trim": 59,
+          "Donchian exit@245.71": 3,
+          "concentration_trim:cluster=optical": 2,
+          "Donchian exit@258.57": 3,
+          "ATR trailing stop@248.05": 1,
+          "ATR trailing stop@122.62": 6,
+          "Donchian exit@271.43": 1,
+          "Donchian exit@500.00": 3,
+          "failed-trend reversal exit (10% loss and weakening short MA)": 1,
+          "ATR trailing stop@241.59": 2,
+          "regime choppy reduction": 3,
+          "ATR trailing stop@157.65": 6,
+          "ATR trailing stop@159.52": 2,
+          "ATR trailing stop@574.57": 3,
+          "Donchian exit@292.14": 3,
+          "ATR trailing stop@615.92": 3,
+          "ATR trailing stop@314.23": 3,
+          "ATR trailing stop@290.39": 3,
+          "ATR trailing stop@273.44": 3,
+          "ATR trailing stop@601.07": 3,
+          "ATR trailing stop@310.06": 5,
+          "Donchian exit@242.54": 3,
+          "reversal profit protection (24% giveback) at 199.77": 3,
+          "Donchian exit@578.00": 3,
+          "ATR trailing stop@231.71": 1,
+          "Donchian exit@403.57": 3,
+          "Donchian exit@263.79": 3,
+          "Donchian exit@418.06": 3,
+          "Donchian exit@1160.00": 1,
+          "Donchian exit@520.71": 3,
+          "ATR trailing stop@315.63": 6,
+          "sector breadth risk liquidation": 16
+        },
+        "archive": {
+          "Donchian exit@33.48": 3,
+          "Donchian exit@93.20": 3,
+          "Donchian exit@36.89": 3,
+          "ATR trailing stop@89.30": 3,
+          "Donchian exit@56.91": 3,
+          "Donchian exit@50.27": 3,
+          "ATR trailing stop@52.44": 1,
+          "Donchian exit@63.43": 1,
+          "Donchian exit@137.63": 1,
+          "Donchian exit@245.71": 3,
+          "reversal profit protection (22% giveback) at 123.11": 3,
+          "Donchian exit@258.57": 3,
+          "Donchian exit@128.79": 3,
+          "Donchian exit@500.00": 1,
+          "ATR trailing stop@241.59": 3,
+          "regime choppy reduction": 3,
+          "Donchian exit@155.83": 3,
+          "Donchian exit@567.00": 3,
+          "Donchian exit@292.14": 3,
+          "ATR trailing stop@615.92": 3,
+          "ATR trailing stop@314.23": 3,
+          "ATR trailing stop@601.07": 1,
+          "Donchian exit@242.54": 3,
+          "reversal profit protection (22% giveback) at 205.03": 3,
+          "Donchian exit@578.00": 3,
+          "Donchian exit@243.07": 2,
+          "Donchian exit@403.57": 3,
+          "Donchian exit@263.79": 2,
+          "Donchian exit@418.06": 1,
+          "Donchian exit@520.71": 3,
+          "ATR trailing stop@284.85": 3,
+          "ATR trailing stop@315.63": 1,
+          "sector breadth risk liquidation": 13
+        }
+      },
+      "fills_by_symbol": {
+        "main": {
+          "300394": 104,
+          "300502": 144,
+          "300308": 94
+        },
+        "archive": {
+          "300394": 75,
+          "300502": 70,
+          "300308": 49
+        }
+      }
+    },
+    "common-5": {
+      "pool": "common-5",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "603986"
+      ],
+      "elapsed_sec": {
+        "main": 15.74,
+        "archive": 26.59
+      },
+      "economics": {
+        "main_tr": 7.984486994216379,
+        "archive_tr": 11.279153887013873,
+        "delta_archive_minus_main": 3.294666892797494,
+        "main_dd": -0.1408826929934694,
+        "archive_dd": -0.18961300879370643
+      },
+      "counts": {
+        "sleeve_fills": {
+          "main": 437,
+          "archive": 243,
+          "delta_arc_minus_main": -194
+        },
+        "buys": {
+          "main": 187,
+          "archive": 133
+        },
+        "sells": {
+          "main": 250,
+          "archive": 110
+        },
+        "ordinary_trims": {
+          "main": 121,
+          "archive": 0,
+          "main_notional": 16803890.29,
+          "main_trim_days": 11
+        },
+        "buy_clips": {
+          "main": {
+            "intent_count": 14,
+            "removed_shares": 316800,
+            "first_date": "2025-09-03",
+            "sample_days": [
+              {
+                "date": "2025-09-03",
+                "removed": 28800,
+                "gap_scale": 1.0,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-10-21",
+                "removed": 800,
+                "gap_scale": 0.8538764248531534,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-10-22",
+                "removed": 9800,
+                "gap_scale": 0.03334986999689324,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-12-02",
+                "removed": 9000,
+                "gap_scale": 0.3475017013309531,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-12-03",
+                "removed": 27600,
+                "gap_scale": 0.0,
+                "gross_scale": 0.6244300523156209,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-12-04",
+                "removed": 58000,
+                "gap_scale": 0.0,
+                "gross_scale": 0.34844779835048445,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-12-05",
+                "removed": 55600,
+                "gap_scale": 0.0,
+                "gross_scale": 0.3491388934008157,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2026-03-18",
+                "removed": 3900,
+                "gap_scale": 0.7246070951271568,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              }
+            ]
+          },
+          "archive": {
+            "intent_count": 0,
+            "removed_shares": 0,
+            "first_date": null,
+            "sample_days": []
+          }
+        }
+      },
+      "first_divergences": {
+        "first_fill_day": "2025-04-24",
+        "fill_day_detail": {
+          "date": "2025-04-24",
+          "main_trades": [
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 12200,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 422420.0
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6300,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 286621.33
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 3600,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 163783.62
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 8100,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 368513.14
+            }
+          ],
+          "archive_trades": [
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 9000,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 311621.31
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 9000,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 311621.31
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 9000,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 311621.31
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6000,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 272972.7
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6000,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 272972.7
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6000,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 272972.7
+            }
+          ],
+          "main_only_keys": [
+            {
+              "key": [
+                "2025-04-24",
+                "300394",
+                "buy",
+                12200
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                6300
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                3600
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                8100
+              ],
+              "n": 1
+            }
+          ],
+          "archive_only_keys": [
+            {
+              "key": [
+                "2025-04-24",
+                "300394",
+                "buy",
+                9000
+              ],
+              "n": 3
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                6000
+              ],
+              "n": 3
+            }
+          ],
+          "main_count": 4,
+          "archive_count": 6
+        },
+        "first_buy_day": "2025-04-24",
+        "first_buy_size_diff_through_first_eq": {
+          "date": "2025-04-24",
+          "symbol": "300394",
+          "main_shares": 12200,
+          "archive_shares": 27000
+        },
+        "buy_size_diff_count_through_first_eq": 1,
+        "first_main_only_trim": {
+          "date": "2025-06-25",
+          "symbol": "300308",
+          "side": "sell",
+          "shares": 100,
+          "price": 125.4744,
+          "reason": "account_budget_trim",
+          "gross": 12547.44
+        },
+        "first_sorted_soft_mismatch": {
+          "index": 0,
+          "main": {
+            "date": "2025-04-24",
+            "symbol": "300394",
+            "side": "buy",
+            "shares": 12200,
+            "price": 34.6246,
+            "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+            "gross": 422420.0
+          },
+          "archive": {
+            "date": "2025-04-24",
+            "symbol": "300394",
+            "side": "buy",
+            "shares": 9000,
+            "price": 34.6246,
+            "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+            "gross": 311621.31
+          }
+        },
+        "first_equity_diff": {
+          "index": 16,
+          "main": {
+            "date": "2025-04-24",
+            "equity": 1989755.57
+          },
+          "archive": {
+            "date": "2025-04-24",
+            "equity": 1985119.52
+          },
+          "delta_main_minus_archive": 4636.04
+        }
+      },
+      "sell_reason_histogram": {
+        "main": {
+          "Donchian exit@33.48": 1,
+          "Donchian exit@93.20": 3,
+          "ATR trailing stop@116.75": 3,
+          "ATR trailing stop@89.30": 3,
+          "Donchian exit@56.91": 3,
+          "Donchian exit@50.27": 3,
+          "account_budget_trim": 121,
+          "ATR trailing stop@52.44": 2,
+          "concentration_trim:cluster=optical": 3,
+          "Donchian exit@245.71": 3,
+          "Donchian exit@258.57": 2,
+          "ATR trailing stop@201.89": 3,
+          "ATR trailing stop@122.63": 1,
+          "Donchian exit@128.79": 1,
+          "Donchian exit@271.43": 2,
+          "Donchian exit@500.00": 3,
+          "ATR trailing stop@241.59": 2,
+          "ATR trailing stop@209.10": 3,
+          "regime choppy reduction": 6,
+          "ATR trailing stop@157.65": 4,
+          "Donchian exit@567.00": 3,
+          "Donchian exit@292.14": 3,
+          "ATR trailing stop@615.92": 4,
+          "ATR trailing stop@314.23": 3,
+          "ATR trailing stop@282.14": 2,
+          "ATR trailing stop@273.44": 1,
+          "ATR trailing stop@904.85": 3,
+          "ATR trailing stop@298.44": 1,
+          "ATR trailing stop@542.95": 2,
+          "Donchian exit@242.54": 3,
+          "ATR trailing stop@283.47": 2,
+          "reversal profit protection (24% giveback) at 199.77": 3,
+          "ATR trailing stop@593.11": 2,
+          "Donchian exit@243.07": 3,
+          "ATR trailing stop@251.66": 2,
+          "ATR trailing stop@231.71": 3,
+          "ATR trailing stop@397.25": 3,
+          "Donchian exit@853.00": 3,
+          "ATR trailing stop@432.58": 3,
+          "ATR trailing stop@259.95": 1,
+          "Donchian exit@1160.00": 3,
+          "sector breadth risk liquidation": 25
+        },
+        "archive": {
+          "Donchian exit@33.48": 3,
+          "Donchian exit@93.20": 2,
+          "Donchian exit@36.89": 3,
+          "ATR trailing stop@116.75": 3,
+          "ATR trailing stop@89.30": 2,
+          "Donchian exit@56.91": 3,
+          "Donchian exit@50.27": 3,
+          "ATR trailing stop@52.44": 1,
+          "failed-trend reversal exit (8% loss and weakening short MA)": 3,
+          "Donchian exit@63.43": 3,
+          "Donchian exit@137.63": 1,
+          "Donchian exit@245.71": 3,
+          "reversal profit protection (22% giveback) at 123.11": 3,
+          "Donchian exit@258.57": 3,
+          "Donchian exit@396.28": 1,
+          "ATR trailing stop@201.89": 3,
+          "Donchian exit@128.79": 3,
+          "Donchian exit@500.00": 2,
+          "ATR trailing stop@241.59": 3,
+          "regime choppy reduction": 3,
+          "Donchian exit@155.83": 3,
+          "Donchian exit@567.00": 3,
+          "Donchian exit@292.14": 3,
+          "ATR trailing stop@615.92": 3,
+          "ATR trailing stop@314.23": 3,
+          "ATR trailing stop@278.49": 1,
+          "ATR trailing stop@904.85": 3,
+          "ATR trailing stop@542.95": 1,
+          "Donchian exit@242.54": 3,
+          "ATR trailing stop@283.47": 1,
+          "ATR trailing stop@255.50": 2,
+          "Donchian exit@578.00": 2,
+          "Donchian exit@403.57": 3,
+          "Donchian exit@263.79": 2,
+          "Donchian exit@418.06": 1,
+          "Donchian exit@1160.00": 3,
+          "ATR trailing stop@284.85": 1,
+          "ATR trailing stop@315.63": 1,
+          "sector breadth risk liquidation": 20
+        }
+      },
+      "fills_by_symbol": {
+        "main": {
+          "300394": 61,
+          "300502": 132,
+          "603986": 103,
+          "300308": 119,
+          "688256": 22
+        },
+        "archive": {
+          "300394": 65,
+          "300502": 61,
+          "603986": 43,
+          "688256": 24,
+          "300308": 50
+        }
+      }
+    },
+    "common-17": {
+      "pool": "common-17",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "603986",
+        "688072",
+        "688300",
+        "300054",
+        "688361",
+        "002409",
+        "688498",
+        "688120",
+        "002384",
+        "688082",
+        "300604",
+        "601869",
+        "300408"
+      ],
+      "elapsed_sec": {
+        "main": 29.14,
+        "archive": 65.87
+      },
+      "economics": {
+        "main_tr": 8.610542744515504,
+        "archive_tr": 13.423482867451627,
+        "delta_archive_minus_main": 4.812940122936123,
+        "main_dd": -0.15104978428469945,
+        "archive_dd": -0.21661283467687903
+      },
+      "counts": {
+        "sleeve_fills": {
+          "main": 645,
+          "archive": 257,
+          "delta_arc_minus_main": -388
+        },
+        "buys": {
+          "main": 241,
+          "archive": 133
+        },
+        "sells": {
+          "main": 404,
+          "archive": 124
+        },
+        "ordinary_trims": {
+          "main": 245,
+          "archive": 0,
+          "main_notional": 21663104.21,
+          "main_trim_days": 16
+        },
+        "buy_clips": {
+          "main": {
+            "intent_count": 63,
+            "removed_shares": 2215800,
+            "first_date": "2025-06-24",
+            "sample_days": [
+              {
+                "date": "2025-06-24",
+                "removed": 20500,
+                "gap_scale": 0.0,
+                "gross_scale": 0.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-09-03",
+                "removed": 29300,
+                "gap_scale": 1.0,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-09-05",
+                "removed": 1100,
+                "gap_scale": 1.0,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-09-08",
+                "removed": 1000,
+                "gap_scale": 0.0,
+                "gross_scale": 0.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-09-09",
+                "removed": 1000,
+                "gap_scale": 0.0,
+                "gross_scale": 0.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-09-10",
+                "removed": 1100,
+                "gap_scale": 0.0,
+                "gross_scale": 1.0,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-09-17",
+                "removed": 112000,
+                "gap_scale": 0.0,
+                "gross_scale": 0.00569222224878339,
+                "ordinary_buy_scale": null
+              },
+              {
+                "date": "2025-10-13",
+                "removed": 49600,
+                "gap_scale": 0.0,
+                "gross_scale": 0.0,
+                "ordinary_buy_scale": null
+              }
+            ]
+          },
+          "archive": {
+            "intent_count": 0,
+            "removed_shares": 0,
+            "first_date": null,
+            "sample_days": []
+          }
+        }
+      },
+      "first_divergences": {
+        "first_fill_day": "2025-04-24",
+        "fill_day_detail": {
+          "date": "2025-04-24",
+          "main_trades": [
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6300,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 286621.33
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 3600,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 163783.62
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 8100,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 368513.14
+            }
+          ],
+          "archive_trades": [
+            {
+              "date": "2025-04-24",
+              "symbol": "300394",
+              "side": "buy",
+              "shares": 9000,
+              "price": 34.6246,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+              "gross": 311621.31
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6000,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 272972.7
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6000,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 272972.7
+            },
+            {
+              "date": "2025-04-24",
+              "symbol": "300502",
+              "side": "buy",
+              "shares": 6000,
+              "price": 45.4954,
+              "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+              "gross": 272972.7
+            }
+          ],
+          "main_only_keys": [
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                6300
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                3600
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                8100
+              ],
+              "n": 1
+            }
+          ],
+          "archive_only_keys": [
+            {
+              "key": [
+                "2025-04-24",
+                "300394",
+                "buy",
+                9000
+              ],
+              "n": 1
+            },
+            {
+              "key": [
+                "2025-04-24",
+                "300502",
+                "buy",
+                6000
+              ],
+              "n": 3
+            }
+          ],
+          "main_count": 3,
+          "archive_count": 4
+        },
+        "first_buy_day": "2025-04-24",
+        "first_buy_size_diff_through_first_eq": {
+          "date": "2025-04-24",
+          "symbol": "300394",
+          "main_shares": 0,
+          "archive_shares": 9000
+        },
+        "buy_size_diff_count_through_first_eq": 1,
+        "first_main_only_trim": {
+          "date": "2025-06-25",
+          "symbol": "002384",
+          "side": "sell",
+          "shares": 100,
+          "price": 36.6733,
+          "reason": "account_budget_trim",
+          "gross": 3667.33
+        },
+        "first_sorted_soft_mismatch": {
+          "index": 0,
+          "main": {
+            "date": "2025-04-24",
+            "symbol": "300502",
+            "side": "buy",
+            "shares": 3600,
+            "price": 45.4954,
+            "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+            "gross": 163783.62
+          },
+          "archive": {
+            "date": "2025-04-24",
+            "symbol": "300394",
+            "side": "buy",
+            "shares": 9000,
+            "price": 34.6246,
+            "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+            "gross": 311621.31
+          }
+        },
+        "first_equity_diff": {
+          "index": 16,
+          "main": {
+            "date": "2025-04-24",
+            "equity": 1993577.17
+          },
+          "archive": {
+            "date": "2025-04-24",
+            "equity": 1990757.96
+          },
+          "delta_main_minus_archive": 2819.22
+        }
+      },
+      "sell_reason_histogram": {
+        "main": {
+          "Donchian exit@34.59": 3,
+          "ATR trailing stop@116.75": 3,
+          "ATR trailing stop@88.94": 3,
+          "Donchian exit@56.91": 3,
+          "Donchian exit@50.27": 3,
+          "account_budget_trim": 245,
+          "ATR trailing stop@117.16": 1,
+          "Donchian exit@245.71": 3,
+          "concentration_trim:cluster=optical": 2,
+          "ATR trailing stop@106.09": 3,
+          "Donchian exit@396.28": 1,
+          "ATR trailing stop@85.95": 1,
+          "Donchian exit@500.00": 3,
+          "ATR trailing stop@241.59": 2,
+          "Donchian exit@71.00": 2,
+          "ATR trailing stop@380.73": 3,
+          "regime choppy reduction": 10,
+          "ATR trailing stop@203.42": 3,
+          "failed-trend reversal exit (10% loss and weakening short MA)": 2,
+          "ATR trailing stop@157.02": 2,
+          "ATR trailing stop@157.65": 2,
+          "ATR trailing stop@159.52": 1,
+          "ATR trailing stop@574.57": 3,
+          "Donchian exit@292.14": 3,
+          "ATR trailing stop@75.81": 3,
+          "ATR trailing stop@120.80": 3,
+          "ATR trailing stop@314.23": 3,
+          "ATR trailing stop@290.39": 2,
+          "ATR trailing stop@111.56": 3,
+          "ATR trailing stop@273.44": 1,
+          "ATR trailing stop@188.17": 3,
+          "ATR trailing stop@124.04": 6,
+          "ATR trailing stop@298.44": 2,
+          "ATR trailing stop@291.64": 1,
+          "ATR trailing stop@129.97": 3,
+          "ATR trailing stop@542.95": 2,
+          "Donchian exit@242.54": 3,
+          "ATR trailing stop@62.17": 2,
+          "Donchian exit@219.30": 3,
+          "reversal profit protection (24% giveback) at 199.77": 3,
+          "ATR trailing stop@89.22": 6,
+          "ATR trailing stop@328.24": 3,
+          "catastrophe_stop:drop_from_peak=28.3%": 3,
+          "Donchian exit@853.00": 1,
+          "Donchian exit@357.81": 3,
+          "Donchian exit@208.47": 3,
+          "profit_tier_stop:drop_from_peak=18.4%": 6,
+          "sector breadth risk liquidation": 29
+        },
+        "archive": {
+          "Donchian exit@33.48": 1,
+          "Donchian exit@34.59": 3,
+          "Donchian exit@41.14": 4,
+          "ATR trailing stop@116.75": 3,
+          "ATR trailing stop@88.94": 3,
+          "Donchian exit@56.91": 3,
+          "Donchian exit@50.27": 3,
+          "Donchian exit@245.71": 3,
+          "ATR trailing stop@70.34": 1,
+          "ATR trailing stop@70.31": 2,
+          "reversal profit protection (22% giveback) at 93.86": 3,
+          "ATR trailing stop@66.91": 3,
+          "ATR trailing stop@77.38": 6,
+          "ATR trailing stop@85.95": 2,
+          "ATR trailing stop@107.24": 2,
+          "ATR trailing stop@125.09": 2,
+          "Donchian exit@128.79": 1,
+          "ATR trailing stop@241.59": 3,
+          "ATR trailing stop@209.10": 1,
+          "ATR trailing stop@394.21": 3,
+          "Donchian exit@71.00": 2,
+          "regime choppy reduction": 6,
+          "Donchian exit@155.83": 2,
+          "ATR trailing stop@94.90": 2,
+          "Donchian exit@567.00": 3,
+          "Donchian exit@292.14": 3,
+          "Donchian exit@121.71": 3,
+          "ATR trailing stop@62.84": 1,
+          "ATR trailing stop@107.26": 3,
+          "Donchian exit@92.04": 3,
+          "ATR trailing stop@43.00": 1,
+          "ATR trailing stop@526.03": 3,
+          "ATR trailing stop@43.09": 1,
+          "Donchian exit@242.54": 1,
+          "Donchian exit@223.71": 1,
+          "ATR trailing stop@41.99": 1,
+          "Donchian exit@108.89": 2,
+          "ATR trailing stop@85.93": 3,
+          "ATR trailing stop@42.58": 1,
+          "Donchian exit@739.45": 1,
+          "Donchian exit@359.71": 2,
+          "Donchian exit@403.57": 3,
+          "Donchian exit@212.90": 2,
+          "ATR trailing stop@68.53": 1,
+          "Donchian exit@520.71": 1,
+          "ATR trailing stop@511.53": 1,
+          "sector breadth risk liquidation": 19
+        }
+      },
+      "fills_by_symbol": {
+        "main": {
+          "300502": 92,
+          "601869": 69,
+          "603986": 78,
+          "688498": 52,
+          "300394": 37,
+          "002384": 54,
+          "300308": 85,
+          "300054": 30,
+          "300408": 59,
+          "300604": 17,
+          "688072": 6,
+          "688361": 27,
+          "688120": 21,
+          "688300": 12,
+          "688082": 6
+        },
+        "archive": {
+          "300394": 16,
+          "300502": 36,
+          "688300": 8,
+          "601869": 40,
+          "603986": 8,
+          "688498": 35,
+          "002384": 39,
+          "300308": 15,
+          "300604": 4,
+          "688120": 4,
+          "002409": 27,
+          "688361": 4,
+          "300054": 21
+        }
+      }
+    }
+  }
+}

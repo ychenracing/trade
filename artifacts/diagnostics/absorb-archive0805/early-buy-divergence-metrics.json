@@ -1,0 +1,30 @@
+{
+  "as_of": "2026-09-18T15:50+0800",
+  "status": "DOCUMENTED_REVERTED",
+  "root_cause": {
+    "day": "2025-04-24",
+    "signal_day": "2025-04-23",
+    "ab5_buy_clip_binding": false,
+    "drivers": [
+      "universe_selection_adaptive_drop_per_sleeve",
+      "virgin_cash_sleeve_reweight_2025-04-08"
+    ],
+    "portable": "partial_but_net_negative"
+  },
+  "probes": {
+    "combined_selection_passthrough_plus_virgin_cash": "REVERTED",
+    "virgin_cash_only": {
+      "improved_vs_main": 7,
+      "worsened_vs_main": 5,
+      "flat_vs_main": 2,
+      "worse_vs_prior": 7
+    }
+  },
+  "baseline_held": {
+    "mechanism": "budget+overshoot+razor0.9245",
+    "common-5_vs_main": 1.367,
+    "common-17_vs_main": 0.0,
+    "pool_j_vs_main": 0.0
+  },
+  "closes_archive_gap": false
+}

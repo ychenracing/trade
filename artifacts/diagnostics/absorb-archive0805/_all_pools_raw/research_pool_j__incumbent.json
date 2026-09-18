@@ -1,0 +1,171 @@
+{
+  "label": "incumbent",
+  "sha": "fa4ef7bafe7fdb9f513c7c07443c193624fa114c",
+  "tree": "0b55602e5fa19a08fd11954e8e331d1bd0a0c974",
+  "engine": "BacktestEngine",
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "symbols": [
+    "688256",
+    "601869",
+    "688498",
+    "002384"
+  ],
+  "symbol_names": {
+    "688256": "\u5bd2\u6b66\u7eaa",
+    "601869": "\u957f\u98de\u5149\u7ea4",
+    "688498": "\u6e90\u6770\u79d1\u6280",
+    "002384": "\u4e1c\u5c71\u7cbe\u5bc6"
+  },
+  "elapsed_sec": 107.0302,
+  "final_assets": 10018271.250915257,
+  "wealth_multiple": 5.0091356254576285,
+  "total_return": 4.0091356254576285,
+  "max_drawdown": -0.15687186518004215,
+  "sharpe": 3.167233654369414,
+  "calmar": 16.665961951202203,
+  "sleeve_fills": 588,
+  "total_trades": 588,
+  "date_symbol_side_buckets": 164,
+  "sell_buckets": 82,
+  "active_operation_days": 100,
+  "turnover_over_average_equity": 20.659327077103462,
+  "commission_plus_stamp_duty": 53898.40608475003,
+  "commission": 26015.571829750006,
+  "stamp_duty": 27882.834255000023,
+  "modeled_slippage": 0.0,
+  "gross_traded_value": 103459167.36299998,
+  "ordinary_ab5_held_trims": {
+    "count": 180,
+    "symbol_count": 4,
+    "notional": 11333767.886999995,
+    "envelope_trim_evaluations_sum": 0
+  },
+  "ordinary_ab5_buy_clipping": {
+    "intent_count": 35,
+    "removed_shares": 559800,
+    "removed_notional": null
+  },
+  "alert_shock_direct_loss_events": {
+    "portfolio_drawdown_alert_off": 8,
+    "portfolio_drawdown_alert_on": 8,
+    "sector_shock": 36
+  },
+  "hard_action_trade_reasons": {
+    "account_budget_trim": 180
+  },
+  "sell_rebuy_chains_posthoc": {
+    "approx_20_session": 256,
+    "approx_60_session": 293,
+    "note": "calendar-day proxy; attribution only"
+  },
+  "protection_book_counts_sum_over_days": {
+    "complete": 0,
+    "fallback": 0
+  },
+  "allocator": {
+    "ordinary_allocator_active_days": 0,
+    "feasibility_evaluations_sum": 0,
+    "envelope_days": 316
+  },
+  "risk_event_type_counts": {
+    "account_budget_envelope": 316,
+    "blocked_market_risk_pyramid": 5,
+    "concentration_trim": 2,
+    "independent_risk_basket_loaded": 1,
+    "portfolio_drawdown_alert_off": 8,
+    "portfolio_drawdown_alert_on": 8,
+    "sector_guard_on": 3,
+    "sector_risk_level": 16,
+    "sector_risk_trim": 1,
+    "sector_shock": 36
+  },
+  "account_risk_budget": {
+    "enabled": true,
+    "mechanism": "AB5",
+    "status": "APPLIED",
+    "latest": {
+      "date": "2026-07-20",
+      "event": "account_budget_envelope",
+      "mechanism": "AB5",
+      "planned_not_filled": true,
+      "equity": 10018271.250915257,
+      "lifetime_peak": 10624368.206690006,
+      "floor": 8711981.929485803,
+      "stress_fraction": 0.11640000000000006,
+      "cost_rate": 0.003,
+      "fixed_cost_reserve": 0.0,
+      "remaining_loss_budget": 1306289.3214294538,
+      "ordinary_gross_cap": 10018271.250915257,
+      "gross_cap": 10018271.250915257,
+      "effective_policy_floor": 8711981.929485803,
+      "systemic_stress_fraction": 0.11940000000000006,
+      "gross_before": 0,
+      "buy_envelope_binding": false,
+      "buy_gross_scale": 1.0,
+      "current_gap_debit": 0.0,
+      "requested_buy_gap_debit": 0.0,
+      "buy_gap_scale": 1.0,
+      "observed_shock_candidates": {
+        "688256": 0.06929222494957876,
+        "601869": 0.15252415458937196,
+        "688498": 0.15252415458937196,
+        "002384": 0.15252415458937196,
+        "300308": 0.15252415458937196,
+        "300502": 0.15252415458937196,
+        "300394": 0.15252415458937196,
+        "688008": 0.13039359636243075,
+        "603986": 0.13039359636243075
+      },
+      "observed_shock_confirmed": false,
+      "shocked_group_count": 3,
+      "dominant_group_fraction": 0.0,
+      "shock_episode_active": false,
+      "reduction_suspended_during_episode": false,
+      "strategy_valid_holdings_preserved": true,
+      "risk_alert_active": false,
+      "weak_book_ids": [],
+      "strategy_handoff_symbols": [],
+      "repeated_proven_reentry_symbols": [
+        "601869",
+        "688498"
+      ],
+      "proven_early_dual_book_ids": [],
+      "shock_reduced_book_ids": [],
+      "confirmed_shock_reduced_book_ids": [],
+      "crowded_shock_reduced_book_ids": [],
+      "held_symbol_count": 0,
+      "portfolio_max_positions": 6,
+      "crowded_portfolio": false,
+      "alert_dominant_symbol": null,
+      "alert_dominant_equity_weight_breach": false,
+      "alert_dominant_invested_concentration": false,
+      "alert_dominant_fraction": 0.0,
+      "alert_dominant_invested_fraction": 0.0,
+      "observed_shock_stress": {},
+      "held_stress_debit": 0,
+      "buy_shock_scale": 1.0,
+      "quality_admission_capacity_available": true,
+      "quality_admission_risk_state_available": true,
+      "quality_admitted_buy_indexes": [],
+      "handoff_admitted_buy_indexes": [],
+      "repeated_reentry_admitted_buy_indexes": [],
+      "proven_dual_admitted_buy_indexes": [],
+      "alert_proven_dual_buy_indexes": [],
+      "shock_reduced_pyramid_buy_indexes": [],
+      "shock_reduced_pyramid_book_ids": [],
+      "buy_scales": [],
+      "buy_scale": 1.0,
+      "protected_handoff_book_ids": [],
+      "protected_proven_dual_book_ids": [],
+      "portfolio_evidence_buy_symbols": null,
+      "portfolio_excluded_buy_slots": [],
+      "buy_shares_removed": 0,
+      "new_reduction_orders": 0
+    }
+  },
+  "status": "OK",
+  "pool": "research_pool_j"
+}

@@ -1,0 +1,54 @@
+{
+  "TR": 8.610542744515504,
+  "near_peak": [
+    {
+      "date": "2025-06-24",
+      "overshoot": 45502.868119681254,
+      "eq_peak": 0.9290066457550124,
+      "deferred": false,
+      "new_reduction_orders": 11,
+      "rlb": 330885.95234651025,
+      "gross_cap": 2771239.1318803187,
+      "stress_fraction": 0.11640000000000006,
+      "near_peak_band": true,
+      "groups_eod": [
+        "optical"
+      ],
+      "group_count_eod": 1
+    },
+    {
+      "date": "2025-09-02",
+      "overshoot": 1150809.1734437123,
+      "eq_peak": 0.9343972650399047,
+      "deferred": false,
+      "new_reduction_orders": 8,
+      "rlb": 1055439.5693225758,
+      "gross_cap": 7864355.826556288,
+      "stress_fraction": 0.11640000000000006,
+      "near_peak_band": true,
+      "groups_eod": [
+        "material",
+        "optical"
+      ],
+      "group_count_eod": 2
+    },
+    {
+      "date": "2025-11-12",
+      "overshoot": 13683.727407155558,
+      "eq_peak": 0.9252333280180193,
+      "deferred": false,
+      "new_reduction_orders": 21,
+      "rlb": 1032531.3529475862,
+      "gross_cap": 8647666.272592844,
+      "stress_fraction": 0.11640000000000006,
+      "near_peak_band": true,
+      "groups_eod": [
+        "equipment",
+        "memory",
+        "optical"
+      ],
+      "group_count_eod": 3
+    }
+  ],
+  "all_overshoot_count": 19
+}

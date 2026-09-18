@@ -1,0 +1,229 @@
+{
+  "status": "DIRECTIONAL_PROGRESS",
+  "as_of": "2026-09-18T13:53+0800",
+  "branch": "agent/absorb-archive0805-ordinary-ab5",
+  "mechanism": {
+    "name": "ordinary_budget_overshoot_gate",
+    "plain_language": "In ordinary preserve (not alert/shock), defer pro-rata held trims only when (1) gross overshoot is immaterial (\u2264 daily_loss_limit \u00d7 equity), (2) remaining_loss_budget \u2265 0.85 \u00d7 equity \u00d7 stress_fraction (85% of ordinary two-session stress envelope), and (3) equity/peak \u2264 0.925 (exclude near-peak razor band where gross_cap first binds). No sub-industry group-count gate. Buy envelope still min(gross_scale, gap_scale). Hard paths unchanged.",
+    "predicate": {
+      "immaterial": "overshoot <= equity * daily_loss_limit",
+      "budget_comfortable": "remaining_loss_budget >= 0.85 * equity * stress_fraction",
+      "not_near_peak_razor": "equity / peak <= 0.925",
+      "defer_iff": "immaterial AND budget_comfortable AND not_near_peak_razor"
+    }
+  },
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20",
+    "capital": 2000000.0,
+    "indicator_state": "warm"
+  },
+  "baselines": {
+    "main": "fa4ef7ba",
+    "archive": "c158435"
+  },
+  "pools": {
+    "econ1": {
+      "candidate": {
+        "total_return": 3.928538056569,
+        "wealth_multiple": 4.928538056569,
+        "max_drawdown": -0.12468509293898083,
+        "sharpe": 3.4695971203321343,
+        "sleeve_fills": 36
+      },
+      "main": {
+        "total_return": 3.928538056569,
+        "wealth_multiple": 4.928538056569,
+        "max_drawdown": -0.12468509293898083,
+        "sharpe": 3.4695971203321343,
+        "sleeve_fills": 36
+      },
+      "archive": {
+        "total_return": 5.308949754885,
+        "wealth_multiple": 6.308949754885,
+        "max_drawdown": -0.1834136674871038,
+        "sharpe": 3.20610913530197,
+        "sleeve_fills": 24
+      },
+      "delta_cand_minus_main": {
+        "total_return": 0.0,
+        "fills": 0,
+        "trims": 0,
+        "buy_clips": 0,
+        "max_drawdown_pp": 0.0
+      },
+      "candidate_detail": {
+        "trims": 6,
+        "buy_clips": 188,
+        "fees": 9579.110862000001,
+        "turnover": 2.8260074377022417
+      },
+      "main_detail": {
+        "trims": 6,
+        "buy_clips": 188
+      }
+    },
+    "econ3": {
+      "candidate": {
+        "total_return": 6.707950188316252,
+        "wealth_multiple": 7.707950188316252,
+        "max_drawdown": -0.16162524913761778,
+        "sharpe": 3.485277034011279,
+        "sleeve_fills": 342
+      },
+      "main": {
+        "total_return": 6.707950188316252,
+        "wealth_multiple": 7.707950188316252,
+        "max_drawdown": -0.16162524913761778,
+        "sharpe": 3.485277034011279,
+        "sleeve_fills": 342
+      },
+      "archive": {
+        "total_return": 10.836973326659502,
+        "wealth_multiple": 11.836973326659502,
+        "max_drawdown": -0.17918987929749075,
+        "sharpe": 3.685288563669437,
+        "sleeve_fills": 194
+      },
+      "delta_cand_minus_main": {
+        "total_return": 0.0,
+        "fills": 0,
+        "trims": 0,
+        "buy_clips": 0,
+        "max_drawdown_pp": 0.0
+      },
+      "candidate_detail": {
+        "trims": 59,
+        "buy_clips": 24,
+        "fees": 67094.90636749999,
+        "turnover": 15.617892647214285
+      },
+      "main_detail": {
+        "trims": 59,
+        "buy_clips": 24
+      }
+    },
+    "econ5": {
+      "candidate": {
+        "total_return": 9.351672960887004,
+        "wealth_multiple": 10.351672960887004,
+        "max_drawdown": -0.140024999442075,
+        "sharpe": 3.6485584002650824,
+        "sleeve_fills": 375
+      },
+      "main": {
+        "total_return": 7.984486994216379,
+        "wealth_multiple": 8.984486994216379,
+        "max_drawdown": -0.1408826929934694,
+        "sharpe": 3.480346175194337,
+        "sleeve_fills": 437
+      },
+      "archive": {
+        "total_return": 11.279153887013873,
+        "wealth_multiple": 12.279153887013873,
+        "max_drawdown": -0.18961300879370643,
+        "sharpe": 3.7303888337421407,
+        "sleeve_fills": 243
+      },
+      "delta_cand_minus_main": {
+        "total_return": 1.3671859666706254,
+        "fills": -62,
+        "trims": -26,
+        "buy_clips": -3,
+        "max_drawdown_pp": 0.08576935513943951
+      },
+      "candidate_detail": {
+        "trims": 95,
+        "buy_clips": 11,
+        "fees": 83110.79622600002,
+        "turnover": 16.448346574131406
+      },
+      "main_detail": {
+        "trims": 121,
+        "buy_clips": 14
+      }
+    },
+    "econ13": {
+      "candidate": {
+        "total_return": 7.478371386054253,
+        "wealth_multiple": 8.478371386054253,
+        "max_drawdown": -0.15733628648998246,
+        "sharpe": 3.450429294090779,
+        "sleeve_fills": 657
+      },
+      "main": {
+        "total_return": 7.478371386054253,
+        "wealth_multiple": 8.478371386054253,
+        "max_drawdown": -0.15733628648998246,
+        "sharpe": 3.450429294090779,
+        "sleeve_fills": 657
+      },
+      "archive": {
+        "total_return": 9.61595698447825,
+        "wealth_multiple": 10.61595698447825,
+        "max_drawdown": -0.21280080575113092,
+        "sharpe": 3.7505939147247296,
+        "sleeve_fills": 227
+      },
+      "delta_cand_minus_main": {
+        "total_return": 0.0,
+        "fills": 0,
+        "trims": 0,
+        "buy_clips": 0,
+        "max_drawdown_pp": 0.0
+      },
+      "candidate_detail": {
+        "trims": 243,
+        "buy_clips": 37,
+        "fees": 78873.15289149998,
+        "turnover": 17.790157408996375
+      },
+      "main_detail": {
+        "trims": 243,
+        "buy_clips": 37
+      }
+    },
+    "econ17": {
+      "candidate": {
+        "total_return": 8.610542744515504,
+        "wealth_multiple": 9.610542744515504,
+        "max_drawdown": -0.15104978428469945,
+        "sharpe": 3.7258627517994465,
+        "sleeve_fills": 645
+      },
+      "main": {
+        "total_return": 8.610542744515504,
+        "wealth_multiple": 9.610542744515504,
+        "max_drawdown": -0.15104978428469945,
+        "sharpe": 3.7258627517994465,
+        "sleeve_fills": 645
+      },
+      "archive": {
+        "total_return": 13.423482867451627,
+        "wealth_multiple": 14.423482867451627,
+        "max_drawdown": -0.21661283467687903,
+        "sharpe": 3.9990019465915805,
+        "sleeve_fills": 257
+      },
+      "delta_cand_minus_main": {
+        "total_return": 0.0,
+        "fills": 0,
+        "trims": 0,
+        "buy_clips": 0,
+        "max_drawdown_pp": 0.0
+      },
+      "candidate_detail": {
+        "trims": 245,
+        "buy_clips": 63,
+        "fees": 74192.39296899995,
+        "turnover": 16.007531309204467
+      },
+      "main_detail": {
+        "trims": 245,
+        "buy_clips": 63
+      }
+    }
+  },
+  "head": "6204a9efeb0df2f60d9d28dddf15fffc6c05edb0",
+  "tree": "ffc72b6807ebf6a25df5f161ed0ece46de32c3aa"
+}
