@@ -1,10 +1,10 @@
-"""Research: ordinary preserve defers immaterial overshoot when budget is comfortable."""
+"""Ordinary AB5 preserve defers immaterial held trims when the budget is comfortable."""
 from quantfusion.config.engine import default_engine_config
 from quantfusion.risk.account_budget import plan_account_risk_budget
 
 
 def test_immaterial_overshoot_with_comfortable_budget_defers_held_trims():
-    """Immaterial overshoot + comfortable rlb + real drawdown skips reserve trim."""
+    """Immaterial overshoot + comfortable rlb + equity/peak ≤ 0.9245 skips reserve trim."""
     cfg = default_engine_config()
     equity = 920_000.
     peak = 1_000_000.
@@ -45,7 +45,7 @@ def test_immaterial_single_group_also_defers_when_budget_comfortable():
 
 
 def test_immaterial_overshoot_with_tight_budget_still_trims():
-    """Tight remaining_loss_budget keeps main's full ordinary reserve trim."""
+    """Tight remaining_loss_budget keeps the ordinary shared pro-rata reserve trim."""
     cfg = default_engine_config()
     equity = 850_000.
     books = [(0, '300308', 'turtle_breakout', 1500, 100.),
@@ -133,8 +133,8 @@ def test_alert_path_does_not_defer_ordinary_held_trims():
     assert receipt['ordinary_held_trim_deferred'] is False
 
 
-def test_pool_j_boundary_near_peak_still_trims():
-    """eq/peak just under old 0.925 but above 0.9245 must still trim (Pool J)."""
+def test_near_peak_boundary_just_above_razor_still_trims():
+    """equity/peak just above 0.9245 (e.g. 0.9248) must still trim."""
     cfg = default_engine_config()
     equity = 924_800.
     peak = 1_000_000.
