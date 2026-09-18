@@ -1,0 +1,305 @@
+{
+  "common-5": {
+    "TR": 9.351672960887004,
+    "clips": 11,
+    "bind": {
+      "tie": 1,
+      "gap": 6,
+      "gross": 4
+    },
+    "deferred_clips": 0,
+    "gross_scale0": 0,
+    "sample": [
+      {
+        "date": "2025-09-03",
+        "removed": 28800,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9987206407844046
+      },
+      {
+        "date": "2025-11-26",
+        "removed": 700,
+        "gross_scale": 1.0,
+        "gap_scale": 0.8938455043735347,
+        "ordinary_buy_scale": 0.8938455043735347,
+        "binding": "gap",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9223243578746165
+      },
+      {
+        "date": "2025-12-02",
+        "removed": 13900,
+        "gross_scale": 1.0,
+        "gap_scale": 0.08473960932329631,
+        "ordinary_buy_scale": 0.08473960932329631,
+        "binding": "gap",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9269801559174344
+      },
+      {
+        "date": "2025-12-03",
+        "removed": 30000,
+        "gross_scale": 0.6460097675361944,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "gross",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9106439236079078
+      },
+      {
+        "date": "2025-12-04",
+        "removed": 63200,
+        "gross_scale": 0.3830967448032476,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "gross",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9215312904563074
+      },
+      {
+        "date": "2025-12-05",
+        "removed": 60400,
+        "gross_scale": 0.3833769951167359,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "gross",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9222059005839434
+      },
+      {
+        "date": "2026-03-18",
+        "removed": 3400,
+        "gross_scale": 1.0,
+        "gap_scale": 0.7733398361198889,
+        "ordinary_buy_scale": 0.7733398361198889,
+        "binding": "gap",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.8774841097937021
+      },
+      {
+        "date": "2026-03-20",
+        "removed": 33100,
+        "gross_scale": 0.3662198371566079,
+        "gap_scale": 0.10430415934862726,
+        "ordinary_buy_scale": 0.10430415934862726,
+        "binding": "gap",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9042035833222675
+      }
+    ]
+  },
+  "common-17": {
+    "TR": 8.610542744515504,
+    "clips": 63,
+    "bind": {
+      "tie": 11,
+      "gross": 15,
+      "gap": 37
+    },
+    "deferred_clips": 0,
+    "gross_scale0": 0,
+    "sample": [
+      {
+        "date": "2025-06-24",
+        "removed": 20500,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 45502.868119681254,
+        "eq_peak": 0.9290066457550124
+      },
+      {
+        "date": "2025-09-03",
+        "removed": 29300,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9982998898831877
+      },
+      {
+        "date": "2025-09-05",
+        "removed": 1100,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9408351044469694
+      },
+      {
+        "date": "2025-09-08",
+        "removed": 1000,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 762829.103938695,
+        "eq_peak": 0.8808097575018303
+      },
+      {
+        "date": "2025-09-09",
+        "removed": 1000,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 1748083.3250442226,
+        "eq_peak": 0.8669650009208614
+      },
+      {
+        "date": "2025-09-10",
+        "removed": 1100,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9072411275026561
+      },
+      {
+        "date": "2025-09-17",
+        "removed": 112000,
+        "gross_scale": 0.00569222224878339,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "gross",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9292844822352009
+      },
+      {
+        "date": "2025-10-13",
+        "removed": 49600,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 812280.5903268838,
+        "eq_peak": 0.9191097176592667
+      }
+    ]
+  },
+  "pool_h": {
+    "TR": 2.069154197025501,
+    "clips": 19,
+    "bind": {
+      "tie": 7,
+      "gross": 5,
+      "gap": 7
+    },
+    "deferred_clips": 1,
+    "gross_scale0": 0,
+    "sample": [
+      {
+        "date": "2025-08-05",
+        "removed": 44200,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 350325.54930414655,
+        "eq_peak": 0.912731533878575
+      },
+      {
+        "date": "2025-08-19",
+        "removed": 2400,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 39254.86566268932,
+        "eq_peak": 0.9290075323326867
+      },
+      {
+        "date": "2025-08-20",
+        "removed": 30800,
+        "gross_scale": 0.1090778495151286,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "gross",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9242547724965423
+      },
+      {
+        "date": "2025-08-21",
+        "removed": 8000,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": true,
+        "overshoot": 53434.89148346102,
+        "eq_peak": 0.9160891052748481
+      },
+      {
+        "date": "2025-12-10",
+        "removed": 36400,
+        "gross_scale": 0.08441069765181407,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "gross",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9126492476183953
+      },
+      {
+        "date": "2025-12-12",
+        "removed": 47000,
+        "gross_scale": 0.25722503561033583,
+        "gap_scale": 0.2028851735917707,
+        "ordinary_buy_scale": 0.2028851735917707,
+        "binding": "gap",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.9242897330808715
+      },
+      {
+        "date": "2025-12-15",
+        "removed": 8600,
+        "gross_scale": 1.0,
+        "gap_scale": 1.0,
+        "ordinary_buy_scale": 1.0,
+        "binding": "tie",
+        "deferred": false,
+        "overshoot": 300963.0417654505,
+        "eq_peak": 0.8950503906715601
+      },
+      {
+        "date": "2025-12-17",
+        "removed": 4500,
+        "gross_scale": 0.7105054263566212,
+        "gap_scale": 0.6106563324182611,
+        "ordinary_buy_scale": 0.6106563324182611,
+        "binding": "gap",
+        "deferred": false,
+        "overshoot": 0.0,
+        "eq_peak": 0.897358481921691
+      }
+    ]
+  }
+}

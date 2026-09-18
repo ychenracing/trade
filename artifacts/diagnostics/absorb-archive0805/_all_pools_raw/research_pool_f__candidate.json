@@ -1,7 +1,7 @@
 {
   "label": "candidate",
-  "sha": "ac0aa3836c0bb8241a6799015ac786d54460278e",
-  "tree": "87e0d13ba0144a058310134384d6ef98603290a6",
+  "sha": "5c678a314519b06f00580643b3c662aa2f1d8df3",
+  "tree": "27c5156211999549ef51269c0210f7bbc9360512",
   "engine": "BacktestEngine",
   "window": {
     "start": "2025-04-01",
@@ -41,7 +41,7 @@
     "688498": "\u6e90\u6770\u79d1\u6280",
     "002384": "\u4e1c\u5c71\u7cbe\u5bc6"
   },
-  "elapsed_sec": 139.5906,
+  "elapsed_sec": 27.1308,
   "final_assets": 19148199.91793801,
   "wealth_multiple": 9.574099958969004,
   "total_return": 8.574099958969004,
