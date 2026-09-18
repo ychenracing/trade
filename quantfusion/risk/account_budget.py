@@ -371,8 +371,10 @@ def plan_account_risk_budget(
         #    (0.85 × equity × stress_fraction),
         # 3) lifetime drawdown is real enough that we are not in the
         #    razor-thin near-peak band where gross_cap first binds
-        #    (equity / peak ≤ 0.925). That band is where a single deferred
-        #    ordinary trim has been path-catastrophic on Core17.
+        #    (equity / peak ≤ 0.9245). 0.925 left a one-day Pool J
+        #    deferral at ~0.9248 that cost ~0.56 TR; 0.9245 still admits
+        #    measured common-5 / pool_h wins near 0.9243–0.9245 while
+        #    keeping Core17's ~0.928–0.931 band excluded.
         # Otherwise keep main's shared pro-rata reserve funding.
         # No sub-industry group-count gate. Alert / shock / direct-loss /
         # concentration / weak-book / locks / fail-closed stay hard.
@@ -382,7 +384,7 @@ def plan_account_risk_budget(
         budget_comfortable = (
             receipt['remaining_loss_budget']
             >= 0.85 * ordinary_stress_envelope - 1e-8
-            and equity / peak <= 0.925 + 1e-12
+            and equity / peak <= 0.9245 + 1e-12
         )
         if material_overshoot or not budget_comfortable:
             fraction = overshoot / gross
@@ -605,7 +607,7 @@ def plan_account_risk_budget(
                 and gross - cap <= equity * daily_loss_limit + 1e-8
                 and receipt['remaining_loss_budget']
                 >= 0.85 * equity * receipt['stress_fraction'] - 1e-8
-                and equity / peak <= 0.925 + 1e-12
+                and equity / peak <= 0.9245 + 1e-12
             ),
             "observed_shock_candidates": candidates,
             "observed_shock_confirmed": shock_confirmed,

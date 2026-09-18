@@ -1,0 +1,117 @@
+{
+  "pool": "research_pool_j",
+  "symbols": [
+    "688256",
+    "601869",
+    "688498",
+    "002384"
+  ],
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "incumbent_TR": 4.0091356254576285,
+  "candidate_TR": 3.451856778282128,
+  "delta_TR": -0.5572788471755006,
+  "incumbent_fills": 588,
+  "candidate_fills": 526,
+  "first_trade_divergence": {
+    "index": 167,
+    "incumbent": [
+      "2025-09-26",
+      "601869",
+      "sell",
+      "",
+      100,
+      106.05384,
+      "account_budget_trim"
+    ],
+    "candidate": [
+      "2025-09-29",
+      "601869",
+      "sell",
+      "",
+      800,
+      102.25764,
+      "account_budget_trim"
+    ]
+  },
+  "first_envelope_divergence": {
+    "date": "2025-04-01",
+    "incumbent": {
+      "date": "2025-04-01",
+      "ordinary_held_trim_deferred": false,
+      "ordinary_held_overshoot": 0.0,
+      "buy_shares_removed": 0,
+      "ordinary_buy_scale": null,
+      "buy_gross_scale": 1.0,
+      "buy_gap_scale": 1.0,
+      "equity": 2000000.0,
+      "lifetime_peak": 2000000.0,
+      "gross_cap": 2000000.0,
+      "gross": null,
+      "remaining_loss_budget": 360000.0,
+      "new_reduction_orders": 0
+    },
+    "candidate": {
+      "date": "2025-04-01",
+      "ordinary_held_trim_deferred": false,
+      "ordinary_held_overshoot": 0.0,
+      "buy_shares_removed": 0,
+      "ordinary_buy_scale": 1.0,
+      "buy_gross_scale": 1.0,
+      "buy_gap_scale": 1.0,
+      "equity": 2000000.0,
+      "lifetime_peak": 2000000.0,
+      "gross_cap": 2000000.0,
+      "gross": null,
+      "remaining_loss_budget": 360000.0,
+      "new_reduction_orders": 0
+    },
+    "equity_over_peak_inc": 1.0,
+    "equity_over_peak_cand": 1.0,
+    "kind": "field_diff"
+  },
+  "first_wealth_divergence": {
+    "date": "2025-09-26",
+    "assets_inc": 4678452.751605751,
+    "assets_cand": 4668019.112134751,
+    "delta": -10433.63947100006
+  },
+  "candidate_only_deferrals": [
+    {
+      "date": "2025-09-25",
+      "overshoot": 59825.76710795425,
+      "equity_over_peak": 0.9248055924122748,
+      "buy_shares_removed_inc": 0,
+      "buy_shares_removed_cand": 0,
+      "new_reduction_orders_inc": 13,
+      "new_reduction_orders_cand": 0,
+      "remaining_loss_budget": 551447.2562073106,
+      "gross": null,
+      "gross_cap": 4618486.232892046
+    },
+    {
+      "date": "2026-05-29",
+      "overshoot": 57045.3334940467,
+      "equity_over_peak": 0.9131458825927921,
+      "buy_shares_removed_inc": 0,
+      "buy_shares_removed_cand": 0,
+      "new_reduction_orders_inc": 0,
+      "new_reduction_orders_cand": 0,
+      "remaining_loss_budget": 794421.8901808113,
+      "gross": null,
+      "gross_cap": 6653449.666505953
+    }
+  ],
+  "deferral_count": 2,
+  "context_trades_on_first_date": {
+    "date": "2025-04-01",
+    "incumbent": [],
+    "candidate": []
+  },
+  "elapsed": {
+    "incumbent": 17.189177236999967,
+    "candidate": 19.077722333000565
+  }
+}

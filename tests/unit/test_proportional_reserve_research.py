@@ -21,7 +21,7 @@ def test_immaterial_overshoot_with_comfortable_budget_defers_held_trims():
     assert receipt['remaining_loss_budget'] >= (
         0.85 * equity * receipt['stress_fraction'] - 1e-6
     )
-    assert equity / peak <= 0.925 + 1e-12
+    assert equity / peak <= 0.9245 + 1e-12
     assert actions == []
     assert receipt['ordinary_held_trim_deferred'] is True
     assert receipt['strategy_valid_holdings_preserved'] is True
@@ -67,7 +67,7 @@ def test_immaterial_overshoot_with_tight_budget_still_trims():
 
 
 def test_near_peak_razor_band_still_trims_despite_high_rlb():
-    """Near-peak binding band (equity/peak > 0.925) keeps reserve trim."""
+    """Near-peak binding band (equity/peak > 0.9245) keeps reserve trim."""
     cfg = default_engine_config()
     equity = 929_000.
     peak = 1_000_000.
@@ -84,7 +84,7 @@ def test_near_peak_razor_band_still_trims_despite_high_rlb():
     assert receipt['remaining_loss_budget'] >= (
         0.85 * equity * receipt['stress_fraction'] - 1e-6
     )
-    assert equity / peak > 0.925
+    assert equity / peak > 0.9245
     assert len(actions) == 2
     assert receipt['ordinary_held_trim_deferred'] is False
 
@@ -130,4 +130,22 @@ def test_alert_path_does_not_defer_ordinary_held_trims():
         risk_alert_active=True,
     )
     assert receipt['ordinary_path_active'] is False
+    assert receipt['ordinary_held_trim_deferred'] is False
+
+
+def test_pool_j_boundary_near_peak_still_trims():
+    """eq/peak just under old 0.925 but above 0.9245 must still trim (Pool J)."""
+    cfg = default_engine_config()
+    equity = 924_800.
+    peak = 1_000_000.
+    books = [(0, '300308', 'turtle_breakout', 4500, 100.),
+             (1, '603986', 'dual_ma', 4500, 100.)]
+    receipt, actions = plan_account_risk_budget(
+        equity, peak, cfg, books, [],
+        lambda symbol: float(symbol == '603986'), date_str='2026-01-05',
+        preserve_strategy_valid_holdings=True,
+    )
+    assert receipt['gross_before'] > receipt['gross_cap']
+    assert 0.9245 < equity / peak <= 0.925 + 1e-12
+    assert len(actions) == 2
     assert receipt['ordinary_held_trim_deferred'] is False
