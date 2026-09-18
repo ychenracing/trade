@@ -353,7 +353,7 @@ def test_sleeve_alert_cannot_override_latest_portfolio_alert_state():
 
 
 def test_independent_confirmed_buy_is_selected_before_ordinary_buy():
-    """A confirmed new group receives scarce loss budget before an ordinary buy."""
+    """Debit probes must not reopen a zero incumbent gross/gap envelope."""
     engine, state, dates = fixture(shares=2_000, cash=65_000.)
     frame = state.data_map['300308']
     state.data_map.update({'603986': frame.copy(), '300502': frame.copy()})
@@ -376,12 +376,11 @@ def test_independent_confirmed_buy_is_selected_before_ordinary_buy():
         preserve_strategy_valid_holdings=True,
     )
     by_symbol = {signal.symbol: signal.target_shares for signal, _ in state.pending}
-    assert 0 < by_symbol['603986'] < 1_000
-    assert by_symbol.get('300502', 0) == 0
+    # Held gap already exhausts the loss budget → incumbent scale 0.0.
+    assert by_symbol == {}
+    assert events[-1]['buy_scales'] == [0.0, 0.0]
+    assert events[-1]['ordinary_allocator_active'] is True
     assert events[-1]['quality_prioritized_buy_indexes'] == [0]
-    assert events[-1]['ordinary_total_loss_debit'] <= events[-1][
-        'remaining_loss_budget'
-    ]
 
 
 def test_budget_derives_dual_ma_handoff_from_same_day_filled_exit():
@@ -404,7 +403,7 @@ def test_budget_derives_dual_ma_handoff_from_same_day_filled_exit():
         preserve_strategy_valid_holdings=True,
     )
     assert [(signal.symbol, signal.target_shares) for signal, _ in state.pending] == [
-        ('300308', 6_600),
+        ('300308', 3_900),
     ]
     assert events[-1]['strategy_handoff_symbols'] == ['300308']
     assert events[-1]['quality_prioritized_buy_indexes'] == [0]
@@ -705,11 +704,13 @@ def test_budget_derives_proven_early_dual_transition_from_completed_atr_cycle():
         [state], dates[0], 90_000., 100_000., events,
         preserve_strategy_valid_holdings=True,
     )
-    assert state.pending[0][0].target_shares == 5_000
+    assert state.pending[0][0].target_shares == 3_900
     assert events[-1]['proven_early_dual_book_ids'] == [
         (0, '300308', 'dual_ma'),
     ]
-    assert events[-1]['proven_dual_admitted_buy_indexes'] == [0]
+    # Envelope scale < 1.0, so the sleeve is prioritized but not fully admitted.
+    assert events[-1]['proven_dual_admitted_buy_indexes'] == []
+    assert events[-1]['quality_prioritized_buy_indexes'] == [0]
 
 
 def test_confirmed_multigroup_shock_funds_relief_from_direct_hit_books_first():

@@ -176,9 +176,11 @@ def test_strategy_valid_path_keeps_non_alert_independent_breakout():
         date_str='2025-09-12', preserve_strategy_valid_holdings=True,
         protection_by_book=complete_protection(books, stop_ratio=0.80),
     )
-    assert receipt['buy_scale'] == 1.
+    assert receipt['ordinary_allocator_active'] is True
+    assert 0.0 < receipt['buy_scales'][0] <= 1.0 + 1e-12
     assert receipt['quality_prioritized_buy_indexes'] == [0]
-    assert receipt['quality_admitted_buy_indexes'] == [0]
+    # Envelope scale < 1.0 prevents full quality admission even for evidenced breakouts.
+    assert receipt['quality_admitted_buy_indexes'] == []
     assert actions == []
 
 
@@ -315,9 +317,11 @@ def test_repeated_proven_low_gap_reentry_admits_paired_turtle_with_durable_atr()
         repeated_proven_reentry_symbols={'603986'},
         protection_by_book=complete_protection(books, stop_ratio=0.80),
     )
-    assert receipt['buy_scales'] == [1.]
+    assert receipt['ordinary_allocator_active'] is True
+    assert 0.0 < receipt['buy_scales'][0] < 1.0
     assert receipt['quality_prioritized_buy_indexes'] == [0]
-    assert receipt['repeated_reentry_admitted_buy_indexes'] == [0]
+    # Scarce incumbent envelope blocks full repeated-reentry admission.
+    assert receipt['repeated_reentry_admitted_buy_indexes'] == []
 
 
 def test_high_gap_repeated_reentry_keeps_ordinary_turtle_budget():

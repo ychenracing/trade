@@ -102,11 +102,20 @@ def test_missing_buy_stop_is_fail_closed_but_complete_stop_uses_available_budget
     assert missing_receipt["protection_fallback_buy_count"] == 1
     assert protected_receipt["protection_complete_buy_count"] == 1
     assert 0 < missing_receipt["approved_buy_shares"][0]
+    # Executable-loss admits more for a complete stop before the incumbent
+    # gross/gap envelope is applied; after the envelope cap both may lot-round
+    # to the same approved size, but the protected probe must not be worse.
+    assert (
+        missing_receipt["ordinary_buy_cohorts"][0]["approved_shares"][0]
+        < protected_receipt["ordinary_buy_cohorts"][0]["approved_shares"][0]
+    )
     assert (
         missing_receipt["approved_buy_shares"][0]
-        < protected_receipt["approved_buy_shares"][0]
+        <= protected_receipt["approved_buy_shares"][0]
         < protected.target_shares
     )
+    assert protected_receipt["buy_scales"][0] <= 1.0 + 1e-12
+    assert missing_receipt["buy_scales"][0] <= protected_receipt["buy_scales"][0] + 1e-12
     assert protected_receipt["ordinary_total_loss_debit"] <= protected_receipt[
         "remaining_loss_budget"
     ]
@@ -248,7 +257,20 @@ def test_integer_binary_search_matches_slow_lot_oracle():
 
     row = receipt["ordinary_buy_cohorts"][0]
     assert row["approved_lots"] == best_lots
-    assert receipt["approved_buy_shares"] == best_shares
+    assert row["approved_shares"] == best_shares
+    # Final receipt shares are the cohort probe clipped to the incumbent scale.
+    from quantfusion.domain.rules import floor_to_lot
+
+    assert receipt["approved_buy_shares"] == [
+        floor_to_lot(signal.target_shares * scale)
+        for signal, scale in zip(signals, receipt["buy_scales"], strict=True)
+    ]
+    assert all(
+        approved <= probe
+        for approved, probe in zip(
+            receipt["approved_buy_shares"], row["approved_shares"], strict=True,
+        )
+    )
     assert receipt["ordinary_total_loss_debit"] <= receipt["remaining_loss_budget"]
     assert actions == []
 
@@ -320,6 +342,76 @@ def test_pathological_request_uses_logarithmic_feasibility_evaluations():
     assert evaluations <= math.ceil(math.log2(requested_lots + 1)) + 6
     assert requested_lots / evaluations >= 10.0
     assert row["approved_shares"] == [signal.target_shares]
+
+
+def test_scarce_gap_envelope_caps_cohort_allocator_scales():
+    """Cohort priority may not exceed the incumbent min(gross, gap) scale.
+
+    When held gap debit already exhausts the loss budget, the incumbent scale is
+    0.0 even if executable-loss accounting would still admit buys.  The cohort
+    allocator must not reopen that envelope.
+    """
+    cfg = default_engine_config()
+    books = [(0, "300308", "turtle_breakout", 3_000, 100.0)]
+    protection = _complete(books, stop_ratio=0.95)
+    signal = Signal(
+        "300502",
+        "turtle_breakout",
+        "buy",
+        500,
+        100.0,
+        stop_loss=95.0,
+        signal_date="2026-06-01",
+    )
+    buys = [(0, signal, signal.target_shares * signal.price)]
+    equity = 500_000.0
+    peak = 550_000.0
+
+    receipt, _ = budget.plan_account_risk_budget(
+        equity,
+        peak,
+        cfg,
+        books,
+        buys,
+        lambda _: 1.0,
+        date_str="2026-06-01",
+        preserve_strategy_valid_holdings=True,
+        protection_by_book=protection,
+    )
+    held_risk = budget._ordinary_risk_debit(
+        "300308",
+        100.0,
+        cfg,
+        receipt,
+        protection[(0, "300308", "turtle_breakout")],
+    )
+    buy_risk = budget._ordinary_risk_debit(
+        "300502",
+        100.0,
+        cfg,
+        receipt,
+        budget.ProtectionEvidence(95.0, "signal_stop", complete=True),
+    )
+    raw_scales, _ = budget._allocate_ordinary_buy_cohorts(
+        buys=buys,
+        buy_risks=[buy_risk],
+        blocked=[False],
+        quality_classes=[4],
+        score=lambda _: 1.0,
+        held_groups={"optical"},
+        held_risks=[held_risk],
+        held_shares=[3_000],
+        gross_before=300_000.0,
+        ordinary_gross_cap=receipt["ordinary_gross_cap"],
+        remaining_loss_budget=receipt["remaining_loss_budget"],
+        concentration_threshold=CONCENTRATION_CAP * equity,
+    )
+
+    assert receipt["ordinary_allocator_active"] is True
+    assert receipt["current_gap_debit"] > receipt["remaining_loss_budget"]
+    assert raw_scales[0] > receipt["buy_scales"][0] + 1e-12
+    assert receipt["buy_scales"] == [0.0]
+    assert receipt["approved_buy_shares"] == [0]
 
 
 def test_residual_shortfall_trims_highest_marginal_risk_book_first():

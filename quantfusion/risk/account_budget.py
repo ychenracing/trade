@@ -334,6 +334,9 @@ def _cohort_approved_shares(
     return [floor_to_lot(quantity * scale) for quantity in requested_shares]
 
 
+
+
+
 def _allocate_ordinary_buy_cohorts(
     *,
     buys: Sequence[tuple[int, Signal, float]],
@@ -1224,6 +1227,9 @@ def plan_account_risk_budget(
     # executable-loss priority.  When that envelope already admits every buy at
     # full size, leave scales untouched so ordinary production stays identical
     # to the diagnostic AB5-off healthy path (and to pre-refactor AB5).
+    # When the envelope is scarce, cohort priority may not exceed the incumbent
+    # scale: the allocator's ordinary-gross/debit probe is not a license to
+    # admit more size than min(gross_scale, gap_scale) already allowed.
     ordinary_budget_scarce = ordinary_buy_scale < 1.0 - 1e-12
     if ordinary_path and ordinary_budget_scarce:
         buy_scales, ordinary_allocation_diagnostics = (
@@ -1242,6 +1248,13 @@ def plan_account_risk_budget(
                 concentration_threshold=concentration_threshold,
             )
         )
+        # Keep cohort diagnostics above, but size scarce ordinary buys with the
+        # incumbent envelope itself. Executable-loss probes must not reopen a
+        # looser ordinary-gross/debit budget than min(gross_scale, gap_scale).
+        buy_scales = [
+            0.0 if blocked else ordinary_buy_scale
+            for blocked in shock_reduced_pyramid
+        ]
     elif ordinary_path:
         buy_scales = [
             0.0 if blocked else 1.0 for blocked in shock_reduced_pyramid

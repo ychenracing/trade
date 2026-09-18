@@ -1,0 +1,83 @@
+{
+  "as_of": "2026-09-18T12:42+0800",
+  "pool": "common-3",
+  "symbols": [
+    "300308",
+    "300502",
+    "300394"
+  ],
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "measured_sha_note": "working tree = F1 734c59f + scarce incumbent-scale envelope fix",
+  "first_economic_divergence": {
+    "decision_date": "2025-06-23",
+    "fill_date": "2025-06-24",
+    "ordinary_trim": {
+      "candidate": {
+        "symbol": "300394",
+        "shares": 100,
+        "reason": "account_budget_trim"
+      },
+      "incumbent": null,
+      "incumbent_first_trim_date": "2025-09-03"
+    },
+    "buy_fill": {
+      "symbol": "300502",
+      "side": "buy",
+      "candidate_shares": [
+        500,
+        500,
+        100
+      ],
+      "incumbent_shares": [
+        500,
+        400,
+        100
+      ]
+    },
+    "equity_delta_on_2025-06-24": -114.17
+  },
+  "classification": {
+    "implementation_defect": "cohort allocator sized buys against ordinary_gross_cap+executable-loss debit and ignored scarce incumbent min(gross_scale,gap_scale), admitting buys when gap scale was already 0",
+    "fix": "when ordinary_budget_scarce, overwrite buy_scales with uniform ordinary_buy_scale (keep cohort diagnostics)",
+    "residual_inherent": "after envelope fix, common-3 TR 6.538 still below main 6.708; residual driven by ordinary held executable-loss debit trims while gross<=cap on the all-optical (300308/300502/300394) cohort \u2014 incumbent does not trim on that path under preserve_strategy_valid_holdings",
+    "second_structural_candidate_justified": true,
+    "second_candidate": "Keep envelope-capped ordinary buys; replace ordinary held debit trims with incumbent gross/stress relief under preserve_strategy_valid_holdings (executable-loss for buy allocation/diagnostics only)."
+  },
+  "economics": {
+    "as_of": "2026-09-18T12:42+0800",
+    "fix": "uniform_scarce_incumbent_scale",
+    "measured_against_f1_code_plus_envelope_fix": true,
+    "prior_tr_at_734c59f": {
+      "common-1": 3.928538056569,
+      "common-3": 4.33027564811475
+    },
+    "common-1": {
+      "candidate": {
+        "total_return": 3.928538056569,
+        "max_drawdown": -0.12468509293898083
+      },
+      "incumbent": {
+        "total_return": 3.928538056569,
+        "max_drawdown": -0.12468509293898083
+      },
+      "delta_tr": 0.0,
+      "pass_not_below_main": true
+    },
+    "common-3": {
+      "candidate": {
+        "total_return": 6.538348544467499,
+        "max_drawdown": null
+      },
+      "incumbent": {
+        "total_return": 6.707950188316252,
+        "max_drawdown": -0.16162524913761778
+      },
+      "delta_tr": -0.1696016438487531,
+      "pass_not_below_main": false
+    },
+    "verdict": "IMPROVED_BUT_STILL_BELOW_MAIN"
+  }
+}
