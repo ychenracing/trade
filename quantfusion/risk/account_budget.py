@@ -568,103 +568,6 @@ def _allocate_ordinary_buy_cohorts(
     }
 
 
-def _plan_ordinary_held_reductions(
-    *,
-    books: Sequence[tuple[int, str, str, int, float]],
-    risks: Sequence[_RiskDebit],
-    remaining_loss_budget: float,
-    score: Callable[[str], float],
-    date_str: str,
-    concentration_threshold: float,
-) -> tuple[list[RiskAction], dict[str, Any]]:
-    """Trim only a real residual held-loss shortfall, by marginal risk."""
-    shares = [book[3] for book in books]
-    initial_debit = _grouped_debit(
-        risks, shares, concentration_threshold=concentration_threshold,
-    )
-    current_debit = initial_debit
-    actions_by_index: dict[int, int] = {}
-    evaluations = 1
-    while current_debit > remaining_loss_budget + 1e-8:
-        candidates: list[tuple[float, float, str, int, str, int]] = []
-        for index, ((state, symbol, strategy, quantity, price), risk) in enumerate(
-            zip(books, risks, strict=True)
-        ):
-            del quantity
-            if shares[index] <= 0:
-                continue
-            reduction = min(shares[index], 100)
-            trial = list(shares)
-            trial[index] -= reduction
-            debit = _grouped_debit(
-                risks, trial, concentration_threshold=concentration_threshold,
-            )
-            evaluations += 1
-            relief = current_debit - debit
-            if relief <= 1e-12:
-                continue
-            risk_rate = relief / (reduction * price)
-            candidates.append((
-                -round(risk_rate, 12),
-                require_finite("ordinary held trim score", score(symbol)),
-                symbol,
-                state,
-                strategy,
-                index,
-            ))
-        if not candidates:
-            raise RuntimeError("ordinary held debit could not be reduced monotonically")
-        index = min(candidates)[-1]
-        maximum_units = math.ceil(shares[index] / 100)
-
-        def debit_after(units: int) -> float:
-            nonlocal evaluations
-            evaluations += 1
-            trial = list(shares)
-            trial[index] -= min(shares[index], units * 100)
-            return _grouped_debit(
-                risks, trial, concentration_threshold=concentration_threshold,
-            )
-
-        if debit_after(maximum_units) > remaining_loss_budget + 1e-8:
-            chosen_units = maximum_units
-        else:
-            low, high = 1, maximum_units
-            while low < high:
-                middle = (low + high) // 2
-                if debit_after(middle) <= remaining_loss_budget + 1e-8:
-                    high = middle
-                else:
-                    low = middle + 1
-            chosen_units = low
-        reduction = min(shares[index], chosen_units * 100)
-        shares[index] -= reduction
-        actions_by_index[index] = actions_by_index.get(index, 0) + reduction
-        current_debit = _grouped_debit(
-            risks, shares, concentration_threshold=concentration_threshold,
-        )
-        evaluations += 1
-
-    actions = [
-        RiskAction(
-            symbol,
-            strategy,
-            reduction,
-            price,
-            date_str,
-            "account_budget_trim",
-            RISK_ACTION_PRIORITY["account_budget_trim"],
-            state_index=state,
-        )
-        for index, reduction in sorted(actions_by_index.items())
-        for state, symbol, strategy, _, price in [books[index]]
-    ]
-    return actions, {
-        "ordinary_held_loss_debit_before": initial_debit,
-        "ordinary_held_loss_debit_after": current_debit,
-        "ordinary_held_trim_evaluations": evaluations,
-    }
-
 
 def plan_account_risk_budget(
     equity: float, peak: float, cfg: Mapping[str, Any],
@@ -901,6 +804,7 @@ def plan_account_risk_budget(
     held_stress = sum(shares * price * stresses[symbol] for _, symbol, _, shares, price in books)
     buy_stress = sum(value * systemic_stress_fraction for _, signal, value in buys)
     shock_scale = 0. if shock_episode and buy_stress else 1.
+    stress_relief = max(0., held_stress - receipt['remaining_loss_budget']) if observed else 0.
     ordinary_buy_scale = min(gross_scale, gap_scale)
     # An alert governs the amount of new risk; it is not a permanent entry
     # lock.  Once prior reductions have actually filled, admit only the risk
@@ -966,6 +870,15 @@ def plan_account_risk_budget(
         else None
     )
     actions: list[RiskAction] = []
+    # Ordinary held books use incumbent gross/stress relief. Executable-loss
+    # debit remains buy-allocation and diagnostics evidence only — it must not
+    # force trims while gross already fits the close-known cap under
+    # preserve_strategy_valid_holdings (the all-optical common-3 residual).
+    relief = (
+        0.
+        if preserve_strategy_valid_holdings and not shock_confirmed
+        else max(0., gross - cap)
+    )
     ordinary_trim_diagnostics: dict[str, Any] = {
         "ordinary_held_loss_debit_before": ordinary_current_debit,
         "ordinary_held_loss_debit_after": ordinary_current_debit,
@@ -1075,18 +988,62 @@ def plan_account_risk_budget(
                         RISK_ACTION_PRIORITY["account_budget_trim"],
                         state_index=state,
                     ))
+    elif preserve_strategy_valid_holdings and not risk_alert_active and gross > cap:
+        # Fund the unchanged two-session reserve before a cycle alert. Share
+        # the necessary close-known reduction across books so score ordering
+        # does not erase one still-valid opportunity. These are plans, not fills.
+        fraction = (gross - cap) / gross
+        for state, symbol, strategy, shares, price in sorted(
+            books, key=lambda book: (book[1], book[0], book[2]),
+        ):
+            reduction = min(shares, math.ceil(shares * fraction / 100.) * 100)
+            if reduction:
+                actions.append(RiskAction(
+                    symbol, strategy, reduction, price, date_str,
+                    "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
+                    state_index=state,
+                ))
     else:
-        ordinary_actions, ordinary_trim_diagnostics = (
-            _plan_ordinary_held_reductions(
-                books=books,
-                risks=held_risks,
-                remaining_loss_budget=receipt["remaining_loss_budget"],
-                score=score,
-                date_str=date_str,
-                concentration_threshold=concentration_threshold,
+        for state, symbol, strategy, shares, price in sorted(
+            books, key=lambda book: (score(book[1]), book[1], book[0], book[2]),
+        ):
+            reduction = min(
+                shares,
+                math.ceil(
+                    max(relief / price, stress_relief / price / stresses[symbol]) / 100.
+                ) * 100,
             )
-        )
-        actions.extend(ordinary_actions)
+            if not reduction:
+                continue
+            actions.append(RiskAction(
+                symbol, strategy, reduction, price, date_str,
+                "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
+                state_index=state,
+            ))
+            relief = max(0., relief - reduction * price)
+            stress_relief = max(
+                0., stress_relief - reduction * price * stresses[symbol],
+            )
+    # Diagnostics only: residual held executable-loss after gross/stress plans.
+    residual_shares = [shares for _, _, _, shares, _ in books]
+    for action in actions:
+        for index, (state, symbol, strategy, _shares, _price) in enumerate(books):
+            if (
+                action.state_index == state
+                and action.symbol == symbol
+                and action.strategy_name == strategy
+            ):
+                residual_shares[index] = max(0, residual_shares[index] - action.shares)
+                break
+    ordinary_trim_diagnostics = {
+        "ordinary_held_loss_debit_before": ordinary_current_debit,
+        "ordinary_held_loss_debit_after": _grouped_debit(
+            held_risks,
+            residual_shares,
+            concentration_threshold=concentration_threshold,
+        ),
+        "ordinary_held_trim_evaluations": 0,
+    }
     held_groups = {
         SYMBOL_SUB_INDUSTRY.get(symbol, symbol) for _, symbol, _, shares, _ in books
         if shares

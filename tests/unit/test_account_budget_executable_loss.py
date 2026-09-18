@@ -51,13 +51,17 @@ def test_complete_protection_avoids_false_ordinary_trim_and_missing_falls_back()
 
     assert fallback["protection_fallback_book_count"] == 1
     assert fallback["ordinary_held_loss_debit_before"] > fallback["remaining_loss_budget"]
-    assert fallback_actions
     assert protected["protection_complete_book_count"] == 1
     assert protected["ordinary_held_loss_debit_before"] <= protected["remaining_loss_budget"]
-    assert protected_actions == []
     assert protected["ordinary_held_loss_debit_before"] < fallback[
         "ordinary_held_loss_debit_before"
     ]
+    # Held trims follow incumbent gross/stress relief, not debit shortfall. With
+    # gross already under the close-known cap, neither path reduces holdings;
+    # executable-loss debit remains diagnostics/buy evidence only.
+    assert fallback["gross_before"] <= fallback["gross_cap"] + 1e-8
+    assert fallback_actions == []
+    assert protected_actions == []
 
 
 def test_missing_buy_stop_is_fail_closed_but_complete_stop_uses_available_budget():
@@ -414,7 +418,14 @@ def test_scarce_gap_envelope_caps_cohort_allocator_scales():
     assert receipt["approved_buy_shares"] == [0]
 
 
-def test_residual_shortfall_trims_highest_marginal_risk_book_first():
+def test_ordinary_held_relief_uses_gross_cap_not_executable_loss_debit():
+    """Ordinary held reductions mirror incumbent gross/stress relief.
+
+    Executable-loss debit remains on the receipt for buy/diagnostics evidence,
+    but must not drive held trims when the gross/stress path already applies.
+    """
+    import math
+
     cfg = default_engine_config()
     books = [
         (0, "300394", "turtle_breakout", 5_000, 100.0),
@@ -439,9 +450,13 @@ def test_residual_shortfall_trims_highest_marginal_risk_book_first():
     assert receipt["ordinary_held_loss_debit_before"] > receipt[
         "remaining_loss_budget"
     ]
-    assert receipt["ordinary_held_loss_debit_after"] <= receipt[
-        "remaining_loss_budget"
-    ]
+    assert receipt["gross_before"] > receipt["gross_cap"]
+    required = receipt["gross_before"] - receipt["gross_cap"]
+    expected = min(5_000, math.ceil(required / 100.0 / 100.0) * 100)
+    # Score-ordered relief (preserve=False): weakest book funds gross shortfall.
     assert actions
     assert actions[0].symbol == "300394"
     assert all(action.symbol == "300394" for action in actions)
+    assert sum(action.shares for action in actions) == expected
+    # Debit-after is residual diagnostics only; it need not land under budget.
+    assert "ordinary_held_loss_debit_after" in receipt

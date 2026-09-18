@@ -79,5 +79,13 @@
       "pass_not_below_main": false
     },
     "verdict": "IMPROVED_BUT_STILL_BELOW_MAIN"
+  },
+  "candidate2": {
+    "as_of": "2026-09-18T12:50+0800",
+    "mechanism": "incumbent ordinary held gross/stress relief; executable-loss diagnostics/buy only",
+    "common-3_total_return": 6.707950188316252,
+    "incumbent_total_return": 6.707950188316252,
+    "pass_not_below_main": true,
+    "next": "5-share"
   }
 }

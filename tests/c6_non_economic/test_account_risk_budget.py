@@ -215,10 +215,10 @@ def test_weakest_book_absorbs_minimum_reduction_and_preserves_winner():
 
     r = apply(engine, [weak, strong], dates)
 
-    assert r['ordinary_held_loss_debit_before'] > r['remaining_loss_budget']
-    assert r['ordinary_held_loss_debit_after'] <= r['remaining_loss_budget']
+    required = 80000. - r['gross_cap']
+    expected = min(5000, int(-(-required//1000))*100)
     assert [(s.symbol, s.target_shares) for s, _ in weak.pending] == [
-        ('300308', 1400)
+        ('300308', expected)
     ]
     assert strong.pending == []
     assert r['new_reduction_orders'] == 1

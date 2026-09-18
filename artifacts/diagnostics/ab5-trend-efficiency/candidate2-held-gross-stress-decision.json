@@ -1,0 +1,42 @@
+{
+  "as_of": "2026-09-18T12:50+0800",
+  "candidate": 2,
+  "status": "PASS_COMMON_1_AND_3",
+  "mechanism": {
+    "keep": [
+      "F1 pass-through when envelope non-binding",
+      "scarce-day buy scales capped to incumbent ordinary_buy_scale (uniform; cohort diagnostics retained)"
+    ],
+    "change": "Ordinary held reductions use incumbent gross/stress relief under preserve_strategy_valid_holdings (pro-rata when gross>cap; score-ordered relief/stress otherwise). Executable-loss debit retained for buy allocation and diagnostics only; removed _plan_ordinary_held_reductions debit-driven trim path.",
+    "hard_paths_untouched": true,
+    "hard_paths": [
+      "alert",
+      "shock",
+      "direct-loss",
+      "weak-book",
+      "concentration",
+      "locks",
+      "fail-closed"
+    ]
+  },
+  "economics": {
+    "common-1": {
+      "candidate_total_return": 3.928538056569,
+      "incumbent_total_return": 3.928538056569,
+      "delta_tr": 0.0,
+      "pass_not_below_main": true,
+      "identical_to_main": true
+    },
+    "common-3": {
+      "candidate_total_return": 6.707950188316252,
+      "incumbent_total_return": 6.707950188316252,
+      "delta_tr": 0.0,
+      "pass_not_below_main": true,
+      "identical_to_main": true,
+      "prior_after_candidate1_envelope_fix": 6.538348544467499
+    },
+    "verdict": "PASS_CONTINUE_TO_COMMON_5"
+  },
+  "next_action": "5-share",
+  "checkpoint_a": "74 passed (healthy bull + account_risk_budget + executable_loss + observed_shock + proportional_reserve)"
+}

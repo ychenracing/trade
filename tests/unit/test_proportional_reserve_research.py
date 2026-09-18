@@ -1,9 +1,9 @@
-"""Research: fund the reserve without uniformly cutting every opportunity."""
+"""Research: retain each opportunity while funding the existing reserve."""
 from quantfusion.config.engine import default_engine_config
 from quantfusion.risk.account_budget import plan_account_risk_budget
 
 
-def test_preserved_books_fund_residual_shortfall_from_weaker_book_first():
+def test_preserved_books_share_required_reserve_without_erasing_one_book():
     books = [(0, '300308', 'turtle_breakout', 4000, 100.),
              (1, '603986', 'dual_ma', 4000, 100.)]
     receipt, actions = plan_account_risk_budget(
@@ -11,12 +11,10 @@ def test_preserved_books_fund_residual_shortfall_from_weaker_book_first():
         lambda symbol: float(symbol == '603986'), date_str='2026-01-05',
         preserve_strategy_valid_holdings=True,
     )
-    assert len(actions) == 1
-    assert actions[0].symbol == '300308'
-    assert 0 < actions[0].shares < 4000
-    assert receipt['ordinary_held_loss_debit_after'] <= receipt[
-        'remaining_loss_budget'
-    ]
+    assert len(actions) == 2
+    assert actions[0].shares == actions[1].shares
+    assert all(0 < action.shares < 4000 for action in actions)
+    assert 800_000. - sum(a.shares * a.price for a in actions) <= receipt['gross_cap']
     assert receipt['strategy_valid_holdings_preserved'] is False
 
 
