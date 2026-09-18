@@ -1,0 +1,86 @@
+name: Apply PR120 Candidate Transfer
+
+on:
+  push:
+    branches:
+      - agent/ab5-trend-efficiency
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr120-candidate-transfer
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/ab5-trend-efficiency
+      - name: Reconstruct and verify candidate patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+
+          manifest_path = Path('.github/agent-transfer/pr120/manifest.json')
+          manifest = json.loads(manifest_path.read_text())
+          parent = __import__('subprocess').check_output(
+              ['git', 'rev-parse', 'HEAD^'], text=True,
+          ).strip()
+          if parent != manifest['base_head']:
+              raise SystemExit(
+                  f"transfer parent mismatch: {parent} != {manifest['base_head']}"
+              )
+          reconstructed = bytearray()
+          expected_offset = 0
+          for part in manifest['patch']['parts']:
+              data = Path(part['path']).read_bytes()
+              if part['offset'] != expected_offset:
+                  raise SystemExit('non-contiguous transfer offset')
+              if len(data) != part['length']:
+                  raise SystemExit(f"length mismatch for {part['path']}")
+              if hashlib.sha256(data).hexdigest() != part['sha256']:
+                  raise SystemExit(f"hash mismatch for {part['path']}")
+              reconstructed.extend(data)
+              expected_offset += len(data)
+          payload = bytes(reconstructed)
+          if len(payload) != manifest['patch']['length']:
+              raise SystemExit('reconstructed patch length mismatch')
+          if hashlib.sha256(payload).hexdigest() != manifest['patch']['sha256']:
+              raise SystemExit('reconstructed patch hash mismatch')
+          Path('/tmp/pr120-candidate.patch').write_bytes(payload)
+          PY
+          git apply --check /tmp/pr120-candidate.patch
+          git apply --index /tmp/pr120-candidate.patch
+      - name: Verify reconstructed source bytes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+
+          manifest = json.loads(
+              Path('.github/agent-transfer/pr120/manifest.json').read_text()
+          )
+          for entry in manifest['result_files']:
+              data = Path(entry['path']).read_bytes()
+              if len(data) != entry['length']:
+                  raise SystemExit(f"result length mismatch for {entry['path']}")
+              if hashlib.sha256(data).hexdigest() != entry['sha256']:
+                  raise SystemExit(f"result hash mismatch for {entry['path']}")
+          PY
+      - name: Commit reconstructed candidate
+        run: |
+          git rm -r .github/agent-transfer/pr120
+          git rm .github/workflows/agent-pr120-apply-candidate.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "refactor: allocate ordinary AB5 risk by executable loss"
+          git push origin HEAD:refs/heads/agent/ab5-trend-efficiency

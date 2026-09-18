@@ -1,0 +1,169 @@
++                held_shares=held_shares,
++                gross_before=gross,
++                ordinary_gross_cap=receipt["ordinary_gross_cap"],
++                remaining_loss_budget=receipt["remaining_loss_budget"],
++                concentration_threshold=concentration_threshold,
++            )
++        )
++    else:
++        buy_scales = [
++            (
++                0.0
++                if blocked
++                else gross_scale
++                if alert_proven
++                else base_buy_scale
++            )
++            for alert_proven, blocked in zip(
++                alert_proven_dual, shock_reduced_pyramid, strict=True,
++            )
++        ]
++    quality_admitted = [
++        priority and not blocked and scale >= 1.0 - 1e-12
++        for priority, blocked, scale in zip(
++            quality_priority, shock_reduced_pyramid, buy_scales, strict=True,
++        )
++    ]
++    handoff_admitted_actual = [
++        priority and scale >= 1.0 - 1e-12
++        for priority, scale in zip(handoff_admitted, buy_scales, strict=True)
++    ]
++    repeated_reentry_admitted_actual = [
++        priority and scale >= 1.0 - 1e-12
++        for priority, scale in zip(
++            repeated_reentry_admitted, buy_scales, strict=True,
+         )
+     ]
++    proven_dual_admitted_actual = [
++        priority and scale >= 1.0 - 1e-12
++        for priority, scale in zip(proven_dual_admitted, buy_scales, strict=True)
++    ]
++    binding = bool(
++        buys and any(scale < 1.0 - 1e-12 for scale in buy_scales)
++    )
++    reported_gross_scale = ordinary_gross_scale if ordinary_path else gross_scale
++    reported_gap_scale = (
++        min(buy_scales, default=1.0) if ordinary_path else gap_scale
++    )
++    approved_buy_shares = [
++        floor_to_lot(signal.target_shares * scale)
++        for (_, signal, _), scale in zip(buys, buy_scales, strict=True)
++    ]
++    approved_buy_count = sum(quantity > 0 for quantity in approved_buy_shares)
+     return {**receipt, "gross_before": gross, "buy_envelope_binding": binding,
+-            "buy_gross_scale": gross_scale, "current_gap_debit": current_gap,
+-            "requested_buy_gap_debit": buy_gap, "buy_gap_scale": gap_scale,
++            "buy_gross_scale": reported_gross_scale, "current_gap_debit": current_gap,
++            "requested_buy_gap_debit": buy_gap, "buy_gap_scale": reported_gap_scale,
++            "ordinary_allocator_active": ordinary_path,
++            "ordinary_concentration_threshold": concentration_threshold,
++            "protection_complete_book_count": sum(
++                risk.evidence_complete for risk in held_risks
++            ),
++            "protection_fallback_book_count": sum(
++                not risk.evidence_complete for risk in held_risks
++            ),
++            "protection_complete_buy_count": sum(
++                risk.evidence_complete for risk in buy_risks
++            ),
++            "protection_fallback_buy_count": sum(
++                not risk.evidence_complete for risk in buy_risks
++            ),
+             "observed_shock_candidates": candidates,
+             "observed_shock_confirmed": shock_confirmed,
+             "shocked_group_count": len(shocked_groups),
+@@ -612,18 +1343,24 @@ def plan_account_risk_budget(
+             "quality_admission_risk_state_available": (
+                 quality_admission_risk_state_available
+             ),
++            "quality_prioritized_buy_indexes": [
++                index for index, prioritized in enumerate(quality_priority)
++                if prioritized
++            ],
+             "quality_admitted_buy_indexes": [
+                 index for index, admitted in enumerate(quality_admitted) if admitted
+             ],
+             "handoff_admitted_buy_indexes": [
+-                index for index, admitted in enumerate(handoff_admitted) if admitted
++                index for index, admitted in enumerate(handoff_admitted_actual)
++                if admitted
+             ],
+             "repeated_reentry_admitted_buy_indexes": [
+-                index for index, admitted in enumerate(repeated_reentry_admitted)
+-                if admitted
++                index for index, admitted in enumerate(
++                    repeated_reentry_admitted_actual
++                ) if admitted
+             ],
+             "proven_dual_admitted_buy_indexes": [
+-                index for index, admitted in enumerate(proven_dual_admitted)
++                index for index, admitted in enumerate(proven_dual_admitted_actual)
+                 if admitted
+             ],
+             "alert_proven_dual_buy_indexes": [
+@@ -635,6 +1372,11 @@ def plan_account_risk_budget(
+                 if blocked
+             ],
+             "shock_reduced_pyramid_book_ids": shock_reduced_pyramid_books,
++            "approved_buy_count": approved_buy_count,
++            "all_buys_blocked": bool(buys) and approved_buy_count == 0,
++            **ordinary_trim_diagnostics,
++            **ordinary_allocation_diagnostics,
++            "approved_buy_shares": approved_buy_shares,
+             "buy_scales": buy_scales,
+             "buy_scale": min(buy_scales, default=base_buy_scale)}, actions
+ 
+@@ -712,6 +1454,7 @@ def apply_account_risk_budget(
+         if event.get('event') == 'account_budget_envelope'
+     ), ()))
+     books, buys = [], []
++    protection_by_book: dict[tuple[int, str, str], ProtectionEvidence] = {}
+     buy_slots: list[tuple[int, int]] = []
+     excluded_buy_slots: list[tuple[int, int]] = []
+     weak_book_ids: set[tuple[int, str, str]] = set()
+@@ -888,6 +1631,27 @@ def apply_account_risk_budget(
+                     raise ValueError("account budget requires every held mark")
+                 price = require_finite("held close", state.sleeve._latest_close_on_or_before(frame, date), min_value=0.000001)
+                 books.append((state_index, symbol, strategy, shares, price))
++                raw_stop = float(position.stop_loss)
++                if raw_stop == 0.0:
++                    protection_by_book[(state_index, symbol, strategy)] = (
++                        ProtectionEvidence(
++                            stop_price=None,
++                            source="strategy_position_stop_missing",
++                            complete=False,
++                        )
++                    )
++                elif not math.isfinite(raw_stop) or raw_stop < 0.0:
++                    raise ValueError(
++                        "held strategy protection stop must be zero or finite and positive"
++                    )
++                else:
++                    protection_by_book[(state_index, symbol, strategy)] = (
++                        ProtectionEvidence(
++                            stop_price=raw_stop,
++                            source="strategy_position_stop",
++                            complete=True,
++                        )
++                    )
+                 if risk_alert_active:
+                     indicators = getattr(state, 'indicator_map', {}).get(symbol, {})
+                     short_ma = indicators.get('ma_short')
+@@ -988,6 +1752,7 @@ def apply_account_risk_budget(
+         shock_reduced_book_ids=shock_reduced_book_ids,
+         confirmed_shock_reduced_book_ids=confirmed_shock_reduced_book_ids,
+         crowded_shock_reduced_book_ids=crowded_shock_reduced_book_ids,
++        protection_by_book=protection_by_book,
+     )
+     receipt['protected_handoff_book_ids'] = sorted(protected_handoff_book_ids)
+     receipt['protected_proven_dual_book_ids'] = sorted(
+@@ -1000,10 +1765,10 @@ def apply_account_risk_budget(
+         list(slot) for slot in excluded_buy_slots
+     ]
+     cap = receipt["gross_cap"]
+-    buy_scales = receipt["buy_scales"]
+-    if len(buy_scales) != len(buy_slots):
+-        raise RuntimeError('account budget buy scales lost queue alignment')
+-    scale_by_slot = dict(zip(buy_slots, buy_scales, strict=True))
++    approved_buy_shares = receipt["approved_buy_shares"]
++    if len(approved_buy_shares) != len(buy_slots):

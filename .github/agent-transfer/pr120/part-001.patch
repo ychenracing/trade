@@ -1,0 +1,224 @@
++    base_rate = float(receipt["stress_fraction"]) + float(receipt["cost_rate"])
++    board_rate = limit_pct_for_code(symbol, cfg) + float(receipt["cost_rate"])
++    stop, complete, _ = _validated_protection_evidence(evidence, mark=mark)
++    if complete and stop is not None:
++        distance_rate = max(0.0, (mark - stop) / mark)
++        next_open_gap = min(
++            limit_pct_for_code(symbol, cfg),
++            require_finite(
++                "daily_loss_limit",
++                cfg["daily_loss_limit"],
++                min_value=0.000001,
++                max_value=1.0,
++                inclusive_max=False,
++            ),
++        )
++        base_rate = min(
++            base_rate,
++            distance_rate + next_open_gap + float(receipt["cost_rate"]),
++        )
++    return _RiskDebit(
++        group=SYMBOL_SUB_INDUSTRY.get(symbol, symbol),
++        mark_per_share=mark,
++        base_per_share=mark * base_rate,
++        group_excess_per_share=mark * max(0.0, board_rate - (
++            float(receipt["stress_fraction"]) + float(receipt["cost_rate"])
++        )),
++        evidence_complete=complete,
++    )
++
++
++def _group_excess_debit(
++    *,
++    value: float,
++    max_excess_rate: float,
++    fallback_excess: float,
++    concentration_threshold: float,
++) -> float:
++    return max(
++        fallback_excess,
++        max(0.0, value - concentration_threshold) * max_excess_rate,
++    )
++
++
++def _extend_grouped_debit_state(
++    state: _GroupedDebitState,
++    risks: Sequence[_RiskDebit],
++    shares: Sequence[int],
++    *,
++    concentration_threshold: float,
++) -> None:
++    """Add approved books to one plan-local aggregate in O(added books)."""
++    if len(risks) != len(shares):
++        raise ValueError("risk debit shares lost alignment")
++    threshold = require_finite(
++        "ordinary concentration threshold", concentration_threshold, min_value=0.0,
++    )
++    touched: set[str] = set()
++    for risk, quantity in zip(risks, shares, strict=True):
++        quantity = require_int("risk debit shares", quantity, min_value=0)
++        if not quantity:
++            continue
++        value = quantity * risk.mark_per_share
++        state.base_debit += quantity * risk.base_per_share
++        state.group_value[risk.group] = (
++            state.group_value.get(risk.group, 0.0) + value
++        )
++        excess_rate = (
++            risk.group_excess_per_share / risk.mark_per_share
++            if risk.mark_per_share else 0.0
++        )
++        state.group_max_excess_rate[risk.group] = max(
++            state.group_max_excess_rate.get(risk.group, 0.0), excess_rate,
++        )
++        if not risk.evidence_complete:
++            state.group_fallback_excess[risk.group] = (
++                state.group_fallback_excess.get(risk.group, 0.0)
++                + quantity * risk.group_excess_per_share
++            )
++        touched.add(risk.group)
++    for group in touched:
++        state.group_excess[group] = _group_excess_debit(
++            value=state.group_value[group],
++            max_excess_rate=state.group_max_excess_rate[group],
++            fallback_excess=state.group_fallback_excess.get(group, 0.0),
++            concentration_threshold=threshold,
++        )
++
++
++def _grouped_debit_state(
++    risks: Sequence[_RiskDebit],
++    shares: Sequence[int],
++    *,
++    concentration_threshold: float,
++) -> _GroupedDebitState:
++    state = _GroupedDebitState(0.0, {}, {}, {}, {})
++    _extend_grouped_debit_state(
++        state, risks, shares, concentration_threshold=concentration_threshold,
++    )
++    return state
++
++
++def _incremental_grouped_debit(
++    state: _GroupedDebitState,
++    risks: Sequence[_RiskDebit],
++    shares: Sequence[int],
++    *,
++    candidate_groups: set[str],
++    unaffected_group_excess: float,
++    concentration_threshold: float,
++) -> float:
++    """Evaluate one cohort without rescanning plan-local held/approved books."""
++    if len(risks) != len(shares):
++        raise ValueError("risk debit shares lost alignment")
++    threshold = require_finite(
++        "ordinary concentration threshold", concentration_threshold, min_value=0.0,
++    )
++    base = state.base_debit
++    added_value: dict[str, float] = {}
++    added_max_rate: dict[str, float] = {}
++    added_fallback: dict[str, float] = {}
++    for risk, quantity in zip(risks, shares, strict=True):
++        quantity = require_int("risk debit shares", quantity, min_value=0)
++        if not quantity:
++            continue
++        base += quantity * risk.base_per_share
++        added_value[risk.group] = (
++            added_value.get(risk.group, 0.0)
++            + quantity * risk.mark_per_share
++        )
++        excess_rate = (
++            risk.group_excess_per_share / risk.mark_per_share
++            if risk.mark_per_share else 0.0
++        )
++        added_max_rate[risk.group] = max(
++            added_max_rate.get(risk.group, 0.0), excess_rate,
++        )
++        if not risk.evidence_complete:
++            added_fallback[risk.group] = (
++                added_fallback.get(risk.group, 0.0)
++                + quantity * risk.group_excess_per_share
++            )
++    maximum_excess = unaffected_group_excess
++    for group in candidate_groups:
++        maximum_excess = max(
++            maximum_excess,
++            _group_excess_debit(
++                value=(
++                    state.group_value.get(group, 0.0)
++                    + added_value.get(group, 0.0)
++                ),
++                max_excess_rate=max(
++                    state.group_max_excess_rate.get(group, 0.0),
++                    added_max_rate.get(group, 0.0),
++                ),
++                fallback_excess=(
++                    state.group_fallback_excess.get(group, 0.0)
++                    + added_fallback.get(group, 0.0)
++                ),
++                concentration_threshold=threshold,
++            ),
++        )
++    return base + maximum_excess
++
++
++def _grouped_debit(
++    risks: Sequence[_RiskDebit],
++    shares: Sequence[int],
++    *,
++    concentration_threshold: float,
++) -> float:
++    """Evaluate the monotone base-plus-largest-group loss scenario.
++
++    Complete protection evidence pays board-limit excess only for exposure above
++    the existing concentration cap.  Incomplete evidence preserves the full
++    incumbent group-pressure debit, so a missing stop never receives relief.
++    """
++    return _grouped_debit_state(
++        risks, shares, concentration_threshold=concentration_threshold,
++    ).total_debit
++
++
++def _cohort_signal_key(signal: Signal, *, blocked: bool) -> tuple[Any, ...]:
++    """Identify economically equivalent sleeve intents without queue identity."""
++    return (
++        blocked,
++        signal.symbol,
++        signal.strategy_name,
++        signal.signal_date,
++        float(signal.price),
++        float(signal.stop_loss),
++        float(signal.atr),
++        int(signal.fusion_votes),
++        signal.fusion_label,
++        signal.reason,
++    )
++
++
++def _cohort_approved_shares(
++    requested_shares: Sequence[int],
++    numerator_lots: int,
++    denominator_lots: int,
++) -> list[int]:
++    """Apply one common cohort scale through the native board-lot floor."""
++    if denominator_lots <= 0:
++        return [0 for _ in requested_shares]
++    scale = numerator_lots / denominator_lots
++    return [floor_to_lot(quantity * scale) for quantity in requested_shares]
++
++
++def _allocate_ordinary_buy_cohorts(
++    *,
++    buys: Sequence[tuple[int, Signal, float]],
++    buy_risks: Sequence[_RiskDebit],
++    blocked: Sequence[bool],
++    quality_classes: Sequence[int],
++    score: Callable[[str], float],
++    held_groups: set[str],
++    held_risks: Sequence[_RiskDebit],
++    held_shares: Sequence[int],
++    gross_before: float,
++    ordinary_gross_cap: float,
++    remaining_loss_budget: float,
++    concentration_threshold: float,
++) -> tuple[list[float], dict[str, Any]]:
