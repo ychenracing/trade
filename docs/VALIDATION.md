@@ -51,13 +51,13 @@ python -m scripts.release_tables artifacts/validation/deployment-release /tmp/tr
 
 ## 当前默认配置回归
 
-默认 `account_risk_budget_enabled=True`。以下为当前黄金预期：趋势回放、初始资金 200 万元、2025-04-01 至 2026-07-20、预热指标、冻结前复权日线及既定交易成本。精确来源和完整事件指纹在 `tests/fixtures/backtest_golden_metrics.json`；当前测量源码为 `d152b1948ea90b74c366a7a6059ee12659a47e86`，核对证据在 `artifacts/diagnostics/no_waiver/production-primary/acceptance-verification/regression-reconciliation.json`。
+默认 `account_risk_budget_enabled=True`。以下为当前黄金预期：趋势回放、初始资金 200 万元、2025-04-01 至 2026-07-20、预热指标、冻结前复权日线及既定交易成本。精确来源和完整事件指纹在 `tests/fixtures/backtest_golden_metrics.json`；当前测量源码为 `dca1b65b58adf94087dadcc9d2ad33348e92d799`，核对证据在 `artifacts/diagnostics/no_waiver/production-primary/acceptance-verification/regression-reconciliation.json`。
 
 | 股票数量 | 总收益 | 最大回撤 | 实际成交记录 | 日期／股票／方向桶 |
 |---:|---:|---:|---:|---:|
 | 1 | 392.853806% | -12.468509% | 36 | 7 |
 | 3 | 670.795019% | -16.162525% | 342 | 96 |
-| 5 | 798.448699% | -14.088269% | 437 | 130 |
+| 5 | 935.167296% | -14.002500% | 375 | 115 |
 | 13 | 747.837139% | -15.733629% | 657 | 218 |
 | 17 | 861.054274% | -15.104978% | 645 | 190 |
 
