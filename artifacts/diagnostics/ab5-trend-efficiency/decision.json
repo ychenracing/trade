@@ -1,0 +1,168 @@
+{
+  "as_of": "2026-09-18T12:58+0800",
+  "status": "REJECTED_AND_CLOSED",
+  "verdict": "REJECT",
+  "reason": "candidate-2 failed common-5 not-below-main (7.501 vs main 7.984); contract forbids third structural candidate",
+  "pr": {
+    "number": 120,
+    "url": "https://github.com/ychenracing/trade/pull/120",
+    "branch": "agent/ab5-trend-efficiency",
+    "action": "close_unmerged",
+    "merge": false,
+    "promoted": false
+  },
+  "shas": {
+    "main_unchanged": "fa4ef7bafe7fdb9f513c7c07443c193624fa114c",
+    "candidate_2_measured_code": "46e763237424749880f76c3c2013f246261c6403",
+    "candidate_2_tree": "35014dd0cd91e0d823761d362d492c92cea39383",
+    "reject_docs_tip_pre_closeout": "0064ab9158ac483eac4b759ccba5e294dfb974da",
+    "archive_reference": "c158435f66034f370c031353cfb419fd3b469811"
+  },
+  "gates": {
+    "checkpoint_a": "PASS",
+    "common_1": {
+      "result": "PASS",
+      "note": "identical to main",
+      "candidate_total_return": 3.928538056569,
+      "incumbent_total_return": 3.928538056569
+    },
+    "common_3": {
+      "result": "PASS",
+      "note": "identical to main after candidate-2",
+      "candidate_total_return": 6.707950188316252,
+      "incumbent_total_return": 6.707950188316252
+    },
+    "common_5": {
+      "result": "FAIL",
+      "gate": "candidate_not_below_main_return",
+      "candidate_total_return": 7.501161184396381,
+      "incumbent_total_return": 7.984486994216379,
+      "delta_tr": -0.4833258098199984,
+      "verdict": "FAIL_BELOW_MAIN"
+    }
+  },
+  "first_divergence": {
+    "decision_date": "2026-04-01",
+    "fill_date": "2026-04-02",
+    "summary": "candidate scarce/gap path zeros buy_scale (gap_scale=0 → buy_scale=0, removes 9100); incumbent same gap_scale=0 but buy_scale=1.0 admits 300308 probe fills next day",
+    "artifact": "artifacts/diagnostics/ab5-trend-efficiency/common5-first-divergence.json"
+  },
+  "production": {
+    "diffs_promoted": false,
+    "goldens_updated": false,
+    "fingerprints_updated": false,
+    "canonical_formal_evidence_updated": false,
+    "main_unchanged": true,
+    "temporary_workflow_deleted": ".github/workflows/agent-ab5-workspace.yml"
+  },
+  "artifacts": {
+    "canonical": false,
+    "classification": "rejected_non_canonical_diagnostic_only",
+    "note": "All artifacts under this path are REJECTED evidence for PR #120 closeout. They must NEVER be treated as canonical / production / promoted formal evidence.",
+    "inventory": [
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/candidate2-common5-decision.json",
+        "sha256": "9ea8d1c2033344aad53fe581dd719db2ae199b2e2a72a5772abcf4fa9fd68cbe",
+        "bytes": 1370,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/candidate2-held-gross-stress-decision.json",
+        "sha256": "b2a15d2c097accd8e13b074aa2c5aee49fbd2f2cd69acb9ed6f39cce9ada0be5",
+        "bytes": 1775,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/checkpoint-a-cand2.txt",
+        "sha256": "73a65a2b10720d68aa68d678c44953f7db55b5aedf0033dc8340a5e6c522d8e7",
+        "bytes": 180,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/ci-first-divergence.json",
+        "sha256": "4bd33958138ba86aca5a4dd4b14119e65ca27ae1af9952e3320f6e06cbf4c5d3",
+        "bytes": 13758,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/common3-envelope-fix-metrics.json",
+        "sha256": "967bb0d9b5275795be8e5bc020ce1070774cbce62684a4b66b5a6994f4890034",
+        "bytes": 919,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/common3-first-divergence.json",
+        "sha256": "69b129c81e81d6333828cb728935690a5e88a7320462f1cba257213e46254a2a",
+        "bytes": 3067,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/common5-apr2-slice.json",
+        "sha256": "eabf9f2a9a6348213da9256b5af4d6cacd6f04f4758fc79194aba32672298211",
+        "bytes": 8052,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/common5-first-divergence.json",
+        "sha256": "92a0dff69b14f38116ddf59ca1f869133d3697e5307dab2c58d487adc7b9da3b",
+        "bytes": 45367,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/economic-common-1.json",
+        "sha256": "d3ed616c46600caa121aa253f0fcc547e2eaf0eb4eaa789558043e4a52305b87",
+        "bytes": 7101,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/economic-common-3.json",
+        "sha256": "b4123f56b191c9d797a8971e249c45ce72d4d489353bbdc65b5750e15949e242",
+        "bytes": 8024,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/economic-common-5.json",
+        "sha256": "850cbd09080e48388bd390ca399d4ea87173d40283bd3e20d8327af4ab1dce54",
+        "bytes": 15365,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/performance-current-head.json",
+        "sha256": "8ccf9d7c1f9fb059b1a134a582460a6ae4860c3950b1079c54bd57f2d91a180c",
+        "bytes": 2393,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/_econ1_candidate.json",
+        "sha256": "82c4dc24639c4977fdb0a18141f6b2dd3555fbaf882a4de00bfcb2a730c3661f",
+        "bytes": 5569,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      },
+      {
+        "path": "artifacts/diagnostics/ab5-trend-efficiency/_econ3_candidate.json",
+        "sha256": "adbe6ea69f2cbc811128be6c178acd45c4935da6aff76e74ec4e49a29df20b25",
+        "bytes": 5953,
+        "role": "rejected_non_canonical_evidence",
+        "canonical": false
+      }
+    ]
+  },
+  "contract": {
+    "section": "§16 REJECTED_AND_CLOSED",
+    "third_structural_candidate": "FORBIDDEN",
+    "candidates_attempted": 2
+  }
+}
