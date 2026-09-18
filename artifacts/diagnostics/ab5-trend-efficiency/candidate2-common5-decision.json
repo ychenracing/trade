@@ -1,0 +1,43 @@
+{
+  "as_of": "2026-09-18T12:57+0800",
+  "candidate": 2,
+  "status": "FAIL_COMMON_5",
+  "head": "46e763237424749880f76c3c2013f246261c6403",
+  "tree": "35014dd0cd91e0d823761d362d492c92cea39383",
+  "prior": {
+    "common-1": "PASS identical to main",
+    "common-3": "PASS identical to main"
+  },
+  "common-5": {
+    "symbols": [
+      "300308",
+      "300502",
+      "300394",
+      "688256",
+      "603986"
+    ],
+    "window": {
+      "start": "2025-04-01",
+      "end": "2026-07-20"
+    },
+    "candidate_total_return": 7.501161184396381,
+    "incumbent_total_return": 7.984486994216379,
+    "archive_total_return": 11.279153887013873,
+    "delta_tr": -0.4833258098199984,
+    "archive_gap_recovery_ratio": -0.14669944657428102,
+    "gates": {
+      "candidate_not_below_main_return": false,
+      "max_drawdown_worsening_pp_vs_main": 0.0,
+      "max_drawdown_not_worse_than_main_by_1_5pp": true,
+      "max_drawdown_not_worse_than_archive": true
+    },
+    "verdict": "FAIL_BELOW_MAIN"
+  },
+  "first_divergence": {
+    "decision_date": "2026-04-01",
+    "fill_date": "2026-04-02",
+    "summary": "candidate scarce/gap path zeros buy_scale (gap_scale=0 \u2192 buy_scale=0, removes 9100); incumbent same gap_scale=0 but buy_scale=1.0 admits 300308 probe fills next day"
+  },
+  "next_action": "STOP_DOCUMENT_FOR_REJECT",
+  "third_structural_candidate": "DO_NOT_INVENT"
+}

@@ -1,0 +1,1733 @@
+{
+  "as_of": "2026-09-18T12:55+0800",
+  "pool": "common-5",
+  "symbols": [
+    "300308",
+    "300502",
+    "300394",
+    "688256",
+    "603986"
+  ],
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "economics": {
+    "candidate_tr": 7.501161184396381,
+    "incumbent_tr": 7.984486994216379,
+    "delta_tr": -0.4833258098199984,
+    "candidate_dd": -0.1408826929934694,
+    "incumbent_dd": -0.1408826929934694
+  },
+  "schema_only_envelope_noise": "null vs [] / null vs 0.0 on ordinary_held_loss_debit/approved_buy_shares from day1 — ignored",
+  "first_economic_envelope_diff": {
+    "date": "2025-04-23",
+    "diffs": {
+      "approved_buy_shares": {
+        "c": [
+          3600,
+          6300,
+          8100,
+          12200
+        ],
+        "i": null
+      }
+    },
+    "c_slim": {
+      "ordinary_allocator_active": false,
+      "buy_shares_removed": 0,
+      "buy_gross_scale": 1.0,
+      "buy_gap_scale": 1.0,
+      "ordinary_buy_scale": null,
+      "new_reduction_orders": 0,
+      "remaining_loss_budget": 359960.0,
+      "gross_before": 0,
+      "ordinary_gross_cap": 2000000.0
+    },
+    "i_slim": {
+      "ordinary_allocator_active": false,
+      "buy_shares_removed": 0,
+      "buy_gross_scale": 1.0,
+      "buy_gap_scale": 1.0,
+      "ordinary_buy_scale": null,
+      "new_reduction_orders": 0,
+      "remaining_loss_budget": 359960.0,
+      "gross_before": 0,
+      "ordinary_gross_cap": 2000000.0
+    }
+  },
+  "first_day_trade_multiset_diff": "2026-04-02",
+  "trades_on_first_diff_day": {
+    "candidate": [],
+    "incumbent": [
+      {
+        "date": "2026-04-02",
+        "symbol": "300308",
+        "side": "buy",
+        "shares": 3100,
+        "price": 592.60201,
+        "reason": "[single-strategy probe] MA golden cross(RSI=54)",
+        "gross": 1837066.231
+      },
+      {
+        "date": "2026-04-02",
+        "symbol": "300308",
+        "side": "buy",
+        "shares": 2500,
+        "price": 592.60201,
+        "reason": "[single-strategy probe] MA golden cross(RSI=54)",
+        "gross": 1481505.025
+      },
+      {
+        "date": "2026-04-02",
+        "symbol": "300308",
+        "side": "buy",
+        "shares": 3500,
+        "price": 592.60201,
+        "reason": "[single-strategy probe] MA golden cross(RSI=54)",
+        "gross": 2074107.035
+      }
+    ]
+  },
+  "first_sorted_trade_mismatch": {
+    "index": 264,
+    "c": {
+      "date": "2026-04-09",
+      "symbol": "300308",
+      "side": "buy",
+      "shares": 100,
+      "price": 681.6809999999999,
+      "reason": "[two-strategy confirmation] ATR range breakout(ADX=17.0)",
+      "gross": 68168.1
+    },
+    "i": {
+      "date": "2026-04-02",
+      "symbol": "300308",
+      "side": "buy",
+      "shares": 2500,
+      "price": 592.60201,
+      "reason": "[single-strategy probe] MA golden cross(RSI=54)",
+      "gross": 1481505.025
+    }
+  },
+  "first_equity_diff": {
+    "date": "2026-04-02",
+    "c": 10879764.3108,
+    "i": 10772837.8502,
+    "delta": 106926.4606
+  },
+  "equity_prev_date": "2026-04-01",
+  "positions_before_first_equity_diff": {
+    "candidate": {
+      "300394": 0,
+      "300502": 12300,
+      "603986": 1900,
+      "300308": 0,
+      "688256": 0
+    },
+    "incumbent": {
+      "300394": 0,
+      "300502": 12300,
+      "603986": 1900,
+      "300308": 0,
+      "688256": 0
+    }
+  },
+  "trades_on_first_equity_day": {
+    "candidate": [],
+    "incumbent": [
+      {
+        "date": "2026-04-02",
+        "symbol": "300308",
+        "side": "buy",
+        "shares": 3100,
+        "price": 592.60201,
+        "reason": "[single-strategy probe] MA golden cross(RSI=54)",
+        "gross": 1837066.231
+      },
+      {
+        "date": "2026-04-02",
+        "symbol": "300308",
+        "side": "buy",
+        "shares": 2500,
+        "price": 592.60201,
+        "reason": "[single-strategy probe] MA golden cross(RSI=54)",
+        "gross": 1481505.025
+      },
+      {
+        "date": "2026-04-02",
+        "symbol": "300308",
+        "side": "buy",
+        "shares": 3500,
+        "price": 592.60201,
+        "reason": "[single-strategy probe] MA golden cross(RSI=54)",
+        "gross": 2074107.035
+      }
+    ]
+  },
+  "envelope_on_first_equity_day": {
+    "candidate": {
+      "date": "2026-04-02",
+      "ordinary_allocator_active": false,
+      "buy_shares_removed": 0,
+      "buy_gross_scale": 1.0,
+      "buy_gap_scale": 1.0,
+      "ordinary_buy_scale": null,
+      "ordinary_held_loss_debit": 488376.5734579162,
+      "remaining_loss_budget": 660116.0694127306,
+      "gross_before": 4390572.0,
+      "ordinary_gross_cap": 10879764.310794007,
+      "new_reduction_orders": 0,
+      "approved_buy_shares": [],
+      "risk_alert_active": false
+    },
+    "incumbent": {
+      "date": "2026-04-02",
+      "ordinary_allocator_active": false,
+      "buy_shares_removed": 0,
+      "buy_gross_scale": 1.0,
+      "buy_gap_scale": 1.0,
+      "ordinary_buy_scale": null,
+      "ordinary_held_loss_debit": null,
+      "remaining_loss_budget": 553159.6088399813,
+      "gross_before": 9677672.0,
+      "ordinary_gross_cap": 10772837.850221258,
+      "new_reduction_orders": 12,
+      "approved_buy_shares": null,
+      "risk_alert_active": false
+    }
+  },
+  "envelope_on_first_trade_day": {
+    "candidate": {
+      "date": "2026-04-02",
+      "ordinary_allocator_active": false,
+      "buy_shares_removed": 0,
+      "buy_gross_scale": 1.0,
+      "buy_gap_scale": 1.0,
+      "ordinary_buy_scale": null,
+      "ordinary_held_loss_debit": 488376.5734579162,
+      "remaining_loss_budget": 660116.0694127306,
+      "gross_before": 4390572.0,
+      "ordinary_gross_cap": 10879764.310794007,
+      "new_reduction_orders": 0,
+      "approved_buy_shares": [],
+      "risk_alert_active": false
+    },
+    "incumbent": {
+      "date": "2026-04-02",
+      "ordinary_allocator_active": false,
+      "buy_shares_removed": 0,
+      "buy_gross_scale": 1.0,
+      "buy_gap_scale": 1.0,
+      "ordinary_buy_scale": null,
+      "ordinary_held_loss_debit": null,
+      "remaining_loss_budget": 553159.6088399813,
+      "gross_before": 9677672.0,
+      "ordinary_gross_cap": 10772837.850221258,
+      "new_reduction_orders": 12,
+      "approved_buy_shares": null,
+      "risk_alert_active": false
+    }
+  },
+  "focus_trades_before_first_equity_diff": {
+    "candidate": [
+      {
+        "date": "2025-04-30",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 800,
+        "price": 125.91578999999999,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=18.2)",
+        "gross": 100732.632
+      },
+      {
+        "date": "2025-04-30",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 400,
+        "price": 125.91578999999999,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=18.2)",
+        "gross": 50366.316
+      },
+      {
+        "date": "2025-04-30",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1000,
+        "price": 125.91578999999999,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=18.2)",
+        "gross": 125915.79
+      },
+      {
+        "date": "2025-05-23",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 800,
+        "price": 115.884,
+        "reason": "ATR trailing stop@116.75",
+        "gross": 92707.2
+      },
+      {
+        "date": "2025-05-23",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 400,
+        "price": 115.884,
+        "reason": "ATR trailing stop@116.75",
+        "gross": 46353.6
+      },
+      {
+        "date": "2025-05-23",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 1000,
+        "price": 115.884,
+        "reason": "ATR trailing stop@116.75",
+        "gross": 115884.0
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 2400,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] ATR range breakout(ADX=35.9)",
+        "gross": 463086.624
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 2400,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] Turtle breakout(ADX=35.9)",
+        "gross": 463086.624
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1600,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] ATR range breakout(ADX=35.9)",
+        "gross": 308724.416
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1600,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] Turtle breakout(ADX=35.9)",
+        "gross": 308724.416
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 2800,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] ATR range breakout(ADX=35.9)",
+        "gross": 540267.728
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 2800,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] Turtle breakout(ADX=35.9)",
+        "gross": 540267.728
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-10-10",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 500,
+        "price": 224.97474999999997,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 112487.375
+      },
+      {
+        "date": "2025-10-10",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1100,
+        "price": 224.97474999999997,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 247472.225
+      },
+      {
+        "date": "2025-10-10",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 800,
+        "price": 224.97474999999997,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 179979.8
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 400,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 85794.12
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 500,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 107242.65
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 64345.59
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 500,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 107242.65
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 500,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 107242.65
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 600,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 128691.18
+      },
+      {
+        "date": "2025-10-15",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 2300,
+        "price": 194.60520000000002,
+        "reason": "ATR trailing stop@201.89",
+        "gross": 447591.96
+      },
+      {
+        "date": "2025-10-15",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 2100,
+        "price": 194.60520000000002,
+        "reason": "ATR trailing stop@201.89",
+        "gross": 408670.92
+      },
+      {
+        "date": "2025-10-15",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 2900,
+        "price": 194.60520000000002,
+        "reason": "ATR trailing stop@201.89",
+        "gross": 564355.08
+      },
+      {
+        "date": "2025-10-28",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1600,
+        "price": 235.98574999999997,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=37.8)",
+        "gross": 377577.2
+      },
+      {
+        "date": "2025-10-28",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 900,
+        "price": 235.98574999999997,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=37.8)",
+        "gross": 212387.175
+      },
+      {
+        "date": "2025-10-28",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1800,
+        "price": 235.98574999999997,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=37.8)",
+        "gross": 424774.35
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 64810.125
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 43206.75
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 43206.75
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 21603.375
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 64810.125
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 43206.75
+      },
+      {
+        "date": "2025-11-13",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 1400,
+        "price": 211.03875,
+        "reason": "ATR trailing stop@209.10",
+        "gross": 295454.25
+      },
+      {
+        "date": "2025-11-13",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 800,
+        "price": 211.03875,
+        "reason": "ATR trailing stop@209.10",
+        "gross": 168831.0
+      },
+      {
+        "date": "2025-11-13",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 1600,
+        "price": 211.03875,
+        "reason": "ATR trailing stop@209.10",
+        "gross": 337662.0
+      },
+      {
+        "date": "2025-11-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 400,
+        "price": 204.32547,
+        "reason": "regime choppy reduction",
+        "gross": 81730.188
+      },
+      {
+        "date": "2025-11-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 204.32547,
+        "reason": "regime choppy reduction",
+        "gross": 61297.641
+      },
+      {
+        "date": "2025-11-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 500,
+        "price": 204.32547,
+        "reason": "regime choppy reduction",
+        "gross": 102162.735
+      },
+      {
+        "date": "2025-12-17",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 196.06374,
+        "reason": "account_budget_trim",
+        "gross": 58819.122
+      },
+      {
+        "date": "2025-12-17",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 196.06374,
+        "reason": "account_budget_trim",
+        "gross": 39212.748
+      },
+      {
+        "date": "2025-12-17",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 400,
+        "price": 196.06374,
+        "reason": "account_budget_trim",
+        "gross": 78425.496
+      },
+      {
+        "date": "2026-01-08",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 900,
+        "price": 258.50825,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=17.0)",
+        "gross": 232657.425
+      },
+      {
+        "date": "2026-01-08",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 500,
+        "price": 258.50825,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=17.0)",
+        "gross": 129254.125
+      },
+      {
+        "date": "2026-01-08",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1000,
+        "price": 258.50825,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=17.0)",
+        "gross": 258508.25
+      },
+      {
+        "date": "2026-01-13",
+        "symbol": "688256",
+        "side": "buy",
+        "shares": 100,
+        "price": 996.6356399999999,
+        "reason": "[single-strategy probe] MA golden cross(RSI=62)",
+        "gross": 99663.564
+      },
+      {
+        "date": "2026-01-13",
+        "symbol": "688256",
+        "side": "buy",
+        "shares": 100,
+        "price": 996.6356399999999,
+        "reason": "[single-strategy probe] MA golden cross(RSI=62)",
+        "gross": 99663.564
+      },
+      {
+        "date": "2026-01-13",
+        "symbol": "688256",
+        "side": "buy",
+        "shares": 100,
+        "price": 996.6356399999999,
+        "reason": "[single-strategy probe] MA golden cross(RSI=62)",
+        "gross": 99663.564
+      },
+      {
+        "date": "2026-01-20",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1500,
+        "price": 282.4321499999999,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 423648.225
+      },
+      {
+        "date": "2026-01-20",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 800,
+        "price": 282.4321499999999,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 225945.72
+      },
+      {
+        "date": "2026-01-20",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1800,
+        "price": 282.4321499999999,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 508377.87
+      },
+      {
+        "date": "2026-01-21",
+        "symbol": "688256",
+        "side": "sell",
+        "shares": 100,
+        "price": 894.3048,
+        "reason": "ATR trailing stop@904.85",
+        "gross": 89430.48
+      },
+      {
+        "date": "2026-01-21",
+        "symbol": "688256",
+        "side": "sell",
+        "shares": 100,
+        "price": 894.3048,
+        "reason": "ATR trailing stop@904.85",
+        "gross": 89430.48
+      },
+      {
+        "date": "2026-01-21",
+        "symbol": "688256",
+        "side": "sell",
+        "shares": 100,
+        "price": 894.3048,
+        "reason": "ATR trailing stop@904.85",
+        "gross": 89430.48
+      },
+      {
+        "date": "2026-01-29",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 400,
+        "price": 329.45912999999996,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 3)",
+        "gross": 131783.652
+      },
+      {
+        "date": "2026-02-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 1700,
+        "price": 292.96674,
+        "reason": "ATR trailing stop@298.44",
+        "gross": 498043.458
+      },
+      {
+        "date": "2026-02-25",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1200,
+        "price": 315.56525,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 3)",
+        "gross": 378678.3
+      },
+      {
+        "date": "2026-02-25",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1400,
+        "price": 315.56525,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 3)",
+        "gross": 441791.35
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 271.86786,
+        "reason": "account_budget_trim",
+        "gross": 54373.572
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 3600,
+        "price": 271.86786,
+        "reason": "ATR trailing stop@283.47",
+        "gross": 978724.296
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 271.86786,
+        "reason": "account_budget_trim",
+        "gross": 27186.786
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 271.86786,
+        "reason": "account_budget_trim",
+        "gross": 54373.572
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 4200,
+        "price": 271.86786,
+        "reason": "ATR trailing stop@283.47",
+        "gross": 1141845.012
+      }
+    ],
+    "incumbent": [
+      {
+        "date": "2025-04-30",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 800,
+        "price": 125.91578999999999,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=18.2)",
+        "gross": 100732.632
+      },
+      {
+        "date": "2025-04-30",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 400,
+        "price": 125.91578999999999,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=18.2)",
+        "gross": 50366.316
+      },
+      {
+        "date": "2025-04-30",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1000,
+        "price": 125.91578999999999,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=18.2)",
+        "gross": 125915.79
+      },
+      {
+        "date": "2025-05-23",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 800,
+        "price": 115.884,
+        "reason": "ATR trailing stop@116.75",
+        "gross": 92707.2
+      },
+      {
+        "date": "2025-05-23",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 400,
+        "price": 115.884,
+        "reason": "ATR trailing stop@116.75",
+        "gross": 46353.6
+      },
+      {
+        "date": "2025-05-23",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 1000,
+        "price": 115.884,
+        "reason": "ATR trailing stop@116.75",
+        "gross": 115884.0
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 2400,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] ATR range breakout(ADX=35.9)",
+        "gross": 463086.624
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 2400,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] Turtle breakout(ADX=35.9)",
+        "gross": 463086.624
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1600,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] ATR range breakout(ADX=35.9)",
+        "gross": 308724.416
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1600,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] Turtle breakout(ADX=35.9)",
+        "gross": 308724.416
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 2800,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] ATR range breakout(ADX=35.9)",
+        "gross": 540267.728
+      },
+      {
+        "date": "2025-09-15",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 2800,
+        "price": 192.95275999999998,
+        "reason": "[two-strategy confirmation] Turtle breakout(ADX=35.9)",
+        "gross": 540267.728
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-09-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 188.45136,
+        "reason": "account_budget_trim",
+        "gross": 18845.136
+      },
+      {
+        "date": "2025-10-10",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 500,
+        "price": 224.97474999999997,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 112487.375
+      },
+      {
+        "date": "2025-10-10",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1100,
+        "price": 224.97474999999997,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 247472.225
+      },
+      {
+        "date": "2025-10-10",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 800,
+        "price": 224.97474999999997,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 179979.8
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 400,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 85794.12
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 500,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 107242.65
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 64345.59
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 500,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 107242.65
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 500,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 107242.65
+      },
+      {
+        "date": "2025-10-14",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 600,
+        "price": 214.4853,
+        "reason": "account_budget_trim",
+        "gross": 128691.18
+      },
+      {
+        "date": "2025-10-15",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 2300,
+        "price": 194.60520000000002,
+        "reason": "ATR trailing stop@201.89",
+        "gross": 447591.96
+      },
+      {
+        "date": "2025-10-15",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 2100,
+        "price": 194.60520000000002,
+        "reason": "ATR trailing stop@201.89",
+        "gross": 408670.92
+      },
+      {
+        "date": "2025-10-15",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 2900,
+        "price": 194.60520000000002,
+        "reason": "ATR trailing stop@201.89",
+        "gross": 564355.08
+      },
+      {
+        "date": "2025-10-28",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1600,
+        "price": 235.98574999999997,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=37.8)",
+        "gross": 377577.2
+      },
+      {
+        "date": "2025-10-28",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 900,
+        "price": 235.98574999999997,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=37.8)",
+        "gross": 212387.175
+      },
+      {
+        "date": "2025-10-28",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1800,
+        "price": 235.98574999999997,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=37.8)",
+        "gross": 424774.35
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 64810.125
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 43206.75
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 43206.75
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 21603.375
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 64810.125
+      },
+      {
+        "date": "2025-11-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 216.03375,
+        "reason": "account_budget_trim",
+        "gross": 43206.75
+      },
+      {
+        "date": "2025-11-13",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 1400,
+        "price": 211.03875,
+        "reason": "ATR trailing stop@209.10",
+        "gross": 295454.25
+      },
+      {
+        "date": "2025-11-13",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 800,
+        "price": 211.03875,
+        "reason": "ATR trailing stop@209.10",
+        "gross": 168831.0
+      },
+      {
+        "date": "2025-11-13",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 1600,
+        "price": 211.03875,
+        "reason": "ATR trailing stop@209.10",
+        "gross": 337662.0
+      },
+      {
+        "date": "2025-11-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 400,
+        "price": 204.32547,
+        "reason": "regime choppy reduction",
+        "gross": 81730.188
+      },
+      {
+        "date": "2025-11-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 204.32547,
+        "reason": "regime choppy reduction",
+        "gross": 61297.641
+      },
+      {
+        "date": "2025-11-18",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 500,
+        "price": 204.32547,
+        "reason": "regime choppy reduction",
+        "gross": 102162.735
+      },
+      {
+        "date": "2025-12-17",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 300,
+        "price": 196.06374,
+        "reason": "account_budget_trim",
+        "gross": 58819.122
+      },
+      {
+        "date": "2025-12-17",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 196.06374,
+        "reason": "account_budget_trim",
+        "gross": 39212.748
+      },
+      {
+        "date": "2025-12-17",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 400,
+        "price": 196.06374,
+        "reason": "account_budget_trim",
+        "gross": 78425.496
+      },
+      {
+        "date": "2026-01-08",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 900,
+        "price": 258.50825,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=17.0)",
+        "gross": 232657.425
+      },
+      {
+        "date": "2026-01-08",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 500,
+        "price": 258.50825,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=17.0)",
+        "gross": 129254.125
+      },
+      {
+        "date": "2026-01-08",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1000,
+        "price": 258.50825,
+        "reason": "[single-strategy probe] Turtle breakout(ADX=17.0)",
+        "gross": 258508.25
+      },
+      {
+        "date": "2026-01-13",
+        "symbol": "688256",
+        "side": "buy",
+        "shares": 100,
+        "price": 996.6356399999999,
+        "reason": "[single-strategy probe] MA golden cross(RSI=62)",
+        "gross": 99663.564
+      },
+      {
+        "date": "2026-01-13",
+        "symbol": "688256",
+        "side": "buy",
+        "shares": 100,
+        "price": 996.6356399999999,
+        "reason": "[single-strategy probe] MA golden cross(RSI=62)",
+        "gross": 99663.564
+      },
+      {
+        "date": "2026-01-13",
+        "symbol": "688256",
+        "side": "buy",
+        "shares": 100,
+        "price": 996.6356399999999,
+        "reason": "[single-strategy probe] MA golden cross(RSI=62)",
+        "gross": 99663.564
+      },
+      {
+        "date": "2026-01-20",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1500,
+        "price": 282.4321499999999,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 423648.225
+      },
+      {
+        "date": "2026-01-20",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 800,
+        "price": 282.4321499999999,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 225945.72
+      },
+      {
+        "date": "2026-01-20",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1800,
+        "price": 282.4321499999999,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 2)",
+        "gross": 508377.87
+      },
+      {
+        "date": "2026-01-21",
+        "symbol": "688256",
+        "side": "sell",
+        "shares": 100,
+        "price": 894.3048,
+        "reason": "ATR trailing stop@904.85",
+        "gross": 89430.48
+      },
+      {
+        "date": "2026-01-21",
+        "symbol": "688256",
+        "side": "sell",
+        "shares": 100,
+        "price": 894.3048,
+        "reason": "ATR trailing stop@904.85",
+        "gross": 89430.48
+      },
+      {
+        "date": "2026-01-21",
+        "symbol": "688256",
+        "side": "sell",
+        "shares": 100,
+        "price": 894.3048,
+        "reason": "ATR trailing stop@904.85",
+        "gross": 89430.48
+      },
+      {
+        "date": "2026-01-29",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 400,
+        "price": 329.45912999999996,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 3)",
+        "gross": 131783.652
+      },
+      {
+        "date": "2026-02-03",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 1700,
+        "price": 292.96674,
+        "reason": "ATR trailing stop@298.44",
+        "gross": 498043.458
+      },
+      {
+        "date": "2026-02-25",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1200,
+        "price": 315.56525,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 3)",
+        "gross": 378678.3
+      },
+      {
+        "date": "2026-02-25",
+        "symbol": "603986",
+        "side": "buy",
+        "shares": 1400,
+        "price": 315.56525,
+        "reason": "[single-strategy probe] Turtle pyramid add (unit 3)",
+        "gross": 441791.35
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 271.86786,
+        "reason": "account_budget_trim",
+        "gross": 54373.572
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 3600,
+        "price": 271.86786,
+        "reason": "ATR trailing stop@283.47",
+        "gross": 978724.296
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 100,
+        "price": 271.86786,
+        "reason": "account_budget_trim",
+        "gross": 27186.786
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 200,
+        "price": 271.86786,
+        "reason": "account_budget_trim",
+        "gross": 54373.572
+      },
+      {
+        "date": "2026-03-04",
+        "symbol": "603986",
+        "side": "sell",
+        "shares": 4200,
+        "price": 271.86786,
+        "reason": "ATR trailing stop@283.47",
+        "gross": 1141845.012
+      }
+    ]
+  },
+  "ordinary_trims_by_symbol": {
+    "candidate": {
+      "300308": {
+        "count": 31,
+        "notional": 5112149.73
+      },
+      "300394": {
+        "count": 4,
+        "notional": 472689.84
+      },
+      "300502": {
+        "count": 32,
+        "notional": 2386614.0
+      },
+      "603986": {
+        "count": 45,
+        "notional": 2636069.29
+      },
+      "688256": {
+        "count": 8,
+        "notional": 998380.62
+      }
+    },
+    "incumbent": {
+      "300308": {
+        "count": 34,
+        "notional": 8415782.79
+      },
+      "300394": {
+        "count": 5,
+        "notional": 503965.53
+      },
+      "300502": {
+        "count": 33,
+        "notional": 4242913.84
+      },
+      "603986": {
+        "count": 43,
+        "notional": 2898391.71
+      },
+      "688256": {
+        "count": 6,
+        "notional": 742836.42
+      }
+    }
+  },
+  "gross_by_symbol": {
+    "candidate": {
+      "300308": {
+        "buy": 26141281.17,
+        "sell": 31215127.63,
+        "net_sell_buy": 5073846.46
+      },
+      "300394": {
+        "buy": 11153000.86,
+        "sell": 13482019.49,
+        "net_sell_buy": 2329018.63
+      },
+      "300502": {
+        "buy": 19198073.89,
+        "sell": 22689223.06,
+        "net_sell_buy": 3491149.17
+      },
+      "603986": {
+        "buy": 11633489.87,
+        "sell": 15681770.53,
+        "net_sell_buy": 4048280.66
+      },
+      "688256": {
+        "buy": 1271966.7,
+        "sell": 1412758.83,
+        "net_sell_buy": 140792.13
+      }
+    },
+    "incumbent": {
+      "300308": {
+        "buy": 27921941.05,
+        "sell": 34743674.55,
+        "net_sell_buy": 6821733.5
+      },
+      "300394": {
+        "buy": 9954541.6,
+        "sell": 12388031.57,
+        "net_sell_buy": 2433489.97
+      },
+      "300502": {
+        "buy": 19905981.09,
+        "sell": 23469187.32,
+        "net_sell_buy": 3563206.22
+      },
+      "603986": {
+        "buy": 11524597.08,
+        "sell": 14776761.45,
+        "net_sell_buy": 3252164.36
+      },
+      "688256": {
+        "buy": 1322198.88,
+        "sell": 1303301.39,
+        "net_sell_buy": -18897.48
+      }
+    }
+  },
+  "fills_by_symbol": {
+    "candidate": {
+      "300394": 47,
+      "300502": 130,
+      "603986": 105,
+      "300308": 114,
+      "688256": 24
+    },
+    "incumbent": {
+      "300394": 61,
+      "300502": 132,
+      "603986": 103,
+      "300308": 119,
+      "688256": 22
+    }
+  },
+  "classification": {
+    "prior": "common-1 and common-3 PASS identical to main after candidate-2 held-gross-stress",
+    "first_divergence": "2026-04-01 candidate clips 9100 ordinary buys (allocator active); incumbent admits them → 2026-04-02 300308 probe fills only on incumbent",
+    "likely_cause": "candidate-2 retains executable-loss debit for buy allocation; on common-5 book the debit/scarce path binds buys that incumbent still admits. Cross-cohort with 688256/603986 changes when scarce binding appears vs common-3-identical path.",
+    "not_a_new_hard_path_bug": "hard alert/shock/direct-loss paths not implicated at first divergence",
+    "third_structural_candidate": "FORBIDDEN — do not invent; document for REJECT"
+  },
+  "verdict": "FAIL_BELOW_MAIN",
+  "next_action": "STOP_DOCUMENT_FOR_REJECT",
+  "first_focus_trade_mismatch": {
+    "index": 69,
+    "c": {
+      "date": "2026-04-14",
+      "symbol": "603986",
+      "side": "sell",
+      "shares": 100,
+      "price": 268.48125,
+      "reason": "account_budget_trim",
+      "gross": 26848.125
+    },
+    "i": {
+      "date": "2026-04-03",
+      "symbol": "603986",
+      "side": "sell",
+      "shares": 300,
+      "price": 249.98976000000002,
+      "reason": "account_budget_trim",
+      "gross": 74996.928
+    }
+  },
+  "focus_trade_counts": {
+    "candidate": 129,
+    "incumbent": 125
+  },
+  "first_economic_divergence": {
+    "decision_date": "2026-04-01",
+    "fill_date": "2026-04-02",
+    "mechanism": "candidate ordinary allocator removed 9100 buy shares on 2026-04-01; incumbent did not. Those shares match incumbent's 2026-04-02 300308 single-strategy probe fills (3100+2500+3500).",
+    "candidate_envelope_2026-04-01": {
+      "date": "2026-04-01",
+      "ordinary_allocator_active": true,
+      "buy_shares_removed": 9100,
+      "buy_gross_scale": 1.0,
+      "buy_gap_scale": 0.0,
+      "ordinary_buy_scale": null,
+      "buy_scale": 0.0,
+      "buy_scales": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "buy_envelope_binding": true,
+      "approved_buy_shares": [
+        0,
+        0,
+        0
+      ],
+      "approved_buy_count": 0,
+      "all_buys_blocked": true,
+      "remaining_loss_budget": 790556.0694127306,
+      "ordinary_held_loss_debit": 539812.4148000003,
+      "current_gap_debit": 877386.4560000001,
+      "gross_before": 4521042.0,
+      "ordinary_gross_cap": 11010234.310794007,
+      "new_reduction_orders": 0,
+      "equity": 11010234.310794007,
+      "ordinary_buy_cohort_count": 1,
+      "ordinary_buy_feasibility_evaluations": 10,
+      "ordinary_buy_cohorts": [
+        {
+          "indexes": [
+            0,
+            1,
+            2
+          ],
+          "requested_lots": 35,
+          "closed_form_upper_lots": 16,
+          "approved_lots": 14,
+          "approved_shares": [
+            1000,
+            1200,
+            1400
+          ],
+          "feasibility_evaluations": 10,
+          "blocked": false
+        }
+      ]
+    },
+    "incumbent_envelope_2026-04-01": {
+      "date": "2026-04-01",
+      "ordinary_allocator_active": null,
+      "buy_shares_removed": 0,
+      "buy_gross_scale": 0.38406409756161614,
+      "buy_gap_scale": 0.0,
+      "ordinary_buy_scale": null,
+      "buy_scale": 1.0,
+      "buy_scales": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "buy_envelope_binding": true,
+      "approved_buy_shares": null,
+      "approved_buy_count": null,
+      "all_buys_blocked": null,
+      "remaining_loss_budget": 790556.0694127306,
+      "ordinary_held_loss_debit": null,
+      "current_gap_debit": 877386.4560000001,
+      "gross_before": 4521042.0,
+      "ordinary_gross_cap": 11010234.310794007,
+      "new_reduction_orders": 0,
+      "equity": 11010234.310794007
+    },
+    "incumbent_fills_2026-04-02": [
+      {
+        "symbol": "300308",
+        "shares": 3100,
+        "gross": 1837066.231
+      },
+      {
+        "symbol": "300308",
+        "shares": 2500,
+        "gross": 1481505.025
+      },
+      {
+        "symbol": "300308",
+        "shares": 3500,
+        "gross": 2074107.035
+      }
+    ],
+    "candidate_fills_2026-04-02": [],
+    "equity_2026-04-01_identical": true,
+    "equity_2026-04-01": 11010234.310794007,
+    "focus_688256_603986_path_identical_until_decision": true
+  }
+}
