@@ -1,4 +1,4 @@
-name: Agent AB5 Workspace Export
+name: Agent AB5 Candidate Recovery
 
 on:
   push:
@@ -6,23 +6,46 @@ on:
       - agent/ab5-trend-efficiency
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: agent-ab5-candidate-recovery
+  cancel-in-progress: false
 
 jobs:
-  export:
+  recover:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Pack source workspace
+          ref: agent/ab5-trend-efficiency
+      - name: Verify and apply staged candidate
+        shell: bash
         run: |
-          git rev-parse HEAD > WORKSPACE_HEAD
-          tar --exclude=.git -czf /tmp/trade-workspace.tgz .
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ab5-workspace-${{ github.sha }}
-          path: /tmp/trade-workspace.tgz
-          if-no-files-found: error
-          retention-days: 1
+          set -euo pipefail
+          staged='artifacts/diagnostics/ab5-trend-efficiency/candidate.patch.gz.b64'
+          test -f "$staged"
+          base64 --decode "$staged" > /tmp/candidate.patch.gz
+          echo 'c0ec2050c287515842718e2bf019c6b68d34ddfd2ce0947239e7b4a72ab27617  /tmp/candidate.patch.gz' | sha256sum -c -
+          gzip --decompress --stdout /tmp/candidate.patch.gz > /tmp/candidate.patch
+          echo '43079040adf579900340b31fe2fd9e80700c51bd2a2760e2cdf62c7e0592a15a  /tmp/candidate.patch' | sha256sum -c -
+          git apply --check /tmp/candidate.patch
+          git apply /tmp/candidate.patch
+          rm "$staged"
+          git diff --check
+          python -m py_compile \
+            quantfusion/risk/account_budget.py \
+            quantfusion/risk/account_budget_ordinary.py \
+            quantfusion/application/account_scan.py
+      - name: Commit recovered production candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: allocate ordinary AB5 by executable loss'
+          git push origin HEAD:agent/ab5-trend-efficiency
