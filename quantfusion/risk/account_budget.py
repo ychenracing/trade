@@ -362,20 +362,15 @@ def plan_account_risk_budget(
         else:
             append_pro_rata_relief(ordered_books, required_relief)
     elif preserve_strategy_valid_holdings and not risk_alert_active and gross > cap:
-        # Ordinary preserve absorption of archive_0805 patience:
-        # Defer shared pro-rata held trims only when ALL of:
+        # Ordinary preserve: defer shared pro-rata held trims only when ALL of:
         # 1) gross overshoot is immaterial (≤ one daily_loss_limit × equity;
         #    same materiality as alert invested-concentration),
-        # 2) remaining_loss_budget is still comfortable: at least 85% of the
+        # 2) remaining_loss_budget is comfortable: at least 85% of the
         #    ordinary two-session stress envelope on equity
         #    (0.85 × equity × stress_fraction),
-        # 3) lifetime drawdown is real enough that we are not in the
-        #    razor-thin near-peak band where gross_cap first binds
-        #    (equity / peak ≤ 0.9245). 0.925 left a one-day Pool J
-        #    deferral at ~0.9248 that cost ~0.56 TR; 0.9245 still admits
-        #    measured common-5 / pool_h wins near 0.9243–0.9245 while
-        #    keeping Core17's ~0.928–0.931 band excluded.
-        # Otherwise keep main's shared pro-rata reserve funding.
+        # 3) equity / peak ≤ 0.9245 (near-peak razor; above this the
+        #    gross_cap binding band still funds the reserve with pro-rata).
+        # Otherwise apply shared pro-rata reserve funding.
         # No sub-industry group-count gate. Alert / shock / direct-loss /
         # concentration / weak-book / locks / fail-closed stay hard.
         overshoot = gross - cap
