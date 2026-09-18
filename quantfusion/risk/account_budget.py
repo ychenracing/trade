@@ -363,21 +363,28 @@ def plan_account_risk_budget(
             append_pro_rata_relief(ordered_books, required_relief)
     elif preserve_strategy_valid_holdings and not risk_alert_active and gross > cap:
         # Ordinary preserve absorption of archive_0805 patience:
-        # - Single-group books keep main's full pro-rata reserve funding
-        #   whenever gross exceeds cap (concentrated optical cohorts).
-        # - Multi-group books tolerate an immaterial overshoot up to one
-        #   daily-loss allowance (same materiality as alert invested
-        #   concentration) so mild pressure does not chop still-valid
-        #   holdings; material overshoot still shares the reserve trim.
-        # Alert / shock / direct-loss / concentration / weak-book stay hard.
+        # Defer shared pro-rata held trims only when ALL of:
+        # 1) gross overshoot is immaterial (≤ one daily_loss_limit × equity;
+        #    same materiality as alert invested-concentration),
+        # 2) remaining_loss_budget is still comfortable: at least 85% of the
+        #    ordinary two-session stress envelope on equity
+        #    (0.85 × equity × stress_fraction),
+        # 3) lifetime drawdown is real enough that we are not in the
+        #    razor-thin near-peak band where gross_cap first binds
+        #    (equity / peak ≤ 0.925). That band is where a single deferred
+        #    ordinary trim has been path-catastrophic on Core17.
+        # Otherwise keep main's shared pro-rata reserve funding.
+        # No sub-industry group-count gate. Alert / shock / direct-loss /
+        # concentration / weak-book / locks / fail-closed stay hard.
         overshoot = gross - cap
-        held_groups_live = {
-            SYMBOL_SUB_INDUSTRY.get(symbol, symbol)
-            for _, symbol, _, shares, _ in books if shares
-        }
-        multi_group_book = len(held_groups_live) >= 2
         material_overshoot = overshoot > equity * daily_loss_limit + 1e-8
-        if material_overshoot or not multi_group_book:
+        ordinary_stress_envelope = equity * receipt['stress_fraction']
+        budget_comfortable = (
+            receipt['remaining_loss_budget']
+            >= 0.85 * ordinary_stress_envelope - 1e-8
+            and equity / peak <= 0.925 + 1e-12
+        )
+        if material_overshoot or not budget_comfortable:
             fraction = overshoot / gross
             for state, symbol, strategy, shares, price in sorted(
                 books, key=lambda book: (book[1], book[0], book[2]),
@@ -596,10 +603,9 @@ def plan_account_risk_budget(
                 and not shock_confirmed
                 and gross > cap + 1e-8
                 and gross - cap <= equity * daily_loss_limit + 1e-8
-                and len({
-                    SYMBOL_SUB_INDUSTRY.get(symbol, symbol)
-                    for _, symbol, _, shares, _ in books if shares
-                }) >= 2
+                and receipt['remaining_loss_budget']
+                >= 0.85 * equity * receipt['stress_fraction'] - 1e-8
+                and equity / peak <= 0.925 + 1e-12
             ),
             "observed_shock_candidates": candidates,
             "observed_shock_confirmed": shock_confirmed,

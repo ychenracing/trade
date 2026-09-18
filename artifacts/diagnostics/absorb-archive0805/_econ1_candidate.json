@@ -1,7 +1,7 @@
 {
   "label": "candidate",
-  "sha": "fa4ef7bafe7fdb9f513c7c07443c193624fa114c",
-  "tree": "0b55602e5fa19a08fd11954e8e331d1bd0a0c974",
+  "sha": "d1fa15c1796f35c04431c5e57521a7ffc72045b6",
+  "tree": "22eb6a4ac7eb11e01882bb7092ea9583d83eba3d",
   "engine": "BacktestEngine",
   "window": {
     "start": "2025-04-01",
@@ -10,7 +10,10 @@
   "symbols": [
     "300308"
   ],
-  "elapsed_sec": 12.2094,
+  "symbol_names": {
+    "300308": "\u4e2d\u9645\u65ed\u521b"
+  },
+  "elapsed_sec": 12.2252,
   "final_assets": 9857076.113138,
   "wealth_multiple": 4.928538056569,
   "total_return": 3.928538056569,
@@ -18,6 +21,7 @@
   "sharpe": 3.4695971203321343,
   "calmar": 20.59561808312291,
   "sleeve_fills": 36,
+  "total_trades": 36,
   "date_symbol_side_buckets": 7,
   "sell_buckets": 4,
   "active_operation_days": 7,

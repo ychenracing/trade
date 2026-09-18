@@ -1,43 +1,92 @@
-"""Research: ordinary preserve defers only immaterial multi-group overshoot."""
+"""Research: ordinary preserve defers immaterial overshoot when budget is comfortable."""
 from quantfusion.config.engine import default_engine_config
 from quantfusion.risk.account_budget import plan_account_risk_budget
 
 
-def test_immaterial_multi_group_overshoot_defers_held_trims():
-    """Diversified ordinary books tolerate overshoot within one daily-loss."""
+def test_immaterial_overshoot_with_comfortable_budget_defers_held_trims():
+    """Immaterial overshoot + comfortable rlb + real drawdown skips reserve trim."""
     cfg = default_engine_config()
-    # optical + memory → multi-group; equity/cap chosen for immaterial overshoot
-    books = [(0, '300308', 'turtle_breakout', 2600, 100.),
-             (1, '603986', 'dual_ma', 2600, 100.)]
+    equity = 920_000.
+    peak = 1_000_000.
+    books = [(0, '300308', 'turtle_breakout', 4200, 100.),
+             (1, '603986', 'dual_ma', 4200, 100.)]
     receipt, actions = plan_account_risk_budget(
-        880_000., 1_000_000., cfg, books, [],
+        equity, peak, cfg, books, [],
         lambda symbol: float(symbol == '603986'), date_str='2026-01-05',
         preserve_strategy_valid_holdings=True,
     )
     assert receipt['gross_before'] > receipt['gross_cap']
     overshoot = receipt['gross_before'] - receipt['gross_cap']
-    assert overshoot <= 880_000. * cfg['daily_loss_limit'] + 1e-6
+    assert overshoot <= equity * cfg['daily_loss_limit'] + 1e-6
+    assert receipt['remaining_loss_budget'] >= (
+        0.85 * equity * receipt['stress_fraction'] - 1e-6
+    )
+    assert equity / peak <= 0.925 + 1e-12
     assert actions == []
     assert receipt['ordinary_held_trim_deferred'] is True
     assert receipt['strategy_valid_holdings_preserved'] is True
 
 
-def test_immaterial_single_group_overshoot_still_trims():
-    """Concentrated single-group books keep main's full ordinary reserve trim."""
+def test_immaterial_single_group_also_defers_when_budget_comfortable():
+    """Group count is not the defer switch; budget + drawdown gate is."""
     cfg = default_engine_config()
-    books = [(0, '300308', 'turtle_breakout', 2600, 100.),
-             (1, '300502', 'dual_ma', 2600, 100.)]  # both optical
+    equity = 920_000.
+    books = [(0, '300308', 'turtle_breakout', 4200, 100.),
+             (1, '300502', 'dual_ma', 4200, 100.)]  # both optical
     receipt, actions = plan_account_risk_budget(
-        880_000., 1_000_000., cfg, books, [],
+        equity, 1_000_000., cfg, books, [],
         lambda symbol: float(symbol == '300502'), date_str='2026-01-05',
         preserve_strategy_valid_holdings=True,
     )
     assert receipt['gross_before'] > receipt['gross_cap']
+    assert actions == []
+    assert receipt['ordinary_held_trim_deferred'] is True
+    assert receipt['strategy_valid_holdings_preserved'] is True
+
+
+def test_immaterial_overshoot_with_tight_budget_still_trims():
+    """Tight remaining_loss_budget keeps main's full ordinary reserve trim."""
+    cfg = default_engine_config()
+    equity = 850_000.
+    books = [(0, '300308', 'turtle_breakout', 1500, 100.),
+             (1, '603986', 'dual_ma', 1500, 100.)]
+    receipt, actions = plan_account_risk_budget(
+        equity, 1_000_000., cfg, books, [],
+        lambda symbol: float(symbol == '603986'), date_str='2026-01-05',
+        preserve_strategy_valid_holdings=True,
+    )
+    assert receipt['gross_before'] > receipt['gross_cap']
     overshoot = receipt['gross_before'] - receipt['gross_cap']
-    assert overshoot <= 880_000. * cfg['daily_loss_limit'] + 1e-6
+    assert overshoot <= equity * cfg['daily_loss_limit'] + 1e-6
+    assert receipt['remaining_loss_budget'] < (
+        0.85 * equity * receipt['stress_fraction'] - 1e-6
+    )
     assert len(actions) == 2
     assert receipt['ordinary_held_trim_deferred'] is False
     assert receipt['strategy_valid_holdings_preserved'] is False
+
+
+def test_near_peak_razor_band_still_trims_despite_high_rlb():
+    """Near-peak binding band (equity/peak > 0.925) keeps reserve trim."""
+    cfg = default_engine_config()
+    equity = 929_000.
+    peak = 1_000_000.
+    books = [(0, '300308', 'turtle_breakout', 4600, 100.),
+             (1, '603986', 'dual_ma', 4600, 100.)]
+    receipt, actions = plan_account_risk_budget(
+        equity, peak, cfg, books, [],
+        lambda symbol: float(symbol == '603986'), date_str='2026-01-05',
+        preserve_strategy_valid_holdings=True,
+    )
+    assert receipt['gross_before'] > receipt['gross_cap']
+    overshoot = receipt['gross_before'] - receipt['gross_cap']
+    assert overshoot <= equity * cfg['daily_loss_limit'] + 1e-6
+    assert receipt['remaining_loss_budget'] >= (
+        0.85 * equity * receipt['stress_fraction'] - 1e-6
+    )
+    assert equity / peak > 0.925
+    assert len(actions) == 2
+    assert receipt['ordinary_held_trim_deferred'] is False
 
 
 def test_material_ordinary_overshoot_still_shares_reserve_trim():
