@@ -25,7 +25,8 @@
       "incumbent_total_return": 3.928538056569,
       "delta_tr": 0.0,
       "pass_not_below_main": true,
-      "identical_to_main": true
+      "identical_to_main": true,
+      "candidate_sha_at_measure": "working-tree-pre-commit(=55cf535 content)"
     },
     "common-3": {
       "candidate_total_return": 6.707950188316252,
@@ -33,10 +34,13 @@
       "delta_tr": 0.0,
       "pass_not_below_main": true,
       "identical_to_main": true,
-      "prior_after_candidate1_envelope_fix": 6.538348544467499
+      "prior_after_candidate1_envelope_fix": 6.538348544467499,
+      "candidate_sha_at_measure": "working-tree-pre-commit(=55cf535 content)"
     },
     "verdict": "PASS_CONTINUE_TO_COMMON_5"
   },
   "next_action": "5-share",
-  "checkpoint_a": "74 passed (healthy bull + account_risk_budget + executable_loss + observed_shock + proportional_reserve)"
+  "checkpoint_a": "74 passed (healthy bull + account_risk_budget + executable_loss + observed_shock + proportional_reserve)",
+  "head": "55cf535a08e5e4abf1a9f602bc6f249956621e90",
+  "tree": "a547a4c74abede81e9ed5c6f55722569c188d45b"
 }
