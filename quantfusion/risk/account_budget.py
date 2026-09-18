@@ -1220,7 +1220,12 @@ def plan_account_risk_budget(
         )
         if requested else 1.0
     )
-    if ordinary_path:
+    # The cohort allocator redistributes a scarce incumbent gross/gap scale by
+    # executable-loss priority.  When that envelope already admits every buy at
+    # full size, leave scales untouched so ordinary production stays identical
+    # to the diagnostic AB5-off healthy path (and to pre-refactor AB5).
+    ordinary_budget_scarce = ordinary_buy_scale < 1.0 - 1e-12
+    if ordinary_path and ordinary_budget_scarce:
         buy_scales, ordinary_allocation_diagnostics = (
             _allocate_ordinary_buy_cohorts(
                 buys=buys,
@@ -1237,6 +1242,10 @@ def plan_account_risk_budget(
                 concentration_threshold=concentration_threshold,
             )
         )
+    elif ordinary_path:
+        buy_scales = [
+            0.0 if blocked else 1.0 for blocked in shock_reduced_pyramid
+        ]
     else:
         buy_scales = [
             (
@@ -1285,7 +1294,7 @@ def plan_account_risk_budget(
     return {**receipt, "gross_before": gross, "buy_envelope_binding": binding,
             "buy_gross_scale": reported_gross_scale, "current_gap_debit": current_gap,
             "requested_buy_gap_debit": buy_gap, "buy_gap_scale": reported_gap_scale,
-            "ordinary_allocator_active": ordinary_path,
+            "ordinary_allocator_active": ordinary_path and ordinary_budget_scarce,
             "ordinary_concentration_threshold": concentration_threshold,
             "protection_complete_book_count": sum(
                 risk.evidence_complete for risk in held_risks

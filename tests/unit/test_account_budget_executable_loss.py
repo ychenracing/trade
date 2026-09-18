@@ -267,6 +267,9 @@ def test_pathological_request_uses_logarithmic_feasibility_evaluations():
         fusion_votes=2,
         fusion_label="two_strategy_confirmation",
     )
+    # At an all-time equity peak the incumbent gross/gap envelope is non-binding,
+    # so plan_account_risk_budget must pass buys through at full size without
+    # inventing a tighter ordinary cut (healthy production == AB5-off path).
     receipt, _ = budget.plan_account_risk_budget(
         1_000_000_000.0,
         1_000_000_000.0,
@@ -277,15 +280,46 @@ def test_pathological_request_uses_logarithmic_feasibility_evaluations():
         date_str="2026-01-05",
         preserve_strategy_valid_holdings=True,
     )
+    assert receipt["ordinary_allocator_active"] is False
+    assert receipt["approved_buy_shares"] == [signal.target_shares]
+    assert receipt["buy_scales"] == [1.0]
 
-    row = receipt["ordinary_buy_cohorts"][0]
+    # Complexity of the scarce-budget cohort search is checked directly: a
+    # 100,000-lot request must stay O(log lots) even when the envelope is open.
+    capacity = budget.account_budget_capacity(
+        1_000_000_000.0, 1_000_000_000.0, cfg, 0,
+    )
+    risk = budget._ordinary_risk_debit(
+        signal.symbol,
+        signal.price,
+        cfg,
+        capacity,
+        budget.ProtectionEvidence(
+            stop_price=90.0, source="signal_stop", complete=True,
+        ),
+    )
+    _, diagnostics = budget._allocate_ordinary_buy_cohorts(
+        buys=[(0, signal, signal.target_shares * signal.price)],
+        buy_risks=[risk],
+        blocked=[False],
+        quality_classes=[4],
+        score=lambda _: 1.0,
+        held_groups=set(),
+        held_risks=[],
+        held_shares=[],
+        gross_before=0.0,
+        ordinary_gross_cap=capacity["ordinary_gross_cap"],
+        remaining_loss_budget=capacity["remaining_loss_budget"],
+        concentration_threshold=0.8 * 1_000_000_000.0,
+    )
+    row = diagnostics["ordinary_buy_cohorts"][0]
     requested_lots = row["requested_lots"]
     evaluations = row["feasibility_evaluations"]
     assert requested_lots == 100_000
-    assert receipt["ordinary_buy_precomputed_held_book_count"] == 0
+    assert diagnostics["ordinary_buy_precomputed_held_book_count"] == 0
     assert evaluations <= math.ceil(math.log2(requested_lots + 1)) + 6
     assert requested_lots / evaluations >= 10.0
-    assert receipt["approved_buy_shares"] == [signal.target_shares]
+    assert row["approved_shares"] == [signal.target_shares]
 
 
 def test_residual_shortfall_trims_highest_marginal_risk_book_first():
