@@ -102,14 +102,15 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy.candidate_reference_percentile, 0.50)
         self.assertLess(policy.drawdown_alert, policy.confirmed_drawdown)
         self.assertGreaterEqual(policy.terminal_drawdown, policy.confirmed_drawdown)
-        self.assertEqual(len(policy.regime_symbols), 5)
+        # Experiment E enlarges the fixed referee (main-5 ∪ RISK∩universe).
+        self.assertEqual(len(policy.regime_symbols), 14)
         self.assertEqual(len(ESTABLISHED_EXPANSION_CORE), 13)
         self.assertEqual(
-            policy.regime_symbols,
+            policy.regime_symbols[:5],
             ("300308", "300502", "300394", "688008", "603986"),
         )
         self.assertFalse(
-            set(policy.regime_symbols).issubset(ESTABLISHED_EXPANSION_CORE)
+            set(policy.regime_symbols[:5]).issubset(ESTABLISHED_EXPANSION_CORE)
         )
 
     def test_invalid_regime_symbols_are_rejected(self) -> None:

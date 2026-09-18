@@ -151,12 +151,26 @@ class PortfolioPolicy(_PortfolioPolicyBase):
     terminal_drawdown: float = 0.28
     concentration_drawdown_adjustment: float = 0.02
     candidate_reference_percentile: float = 0.50
+    # Experiment E: enlarge fixed referee toward RISK_BASKET with in-universe
+    # coherence. Rule = production main-5 ∪ (RISK_BASKET ∩ ORDERED_SYMBOLS),
+    # extras in RISK_BASKET declaration order. Still fixed — not derived from
+    # whatever --symbol / trading pool is active. sector_guard_min_symbols
+    # follows BacktestEngine ceil(0.8 * n) → 12 for n=14.
     regime_symbols: tuple[str, ...] = (
-        "300308",
-        "300502",
-        "300394",
-        "688008",
-        "603986",
+        "300308",  # optical (main-5)
+        "300502",  # optical (main-5)
+        "300394",  # optical (main-5)
+        "688008",  # memory (main-5; out of ORDERED_SYMBOLS but kept)
+        "603986",  # memory (main-5)
+        "002409",  # material / RISK_BASKET ∩ universe
+        "688072",  # equipment
+        "688256",  # compute
+        "300054",  # material
+        "688082",  # equipment
+        "688300",  # material
+        "688361",  # equipment
+        "300604",  # equipment
+        "688120",  # equipment
     )
     # Market regime recognition controls (propagated to cfg at runtime so the
     # mixin reads them via self.cfg.get(...); the policy snapshot stays auditable).
