@@ -3,8 +3,8 @@
 **STATUS:** `BASELINE_HELD` (Topics B/C/D all REVERTED; mechanism unchanged)  
 **As of:** 2026-09-18T15:30+0800 (Asia/Shanghai)  
 **Branch:** `agent/absorb-archive0805-ordinary-ab5`  
-**HEAD:** `e49bf07bfb68` (docs only after mechanism `5c678a3`)
-**Baseline kept:** current HEAD mechanism from ac0aa38 / 5c678a3  
+**HEAD:** branch tip (docs commits after mechanism `5c678a3`; run `git rev-parse HEAD`)
+**Baseline kept:** mechanism from `7b22259` (budget+overshoot) + `5c678a3` (razor 0.9245)  
 **Do NOT merge main.** No Cloud Agent. PonyTail.
 
 ## A. Diff audit (LANDED — artifacts kept)
