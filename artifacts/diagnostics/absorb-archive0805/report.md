@@ -2,7 +2,7 @@
 
 **STATUS:** `DIRECTIONAL_PROGRESS`  
 **As of:** 2026-09-18T13:15+0800 (Asia/Shanghai)  
-**Branch:** `agent/absorb-archive0805-ordinary-ab5` (from main `fa4ef7bafe7f`)  
+**Branch:** `agent/absorb-archive0805-ordinary-ab5` @ `a64b2173c605` (tree `7005c41f20b7`; from main `fa4ef7bafe7f`)  
 **Archive reference:** `c158435f6603`  
 **NOT continuing rejected PR #120.** Main is **not** merged.
 

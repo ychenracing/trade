@@ -266,5 +266,9 @@
       },
       "archive_gap_recovery_ratio": 0.41496940697083673
     }
-  }
+  },
+  "candidate_head": "a64b2173c605c915b4a013639181fd725222359a",
+  "candidate_tree": "7005c41f20b79416af779eff84cb37282743f3c8",
+  "main_unmerged": true,
+  "pushed": true
 }
