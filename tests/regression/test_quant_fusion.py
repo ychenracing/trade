@@ -765,6 +765,9 @@ class ExecutionControlTests(unittest.TestCase):
         sleeve = SleeveBacktestEngine(
             1_000_000,
             cfg={
+                # Pin stock-basket guard so this test stays about regime_symbols
+                # quorum, not Experiment C index probes.
+                "sector_guard_index_mode": "regime_basket",
                 "sector_guard_min_symbols": 5,
                 "sector_shock_ma": 2,
                 "sector_recovery_ma": 2,
@@ -813,7 +816,7 @@ class IntegrationTests(unittest.TestCase):
 
     def test_signal_only_regime_symbols_never_become_trades(self) -> None:
         result = self.results["1_symbol"]
-        self.assertEqual(result["guard_scope_mode"], "fixed_signal_only_regime_basket")
+        self.assertEqual(result["guard_scope_mode"], "index_tech_only_000682")
         self.assertEqual(
             set(result["effective_portfolio_policy"]["regime_symbols"]),
             set(PortfolioPolicy().regime_symbols),

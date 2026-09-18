@@ -1,0 +1,613 @@
+{
+  "main": {
+    "1_symbol": {
+      "total_return": 3.928538056569,
+      "max_drawdown": -0.12468509293898083,
+      "total_trades": 36,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    },
+    "3_symbols": {
+      "total_return": 6.707950188316252,
+      "max_drawdown": -0.16162524913761778,
+      "total_trades": 342,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    },
+    "5_symbols": {
+      "total_return": 9.351672960887004,
+      "max_drawdown": -0.140024999442075,
+      "total_trades": 375,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    },
+    "13_symbols": {
+      "total_return": 7.478371386054253,
+      "max_drawdown": -0.15733628648998246,
+      "total_trades": 657,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    },
+    "17_symbols": {
+      "total_return": 8.610542744515504,
+      "max_drawdown": -0.15104978428469945,
+      "total_trades": 645,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    }
+  },
+  "probes": {
+    "tech_only": {
+      "1_symbol": {
+        "total_return": 3.196430387075625,
+        "max_drawdown": -0.12792567541130254,
+        "final_assets": 8392860.77415125,
+        "total_trades": 54,
+        "sell_trades": 33,
+        "guard_scope_mode": "index_tech_only_000682",
+        "sector_guard_index_mode": "tech_only",
+        "guard_on_dates": [
+          "2026-06-01"
+        ],
+        "guard_off_dates": [
+          "2026-06-04"
+        ],
+        "guard_on_count": 1,
+        "first_guard_on": "2026-06-01",
+        "guard_event_count": 42,
+        "elapsed_s": 10.5,
+        "symbol_count": 1,
+        "symbols": [
+          "300308"
+        ]
+      },
+      "3_symbols": {
+        "total_return": 5.632352572570627,
+        "max_drawdown": -0.1643370113694245,
+        "final_assets": 13264705.145141255,
+        "total_trades": 363,
+        "sell_trades": 195,
+        "guard_scope_mode": "index_tech_only_000682",
+        "sector_guard_index_mode": "tech_only",
+        "guard_on_dates": [
+          "2026-06-01"
+        ],
+        "guard_off_dates": [
+          "2026-06-04"
+        ],
+        "guard_on_count": 1,
+        "first_guard_on": "2026-06-01",
+        "guard_event_count": 43,
+        "elapsed_s": 12.98,
+        "symbol_count": 3,
+        "symbols": [
+          "300308",
+          "300502",
+          "300394"
+        ]
+      },
+      "5_symbols": {
+        "total_return": 6.703829262921628,
+        "max_drawdown": -0.16900191413827007,
+        "final_assets": 15407658.525843257,
+        "total_trades": 430,
+        "sell_trades": 247,
+        "guard_scope_mode": "index_tech_only_000682",
+        "sector_guard_index_mode": "tech_only",
+        "guard_on_dates": [
+          "2026-06-01"
+        ],
+        "guard_off_dates": [
+          "2026-06-04"
+        ],
+        "guard_on_count": 1,
+        "first_guard_on": "2026-06-01",
+        "guard_event_count": 43,
+        "elapsed_s": 15.51,
+        "symbol_count": 5,
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986"
+        ]
+      },
+      "13_symbols": {
+        "total_return": 5.535558523289878,
+        "max_drawdown": -0.17057705557072714,
+        "final_assets": 13071117.046579756,
+        "total_trades": 769,
+        "sell_trades": 495,
+        "guard_scope_mode": "index_tech_only_000682",
+        "sector_guard_index_mode": "tech_only",
+        "guard_on_dates": [
+          "2026-06-01"
+        ],
+        "guard_off_dates": [
+          "2026-06-04"
+        ],
+        "guard_on_count": 1,
+        "first_guard_on": "2026-06-01",
+        "guard_event_count": 44,
+        "elapsed_s": 25.65,
+        "symbol_count": 13,
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986",
+          "688072",
+          "688300",
+          "300054",
+          "688361",
+          "002409",
+          "688498",
+          "688120",
+          "002384"
+        ]
+      },
+      "17_symbols": {
+        "total_return": 6.343042886359378,
+        "max_drawdown": -0.17565513403321095,
+        "final_assets": 14686085.772718757,
+        "total_trades": 760,
+        "sell_trades": 473,
+        "guard_scope_mode": "index_tech_only_000682",
+        "sector_guard_index_mode": "tech_only",
+        "guard_on_dates": [
+          "2026-06-01"
+        ],
+        "guard_off_dates": [
+          "2026-06-04"
+        ],
+        "guard_on_count": 1,
+        "first_guard_on": "2026-06-01",
+        "guard_event_count": 46,
+        "elapsed_s": 30.43,
+        "symbol_count": 17,
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986",
+          "688072",
+          "688300",
+          "300054",
+          "688361",
+          "002409",
+          "688498",
+          "688120",
+          "002384",
+          "688082",
+          "300604",
+          "601869",
+          "300408"
+        ]
+      }
+    },
+    "dual_confirm": {
+      "1_symbol": {
+        "total_return": 3.5468389137930005,
+        "max_drawdown": -0.15646101896013365,
+        "final_assets": 9093677.827586,
+        "total_trades": 54,
+        "sell_trades": 42,
+        "guard_scope_mode": "index_dual_confirm_000300_000682",
+        "sector_guard_index_mode": "dual_confirm",
+        "guard_on_dates": [],
+        "guard_off_dates": [],
+        "guard_on_count": 0,
+        "first_guard_on": null,
+        "guard_event_count": 16,
+        "elapsed_s": 14.07,
+        "symbol_count": 1,
+        "symbols": [
+          "300308"
+        ]
+      },
+      "3_symbols": {
+        "total_return": 6.352163506816628,
+        "max_drawdown": -0.16162524913761778,
+        "final_assets": 14704327.013633255,
+        "total_trades": 366,
+        "sell_trades": 203,
+        "guard_scope_mode": "index_dual_confirm_000300_000682",
+        "sector_guard_index_mode": "dual_confirm",
+        "guard_on_dates": [],
+        "guard_off_dates": [],
+        "guard_on_count": 0,
+        "first_guard_on": null,
+        "guard_event_count": 18,
+        "elapsed_s": 15.54,
+        "symbol_count": 3,
+        "symbols": [
+          "300308",
+          "300502",
+          "300394"
+        ]
+      },
+      "5_symbols": {
+        "total_return": 8.365221534752004,
+        "max_drawdown": -0.14103216283626996,
+        "final_assets": 18730443.069504008,
+        "total_trades": 396,
+        "sell_trades": 236,
+        "guard_scope_mode": "index_dual_confirm_000300_000682",
+        "sector_guard_index_mode": "dual_confirm",
+        "guard_on_dates": [],
+        "guard_off_dates": [],
+        "guard_on_count": 0,
+        "first_guard_on": null,
+        "guard_event_count": 16,
+        "elapsed_s": 18.43,
+        "symbol_count": 5,
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986"
+        ]
+      },
+      "13_symbols": {
+        "total_return": 6.493024218947128,
+        "max_drawdown": -0.18210538429666537,
+        "final_assets": 14986048.437894257,
+        "total_trades": 722,
+        "sell_trades": 467,
+        "guard_scope_mode": "index_dual_confirm_000300_000682",
+        "sector_guard_index_mode": "dual_confirm",
+        "guard_on_dates": [],
+        "guard_off_dates": [],
+        "guard_on_count": 0,
+        "first_guard_on": null,
+        "guard_event_count": 15,
+        "elapsed_s": 28.68,
+        "symbol_count": 13,
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986",
+          "688072",
+          "688300",
+          "300054",
+          "688361",
+          "002409",
+          "688498",
+          "688120",
+          "002384"
+        ]
+      },
+      "17_symbols": {
+        "total_return": 7.201242718647004,
+        "max_drawdown": -0.1739275221891955,
+        "final_assets": 16402485.437294008,
+        "total_trades": 703,
+        "sell_trades": 453,
+        "guard_scope_mode": "index_dual_confirm_000300_000682",
+        "sector_guard_index_mode": "dual_confirm",
+        "guard_on_dates": [],
+        "guard_off_dates": [],
+        "guard_on_count": 0,
+        "first_guard_on": null,
+        "guard_event_count": 20,
+        "elapsed_s": 33.89,
+        "symbol_count": 17,
+        "symbols": [
+          "300308",
+          "300502",
+          "300394",
+          "688256",
+          "603986",
+          "688072",
+          "688300",
+          "300054",
+          "688361",
+          "002409",
+          "688498",
+          "688120",
+          "002384",
+          "688082",
+          "300604",
+          "601869",
+          "300408"
+        ]
+      }
+    }
+  },
+  "comparison": {
+    "tech_only": {
+      "1_symbol": {
+        "delta_return": -0.7321076694933746,
+        "delta_mdd": -0.0032405824723217014,
+        "delta_trades": 18,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": "2026-06-01",
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 1
+      },
+      "3_symbols": {
+        "delta_return": -1.0755976157456244,
+        "delta_mdd": -0.002711762231806719,
+        "delta_trades": 21,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": "2026-06-01",
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 1
+      },
+      "5_symbols": {
+        "delta_return": -2.647843697965376,
+        "delta_mdd": -0.028976914696195066,
+        "delta_trades": 55,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": "2026-06-01",
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 1
+      },
+      "13_symbols": {
+        "delta_return": -1.9428128627643746,
+        "delta_mdd": -0.013240769080744674,
+        "delta_trades": 112,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": "2026-06-01",
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 1
+      },
+      "17_symbols": {
+        "delta_return": -2.2674998581561256,
+        "delta_mdd": -0.0246053497485115,
+        "delta_trades": 115,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": "2026-06-01",
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 1
+      }
+    },
+    "dual_confirm": {
+      "1_symbol": {
+        "delta_return": -0.38169914277599926,
+        "delta_mdd": -0.03177592602115281,
+        "delta_trades": 18,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": null,
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 0
+      },
+      "3_symbols": {
+        "delta_return": -0.355786681499624,
+        "delta_mdd": 0.0,
+        "delta_trades": 24,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": null,
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 0
+      },
+      "5_symbols": {
+        "delta_return": -0.9864514261349999,
+        "delta_mdd": -0.0010071633941949598,
+        "delta_trades": 21,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": null,
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 0
+      },
+      "13_symbols": {
+        "delta_return": -0.9853471671071246,
+        "delta_mdd": -0.024769097806682905,
+        "delta_trades": 65,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": null,
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 0
+      },
+      "17_symbols": {
+        "delta_return": -1.4093000258685002,
+        "delta_mdd": -0.022877737904496043,
+        "delta_trades": 58,
+        "guard_on_changed": true,
+        "first_guard_on_main": "2026-06-26",
+        "first_guard_on_cand": null,
+        "guard_on_count_main": 1,
+        "guard_on_count_cand": 0
+      }
+    }
+  },
+  "meta": {
+    "branch_intent": "Experiment C: sector-guard shock/recovery from fixed indices 000682 (tech_only) or 000300 AND 000682 (dual_confirm); market-regime thermometer stays on regime_symbols.",
+    "window": "2025-04-01..2026-07-20",
+    "capital": 2000000.0,
+    "engine": "BacktestEngine",
+    "indicator_state": "warm",
+    "ab5_unchanged": true,
+    "regime_symbols_unused_for_guard": true,
+    "index_files": {
+      "broad": "000300",
+      "technology": "000682"
+    },
+    "mapping": {
+      "tech_only": "equal_return=000682 daily return; breadth=binary MA membership of 000682 (multi-name breadth N/A).",
+      "dual_confirm": "shock/recovery require BOTH 000300 and 000682 to independently meet return+MA conditions (AND)."
+    },
+    "notes": [
+      "tech_only: earlier first_guard_on (2026-06-01 vs main 2026-06-26); returns worse on every pool; MDD often worse.",
+      "dual_confirm: never fired sector_guard_on on any pool (AND of 000300∧000682 too strict for this window); returns still worse than main — main's single 2026-06-26 guard looks net-helpful.",
+      "Regime thermometer unchanged (regime_symbols). Guard no longer reads stock basket.",
+      "Index mapping: tech_only uses binary MA breadth on 000682; dual_confirm ANDs per-index shock/recovery.",
+      "Fail-closed on missing data/regime/{000300,000682}.csv verified in unit tests.",
+      "Recommendation: DISCARD for merge. Optional iterate: soften dual_confirm (e.g. OR for recovery, or require broad+tech only for shock with looser return threshold), or hybrid with main basket. Do not merge as-is.",
+      "Formal 958 acceptance on main does NOT cover this candidate."
+    ],
+    "recommendation": "discard",
+    "summary_table": [
+      {
+        "mode": "tech_only",
+        "pool": "1_symbol",
+        "ret_main": 3.9285,
+        "ret_cand": 3.1964,
+        "d_ret": -0.7321,
+        "mdd_main": -0.1247,
+        "mdd_cand": -0.1279,
+        "trades_main": 36,
+        "trades_cand": 54,
+        "guard_on_main": 1,
+        "guard_on_cand": 1,
+        "first_main": "2026-06-26",
+        "first_cand": "2026-06-01"
+      },
+      {
+        "mode": "tech_only",
+        "pool": "3_symbols",
+        "ret_main": 6.708,
+        "ret_cand": 5.6324,
+        "d_ret": -1.0756,
+        "mdd_main": -0.1616,
+        "mdd_cand": -0.1643,
+        "trades_main": 342,
+        "trades_cand": 363,
+        "guard_on_main": 1,
+        "guard_on_cand": 1,
+        "first_main": "2026-06-26",
+        "first_cand": "2026-06-01"
+      },
+      {
+        "mode": "tech_only",
+        "pool": "5_symbols",
+        "ret_main": 9.3517,
+        "ret_cand": 6.7038,
+        "d_ret": -2.6478,
+        "mdd_main": -0.14,
+        "mdd_cand": -0.169,
+        "trades_main": 375,
+        "trades_cand": 430,
+        "guard_on_main": 1,
+        "guard_on_cand": 1,
+        "first_main": "2026-06-26",
+        "first_cand": "2026-06-01"
+      },
+      {
+        "mode": "tech_only",
+        "pool": "13_symbols",
+        "ret_main": 7.4784,
+        "ret_cand": 5.5356,
+        "d_ret": -1.9428,
+        "mdd_main": -0.1573,
+        "mdd_cand": -0.1706,
+        "trades_main": 657,
+        "trades_cand": 769,
+        "guard_on_main": 1,
+        "guard_on_cand": 1,
+        "first_main": "2026-06-26",
+        "first_cand": "2026-06-01"
+      },
+      {
+        "mode": "tech_only",
+        "pool": "17_symbols",
+        "ret_main": 8.6105,
+        "ret_cand": 6.343,
+        "d_ret": -2.2675,
+        "mdd_main": -0.151,
+        "mdd_cand": -0.1757,
+        "trades_main": 645,
+        "trades_cand": 760,
+        "guard_on_main": 1,
+        "guard_on_cand": 1,
+        "first_main": "2026-06-26",
+        "first_cand": "2026-06-01"
+      },
+      {
+        "mode": "dual_confirm",
+        "pool": "1_symbol",
+        "ret_main": 3.9285,
+        "ret_cand": 3.5468,
+        "d_ret": -0.3817,
+        "mdd_main": -0.1247,
+        "mdd_cand": -0.1565,
+        "trades_main": 36,
+        "trades_cand": 54,
+        "guard_on_main": 1,
+        "guard_on_cand": 0,
+        "first_main": "2026-06-26",
+        "first_cand": null
+      },
+      {
+        "mode": "dual_confirm",
+        "pool": "3_symbols",
+        "ret_main": 6.708,
+        "ret_cand": 6.3522,
+        "d_ret": -0.3558,
+        "mdd_main": -0.1616,
+        "mdd_cand": -0.1616,
+        "trades_main": 342,
+        "trades_cand": 366,
+        "guard_on_main": 1,
+        "guard_on_cand": 0,
+        "first_main": "2026-06-26",
+        "first_cand": null
+      },
+      {
+        "mode": "dual_confirm",
+        "pool": "5_symbols",
+        "ret_main": 9.3517,
+        "ret_cand": 8.3652,
+        "d_ret": -0.9865,
+        "mdd_main": -0.14,
+        "mdd_cand": -0.141,
+        "trades_main": 375,
+        "trades_cand": 396,
+        "guard_on_main": 1,
+        "guard_on_cand": 0,
+        "first_main": "2026-06-26",
+        "first_cand": null
+      },
+      {
+        "mode": "dual_confirm",
+        "pool": "13_symbols",
+        "ret_main": 7.4784,
+        "ret_cand": 6.493,
+        "d_ret": -0.9853,
+        "mdd_main": -0.1573,
+        "mdd_cand": -0.1821,
+        "trades_main": 657,
+        "trades_cand": 722,
+        "guard_on_main": 1,
+        "guard_on_cand": 0,
+        "first_main": "2026-06-26",
+        "first_cand": null
+      },
+      {
+        "mode": "dual_confirm",
+        "pool": "17_symbols",
+        "ret_main": 8.6105,
+        "ret_cand": 7.2012,
+        "d_ret": -1.4093,
+        "mdd_main": -0.151,
+        "mdd_cand": -0.1739,
+        "trades_main": 645,
+        "trades_cand": 703,
+        "guard_on_main": 1,
+        "guard_on_cand": 0,
+        "first_main": "2026-06-26",
+        "first_cand": null
+      }
+    ]
+  }
+}

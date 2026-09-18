@@ -120,18 +120,30 @@ class BacktestEngine(
         policy: PortfolioPolicy | None = None,
     ) -> None:
         resolved_policy = policy or PortfolioPolicy()
+        user_cfg = dict(cfg or {})
         regime_cfg = {
             key: getattr(resolved_policy, key) for key in self._REGIME_CFG_KEYS
         }
-        normalized_cfg = {
-            "sector_guard_min_symbols": max(
+        # Index-guard probes observe 1 (tech_only) or 2 (dual_confirm) series.
+        # Stock-basket path keeps the historical 80% regime-symbol quorum.
+        index_mode = str(
+            user_cfg.get("sector_guard_index_mode", "tech_only") or "tech_only"
+        )
+        if index_mode == "tech_only":
+            default_guard_min = 1
+        elif index_mode == "dual_confirm":
+            default_guard_min = 2
+        else:
+            default_guard_min = max(
                 1, math.ceil(len(resolved_policy.regime_symbols) * 0.8)
-            ),
+            )
+        normalized_cfg = {
+            "sector_guard_min_symbols": default_guard_min,
             "group_min_slots": 0,
             # Policy regime values override the canonical defaults; explicit
             # user cfg still wins because it is spread last.
             **regime_cfg,
-            **dict(cfg or {}),
+            **user_cfg,
         }
         super().__init__(
             initial_capital=initial_capital,

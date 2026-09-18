@@ -79,6 +79,10 @@ def default_engine_config() -> dict[str, Any]:
         "daily_loss_limit": 0.06,
         "account_risk_budget_enabled": True,
         "sector_guard_enabled": True,
+        # Experiment C default: drive sector-guard from 000682 (tech index).
+        # Use "dual_confirm" for 000300∧000682; "off"/"regime_basket" for stocks.
+        "sector_guard_index_mode": "tech_only",
+        "sector_guard_index_data_dir": "",
         "sector_guard_min_symbols": 5,
         "sector_shock_return": -0.05,
         "sector_shock_breadth": 0.2,
@@ -328,6 +332,17 @@ def _validate_numeric_config(out: dict) -> None:
             f"atr_method must be 'wilder' or 'sma', got {atr_method!r}"
         )
     out["atr_method"] = atr_method
+    index_mode = str(out.get("sector_guard_index_mode", "tech_only") or "tech_only")
+    allowed_index_modes = {"tech_only", "dual_confirm", "off", "regime_basket"}
+    if index_mode not in allowed_index_modes:
+        raise ValueError(
+            "sector_guard_index_mode must be one of "
+            f"{sorted(allowed_index_modes)}; got {index_mode!r}"
+        )
+    out["sector_guard_index_mode"] = index_mode
+    out["sector_guard_index_data_dir"] = str(
+        out.get("sector_guard_index_data_dir") or ""
+    )
     for key in [
         "atr_multiplier",
         "trail_atr_mult",

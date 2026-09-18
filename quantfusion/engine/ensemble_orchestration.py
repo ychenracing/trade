@@ -492,7 +492,8 @@ class EnsembleOrchestrationMixin:
                     if portfolio_risk.persistent_lock
                     else combined["locked_sleeves"]
                 ),
-                "guard_scope_mode": "fixed_signal_only_regime_basket",
+                "guard_scope_mode": self._sector_guard_scope_mode(),
+                "sector_guard_index_mode": self._sector_guard_index_mode(),
                 "portfolio_cash_model": (
                     "independent_sleeves_dynamic_idle_cash"
                     if bool(self.cfg.get("dynamic_sleeve_weights", True))
