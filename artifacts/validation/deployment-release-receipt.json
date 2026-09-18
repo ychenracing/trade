@@ -2,23 +2,23 @@
   "kind": "deployment_scoped_release",
   "status": "ECONOMICS_AND_QUALIFICATION_MET",
   "scope": "Fixed owner-selected17 technology stocks; daily close/next executable open/manual decision support. Not arbitrary stocks or future-return assurance.",
-  "source_revision": "fe5588f1d88edc098a79bbf5c130fda58616e37f",
-  "source_fingerprint": "7fc1d2ffd1b18843c94419c90b680b1fa6435244a481a9a9f6b204a857d0cdde",
+  "source_revision": "9ff459d52c3daede7902a04b8861bc35eac53f92",
+  "source_fingerprint": "f5eed2e09274581f7f573335d7ccce65be233c48772327ccd818f45135e75e0d",
   "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
-  "equivalent_remote_production_source": "7252bf1474013ce4f14f0c9c8b37a5e62d3c17b1",
+  "equivalent_remote_production_source": "9ff459d52c3daede7902a04b8861bc35eac53f92",
   "scenario_count": 958,
-  "payload_sha256": "f34c748c00e5007ee8fb5ac99f9e997fb0156c82787573df3199a2f371e707fa",
-  "original_file_sha256": "31b82bb398a8160077f527597925a72cfe5a85509ae8049b38ad843b95dcf3f8",
-  "tables_index_sha256": "ecd207a4709f3b72ecdc4eb2c99ad6be71446453f063f10fd4edb0f89fab3931",
-  "qualification_sha256": "94e6856a4bb7cc9c2a7d0d84f112bc67d2e3ff26d0fd007e86cc271a720be6b8",
+  "payload_sha256": "aed157b1d9c310d34e60815b6a8baba2974913e396f1ba07a934c37707f145fd",
+  "original_file_sha256": "a2b41ebb57656b2c043b0f5c0949845a3eb7919af6d322068ca69fd2d4e7fd32",
+  "tables_index_sha256": "befd3be60934321fb8492d16ff08c87a5658a10aeb45a1fa2a9f041b19c27bfb",
+  "qualification_sha256": "b8559517fecb7d3db7ead2abef5e8e2e072df14bba00b8cb9280dcb945f4f9f7",
   "native_joint_acceptance": {
     "kind": "native_joint_economic_acceptance",
     "candidate_id": "native-default",
     "economic_contract": "production-primary",
     "contract_sha256": "12cc8e1e475b5c8dbf51c588c6f1b2251dd2fa78ae37896a3f3c45144fa260e7",
     "original_contract_passed": false,
-    "source_revision": "fe5588f1d88edc098a79bbf5c130fda58616e37f",
-    "source_fingerprint": "7fc1d2ffd1b18843c94419c90b680b1fa6435244a481a9a9f6b204a857d0cdde",
+    "source_revision": "9ff459d52c3daede7902a04b8861bc35eac53f92",
+    "source_fingerprint": "f5eed2e09274581f7f573335d7ccce65be233c48772327ccd818f45135e75e0d",
     "data_fingerprint": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
     "scenario_signature": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
     "original_reference_payload_sha256": "a08fb77de1f840bbb0d4adecb907f559ecead7dbea3c654761042465ff9bd5f7",
@@ -43,23 +43,23 @@
   "family_wealth": {
     "prefix": {
       "minimum": 0.9399333400030975,
-      "p10": 0.9932886027794671,
-      "median": 1.604322734471246
+      "p10": 1.0828848917313572,
+      "median": 1.6043227344712465
     },
     "leave_one_out": {
-      "minimum": 0.6710768091436762,
+      "minimum": 0.6728309927818175,
       "p10": 0.9012519663551061,
-      "median": 1.1897355693201193
+      "median": 1.1916007086857956
     },
     "add_one": {
-      "minimum": 0.7841562683962799,
-      "p10": 1.1211658788879684,
-      "median": 1.68181188010763
+      "minimum": 0.7841562683962798,
+      "p10": 1.0365435225675275,
+      "median": 1.6455509434423188
     },
     "random_subset": {
       "minimum": 0.35692399250170204,
-      "p10": 0.8978910866920712,
-      "median": 1.2657291823791557
+      "p10": 0.8952354139344237,
+      "median": 1.2674716483021937
     },
     "permutation": {
       "minimum": 1.0753246776883583,
@@ -69,9 +69,9 @@
   },
   "random_drawdown_comparison": {
     "candidate": {
-      "maximum": 0.19357897406694738,
-      "p90": 0.1712106342372403,
-      "count_above_18pct": 13
+      "maximum": 0.19793493989089844,
+      "p90": 0.1715739079050622,
+      "count_above_18pct": 16
     },
     "incumbent": {
       "maximum": 0.2110621724651241,
@@ -82,60 +82,48 @@
   "outside_deployment_failures": {
     "wealth_below_65pct": [
       {
-        "scenario_id": "random-20260807-03-043",
-        "wealth_ratio": 0.5850540049541931
-      },
-      {
-        "scenario_id": "random-20260807-05-005",
-        "wealth_ratio": 0.6301525474912653
-      },
-      {
         "scenario_id": "random-20260807-08-020",
         "wealth_ratio": 0.35692399250170204
       },
       {
+        "scenario_id": "random-20260827-08-003",
+        "wealth_ratio": 0.41153079950080085
+      },
+      {
         "scenario_id": "random-20260807-12-015",
-        "wealth_ratio": 0.45138930847019654
-      },
-      {
-        "scenario_id": "random-20260807-15-022",
-        "wealth_ratio": 0.5770595123910519
-      },
-      {
-        "scenario_id": "random-20260807-15-036",
-        "wealth_ratio": 0.6327561853212036
-      },
-      {
-        "scenario_id": "random-20260817-03-042",
-        "wealth_ratio": 0.5850540049541931
-      },
-      {
-        "scenario_id": "random-20260817-08-043",
-        "wealth_ratio": 0.5570198129861923
-      },
-      {
-        "scenario_id": "random-20260817-12-019",
-        "wealth_ratio": 0.5905607451556169
+        "wealth_ratio": 0.5345359528734845
       },
       {
         "scenario_id": "random-20260817-12-030",
         "wealth_ratio": 0.5501708991778747
       },
       {
-        "scenario_id": "random-20260817-15-016",
-        "wealth_ratio": 0.5770595123910519
+        "scenario_id": "random-20260817-08-043",
+        "wealth_ratio": 0.5570198129861924
+      },
+      {
+        "scenario_id": "random-20260807-03-043",
+        "wealth_ratio": 0.5962519812714442
+      },
+      {
+        "scenario_id": "random-20260817-03-042",
+        "wealth_ratio": 0.5962519812714442
+      },
+      {
+        "scenario_id": "random-20260817-15-040",
+        "wealth_ratio": 0.6232618914388802
+      },
+      {
+        "scenario_id": "random-20260807-05-005",
+        "wealth_ratio": 0.6301525474912653
+      },
+      {
+        "scenario_id": "random-20260807-15-036",
+        "wealth_ratio": 0.6327561853212036
       },
       {
         "scenario_id": "random-20260817-15-027",
         "wealth_ratio": 0.6457774808820994
-      },
-      {
-        "scenario_id": "random-20260817-15-040",
-        "wealth_ratio": 0.6232618914388803
-      },
-      {
-        "scenario_id": "random-20260827-08-003",
-        "wealth_ratio": 0.41153079950080085
       },
       {
         "scenario_id": "random-20260827-15-030",
@@ -144,61 +132,71 @@
     ],
     "drawdown_above_18pct": [
       {
-        "scenario_id": "random-20260807-03-035",
-        "max_drawdown": -0.18384223665239732
+        "scenario_id": "random-20260807-05-043",
+        "max_drawdown_severity": 0.19793493989089844
       },
       {
         "scenario_id": "random-20260807-03-039",
-        "max_drawdown": -0.19357897406694738
+        "max_drawdown_severity": 0.19357897406694738
       },
       {
-        "scenario_id": "random-20260807-03-041",
-        "max_drawdown": -0.1898200194767277
-      },
-      {
-        "scenario_id": "random-20260807-05-009",
-        "max_drawdown": -0.18991669215975734
-      },
-      {
-        "scenario_id": "random-20260807-05-026",
-        "max_drawdown": -0.18637477593778692
+        "scenario_id": "random-20260817-08-009",
+        "max_drawdown_severity": 0.19229708372822316
       },
       {
         "scenario_id": "random-20260817-05-006",
-        "max_drawdown": -0.19110311487760032
+        "max_drawdown_severity": 0.19110311487760032
       },
       {
-        "scenario_id": "random-20260817-05-024",
-        "max_drawdown": -0.18926698627207447
+        "scenario_id": "random-20260817-03-031",
+        "max_drawdown_severity": 0.1908549470503527
       },
       {
         "scenario_id": "random-20260817-12-047",
-        "max_drawdown": -0.19036560241159775
+        "max_drawdown_severity": 0.19036560241159775
       },
       {
-        "scenario_id": "random-20260817-12-049",
-        "max_drawdown": -0.18006224841742285
-      },
-      {
-        "scenario_id": "random-20260827-03-031",
-        "max_drawdown": -0.18384223665239732
+        "scenario_id": "random-20260807-05-009",
+        "max_drawdown_severity": 0.18991669215975734
       },
       {
         "scenario_id": "random-20260827-05-016",
-        "max_drawdown": -0.18991414727621495
+        "max_drawdown_severity": 0.18991414727621495
+      },
+      {
+        "scenario_id": "random-20260807-03-041",
+        "max_drawdown_severity": 0.1898200194767277
+      },
+      {
+        "scenario_id": "random-20260817-05-024",
+        "max_drawdown_severity": 0.18926698627207447
       },
       {
         "scenario_id": "random-20260827-08-020",
-        "max_drawdown": -0.18805043561629073
+        "max_drawdown_severity": 0.18805043561629073
       },
       {
         "scenario_id": "random-20260827-08-031",
-        "max_drawdown": -0.18676953115412004
+        "max_drawdown_severity": 0.18676953115412004
+      },
+      {
+        "scenario_id": "random-20260807-05-026",
+        "max_drawdown_severity": 0.18637477593778692
+      },
+      {
+        "scenario_id": "random-20260807-03-035",
+        "max_drawdown_severity": 0.18384223665239732
+      },
+      {
+        "scenario_id": "random-20260827-03-031",
+        "max_drawdown_severity": 0.18384223665239732
+      },
+      {
+        "scenario_id": "random-20260817-12-049",
+        "max_drawdown_severity": 0.18006224841742285
       }
     ]
   },
   "old_contract_status": "NOT_MET",
-  "previous_production_contract_status": "NOT_MET",
-  "policy_revision_after_viewing_old_failures": true,
-  "engineering_and_merge": "Separate corresponding-HEAD checks; economic receipt does not assert CI or merge."
+  "previous_production_contract_status": "NOT_MET"
 }

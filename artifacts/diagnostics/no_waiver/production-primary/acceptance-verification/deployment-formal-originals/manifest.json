@@ -1,52 +1,51 @@
 {
   "schema_version": 1,
   "archive_name": "TRADE_PR101_DEPLOYMENT_FORMAL_ORIGINALS.tar.gz",
-  "bytes": 169590,
-  "sha256": "394bd263742ed22861bf704ab89cb338fffcff7ea6a9e0d284a33dd9ed35afa4",
+  "bytes": 171105,
+  "sha256": "b21f216ca317c164f7c7c296400f3cb4124135926950d7bea1cdcd5ce4196402",
   "chunk_size": 32768,
   "parts": [
     {
       "name": "part-0000.bin",
       "offset": 0,
       "bytes": 32768,
-      "sha256": "1933f5ece35e3d37f8255cf696d805f7b7632af4aae7af1ae71f33b4051d6630",
-      "git_blob": "2434836307cacd1b5398f940c5f45e129dd32c52"
+      "sha256": "9c69f451abd9ff68a1448f35f8179b747ad07e28d2bfe5f63a57085aaf50a893",
+      "git_blob": "162e349969e3a5e7140729fdbd28d4378dd58948"
     },
     {
       "name": "part-0001.bin",
       "offset": 32768,
       "bytes": 32768,
-      "sha256": "1746d9cd12ef31cc316bed699865ea033aad5110b64ab48fc114230b719da613",
-      "git_blob": "22dcdac632ae5fd5062bcab236ba86bedb402210"
+      "sha256": "d51229adc2b5bc70eaf9be532958966a02c87511dedb8153084fa7429bc1b6ff",
+      "git_blob": "266fad48f1e8fda2b5a5eeb609434ff750486e8f"
     },
     {
       "name": "part-0002.bin",
       "offset": 65536,
       "bytes": 32768,
-      "sha256": "f0ccdb3e9b8a9b2cbccd2c1a726de4d0a38f0a310a649bc1e609dc0268957324",
-      "git_blob": "f663be92f25654da9e7f7816c8768ecb9d226f17"
+      "sha256": "e56c057c235ffb38053a55bf0565078e583e084be928c01a586ad797daa575fe",
+      "git_blob": "aca66bb7a89d810cb704b5c070874b1c118ea9eb"
     },
     {
       "name": "part-0003.bin",
       "offset": 98304,
       "bytes": 32768,
-      "sha256": "4988ee8fbc225970689414a505b8be62505ab2d334efc13787066c4e028b7ca3",
-      "git_blob": "09b9ce3b140b5aa23133c2c4bcc3eaaa9f02c4fc"
+      "sha256": "475b46b3d70f233da601d8ee30512b97390bd7b205b070ba830a1f556e0b3a73",
+      "git_blob": "f026199a1dbf8716f11a7416faa2b54919ae26cd"
     },
     {
       "name": "part-0004.bin",
       "offset": 131072,
       "bytes": 32768,
-      "sha256": "ab997f225e7d25f748c6ba408f7e2212fdce8b49a6a5855f51956bb53f91f208",
-      "git_blob": "d070c5aec5de780e9b78de2bda327eace91abbb8"
+      "sha256": "3cfbebdd496d1a882cbdbc2e917c2330f3161c741166d17cbc351b4987b853e0",
+      "git_blob": "54669fc621f9f50ec0bb13acf2ea609e5540dcf7"
     },
     {
       "name": "part-0005.bin",
       "offset": 163840,
-      "bytes": 5750,
-      "sha256": "0379d93fc20ede4f8acc4098be97a581bc01142868080fe1d24ac9d2c0d20af5",
-      "git_blob": "fc60b1898be18c0d72cf86f47243874bbe099f19"
+      "bytes": 7265,
+      "sha256": "578c2fc57a5bdeeb6d66ccec88d9717a1241714f594ff2b939b12606bdf3765f",
+      "git_blob": "38a9d006f5409eeaabfccddac583d8135f266047"
     }
-  ],
-  "reconstruction": "Concatenate parts in manifest order; verify each length/SHA256 and final length/SHA256 before extracting. Never treat a partial set as complete."
+  ]
 }
