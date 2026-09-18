@@ -1,0 +1,304 @@
+{
+  "candidate": {
+    "1_symbol": {
+      "total_return": 2.4049116354532503,
+      "max_drawdown": -0.16113552001665585,
+      "final_assets": 6809823.2709065005,
+      "total_trades": 98,
+      "sell_trades": 54,
+      "guard_scope_mode": "tradable_pool_breadth",
+      "tradable_symbols": null,
+      "regime_symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "guard_on_dates": [
+        "2025-09-08",
+        "2026-02-04",
+        "2026-06-26"
+      ],
+      "guard_off_dates": [
+        "2025-09-11",
+        "2026-02-25",
+        "2026-07-09"
+      ],
+      "guard_on_count": 3,
+      "first_guard_on": "2025-09-08",
+      "guard_event_count": 63,
+      "elapsed_s": 9.94,
+      "symbol_count": 1,
+      "symbols": [
+        "300308"
+      ]
+    },
+    "3_symbols": {
+      "total_return": 5.882808521000374,
+      "max_drawdown": -0.14285261835799967,
+      "final_assets": 13765617.042000748,
+      "total_trades": 370,
+      "sell_trades": 206,
+      "guard_scope_mode": "tradable_pool_breadth",
+      "tradable_symbols": null,
+      "regime_symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "guard_on_dates": [
+        "2025-09-08"
+      ],
+      "guard_off_dates": [
+        "2025-10-21"
+      ],
+      "guard_on_count": 1,
+      "first_guard_on": "2025-09-08",
+      "guard_event_count": 36,
+      "elapsed_s": 14.38,
+      "symbol_count": 3,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394"
+      ]
+    },
+    "5_symbols": {
+      "total_return": 5.303968208566377,
+      "max_drawdown": -0.16127849563541766,
+      "final_assets": 12607936.417132754,
+      "total_trades": 428,
+      "sell_trades": 220,
+      "guard_scope_mode": "tradable_pool_breadth",
+      "tradable_symbols": null,
+      "regime_symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "guard_on_dates": [
+        "2025-09-08",
+        "2025-10-31",
+        "2026-07-02"
+      ],
+      "guard_off_dates": [
+        "2025-09-11",
+        "2025-11-07"
+      ],
+      "guard_on_count": 3,
+      "first_guard_on": "2025-09-08",
+      "guard_event_count": 51,
+      "elapsed_s": 16.97,
+      "symbol_count": 5,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "603986"
+      ]
+    },
+    "13_symbols": {
+      "total_return": 6.493024218947128,
+      "max_drawdown": -0.18210538429666537,
+      "final_assets": 14986048.437894257,
+      "total_trades": 722,
+      "sell_trades": 467,
+      "guard_scope_mode": "tradable_pool_breadth",
+      "tradable_symbols": null,
+      "regime_symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "guard_on_dates": [
+        "2026-07-20"
+      ],
+      "guard_off_dates": [],
+      "guard_on_count": 1,
+      "first_guard_on": "2026-07-20",
+      "guard_event_count": 24,
+      "elapsed_s": 30.1,
+      "symbol_count": 13,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "603986",
+        "688072",
+        "688300",
+        "300054",
+        "688361",
+        "002409",
+        "688498",
+        "688120",
+        "002384"
+      ]
+    },
+    "17_symbols": {
+      "total_return": 7.203618402540254,
+      "max_drawdown": -0.17379003753384387,
+      "final_assets": 16407236.805080507,
+      "total_trades": 703,
+      "sell_trades": 453,
+      "guard_scope_mode": "tradable_pool_breadth",
+      "tradable_symbols": null,
+      "regime_symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "guard_on_dates": [
+        "2026-07-17"
+      ],
+      "guard_off_dates": [],
+      "guard_on_count": 1,
+      "first_guard_on": "2026-07-17",
+      "guard_event_count": 24,
+      "elapsed_s": 37.55,
+      "symbol_count": 17,
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688256",
+        "603986",
+        "688072",
+        "688300",
+        "300054",
+        "688361",
+        "002409",
+        "688498",
+        "688120",
+        "002384",
+        "688082",
+        "300604",
+        "601869",
+        "300408"
+      ]
+    }
+  },
+  "main": {
+    "1_symbol": {
+      "total_return": 3.928538056569,
+      "max_drawdown": -0.12468509293898083,
+      "total_trades": 36,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    },
+    "3_symbols": {
+      "total_return": 6.707950188316252,
+      "max_drawdown": -0.16162524913761778,
+      "total_trades": 342,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    },
+    "5_symbols": {
+      "total_return": 9.351672960887004,
+      "max_drawdown": -0.140024999442075,
+      "total_trades": 375,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    },
+    "13_symbols": {
+      "total_return": 7.478371386054253,
+      "max_drawdown": -0.15733628648998246,
+      "total_trades": 657,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    },
+    "17_symbols": {
+      "total_return": 8.610542744515504,
+      "max_drawdown": -0.15104978428469945,
+      "total_trades": 645,
+      "first_guard_on": "2026-06-26",
+      "guard_on_count": 1,
+      "guard_event_count": 3
+    }
+  },
+  "comparison": {
+    "1_symbol": {
+      "delta_return": -1.5236264211157495,
+      "delta_mdd": -0.03645042707767501,
+      "delta_trades": 62,
+      "guard_on_changed": true,
+      "first_guard_on_main": "2026-06-26",
+      "first_guard_on_cand": "2025-09-08",
+      "guard_on_count_main": 1,
+      "guard_on_count_cand": 3
+    },
+    "3_symbols": {
+      "delta_return": -0.8251416673158776,
+      "delta_mdd": 0.018772630779618105,
+      "delta_trades": 28,
+      "guard_on_changed": true,
+      "first_guard_on_main": "2026-06-26",
+      "first_guard_on_cand": "2025-09-08",
+      "guard_on_count_main": 1,
+      "guard_on_count_cand": 1
+    },
+    "5_symbols": {
+      "delta_return": -4.0477047523206275,
+      "delta_mdd": -0.021253496193342658,
+      "delta_trades": 53,
+      "guard_on_changed": true,
+      "first_guard_on_main": "2026-06-26",
+      "first_guard_on_cand": "2025-09-08",
+      "guard_on_count_main": 1,
+      "guard_on_count_cand": 3
+    },
+    "13_symbols": {
+      "delta_return": -0.9853471671071246,
+      "delta_mdd": -0.024769097806682905,
+      "delta_trades": 65,
+      "guard_on_changed": true,
+      "first_guard_on_main": "2026-06-26",
+      "first_guard_on_cand": "2026-07-20",
+      "guard_on_count_main": 1,
+      "guard_on_count_cand": 1
+    },
+    "17_symbols": {
+      "delta_return": -1.40692434197525,
+      "delta_mdd": -0.022740253249144415,
+      "delta_trades": 58,
+      "guard_on_changed": true,
+      "first_guard_on_main": "2026-06-26",
+      "first_guard_on_cand": "2026-07-17",
+      "guard_on_count_main": 1,
+      "guard_on_count_cand": 1
+    }
+  },
+  "meta": {
+    "branch_intent": "Sector guard breadth/shock/recovery uses trading-pool symbols; market-regime thermometer keeps fixed regime_symbols (688008).",
+    "window": "2025-04-01..2026-07-20",
+    "capital": 2000000.0,
+    "engine": "BacktestEngine",
+    "indicator_state": "warm",
+    "sector_recovery_unchanged": true,
+    "regime_symbols_unchanged": true,
+    "notes": [
+      "Regime thermometer unchanged (still includes 688008).",
+      "Guard scopes to tradable pool; min_symbols = ceil(0.8 * n_trade).",
+      "1/3/5: earlier first guard_on (2025-09-08) vs main 2026-06-26; returns worse.",
+      "13/17: later first guard_on than main, but returns and MDD still worse.",
+      "Small pools (n=1) become near single-stock stops — design tension.",
+      "5-pool includes 688256 so guard inherits Cambricon shock (Exp A failure mode, scoped to that pool only).",
+      "Recommendation: iterate (e.g. trade-pool guard only when n>=5, or hybrid) — do not merge as-is.",
+      "Formal 958 acceptance on main does NOT cover this candidate."
+    ]
+  }
+}

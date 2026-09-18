@@ -760,8 +760,10 @@ class ExecutionControlTests(unittest.TestCase):
         self.assertEqual(remaining, 2_000)
         self.assertEqual(sell_capacity, 5_000)
 
-    def test_missing_regime_symbol_preserves_guard_state(self) -> None:
+    def test_missing_tradable_symbol_preserves_guard_state(self) -> None:
+        """Insufficient trade-pool breadth must not erase an active guard."""
         policy = PortfolioPolicy(allocation_mode="single")
+        trade_pool = ("300308", "300502", "300394", "688256", "603986")
         sleeve = SleeveBacktestEngine(
             1_000_000,
             cfg={
@@ -773,12 +775,20 @@ class ExecutionControlTests(unittest.TestCase):
             allocation_lookbacks=policy.single_lookbacks,
             sleeve_name="test",
         )
+        sleeve._tradable_symbol_codes = set(trade_pool)
         dates = list(pd.bdate_range("2026-01-02", periods=4))
         data_map = {
             symbol: pd.DataFrame({"close": [100.0, 99.0, 98.0, 97.0]}, index=dates)
-            for symbol in policy.regime_symbols
+            for symbol in trade_pool
         }
-        missing = policy.regime_symbols[-1]
+        # Out-of-pool regime ref present in data_map must not inflate guard quorum.
+        regime_only = next(
+            code for code in policy.regime_symbols if code not in trade_pool
+        )
+        data_map[regime_only] = pd.DataFrame(
+            {"close": [100.0, 99.0, 98.0, 97.0]}, index=dates
+        )
+        missing = trade_pool[-1]
         data_map[missing] = data_map[missing].iloc[:-1]
         sleeve.sector_guard_active = True
         sleeve._sector_shock_positions = [2]
@@ -813,7 +823,7 @@ class IntegrationTests(unittest.TestCase):
 
     def test_signal_only_regime_symbols_never_become_trades(self) -> None:
         result = self.results["1_symbol"]
-        self.assertEqual(result["guard_scope_mode"], "fixed_signal_only_regime_basket")
+        self.assertEqual(result["guard_scope_mode"], "tradable_pool_breadth")
         self.assertEqual(
             set(result["effective_portfolio_policy"]["regime_symbols"]),
             set(PortfolioPolicy().regime_symbols),

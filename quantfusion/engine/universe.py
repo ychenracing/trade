@@ -120,10 +120,15 @@ class BacktestEngine(
         policy: PortfolioPolicy | None = None,
     ) -> None:
         resolved_policy = policy or PortfolioPolicy()
+        user_cfg = dict(cfg or {})
+        # Explicit sector_guard_min_symbols wins; otherwise sleeves scale quorum
+        # to the trade pool in _runtime_sleeve_cfg / UniverseRiskMixin.
+        self._sector_guard_min_from_user = "sector_guard_min_symbols" in user_cfg
         regime_cfg = {
             key: getattr(resolved_policy, key) for key in self._REGIME_CFG_KEYS
         }
         normalized_cfg = {
+            # Seed only; trade-pool scaling overwrites unless user set the key.
             "sector_guard_min_symbols": max(
                 1, math.ceil(len(resolved_policy.regime_symbols) * 0.8)
             ),
@@ -131,7 +136,7 @@ class BacktestEngine(
             # Policy regime values override the canonical defaults; explicit
             # user cfg still wins because it is spread last.
             **regime_cfg,
-            **dict(cfg or {}),
+            **user_cfg,
         }
         super().__init__(
             initial_capital=initial_capital,
@@ -251,6 +256,11 @@ class BacktestEngine(
         if tradable_count <= 2:
             sleeve_cfg.update(self._SINGLE_ASSET_TREND_OVERRIDES)
         sleeve_cfg["max_positions"] = 10
+        # Guard quorum tracks the trade-pool observation set, not regime_symbols.
+        if not getattr(self, "_sector_guard_min_from_user", False):
+            sleeve_cfg["sector_guard_min_symbols"] = max(
+                1, math.ceil(tradable_count * 0.8)
+            )
         if tradable_count >= 5 and not self._runtime_reference_complete:
             exposure_cap = float(
                 self.cfg.get("incomplete_reference_max_total_weight", 0.85)

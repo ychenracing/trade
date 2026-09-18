@@ -11,9 +11,31 @@ from quantfusion.domain.models import Signal
 from quantfusion.risk.managers import RecoverableDrawdownRiskManager
 from quantfusion.strategy.trend import BaseStrategy
 
+# Result/audit label: sector guard observes the run's tradable pool, while the
+# market-regime thermometer stays on the fixed policy.regime_symbols basket.
+GUARD_SCOPE_MODE = "tradable_pool_breadth"
+
 
 class UniverseRiskMixin:
     """Universe-aware sector and portfolio risk result decoration."""
+
+    def _sector_guard_observation_data(
+        self, data_map: dict[str, pd.DataFrame]
+    ) -> dict[str, pd.DataFrame]:
+        """Return trade-pool frames for breadth/shock/recovery (not regime_symbols).
+
+        The fixed ``policy.regime_symbols`` basket remains the cross-pool
+        regime thermometer via ``_update_market_regime``; guard must not pull
+        out-of-pool names (e.g. 688008) into held-pool risk measurement.
+
+        Quorum (``sector_guard_min_symbols``) is scaled to the trade pool in
+        ``BacktestEngine._runtime_sleeve_cfg`` as ``ceil(0.8 * n_trade)``,
+        matching the former ratio but keyed to the guard observation set.
+        """
+        tradable = getattr(self, "_tradable_symbol_codes", None) or set()
+        return {
+            code: data_map[code] for code in tradable if code in data_map
+        }
 
     def _update_sector_guard(
         self,
@@ -22,17 +44,14 @@ class UniverseRiskMixin:
         all_dates: list[pd.Timestamp],
         date_to_pos: dict[pd.Timestamp, int],
     ) -> str | None:
-        """Update breadth risk, then advance the market-regime state machine.
+        """Update breadth risk from the trade pool, then advance market regime.
 
         The regime update runs after the sector guard so entries respect the
         freshly scored regime, and before signal generation because
         ``_evaluate_trading_day`` continues only after this method returns.
+        Regime membership stays on ``policy.regime_symbols`` (unchanged).
         """
-        scoped_data = {
-            code: data_map[code]
-            for code in self.policy.regime_symbols
-            if code in data_map
-        }
+        scoped_data = self._sector_guard_observation_data(data_map)
         guard_state = super()._update_sector_guard(  # pyright: ignore[reportAttributeAccessIssue]
             scoped_data,
             date,
@@ -82,7 +101,7 @@ class UniverseRiskMixin:
                     if isinstance(manager, RecoverableDrawdownRiskManager)
                     else 0
                 ),
-                "guard_scope_mode": "fixed_signal_only_regime_basket",
+                "guard_scope_mode": GUARD_SCOPE_MODE,
                 "tradable_symbols": sorted(self._tradable_symbol_codes),
                 "regime_state_series": list(self._regime_state_series),
                 "regime_final_state": self._regime_state,
