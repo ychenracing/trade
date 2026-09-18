@@ -236,6 +236,11 @@ def plan_account_risk_budget(
     shock_scale = 0. if shock_episode and buy_stress else 1.
     stress_relief = max(0., held_stress - receipt['remaining_loss_budget']) if observed else 0.
     ordinary_buy_scale = min(gross_scale, gap_scale)
+    ordinary_path = (
+        preserve_strategy_valid_holdings
+        and not risk_alert_active
+        and not shock_episode
+    )
     # An alert governs the amount of new risk; it is not a permanent entry
     # lock.  Once prior reductions have actually filled, admit only the risk
     # that fits the live close-known cap.  ``gross`` deliberately still
@@ -357,20 +362,34 @@ def plan_account_risk_budget(
         else:
             append_pro_rata_relief(ordered_books, required_relief)
     elif preserve_strategy_valid_holdings and not risk_alert_active and gross > cap:
-        # Fund the unchanged two-session reserve before a cycle alert. Share
-        # the necessary close-known reduction across books so score ordering
-        # does not erase one still-valid opportunity. These are plans, not fills.
-        fraction = (gross - cap) / gross
-        for state, symbol, strategy, shares, price in sorted(
-            books, key=lambda book: (book[1], book[0], book[2]),
-        ):
-            reduction = min(shares, math.ceil(shares * fraction / 100.) * 100)
-            if reduction:
-                actions.append(RiskAction(
-                    symbol, strategy, reduction, price, date_str,
-                    "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
-                    state_index=state,
-                ))
+        # Ordinary preserve absorption of archive_0805 patience:
+        # - Single-group books keep main's full pro-rata reserve funding
+        #   whenever gross exceeds cap (concentrated optical cohorts).
+        # - Multi-group books tolerate an immaterial overshoot up to one
+        #   daily-loss allowance (same materiality as alert invested
+        #   concentration) so mild pressure does not chop still-valid
+        #   holdings; material overshoot still shares the reserve trim.
+        # Alert / shock / direct-loss / concentration / weak-book stay hard.
+        overshoot = gross - cap
+        held_groups_live = {
+            SYMBOL_SUB_INDUSTRY.get(symbol, symbol)
+            for _, symbol, _, shares, _ in books if shares
+        }
+        multi_group_book = len(held_groups_live) >= 2
+        material_overshoot = overshoot > equity * daily_loss_limit + 1e-8
+        if material_overshoot or not multi_group_book:
+            fraction = overshoot / gross
+            for state, symbol, strategy, shares, price in sorted(
+                books, key=lambda book: (book[1], book[0], book[2]),
+            ):
+                reduction = min(shares, math.ceil(shares * fraction / 100.) * 100)
+                if reduction:
+                    actions.append(RiskAction(
+                        symbol, strategy, reduction, price, date_str,
+                        "account_budget_trim",
+                        RISK_ACTION_PRIORITY["account_budget_trim"],
+                        state_index=state,
+                    ))
     elif risk_alert_active:
         for state, symbol, strategy, shares, price in sorted(
             books, key=lambda book: (book[1], book[0], book[2]),
@@ -568,6 +587,20 @@ def plan_account_risk_budget(
     return {**receipt, "gross_before": gross, "buy_envelope_binding": binding,
             "buy_gross_scale": gross_scale, "current_gap_debit": current_gap,
             "requested_buy_gap_debit": buy_gap, "buy_gap_scale": gap_scale,
+            "ordinary_buy_scale": ordinary_buy_scale,
+            "ordinary_path_active": ordinary_path,
+            "ordinary_held_overshoot": max(0., gross - cap),
+            "ordinary_held_trim_deferred": bool(
+                preserve_strategy_valid_holdings
+                and not risk_alert_active
+                and not shock_confirmed
+                and gross > cap + 1e-8
+                and gross - cap <= equity * daily_loss_limit + 1e-8
+                and len({
+                    SYMBOL_SUB_INDUSTRY.get(symbol, symbol)
+                    for _, symbol, _, shares, _ in books if shares
+                }) >= 2
+            ),
             "observed_shock_candidates": candidates,
             "observed_shock_confirmed": shock_confirmed,
             "shocked_group_count": len(shocked_groups),
