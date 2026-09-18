@@ -1,10 +1,10 @@
 {
-  "source_revision": "dca1b65b58adf94087dadcc9d2ad33348e92d799",
+  "source_revision": "b9add4cb6e9386c9a6299d4a70de3152c0b305d8",
   "purpose": "Authorized changed strategy regression only, NOT financial acceptance or replacement incumbent. Preserve old bytes before installing proposed expectations.",
   "cases": [
     {
       "case": "1",
-      "raw_sha256": "6e888141771e80030c889f772aaa4c4f0c195ff726d21202646561791ecf98e8",
+      "raw_sha256": "c330c21444de57b0c51c757f04c6c6c1dafcf38df17d911c37c818c8c1d30315",
       "old_wealth": 5.243497434140125,
       "current_wealth": 4.928538056569,
       "old_mdd": -0.14485830844644382,
@@ -15,9 +15,9 @@
     },
     {
       "case": "13",
-      "raw_sha256": "a2c936f6f923446efef966a6f7b0291c930112aa4fe81c912f4e24c2621dbd3c",
+      "raw_sha256": "32752b2373ba3d1fa6c776b856ca722d596d6f6920d436afdcb412bcb02d9d94",
       "old_wealth": 4.703662538498253,
-      "current_wealth": 8.478371386054253,
+      "current_wealth": 8.478371386054251,
       "old_mdd": -0.1730168953035033,
       "current_mdd": -0.15733628648998246,
       "cash_reconciled": true,
@@ -26,7 +26,7 @@
     },
     {
       "case": "17",
-      "raw_sha256": "074d190b2ba6a8cc8d2999da95ea829b2e4bbed776be7bb076fd4fc840fbe34a",
+      "raw_sha256": "8cabc1bcc681e92f2857b2e34eecd151a449a68cd2247284531655d4bd0074e1",
       "old_wealth": 8.937340455326881,
       "current_wealth": 9.610542744515504,
       "old_mdd": -0.16872315265587953,
@@ -37,9 +37,9 @@
     },
     {
       "case": "3",
-      "raw_sha256": "2ddaa5929643c922735eae9220948361ead1dda47eb4e9080204db7f9d6136a7",
+      "raw_sha256": "d9519494f11cb3580a9f44109c6fcdc75b0ff6ea2d07dff5e1934e25420946d4",
       "old_wealth": 6.718186501630001,
-      "current_wealth": 7.707950188316252,
+      "current_wealth": 7.707950188316254,
       "old_mdd": -0.15803331365513246,
       "current_mdd": -0.16162524913761778,
       "cash_reconciled": true,
@@ -48,7 +48,7 @@
     },
     {
       "case": "5",
-      "raw_sha256": "55e027f9b235f56c67cda6857c52504e6c3eb3780a70fdbdc4fc7291ff4d2e16",
+      "raw_sha256": "82adac50e3da7e9b23a5298450b011c141c67b1ec97b2e2fcc6a6a6b344e9c3a",
       "old_wealth": 9.189437988796127,
       "current_wealth": 10.351672960887004,
       "old_mdd": -0.1588155645868333,
@@ -59,7 +59,7 @@
     },
     {
       "case": "_adaptive_bull",
-      "raw_sha256": "321b182df7242856dcdbc6fc361be9396139fa2e924637e40e4f407deb5e8ae4",
+      "raw_sha256": "43aa848fcf092a411b8d5d159c1e817f17bed6cb2ea6a5840d365e62cc34d916",
       "old_wealth": 5.243497434140125,
       "current_wealth": 4.928538056569,
       "old_mdd": -0.14485830844644382,
