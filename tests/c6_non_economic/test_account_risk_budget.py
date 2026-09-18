@@ -11,7 +11,6 @@ from quantfusion.research.c6_runtime import run_c6_diagnostic
 from quantfusion.config.engine import default_engine_config, validate_engine_config
 from quantfusion.config.portfolio import PortfolioPolicy
 from quantfusion.domain.models import Position, Signal, TradeRecord
-from quantfusion.domain.rules import limit_pct_for_code
 from quantfusion.engine.ensemble import EnsembleSleeveBacktestEngine
 from quantfusion.engine.universe import BacktestEngine
 
@@ -75,8 +74,9 @@ def test_budget_formula_has_fixed_two_session_and_fee_reserve():
 
 def test_nonbinding_budget_leaves_existing_buy_batch_unchanged():
     engine, state, dates = fixture(shares=2000, cash=80000.)
-    buy = Signal('300308', 'turtle_breakout', 'buy', target_shares=10000,
-                 price=10., signal_date='2026-01-05', reason='initial entry')
+    buy = Signal('300308', 'turtle_breakout', 'buy', target_shares=8000,
+                 price=10., stop_loss=7., signal_date='2026-01-05',
+                 reason='initial entry')
     state.pending = [(buy, SimpleNamespace(name='turtle_breakout'))]
 
     r = apply(engine, [state], dates, equity=100000., peak=100000.)
@@ -104,23 +104,19 @@ def test_binding_budget_retains_bounded_buy_batch_without_sell_credit():
     assert state.sleeve.positions['300308']['turtle_breakout'].shares == 2000
 
 
-def test_binding_buy_batch_debits_existing_board_limit_gap_risk():
+def test_binding_buy_batch_uses_executable_loss_debit_with_full_pressure_bound():
     engine, state, dates = fixture(shares=2000, cash=70000.)
     buy = Signal('300308', 'turtle_breakout', 'buy', target_shares=10000,
-                 price=10., signal_date='2026-01-05', reason='initial entry')
+                 price=10., stop_loss=7., signal_date='2026-01-05',
+                 reason='initial entry')
     state.pending = [(buy, SimpleNamespace(name='turtle_breakout'))]
 
     r = apply(engine, [state], dates)
 
-    factor = limit_pct_for_code('300308', engine.cfg) + r['cost_rate']
-    current_debit = 20000. * factor
-    retained_debit = sum(
-        signal.target_shares * signal.price * factor
-        for signal, _ in state.pending if signal.direction == 'buy'
-    )
     assert r['buy_envelope_binding'] is True
-    assert r['current_gap_debit'] == pytest.approx(current_debit)
-    assert 0 < retained_debit <= r['remaining_loss_budget'] - current_debit
+    assert r['ordinary_held_loss_debit'] < r['current_gap_debit']
+    assert 0 < r['ordinary_allocated_buy_gross']
+    assert r['ordinary_total_loss_debit'] <= r['remaining_loss_budget']
     assert r['buy_gap_scale'] < r['buy_gross_scale']
 
 
@@ -219,10 +215,10 @@ def test_weakest_book_absorbs_minimum_reduction_and_preserves_winner():
 
     r = apply(engine, [weak, strong], dates)
 
-    required = 80000. - r['gross_cap']
-    expected = min(5000, int(-(-required//1000))*100)
+    assert r['ordinary_held_loss_debit_before'] > r['remaining_loss_budget']
+    assert r['ordinary_held_loss_debit_after'] <= r['remaining_loss_budget']
     assert [(s.symbol, s.target_shares) for s, _ in weak.pending] == [
-        ('300308', expected)
+        ('300308', 1400)
     ]
     assert strong.pending == []
     assert r['new_reduction_orders'] == 1
@@ -357,18 +353,18 @@ def test_sleeve_alert_cannot_override_latest_portfolio_alert_state():
 
 
 def test_independent_confirmed_buy_is_selected_before_ordinary_buy():
-    """A confirmed new group keeps its size while ordinary risk stays bounded."""
+    """A confirmed new group receives scarce loss budget before an ordinary buy."""
     engine, state, dates = fixture(shares=2_000, cash=65_000.)
     frame = state.data_map['300308']
     state.data_map.update({'603986': frame.copy(), '300502': frame.copy()})
     confirmed = Signal(
         '603986', 'atr_channel', 'buy', 1_000, 10.,
-        signal_date='2026-01-05', fusion_votes=2,
+        stop_loss=9., signal_date='2026-01-05', fusion_votes=2,
         fusion_label='two_strategy_confirmation',
     )
     ordinary = Signal(
         '300502', 'turtle_breakout', 'buy', 1_000, 10.,
-        signal_date='2026-01-05', fusion_votes=1,
+        stop_loss=9., signal_date='2026-01-05', fusion_votes=1,
     )
     state.pending = [
         (confirmed, SimpleNamespace(name='atr_channel')),
@@ -380,9 +376,12 @@ def test_independent_confirmed_buy_is_selected_before_ordinary_buy():
         preserve_strategy_valid_holdings=True,
     )
     by_symbol = {signal.symbol: signal.target_shares for signal, _ in state.pending}
-    assert by_symbol['603986'] == 1_000
-    assert by_symbol.get('300502', 0) < 1_000
-    assert events[-1]['quality_admitted_buy_indexes'] == [0]
+    assert 0 < by_symbol['603986'] < 1_000
+    assert by_symbol.get('300502', 0) == 0
+    assert events[-1]['quality_prioritized_buy_indexes'] == [0]
+    assert events[-1]['ordinary_total_loss_debit'] <= events[-1][
+        'remaining_loss_budget'
+    ]
 
 
 def test_budget_derives_dual_ma_handoff_from_same_day_filled_exit():
@@ -396,7 +395,7 @@ def test_budget_derives_dual_ma_handoff_from_same_day_filled_exit():
     ))
     buy = Signal(
         '300308', 'dual_ma', 'buy', 10_000, 10.,
-        signal_date='2026-01-05', fusion_votes=1,
+        stop_loss=9., signal_date='2026-01-05', fusion_votes=1,
     )
     state.pending = [(buy, SimpleNamespace(name='dual_ma'))]
     events = []
@@ -405,10 +404,11 @@ def test_budget_derives_dual_ma_handoff_from_same_day_filled_exit():
         preserve_strategy_valid_holdings=True,
     )
     assert [(signal.symbol, signal.target_shares) for signal, _ in state.pending] == [
-        ('300308', 10_000),
+        ('300308', 6_600),
     ]
     assert events[-1]['strategy_handoff_symbols'] == ['300308']
-    assert events[-1]['handoff_admitted_buy_indexes'] == [0]
+    assert events[-1]['quality_prioritized_buy_indexes'] == [0]
+    assert events[-1]['handoff_admitted_buy_indexes'] == []
 
 
 def test_alert_does_not_immediately_reverse_filled_dual_ma_handoff():
@@ -520,13 +520,13 @@ def test_budget_derives_repeated_reentry_from_two_confirmed_atr_cycles():
         ),
     ])
     atr = Signal(
-        '603986', 'atr_channel', 'buy', 1_000, 100.,
-        signal_date='2026-01-05', fusion_votes=2,
+        '603986', 'atr_channel', 'buy', 100, 100.,
+        stop_loss=90., signal_date='2026-01-05', fusion_votes=2,
         fusion_label='two_strategy_confirmation',
     )
     turtle = Signal(
-        '603986', 'turtle_breakout', 'buy', 1_000, 100.,
-        signal_date='2026-01-05', fusion_votes=2,
+        '603986', 'turtle_breakout', 'buy', 100, 100.,
+        stop_loss=90., signal_date='2026-01-05', fusion_votes=2,
         fusion_label='two_strategy_confirmation',
     )
     state.pending = [
@@ -538,7 +538,7 @@ def test_budget_derives_repeated_reentry_from_two_confirmed_atr_cycles():
         [state], dates[0], 90_000., 100_000., events,
         preserve_strategy_valid_holdings=True,
     )
-    assert [signal.target_shares for signal, _ in state.pending] == [1_000, 1_000]
+    assert [signal.target_shares for signal, _ in state.pending] == [100, 100]
     assert events[-1]['repeated_proven_reentry_symbols'] == ['603986']
     assert events[-1]['repeated_reentry_admitted_buy_indexes'] == [1]
 
@@ -696,8 +696,8 @@ def test_budget_derives_proven_early_dual_transition_from_completed_atr_cycle():
         ),
     ])
     dual = Signal(
-        '300308', 'dual_ma', 'buy', 10_000, 10.,
-        signal_date='2026-01-05', fusion_votes=1,
+        '300308', 'dual_ma', 'buy', 5_000, 10.,
+        stop_loss=9., signal_date='2026-01-05', fusion_votes=1,
     )
     state.pending = [(dual, SimpleNamespace(name='dual_ma'))]
     events = []
@@ -705,7 +705,7 @@ def test_budget_derives_proven_early_dual_transition_from_completed_atr_cycle():
         [state], dates[0], 90_000., 100_000., events,
         preserve_strategy_valid_holdings=True,
     )
-    assert state.pending[0][0].target_shares == 10_000
+    assert state.pending[0][0].target_shares == 5_000
     assert events[-1]['proven_early_dual_book_ids'] == [
         (0, '300308', 'dual_ma'),
     ]
@@ -863,6 +863,100 @@ def test_snapshot_account_budget_uses_same_close_known_shock_evidence(monkeypatc
     assert by_symbol['300502']['action'] == 'REDUCE_REVIEW'
     assert by_symbol['300394']['action'] == 'REDUCE_REVIEW'
 
+
+
+def test_snapshot_account_budget_applies_exact_per_candidate_approvals(monkeypatch):
+    """Real-account rows must keep planner alignment instead of a global min scale."""
+    from quantfusion.account.models import AccountSnapshot
+    from quantfusion.application import account_scan
+
+    cfg = default_engine_config()
+    date = pd.Timestamp('2026-01-05')
+    frame = pd.DataFrame(
+        {
+            'open': [10.],
+            'close': [10.],
+            'high': [10.],
+            'low': [10.],
+            'volume': [1e8],
+        },
+        index=[date],
+    )
+    prepared = {
+        '300308': (frame, '2026-01-05', cfg, {}),
+        '300502': (frame.assign(open=20., close=20., high=20., low=20.),
+                   '2026-01-05', cfg, {}),
+    }
+    snapshot = AccountSnapshot(3, 'main', '2026-01-05', 100_000., 100_000., ())
+    actions = [
+        {
+            'symbol': '300308',
+            'shares': 0,
+            'sellable_shares': 0,
+            'close': 10.,
+            'action': 'BUY_CANDIDATE',
+            'recommended_shares': 0,
+            'blocked_shares': 0,
+            'execution_status': 'REVIEW_REQUIRED',
+            'reason': 'candidate one',
+            'indicative_target_shares': 300,
+            'target_weight': 0.03,
+            'protective_stop': 8.,
+        },
+        {
+            'symbol': '300502',
+            'shares': 0,
+            'sellable_shares': 0,
+            'close': 20.,
+            'action': 'BUY_CANDIDATE',
+            'recommended_shares': 0,
+            'blocked_shares': 0,
+            'execution_status': 'REVIEW_REQUIRED',
+            'reason': 'candidate two',
+            'indicative_target_shares': 400,
+            'target_weight': 0.08,
+            'protective_stop': 16.,
+        },
+    ]
+
+    monkeypatch.setattr(
+        account_scan.SleeveBacktestEngine,
+        '_allocation_scores',
+        lambda self, frames, date: {},
+    )
+    monkeypatch.setattr(account_scan, 'observed_shock_stress', lambda *args: {})
+    monkeypatch.setattr(account_scan, 'observed_direct_losses', lambda *args: {})
+
+    def fake_plan(equity, peak, cfg, books, buys, score, **kwargs):
+        assert books == []
+        assert [signal.symbol for _, signal, _ in buys] == ['300308', '300502']
+        assert [signal.target_shares for _, signal, _ in buys] == [300, 400]
+        return {
+            'approved_buy_shares': [200, 0],
+            'all_buys_blocked': False,
+            'buy_scales': [2 / 3, 0.],
+        }, []
+
+    monkeypatch.setattr(account_scan, 'plan_account_risk_budget', fake_plan)
+
+    account_scan.AccountSignalEngine._apply_account_budget(
+        snapshot,
+        prepared,
+        actions,
+        equity=100_000.,
+        as_of='2026-01-05',
+    )
+
+    first, second = actions
+    assert first['action'] == 'BUY_CANDIDATE'
+    assert first['indicative_target_shares'] == 200
+    assert first['original_indicative_target_shares'] == 300
+    assert first['target_weight'] == pytest.approx(0.02)
+    assert second['action'] == 'BLOCKED'
+    assert second['indicative_target_shares'] == 0
+    assert second['original_indicative_target_shares'] == 400
+    assert second['target_weight'] == 0.
+    assert second['execution_status'] == 'RISK_BUDGET_BLOCKED'
 
 def test_close_budget_does_not_depend_on_future_candidate_bar():
     engine, state, dates = fixture(shares=2_000, cash=70_000.)

@@ -7,6 +7,21 @@ from quantfusion.domain.models import Signal
 from quantfusion.risk import account_budget as budget
 
 
+def complete_protection(
+    books: list[tuple[int, str, str, int, float]],
+    *,
+    stop_ratio: float = 0.98,
+) -> dict[tuple[int, str, str], budget.ProtectionEvidence]:
+    return {
+        (state, symbol, strategy): budget.ProtectionEvidence(
+            price * stop_ratio,
+            "test_close_known_stop",
+            complete=True,
+        )
+        for state, symbol, strategy, _, price in books
+    }
+
+
 def test_shock_plan_reduces_existing_risk_and_blocks_buy_offset():
     cfg = default_engine_config()
     books = [(0, '300394', 'turtle_breakout', 19400, 145.79),
@@ -47,7 +62,8 @@ def test_observed_shock_waits_for_account_level_confirmation():
     books = [(0, '300394', 'turtle_breakout', 4000, 200.)]
     receipt, actions = budget.plan_account_risk_budget(
         970_000., 1_000_000., cfg, books, [], lambda _: 1.,
-        date_str='2025-08-14', stress_by_symbol={'300394': .20})
+        date_str='2025-08-14', stress_by_symbol={'300394': .20},
+        protection_by_book=complete_protection(books))
     assert receipt['observed_shock_confirmed'] is False
     assert receipt['observed_shock_stress'] == {}
     assert actions == []
@@ -58,7 +74,8 @@ def test_single_cluster_shock_does_not_force_healthy_winner_exit():
     books = [(0, '300394', 'turtle_breakout', 4000, 200.)]
     receipt, actions = budget.plan_account_risk_budget(
         930_000., 1_000_000., cfg, books, [], lambda _: 1.,
-        date_str='2026-04-24', stress_by_symbol={'300394': .20})
+        date_str='2026-04-24', stress_by_symbol={'300394': .20},
+        protection_by_book=complete_protection(books))
     assert receipt['observed_shock_confirmed'] is False
     assert receipt['shocked_group_count'] == 1
     assert actions == []
@@ -70,7 +87,8 @@ def test_broad_but_nonsevere_pullback_preserves_established_books():
     receipt, actions = budget.plan_account_risk_budget(
         930_000., 1_000_000., cfg, books, [], lambda _: 1.,
         date_str='2026-06-05',
-        stress_by_symbol={'300394': .078, '603986': .078})
+        stress_by_symbol={'300394': .078, '603986': .078},
+        protection_by_book=complete_protection(books))
     assert receipt['observed_shock_confirmed'] is False
     assert actions == []
 
@@ -144,20 +162,22 @@ def test_board_gap_budget_credits_a_new_independent_industry():
 
 
 def test_strategy_valid_path_keeps_non_alert_independent_breakout():
-    """Catch ordinary tail budgeting clipping a valid non-alert rotation candidate."""
+    """A fully evidenced independent breakout can consume available loss budget."""
     cfg = default_engine_config()
     books = [(0, '300308', 'atr_channel', 44_300, 100.)]
     signal = Signal(
         '603986', 'atr_channel', 'buy', 14_400, 190.,
-        signal_date='2025-09-12',
+        stop_loss=160., signal_date='2025-09-12',
         fusion_votes=2, fusion_label='two_strategy_confirmation',
     )
     receipt, actions = budget.plan_account_risk_budget(
         9_020_000., 9_772_000., cfg, books,
         [(0, signal, signal.target_shares * signal.price)], lambda _: 1.,
         date_str='2025-09-12', preserve_strategy_valid_holdings=True,
+        protection_by_book=complete_protection(books, stop_ratio=0.80),
     )
     assert receipt['buy_scale'] == 1.
+    assert receipt['quality_prioritized_buy_indexes'] == [0]
     assert receipt['quality_admitted_buy_indexes'] == [0]
     assert actions == []
 
@@ -280,12 +300,12 @@ def test_confirmed_independent_turtle_keeps_ordinary_budget_scale():
 
 
 def test_repeated_proven_low_gap_reentry_admits_paired_turtle_with_durable_atr():
-    """Catch a repeatedly proven reentry losing its paired strategy allocation."""
+    """A repeatedly proven reentry keeps priority when its debit fits."""
     cfg = default_engine_config()
     books = [(0, '300308', 'atr_channel', 44_300, 100.)]
     signal = Signal(
         '603986', 'turtle_breakout', 'buy', 14_400, 190.,
-        signal_date='2026-01-07', fusion_votes=2,
+        stop_loss=160., signal_date='2026-01-07', fusion_votes=2,
         fusion_label='two_strategy_confirmation',
     )
     receipt, _ = budget.plan_account_risk_budget(
@@ -293,8 +313,10 @@ def test_repeated_proven_low_gap_reentry_admits_paired_turtle_with_durable_atr()
         [(0, signal, signal.target_shares * signal.price)], lambda _: 1.,
         date_str='2026-01-07', preserve_strategy_valid_holdings=True,
         repeated_proven_reentry_symbols={'603986'},
+        protection_by_book=complete_protection(books, stop_ratio=0.80),
     )
     assert receipt['buy_scales'] == [1.]
+    assert receipt['quality_prioritized_buy_indexes'] == [0]
     assert receipt['repeated_reentry_admitted_buy_indexes'] == [0]
 
 
@@ -317,20 +339,22 @@ def test_high_gap_repeated_reentry_keeps_ordinary_turtle_budget():
     assert receipt['repeated_reentry_admitted_buy_indexes'] == []
 
 
-def test_same_day_strategy_handoff_keeps_dual_ma_transition_size():
-    """Catch a filled fast-strategy exit being treated as unrelated new risk."""
+def test_same_day_strategy_handoff_gets_priority_without_bypassing_budget():
+    """A filled fast-strategy exit prioritizes, but does not exempt, new risk."""
     cfg = default_engine_config()
     signal = Signal(
         '300308', 'dual_ma', 'buy', 1_000, 100.,
-        signal_date='2026-04-01', fusion_votes=1,
+        stop_loss=90., signal_date='2026-04-01', fusion_votes=1,
     )
     receipt, actions = budget.plan_account_risk_budget(
         90_000., 100_000., cfg, [], [(0, signal, 100_000.)], lambda _: 1.,
         date_str='2026-04-01', preserve_strategy_valid_holdings=True,
         strategy_handoff_symbols={'300308'},
     )
-    assert receipt['buy_scales'] == [1.]
-    assert receipt['handoff_admitted_buy_indexes'] == [0]
+    assert 0. < receipt['buy_scales'][0] < 1.
+    assert receipt['quality_prioritized_buy_indexes'] == [0]
+    assert receipt['handoff_admitted_buy_indexes'] == []
+    assert receipt['ordinary_total_loss_debit'] <= receipt['remaining_loss_budget']
     assert actions == []
 
 

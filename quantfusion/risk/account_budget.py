@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 import pandas as pd
 from typing import Any
@@ -11,6 +11,7 @@ from typing import Any
 from quantfusion.domain.rules import floor_to_lot, limit_pct_for_code, require_finite, require_int
 from quantfusion.domain.models import Signal
 from quantfusion.config.overlay import (
+    CONCENTRATION_CAP,
     RISK_ACTION_PRIORITY,
     SYMBOL_SUB_INDUSTRY,
 )
@@ -46,6 +47,621 @@ def account_budget_capacity(
             'remaining_loss_budget': budget, 'ordinary_gross_cap': ordinary_cap,
             'gross_cap': min(ordinary_cap, budget/(stress+cost_rate))}
 
+@dataclass(frozen=True, slots=True)
+class ProtectionEvidence:
+    """Close-known protection state used by the ordinary AB5 loss budget.
+
+    ``complete=False`` deliberately falls back to the existing full-pressure
+    debit.  A stop is planning evidence only; it is never treated as a
+    guaranteed execution price or as sell credit.
+    """
+
+    stop_price: float | None
+    source: str
+    complete: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class _RiskDebit:
+    """Precomputed monotone debit coefficients for one held or proposed book."""
+
+    group: str
+    mark_per_share: float
+    base_per_share: float
+    group_excess_per_share: float
+    evidence_complete: bool
+
+
+@dataclass(slots=True)
+class _GroupedDebitState:
+    """One-plan aggregate used to avoid rescanning held books per lot probe."""
+
+    base_debit: float
+    group_value: dict[str, float]
+    group_max_excess_rate: dict[str, float]
+    group_fallback_excess: dict[str, float]
+    group_excess: dict[str, float]
+
+    @property
+    def total_debit(self) -> float:
+        return self.base_debit + max(self.group_excess.values(), default=0.0)
+
+
+def _validated_protection_evidence(
+    evidence: ProtectionEvidence | None,
+    *,
+    mark: float,
+) -> tuple[float | None, bool, str]:
+    """Validate one protection record without manufacturing optimistic state."""
+    if evidence is None:
+        return None, False, "missing"
+    if type(evidence.complete) is not bool:
+        raise ValueError("protection evidence completeness must be boolean")
+    if not isinstance(evidence.source, str) or not evidence.source:
+        raise ValueError("protection evidence source must be a non-empty string")
+    if not evidence.complete:
+        return None, False, evidence.source
+    if evidence.stop_price is None:
+        raise ValueError("complete protection evidence requires a stop price")
+    stop = require_finite("protective stop", evidence.stop_price, min_value=0.000001)
+    # A close below its protection line must not create negative risk or buying
+    # credit.  The native exit remains queued through its normal execution path.
+    return min(stop, mark), True, evidence.source
+
+
+def _ordinary_risk_debit(
+    symbol: str,
+    mark: float,
+    cfg: Mapping[str, Any],
+    receipt: Mapping[str, float],
+    evidence: ProtectionEvidence | None,
+) -> _RiskDebit:
+    """Return a conservative executable-loss debit bounded by full pressure.
+
+    The base scenario reserves the visible distance to the effective protection
+    line, one existing daily-loss allowance for next-open gap risk, and modeled
+    exit costs.  The existing board-limit concentration excess remains separate
+    and unchanged.  Missing or inconsistent evidence gets the full two-session
+    base debit.
+    """
+    mark = require_finite("risk debit mark", mark, min_value=0.000001)
+    base_rate = float(receipt["stress_fraction"]) + float(receipt["cost_rate"])
+    board_rate = limit_pct_for_code(symbol, cfg) + float(receipt["cost_rate"])
+    stop, complete, _ = _validated_protection_evidence(evidence, mark=mark)
+    if complete and stop is not None:
+        distance_rate = max(0.0, (mark - stop) / mark)
+        next_open_gap = min(
+            limit_pct_for_code(symbol, cfg),
+            require_finite(
+                "daily_loss_limit",
+                cfg["daily_loss_limit"],
+                min_value=0.000001,
+                max_value=1.0,
+                inclusive_max=False,
+            ),
+        )
+        base_rate = min(
+            base_rate,
+            distance_rate + next_open_gap + float(receipt["cost_rate"]),
+        )
+    return _RiskDebit(
+        group=SYMBOL_SUB_INDUSTRY.get(symbol, symbol),
+        mark_per_share=mark,
+        base_per_share=mark * base_rate,
+        group_excess_per_share=mark * max(0.0, board_rate - (
+            float(receipt["stress_fraction"]) + float(receipt["cost_rate"])
+        )),
+        evidence_complete=complete,
+    )
+
+
+def _group_excess_debit(
+    *,
+    value: float,
+    max_excess_rate: float,
+    fallback_excess: float,
+    concentration_threshold: float,
+) -> float:
+    return max(
+        fallback_excess,
+        max(0.0, value - concentration_threshold) * max_excess_rate,
+    )
+
+
+def _extend_grouped_debit_state(
+    state: _GroupedDebitState,
+    risks: Sequence[_RiskDebit],
+    shares: Sequence[int],
+    *,
+    concentration_threshold: float,
+) -> None:
+    """Add approved books to one plan-local aggregate in O(added books)."""
+    if len(risks) != len(shares):
+        raise ValueError("risk debit shares lost alignment")
+    threshold = require_finite(
+        "ordinary concentration threshold", concentration_threshold, min_value=0.0,
+    )
+    touched: set[str] = set()
+    for risk, quantity in zip(risks, shares, strict=True):
+        quantity = require_int("risk debit shares", quantity, min_value=0)
+        if not quantity:
+            continue
+        value = quantity * risk.mark_per_share
+        state.base_debit += quantity * risk.base_per_share
+        state.group_value[risk.group] = (
+            state.group_value.get(risk.group, 0.0) + value
+        )
+        excess_rate = (
+            risk.group_excess_per_share / risk.mark_per_share
+            if risk.mark_per_share else 0.0
+        )
+        state.group_max_excess_rate[risk.group] = max(
+            state.group_max_excess_rate.get(risk.group, 0.0), excess_rate,
+        )
+        if not risk.evidence_complete:
+            state.group_fallback_excess[risk.group] = (
+                state.group_fallback_excess.get(risk.group, 0.0)
+                + quantity * risk.group_excess_per_share
+            )
+        touched.add(risk.group)
+    for group in touched:
+        state.group_excess[group] = _group_excess_debit(
+            value=state.group_value[group],
+            max_excess_rate=state.group_max_excess_rate[group],
+            fallback_excess=state.group_fallback_excess.get(group, 0.0),
+            concentration_threshold=threshold,
+        )
+
+
+def _grouped_debit_state(
+    risks: Sequence[_RiskDebit],
+    shares: Sequence[int],
+    *,
+    concentration_threshold: float,
+) -> _GroupedDebitState:
+    state = _GroupedDebitState(0.0, {}, {}, {}, {})
+    _extend_grouped_debit_state(
+        state, risks, shares, concentration_threshold=concentration_threshold,
+    )
+    return state
+
+
+def _incremental_grouped_debit(
+    state: _GroupedDebitState,
+    risks: Sequence[_RiskDebit],
+    shares: Sequence[int],
+    *,
+    candidate_groups: set[str],
+    unaffected_group_excess: float,
+    concentration_threshold: float,
+) -> float:
+    """Evaluate one cohort without rescanning plan-local held/approved books."""
+    if len(risks) != len(shares):
+        raise ValueError("risk debit shares lost alignment")
+    threshold = require_finite(
+        "ordinary concentration threshold", concentration_threshold, min_value=0.0,
+    )
+    base = state.base_debit
+    added_value: dict[str, float] = {}
+    added_max_rate: dict[str, float] = {}
+    added_fallback: dict[str, float] = {}
+    for risk, quantity in zip(risks, shares, strict=True):
+        quantity = require_int("risk debit shares", quantity, min_value=0)
+        if not quantity:
+            continue
+        base += quantity * risk.base_per_share
+        added_value[risk.group] = (
+            added_value.get(risk.group, 0.0)
+            + quantity * risk.mark_per_share
+        )
+        excess_rate = (
+            risk.group_excess_per_share / risk.mark_per_share
+            if risk.mark_per_share else 0.0
+        )
+        added_max_rate[risk.group] = max(
+            added_max_rate.get(risk.group, 0.0), excess_rate,
+        )
+        if not risk.evidence_complete:
+            added_fallback[risk.group] = (
+                added_fallback.get(risk.group, 0.0)
+                + quantity * risk.group_excess_per_share
+            )
+    maximum_excess = unaffected_group_excess
+    for group in candidate_groups:
+        maximum_excess = max(
+            maximum_excess,
+            _group_excess_debit(
+                value=(
+                    state.group_value.get(group, 0.0)
+                    + added_value.get(group, 0.0)
+                ),
+                max_excess_rate=max(
+                    state.group_max_excess_rate.get(group, 0.0),
+                    added_max_rate.get(group, 0.0),
+                ),
+                fallback_excess=(
+                    state.group_fallback_excess.get(group, 0.0)
+                    + added_fallback.get(group, 0.0)
+                ),
+                concentration_threshold=threshold,
+            ),
+        )
+    return base + maximum_excess
+
+
+def _grouped_debit(
+    risks: Sequence[_RiskDebit],
+    shares: Sequence[int],
+    *,
+    concentration_threshold: float,
+) -> float:
+    """Evaluate the monotone base-plus-largest-group loss scenario.
+
+    Complete protection evidence pays board-limit excess only for exposure above
+    the existing concentration cap.  Incomplete evidence preserves the full
+    incumbent group-pressure debit, so a missing stop never receives relief.
+    """
+    return _grouped_debit_state(
+        risks, shares, concentration_threshold=concentration_threshold,
+    ).total_debit
+
+
+def _cohort_signal_key(signal: Signal, *, blocked: bool) -> tuple[Any, ...]:
+    """Identify economically equivalent sleeve intents without queue identity."""
+    return (
+        blocked,
+        signal.symbol,
+        signal.strategy_name,
+        signal.signal_date,
+        float(signal.price),
+        float(signal.stop_loss),
+        float(signal.atr),
+        int(signal.fusion_votes),
+        signal.fusion_label,
+        signal.reason,
+    )
+
+
+def _cohort_approved_shares(
+    requested_shares: Sequence[int],
+    numerator_lots: int,
+    denominator_lots: int,
+) -> list[int]:
+    """Apply one common cohort scale through the native board-lot floor."""
+    if denominator_lots <= 0:
+        return [0 for _ in requested_shares]
+    scale = numerator_lots / denominator_lots
+    return [floor_to_lot(quantity * scale) for quantity in requested_shares]
+
+
+def _allocate_ordinary_buy_cohorts(
+    *,
+    buys: Sequence[tuple[int, Signal, float]],
+    buy_risks: Sequence[_RiskDebit],
+    blocked: Sequence[bool],
+    quality_classes: Sequence[int],
+    score: Callable[[str], float],
+    held_groups: set[str],
+    held_risks: Sequence[_RiskDebit],
+    held_shares: Sequence[int],
+    gross_before: float,
+    ordinary_gross_cap: float,
+    remaining_loss_budget: float,
+    concentration_threshold: float,
+) -> tuple[list[float], dict[str, Any]]:
+    """Allocate ordinary buys by deterministic marginal risk in O(log lots).
+
+    Feasibility is monotone because every approved share count, gross value,
+    base debit and group excess is nondecreasing in the common cohort scale.
+    """
+    if not (
+        len(buys) == len(buy_risks) == len(blocked) == len(quality_classes)
+    ):
+        raise ValueError("ordinary buy allocation inputs lost alignment")
+    debit_state = _grouped_debit_state(
+        held_risks, held_shares, concentration_threshold=concentration_threshold,
+    )
+    held_debit = debit_state.total_debit
+    scales = [0.0 for _ in buys]
+    cohorts: dict[tuple[Any, ...], list[int]] = {}
+    for index, ((_, signal, _), is_blocked) in enumerate(zip(buys, blocked, strict=True)):
+        cohorts.setdefault(
+            _cohort_signal_key(signal, blocked=is_blocked), [],
+        ).append(index)
+
+    def cohort_priority(item: tuple[tuple[Any, ...], list[int]]) -> tuple[Any, ...]:
+        key, indexes = item
+        signal = buys[indexes[0]][1]
+        group = buy_risks[indexes[0]].group
+        quality = min(quality_classes[index] for index in indexes)
+        causal_score = require_finite(
+            "ordinary buy allocation score", score(signal.symbol),
+        )
+        return (
+            bool(key[0]),
+            quality,
+            0 if group not in held_groups else 1,
+            1 if "pyramid" in str(signal.reason).lower() else 0,
+            -int(signal.fusion_votes),
+            -causal_score,
+            signal.symbol,
+            signal.strategy_name,
+            signal.signal_date,
+            signal.reason,
+        )
+
+    allocated_gross = 0.0
+    feasibility_evaluations = 0
+    maximum_requested_lots = 0
+    cohort_rows: list[dict[str, Any]] = []
+
+    for key, indexes in sorted(cohorts.items(), key=cohort_priority):
+        requested = [
+            require_int(
+                "ordinary buy requested shares",
+                buys[index][1].target_shares,
+                min_value=0,
+            )
+            for index in indexes
+        ]
+        max_lots = max((quantity // 100 for quantity in requested), default=0)
+        maximum_requested_lots = max(maximum_requested_lots, max_lots)
+        if bool(key[0]) or max_lots <= 0:
+            cohort_rows.append({
+                "indexes": indexes,
+                "requested_lots": max_lots,
+                "closed_form_upper_lots": 0,
+                "approved_lots": 0,
+                "approved_shares": [0 for _ in requested],
+                "feasibility_evaluations": 0,
+                "blocked": bool(key[0]),
+            })
+            continue
+
+        gross_remaining = max(
+            0.0, ordinary_gross_cap - gross_before - allocated_gross,
+        )
+        requested_gross = sum(
+            quantity * buys[index][1].price
+            for index, quantity in zip(indexes, requested, strict=True)
+        )
+        gross_rounding_slack = sum(
+            100.0 * buys[index][1].price for index in indexes
+        )
+        closed_form_upper = max_lots
+        if requested_gross > 0.0:
+            closed_form_upper = min(
+                closed_form_upper,
+                max(
+                    0,
+                    math.ceil(
+                        (gross_remaining + gross_rounding_slack)
+                        * max_lots
+                        / requested_gross
+                    ),
+                ),
+            )
+        prior_base_debit = debit_state.base_debit
+        requested_base_debit = sum(
+            quantity * buy_risks[index].base_per_share
+            for index, quantity in zip(indexes, requested, strict=True)
+        )
+        base_rounding_slack = sum(
+            100.0 * buy_risks[index].base_per_share for index in indexes
+        )
+        if requested_base_debit > 0.0:
+            closed_form_upper = min(
+                closed_form_upper,
+                max(
+                    0,
+                    math.ceil(
+                        (
+                            max(0.0, remaining_loss_budget - prior_base_debit)
+                            + base_rounding_slack
+                        )
+                        * max_lots
+                        / requested_base_debit
+                    ),
+                ),
+            )
+        closed_form_upper = min(max_lots, closed_form_upper)
+        cohort_risks = [buy_risks[index] for index in indexes]
+        candidate_groups = {risk.group for risk in cohort_risks}
+        unaffected_group_excess = max(
+            (
+                excess
+                for group, excess in debit_state.group_excess.items()
+                if group not in candidate_groups
+            ),
+            default=0.0,
+        )
+
+        def feasible(numerator_lots: int) -> tuple[bool, list[int]]:
+            nonlocal feasibility_evaluations
+            feasibility_evaluations += 1
+            approved = _cohort_approved_shares(
+                requested, numerator_lots, max_lots,
+            )
+            candidate_gross = sum(
+                quantity * buys[index][1].price
+                for index, quantity in zip(indexes, approved, strict=True)
+            )
+            if (
+                gross_before + allocated_gross + candidate_gross
+                > ordinary_gross_cap + 1e-8
+            ):
+                return False, approved
+            debit = _incremental_grouped_debit(
+                debit_state,
+                cohort_risks,
+                approved,
+                candidate_groups=candidate_groups,
+                unaffected_group_excess=unaffected_group_excess,
+                concentration_threshold=concentration_threshold,
+            )
+            return debit <= remaining_loss_budget + 1e-8, approved
+
+        start_evaluations = feasibility_evaluations
+        zero_allowed, _ = feasible(0)
+        low, high = 0, closed_form_upper
+        if zero_allowed:
+            while low < high:
+                middle = (low + high + 1) // 2
+                allowed, _ = feasible(middle)
+                if allowed:
+                    low = middle
+                else:
+                    high = middle - 1
+        else:
+            high = 0
+        # A bounded boundary check guards integer/lot edge handling without
+        # reintroducing a scan proportional to the requested position size.
+        best = low
+        best_approved = _cohort_approved_shares(requested, best, max_lots)
+        for candidate in range(
+            max(0, low - 2), min(closed_form_upper, low + 2) + 1,
+        ):
+            allowed, approved = feasible(candidate)
+            if allowed and candidate >= best:
+                best = candidate
+                best_approved = approved
+        scale = best / max_lots
+        for index in indexes:
+            scales[index] = scale
+        cohort_gross = sum(
+            quantity * buys[index][1].price
+            for index, quantity in zip(indexes, best_approved, strict=True)
+        )
+        allocated_gross += cohort_gross
+        _extend_grouped_debit_state(
+            debit_state,
+            cohort_risks,
+            best_approved,
+            concentration_threshold=concentration_threshold,
+        )
+        cohort_rows.append({
+            "indexes": indexes,
+            "requested_lots": max_lots,
+            "closed_form_upper_lots": closed_form_upper,
+            "approved_lots": best,
+            "approved_shares": best_approved,
+            "feasibility_evaluations": (
+                feasibility_evaluations - start_evaluations
+            ),
+            "blocked": False,
+        })
+
+    final_debit = debit_state.total_debit
+    return scales, {
+        "ordinary_held_loss_debit": held_debit,
+        "ordinary_total_loss_debit": final_debit,
+        "ordinary_allocated_buy_gross": allocated_gross,
+        "ordinary_buy_cohort_count": len(cohorts),
+        "ordinary_buy_feasibility_evaluations": feasibility_evaluations,
+        "ordinary_buy_max_requested_lots": maximum_requested_lots,
+        "ordinary_buy_precomputed_held_book_count": len(held_risks),
+        "ordinary_buy_search_complexity": "O(log lots) per cohort",
+        "ordinary_buy_cohorts": cohort_rows,
+    }
+
+
+def _plan_ordinary_held_reductions(
+    *,
+    books: Sequence[tuple[int, str, str, int, float]],
+    risks: Sequence[_RiskDebit],
+    remaining_loss_budget: float,
+    score: Callable[[str], float],
+    date_str: str,
+    concentration_threshold: float,
+) -> tuple[list[RiskAction], dict[str, Any]]:
+    """Trim only a real residual held-loss shortfall, by marginal risk."""
+    shares = [book[3] for book in books]
+    initial_debit = _grouped_debit(
+        risks, shares, concentration_threshold=concentration_threshold,
+    )
+    current_debit = initial_debit
+    actions_by_index: dict[int, int] = {}
+    evaluations = 1
+    while current_debit > remaining_loss_budget + 1e-8:
+        candidates: list[tuple[float, float, str, int, str, int]] = []
+        for index, ((state, symbol, strategy, quantity, price), risk) in enumerate(
+            zip(books, risks, strict=True)
+        ):
+            del quantity
+            if shares[index] <= 0:
+                continue
+            reduction = min(shares[index], 100)
+            trial = list(shares)
+            trial[index] -= reduction
+            debit = _grouped_debit(
+                risks, trial, concentration_threshold=concentration_threshold,
+            )
+            evaluations += 1
+            relief = current_debit - debit
+            if relief <= 1e-12:
+                continue
+            risk_rate = relief / (reduction * price)
+            candidates.append((
+                -round(risk_rate, 12),
+                require_finite("ordinary held trim score", score(symbol)),
+                symbol,
+                state,
+                strategy,
+                index,
+            ))
+        if not candidates:
+            raise RuntimeError("ordinary held debit could not be reduced monotonically")
+        index = min(candidates)[-1]
+        maximum_units = math.ceil(shares[index] / 100)
+
+        def debit_after(units: int) -> float:
+            nonlocal evaluations
+            evaluations += 1
+            trial = list(shares)
+            trial[index] -= min(shares[index], units * 100)
+            return _grouped_debit(
+                risks, trial, concentration_threshold=concentration_threshold,
+            )
+
+        if debit_after(maximum_units) > remaining_loss_budget + 1e-8:
+            chosen_units = maximum_units
+        else:
+            low, high = 1, maximum_units
+            while low < high:
+                middle = (low + high) // 2
+                if debit_after(middle) <= remaining_loss_budget + 1e-8:
+                    high = middle
+                else:
+                    low = middle + 1
+            chosen_units = low
+        reduction = min(shares[index], chosen_units * 100)
+        shares[index] -= reduction
+        actions_by_index[index] = actions_by_index.get(index, 0) + reduction
+        current_debit = _grouped_debit(
+            risks, shares, concentration_threshold=concentration_threshold,
+        )
+        evaluations += 1
+
+    actions = [
+        RiskAction(
+            symbol,
+            strategy,
+            reduction,
+            price,
+            date_str,
+            "account_budget_trim",
+            RISK_ACTION_PRIORITY["account_budget_trim"],
+            state_index=state,
+        )
+        for index, reduction in sorted(actions_by_index.items())
+        for state, symbol, strategy, _, price in [books[index]]
+    ]
+    return actions, {
+        "ordinary_held_loss_debit_before": initial_debit,
+        "ordinary_held_loss_debit_after": current_debit,
+        "ordinary_held_trim_evaluations": evaluations,
+    }
+
 
 def plan_account_risk_budget(
     equity: float, peak: float, cfg: Mapping[str, Any],
@@ -65,6 +681,9 @@ def plan_account_risk_budget(
     shock_reduced_book_ids: set[tuple[int, str, str]] | None = None,
     confirmed_shock_reduced_book_ids: set[tuple[int, str, str]] | None = None,
     crowded_shock_reduced_book_ids: set[tuple[int, str, str]] | None = None,
+    protection_by_book: Mapping[
+        tuple[int, str, str], ProtectionEvidence
+    ] | None = None,
 ) -> tuple[dict[str, Any], list[RiskAction]]:
     """Plan the same AB5 reductions for real snapshot books or replay books.
 
@@ -73,9 +692,25 @@ def plan_account_risk_budget(
     execution adapter and must not treat these close-known plans as fills.
     """
     cfg = dict(cfg)
-    book_ids = {(state, symbol, strategy) for state, symbol, strategy, shares, _ in books if shares}
+    held_book_ids = {
+        (state, symbol, strategy)
+        for state, symbol, strategy, shares, _ in books
+        if shares
+    }
+    book_ids = set(held_book_ids)
     book_ids.update((state, signal.symbol, signal.strategy_name)
                     for state, signal, _ in buys if signal.target_shares)
+    protection_records = dict(protection_by_book or {})
+    if any(
+        not isinstance(book_id, tuple)
+        or len(book_id) != 3
+        or book_id not in held_book_ids
+        or not isinstance(evidence, ProtectionEvidence)
+        for book_id, evidence in protection_records.items()
+    ):
+        raise ValueError(
+            "protection evidence must map live held-book ids to ProtectionEvidence"
+        )
     receipt = account_budget_capacity(equity, peak, cfg, len(book_ids))
     gross = sum(shares*price for _, _, _, shares, price in books)
     if gross > equity + 1e-8:
@@ -215,6 +850,35 @@ def plan_account_risk_budget(
     current_gap = grouped_gap_debit(0.)
     full_gap = grouped_gap_debit(1.)
     buy_gap = max(0., full_gap - current_gap)
+    concentration_threshold = CONCENTRATION_CAP * equity
+    held_risks = [
+        _ordinary_risk_debit(
+            symbol, price, cfg, receipt,
+            protection_records.get((state, symbol, strategy)),
+        )
+        for state, symbol, strategy, _, price in books
+    ]
+    held_shares = [shares for _, _, _, shares, _ in books]
+    buy_risks: list[_RiskDebit] = []
+    for _, signal, _ in buys:
+        raw_stop = float(signal.stop_loss)
+        if raw_stop == 0.0:
+            evidence = None
+        elif not math.isfinite(raw_stop) or raw_stop < 0.0:
+            raise ValueError("buy protection stop must be zero or finite and positive")
+        else:
+            evidence = ProtectionEvidence(
+                stop_price=raw_stop, source="signal_stop", complete=True,
+            )
+        buy_risks.append(
+            _ordinary_risk_debit(
+                signal.symbol, signal.price, cfg, receipt, evidence,
+            )
+        )
+    ordinary_current_debit = _grouped_debit(
+        held_risks, held_shares,
+        concentration_threshold=concentration_threshold,
+    )
     gap_scale = 1.
     if binding and requested and full_gap > receipt["remaining_loss_budget"]:
         low, high = 0., 1.
@@ -234,7 +898,6 @@ def plan_account_risk_budget(
     held_stress = sum(shares * price * stresses[symbol] for _, symbol, _, shares, price in books)
     buy_stress = sum(value * systemic_stress_fraction for _, signal, value in buys)
     shock_scale = 0. if shock_episode and buy_stress else 1.
-    stress_relief = max(0., held_stress - receipt['remaining_loss_budget']) if observed else 0.
     ordinary_buy_scale = min(gross_scale, gap_scale)
     # An alert governs the amount of new risk; it is not a permanent entry
     # lock.  Once prior reductions have actually filled, admit only the risk
@@ -299,12 +962,12 @@ def plan_account_risk_budget(
         )
         else None
     )
-    actions = []
-    relief = (
-        0.
-        if preserve_strategy_valid_holdings and not shock_confirmed
-        else max(0., gross-cap)
-    )
+    actions: list[RiskAction] = []
+    ordinary_trim_diagnostics: dict[str, Any] = {
+        "ordinary_held_loss_debit_before": ordinary_current_debit,
+        "ordinary_held_loss_debit_after": ordinary_current_debit,
+        "ordinary_held_trim_evaluations": 0,
+    }
     if reduction_suspended:
         pass
     elif shock_confirmed and gross:
@@ -356,21 +1019,6 @@ def plan_account_risk_budget(
             append_pro_rata_relief(residual_books, residual_relief)
         else:
             append_pro_rata_relief(ordered_books, required_relief)
-    elif preserve_strategy_valid_holdings and not risk_alert_active and gross > cap:
-        # Fund the unchanged two-session reserve before a cycle alert. Share
-        # the necessary close-known reduction across books so score ordering
-        # does not erase one still-valid opportunity. These are plans, not fills.
-        fraction = (gross - cap) / gross
-        for state, symbol, strategy, shares, price in sorted(
-            books, key=lambda book: (book[1], book[0], book[2]),
-        ):
-            reduction = min(shares, math.ceil(shares * fraction / 100.) * 100)
-            if reduction:
-                actions.append(RiskAction(
-                    symbol, strategy, reduction, price, date_str,
-                    "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
-                    state_index=state,
-                ))
     elif risk_alert_active:
         for state, symbol, strategy, shares, price in sorted(
             books, key=lambda book: (book[1], book[0], book[2]),
@@ -425,22 +1073,17 @@ def plan_account_risk_budget(
                         state_index=state,
                     ))
     else:
-        for state, symbol, strategy, shares, price in sorted(
-            books, key=lambda book: (score(book[1]), book[1], book[0], book[2]),
-        ):
-            reduction = min(
-                shares,
-                math.ceil(max(relief/price, stress_relief/price/stresses[symbol])/100.)*100,
+        ordinary_actions, ordinary_trim_diagnostics = (
+            _plan_ordinary_held_reductions(
+                books=books,
+                risks=held_risks,
+                remaining_loss_budget=receipt["remaining_loss_budget"],
+                score=score,
+                date_str=date_str,
+                concentration_threshold=concentration_threshold,
             )
-            if not reduction:
-                continue
-            actions.append(RiskAction(
-                symbol, strategy, reduction, price, date_str,
-                "account_budget_trim", RISK_ACTION_PRIORITY["account_budget_trim"],
-                state_index=state,
-            ))
-            relief = max(0., relief-reduction*price)
-            stress_relief = max(0., stress_relief - reduction * price * stresses[symbol])
+        )
+        actions.extend(ordinary_actions)
     held_groups = {
         SYMBOL_SUB_INDUSTRY.get(symbol, symbol) for _, symbol, _, shares, _ in books
         if shares
@@ -449,7 +1092,14 @@ def plan_account_risk_budget(
         'portfolio max positions', cfg['max_positions'], min_value=1,
     )
     crowded_portfolio = held_symbol_count >= portfolio_max_positions - 1
-    quality_admission_capacity_available = gross <= cap + 1e-8
+    quality_admission_capacity_available = bool(
+        gross <= (cap if risk_alert_active or shock_episode else receipt["ordinary_gross_cap"]) + 1e-8
+        and (
+            risk_alert_active
+            or shock_episode
+            or ordinary_current_debit <= receipt["remaining_loss_budget"] + 1e-8
+        )
+    )
     quality_admission_risk_state_available = bool(
         quality_admission_capacity_available
         or drawdown < require_finite(
@@ -459,8 +1109,7 @@ def plan_account_risk_budget(
     )
     durable_breakout_admitted = [
         bool(
-            quality_admission_risk_state_available
-            and preserve_strategy_valid_holdings
+            preserve_strategy_valid_holdings
             and not risk_alert_active
             and not shock_episode
             and signal.fusion_votes >= 2
@@ -472,8 +1121,7 @@ def plan_account_risk_budget(
     ]
     handoff_admitted = [
         bool(
-            quality_admission_risk_state_available
-            and preserve_strategy_valid_holdings
+            preserve_strategy_valid_holdings
             and not risk_alert_active
             and not shock_episode
             and signal.strategy_name == 'dual_ma'
@@ -483,8 +1131,7 @@ def plan_account_risk_budget(
     ]
     repeated_reentry_admitted = [
         bool(
-            quality_admission_risk_state_available
-            and preserve_strategy_valid_holdings
+            preserve_strategy_valid_holdings
             and not risk_alert_active
             and not shock_episode
             and signal.fusion_votes >= 2
@@ -498,8 +1145,7 @@ def plan_account_risk_budget(
     ]
     proven_dual_admitted = [
         bool(
-            quality_admission_risk_state_available
-            and preserve_strategy_valid_holdings
+            preserve_strategy_valid_holdings
             and not risk_alert_active
             and not shock_episode
             and signal.strategy_name == 'dual_ma'
@@ -538,36 +1184,121 @@ def plan_account_risk_budget(
         )
         if blocked
     ]
-    quality_admitted = [
-        not blocked and (durable or handoff or repeated or proven_dual)
-        for durable, handoff, repeated, proven_dual, blocked in zip(
+    quality_priority = [
+        durable or handoff or repeated or proven_dual
+        for durable, handoff, repeated, proven_dual in zip(
             durable_breakout_admitted, handoff_admitted,
             repeated_reentry_admitted, proven_dual_admitted,
-            shock_reduced_pyramid,
+            strict=True,
+        )
+    ]
+    quality_classes = [
+        0 if handoff else 1 if proven_dual else 2 if durable else 3 if repeated else 4
+        for durable, handoff, repeated, proven_dual in zip(
+            durable_breakout_admitted, handoff_admitted,
+            repeated_reentry_admitted, proven_dual_admitted,
             strict=True,
         )
     ]
     base_buy_scale = min(ordinary_buy_scale, shock_scale, alert_buy_scale)
-    buy_scales = [
-        (
-            0.
-            if blocked
-            else 1.
-            if admitted
-            else gross_scale
-            if alert_proven
-            else base_buy_scale
+    ordinary_allocation_diagnostics: dict[str, Any] = {
+        "ordinary_held_loss_debit": ordinary_current_debit,
+        "ordinary_total_loss_debit": ordinary_current_debit,
+        "ordinary_allocated_buy_gross": 0.0,
+        "ordinary_buy_cohort_count": 0,
+        "ordinary_buy_feasibility_evaluations": 0,
+        "ordinary_buy_max_requested_lots": 0,
+        "ordinary_buy_precomputed_held_book_count": len(held_risks),
+        "ordinary_buy_search_complexity": "O(log lots) per cohort",
+        "ordinary_buy_cohorts": [],
+    }
+    ordinary_path = not shock_episode and not risk_alert_active
+    ordinary_gross_scale = (
+        min(
+            1.0,
+            max(0.0, receipt["ordinary_gross_cap"] - gross) / requested,
         )
-        for admitted, alert_proven, blocked in zip(
-            quality_admitted,
-            alert_proven_dual,
-            shock_reduced_pyramid,
-            strict=True,
+        if requested else 1.0
+    )
+    if ordinary_path:
+        buy_scales, ordinary_allocation_diagnostics = (
+            _allocate_ordinary_buy_cohorts(
+                buys=buys,
+                buy_risks=buy_risks,
+                blocked=shock_reduced_pyramid,
+                quality_classes=quality_classes,
+                score=score,
+                held_groups=held_groups,
+                held_risks=held_risks,
+                held_shares=held_shares,
+                gross_before=gross,
+                ordinary_gross_cap=receipt["ordinary_gross_cap"],
+                remaining_loss_budget=receipt["remaining_loss_budget"],
+                concentration_threshold=concentration_threshold,
+            )
+        )
+    else:
+        buy_scales = [
+            (
+                0.0
+                if blocked
+                else gross_scale
+                if alert_proven
+                else base_buy_scale
+            )
+            for alert_proven, blocked in zip(
+                alert_proven_dual, shock_reduced_pyramid, strict=True,
+            )
+        ]
+    quality_admitted = [
+        priority and not blocked and scale >= 1.0 - 1e-12
+        for priority, blocked, scale in zip(
+            quality_priority, shock_reduced_pyramid, buy_scales, strict=True,
         )
     ]
+    handoff_admitted_actual = [
+        priority and scale >= 1.0 - 1e-12
+        for priority, scale in zip(handoff_admitted, buy_scales, strict=True)
+    ]
+    repeated_reentry_admitted_actual = [
+        priority and scale >= 1.0 - 1e-12
+        for priority, scale in zip(
+            repeated_reentry_admitted, buy_scales, strict=True,
+        )
+    ]
+    proven_dual_admitted_actual = [
+        priority and scale >= 1.0 - 1e-12
+        for priority, scale in zip(proven_dual_admitted, buy_scales, strict=True)
+    ]
+    binding = bool(
+        buys and any(scale < 1.0 - 1e-12 for scale in buy_scales)
+    )
+    reported_gross_scale = ordinary_gross_scale if ordinary_path else gross_scale
+    reported_gap_scale = (
+        min(buy_scales, default=1.0) if ordinary_path else gap_scale
+    )
+    approved_buy_shares = [
+        floor_to_lot(signal.target_shares * scale)
+        for (_, signal, _), scale in zip(buys, buy_scales, strict=True)
+    ]
+    approved_buy_count = sum(quantity > 0 for quantity in approved_buy_shares)
     return {**receipt, "gross_before": gross, "buy_envelope_binding": binding,
-            "buy_gross_scale": gross_scale, "current_gap_debit": current_gap,
-            "requested_buy_gap_debit": buy_gap, "buy_gap_scale": gap_scale,
+            "buy_gross_scale": reported_gross_scale, "current_gap_debit": current_gap,
+            "requested_buy_gap_debit": buy_gap, "buy_gap_scale": reported_gap_scale,
+            "ordinary_allocator_active": ordinary_path,
+            "ordinary_concentration_threshold": concentration_threshold,
+            "protection_complete_book_count": sum(
+                risk.evidence_complete for risk in held_risks
+            ),
+            "protection_fallback_book_count": sum(
+                not risk.evidence_complete for risk in held_risks
+            ),
+            "protection_complete_buy_count": sum(
+                risk.evidence_complete for risk in buy_risks
+            ),
+            "protection_fallback_buy_count": sum(
+                not risk.evidence_complete for risk in buy_risks
+            ),
             "observed_shock_candidates": candidates,
             "observed_shock_confirmed": shock_confirmed,
             "shocked_group_count": len(shocked_groups),
@@ -612,18 +1343,24 @@ def plan_account_risk_budget(
             "quality_admission_risk_state_available": (
                 quality_admission_risk_state_available
             ),
+            "quality_prioritized_buy_indexes": [
+                index for index, prioritized in enumerate(quality_priority)
+                if prioritized
+            ],
             "quality_admitted_buy_indexes": [
                 index for index, admitted in enumerate(quality_admitted) if admitted
             ],
             "handoff_admitted_buy_indexes": [
-                index for index, admitted in enumerate(handoff_admitted) if admitted
-            ],
-            "repeated_reentry_admitted_buy_indexes": [
-                index for index, admitted in enumerate(repeated_reentry_admitted)
+                index for index, admitted in enumerate(handoff_admitted_actual)
                 if admitted
             ],
+            "repeated_reentry_admitted_buy_indexes": [
+                index for index, admitted in enumerate(
+                    repeated_reentry_admitted_actual
+                ) if admitted
+            ],
             "proven_dual_admitted_buy_indexes": [
-                index for index, admitted in enumerate(proven_dual_admitted)
+                index for index, admitted in enumerate(proven_dual_admitted_actual)
                 if admitted
             ],
             "alert_proven_dual_buy_indexes": [
@@ -635,6 +1372,11 @@ def plan_account_risk_budget(
                 if blocked
             ],
             "shock_reduced_pyramid_book_ids": shock_reduced_pyramid_books,
+            "approved_buy_count": approved_buy_count,
+            "all_buys_blocked": bool(buys) and approved_buy_count == 0,
+            **ordinary_trim_diagnostics,
+            **ordinary_allocation_diagnostics,
+            "approved_buy_shares": approved_buy_shares,
             "buy_scales": buy_scales,
             "buy_scale": min(buy_scales, default=base_buy_scale)}, actions
 
@@ -712,6 +1454,7 @@ def apply_account_risk_budget(
         if event.get('event') == 'account_budget_envelope'
     ), ()))
     books, buys = [], []
+    protection_by_book: dict[tuple[int, str, str], ProtectionEvidence] = {}
     buy_slots: list[tuple[int, int]] = []
     excluded_buy_slots: list[tuple[int, int]] = []
     weak_book_ids: set[tuple[int, str, str]] = set()
@@ -888,6 +1631,27 @@ def apply_account_risk_budget(
                     raise ValueError("account budget requires every held mark")
                 price = require_finite("held close", state.sleeve._latest_close_on_or_before(frame, date), min_value=0.000001)
                 books.append((state_index, symbol, strategy, shares, price))
+                raw_stop = float(position.stop_loss)
+                if raw_stop == 0.0:
+                    protection_by_book[(state_index, symbol, strategy)] = (
+                        ProtectionEvidence(
+                            stop_price=None,
+                            source="strategy_position_stop_missing",
+                            complete=False,
+                        )
+                    )
+                elif not math.isfinite(raw_stop) or raw_stop < 0.0:
+                    raise ValueError(
+                        "held strategy protection stop must be zero or finite and positive"
+                    )
+                else:
+                    protection_by_book[(state_index, symbol, strategy)] = (
+                        ProtectionEvidence(
+                            stop_price=raw_stop,
+                            source="strategy_position_stop",
+                            complete=True,
+                        )
+                    )
                 if risk_alert_active:
                     indicators = getattr(state, 'indicator_map', {}).get(symbol, {})
                     short_ma = indicators.get('ma_short')
@@ -988,6 +1752,7 @@ def apply_account_risk_budget(
         shock_reduced_book_ids=shock_reduced_book_ids,
         confirmed_shock_reduced_book_ids=confirmed_shock_reduced_book_ids,
         crowded_shock_reduced_book_ids=crowded_shock_reduced_book_ids,
+        protection_by_book=protection_by_book,
     )
     receipt['protected_handoff_book_ids'] = sorted(protected_handoff_book_ids)
     receipt['protected_proven_dual_book_ids'] = sorted(
@@ -1000,10 +1765,10 @@ def apply_account_risk_budget(
         list(slot) for slot in excluded_buy_slots
     ]
     cap = receipt["gross_cap"]
-    buy_scales = receipt["buy_scales"]
-    if len(buy_scales) != len(buy_slots):
-        raise RuntimeError('account budget buy scales lost queue alignment')
-    scale_by_slot = dict(zip(buy_slots, buy_scales, strict=True))
+    approved_buy_shares = receipt["approved_buy_shares"]
+    if len(approved_buy_shares) != len(buy_slots):
+        raise RuntimeError('account budget approved buys lost queue alignment')
+    approved_by_slot = dict(zip(buy_slots, approved_buy_shares, strict=True))
     actions = [action for action in planned_actions if not any(
         signal.direction == "sell" and signal.symbol == action.symbol
         and signal.strategy_name == action.strategy_name
@@ -1016,10 +1781,13 @@ def apply_account_risk_budget(
     for state_index, state in enumerate(states):
         retained = []
         for pending_index, (signal, strategy) in enumerate(state.pending):
-            buy_scale = scale_by_slot.get((state_index, pending_index), 1.)
-            if signal.direction == "buy" and buy_scale < 1.:
-                quantity = floor_to_lot(signal.target_shares * buy_scale)
+            approved = approved_by_slot.get((state_index, pending_index))
+            if signal.direction == "buy" and approved is not None:
+                quantity = approved
                 clipped += signal.target_shares - quantity
+                if quantity == signal.target_shares:
+                    retained.append((signal, strategy))
+                    continue
                 state.sleeve._record_order_event(
                     date=date_str, signal=signal, event="account_budget_buy_reduced",
                     requested_shares=int(signal.target_shares),

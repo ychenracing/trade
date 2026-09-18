@@ -33,6 +33,7 @@ from quantfusion.domain.models import Signal
 from quantfusion.domain.rules import floor_to_lot, require_finite
 from quantfusion.engine.universe import SleeveBacktestEngine
 from quantfusion.risk.account_budget import (
+    ProtectionEvidence,
     observed_direct_losses,
     observed_shock_stress,
     plan_account_risk_budget,
@@ -269,9 +270,24 @@ class AccountSignalEngine:
         by_symbol = {a["symbol"]: a for a in actions if a.get("shares", 0) > 0}
         books = [(0, p.symbol, "account_position", p.shares, by_symbol[p.symbol]["close"])
                  for p in snapshot.positions]
+        protection_by_book = {
+            (0, position.symbol, "account_position"): ProtectionEvidence(
+                stop_price=by_symbol[position.symbol].get("protective_stop"),
+                source=(
+                    "account_position_protective_stop"
+                    if by_symbol[position.symbol].get("peak_evidence_status") == "COMPLETE"
+                    else "account_position_peak_evidence_incomplete"
+                ),
+                complete=(
+                    by_symbol[position.symbol].get("peak_evidence_status") == "COMPLETE"
+                ),
+            )
+            for position in snapshot.positions
+        }
         buy_rows = [a for a in actions if a["action"] == "BUY_CANDIDATE"]
         buys = [(0, Signal(a["symbol"], "account_candidate", "buy",
                          target_shares=a["indicative_target_shares"], price=a["close"],
+                         stop_loss=(a.get("protective_stop") or 0.0),
                          signal_date=as_of), a["indicative_target_shares"]*a["close"])
                 for a in buy_rows]
         frames = {symbol: market[0] for symbol, market in prepared.items()}
@@ -292,6 +308,7 @@ class AccountSignalEngine:
             direct_loss_by_symbol=observed_direct_losses(
                 frames, evidence_date, cfg,
             ),
+            protection_by_book=protection_by_book,
         )
         for reduction in reductions:
             row = by_symbol[reduction.symbol]
@@ -307,11 +324,15 @@ class AccountSignalEngine:
                        execution_status=("EXECUTABLE" if executable == desired else
                                          "PARTIALLY_T1_BLOCKED" if executable else "T1_BLOCKED"),
                        reason=row["reason"]+"; account_budget_trim (close-known plan, not a fill)")
-        for row in buy_rows:
-            if receipt["buy_scale"] >= 1.:
+        approved_buy_shares = receipt["approved_buy_shares"]
+        if len(approved_buy_shares) != len(buy_rows):
+            raise RuntimeError(
+                "account budget approved buys lost account-row alignment"
+            )
+        for row, quantity in zip(buy_rows, approved_buy_shares, strict=True):
+            if quantity == row["indicative_target_shares"]:
                 continue
             original = row["indicative_target_shares"]
-            quantity = floor_to_lot(original*receipt["buy_scale"])
             row.update(indicative_target_shares=quantity,
                        original_indicative_target_shares=original,
                        target_weight=quantity*row["close"]/equity if equity else 0.,
@@ -807,7 +828,7 @@ class AccountSignalEngine:
             account_budget = self._apply_account_budget(
                 snapshot, prepared, actions, equity=snapshot.cash+priced_market_value, as_of=as_of,
             )
-            if account_budget["buy_scale"] == 0.:
+            if account_budget.get("all_buys_blocked") is True:
                 buys_suppressed = True
                 buy_suppression_reasons.append("ACCOUNT_RISK_BUDGET")
         else:
