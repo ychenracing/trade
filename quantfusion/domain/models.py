@@ -104,7 +104,13 @@ class BarContext:
 
 @dataclass(frozen=True)
 class SectorObservation:
-    """Aggregate equal-weight return and breadth from fully observed symbols."""
+    """Aggregate equal-weight return and breadth from fully observed symbols.
+
+    ``symbol_count`` is the full observed quorum size. ``equal_return``,
+    ``shock_breadth``, ``recovery_breadth``, and ``normalized_series`` use the
+    robust drop-worst-1 aggregator when at least two names are observed (see
+    ``CoreSectorRiskMixin._build_sector_observation``).
+    """
 
     symbol_count: int
     equal_return: float

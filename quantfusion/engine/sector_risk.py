@@ -114,6 +114,19 @@ class CoreSectorRiskMixin:
         return "active" if self.sector_guard_active else None
 
     @staticmethod
+    def _drop_worst_indices(values: list[float], drop: int = 1) -> list[int]:
+        """Return keep-indices after dropping the ``drop`` worst (minimum) values.
+
+        Used so equal-weight return and breadth share the same membership when
+        hardening the sector observation against a single-name blowup.
+        """
+        if drop <= 0 or len(values) <= drop:
+            return list(range(len(values)))
+        order = sorted(range(len(values)), key=lambda i: values[i])
+        drop_set = set(order[:drop])
+        return [i for i in range(len(values)) if i not in drop_set]
+
+    @staticmethod
     def _build_sector_observation(
         data_map: dict[str, pd.DataFrame],
         date: pd.Timestamp,
@@ -121,7 +134,23 @@ class CoreSectorRiskMixin:
         shock_ma: int,
         recovery_ma: int,
     ) -> SectorObservation | None:
-        """Build one equal-weight breadth snapshot without looking past date."""
+        """Build one robust equal-weight breadth snapshot without looking past date.
+
+        Exact robust rule (Experiment D)
+        --------------------------------
+        1. Observe every fully-populated regime name as before (quorum
+           ``symbol_count`` still counts all of them).
+        2. Identify the single worst daily return (minimum ``close_t/close_{t-1}-1``).
+        3. Drop that one name before aggregating:
+           - ``equal_return`` = mean of remaining daily returns
+           - ``shock_breadth`` / ``recovery_breadth`` = mean of remaining MA flags
+           - ``normalized_series`` = remaining series only (recovery sector-MA
+             therefore uses the same robust membership)
+        4. If fewer than 2 names are observed, no trim is applied (plain mean).
+        5. Shock/recovery confirmation counts and numeric thresholds are unchanged;
+           a single-name blowup can no longer alone push equal-weight return /
+           breadth through the shock gates.
+        """
         daily_returns: list[float] = []
         above_shock_ma: list[bool] = []
         above_recovery_ma: list[bool] = []
@@ -140,12 +169,17 @@ class CoreSectorRiskMixin:
             normalized_series.append(history / float(history.iloc[0]))
         if not daily_returns:
             return None
+        keep = CoreSectorRiskMixin._drop_worst_indices(daily_returns, drop=1)
+        kept_returns = [daily_returns[i] for i in keep]
+        kept_shock = [above_shock_ma[i] for i in keep]
+        kept_recovery = [above_recovery_ma[i] for i in keep]
+        kept_series = tuple(normalized_series[i] for i in keep)
         return SectorObservation(
             symbol_count=len(daily_returns),
-            equal_return=float(np.mean(daily_returns)),
-            shock_breadth=float(np.mean(above_shock_ma)),
-            recovery_breadth=float(np.mean(above_recovery_ma)),
-            normalized_series=tuple(normalized_series),
+            equal_return=float(np.mean(kept_returns)),
+            shock_breadth=float(np.mean(kept_shock)),
+            recovery_breadth=float(np.mean(kept_recovery)),
+            normalized_series=kept_series,
         )
 
     def _is_sector_shock(self, observation: SectorObservation) -> bool:
