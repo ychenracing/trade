@@ -1,0 +1,633 @@
+{
+  "focus": "2025-04-24",
+  "common-5": {
+    "main": {
+      "label": "main",
+      "result_diag_keys": [
+        "sleeve_policy",
+        "per_sleeve_max_order_adv_ratio",
+        "sleeve_fill_count",
+        "sleeve_sell_fill_count",
+        "fusion_events",
+        "all_sleeves_locked",
+        "locked_sleeves",
+        "sleeve_summaries",
+        "sleeve_weight_events",
+        "tail_sleeve_guard_active",
+        "sleeve_agreement"
+      ],
+      "fusions": [
+        {
+          "sleeve": "base",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "fast",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "slow",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        }
+      ],
+      "sleeve_weights_recent": [
+        {
+          "date": "2025-04-08",
+          "event": "free_cash_sleeve_reweight",
+          "regime": "TRANSITION",
+          "weights": {
+            "fast": 0.2,
+            "base": 0.35,
+            "slow": 0.45
+          },
+          "cash_before": [
+            666666.6666666666,
+            666666.6666666666,
+            666666.6666666667
+          ],
+          "cash_after": [
+            400000.0,
+            700000.0,
+            900000.0
+          ]
+        }
+      ],
+      "orders": [
+        {
+          "sleeve": "base",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "scaled_late_strategy_join",
+          "signal_date": "2025-04-24",
+          "requested_shares": 6600,
+          "authorized_shares": 6300,
+          "existing_symbol_shares": 6300
+        },
+        {
+          "sleeve": "fast",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "scaled_late_strategy_join",
+          "signal_date": "2025-04-24",
+          "requested_shares": 3700,
+          "authorized_shares": 3600,
+          "existing_symbol_shares": 3600
+        },
+        {
+          "sleeve": "slow",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "scaled_late_strategy_join",
+          "signal_date": "2025-04-24",
+          "requested_shares": 8500,
+          "authorized_shares": 8100,
+          "existing_symbol_shares": 8100
+        }
+      ],
+      "trades": [
+        {
+          "symbol": "300394",
+          "side": "buy",
+          "shares": 12200,
+          "strategy": "slow:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+          "gross": 422419.99799999996
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 6300,
+          "strategy": "base:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 286621.33499999996
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 3600,
+          "strategy": "fast:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 163783.62
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 8100,
+          "strategy": "slow:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 368513.14499999996
+        }
+      ],
+      "envs": [
+        {
+          "ordinary_buy_scale": null,
+          "buy_gross_scale": 1.0,
+          "buy_gap_scale": 1.0,
+          "buy_shares_removed": 0,
+          "remaining_loss_budget": 349685.56747550005,
+          "gross_before": 1231404.0,
+          "equity": 1989755.5674755,
+          "requested_buy_gap_debit": 164978.10000000003,
+          "current_gap_debit": 249975.01200000005,
+          "risk_alert_active": false
+        }
+      ],
+      "TR": 6.1880055431837535
+    },
+    "absorb": {
+      "label": "absorb",
+      "result_diag_keys": [
+        "sleeve_policy",
+        "per_sleeve_max_order_adv_ratio",
+        "sleeve_fill_count",
+        "sleeve_sell_fill_count",
+        "fusion_events",
+        "all_sleeves_locked",
+        "locked_sleeves",
+        "sleeve_summaries",
+        "sleeve_weight_events",
+        "tail_sleeve_guard_active",
+        "sleeve_agreement"
+      ],
+      "fusions": [
+        {
+          "sleeve": "base",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "fast",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "slow",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        }
+      ],
+      "sleeve_weights_recent": [
+        {
+          "date": "2025-04-08",
+          "event": "free_cash_sleeve_reweight",
+          "regime": "TRANSITION",
+          "weights": {
+            "fast": 0.2,
+            "base": 0.35,
+            "slow": 0.45
+          },
+          "cash_before": [
+            666666.6666666666,
+            666666.6666666666,
+            666666.6666666667
+          ],
+          "cash_after": [
+            400000.0,
+            700000.0,
+            900000.0
+          ]
+        }
+      ],
+      "orders": [
+        {
+          "sleeve": "base",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "scaled_late_strategy_join",
+          "signal_date": "2025-04-24",
+          "requested_shares": 6600,
+          "authorized_shares": 6300,
+          "existing_symbol_shares": 6300
+        },
+        {
+          "sleeve": "fast",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "scaled_late_strategy_join",
+          "signal_date": "2025-04-24",
+          "requested_shares": 3700,
+          "authorized_shares": 3600,
+          "existing_symbol_shares": 3600
+        },
+        {
+          "sleeve": "slow",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "scaled_late_strategy_join",
+          "signal_date": "2025-04-24",
+          "requested_shares": 8500,
+          "authorized_shares": 8100,
+          "existing_symbol_shares": 8100
+        }
+      ],
+      "trades": [
+        {
+          "symbol": "300394",
+          "side": "buy",
+          "shares": 12200,
+          "strategy": "slow:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+          "gross": 422419.99799999996
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 6300,
+          "strategy": "base:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 286621.33499999996
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 3600,
+          "strategy": "fast:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 163783.62
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 8100,
+          "strategy": "slow:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 368513.14499999996
+        }
+      ],
+      "envs": [
+        {
+          "ordinary_buy_scale": 1.0,
+          "buy_gross_scale": 1.0,
+          "buy_gap_scale": 1.0,
+          "buy_shares_removed": 0,
+          "remaining_loss_budget": 349685.56747550005,
+          "gross_before": 1231404.0,
+          "equity": 1989755.5674755,
+          "requested_buy_gap_debit": 164978.10000000003,
+          "current_gap_debit": 249975.01200000005,
+          "risk_alert_active": false
+        }
+      ],
+      "TR": 7.074853391118626
+    },
+    "archive": {
+      "label": "archive",
+      "result_diag_keys": [
+        "sleeve_policy",
+        "per_sleeve_max_order_adv_ratio",
+        "fusion_events",
+        "all_sleeves_locked",
+        "locked_sleeves",
+        "sleeve_summaries"
+      ],
+      "fusions": [
+        {
+          "sleeve": "base",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "fast",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "slow",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        }
+      ],
+      "sleeve_weights_recent": [],
+      "orders": [],
+      "trades": [
+        {
+          "symbol": "300394",
+          "side": "buy",
+          "shares": 9000,
+          "strategy": "base:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+          "gross": 311621.31
+        },
+        {
+          "symbol": "300394",
+          "side": "buy",
+          "shares": 9000,
+          "strategy": "fast:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+          "gross": 311621.31
+        },
+        {
+          "symbol": "300394",
+          "side": "buy",
+          "shares": 9000,
+          "strategy": "slow:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+          "gross": 311621.31
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 6000,
+          "strategy": "base:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 272972.7
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 6000,
+          "strategy": "fast:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 272972.7
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 6000,
+          "strategy": "slow:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 272972.7
+        }
+      ],
+      "envs": [],
+      "TR": 7.481674387814749
+    }
+  },
+  "common-17": {
+    "main": {
+      "label": "main",
+      "result_diag_keys": [
+        "sleeve_policy",
+        "per_sleeve_max_order_adv_ratio",
+        "sleeve_fill_count",
+        "sleeve_sell_fill_count",
+        "fusion_events",
+        "all_sleeves_locked",
+        "locked_sleeves",
+        "sleeve_summaries",
+        "sleeve_weight_events",
+        "tail_sleeve_guard_active",
+        "sleeve_agreement"
+      ],
+      "fusions": [
+        {
+          "sleeve": "base",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "fast",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "slow",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        }
+      ],
+      "sleeve_weights_recent": [
+        {
+          "date": "2025-04-08",
+          "event": "free_cash_sleeve_reweight",
+          "regime": "TRANSITION",
+          "weights": {
+            "fast": 0.2,
+            "base": 0.35,
+            "slow": 0.45
+          },
+          "cash_before": [
+            666666.6666666666,
+            666666.6666666666,
+            666666.6666666667
+          ],
+          "cash_after": [
+            400000.0,
+            700000.0,
+            900000.0
+          ]
+        }
+      ],
+      "orders": [
+        {
+          "sleeve": "base",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "scaled_late_strategy_join",
+          "signal_date": "2025-04-24",
+          "requested_shares": 6600,
+          "authorized_shares": 6300,
+          "existing_symbol_shares": 6300
+        },
+        {
+          "sleeve": "fast",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "scaled_late_strategy_join",
+          "signal_date": "2025-04-24",
+          "requested_shares": 3700,
+          "authorized_shares": 3600,
+          "existing_symbol_shares": 3600
+        },
+        {
+          "sleeve": "slow",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "strategy": "atr_channel",
+          "direction": "buy",
+          "event": "scaled_late_strategy_join",
+          "signal_date": "2025-04-24",
+          "requested_shares": 8600,
+          "authorized_shares": 8100,
+          "existing_symbol_shares": 8100
+        }
+      ],
+      "trades": [
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 6300,
+          "strategy": "base:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 286621.33499999996
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 3600,
+          "strategy": "fast:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 163783.62
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 8100,
+          "strategy": "slow:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 368513.14499999996
+        }
+      ],
+      "envs": [
+        {
+          "ordinary_buy_scale": null,
+          "buy_gross_scale": 1.0,
+          "buy_gap_scale": 1.0,
+          "buy_shares_removed": 0,
+          "remaining_loss_budget": 353517.17047500005,
+          "gross_before": 812700.0,
+          "equity": 1993577.170475,
+          "requested_buy_gap_debit": 164978.10000000003,
+          "current_gap_debit": 164978.10000000003,
+          "risk_alert_active": false
+        }
+      ],
+      "TR": 6.019525822104252
+    },
+    "archive": {
+      "label": "archive",
+      "result_diag_keys": [
+        "sleeve_policy",
+        "per_sleeve_max_order_adv_ratio",
+        "fusion_events",
+        "all_sleeves_locked",
+        "locked_sleeves",
+        "sleeve_summaries"
+      ],
+      "fusions": [
+        {
+          "sleeve": "base",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "fast",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        },
+        {
+          "sleeve": "slow",
+          "date": "2025-04-24",
+          "symbol": "300502",
+          "state": "single-strategy probe",
+          "buy_votes": 1,
+          "sell_votes": 0,
+          "scale": 0.9
+        }
+      ],
+      "sleeve_weights_recent": [],
+      "orders": [],
+      "trades": [
+        {
+          "symbol": "300394",
+          "side": "buy",
+          "shares": 9000,
+          "strategy": "slow:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=29.3)",
+          "gross": 311621.31
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 6000,
+          "strategy": "base:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 272972.7
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 6000,
+          "strategy": "fast:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 272972.7
+        },
+        {
+          "symbol": "300502",
+          "side": "buy",
+          "shares": 6000,
+          "strategy": "slow:turtle_breakout",
+          "reason": "[single-strategy probe] Turtle breakout(ADX=24.0)",
+          "gross": 272972.7
+        }
+      ],
+      "envs": [],
+      "TR": 9.711337969284626
+    }
+  }
+}
