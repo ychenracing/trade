@@ -1,0 +1,78 @@
+{
+  "label": "archive",
+  "sha": "c158435f66034f370c031353cfb419fd3b469811",
+  "tree": "1ba398ec376eee8063a3df21c8bef4432872fc11",
+  "engine": "archive_BacktestEngine",
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "symbols": [
+    "300308",
+    "300502",
+    "300394",
+    "688008",
+    "603986"
+  ],
+  "symbol_names": {
+    "300308": "\u4e2d\u9645\u65ed\u521b",
+    "300502": "\u65b0\u6613\u76db",
+    "300394": "\u5929\u5b5a\u901a\u4fe1",
+    "688008": "\u6f9c\u8d77\u79d1\u6280",
+    "603986": "\u5146\u6613\u521b\u65b0"
+  },
+  "elapsed_sec": 132.411,
+  "final_assets": 24319847.510915253,
+  "wealth_multiple": 12.159923755457626,
+  "total_return": 11.159923755457626,
+  "max_drawdown": -0.15857336312266856,
+  "sharpe": 3.7003434871610827,
+  "calmar": 39.92844295210301,
+  "sleeve_fills": 222,
+  "total_trades": 222,
+  "date_symbol_side_buckets": 83,
+  "sell_buckets": 39,
+  "active_operation_days": 56,
+  "turnover_over_average_equity": 14.688713890268001,
+  "commission_plus_stamp_duty": 82476.08908475,
+  "commission": 38459.54718725003,
+  "stamp_duty": 44016.54189749997,
+  "modeled_slippage": 0.0,
+  "gross_traded_value": 153663843.9900001,
+  "ordinary_ab5_held_trims": {
+    "count": 0,
+    "symbol_count": 0,
+    "notional": 0,
+    "envelope_trim_evaluations_sum": 0
+  },
+  "ordinary_ab5_buy_clipping": {
+    "intent_count": 0,
+    "removed_shares": 0,
+    "removed_notional": null
+  },
+  "alert_shock_direct_loss_events": {
+    "sector_shock": 36
+  },
+  "hard_action_trade_reasons": {},
+  "sell_rebuy_chains_posthoc": {
+    "approx_20_session": 48,
+    "approx_60_session": 78,
+    "note": "calendar-day proxy; attribution only"
+  },
+  "protection_book_counts_sum_over_days": {
+    "complete": 0,
+    "fallback": 0
+  },
+  "allocator": {
+    "ordinary_allocator_active_days": 0,
+    "feasibility_evaluations_sum": 0,
+    "envelope_days": 0
+  },
+  "risk_event_type_counts": {
+    "sector_guard_on": 3,
+    "sector_shock": 36
+  },
+  "account_risk_budget": null,
+  "status": "OK",
+  "pool": "research_pool_c"
+}

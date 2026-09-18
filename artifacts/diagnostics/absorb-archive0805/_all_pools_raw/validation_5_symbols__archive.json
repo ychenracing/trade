@@ -1,0 +1,82 @@
+{
+  "label": "archive",
+  "sha": "c158435f66034f370c031353cfb419fd3b469811",
+  "tree": "1ba398ec376eee8063a3df21c8bef4432872fc11",
+  "engine": "archive_BacktestEngine",
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "symbols": [
+    "300308",
+    "300502",
+    "300394",
+    "688256",
+    "603986"
+  ],
+  "symbol_names": {
+    "300308": "\u4e2d\u9645\u65ed\u521b",
+    "300502": "\u65b0\u6613\u76db",
+    "300394": "\u5929\u5b5a\u901a\u4fe1",
+    "688256": "\u5bd2\u6b66\u7eaa",
+    "603986": "\u5146\u6613\u521b\u65b0"
+  },
+  "elapsed_sec": 137.6607,
+  "final_assets": 24558307.774027746,
+  "wealth_multiple": 12.279153887013873,
+  "total_return": 11.279153887013873,
+  "max_drawdown": -0.18961300879370643,
+  "sharpe": 3.7303888337421407,
+  "calmar": 33.6942006522785,
+  "sleeve_fills": 243,
+  "total_trades": 243,
+  "date_symbol_side_buckets": 99,
+  "sell_buckets": 43,
+  "active_operation_days": 67,
+  "turnover_over_average_equity": 13.458713584716548,
+  "commission_plus_stamp_duty": 70793.83997224997,
+  "commission": 32600.657885749988,
+  "stamp_duty": 38193.18208649999,
+  "modeled_slippage": 0.0,
+  "gross_traded_value": 130143626.73200002,
+  "ordinary_ab5_held_trims": {
+    "count": 0,
+    "symbol_count": 0,
+    "notional": 0,
+    "envelope_trim_evaluations_sum": 0
+  },
+  "ordinary_ab5_buy_clipping": {
+    "intent_count": 0,
+    "removed_shares": 0,
+    "removed_notional": null
+  },
+  "alert_shock_direct_loss_events": {
+    "portfolio_drawdown_alert_off": 4,
+    "portfolio_drawdown_alert_on": 4,
+    "sector_shock": 36
+  },
+  "hard_action_trade_reasons": {},
+  "sell_rebuy_chains_posthoc": {
+    "approx_20_session": 49,
+    "approx_60_session": 78,
+    "note": "calendar-day proxy; attribution only"
+  },
+  "protection_book_counts_sum_over_days": {
+    "complete": 0,
+    "fallback": 0
+  },
+  "allocator": {
+    "ordinary_allocator_active_days": 0,
+    "feasibility_evaluations_sum": 0,
+    "envelope_days": 0
+  },
+  "risk_event_type_counts": {
+    "portfolio_drawdown_alert_off": 4,
+    "portfolio_drawdown_alert_on": 4,
+    "sector_guard_on": 3,
+    "sector_shock": 36
+  },
+  "account_risk_budget": null,
+  "status": "OK",
+  "pool": "validation_5_symbols"
+}

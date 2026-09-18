@@ -1,0 +1,84 @@
+{
+  "label": "archive",
+  "sha": "c158435f66034f370c031353cfb419fd3b469811",
+  "tree": "1ba398ec376eee8063a3df21c8bef4432872fc11",
+  "engine": "archive_BacktestEngine",
+  "window": {
+    "start": "2025-04-01",
+    "end": "2026-07-20"
+  },
+  "symbols": [
+    "300308",
+    "300502",
+    "300394",
+    "688008",
+    "603986",
+    "688347",
+    "688256",
+    "688072"
+  ],
+  "symbol_names": {
+    "300308": "\u4e2d\u9645\u65ed\u521b",
+    "300502": "\u65b0\u6613\u76db",
+    "300394": "\u5929\u5b5a\u901a\u4fe1",
+    "688008": "\u6f9c\u8d77\u79d1\u6280",
+    "603986": "\u5146\u6613\u521b\u65b0",
+    "688347": "\u534e\u8679\u5b8f\u529b",
+    "688256": "\u5bd2\u6b66\u7eaa",
+    "688072": "\u62d3\u8346\u79d1\u6280"
+  },
+  "elapsed_sec": 145.2318,
+  "final_assets": 27395092.54540676,
+  "wealth_multiple": 13.697546272703379,
+  "total_return": 12.697546272703379,
+  "max_drawdown": -0.1479935311936266,
+  "sharpe": 3.937541760725253,
+  "calmar": 47.717530545674656,
+  "sleeve_fills": 254,
+  "total_trades": 254,
+  "date_symbol_side_buckets": 100,
+  "sell_buckets": 42,
+  "active_operation_days": 68,
+  "turnover_over_average_equity": 14.23549216031447,
+  "commission_plus_stamp_duty": 83431.68059325,
+  "commission": 38549.51418675,
+  "stamp_duty": 44882.1664065,
+  "modeled_slippage": 0.0,
+  "gross_traded_value": 154050141.39999992,
+  "ordinary_ab5_held_trims": {
+    "count": 0,
+    "symbol_count": 0,
+    "notional": 0,
+    "envelope_trim_evaluations_sum": 0
+  },
+  "ordinary_ab5_buy_clipping": {
+    "intent_count": 0,
+    "removed_shares": 0,
+    "removed_notional": null
+  },
+  "alert_shock_direct_loss_events": {
+    "sector_shock": 36
+  },
+  "hard_action_trade_reasons": {},
+  "sell_rebuy_chains_posthoc": {
+    "approx_20_session": 33,
+    "approx_60_session": 64,
+    "note": "calendar-day proxy; attribution only"
+  },
+  "protection_book_counts_sum_over_days": {
+    "complete": 0,
+    "fallback": 0
+  },
+  "allocator": {
+    "ordinary_allocator_active_days": 0,
+    "feasibility_evaluations_sum": 0,
+    "envelope_days": 0
+  },
+  "risk_event_type_counts": {
+    "sector_guard_on": 3,
+    "sector_shock": 36
+  },
+  "account_risk_budget": null,
+  "status": "OK",
+  "pool": "research_pool_d"
+}
