@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import re
 from typing import Any
 
@@ -101,7 +102,9 @@ def floor_to_lot(shares: float, lot_size: int = A_SHARE_LOT_SIZE) -> int:
     return int(float(shares) // lot_size) * lot_size
 
 
-def limit_pct_for_code(code: str, cfg: dict | None = None, name: str = "") -> float:
+def limit_pct_for_code(
+    code: str, cfg: Mapping[str, object] | None = None, name: str = ""
+) -> float:
     """Resolve the estimated daily board limit for a symbol."""
     code = str(code)
     if not SYMBOL_RE.match(code):

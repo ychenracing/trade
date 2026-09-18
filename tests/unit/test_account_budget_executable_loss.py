@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 
 from quantfusion.config.engine import default_engine_config
 from quantfusion.config.overlay import CONCENTRATION_CAP
