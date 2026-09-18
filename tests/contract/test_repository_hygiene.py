@@ -288,7 +288,7 @@ class RepositoryHygieneTests(unittest.TestCase):
         current = json.loads((ROOT / "tests/fixtures/backtest_golden_metrics.json").read_text())
         binding = current["_source_binding"]
         self.assertEqual(binding["kind"], "authorized_strategy_regression_refresh")
-        self.assertEqual(binding["economic_acceptance"], "NOT_MET")
+        self.assertEqual(binding["economic_acceptance"], "MET")
         source = ROOT / binding["proof_path"]
         self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), binding["proof_sha256"])
         evidence = json.loads(source.read_text())

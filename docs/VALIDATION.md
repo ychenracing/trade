@@ -29,7 +29,7 @@ Pool 研究回放复用 `ProductionReplayEngine`、现有交易费用、风险�
 计划由唯一有序 17 股股票池确定性生成。随机子集使用 3 个固定 seed、5 个规模、每规模 50 个样本；顺序置换使用 3 个固定 seed、每个 50 次。正式结果须覆盖 958 个唯一场景、有限指标、`ProductionReplayEngine`／`production_daily_replay` 语义，并具有独立的源码、数据、场景与运行指纹。
 
 <!-- CURRENT_FORMAL_STRESS_RESULT:START -->
-当前版本验证：完整计划已运行：`958/958`，唯一 scenario ID：`958`；acceptance 为 `accepted`，canonical 为 `true`。主池财富为 `9.610543` 倍，最大回撤为 `-15.104978%`；全场景最差最大回撤为 `-19.357897%`。经济源码：`fe5588f1d88edc098a79bbf5c130fda58616e37f`。完整指标与发布回执分别见 `artifacts/validation/deployment-release/index.json`、`artifacts/validation/deployment-release-receipt.json`。
+当前版本验证：完整计划已运行：`958/958`，唯一 scenario ID：`958`；acceptance 为 `accepted`，canonical 为 `true`。主池财富为 `9.610543` 倍，最大回撤为 `-15.104978%`；全场景最差最大回撤为 `-19.793494%`。经济源码：`9ff459d52c3daede7902a04b8861bc35eac53f92`。完整指标与发布回执分别见 `artifacts/validation/deployment-release/index.json`、`artifacts/validation/deployment-release-receipt.json`。
 <!-- CURRENT_FORMAL_STRESS_RESULT:END -->
 <!-- CURRENT_FORMAL_STRESS_PLAN:END -->
 
