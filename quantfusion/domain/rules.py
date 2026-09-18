@@ -103,7 +103,7 @@ def floor_to_lot(shares: float, lot_size: int = A_SHARE_LOT_SIZE) -> int:
 
 
 def limit_pct_for_code(
-    code: str, cfg: Mapping[str, object] | None = None, name: str = ""
+    code: str, cfg: Mapping[str, Any] | None = None, name: str = ""
 ) -> float:
     """Resolve the estimated daily board limit for a symbol."""
     code = str(code)
