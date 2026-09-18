@@ -2,7 +2,7 @@
 
 **STATUS:** `DIRECTIONAL_PROGRESS`  
 **As of:** 2026-09-18T13:53+0800 (Asia/Shanghai)  
-**Branch:** `agent/absorb-archive0805-ordinary-ab5` (pre-commit HEAD `d1fa15c1796f`)  
+**Branch:** `agent/absorb-archive0805-ordinary-ab5` @ `6204a9efeb0d` (tree `ffc72b6807eb`)  
 **Main:** `fa4ef7ba` · **Archive:** `c158435`  
 **Do NOT merge main.**
 
