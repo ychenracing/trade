@@ -1,0 +1,66 @@
+{
+  "as_of": "2026-09-18T12:19+0800",
+  "candidate_sha": "734c59f4857665838d8ca0cb7f9b625edd283f6b",
+  "candidate_tree": "01db8c3ef18029ea236adfa4039ff1d601417211",
+  "base_sha": "fa4ef7bafe7fdb9f513c7c07443c193624fa114c",
+  "base_tree": "0b55602e5fa19a08fd11954e8e331d1bd0a0c974",
+  "commands": [
+    ".venv/bin/python /tmp/ab5_ladder.py --mode perf_f3 --role candidate",
+    ".venv/bin/python /tmp/ab5_ladder.py --mode perf_f3 --role incumbent",
+    "RegimeAdaptiveBacktestEngine().run({'300308':...}, '2025-04-01','2026-06-30', indicator_state='warm', data_dir=MARKET, regime_data_dir=REGIME)",
+    "prior: pytest tests/unit/test_account_budget_executable_loss.py + direct pathology @50k/100k lots"
+  ],
+  "unit_suite": {
+    "elapsed_sec": 0.478,
+    "result": "6 passed in 0.26s",
+    "includes_slow_oracle_equivalence": "test_integer_binary_search_matches_slow_lot_oracle"
+  },
+  "pathology": {
+    "50000_lots": {
+      "feasibility_evaluations": 20,
+      "log_bound_ceil_log2_plus_6": 22,
+      "within_bound": true,
+      "lots_per_evaluation": 2500.0,
+      "elapsed_sec": 0.000235,
+      "approved_shares": [
+        5000000
+      ]
+    },
+    "100000_lots": {
+      "feasibility_evaluations": 21,
+      "log_bound_ceil_log2_plus_6": 23,
+      "within_bound": true,
+      "lots_per_evaluation": 4761.9047619047615,
+      "elapsed_sec": 0.00015,
+      "approved_shares": [
+        10000000
+      ]
+    }
+  },
+  "full_one_symbol_wallclock": {
+    "identity": "F3 / frozen bull single-symbol (same entry as test_frozen_bull_single_symbol_golden_metric)",
+    "window": {
+      "start": "2025-04-01",
+      "end": "2026-06-30"
+    },
+    "engine": "RegimeAdaptiveBacktestEngine",
+    "symbols": [
+      "300308"
+    ],
+    "indicator_state": "warm",
+    "candidate_elapsed_sec": 11.812,
+    "incumbent_elapsed_sec": 11.8803,
+    "candidate_over_incumbent": 0.9942509869279395,
+    "candidate_total_return": 3.928538056569,
+    "incumbent_total_return": 3.928538056569
+  },
+  "gates": {
+    "oracle_field_equivalence_unit": "PASS (covered by unit suite)",
+    "feasibility_evals_log_bound": "PASS",
+    "no_linear_in_requested_lots_loop": "PASS (50k->20 evals, 100k->21 evals)",
+    "pathology_call_reduction_vs_linear": "PASS (>=10x; 50k/20=2500x vs linear)",
+    "full_one_symbol_wallclock_vs_incumbent_2x": "PASS",
+    "full_one_symbol_under_180s": "PASS"
+  },
+  "verdict": "PASS"
+}

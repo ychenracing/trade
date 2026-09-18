@@ -1,0 +1,329 @@
+{
+  "checkpoint": "B",
+  "as_of": "2026-09-18T12:11+0800",
+  "repo": "ychenracing/trade",
+  "pr": 120,
+  "branch": "agent/ab5-trend-efficiency",
+  "base": {
+    "sha": "fa4ef7bafe7fdb9f513c7c07443c193624fa114c",
+    "tree": "0b55602e5fa19a08fd11954e8e331d1bd0a0c974",
+    "label": "main"
+  },
+  "candidate": {
+    "sha": "734c59f4857665838d8ca0cb7f9b625edd283f6b",
+    "tree": "01db8c3ef18029ea236adfa4039ff1d601417211",
+    "label": "agent/ab5-trend-efficiency",
+    "pushed": true
+  },
+  "data_config_identity": {
+    "f2_scenario_id": "random-20260807-03-004",
+    "f2_symbols": [
+      "002384",
+      "300502",
+      "688498"
+    ],
+    "f2_data_fingerprint_candidate": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "f2_data_fingerprint_incumbent": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975",
+    "f2_scenario_signature_candidate": "29be14d97ffa4249455a0e70ae42df74e4567609c3576250e659c4281fd94880",
+    "f2_market_data_dir": "/workspace/trade/data/market",
+    "f2_regime_data_dir": "/workspace/trade/data/regime",
+    "f4_window": [
+      "2024-01-02",
+      "2024-12-31"
+    ],
+    "f4_symbols": [
+      "002409",
+      "300054",
+      "300308",
+      "300394",
+      "300502"
+    ],
+    "f4_data_dir": "/workspace/trade/data/regime",
+    "f4_indicator_state": "warm",
+    "note": "Incumbent and candidate data fingerprints differ only by serialization key naming in older vs newer data_identity helpers; raw/prepared hashes permute identically when normalized."
+  },
+  "commands": [
+    "PYTHONPATH=/workspace/trade .venv/bin/python /tmp/ab5_checkpoint_b_diag.py candidate .../ _cand_raw.json all",
+    "PYTHONPATH=/workspace/trade-main .venv/bin/python /tmp/ab5_checkpoint_b_diag.py incumbent .../ _inc_raw.json all",
+    "pytest -q tests/c6_non_economic/test_c6_formal_ab5.py::test_current_ab5_witness_reconciles_metrics_and_causal_budget_orders",
+    "pytest -q tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_weak_real_execution_matches_frozen_research_point",
+    "pytest -q tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_frozen_bull_single_symbol_golden_metric"
+  ],
+  "F1": {
+    "status": "PASS",
+    "class": "implementation_defect_fixed",
+    "note": "Checkpoint A: ordinary AB5 pass-through when gross/gap envelope non-binding"
+  },
+  "F3": {
+    "status": "PASS",
+    "class": "implementation_defect_resolved_by_f1",
+    "note": "Recovered with F1; no longer below main single-symbol golden"
+  },
+  "F2": {
+    "test": "tests/c6_non_economic/test_c6_formal_ab5.py::test_current_ab5_witness_reconciles_metrics_and_causal_budget_orders",
+    "status": "FAIL",
+    "class": "expected_economic_change",
+    "category_per_prompt_5_2": "1_necessary_new_risk_action_and_7_incumbent_witness_binding",
+    "clear_implementation_defect": false,
+    "first_divergence": {
+      "kind": "first_causal_account_budget_trim_date",
+      "incumbent_first_budget_order_date": "2025-09-04",
+      "candidate_first_budget_order_date": "2025-08-26",
+      "incumbent_budget_order_count": 163,
+      "candidate_budget_order_count": 83,
+      "candidate_first_order": {
+        "decision_timestamp": "2025-08-26",
+        "execution_timestamp": "2025-08-27",
+        "symbol": "688498",
+        "side": "SELL",
+        "authorized_shares": 200,
+        "filled_shares": 200,
+        "reason": "account_budget_trim",
+        "book_id": null
+      },
+      "incumbent_first_order": {
+        "decision_timestamp": "2025-09-04",
+        "execution_timestamp": "2025-09-05",
+        "symbol": "300502",
+        "side": "SELL",
+        "authorized_shares": 1200,
+        "filled_shares": 1200,
+        "reason": "account_budget_trim",
+        "book_id": null
+      }
+    },
+    "around_2025_08_26": {
+      "incumbent_envelope": {
+        "date": "2025-08-26",
+        "remaining_loss_budget": 837557.25445578,
+        "ordinary_gross_cap": 6248102.191421,
+        "gross_cap": 6248102.191421,
+        "gross_before": 6217977.0,
+        "held_stress_debit": 742426.4538,
+        "current_gap_debit": 1262249.331,
+        "buy_envelope_binding": false,
+        "risk_alert_active": false,
+        "shock_episode_active": false,
+        "observed_shock_confirmed": false,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0
+      },
+      "candidate_envelope": {
+        "date": "2025-08-26",
+        "remaining_loss_budget": 837557.25445578,
+        "ordinary_gross_cap": 6248102.191421,
+        "gross_cap": 6248102.191421,
+        "gross_before": 6217977.0,
+        "ordinary_held_loss_debit": 844376.25643776,
+        "ordinary_held_loss_debit_before": 844376.25643776,
+        "ordinary_held_loss_debit_after": 836800.70243776,
+        "held_stress_debit": 742426.4538,
+        "current_gap_debit": 1262249.331,
+        "buy_envelope_binding": false,
+        "ordinary_allocator_active": false,
+        "protection_complete_book_count": 12,
+        "protection_fallback_book_count": 0,
+        "risk_alert_active": false,
+        "shock_episode_active": false,
+        "observed_shock_confirmed": false,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 1,
+        "ordinary_held_trim_evaluations": 19
+      },
+      "interpretation": "Same remaining_loss_budget (~837557) and held_stress_debit (~742426). Candidate ordinary_held_loss_debit_before (~844376) includes protection-bounded base + industry concentration excess and exceeds budget by ~6820, so _plan_ordinary_held_reductions emits 1 trim (688498 SELL 200) bringing ordinary_held_loss_debit_after to ~836801. Incumbent has no ordinary held-trim path; held_stress_debit < budget so no action until shock day 2025-09-04.",
+      "hard_risk_state": {
+        "risk_alert_active": false,
+        "shock_episode_active": false,
+        "observed_shock_confirmed": false,
+        "protection_fallback_book_count": 0,
+        "protection_complete_book_count": 12
+      },
+      "next_open_fill_candidate": [
+        {
+          "signal_date": "2025-08-26",
+          "date": "2025-08-27",
+          "symbol": "688498",
+          "side": "sell",
+          "shares": 200,
+          "reason": "account_budget_trim",
+          "price": 186.56325
+        }
+      ]
+    },
+    "around_2025_09_04": {
+      "incumbent_envelope": {
+        "date": "2025-09-04",
+        "remaining_loss_budget": 425402.58709578,
+        "ordinary_gross_cap": 7419112.039421,
+        "gross_cap": 2095579.24677724,
+        "gross_before": 7408173.0,
+        "held_stress_debit": 1503859.119,
+        "current_gap_debit": 1502113.719,
+        "buy_envelope_binding": true,
+        "risk_alert_active": false,
+        "shock_episode_active": true,
+        "observed_shock_confirmed": true,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 9
+      },
+      "candidate_envelope": {
+        "date": "2025-09-04",
+        "remaining_loss_budget": 419413.25247554,
+        "ordinary_gross_cap": 7377002.63029175,
+        "gross_cap": 2066075.13534749,
+        "gross_before": 7346821.0,
+        "ordinary_held_loss_debit": 955335.97492814,
+        "ordinary_held_loss_debit_before": 955335.97492814,
+        "ordinary_held_loss_debit_after": 955335.97492814,
+        "held_stress_debit": 1491404.663,
+        "current_gap_debit": 1490241.063,
+        "buy_envelope_binding": false,
+        "ordinary_allocator_active": false,
+        "protection_complete_book_count": 14,
+        "protection_fallback_book_count": 0,
+        "risk_alert_active": false,
+        "shock_episode_active": true,
+        "observed_shock_confirmed": true,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 9,
+        "ordinary_held_trim_evaluations": 0
+      },
+      "note": "Both sides still trim on shock-confirmed 2025-09-04; candidate already had earlier ordinary trim."
+    },
+    "metrics_delta": {
+      "incumbent": {
+        "total_return": 4.877902109623126,
+        "max_drawdown": -0.16579136512258807,
+        "total_trades": 459,
+        "risk_reduction": 208
+      },
+      "candidate": {
+        "total_return": 5.361411899604002,
+        "max_drawdown": -0.17080534733457908,
+        "total_trades": 382,
+        "risk_reduction": 128
+      }
+    },
+    "conclusion": "Not an allocator/evidence bug. 2025-08-26 trim is the new ordinary held-reduction path firing because concentration-inclusive ordinary debit exceeds remaining loss budget while full held_stress_debit does not. Protection evidence complete; no alert/shock. Overall candidate has fewer risk_reduction fills and higher return. Witness date 2025-09-04 remains incumbent-bound until formal economic promotion."
+  },
+  "F4": {
+    "test": "tests/regression/test_regime_adaptive.py::AdaptiveEngineTests::test_weak_real_execution_matches_frozen_research_point",
+    "status": "FAIL",
+    "class": "expected_economic_change_likely_improvement",
+    "clear_implementation_defect": false,
+    "metrics": {
+      "incumbent": {
+        "total_return": 0.04681879352062501,
+        "max_drawdown": -0.15402745127769102,
+        "total_trades": 24,
+        "sleeve_fill_count": 24
+      },
+      "candidate": {
+        "total_return": 0.061140412550000134,
+        "max_drawdown": -0.14996061176312964,
+        "total_trades": 23,
+        "sleeve_fill_count": 23
+      },
+      "golden_total_return": 0.04681879352062501
+    },
+    "first_divergence": {
+      "kind": "first_trade_path_difference",
+      "index": 3,
+      "incumbent_trade": {
+        "signal_date": "2024-01-08",
+        "date": "2024-01-09",
+        "symbol": "300308",
+        "side": "sell",
+        "shares": 700,
+        "reason": "account_budget_trim",
+        "price": 70.83909
+      },
+      "candidate_trade": {
+        "signal_date": "2024-01-05",
+        "date": "2024-01-08",
+        "symbol": "300394",
+        "side": "sell",
+        "shares": 4300,
+        "reason": "account_budget_trim",
+        "price": 29.04093
+      },
+      "incumbent_first_budget_trim": {
+        "signal_date": "2024-01-08",
+        "date": "2024-01-09",
+        "symbol": "300308",
+        "side": "sell",
+        "shares": 700,
+        "reason": "account_budget_trim",
+        "price": 70.83909
+      },
+      "candidate_first_budget_trim": {
+        "signal_date": "2024-01-05",
+        "date": "2024-01-08",
+        "symbol": "300394",
+        "side": "sell",
+        "shares": 4300,
+        "reason": "account_budget_trim",
+        "price": 29.04093
+      },
+      "candidate_envelope_on_trim_signal_date": {
+        "date": "2024-01-05",
+        "remaining_loss_budget": 223354.5895165,
+        "ordinary_gross_cap": 1863384.5895165,
+        "gross_cap": 1863384.5895165,
+        "gross_before": 1837784.0,
+        "ordinary_held_loss_debit": 248446.99065314,
+        "ordinary_held_loss_debit_before": 248446.99065314,
+        "ordinary_held_loss_debit_after": 223159.07765314,
+        "held_stress_debit": 219431.4096,
+        "current_gap_debit": 373070.152,
+        "buy_envelope_binding": false,
+        "ordinary_allocator_active": false,
+        "protection_complete_book_count": 3,
+        "protection_fallback_book_count": 0,
+        "risk_alert_active": false,
+        "shock_episode_active": false,
+        "observed_shock_confirmed": false,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 1,
+        "ordinary_held_trim_evaluations": 14
+      },
+      "incumbent_envelope_on_same_date": {
+        "date": "2024-01-05",
+        "remaining_loss_budget": 223354.5895165,
+        "ordinary_gross_cap": 1863384.5895165,
+        "gross_cap": 1863384.5895165,
+        "gross_before": 1837784.0,
+        "held_stress_debit": 219431.4096,
+        "current_gap_debit": 373070.152,
+        "buy_envelope_binding": false,
+        "risk_alert_active": false,
+        "shock_episode_active": false,
+        "observed_shock_confirmed": false,
+        "buy_shares_removed": 0,
+        "new_reduction_orders": 0
+      },
+      "interpretation": "Candidate first budget trim is 2024-01-05 SELL 300394 4300 because ordinary_held_loss_debit_before (~248447) > remaining_loss_budget (~223355) while held_stress_debit (~219431) < budget (incumbent does not trim that day). Same structural pattern as F2."
+    },
+    "conclusion": "Path difference is the intended ordinary executable-loss held-trim semantics, not a detected implementation defect. Candidate return 0.06114 > golden/incumbent 0.04682 with slightly better max_drawdown and one fewer trade — likely economic improvement, but golden must not be updated until formal promotion gates pass."
+  },
+  "patch_decision": {
+    "code_change_this_run": false,
+    "reason": "No clear implementation defect; F2/F4 are pending economic-acceptance golden drift from new ordinary held-debit path."
+  },
+  "performance_rebind": {
+    "status": "partial_green",
+    "artifact": "artifacts/diagnostics/ab5-trend-efficiency/performance-current-head.json",
+    "summary": {
+      "oracle_field_equivalence_unit": "PASS (covered by unit suite)",
+      "feasibility_evals_log_bound": "PASS",
+      "no_linear_in_requested_lots_loop": "PASS (50k->20 evals, 100k->21 evals)",
+      "pathology_call_reduction_vs_linear": "PASS (>=10x; 50k/20=2500x vs linear)",
+      "full_one_symbol_wallclock_vs_incumbent_2x": "NOT_RUN_THIS_SLICE"
+    }
+  },
+  "checkpoint_b_pytest": {
+    "result": "1 passed (F3), 2 failed (F2, F4)",
+    "artifact": "artifacts/diagnostics/ab5-trend-efficiency/checkpoint-b-pytest.txt"
+  },
+  "next_action": "No code patch this slice. Proceed Checkpoint C engineering set OR begin formal economic ladder (1/3/5) with source-bound promotion decision for F2 witness date and F4 weak golden — do not update goldens until promotion. Optional: finish 1-symbol wall-clock vs incumbent for performance gate."
+}
