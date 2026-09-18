@@ -151,6 +151,10 @@ class PortfolioPolicy(_PortfolioPolicyBase):
     terminal_drawdown: float = 0.28
     concentration_drawdown_adjustment: float = 0.02
     candidate_reference_percentile: float = 0.50
+    # Fixed sector-guard / internal-regime thermometer. Intentionally decoupled
+    # from the trading pool (members need not be in the production 17). Broad
+    # market routing uses REGIME_INDEX_FILES (000300 / 000682), not this tuple.
+    # Do not auto-select from --symbol; changing membership is an economic change.
     regime_symbols: tuple[str, ...] = (
         "300308",
         "300502",
