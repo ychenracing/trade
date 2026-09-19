@@ -1,0 +1,44 @@
+class RequiredPublicationFailureTests(unittest.TestCase):
+    """Exercise real marker/index writes, preserving saved state on failure."""
+
+    def test_marker_and_pointer_failures_are_nonzero_and_recoverable(self):
+        for failure in ("marker", "pointer"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as root:
+                harness = LastGoodArtifactProtectionTests()
+                initial = harness._make_mock_result()
+                self.assertEqual(harness._run_main_with_mock(root, initial), 0)
+                pointer_file = Path(root) / "latest_success.json"
+                old_pointer = json.loads(pointer_file.read_text())
+                replace = os.replace
+                signal_replaces = 0
+
+                def injected_replace(src, dst):
+                    nonlocal signal_replaces
+                    if Path(dst).name == "signals_2026-07-30.json":
+                        signal_replaces += 1
+                        if failure == "marker" and signal_replaces == 2:
+                            raise OSError("injected marker replacement failure")
+                    if failure == "pointer" and Path(dst).name == "latest_success.json":
+                        raise OSError("injected success-index replacement failure")
+                    return replace(src, dst)
+
+                current = harness._make_mock_result(terminal_risk_lock=True)
+                with patch.object(os, "replace", side_effect=injected_replace), \
+                     patch.object(dss, "publish_daily_report") as report:
+                    self.assertEqual(harness._run_main_with_mock(root, current), 1)
+                    report.assert_not_called()
+                artifact = json.loads((Path(root) / "signals_2026-07-30.json").read_text())
+                state = json.loads((Path(root) / "risk_state.json").read_text())
+                self.assertEqual(json.loads(pointer_file.read_text()), old_pointer)
+                self.assertNotEqual(artifact["run_id"], old_pointer["run_id"])
+                self.assertEqual(state["run_id"], artifact["run_id"])
+                self.assertTrue(state["terminal_risk_lock"])
+                self.assertEqual(artifact["risk_state_saved"], failure == "pointer")
+                # Retrying repairs publication without resetting saved risk.
+                self.assertEqual(harness._run_main_with_mock(root, current), 0)
+                pointer = json.loads(pointer_file.read_text())
+                artifact = json.loads((Path(root) / pointer["file"]).read_text())
+                state = json.loads((Path(root) / "risk_state.json").read_text())
+                self.assertEqual(pointer["run_id"], artifact["run_id"])
+                self.assertEqual(state["run_id"], artifact["run_id"])
+                self.assertTrue(state["terminal_risk_lock"])

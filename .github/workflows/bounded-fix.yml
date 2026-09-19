@@ -1,0 +1,94 @@
+name: Bounded account and publication fix
+on:
+  push:
+    branches: [work/bounded-account-publication-20260919]
+permissions:
+  contents: write
+concurrency:
+  group: bounded-account-publication-20260919
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE: 5ec41767cce15a669115ff387fe0310b32ab7573
+      TARGET: fix/account-publication-20260919
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Prepare exact bounded source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bounded-fix-evidence"
+          printf '%s\n' \
+            '88e18a34a0bed38375522608eea92743cbd8aab9c5c163f3cff83cb53f86ddf1  .github/apply_fix.py' \
+            '03675bca081ed15dc780db64fe3bf0df234494ab4fe6265af95288f01ee87f37  .github/sell_tests.txt' \
+            'f644b17e9953bad0941ca98108ef9696db2c94d49000ebe392f17aa27588bee9  .github/publication_tests.txt' | sha256sum -c -
+          git fetch --no-tags --depth=1 origin "$BASE"
+          python .github/apply_fix.py
+          git add quantfusion/account/service.py quantfusion/application/account_scan.py quantfusion/application/daily_scan.py quantfusion/application/daily_report.py README.md docs/ARCHITECTURE.md tests/unit/test_account_signal_sellability.py tests/integration/test_daily_artifact_transactions.py
+          git rm .github/apply_fix.py .github/sell_tests.txt .github/publication_tests.txt .github/workflows/bounded-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Prepare bounded correctness changes'
+          tree=$(git rev-parse HEAD^{tree})
+          candidate=$(printf '%s\n' 'fix: validate partial account sales and fail incomplete publication' '' 'Keep strategy economics, risk thresholds, replay fills and acceptance artifacts unchanged.' | git commit-tree "$tree" -p "$BASE")
+          git switch --detach "$candidate"
+          echo "CANDIDATE=$candidate" >> "$GITHUB_ENV"
+          git diff --check "$BASE" HEAD
+          git diff --stat "$BASE" HEAD
+          git diff "$BASE" HEAD > "$RUNNER_TEMP/bounded-fix-evidence/change.patch"
+          git bundle create "$RUNNER_TEMP/bounded-fix-evidence/candidate.bundle" HEAD "^$BASE"
+          printf 'source=%s\ntree=%s\nbase=%s\n' "$candidate" "$tree" "$BASE" | tee "$RUNNER_TEMP/bounded-fix-evidence/source.txt"
+      - name: Install existing locked dependencies
+        run: python -m pip install -q -r requirements-lock.txt
+      - name: Focused regression and static checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/unit/test_account_signal_sellability.py tests/unit/test_daily_report.py tests/integration/test_daily_artifact_transactions.py tests/integration/test_daily_reading_report.py tests/contract/test_repository_hygiene.py 2>&1 | tee "$RUNNER_TEMP/bounded-fix-evidence/tests.txt"
+          ruff check --select=E,F,W --ignore=E501,E402,E731,E741 quantfusion/account/service.py quantfusion/application/account_scan.py quantfusion/application/daily_scan.py quantfusion/application/daily_report.py tests/unit/test_account_signal_sellability.py tests/integration/test_daily_artifact_transactions.py 2>&1 | tee "$RUNNER_TEMP/bounded-fix-evidence/lint.txt"
+          pyright quantfusion/account/service.py quantfusion/application/account_scan.py quantfusion/application/daily_scan.py quantfusion/application/daily_report.py 2>&1 | tee "$RUNNER_TEMP/bounded-fix-evidence/types.txt"
+      - name: Save candidate and byte-verify remote content
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test -z "$(git status --porcelain)"
+          git push origin "$CANDIDATE:refs/heads/$TARGET"
+          test "$(git ls-remote origin "refs/heads/$TARGET" | cut -f1)" = "$CANDIDATE"
+          git fetch --no-tags origin "refs/heads/$TARGET"
+          python - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          def git(*args):
+              return subprocess.check_output(['git', *args])
+          assert git('rev-parse', 'FETCH_HEAD').decode().strip() == os.environ['CANDIDATE']
+          rows = []
+          for name in git('diff', '--name-only', os.environ['BASE'], 'HEAD').decode().splitlines():
+              local = Path(name).read_bytes()
+              remote = git('show', 'FETCH_HEAD:' + name)
+              assert local == remote, name
+              oid = hashlib.sha1(b'blob ' + str(len(remote)).encode() + b'\0' + remote).hexdigest()
+              assert oid == git('rev-parse', 'FETCH_HEAD:' + name).decode().strip()
+              rows.append(dict(path=name, bytes=len(local), sha256=hashlib.sha256(local).hexdigest(), blob=oid))
+          receipt = dict(source=os.environ['CANDIDATE'], base=os.environ['BASE'], files=rows, byte_verified=True)
+          text = json.dumps(receipt, indent=2)
+          Path(os.environ['RUNNER_TEMP'], 'bounded-fix-evidence', 'remote-verification.json').write_text(text)
+          print(text)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bounded-fix-evidence
+          path: ${{ runner.temp }}/bounded-fix-evidence/
+          if-no-files-found: error
+          retention-days: 90
