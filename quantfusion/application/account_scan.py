@@ -19,6 +19,7 @@ from quantfusion.account.models import (
 )
 from quantfusion.account.service import (
     compute_target_shares,
+    partial_sell_quantity,
     target_weight_for,
     trend_candidate_score,
     trend_candidate_components,
@@ -297,15 +298,20 @@ class AccountSignalEngine:
             row = by_symbol[reduction.symbol]
             existing = int(row.get("recommended_shares", 0))+int(row.get("blocked_shares", 0))
             desired = max(existing, reduction.shares)
-            executable = min(desired, row["sellable_shares"])
-            # Existing full-position advisories keep their original T+1
-            # semantics; a new partial reduction uses executable board lots.
+            available = min(desired, row["sellable_shares"])
+            executable = available
+            # Preserve whole-balance exits, but never round a partial risk
+            # reduction up merely to satisfy an exchange minimum quantity.
             if desired < row["shares"]:
-                executable = floor_to_lot(executable)
+                executable = partial_sell_quantity(reduction.symbol, available)
+            quantity_blocked = executable < available
             row.update(action="SELL" if row["action"] == "SELL" else "REDUCE_REVIEW",
                        recommended_shares=executable, blocked_shares=desired-executable,
-                       execution_status=("EXECUTABLE" if executable == desired else
-                                         "PARTIALLY_T1_BLOCKED" if executable else "T1_BLOCKED"),
+                       execution_status=(
+                           "PARTIALLY_QUANTITY_BLOCKED" if quantity_blocked and executable else
+                           "QUANTITY_BLOCKED" if quantity_blocked else
+                           "EXECUTABLE" if executable == desired else
+                           "PARTIALLY_T1_BLOCKED" if executable else "T1_BLOCKED"),
                        reason=row["reason"]+"; account_budget_trim (close-known plan, not a fill)")
         for row in buy_rows:
             if receipt["buy_scale"] >= 1.:

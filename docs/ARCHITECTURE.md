@@ -125,8 +125,8 @@ RiskEvidence -> RiskPolicy -> RiskAction -> EngineAdapter -> pending signal
   -> 应用预热和当前路由等买入限制
   -> 原子写入机器信号（risk_state_saved=false）
   -> 身份匹配时保存连续性状态
-  -> 尽力回写信号中的保存状态
-  -> 无状态保存错误时尽力更新 latest_success.json
+  -> 回写信号中的保存状态；写入失败则本次运行失败
+  -> 无状态保存错误时更新 latest_success.json；写入失败则本次运行失败
   -> 生成终端中文阅读版和来源绑定的 Markdown
 ```
 

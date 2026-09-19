@@ -381,3 +381,59 @@ class AccountSignalSellabilityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PartialSaleQuantityTests(unittest.TestCase):
+    """Account risk reductions do not manufacture larger orders to reach a lot."""
+
+    def test_partial_quantities_and_whole_balance_exits(self):
+        from dataclasses import dataclass
+        from quantfusion.application.daily_report import render_daily_report
+        from tests.unit.test_daily_report import account
+
+        @dataclass
+        class Reduction:
+            symbol: str
+            shares: int
+
+        cases = [
+            ("688008", 1000, 1000, 100, 0, "QUANTITY_BLOCKED"),
+            ("688008", 1000, 1000, 199, 0, "QUANTITY_BLOCKED"),
+            ("688008", 1000, 1000, 200, 200, "EXECUTABLE"),
+            ("688008", 1000, 1000, 201, 201, "EXECUTABLE"),
+            ("688008", 1000, 199, 300, 0, "QUANTITY_BLOCKED"),
+            ("688008", 1000, 201, 300, 201, "PARTIALLY_T1_BLOCKED"),
+            ("688008", 1000, 0, 300, 0, "T1_BLOCKED"),
+            ("688008", 100, 100, 100, 100, "EXECUTABLE"),
+            ("300308", 1000, 1000, 100, 100, "EXECUTABLE"),
+            ("300308", 1000, 150, 300, 100, "PARTIALLY_QUANTITY_BLOCKED"),
+            ("300308", 100, 40, 100, 40, "PARTIALLY_T1_BLOCKED"),
+        ]
+        for symbol, held, sellable, desired, expected, status in cases:
+            with self.subTest(case=(symbol, held, sellable, desired)):
+                snapshot = AccountSnapshot(3, "main", "2026-07-30", 100.,
+                    20000., (AccountPosition(symbol, held, sellable, 10., "2026-01-01"),))
+                row = dict(symbol=symbol, action="HOLD", shares=held, close=10.,
+                           sellable_shares=sellable, recommended_shares=0,
+                           blocked_shares=0, reason="no exit condition")
+                prepared = {symbol: (pd.DataFrame({"close": [10.]}),
+                                      "2026-07-30", {}, {})}
+                with patch.object(account_scan, "plan_account_risk_budget",
+                                  return_value=({"buy_scale": 1.}, [Reduction(symbol, desired)])), \
+                     patch.object(account_scan, "observed_shock_stress", return_value={}), \
+                     patch.object(account_scan, "observed_direct_losses", return_value={}), \
+                     patch.object(account_scan.SleeveBacktestEngine, "_allocation_scores", return_value={}):
+                    receipt = account_scan.AccountSignalEngine._apply_account_budget(
+                        snapshot, prepared, [row], equity=held*10.+100., as_of="2026-07-30")
+                self.assertEqual(row["recommended_shares"], expected)
+                self.assertEqual(row["blocked_shares"], desired-expected)
+                self.assertEqual(row["execution_status"], status)
+                self.assertLessEqual(expected, min(desired, sellable))
+                self.assertEqual(receipt["planned_reductions"][0]["shares"], desired)
+                self.assertEqual(snapshot.positions[0].shares, held)
+                if "QUANTITY" in status:
+                    report = account()
+                    report["actions"] = [row]
+                    text = render_daily_report(report)
+                    self.assertIn("最低申报数量", text)
+                    self.assertIn("未自动增加卖出量", text)

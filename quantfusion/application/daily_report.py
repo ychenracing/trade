@@ -286,6 +286,8 @@ def _account_rows(data: dict[str, Any], names: dict[str, str], traces: list[str]
             lines.append(f"建议卖出／减仓 {_number(row.get('recommended_shares'))} 股；受限制 {_number(row.get('blocked_shares'))} 股；不代表已成交。")
         if row.get("execution_status") in {"T1_BLOCKED", "PARTIALLY_T1_BLOCKED"}:
             lines.append("卖出限制：受买入后次日才能卖的规则影响，不能把全部持仓当作当前可卖；下一可交易日重新核对。")
+        elif row.get("execution_status") in {"QUANTITY_BLOCKED", "PARTIALLY_QUANTITY_BLOCKED"}:
+            lines.append("卖出限制：部分减仓数量受最低申报数量或整手规则限制，可能同时受快照可卖数量限制；未自动增加卖出量，受限部分不代表已完成风险减仓。")
         elif row.get("execution_status") == "SELLABLE_UNKNOWN":
             lines.append("卖出限制：可卖股数未知，不能据此确定卖出数量；先核对实际账户。")
         elif action in {"SELL", "REDUCE_REVIEW"}:

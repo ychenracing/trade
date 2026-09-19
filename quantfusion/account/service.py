@@ -95,6 +95,19 @@ def _target_weight_for(trigger_count: int) -> float:
     return 0.25
 
 
+def partial_sell_quantity(symbol: str, shares: int) -> int:
+    """Bound a partial-sale estimate without increasing the requested reduction.
+
+    STAR ordinary declarations start at 200 shares, then increment by one:
+    https://edu.sse.com.cn/tib/ysptj/c/4768085.shtml
+    Whole-balance exits retain their existing odd-lot and T+1 handling at the
+    caller. This does not change replay fills or market-volume unit conversion.
+    """
+    star = symbol.startswith("68")
+    quantity = floor_to_lot(shares, lot_size=1 if star else 100)
+    return quantity if quantity >= (200 if star else 100) else 0
+
+
 def _compute_target_shares(
     symbol: str,
     close: float,
@@ -143,6 +156,7 @@ compute_target_shares = _compute_target_shares
 
 __all__ = [
     "compute_target_shares",
+    "partial_sell_quantity",
     "floor_to_lot",
     "target_weight_for",
     "trend_candidate_score",

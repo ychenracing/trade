@@ -49,6 +49,7 @@ from quantfusion.data.snapshot import (
     sha256_file,
     verify_frozen_snapshot,
 )
+from quantfusion.io.artifacts import atomic_json
 from quantfusion.io.state_store import (
     compute_identity_hash,
     generate_run_id,
@@ -690,54 +691,27 @@ def _run_main() -> int:
         except (OSError, ValueError, TypeError) as exc:
             risk_state_save_error = str(exc)
 
-    # Best-effort update: false remains truthful if the update itself fails.
-    if risk_state_saved or risk_state_save_error:
-        artifact["risk_state_saved"] = risk_state_saved
-        if risk_state_save_error:
-            artifact["risk_state_save_error"] = risk_state_save_error
-        try:
-            updated_content = json.dumps(
-                artifact, ensure_ascii=False, indent=2, default=str,
-                allow_nan=False,
-            ) + "\n"
-            ufd, utmp = tempfile.mkstemp(
-                dir=str(output_dir), prefix=".signals_", suffix=".tmp"
-            )
-            try:
-                with os.fdopen(ufd, "w", encoding="utf-8") as f:
-                    f.write(updated_content)
-                    f.flush()
-                    os.fsync(f.fileno())
-                os.replace(utmp, str(output_file))
-            except OSError:
-                try:
-                    os.unlink(utmp)
-                except OSError:
-                    pass
-        except (OSError, ValueError):
-            pass
-
-    # Publish the success pointer only after the continuity transaction.
-    # Identity mismatch deliberately retains the old state and valid sells.
-    if not risk_state_save_error:
-        try:
-            pointer = {"file": output_file.name, "run_id": run_id,
-                       "scan_date": end_date}
-            pfd, ptmp = tempfile.mkstemp(
-                dir=str(output_dir), prefix=".latest_", suffix=".tmp")
-            try:
-                with os.fdopen(pfd, "w", encoding="utf-8") as f:
-                    json.dump(pointer, f, ensure_ascii=False)
-                    f.flush()
-                    os.fsync(f.fileno())
-                os.replace(ptmp, str(output_dir / "latest_success.json"))
-            except OSError:
-                try:
-                    os.unlink(ptmp)
-                except OSError:
-                    pass
-        except OSError:
-            pass
+    # These writes are required for a complete publication. A failure must not
+    # advance the success pointer or emit a new reading report. Never roll back
+    # risk state that was already saved successfully.
+    publication_error = ""
+    try:
+        if risk_state_saved or risk_state_save_error:
+            artifact["risk_state_saved"] = risk_state_saved
+            if risk_state_save_error:
+                artifact["risk_state_save_error"] = risk_state_save_error
+            # Retain the initial serializer's date/default=str semantics.
+            normalized = json.loads(json.dumps(
+                artifact, ensure_ascii=False, default=str, allow_nan=False,
+            ))
+            atomic_json(normalized, output_file)
+        # An identity mismatch deliberately retains old state and valid sells;
+        # this controlled degradation is not an I/O failure.
+        if not risk_state_save_error:
+            atomic_json({"file": output_file.name, "run_id": run_id,
+                         "scan_date": end_date}, output_dir / "latest_success.json")
+    except (OSError, ValueError, TypeError) as exc:
+        publication_error = str(exc)
 
     if risk_state_saved:
         print(f"  结果已保存: {output_file}")
@@ -753,7 +727,10 @@ def _run_main() -> int:
             print("  跨日终态锁未保存属于运行失败 — 请检查磁盘空间和权限后重试。")
     print()
 
-    if risk_state_save_error:
+    if publication_error:
+        print(f"  ✗ 结果发布未完成: {publication_error}")
+        print("  本次运行失败；不生成新阅读报告，不回滚已保存的风险状态。")
+    if risk_state_save_error or publication_error:
         return 1
     publish_daily_report(output_file, replay=result, expected_identity=("run_id", run_id))
     return 0
