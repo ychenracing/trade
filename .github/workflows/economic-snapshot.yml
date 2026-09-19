@@ -1,0 +1,57 @@
+name: Economic continuation snapshot
+on:
+  push:
+    branches: [codex/autonomous-economic-continuation]
+    paths: [.github/workflows/economic-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Export exact baseline inputs without historical archives
+        run: |
+          python - <<'PY'
+          import gzip, hashlib, io, json, subprocess, tarfile
+          from pathlib import Path
+          base = '5f797f7524cd5e012f1abdc96f26b0e724e6c039'
+          paths = ['AGENTS.md', '.gitignore', '.github/PROJECT_BRIEF.md', 'quantfusion', 'scripts', 'tests', 'data', 'requirements.txt', 'requirements-dev.txt', 'requirements-lock.txt', 'requirements-lock-py311.txt', 'pyrightconfig.json', 'docs/VALIDATION.md', 'docs/ARCHITECTURE.md', 'artifacts/validation/deployment-release', 'artifacts/validation/deployment-release-receipt.json', 'artifacts/diagnostics/no_waiver/production-primary/contract.json']
+          out = Path('/tmp/trade-economic-snapshot')
+          out.mkdir()
+          archive = out / 'baseline.tar.gz'
+          with archive.open('wb') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0) as zipped:
+              process = subprocess.Popen(['git', 'archive', '--format=tar', base, *paths], stdout=subprocess.PIPE)
+              assert process.stdout is not None
+              while block := process.stdout.read(1024 * 1024):
+                  zipped.write(block)
+              if process.wait() != 0:
+                  raise SystemExit('git archive failed')
+          entries = []
+          with tarfile.open(archive, 'r:gz') as tar:
+              for member in tar:
+                  if not member.isfile():
+                      continue
+                  stream = tar.extractfile(member)
+                  assert stream is not None
+                  data = stream.read()
+                  oid = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+                  expected = subprocess.check_output(['git', 'rev-parse', base + ':' + member.name], text=True).strip()
+                  assert oid == expected, member.name
+                  entries.append({'path': member.name, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest(), 'git_blob': oid})
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          manifest = {'source_revision': base, 'tree': subprocess.check_output(['git', 'rev-parse', base + '^{tree}'], text=True).strip(), 'archive_bytes': archive.stat().st_size, 'archive_sha256': digest, 'entries': entries}
+          (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          print(json.dumps({k: v for k, v in manifest.items() if k != 'entries'}))
+          print('Verified source files:', len(entries))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trade-baseline-5f797f7
+          path: /tmp/trade-economic-snapshot/
+          retention-days: 7
+          if-no-files-found: error
