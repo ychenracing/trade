@@ -1,0 +1,71 @@
+{
+  "final_assets": 19221085.48903101,
+  "wealth_multiple": 9.610542744515504,
+  "total_return": 8.610542744515504,
+  "max_drawdown": -0.15104978428469945,
+  "mdd_abs": 0.15104978428469945,
+  "date_symbol_side_buckets": 190,
+  "active_operation_days": 92,
+  "sleeve_fills": 645,
+  "trade_records": 645,
+  "commission_plus_stamp_duty": 74192.39296899998,
+  "turnover_over_average_equity": 16.007531309204467,
+  "sleeve_names": [
+    null,
+    null,
+    null
+  ],
+  "allocation_horizons": [
+    [
+      3,
+      5,
+      10
+    ],
+    [
+      5,
+      10,
+      20
+    ],
+    [
+      5,
+      20,
+      60
+    ]
+  ],
+  "persistent_risk_lock": false,
+  "terminal_risk_lock": false,
+  "cycle_lock_count": 0,
+  "label": "B0",
+  "keep": [
+    "fast",
+    "base",
+    "slow"
+  ],
+  "elapsed_sec": 29.53395175933838,
+  "source": {
+    "start": "2025-04-01",
+    "end": "2026-07-20",
+    "capital": 2000000.0,
+    "engine": "ProductionReplayEngine",
+    "indicator_state": "warm",
+    "symbols": [
+      "300308",
+      "300502",
+      "300394",
+      "688256",
+      "603986",
+      "688072",
+      "688300",
+      "300054",
+      "688361",
+      "002409",
+      "688498",
+      "688120",
+      "002384",
+      "688082",
+      "300604",
+      "601869",
+      "300408"
+    ]
+  }
+}

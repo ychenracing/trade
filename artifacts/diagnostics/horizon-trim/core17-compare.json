@@ -1,0 +1,205 @@
+{
+  "B0": {
+    "final_assets": 19221085.48903101,
+    "wealth_multiple": 9.610542744515504,
+    "total_return": 8.610542744515504,
+    "max_drawdown": -0.15104978428469945,
+    "mdd_abs": 0.15104978428469945,
+    "date_symbol_side_buckets": 190,
+    "active_operation_days": 92,
+    "sleeve_fills": 645,
+    "trade_records": 645,
+    "commission_plus_stamp_duty": 74192.39296899998,
+    "turnover_over_average_equity": 16.007531309204467,
+    "sleeve_names": [
+      null,
+      null,
+      null
+    ],
+    "allocation_horizons": [
+      [
+        3,
+        5,
+        10
+      ],
+      [
+        5,
+        10,
+        20
+      ],
+      [
+        5,
+        20,
+        60
+      ]
+    ],
+    "persistent_risk_lock": false,
+    "terminal_risk_lock": false,
+    "cycle_lock_count": 0,
+    "label": "B0",
+    "keep": [
+      "fast",
+      "base",
+      "slow"
+    ],
+    "elapsed_sec": 29.53395175933838
+  },
+  "candidates": {
+    "E1": {
+      "final_assets": 14756742.828850254,
+      "wealth_multiple": 7.378371414425128,
+      "total_return": 6.378371414425128,
+      "max_drawdown": -0.15636205529541403,
+      "mdd_abs": 0.15636205529541403,
+      "date_symbol_side_buckets": 205,
+      "active_operation_days": 104,
+      "sleeve_fills": 504,
+      "trade_records": 504,
+      "commission_plus_stamp_duty": 80526.63714975002,
+      "turnover_over_average_equity": 19.76815413611543,
+      "sleeve_names": [
+        null,
+        null
+      ],
+      "allocation_horizons": [
+        [
+          5,
+          10,
+          20
+        ],
+        [
+          5,
+          20,
+          60
+        ]
+      ],
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "label": "E1",
+      "keep": [
+        "base",
+        "slow"
+      ],
+      "elapsed_sec": 21.11816644668579,
+      "gates": {
+        "W_ratio": 0.7677372246885619,
+        "M_delta": 0.005312271010714575,
+        "B_ratio": 1.0789473684210527,
+        "B_c": 205,
+        "B_0": 190,
+        "D_c": 104,
+        "D_0": 92,
+        "floor_0_90_B0": 171,
+        "mdd_ok": false,
+        "wealth_route": false,
+        "burden_route": false,
+        "any_route": false
+      }
+    },
+    "E2": {
+      "final_assets": 10393310.18502475,
+      "wealth_multiple": 5.1966550925123745,
+      "total_return": 4.1966550925123745,
+      "max_drawdown": -0.16887313370171797,
+      "mdd_abs": 0.16887313370171797,
+      "date_symbol_side_buckets": 226,
+      "active_operation_days": 126,
+      "sleeve_fills": 539,
+      "trade_records": 539,
+      "commission_plus_stamp_duty": 65270.88097524994,
+      "turnover_over_average_equity": 17.679350801928162,
+      "sleeve_names": [
+        null,
+        null
+      ],
+      "allocation_horizons": [
+        [
+          3,
+          5,
+          10
+        ],
+        [
+          5,
+          20,
+          60
+        ]
+      ],
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "label": "E2",
+      "keep": [
+        "fast",
+        "slow"
+      ],
+      "elapsed_sec": 21.2479887008667,
+      "gates": {
+        "W_ratio": 0.540724413871212,
+        "M_delta": 0.01782334941701852,
+        "B_ratio": 1.1894736842105262,
+        "B_c": 226,
+        "B_0": 190,
+        "D_c": 126,
+        "D_0": 92,
+        "floor_0_90_B0": 171,
+        "mdd_ok": false,
+        "wealth_route": false,
+        "burden_route": false,
+        "any_route": false
+      }
+    },
+    "E3": {
+      "final_assets": 19358348.321432758,
+      "wealth_multiple": 9.679174160716379,
+      "total_return": 8.679174160716379,
+      "max_drawdown": -0.14021615221710906,
+      "mdd_abs": 0.14021615221710906,
+      "date_symbol_side_buckets": 227,
+      "active_operation_days": 109,
+      "sleeve_fills": 503,
+      "trade_records": 503,
+      "commission_plus_stamp_duty": 89739.06556725006,
+      "turnover_over_average_equity": 17.823699829840876,
+      "sleeve_names": [
+        null,
+        null
+      ],
+      "allocation_horizons": [
+        [
+          3,
+          5,
+          10
+        ],
+        [
+          5,
+          10,
+          20
+        ]
+      ],
+      "persistent_risk_lock": false,
+      "terminal_risk_lock": false,
+      "cycle_lock_count": 0,
+      "label": "E3",
+      "keep": [
+        "fast",
+        "base"
+      ],
+      "elapsed_sec": 21.146636962890625,
+      "gates": {
+        "W_ratio": 1.0071412633006644,
+        "M_delta": -0.010833632067590387,
+        "B_ratio": 1.194736842105263,
+        "B_c": 227,
+        "B_0": 190,
+        "D_c": 109,
+        "D_0": 92,
+        "floor_0_90_B0": 171,
+        "mdd_ok": true,
+        "wealth_route": false,
+        "burden_route": false,
+        "any_route": false
+      }
+    }
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "as_of": "2026-09-19T21:29+0800",
+  "task": "horizon-trim-two-books",
+  "prompt": "/workspace/trade-horizon-trim-prompt.md",
+  "baseline_main": "5f797f7524cd5e012f1abdc96f26b0e724e6c039",
+  "b0_verified": {
+    "wealth_multiple": 9.610542744515504,
+    "matches_deployment_receipt_main_wealth": true,
+    "mdd_abs": 0.15104978428469945,
+    "B": 190,
+    "D": 92,
+    "fills": 645
+  },
+  "structures": {
+    "E1": "keep base+slow, drop fast",
+    "E2": "keep fast+slow, drop base",
+    "E3": "keep fast+base, drop slow"
+  },
+  "core17_table": {
+    "B0": {
+      "W": 9.610542744515504,
+      "M": 0.15104978428469945,
+      "B": 190,
+      "D": 92,
+      "fills": 645,
+      "fees": 74192.39296899998,
+      "turnover": 16.007531309204467
+    },
+    "E1": {
+      "W": 7.378371414425128,
+      "M": 0.15636205529541403,
+      "B": 205,
+      "D": 104,
+      "fills": 504,
+      "fees": 80526.63714975002,
+      "turnover": 19.76815413611543,
+      "W_ratio": 0.7677372246885619,
+      "M_delta": 0.005312271010714575,
+      "wealth_route": false,
+      "burden_route": false,
+      "any_route": false
+    },
+    "E2": {
+      "W": 5.1966550925123745,
+      "M": 0.16887313370171797,
+      "B": 226,
+      "D": 126,
+      "fills": 539,
+      "fees": 65270.88097524994,
+      "turnover": 17.679350801928162,
+      "W_ratio": 0.540724413871212,
+      "M_delta": 0.01782334941701852,
+      "wealth_route": false,
+      "burden_route": false,
+      "any_route": false
+    },
+    "E3": {
+      "W": 9.679174160716379,
+      "M": 0.14021615221710906,
+      "B": 227,
+      "D": 109,
+      "fills": 503,
+      "fees": 89739.06556725006,
+      "turnover": 17.823699829840876,
+      "W_ratio": 1.0071412633006644,
+      "M_delta": -0.010833632067590387,
+      "wealth_route": false,
+      "burden_route": false,
+      "any_route": false
+    }
+  },
+  "adopted": null,
+  "reason": "All three pre-fixed two-horizon structures fail Core17 §5 gates. E1/E2 lose wealth and worsen MDD/B/D. E3 slightly raises wealth (+0.71%) and improves MDD, but B and D both rise so neither wealth-gain nor burden routes pass. No fixed 1/3/5/13 or formal 958 run. No fourth structure invented. Production code reverted; main untouched.",
+  "risk_cost_quals": "not_applicable_no_passing_candidate",
+  "net_code_change_on_main": "none",
+  "production_changes_reverted": true,
+  "engineering_note": "Temporary identity-preserving naming + idle-cash renormalization over retained sleeves was implemented for fair E1/E2/E3 replay (len(states)!=3 early-return would otherwise silently disable migration). After economic failure those production edits were reverted; diagnostics retained.",
+  "formal_958": "not_run",
+  "fixed_1_3_5_13": "not_run",
+  "merge": false,
+  "promote": false,
+  "main_untouched": true,
+  "pr126": "not_reopened",
+  "artifacts": [
+    "artifacts/diagnostics/horizon-trim/core17-compare.json",
+    "artifacts/diagnostics/horizon-trim/b0-core17.json",
+    "artifacts/diagnostics/horizon-trim/e1-core17.json",
+    "artifacts/diagnostics/horizon-trim/e2-core17.json",
+    "artifacts/diagnostics/horizon-trim/e3-core17.json",
+    "artifacts/diagnostics/horizon-trim/core17-compare.log",
+    "artifacts/diagnostics/horizon-trim/run_core17_compare.py",
+    "artifacts/diagnostics/horizon-trim/decision.json"
+  ]
+}
