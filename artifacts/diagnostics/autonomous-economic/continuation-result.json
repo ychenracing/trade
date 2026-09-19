@@ -1,0 +1,103 @@
+{
+  "kind": "autonomous_economic_continuation_result",
+  "status": "NO_QUALIFIED_CANDIDATE",
+  "canonical": false,
+  "base_revision": "5f797f7524cd5e012f1abdc96f26b0e724e6c039",
+  "candidate_revision": "f6136ae24b8afe0d3efab5d3c072f9dfa20f57c0",
+  "candidate_source_status": "local verified-export diagnostic commit, not remote PR HEAD",
+  "candidate_economic_fingerprint": "d1ebe5884760402568676be9976c62cc78f4b46513a94fb5361165d1593f91a9",
+  "local_disposition_revision": "f54167214e9f6881f245a5cb058311cb92eaa810",
+  "production_restored": true,
+  "main_merged": false,
+  "paired_window": [
+    "2025-04-01",
+    "2026-07-20"
+  ],
+  "capital": 2000000,
+  "runtime": {
+    "python": "3.13.5",
+    "pandas": "2.2.3",
+    "numpy": "2.3.5"
+  },
+  "baseline": {
+    "wealth": 9.610542744515504,
+    "max_drawdown": 0.15104978428469945,
+    "buckets": 190,
+    "operation_days": 92,
+    "fills": 645,
+    "fees": 74192.392969,
+    "modeled_slippage": 139432.118,
+    "gross_traded_notional": 139414683.29,
+    "two_way_notional_over_initial_capital": 69.707341645
+  },
+  "candidate": {
+    "wealth": 8.594214730425753,
+    "max_drawdown": 0.13934235522323263,
+    "buckets": 168,
+    "operation_days": 93,
+    "fills": 539,
+    "fees": 68903.6311485,
+    "modeled_slippage": 129982.908,
+    "gross_traded_notional": 129967520.684,
+    "two_way_notional_over_initial_capital": 64.983760342
+  },
+  "acceptance": {
+    "status": "REJECTED",
+    "canonical": false,
+    "wealth_ratio": 0.894248634951471,
+    "drawdown_delta": -0.011707429061466823,
+    "bucket_delta": -22,
+    "operation_day_delta": 1,
+    "gain_route": false,
+    "burden_route": false,
+    "risk_tolerance": true,
+    "reason": "Fewer real execution buckets, but 10.575% terminal wealth loss and one additional operation day. Do not tune or narrow this mechanism on these outcomes.",
+    "auxiliary_and_formal": "not run: Core17 rejected",
+    "cancelled_batch_dates": [
+      "2025-11-03",
+      "2025-12-16",
+      "2026-06-09"
+    ]
+  },
+  "defensive_demand": {
+    "preexisting_defensive": {
+      "overlap_days": 0,
+      "changed_eligible_days": 0,
+      "all_required_actions_identical": true,
+      "changed_rows": []
+    },
+    "all_planned_defensive": {
+      "overlap_days": 2,
+      "changed_eligible_days": 0,
+      "all_required_actions_identical": true,
+      "changed_rows": []
+    }
+  },
+  "slot_diagnostic": {
+    "opportunity_days": 0,
+    "economic_event_fingerprints_equal": true
+  },
+  "targeted_tests": 24,
+  "auxiliary_and_formal": "not run because Core17 rejected",
+  "remaining_boundary": "Current examined causal leads do not justify another distinct in-scope intervention; no global impossibility claim or threshold change.",
+  "packet": {
+    "bytes": 3410330,
+    "sha256": "d17edc264942fc5a5f35de784bb2c30d879112111cec8fd82e0ff4bdcbe18b4a",
+    "member_count": 42,
+    "all_members_verified": true,
+    "source_bundle_verified": true,
+    "remote_upload": "failed: container_file_check_failed; conversation attachment provided",
+    "filename": "TRADE_PR128_MEASURED_EVIDENCE_20260919.zip"
+  },
+  "baseline_library": {
+    "file_id": "file_00000000b3408206a533130148038225",
+    "library_file_id": "libfile_442cbd11eff88191b8ef1159f3347aef",
+    "path": "/trade-pr128/trade-baseline-5f797f7.zip",
+    "bytes": 1411837,
+    "sha256": "4b5c8c02dfd2a09c1a2233f61f690e55f3aeb91720b201cacee74fe82d31784f",
+    "byte_equal": true
+  },
+  "probe_fix_commit": "9b91a41a6d891a4482837c698f64136f31e83018",
+  "probe_fix_git_blob": "a5dcfbe9727429e423ef8c3b05b7f2661ae4fc08",
+  "scope_note": "A rejected local candidate and completed diagnostics; this receipt is not canonical economic evidence or proof of full remote archival."
+}
