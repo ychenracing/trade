@@ -154,6 +154,20 @@ class CoreSignalMixin:
                     float(self.cfg["fusion_single_scale"]),
                 )
             for signal, strategy in buys:
+                # Lever A: suppress single-strategy probe pyramid adds — the
+                # largest residual fill gap vs archive_0805 after excluding
+                # banned ordinary-trim / sector-guard levers. Require
+                # multi-strategy confirmation before authorizing an add.
+                # Does not loosen buy-clip envelope or alter hard-risk paths.
+                if "pyramid" in str(signal.reason or "").lower() and votes < 2:
+                    self._record_order_event(
+                        date=date_str,
+                        signal=signal,
+                        event="suppressed_unconfirmed_pyramid_add",
+                        fusion_votes=votes,
+                        fusion_label=label,
+                    )
+                    continue
                 target_shares = _floor_to_lot(signal.target_shares * scale)
                 held = self.positions.get(symbol, {})
                 live_shares = sum(position.shares for position in held.values())
