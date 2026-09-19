@@ -1,0 +1,39 @@
+name: Economic baseline causal probe
+on:
+  push:
+    branches: [codex/autonomous-economic-continuation]
+    paths: [.github/workflows/economic-probe.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Pin economic source and preserve probe
+        run: |
+          cp artifacts/diagnostics/autonomous-economic/budget_probe.py /tmp/trade-budget-probe.py
+          git checkout --detach 5f797f7524cd5e012f1abdc96f26b0e724e6c039
+      - name: Install existing locked dependencies
+        run: python -m pip install -r requirements-lock.txt
+      - name: Run one unchanged Core17 and isolate planner effects
+        env:
+          PYTHONPATH: .
+        run: python /tmp/trade-budget-probe.py
+      - name: Retain raw replay and source identity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trade-B0-budget-probe
+          path: /tmp/trade-economic-probe/
+          retention-days: 30
+          if-no-files-found: error
