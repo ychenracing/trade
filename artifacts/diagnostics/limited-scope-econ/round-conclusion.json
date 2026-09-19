@@ -1,0 +1,139 @@
+{
+  "as_of": "2026-09-19T20:22+0800",
+  "status": "NO_TRANSFERABLE_ECONOMIC_IMPROVEMENT_THIS_ROUND",
+  "baseline_main": "5f797f7524cd5e012f1abdc96f26b0e724e6c039",
+  "branch": "agent/limited-scope-econ",
+  "merged": false,
+  "budget": {
+    "primary": "ordinary_shared_pro_rata_largest_remainder_all_trims",
+    "alternative": "immaterial_overshoot_only_largest_remainder",
+    "third_forbidden": true
+  },
+  "exclusions_respected": [
+    "AB5 half-intensity",
+    "razor/peak defer tuning",
+    "regime referee/guard experiments",
+    "archive direct restore",
+    "PR #117 dual-peak as-is",
+    "PR #120 structural ports",
+    "pyramid multi-confirm discard",
+    "sticky tighten (inert)"
+  ],
+  "attribution": {
+    "call_site": "quantfusion/risk/account_budget.py ordinary preserve shared pro-rata (math.ceil per book)",
+    "falsifiable_mechanism": "Independent per-book lot ceil amplifies planned notional past required overshoot (Core17 mean amp ~6.1x, max ~44x on immaterial days).",
+    "prediction": "Replacing ceil with largest-remainder lot allocation reduces redundant ordinary trim notional without changing same-state hard paths or buy admission; wealth up and/or B down.",
+    "not_hindsight_price": true
+  },
+  "primary_result": {
+    "implementation": "allocate_shared_pro_rata_lot_relief for all ordinary shared trims",
+    "core17": {
+      "total_return": 6.5171725424313784,
+      "wealth_multiple": 7.5171725424313784,
+      "max_drawdown": -0.15454832555389905,
+      "sleeve_fills": 695,
+      "date_symbol_side_buckets": 215,
+      "active_operation_days": 110,
+      "turnover_over_average_equity": 0.0,
+      "commission_plus_stamp_duty": 0.0,
+      "vs_B0": {
+        "W_ratio": 0.7821798146333869,
+        "M_delta_pp": 0.003498541269199601,
+        "B_ratio": 1.131578947368421,
+        "fills_delta": 50
+      },
+      "gates": {
+        "wealth_route": false,
+        "burden_route": false,
+        "mdd_ok": true,
+        "any_route": false
+      }
+    },
+    "common5": {
+      "total_return": 9.56159701698363,
+      "wealth_multiple": 10.56159701698363,
+      "max_drawdown": -0.14146537269027018,
+      "sleeve_fills": 371,
+      "date_symbol_side_buckets": 117,
+      "active_operation_days": 76,
+      "turnover_over_average_equity": 0.0,
+      "commission_plus_stamp_duty": 0.0,
+      "vs_B0": {
+        "W_ratio": 1.0202792395866647,
+        "M_delta_pp": 0.0014403732481951814,
+        "B_ratio": 1.017391304347826,
+        "fills_delta": -4
+      },
+      "gates": {
+        "wealth_route": false,
+        "burden_route": false,
+        "mdd_ok": true,
+        "any_route": false
+      }
+    },
+    "verdict": "FAIL_DIRECTION_WRONG",
+    "why_not_retry_params": "Wealth collapsed on Core17 (W_ratio~0.78) while B and fills rose; nearby intensity/razor retunes are banned and would be param gambling on a falsified amp→economy link."
+  },
+  "alternative_result": {
+    "implementation": "largest-remainder only when ordinary overshoot is immaterial; material keeps incumbent ceil",
+    "why_independent": "Primary changed material protective trims; alt isolates the extreme-amp immaterial/razor-forced spray days that dominated mean amp, preserving material ceil.",
+    "core17_common5": {
+      "mechanism": "immaterial_ordinary_overshoot_largest_remainder_lot_relief",
+      "pools": {
+        "17": {
+          "total_return": 6.176209204169005,
+          "wealth_multiple": 7.176209204169005,
+          "max_drawdown": -0.1564931455749632,
+          "sleeve_fills": 643,
+          "date_symbol_side_buckets": 200,
+          "active_operation_days": 110,
+          "vs_B0": {
+            "W_ratio": 0.7467017623187086,
+            "M_delta_pp": 0.005443361290263737,
+            "B_ratio": 1.0526315789473684,
+            "fills_delta": -2,
+            "B0_B": 190,
+            "burden_B_ceiling": 171
+          },
+          "gates": {
+            "wealth_route": false,
+            "burden_route": false,
+            "mdd_ok": false,
+            "any_route": false
+          }
+        },
+        "5": {
+          "total_return": 9.34721419443313,
+          "wealth_multiple": 10.34721419443313,
+          "max_drawdown": -0.14036987475391327,
+          "sleeve_fills": 371,
+          "date_symbol_side_buckets": 117,
+          "active_operation_days": 74,
+          "vs_B0": {
+            "W_ratio": 0.9995692709313053,
+            "M_delta_pp": 0.0003448753118382719,
+            "B_ratio": 1.017391304347826,
+            "fills_delta": -4,
+            "B0_B": 115,
+            "burden_B_ceiling": 103
+          },
+          "gates": {
+            "wealth_route": false,
+            "burden_route": false,
+            "mdd_ok": true,
+            "any_route": false
+          }
+        }
+      }
+    },
+    "verdict": "FAIL_DIRECTION_WRONG",
+    "core17_note": "W_ratio~0.75, MDD delta ~0.54pp (over +0.5pp gate), B up"
+  },
+  "conclusion": "Both budgeted mechanisms falsified: reducing ordinary trim discrete amplification did not raise net wealth or cut B/D on Core17. Production code reverted to main. No merge.",
+  "formal_958": "not_run (candidate never economically stable)",
+  "artifacts": [
+    "artifacts/diagnostics/limited-scope-econ/phase0-amp-pending.json",
+    "artifacts/diagnostics/limited-scope-econ/core17-common5-candidate.json",
+    "artifacts/diagnostics/limited-scope-econ/alt-immaterial-lr-core17-common5.json"
+  ]
+}

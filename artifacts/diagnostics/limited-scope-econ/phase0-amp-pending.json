@@ -1,0 +1,97 @@
+{
+  "core17": {
+    "total_return": 8.610542744515504,
+    "wealth_multiple": 9.610542744515504,
+    "max_drawdown": -0.15104978428469945,
+    "sleeve_fills": 645,
+    "date_symbol_side_count": 190
+  },
+  "ordinary_trim_days": 13,
+  "mean_amp_ordinary": 6.115604037175743,
+  "max_amp_ordinary": 44.63089491834228,
+  "total_ordinary_excess_notional": 4432601.749280805,
+  "overlap_count": 0,
+  "sample_overlap": [],
+  "sample_high_amp": [
+    {
+      "date": "2025-11-12",
+      "overshoot": 13683.727407155558,
+      "planned_notional": 610717.0,
+      "n_actions": 21,
+      "deferred": false,
+      "shock": false,
+      "alert": false,
+      "amp": 44.63089491834228
+    },
+    {
+      "date": "2025-12-29",
+      "overshoot": 39720.571762263775,
+      "planned_notional": 679044.0,
+      "n_actions": 23,
+      "deferred": false,
+      "shock": false,
+      "alert": false,
+      "amp": 17.095524305748302
+    },
+    {
+      "date": "2025-12-16",
+      "overshoot": 132941.867830107,
+      "planned_notional": 603661.0,
+      "n_actions": 21,
+      "deferred": false,
+      "shock": false,
+      "alert": false,
+      "amp": 4.540789217520611
+    },
+    {
+      "date": "2025-06-24",
+      "overshoot": 45502.868119681254,
+      "planned_notional": 89739.0,
+      "n_actions": 11,
+      "deferred": false,
+      "shock": false,
+      "alert": false,
+      "amp": 1.9721613979138468
+    },
+    {
+      "date": "2026-02-02",
+      "overshoot": 393544.55534057785,
+      "planned_notional": 723814.0,
+      "n_actions": 26,
+      "deferred": false,
+      "shock": false,
+      "alert": false,
+      "amp": 1.8392174156077532
+    },
+    {
+      "date": "2025-10-31",
+      "overshoot": 973094.2247857153,
+      "planned_notional": 1384891.0,
+      "n_actions": 22,
+      "deferred": false,
+      "shock": false,
+      "alert": false,
+      "amp": 1.4231828375150066
+    },
+    {
+      "date": "2025-12-11",
+      "overshoot": 1743300.9498715578,
+      "planned_notional": 2218662.0,
+      "n_actions": 30,
+      "deferred": false,
+      "shock": false,
+      "alert": false,
+      "amp": 1.2726787076915582
+    },
+    {
+      "date": "2025-10-13",
+      "overshoot": 812280.5903268838,
+      "planned_notional": 1025619.0,
+      "n_actions": 17,
+      "deferred": false,
+      "shock": false,
+      "alert": false,
+      "amp": 1.2626412747191988
+    }
+  ]
+}

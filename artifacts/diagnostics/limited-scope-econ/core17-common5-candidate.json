@@ -1,0 +1,46 @@
+{
+  "17": {
+    "total_return": 6.5171725424313784,
+    "wealth_multiple": 7.5171725424313784,
+    "max_drawdown": -0.15454832555389905,
+    "sleeve_fills": 695,
+    "date_symbol_side_buckets": 215,
+    "active_operation_days": 110,
+    "turnover_over_average_equity": 0.0,
+    "commission_plus_stamp_duty": 0.0,
+    "vs_B0": {
+      "W_ratio": 0.7821798146333869,
+      "M_delta_pp": 0.003498541269199601,
+      "B_ratio": 1.131578947368421,
+      "fills_delta": 50
+    },
+    "gates": {
+      "wealth_route": false,
+      "burden_route": false,
+      "mdd_ok": true,
+      "any_route": false
+    }
+  },
+  "5": {
+    "total_return": 9.56159701698363,
+    "wealth_multiple": 10.56159701698363,
+    "max_drawdown": -0.14146537269027018,
+    "sleeve_fills": 371,
+    "date_symbol_side_buckets": 117,
+    "active_operation_days": 76,
+    "turnover_over_average_equity": 0.0,
+    "commission_plus_stamp_duty": 0.0,
+    "vs_B0": {
+      "W_ratio": 1.0202792395866647,
+      "M_delta_pp": 0.0014403732481951814,
+      "B_ratio": 1.017391304347826,
+      "fills_delta": -4
+    },
+    "gates": {
+      "wealth_route": false,
+      "burden_route": false,
+      "mdd_ok": true,
+      "any_route": false
+    }
+  }
+}

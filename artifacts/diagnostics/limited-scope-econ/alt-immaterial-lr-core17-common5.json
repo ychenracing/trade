@@ -1,0 +1,49 @@
+{
+  "mechanism": "immaterial_ordinary_overshoot_largest_remainder_lot_relief",
+  "pools": {
+    "17": {
+      "total_return": 6.176209204169005,
+      "wealth_multiple": 7.176209204169005,
+      "max_drawdown": -0.1564931455749632,
+      "sleeve_fills": 643,
+      "date_symbol_side_buckets": 200,
+      "active_operation_days": 110,
+      "vs_B0": {
+        "W_ratio": 0.7467017623187086,
+        "M_delta_pp": 0.005443361290263737,
+        "B_ratio": 1.0526315789473684,
+        "fills_delta": -2,
+        "B0_B": 190,
+        "burden_B_ceiling": 171
+      },
+      "gates": {
+        "wealth_route": false,
+        "burden_route": false,
+        "mdd_ok": false,
+        "any_route": false
+      }
+    },
+    "5": {
+      "total_return": 9.34721419443313,
+      "wealth_multiple": 10.34721419443313,
+      "max_drawdown": -0.14036987475391327,
+      "sleeve_fills": 371,
+      "date_symbol_side_buckets": 117,
+      "active_operation_days": 74,
+      "vs_B0": {
+        "W_ratio": 0.9995692709313053,
+        "M_delta_pp": 0.0003448753118382719,
+        "B_ratio": 1.017391304347826,
+        "fills_delta": -4,
+        "B0_B": 115,
+        "burden_B_ceiling": 103
+      },
+      "gates": {
+        "wealth_route": false,
+        "burden_route": false,
+        "mdd_ok": true,
+        "any_route": false
+      }
+    }
+  }
+}
