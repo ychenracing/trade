@@ -1,0 +1,112 @@
+{
+  "as_of": "2026-09-19T20:47+0800",
+  "scope": "limited failure review on preserved summaries + main call-site inspection; no third candidate; no economic retune",
+  "taxonomy_preview": {
+    "implementation_or_evidence_export_error": [
+      "E1 common-5 gate misapplication",
+      "E2 fees/turnover zero export",
+      "E3 M_delta_pp unit label"
+    ],
+    "true_economic_failure_summary_only": "Both candidates fail Core17 §4.2 on retained summary metrics (wealth down; B not reduced enough / rises; alt also fails mdd fraction gate). Direction contradicts prediction.",
+    "cannot_fully_reproduce": [
+      "candidate source patches",
+      "raw B0/candidate replays, fills, risk events, run logs",
+      "whether LR satisfied notional/risk-reduction vs required overshoot",
+      "whether other call paths were accidentally changed",
+      "equity-curve divergence windows explaining wealth loss"
+    ]
+  },
+  "LR_notional_vs_required_overshoot": {
+    "status": "CANNOT_FULLY_REPRODUCE",
+    "reason": "Live candidate source MISSING; no per-day planned_notional/overshoot/residual receipts retained for candidate runs.",
+    "incumbent_call_site_on_main": {
+      "file": "quantfusion/risk/account_budget.py",
+      "ordinary_preserve_branch": "preserve_strategy_valid_holdings and not risk_alert_active and gross > cap",
+      "incumbent_allocation": "per-book math.ceil(shares * fraction / 100) * 100",
+      "phase0_amp_evidence": "mean_amp_ordinary~6.12, max~44.63 on immaterial days — motivates LR hypothesis but does not prove candidate LR met residual risk cover"
+    },
+    "historical_related_not_live": {
+      "path": "artifacts/diagnostics/no_waiver/decision-preservation/exact-c-legal-lot-relief-production.patch",
+      "note": "Prior legal lot-relief for shock path — different mechanism/base. Registered only as search hit; NOT invented as this round live candidate."
+    }
+  },
+  "other_call_paths": {
+    "status": "CANNOT_FULLY_REPRODUCE",
+    "reason": "Without candidate patch cannot diff accidental edits to alert/shock/direct-loss/weak-book/buy-admission paths.",
+    "main_tree_observation": "Current branch production tree == origin/main (candidate reverted before docs commit). Hard paths remain present beside ordinary preserve ceil.",
+    "risk": "If live candidate accidentally widened beyond ordinary shared pro-rata, that would be implementation error — but not evidenced from retained artifacts."
+  },
+  "wealth_loss_via_equity_divergence": {
+    "status": "CANNOT_FULLY_REPRODUCE_WINDOWS",
+    "summary_facts_only": {
+      "primary_core17_W_ratio": 0.7821798146333869,
+      "primary_core17_B_ratio": 1.131578947368421,
+      "primary_core17_fills_delta": 50,
+      "alt_core17_W_ratio": 0.7467017623187086,
+      "alt_core17_M_delta_fraction": 0.005443361290263737,
+      "interpretation": "Primary lost ~21.8% terminal wealth vs B0 while increasing buckets (+13.2%) and fills (+50) — opposite of burden-reduction prediction; implies path-level portfolio divergence, not a pure fee-accounting artifact. Without equity curves / first-divergence slices, window-level explanation is unavailable."
+    }
+  },
+  "common5_reinterpretation": {
+    "primary": {
+      "applies": "prompt contract §4.3 wealth/drawdown protection only (NOT Core17 §4.2 gain/burden routes)",
+      "W_ratio": 1.0202792395866647,
+      "W_floor": 0.97,
+      "W_ok": true,
+      "M_delta_fraction": 0.0014403732481951814,
+      "M_delta_true_pp": 0.14403732481951814,
+      "M_delta_fraction_ceiling": 0.005,
+      "M_ok": true,
+      "protection_pass": true
+    },
+    "alternative": {
+      "applies": "prompt contract §4.3 wealth/drawdown protection only (NOT Core17 §4.2 gain/burden routes)",
+      "W_ratio": 0.9995692709313053,
+      "W_floor": 0.97,
+      "W_ok": true,
+      "M_delta_fraction": 0.0003448753118382719,
+      "M_delta_true_pp": 0.03448753118382719,
+      "M_delta_fraction_ceiling": 0.005,
+      "M_ok": true,
+      "protection_pass": true
+    },
+    "note": "§4.3 protection would pass for both common-5 summaries; still irrelevant to promotion because Core17 failed."
+  },
+  "core17_reaffirmation": {
+    "primary": {
+      "note": "Core17 §4.2 routes; mdd shared protection M_C depth increase <= 0.005 fraction (=0.5pp)",
+      "W_ratio": 0.7821798146333869,
+      "B_ratio": 1.131578947368421,
+      "M_delta_fraction": 0.003498541269199601,
+      "M_delta_true_pp": 0.3498541269199601,
+      "wealth_route_W": false,
+      "burden_route_W": false,
+      "burden_route_B": false,
+      "mdd_ok": true,
+      "original_gates_any_route_false": true,
+      "recomputed_wealth_route": false,
+      "recomputed_burden_route": false,
+      "recomputed_any_route": false
+    },
+    "alternative": {
+      "note": "Core17 §4.2 routes; mdd shared protection M_C depth increase <= 0.005 fraction (=0.5pp)",
+      "W_ratio": 0.7467017623187086,
+      "B_ratio": 1.0526315789473684,
+      "M_delta_fraction": 0.005443361290263737,
+      "M_delta_true_pp": 0.5443361290263737,
+      "wealth_route_W": false,
+      "burden_route_W": false,
+      "burden_route_B": false,
+      "mdd_ok": false,
+      "original_gates_any_route_false": true,
+      "recomputed_wealth_route": false,
+      "recomputed_burden_route": false,
+      "recomputed_any_route": false
+    }
+  },
+  "fixes": {
+    "applied_on_pr_branch": "documentation/errata + inventory only (evidence preservation)",
+    "not_applied": "No candidate implementation patch (MISSING). No economic retune labeled as eng fix. No main merge.",
+    "if_source_were_present_minimal_export_fix": "Compute fees/turnover from trades; label M_delta as fraction; score common-5 with §4.3 only."
+  }
+}

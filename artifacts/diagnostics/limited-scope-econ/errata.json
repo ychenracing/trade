@@ -1,0 +1,104 @@
+{
+  "as_of": "2026-09-19T20:47+0800",
+  "status": "ERRATA_ONLY — originals retained unmodified",
+  "originals_retained": [
+    "phase0-amp-pending.json",
+    "core17-common5-candidate.json",
+    "alt-immaterial-lr-core17-common5.json",
+    "round-conclusion.json"
+  ],
+  "corrections": [
+    {
+      "id": "E1_common5_gate_misapplication",
+      "severity": "documentation_metrics_interpretation",
+      "original_claim": "common-5 gates used wealth_route / burden_route / any_route (Core17 §4.2 style) and marked any_route false",
+      "correct_rule": "Prompt contract §4.3: fixed 1/3/5/13 regression uses wealth/drawdown protection only (W_C/W_B0 >= 0.97 and max-drawdown depth increase <= 0.005 fraction / 0.5pp). It does NOT independently require Core17 gain/burden routes.",
+      "recomputed": {
+        "primary_common5": {
+          "applies": "prompt contract §4.3 wealth/drawdown protection only (NOT Core17 §4.2 gain/burden routes)",
+          "W_ratio": 1.0202792395866647,
+          "W_floor": 0.97,
+          "W_ok": true,
+          "M_delta_fraction": 0.0014403732481951814,
+          "M_delta_true_pp": 0.14403732481951814,
+          "M_delta_fraction_ceiling": 0.005,
+          "M_ok": true,
+          "protection_pass": true
+        },
+        "alternative_common5": {
+          "applies": "prompt contract §4.3 wealth/drawdown protection only (NOT Core17 §4.2 gain/burden routes)",
+          "W_ratio": 0.9995692709313053,
+          "W_floor": 0.97,
+          "W_ok": true,
+          "M_delta_fraction": 0.0003448753118382719,
+          "M_delta_true_pp": 0.03448753118382719,
+          "M_delta_fraction_ceiling": 0.005,
+          "M_ok": true,
+          "protection_pass": true
+        }
+      },
+      "impact_on_round_verdict": "Does NOT promote either candidate. Core17 §4.2 still fails both. Round remains NO transferable economic improvement."
+    },
+    {
+      "id": "E2_fees_turnover_zero_export",
+      "severity": "evidence_export_bug",
+      "original_values": {
+        "primary_core17_turnover_over_average_equity": 0.0,
+        "primary_core17_commission_plus_stamp_duty": 0.0,
+        "primary_common5_turnover_over_average_equity": 0.0,
+        "primary_common5_commission_plus_stamp_duty": 0.0,
+        "note": "round-conclusion uses turnover_over_average_equity / commission_plus_stamp_duty keys with 0.0"
+      },
+      "basis": [
+        "quantfusion/engine/results.py _build_result does not emit turnover_over_average_equity or commission_plus_stamp_duty",
+        "Those fields are computed by absorb-style wrappers from trades + equity (see /tmp/absorb_ladder.py pattern and absorb-archive0805 *_econ*.json)",
+        "Writing 0.0 is therefore an export/lookup bug (missing post-process), not evidence that live fees/turnover were zero"
+      ],
+      "corrected_candidate_values": "UNRECOVERABLE — candidate raw trades/equity curves MISSING; cannot recompute without inventing numbers",
+      "B0_reference_non_zero_examples": {
+        "core17_absorb_incumbent": {
+          "note": "From absorb-archive0805/_econ17_incumbent.json (sha fa4ef7b…); same TR/MDD/B/fills as phase0 Core17. Fees/turnover are reference identity aids, not limited-scope live B0 raw exports.",
+          "turnover_over_average_equity": 16.007531309204467,
+          "commission_plus_stamp_duty": 74192.39296899995,
+          "active_operation_days": 92,
+          "source_path": "artifacts/diagnostics/absorb-archive0805/_econ17_incumbent.json"
+        },
+        "common5_absorb_pool_ladder_candidate": {
+          "note": "From absorb pool-ladder common-5 candidate row (post ordinary-AB5 deferral economics that match this B0 TR/B/fills/MDD).",
+          "turnover_over_average_equity": 16.448346574131406,
+          "commission_plus_stamp_duty": 83110.79622600002,
+          "active_operation_days": 73,
+          "source_path": "artifacts/diagnostics/absorb-archive0805/pool-ladder-1-3-5-13-17.json"
+        }
+      },
+      "fix_description_not_applied": "Evidence-export post-process should compute turnover_over_average_equity and commission_plus_stamp_duty from trades/equity like absorb wrappers; do not .get(key, 0.0) on raw engine results. NOT applied as economic retune; no production merge."
+    },
+    {
+      "id": "E3_m_delta_pp_unit_label",
+      "severity": "documentation_unit_expression",
+      "original": "Field vs_B0.M_delta_pp stores values like 0.00349854 and 0.00544336",
+      "basis": [
+        "Contract §4.2/§4.3 allow +0.005 on drawdown fraction M (0.5 percentage points)",
+        "primary Core17: |MDD_C|-|MDD_B0| = 0.15454832555389905 - 0.15104978428469945 = 0.00349854126919960 matches stored value",
+        "alternative Core17 mdd_ok false at 0.005443... correctly vs 0.005 fraction gate",
+        "round-conclusion prose already converts to ~0.54pp for alt Core17, proving authors treated stored value as fraction"
+      ],
+      "correction": {
+        "stored_unit": "absolute drawdown fraction delta (|M_C|-|M_B0|), NOT percentage points",
+        "true_pp_expression": "M_delta_true_pp = M_delta_pp_field * 100",
+        "examples": {
+          "primary_core17": {
+            "field_mislabeled_as_pp": 0.003498541269199601,
+            "true_pp": 0.3498541269199601
+          },
+          "alt_core17": {
+            "field_mislabeled_as_pp": 0.005443361290263737,
+            "true_pp": 0.5443361290263737
+          }
+        },
+        "recommended_field_name": "M_delta_fraction (keep original field; add alias in corrected docs)"
+      },
+      "originals_retained": true
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "as_of": "2026-09-19T20:47+0800",
+  "decision": "REJECTED_AND_CLOSED",
+  "pr": 126,
+  "merge": false,
+  "promote": false,
+  "main": "5f797f7524cd5e012f1abdc96f26b0e724e6c039",
+  "main_untouched": true,
+  "third_candidate_opened": false,
+  "acceptance_gates_lowered": false,
+  "economic_improvement_claimed": false,
+  "taxonomy": {
+    "implementation_or_evidence_export_error": [
+      "E1 common-5 gate misapplication",
+      "E2 fees/turnover zero export",
+      "E3 M_delta_pp unit label"
+    ],
+    "true_economic_failure_summary_only": "Both candidates fail Core17 §4.2 on retained summary metrics (wealth down; B not reduced enough / rises; alt also fails mdd fraction gate). Direction contradicts prediction.",
+    "cannot_fully_reproduce": [
+      "candidate source patches",
+      "raw B0/candidate replays, fills, risk events, run logs",
+      "whether LR satisfied notional/risk-reduction vs required overshoot",
+      "whether other call paths were accidentally changed",
+      "equity-curve divergence windows explaining wealth loss"
+    ]
+  },
+  "artifacts": [
+    "artifacts/diagnostics/limited-scope-econ/originals-inventory.json",
+    "artifacts/diagnostics/limited-scope-econ/errata.json",
+    "artifacts/diagnostics/limited-scope-econ/divergence-lr-review.json",
+    "artifacts/diagnostics/limited-scope-econ/divergence-lr-review.md",
+    "artifacts/diagnostics/limited-scope-econ/round-conclusion.corrected.json",
+    "artifacts/diagnostics/limited-scope-econ/round-conclusion.json",
+    "artifacts/diagnostics/limited-scope-econ/phase0-amp-pending.json",
+    "artifacts/diagnostics/limited-scope-econ/core17-common5-candidate.json",
+    "artifacts/diagnostics/limited-scope-econ/alt-immaterial-lr-core17-common5.json"
+  ]
+}

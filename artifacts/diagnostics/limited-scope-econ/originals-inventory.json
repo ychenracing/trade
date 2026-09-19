@@ -1,0 +1,160 @@
+{
+  "as_of": "2026-09-19T20:47+0800",
+  "task": "PR #126 evidence preservation + limited failure review (no third candidate, no main edit, no gate lowering)",
+  "pr": {
+    "number": 126,
+    "url": "https://github.com/ychenracing/trade/pull/126",
+    "branch": "agent/limited-scope-econ"
+  },
+  "baseline_main_required": "5f797f7524cd5e012f1abdc96f26b0e724e6c039",
+  "baseline_main_observed_origin": "5f797f7524cd5e012f1abdc96f26b0e724e6c039",
+  "branch_HEAD": "5d4fbb307fbd278cecf19fa6d876f8a9bfb10904",
+  "production_tree_vs_main": {
+    "quantfusion_diff_bytes_vs_origin_main": 0,
+    "note": "Production code on branch tip matches origin/main; only diagnostics JSON were committed after candidate revert."
+  },
+  "candidates": {
+    "primary": {
+      "name": "ordinary_shared_pro_rata_largest_remainder_all_trims",
+      "claimed_implementation": "allocate_shared_pro_rata_lot_relief for all ordinary shared trims",
+      "claimed_call_site": "quantfusion/risk/account_budget.py ordinary preserve shared pro-rata (math.ceil per book)"
+    },
+    "alternative": {
+      "name": "immaterial_overshoot_only_largest_remainder",
+      "claimed_implementation": "largest-remainder only when ordinary overshoot is immaterial; material keeps incumbent ceil"
+    },
+    "third": "FORBIDDEN — not opened"
+  },
+  "present": {
+    "summary_metric_jsons": {
+      "phase0-amp-pending.json": {
+        "path": "artifacts/diagnostics/limited-scope-econ/phase0-amp-pending.json",
+        "bytes": 2358,
+        "sha256": "16ccd3eb9f36109e471638bc83ecebcd25adf5aa7cd0ca17a9c4f1c85549ac1e"
+      },
+      "core17-common5-candidate.json": {
+        "path": "artifacts/diagnostics/limited-scope-econ/core17-common5-candidate.json",
+        "bytes": 1204,
+        "sha256": "c37a0c9b3783c78e23bef62ac0c01b7ac4e78dba3ab5b000a795bf02b709d0a6"
+      },
+      "alt-immaterial-lr-core17-common5.json": {
+        "path": "artifacts/diagnostics/limited-scope-econ/alt-immaterial-lr-core17-common5.json",
+        "bytes": 1325,
+        "sha256": "6c402e60bab23588ea844042c1a46ced22585b9c7d436c932a97d38a911d6108"
+      },
+      "round-conclusion.json": {
+        "path": "artifacts/diagnostics/limited-scope-econ/round-conclusion.json",
+        "bytes": 5389,
+        "sha256": "4d74a5a3ced63e9abb5ebb50df67e6220df126d06599a7ac9a354e11089658ca"
+      }
+    },
+    "note": "These four files are summary/diagnostics only. They are NOT complete economic originals (missing source patches, raw replays, fills, risk events, run logs)."
+  },
+  "MISSING": {
+    "primary_candidate_source_or_patch": {
+      "status": "MISSING",
+      "searched": [
+        "git reflog (worktree trade-econ-round + refs/heads/agent/limited-scope-econ): only branch create → reset to origin/main → docs commit 5d4fbb3; no candidate commit",
+        "git stash list: empty",
+        "git fsck --lost-found / unreachable blobs: searched for allocate_shared_pro_rata_lot_relief / immaterial_ordinary_overshoot_largest; HIT only round-conclusion.json blob",
+        "git log -S allocate_shared_pro_rata_lot_relief --all: only 5d4fbb3 docs commit",
+        "worktree dirty/index: clean except .venv; no account_budget patch",
+        "pyc strings in quantfusion/risk/__pycache__/account_budget.cpython-311.pyc (mtime 2026-09-19 20:22+0800): no allocate_shared / largest_remainder / immaterial_ordinary",
+        "PR #126 remote tree: only the four diagnostics JSON files",
+        "PR #126 issue/review comments: none with patches",
+        "/tmp scripts & logs mtime window 20:14–20:25: no limited-scope runner/patch leftovers",
+        "agent attachments: prompt only",
+        "prior exact-c-legal-lot-relief under no_waiver/decision-preservation: related historical lot-relief pattern — explicitly NOT registered as this round live candidate (different mechanism/base; would be inventing source)"
+      ],
+      "reconstruction": "NOT reconstructible from reflog/stash/worktree/PR history without inventing source"
+    },
+    "alternative_candidate_source_or_patch": {
+      "status": "MISSING",
+      "searched": "same search set as primary",
+      "reconstruction": "NOT reconstructible without inventing source"
+    },
+    "B0_raw_replay_outputs": {
+      "status": "MISSING_AS_LIMITED_SCOPE_ORIGINALS",
+      "partial_summary_only": {
+        "core17_phase0_summary": "PRESENT in phase0-amp-pending.json",
+        "common5_derived_from_ratios": "DERIVABLE from vs_B0; cross-checked to absorb pool-ladder"
+      },
+      "missing_items": [
+        "equity_curve",
+        "fills/trades ledger",
+        "risk_events",
+        "run logs",
+        "config snapshot blob",
+        "engine result packet"
+      ]
+    },
+    "candidate_raw_replay_outputs_primary": {
+      "status": "MISSING",
+      "present_instead": "core17-common5-candidate.json summary metrics only",
+      "missing_items": [
+        "equity_curve",
+        "fills",
+        "risk_events",
+        "run logs",
+        "per-day trim receipts"
+      ]
+    },
+    "candidate_raw_replay_outputs_alternative": {
+      "status": "MISSING",
+      "present_instead": "alt-immaterial-lr-core17-common5.json summary metrics only",
+      "missing_items": [
+        "equity_curve",
+        "fills",
+        "risk_events",
+        "run logs",
+        "per-day trim receipts"
+      ]
+    },
+    "config_plus_data_identity_packet": {
+      "status": "PARTIAL",
+      "present": {
+        "baseline_main_sha": "5f797f7524cd5e012f1abdc96f26b0e724e6c039",
+        "deployment_release_receipt_source_revision_on_tree": "9ff459d52c3daede7902a04b8861bc35eac53f92",
+        "data_fingerprint_from_deployment_release_receipt": "aeeb96a94e84830033e8ad11180293fc982bb08e99322054d2c27dbb3f4b5975"
+      },
+      "missing": "No limited-scope-econ-specific config hash / data fingerprint / command line / seed ledger was retained beside the four JSON summaries."
+    }
+  },
+  "b0_summary_identity_aid": {
+    "core17": {
+      "provenance": "phase0-amp-pending.json core17 block (matches absorb-archive0805/_econ17_incumbent.json economics at TR=8.610542744515504); NOT a full raw replay packet",
+      "total_return": 8.610542744515504,
+      "wealth_multiple": 9.610542744515504,
+      "max_drawdown": -0.15104978428469945,
+      "sleeve_fills": 645,
+      "date_symbol_side_buckets": 190,
+      "reference_absorb_fees_turnover": {
+        "note": "From absorb-archive0805/_econ17_incumbent.json (sha fa4ef7b…); same TR/MDD/B/fills as phase0 Core17. Fees/turnover are reference identity aids, not limited-scope live B0 raw exports.",
+        "turnover_over_average_equity": 16.007531309204467,
+        "commission_plus_stamp_duty": 74192.39296899995,
+        "active_operation_days": 92,
+        "source_path": "artifacts/diagnostics/absorb-archive0805/_econ17_incumbent.json"
+      }
+    },
+    "common5": {
+      "provenance": "Derived from candidate vs_B0 ratios; cross-checked to absorb-archive0805/pool-ladder-1-3-5-13-17.json pools/common-5/candidate and docs/RELEASE.md (~9.3517 TR / ~10.35 wealth). NOT a limited-scope live B0 raw replay packet.",
+      "total_return": 9.351672960887004,
+      "wealth_multiple": 10.351672960887004,
+      "max_drawdown": -0.140024999442075,
+      "sleeve_fills": 375,
+      "date_symbol_side_buckets": 115,
+      "reference_absorb_fees_turnover": {
+        "note": "From absorb pool-ladder common-5 candidate row (post ordinary-AB5 deferral economics that match this B0 TR/B/fills/MDD).",
+        "turnover_over_average_equity": 16.448346574131406,
+        "commission_plus_stamp_duty": 83110.79622600002,
+        "active_operation_days": 73,
+        "source_path": "artifacts/diagnostics/absorb-archive0805/pool-ladder-1-3-5-13-17.json"
+      }
+    },
+    "caveat": "Aids interpretation only; do not treat absorb reference packets as this round live B0 raw originals."
+  },
+  "absorb_ledger_reuse": {
+    "pattern": "artifacts/diagnostics/limited-scope-econ/ (same absorb/ledger style as absorb-archive0805 + ab5-trend-efficiency decision inventory)",
+    "new_research_platform": false
+  }
+}

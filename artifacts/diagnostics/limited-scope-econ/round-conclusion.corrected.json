@@ -1,0 +1,75 @@
+{
+  "as_of": "2026-09-19T20:47+0800",
+  "status": "REJECTED_AND_CLOSED",
+  "economic_improvement": false,
+  "wrap_up_is_not_economic_improvement": true,
+  "baseline_main": "5f797f7524cd5e012f1abdc96f26b0e724e6c039",
+  "branch": "agent/limited-scope-econ",
+  "branch_HEAD_at_closeout_pre_commit": "5d4fbb307fbd278cecf19fa6d876f8a9bfb10904",
+  "merged": false,
+  "original_round_conclusion_retained": "artifacts/diagnostics/limited-scope-econ/round-conclusion.json",
+  "errata_ref": "artifacts/diagnostics/limited-scope-econ/errata.json",
+  "inventory_ref": "artifacts/diagnostics/limited-scope-econ/originals-inventory.json",
+  "review_ref": "artifacts/diagnostics/limited-scope-econ/divergence-lr-review.json",
+  "budget": {
+    "primary": "ordinary_shared_pro_rata_largest_remainder_all_trims",
+    "alternative": "immaterial_overshoot_only_largest_remainder",
+    "third_forbidden": true
+  },
+  "third_candidate": "FORBIDDEN — not opened",
+  "originals_completeness": "INCOMPLETE — four summary JSONs are not complete originals",
+  "taxonomy": {
+    "implementation_or_evidence_export_error": [
+      "E1 common-5 gate misapplication",
+      "E2 fees/turnover zero export",
+      "E3 M_delta_pp unit label"
+    ],
+    "true_economic_failure_summary_only": "Both candidates fail Core17 §4.2 on retained summary metrics (wealth down; B not reduced enough / rises; alt also fails mdd fraction gate). Direction contradicts prediction.",
+    "cannot_fully_reproduce": [
+      "candidate source patches",
+      "raw B0/candidate replays, fills, risk events, run logs",
+      "whether LR satisfied notional/risk-reduction vs required overshoot",
+      "whether other call paths were accidentally changed",
+      "equity-curve divergence windows explaining wealth loss"
+    ]
+  },
+  "corrected_interpretation": {
+    "common5_section43": {
+      "primary_common5": {
+        "applies": "prompt contract §4.3 wealth/drawdown protection only (NOT Core17 §4.2 gain/burden routes)",
+        "W_ratio": 1.0202792395866647,
+        "W_floor": 0.97,
+        "W_ok": true,
+        "M_delta_fraction": 0.0014403732481951814,
+        "M_delta_true_pp": 0.14403732481951814,
+        "M_delta_fraction_ceiling": 0.005,
+        "M_ok": true,
+        "protection_pass": true
+      },
+      "alternative_common5": {
+        "applies": "prompt contract §4.3 wealth/drawdown protection only (NOT Core17 §4.2 gain/burden routes)",
+        "W_ratio": 0.9995692709313053,
+        "W_floor": 0.97,
+        "W_ok": true,
+        "M_delta_fraction": 0.0003448753118382719,
+        "M_delta_true_pp": 0.03448753118382719,
+        "M_delta_fraction_ceiling": 0.005,
+        "M_ok": true,
+        "protection_pass": true
+      }
+    },
+    "fees_turnover": "original zeros are export bugs; corrected candidate values UNRECOVERABLE",
+    "M_delta_field_unit": "fraction delta mislabeled as pp; true_pp = field * 100"
+  },
+  "core17_decisive_failure": {
+    "primary_W_ratio": 0.7821798146333869,
+    "primary_B_ratio": 1.131578947368421,
+    "alt_W_ratio": 0.7467017623187086,
+    "alt_M_delta_fraction": 0.005443361290263737,
+    "alt_M_delta_true_pp": 0.5443361290263737,
+    "gates_lowered": false
+  },
+  "conclusion": "REJECTED record. Both budgeted mechanisms falsified on Core17 summaries; sources/raw originals largely MISSING so LR/path/divergence cannot be fully reproduced. Documentation/export errata recorded. Production remains main. No merge. No third candidate.",
+  "formal_958": "not_run",
+  "main_untouched": true
+}
