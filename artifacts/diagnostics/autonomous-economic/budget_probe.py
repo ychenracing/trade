@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import dataclasses
 import gzip
 import hashlib
@@ -19,9 +20,10 @@ from quantfusion.engine.ensemble_allocation import EnsembleAllocationMixin
 from quantfusion.risk import account_budget as budget
 from quantfusion.domain.rules import floor_to_lot
 from scripts.backtest_universes import DATA_DIR, NAMES, UNIVERSES
+from quantfusion.config.paths import PROJECT_ROOT, REGIME_DATA_DIR
 
 BASE = '5f797f7524cd5e012f1abdc96f26b0e724e6c039'
-OUT = Path('/tmp/trade-economic-probe')
+OUT = Path(os.environ.get('TRADE_PROBE_OUTPUT', '/tmp/trade-economic-probe'))
 OUT.mkdir(exist_ok=True)
 _original_apply = EnsembleAllocationMixin._apply_account_risk_budget
 _original_plan = budget.plan_account_risk_budget
@@ -95,9 +97,33 @@ def save_pickle(name, value):
 
 
 if __name__ == '__main__':
-    actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-    if actual != BASE:
-        raise RuntimeError(f'probe must run exact baseline, not {actual}')
+    snapshot_manifest = os.environ.get('TRADE_BASELINE_MANIFEST')
+    if snapshot_manifest:
+        manifest_bytes = Path(snapshot_manifest).read_bytes()
+        if hashlib.sha256(manifest_bytes).hexdigest() != '372ad22de3871efb2662c96bba8ea739868bd1f64ef8622aef3d202571a6f818':
+            raise RuntimeError('unverified baseline export manifest')
+        manifest = json.loads(manifest_bytes)
+        if manifest['source_revision'] != BASE:
+            raise RuntimeError('snapshot does not match pinned baseline')
+        for entry in manifest['entries']:
+            local = PROJECT_ROOT / entry['path']
+            if not local.resolve().is_relative_to(PROJECT_ROOT.resolve()):
+                raise RuntimeError('unsafe snapshot member')
+            data = local.read_bytes()
+            oid = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+            if (len(data) != entry['bytes']
+                    or hashlib.sha256(data).hexdigest() != entry['sha256']
+                    or oid != entry['git_blob']):
+                raise RuntimeError(f"snapshot source/data drift: {entry['path']}")
+        fingerprint_text = json.dumps(manifest, sort_keys=True, indent=2)
+    else:
+        actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+        if actual != BASE:
+            raise RuntimeError(f'probe must run exact baseline, not {actual}')
+        subprocess.run(['git', 'diff', '--exit-code', BASE, '--', 'quantfusion', 'data'],
+                       check=True, stdout=subprocess.DEVNULL)
+        fingerprint_text = subprocess.check_output(
+            ['git', 'ls-tree', '-r', 'HEAD', '--', 'quantfusion', 'data'], text=True)
     codes = next(codes for codes in UNIVERSES.values() if len(codes) == 17)
     budget.plan_account_risk_budget = plan
     EnsembleAllocationMixin._apply_account_risk_budget = apply
@@ -105,7 +131,8 @@ if __name__ == '__main__':
         with (OUT / 'replay.log').open('w') as log, contextlib.redirect_stdout(log):
             result = ProductionReplayEngine(2_000_000).run(
                 {code: NAMES[code] for code in codes},
-                '2025-04-01', '2026-07-20', data_dir=str(DATA_DIR), indicator_state='warm')
+                '2025-04-01', '2026-07-20', data_dir=str(DATA_DIR), regime_data_dir=str(REGIME_DATA_DIR),
+                indicator_state='warm')
     finally:
         budget.plan_account_risk_budget = _original_plan
         EnsembleAllocationMixin._apply_account_risk_budget = _original_apply
@@ -138,10 +165,11 @@ if __name__ == '__main__':
                               'changed_eligible_days': len(changes),
                               'all_required_actions_identical': all(v['required_actions_identical'] for _, v in entries),
                               'changed_rows': changes}
-    fingerprints = subprocess.check_output(['git', 'ls-tree', '-r', 'HEAD', '--', 'quantfusion', 'data'], text=True)
-    (OUT / 'source-data-git-objects.txt').write_text(fingerprints)
+    (OUT / 'source-data-git-objects.txt').write_text(fingerprint_text)
     summary = {'source_revision': BASE, 'instrumentation_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                'python': platform.python_version(), 'pandas': pd.__version__,
+               'snapshot_manifest_sha256': (hashlib.sha256(manifest_bytes).hexdigest()
+                                            if snapshot_manifest else None),
                'engine': 'ProductionReplayEngine', 'window': ['2025-04-01', '2026-07-20'],
                'capital': 2_000_000, 'indicator_state': 'warm', 'codes': codes,
                'metrics': metrics, 'assessments': assessments,
