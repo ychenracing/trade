@@ -1,0 +1,2160 @@
+{
+  "stress_contract_version": 2,
+  "source_revision": "90c862528c321693d17424edcafd090824107d78",
+  "source_fingerprint": "f08d4a2976abb470ef4658df416a17845f561be4f43e151c8f20065e9d391d93",
+  "data_fingerprint": "8611687743f966fed406cb0330384752f21f61c65924dc789d255aa986052a40",
+  "scenario_signature": "aa319abaad035649d108c8af0c12d3affea3124574e81ebea9d2de8f827cda73",
+  "run_signature": "4f56ae46a7af6aed5c411f6c2cbf97f9c1fc5fcbb538ab3faf614fcaf8c29e1b",
+  "scenario_count": 8,
+  "start_date": "2025-04-01",
+  "end_date": "2026-07-20",
+  "initial_capital": 2000000.0,
+  "engine": "ProductionReplayEngine",
+  "deployment_policy": "production_daily_replay",
+  "artifact_status": "diagnostic",
+  "trade_count_semantics": "trade_records",
+  "portfolio_policy": {
+    "allocation_mode": "ensemble",
+    "single_lookbacks": [
+      5,
+      10,
+      20
+    ],
+    "allocation_horizons": [
+      [
+        3,
+        5,
+        10
+      ],
+      [
+        5,
+        10,
+        20
+      ],
+      [
+        5,
+        20,
+        60
+      ]
+    ],
+    "drawdown_alert": 0.18,
+    "confirmed_drawdown": 0.23,
+    "drawdown_confirmations": 2,
+    "emergency_drawdown": 0.27,
+    "adv_lookback": 20,
+    "max_order_adv_ratio": 0.005,
+    "rearm_trading_days": 10,
+    "terminal_drawdown": 0.28,
+    "candidate_lookbacks": [
+      10,
+      20,
+      40
+    ],
+    "candidate_horizons": [
+      [
+        10,
+        20,
+        40
+      ],
+      [
+        10,
+        20,
+        40
+      ],
+      [
+        10,
+        40,
+        80
+      ]
+    ],
+    "concentration_drawdown_adjustment": 0.02,
+    "candidate_reference_percentile": 0.5,
+    "drawdown_budget_enabled": false,
+    "drawdown_budget_peak_fraction": 0.175,
+    "drawdown_budget_execution_buffer": 0.005,
+    "drawdown_budget_adverse_atr_multiple": 1.0,
+    "drawdown_budget_other_group_weight": 0.5,
+    "drawdown_budget_release_ratio": 0.8,
+    "drawdown_budget_reentry_days": 5,
+    "drawdown_budget_recovery_confirmations": 3,
+    "drawdown_budget_recovery_delta": 0.02,
+    "drawdown_budget_normal_exit": 0.05,
+    "regime_symbols": [
+      "300308",
+      "300502",
+      "300394",
+      "688008",
+      "603986"
+    ],
+    "market_regime_enabled": true,
+    "regime_ewi_lookback": 20,
+    "regime_breadth_ma_long": 20,
+    "regime_adx_trend": 25.0,
+    "regime_adx_choppy": 20.0,
+    "regime_hurst_window": 100,
+    "regime_hurst_trend": 0.55,
+    "regime_hurst_choppy": 0.45,
+    "regime_vol_lookback": 60,
+    "regime_vol_extreme_pct": 0.9,
+    "regime_ewi_slope_trend": 0.02,
+    "regime_ewi_slope_choppy": -0.02,
+    "regime_score_trend": 2,
+    "regime_score_choppy": -3,
+    "regime_choppy_confirmations": 2,
+    "regime_trend_confirmations": 3,
+    "regime_recovery_confirmations": 3,
+    "regime_min_state_hold": 3,
+    "regime_transition_scale": 1.0,
+    "regime_trend_to_transition_confirmations": 3,
+    "regime_choppy_exit_ratio": 0.3,
+    "regime_transition_exit_ratio": 0.0
+  },
+  "data_directory": "data/market",
+  "regime_data_directory": "data/regime",
+  "indicator_state": "warm",
+  "seeds": [
+    20260807,
+    20260817,
+    20260827
+  ],
+  "formal_plan_complete": false,
+  "canonical": false,
+  "full_scenario_count": 983,
+  "selection": {
+    "scenario_id": null,
+    "scenario_ids_file": "artifacts/diagnostics/c4-l1-scenarios.txt",
+    "scenario_ids": [
+      "random-20260807-03-030",
+      "prefix-01",
+      "prefix-02",
+      "prefix-03",
+      "prefix-05",
+      "add-one-05-688205",
+      "random-20260827-16-050",
+      "permutation-20260807-001"
+    ],
+    "scenario_type": null,
+    "shard_index": null,
+    "shard_count": null,
+    "drawdown_budget_configuration": "balanced"
+  },
+  "summary": {
+    "all": {
+      "scenario_count": 8,
+      "return_median": 2.4732283230682497,
+      "return_p10": 2.0404422543055754,
+      "return_p05": 2.0208502946076,
+      "return_worst": 2.0012583349096253,
+      "drawdown_median": -0.15422816577594184,
+      "drawdown_p10": -0.16700994155833854,
+      "drawdown_p50_severity": 0.15422816577594184,
+      "drawdown_p90_severity": 0.16700994155833854,
+      "drawdown_p95_severity": 0.16974486689529797,
+      "drawdown_worst": -0.1724797922322574,
+      "trades_median": 79.5,
+      "trades_p90": 117.9,
+      "trades_worst": 120.0,
+      "date_symbol_side_buckets_median": 34.0,
+      "date_symbol_side_buckets_p90": 45.5,
+      "date_symbol_side_buckets_worst": 49.0,
+      "sleeve_fills_p90": 117.9,
+      "sleeve_fills_worst": 120.0,
+      "risk_action_orders_median": 32.0
+    },
+    "by_type": {
+      "add_one": {
+        "scenario_count": 1,
+        "return_median": 3.927838687658375,
+        "return_p10": 3.927838687658375,
+        "return_p05": 3.927838687658375,
+        "return_worst": 3.927838687658375,
+        "drawdown_median": -0.14168447391662498,
+        "drawdown_p10": -0.14168447391662498,
+        "drawdown_p50_severity": 0.14168447391662498,
+        "drawdown_p90_severity": 0.14168447391662498,
+        "drawdown_p95_severity": 0.14168447391662498,
+        "drawdown_worst": -0.14168447391662498,
+        "trades_median": 94.0,
+        "trades_p90": 94.0,
+        "trades_worst": 94.0,
+        "date_symbol_side_buckets_median": 43.0,
+        "date_symbol_side_buckets_p90": 43.0,
+        "date_symbol_side_buckets_worst": 43.0,
+        "sleeve_fills_p90": 94.0,
+        "sleeve_fills_worst": 94.0,
+        "risk_action_orders_median": 33.0
+      },
+      "permutation": {
+        "scenario_count": 1,
+        "return_median": 4.517919097148501,
+        "return_p10": 4.517919097148501,
+        "return_p05": 4.517919097148501,
+        "return_worst": 4.517919097148501,
+        "drawdown_median": -0.1397910885145552,
+        "drawdown_p10": -0.1397910885145552,
+        "drawdown_p50_severity": 0.1397910885145552,
+        "drawdown_p90_severity": 0.1397910885145552,
+        "drawdown_p95_severity": 0.1397910885145552,
+        "drawdown_worst": -0.1397910885145552,
+        "trades_median": 117.0,
+        "trades_p90": 117.0,
+        "trades_worst": 117.0,
+        "date_symbol_side_buckets_median": 49.0,
+        "date_symbol_side_buckets_p90": 49.0,
+        "date_symbol_side_buckets_worst": 49.0,
+        "sleeve_fills_p90": 117.0,
+        "sleeve_fills_worst": 117.0,
+        "risk_action_orders_median": 33.0
+      },
+      "prefix": {
+        "scenario_count": 4,
+        "return_median": 2.4732283230682497,
+        "return_p10": 2.1161537072344627,
+        "return_p05": 2.058706021072044,
+        "return_worst": 2.0012583349096253,
+        "drawdown_median": -0.15422816577594184,
+        "drawdown_p10": -0.1642386887564747,
+        "drawdown_p50_severity": 0.15422816577594184,
+        "drawdown_p90_severity": 0.1642386887564747,
+        "drawdown_p95_severity": 0.16445220429870971,
+        "drawdown_worst": -0.16466571984094475,
+        "trades_median": 74.0,
+        "trades_p90": 107.10000000000002,
+        "trades_worst": 120.0,
+        "date_symbol_side_buckets_median": 32.5,
+        "date_symbol_side_buckets_p90": 41.3,
+        "date_symbol_side_buckets_worst": 44.0,
+        "sleeve_fills_p90": 107.10000000000002,
+        "sleeve_fills_worst": 120.0,
+        "risk_action_orders_median": 27.0
+      },
+      "random_subset": {
+        "scenario_count": 2,
+        "return_median": 2.191411428221,
+        "return_p10": 2.0840705757387004,
+        "return_p05": 2.0706529691784126,
+        "return_worst": 2.0572353626181252,
+        "drawdown_median": -0.16822075278107876,
+        "drawdown_p10": -0.17162798434202167,
+        "drawdown_p50_severity": 0.16822075278107876,
+        "drawdown_p90_severity": 0.17162798434202167,
+        "drawdown_p95_severity": 0.17205388828713955,
+        "drawdown_worst": -0.1724797922322574,
+        "trades_median": 66.0,
+        "trades_p90": 78.8,
+        "trades_worst": 82.0,
+        "date_symbol_side_buckets_median": 26.5,
+        "date_symbol_side_buckets_p90": 31.7,
+        "date_symbol_side_buckets_worst": 33.0,
+        "sleeve_fills_p90": 78.8,
+        "sleeve_fills_worst": 82.0,
+        "risk_action_orders_median": 24.5
+      }
+    }
+  },
+  "results": [
+    {
+      "scenario_id": "prefix-01",
+      "scenario_type": "prefix",
+      "symbols": [
+        "300308"
+      ],
+      "symbol_count": 1,
+      "total_return": 3.2220052359325004,
+      "max_drawdown": -0.14115092046166403,
+      "sharpe": 3.2341992839549643,
+      "calmar": 15.258704602972797,
+      "total_trades": 32,
+      "sleeve_fill_count": 32,
+      "date_symbol_side_count": 9,
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 6,
+        "re_entry": 3,
+        "risk_reduction": 17,
+        "strategy_exit": 0,
+        "sector_liquidation": 6,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      },
+      "max_concurrent_symbols": 1,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "drawdown_budget_configuration": "balanced",
+      "diagnostic_telemetry": {
+        "peak": {
+          "date": "2025-09-11",
+          "assets": 5297592.0918850005,
+          "cash_ratio": 0.33770665254229176,
+          "exposure_ratio": 0.6622933474577082,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 953566.5765392995,
+            "available_budget": 927078.6160798745,
+            "projected_adverse_loss": 1403424.0,
+            "risk_driver_loss": 1403424.0,
+            "projected_loss_ratio": 1.5138133656176198,
+            "group_adverse_losses": {
+              "optical": 1403424.0
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "peak_previous_session": {
+          "date": "2025-09-10",
+          "assets": 4857832.0918850005,
+          "cash_ratio": 0.3682778774658711,
+          "exposure_ratio": 0.6317221225341288,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.06352373892558694,
+            "remaining_cushion": 604203.3765393002,
+            "available_budget": 578266.6160798752,
+            "projected_adverse_loss": 1029808.0000000002,
+            "risk_driver_loss": 1029808.0000000002,
+            "projected_loss_ratio": 1.7808532800685737,
+            "group_adverse_losses": {
+              "optical": 1029808.0000000002
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "first_risk_trigger": {
+          "date": "2025-10-14",
+          "event": "portfolio_drawdown_alert_on",
+          "sleeve": "slow",
+          "drawdown": 0.1834136674871038,
+          "threshold": 0.18
+        },
+        "trigger_snapshot": {
+          "date": "2025-10-14",
+          "assets": 4549832.0918850005,
+          "cash_ratio": 0.393208376870849,
+          "exposure_ratio": 0.606791623129151,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.14115092046166403,
+            "remaining_cushion": 205806.57653929945,
+            "available_budget": 179318.61607987445,
+            "projected_adverse_loss": 655664.0000000002,
+            "risk_driver_loss": 655664.0000000002,
+            "projected_loss_ratio": 3.6564190285070333,
+            "group_adverse_losses": {
+              "optical": 655664.0000000002
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.7265083700189816,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trigger_previous_session": {
+          "date": "2025-10-13",
+          "assets": 4796952.0918850005,
+          "cash_ratio": 0.37295183641952656,
+          "exposure_ratio": 0.6270481635804734,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0945033123193638,
+            "remaining_cushion": 452926.57653929945,
+            "available_budget": 426438.61607987445,
+            "projected_adverse_loss": 902784.0,
+            "risk_driver_loss": 902784.0,
+            "projected_loss_ratio": 2.117031539730218,
+            "group_adverse_losses": {
+              "optical": 902784.0
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trough": {
+          "date": "2025-10-14",
+          "assets": 4549832.0918850005,
+          "cash_ratio": 0.393208376870849,
+          "exposure_ratio": 0.606791623129151,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.14115092046166403,
+            "remaining_cushion": 205806.57653929945,
+            "available_budget": 179318.61607987445,
+            "projected_adverse_loss": 655664.0000000002,
+            "risk_driver_loss": 655664.0000000002,
+            "projected_loss_ratio": 3.6564190285070333,
+            "group_adverse_losses": {
+              "optical": 655664.0000000002
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.7265083700189816,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "recovery_date": "2025-10-24",
+        "first_executable_reduction": {
+          "date": "2025-10-15",
+          "symbol": "300308",
+          "reason_category": "risk_reduction"
+        },
+        "execution_overshoot": -0.04226274702543978,
+        "warning_period_buy_count": 0,
+        "warning_period_add_count": 0,
+        "risk_milestones": [
+          {
+            "date": "2025-10-14",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "slow",
+            "drawdown": 0.1834136674871038,
+            "threshold": 0.18
+          },
+          {
+            "date": "2026-07-14",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "fast",
+            "drawdown": 0.19434860654772299,
+            "threshold": 0.18
+          }
+        ],
+        "concentration": {
+          "max_concurrent_symbols": 1,
+          "portfolio_max_positions": 6
+        },
+        "path_summary": {
+          "cash_day_count": 46,
+          "average_exposure_ratio": 0.46061561469183004,
+          "peak_exposure_ratio": 0.7848545618143794
+        },
+        "drawdown_budget_summary": {
+          "observation_count": 316,
+          "constrained_day_count": 244,
+          "recovering_day_count": 14,
+          "reduction_decision_count": 4,
+          "state_transition_count": 2
+        },
+        "locks": {
+          "cycle_lock_count": 0,
+          "portfolio_cycle_lock_count": 0,
+          "terminal_risk_lock": false,
+          "persistent_risk_lock": false,
+          "all_sleeves_locked": false,
+          "rearm_event_count": 0
+        }
+      }
+    },
+    {
+      "scenario_id": "prefix-02",
+      "scenario_type": "prefix",
+      "symbols": [
+        "300308",
+        "300502"
+      ],
+      "symbol_count": 2,
+      "total_return": 2.5622137368107496,
+      "max_drawdown": -0.14521404865917245,
+      "sharpe": 3.0078276742780465,
+      "calmar": 12.079388585380348,
+      "total_trades": 71,
+      "sleeve_fill_count": 71,
+      "date_symbol_side_count": 35,
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 2,
+        "re_entry": 27,
+        "risk_reduction": 35,
+        "strategy_exit": 3,
+        "sector_liquidation": 4,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      },
+      "max_concurrent_symbols": 2,
+      "terminal_risk_lock": true,
+      "deployment_policy": "production_daily_replay",
+      "drawdown_budget_configuration": "balanced",
+      "diagnostic_telemetry": {
+        "peak": {
+          "date": "2025-09-01",
+          "assets": 6326862.01264775,
+          "cash_ratio": 0.20377937910932772,
+          "exposure_ratio": 0.7962206208906724,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1138835.162276595,
+            "available_budget": 1107200.8522133562,
+            "projected_adverse_loss": 2015031.2,
+            "risk_driver_loss": 2015031.2,
+            "projected_loss_ratio": 1.8199328477501082,
+            "group_adverse_losses": {
+              "optical": 2015031.2
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "peak_previous_session": {
+          "date": "2025-08-29",
+          "assets": 5906806.01264775,
+          "cash_ratio": 0.218270925079834,
+          "exposure_ratio": 0.7817290749201661,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1063225.0822765948,
+            "available_budget": 1033691.0522133561,
+            "projected_adverse_loss": 1847008.8000000003,
+            "risk_driver_loss": 1847008.8000000003,
+            "projected_loss_ratio": 1.786809314103237,
+            "group_adverse_losses": {
+              "optical": 1847008.8000000003
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "first_risk_trigger": {
+          "date": "2025-11-18",
+          "event": "portfolio_drawdown_alert_on",
+          "sleeve": "fast",
+          "drawdown": 0.22320429101173533,
+          "threshold": 0.18
+        },
+        "trigger_snapshot": {
+          "date": "2025-11-18",
+          "assets": 5505240.76448325,
+          "cash_ratio": 0.7664085813836866,
+          "exposure_ratio": 0.2335914186163134,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.12986236249850783,
+            "remaining_cushion": 317213.91411209386,
+            "available_budget": 285579.6040488551,
+            "projected_adverse_loss": 285319.20000000024,
+            "risk_driver_loss": 285319.20000000024,
+            "projected_loss_ratio": 0.9990881559986676,
+            "group_adverse_losses": {
+              "optical": 285319.20000000024
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trigger_previous_session": {
+          "date": "2025-11-17",
+          "assets": 5491521.38776125,
+          "cash_ratio": 0.6726530094180607,
+          "exposure_ratio": 0.32734699058193933,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.13203079555340516,
+            "remaining_cushion": 303494.53739009425,
+            "available_budget": 271860.22732685547,
+            "projected_adverse_loss": 375645.60000000027,
+            "risk_driver_loss": 375645.60000000027,
+            "projected_loss_ratio": 1.3817600452028036,
+            "group_adverse_losses": {
+              "optical": 375645.60000000027
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trough": {
+          "date": "2025-11-24",
+          "assets": 5408112.76448325,
+          "cash_ratio": 0.7801730378464852,
+          "exposure_ratio": 0.21982696215351485,
+          "held_symbol_count": 1,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.1452140486591726,
+            "remaining_cushion": 220085.91411209386,
+            "available_budget": 188451.6040488551,
+            "projected_adverse_loss": 188191.2000000001,
+            "risk_driver_loss": 188191.2000000001,
+            "projected_loss_ratio": 0.9986181913909976,
+            "group_adverse_losses": {
+              "optical": 188191.2000000001
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "recovery_date": "2026-05-13",
+        "first_executable_reduction": {
+          "date": "2025-11-18",
+          "symbol": "300502",
+          "reason_category": "risk_reduction"
+        },
+        "execution_overshoot": -0.07799024235256288,
+        "warning_period_buy_count": 0,
+        "warning_period_add_count": 0,
+        "risk_milestones": [
+          {
+            "date": "2025-11-18",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "fast",
+            "drawdown": 0.22320429101173533,
+            "threshold": 0.18
+          },
+          {
+            "date": "2026-01-12",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "fast",
+            "drawdown": 0.18164032599437963,
+            "threshold": 0.18
+          },
+          {
+            "date": "2026-03-17",
+            "event": "persistent_portfolio_risk_lock",
+            "sleeve": "fast",
+            "drawdown": 0.28305588621067557
+          }
+        ],
+        "concentration": {
+          "max_concurrent_symbols": 2,
+          "portfolio_max_positions": 6
+        },
+        "path_summary": {
+          "cash_day_count": 33,
+          "average_exposure_ratio": 0.4252830076472791,
+          "peak_exposure_ratio": 0.9923458704428414
+        },
+        "drawdown_budget_summary": {
+          "observation_count": 316,
+          "constrained_day_count": 252,
+          "recovering_day_count": 26,
+          "reduction_decision_count": 8,
+          "state_transition_count": 7
+        },
+        "locks": {
+          "cycle_lock_count": 0,
+          "portfolio_cycle_lock_count": 0,
+          "terminal_risk_lock": true,
+          "persistent_risk_lock": true,
+          "all_sleeves_locked": false,
+          "rearm_event_count": 0
+        }
+      }
+    },
+    {
+      "scenario_id": "prefix-03",
+      "scenario_type": "prefix",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394"
+      ],
+      "symbol_count": 3,
+      "total_return": 2.38424290932575,
+      "max_drawdown": -0.16324228289271125,
+      "sharpe": 2.8525923922708443,
+      "calmar": 10.069703016546846,
+      "total_trades": 120,
+      "sleeve_fill_count": 120,
+      "date_symbol_side_count": 44,
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 23,
+        "re_entry": 36,
+        "risk_reduction": 29,
+        "strategy_exit": 30,
+        "sector_liquidation": 2,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      },
+      "max_concurrent_symbols": 3,
+      "terminal_risk_lock": true,
+      "deployment_policy": "production_daily_replay",
+      "drawdown_budget_configuration": "balanced",
+      "diagnostic_telemetry": {
+        "peak": {
+          "date": "2025-09-01",
+          "assets": 7467527.492412501,
+          "cash_ratio": 0.06379012235261383,
+          "exposure_ratio": 0.9362098776473862,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1344154.94863425,
+            "available_budget": 1306817.3111721876,
+            "projected_adverse_loss": 1673753.967386453,
+            "risk_driver_loss": 1673753.967386453,
+            "projected_loss_ratio": 1.2807864979115795,
+            "group_adverse_losses": {
+              "optical": 1673753.967386453
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "peak_previous_session": {
+          "date": "2025-08-29",
+          "assets": 6833965.492412501,
+          "cash_ratio": 0.06970396513435424,
+          "exposure_ratio": 0.9302960348656457,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1230113.78863425,
+            "available_budget": 1195943.9611721875,
+            "projected_adverse_loss": 1502515.224775216,
+            "risk_driver_loss": 1502515.224775216,
+            "projected_loss_ratio": 1.256342498943301,
+            "group_adverse_losses": {
+              "optical": 1502515.224775216
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "first_risk_trigger": {
+          "date": "2025-09-04",
+          "event": "portfolio_drawdown_alert_on",
+          "sleeve": "portfolio",
+          "drawdown": 0.16324228289271125,
+          "threshold": 0.14
+        },
+        "trigger_snapshot": {
+          "date": "2025-09-04",
+          "assets": 6248511.256987001,
+          "cash_ratio": 0.20512234103024318,
+          "exposure_ratio": 0.7948776589697568,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": false,
+            "drawdown": 0.16324228289271125,
+            "remaining_cushion": 125138.71320874989,
+            "available_budget": 87801.07574668739,
+            "projected_adverse_loss": 570928.9945882496,
+            "risk_driver_loss": 570928.9945882496,
+            "projected_loss_ratio": 6.502528468277792,
+            "group_adverse_losses": {
+              "optical": 570928.9945882496
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.8462136682863532,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trigger_previous_session": {
+          "date": "2025-09-03",
+          "assets": 7147526.256987001,
+          "cash_ratio": 0.17932207744379777,
+          "exposure_ratio": 0.8206779225562022,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.04285236790231326,
+            "remaining_cushion": 1024153.7132087508,
+            "available_budget": 986816.0757466883,
+            "projected_adverse_loss": 1195743.1599999997,
+            "risk_driver_loss": 1195743.1599999997,
+            "projected_loss_ratio": 1.2117183631156634,
+            "group_adverse_losses": {
+              "optical": 1195743.1599999997
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trough": {
+          "date": "2025-09-04",
+          "assets": 6248511.256987001,
+          "cash_ratio": 0.20512234103024318,
+          "exposure_ratio": 0.7948776589697568,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": false,
+            "drawdown": 0.16324228289271125,
+            "remaining_cushion": 125138.71320874989,
+            "available_budget": 87801.07574668739,
+            "projected_adverse_loss": 570928.9945882496,
+            "risk_driver_loss": 570928.9945882496,
+            "projected_loss_ratio": 6.502528468277792,
+            "group_adverse_losses": {
+              "optical": 570928.9945882496
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.8462136682863532,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "recovery_date": null,
+        "first_executable_reduction": {
+          "date": "2025-09-05",
+          "symbol": "300308",
+          "reason_category": "risk_reduction"
+        },
+        "execution_overshoot": 0.0,
+        "warning_period_buy_count": 0,
+        "warning_period_add_count": 0,
+        "risk_milestones": [
+          {
+            "date": "2025-09-04",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.16324228289271125,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-09-08",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.14964406100287866,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-10-14",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.15087106667022454,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-11-18",
+            "event": "persistent_portfolio_risk_lock",
+            "sleeve": "fast",
+            "drawdown": 0.28070043733003164
+          }
+        ],
+        "concentration": {
+          "max_concurrent_symbols": 3,
+          "portfolio_max_positions": 6
+        },
+        "path_summary": {
+          "cash_day_count": 32,
+          "average_exposure_ratio": 0.2882477668563359,
+          "peak_exposure_ratio": 0.9983694179938711
+        },
+        "drawdown_budget_summary": {
+          "observation_count": 316,
+          "constrained_day_count": 240,
+          "recovering_day_count": 6,
+          "reduction_decision_count": 5,
+          "state_transition_count": 7
+        },
+        "locks": {
+          "cycle_lock_count": 0,
+          "portfolio_cycle_lock_count": 0,
+          "terminal_risk_lock": true,
+          "persistent_risk_lock": true,
+          "all_sleeves_locked": false,
+          "rearm_event_count": 0
+        }
+      }
+    },
+    {
+      "scenario_id": "prefix-05",
+      "scenario_type": "prefix",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986"
+      ],
+      "symbol_count": 5,
+      "total_return": 2.0012583349096253,
+      "max_drawdown": -0.16466571984094475,
+      "sharpe": 2.684755463820213,
+      "calmar": 8.516279345242241,
+      "total_trades": 77,
+      "sleeve_fill_count": 77,
+      "date_symbol_side_count": 30,
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 11,
+        "re_entry": 27,
+        "risk_reduction": 20,
+        "strategy_exit": 19,
+        "sector_liquidation": 0,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      },
+      "max_concurrent_symbols": 3,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "drawdown_budget_configuration": "balanced",
+      "diagnostic_telemetry": {
+        "peak": {
+          "date": "2025-09-01",
+          "assets": 6968955.050926501,
+          "cash_ratio": 0.1682631100871579,
+          "exposure_ratio": 0.8317368899128421,
+          "held_symbol_count": 2,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1254411.90916677,
+            "available_budget": 1219567.1339121375,
+            "projected_adverse_loss": 1391120.8799999997,
+            "risk_driver_loss": 1391120.8799999997,
+            "projected_loss_ratio": 1.140667734737612,
+            "group_adverse_losses": {
+              "optical": 1391120.8799999997
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "peak_previous_session": {
+          "date": "2025-08-29",
+          "assets": 6480795.050926501,
+          "cash_ratio": 0.18093737600278878,
+          "exposure_ratio": 0.8190626239972112,
+          "held_symbol_count": 2,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1166543.1091667693,
+            "available_budget": 1134139.1339121368,
+            "projected_adverse_loss": 1269044.2979353017,
+            "risk_driver_loss": 1269044.2979353017,
+            "projected_loss_ratio": 1.1189493951750158,
+            "group_adverse_losses": {
+              "optical": 1269044.2979353017
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "first_risk_trigger": {
+          "date": "2025-09-04",
+          "event": "portfolio_drawdown_alert_on",
+          "sleeve": "portfolio",
+          "drawdown": 0.16466571984094475,
+          "threshold": 0.14
+        },
+        "trigger_snapshot": {
+          "date": "2025-09-04",
+          "assets": 5821407.050926501,
+          "cash_ratio": 0.20143206628024302,
+          "exposure_ratio": 0.798567933719757,
+          "held_symbol_count": 2,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": false,
+            "drawdown": 0.16466571984094475,
+            "remaining_cushion": 106863.90916677006,
+            "available_budget": 72019.13391213755,
+            "projected_adverse_loss": 531475.8510668187,
+            "risk_driver_loss": 531475.8510668187,
+            "projected_loss_ratio": 7.379647910168049,
+            "group_adverse_losses": {
+              "optical": 531475.8510668187
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.8644921800913903,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trigger_previous_session": {
+          "date": "2025-09-03",
+          "assets": 6682017.050926501,
+          "cash_ratio": 0.17548863494203604,
+          "exposure_ratio": 0.824511365057964,
+          "held_symbol_count": 2,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.041173748130554015,
+            "remaining_cushion": 967473.90916677,
+            "available_budget": 932629.1339121376,
+            "projected_adverse_loss": 1104182.8799999997,
+            "risk_driver_loss": 1104182.8799999997,
+            "projected_loss_ratio": 1.183946372518129,
+            "group_adverse_losses": {
+              "optical": 1104182.8799999997
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trough": {
+          "date": "2025-09-04",
+          "assets": 5821407.050926501,
+          "cash_ratio": 0.20143206628024302,
+          "exposure_ratio": 0.798567933719757,
+          "held_symbol_count": 2,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": false,
+            "drawdown": 0.16466571984094475,
+            "remaining_cushion": 106863.90916677006,
+            "available_budget": 72019.13391213755,
+            "projected_adverse_loss": 531475.8510668187,
+            "risk_driver_loss": 531475.8510668187,
+            "projected_loss_ratio": 7.379647910168049,
+            "group_adverse_losses": {
+              "optical": 531475.8510668187
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.8644921800913903,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "recovery_date": null,
+        "first_executable_reduction": {
+          "date": "2025-09-05",
+          "symbol": "300394",
+          "reason_category": "risk_reduction"
+        },
+        "execution_overshoot": 0.0,
+        "warning_period_buy_count": 0,
+        "warning_period_add_count": 0,
+        "risk_milestones": [
+          {
+            "date": "2025-09-04",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.16466571984094475,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-09-08",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.1498771137826308,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-10-14",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.14876994483856149,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-11-10",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.14017482554703492,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-11-18",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "fast",
+            "drawdown": 0.23163332197866335,
+            "threshold": 0.18
+          },
+          {
+            "date": "2025-11-19",
+            "event": "confirmed_cycle_drawdown_lock",
+            "sleeve": "fast",
+            "drawdown": 0.23163332197866335
+          },
+          {
+            "date": "2025-11-19",
+            "event": "persistent_portfolio_risk_lock",
+            "sleeve": "fast",
+            "drawdown": 0.23163332197866335
+          },
+          {
+            "date": "2025-12-03",
+            "event": "portfolio_drawdown_rearmed",
+            "sleeve": "fast"
+          }
+        ],
+        "concentration": {
+          "max_concurrent_symbols": 3,
+          "portfolio_max_positions": 6
+        },
+        "path_summary": {
+          "cash_day_count": 183,
+          "average_exposure_ratio": 0.2661175200152735,
+          "peak_exposure_ratio": 0.9984750794187932
+        },
+        "drawdown_budget_summary": {
+          "observation_count": 316,
+          "constrained_day_count": 252,
+          "recovering_day_count": 3,
+          "reduction_decision_count": 3,
+          "state_transition_count": 4
+        },
+        "locks": {
+          "cycle_lock_count": 1,
+          "portfolio_cycle_lock_count": 0,
+          "terminal_risk_lock": false,
+          "persistent_risk_lock": false,
+          "all_sleeves_locked": false,
+          "rearm_event_count": 1
+        }
+      }
+    },
+    {
+      "scenario_id": "add-one-05-688205",
+      "scenario_type": "add_one",
+      "base_size": 5,
+      "added_symbol": "688205",
+      "symbols": [
+        "300308",
+        "300502",
+        "300394",
+        "688008",
+        "603986",
+        "688205"
+      ],
+      "symbol_count": 6,
+      "total_return": 3.927838687658375,
+      "max_drawdown": -0.14168447391662498,
+      "sharpe": 3.327284959911936,
+      "calmar": 18.12169476896548,
+      "total_trades": 94,
+      "sleeve_fill_count": 94,
+      "date_symbol_side_count": 43,
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 10,
+        "re_entry": 31,
+        "risk_reduction": 30,
+        "strategy_exit": 20,
+        "sector_liquidation": 3,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      },
+      "max_concurrent_symbols": 3,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "drawdown_budget_configuration": "balanced",
+      "diagnostic_telemetry": {
+        "peak": {
+          "date": "2025-09-01",
+          "assets": 8120088.627158001,
+          "cash_ratio": 0.029921671833160537,
+          "exposure_ratio": 0.9700783281668395,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1461615.9528884394,
+            "available_budget": 1421015.5097526493,
+            "projected_adverse_loss": 1875519.7468244873,
+            "risk_driver_loss": 1875519.7468244873,
+            "projected_loss_ratio": 1.319844670204164,
+            "group_adverse_losses": {
+              "optical": 1875519.7468244873
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "peak_previous_session": {
+          "date": "2025-08-29",
+          "assets": 7339242.627158001,
+          "cash_ratio": 0.033105136251924884,
+          "exposure_ratio": 0.9668948637480751,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1321063.67288844,
+            "available_budget": 1284367.45975265,
+            "projected_adverse_loss": 1631622.239536753,
+            "risk_driver_loss": 1631622.239536753,
+            "projected_loss_ratio": 1.270370272266925,
+            "group_adverse_losses": {
+              "optical": 1631622.239536753
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "first_risk_trigger": {
+          "date": "2025-09-04",
+          "event": "portfolio_drawdown_alert_on",
+          "sleeve": "portfolio",
+          "drawdown": 0.1415470649948776,
+          "threshold": 0.14
+        },
+        "trigger_snapshot": {
+          "date": "2025-09-04",
+          "assets": 6970713.914485501,
+          "cash_ratio": 0.20380594181799222,
+          "exposure_ratio": 0.7961940581820077,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": false,
+            "drawdown": 0.1415470649948776,
+            "remaining_cushion": 312241.24021593947,
+            "available_budget": 271640.79708014947,
+            "projected_adverse_loss": 650916.9853462853,
+            "risk_driver_loss": 650916.9853462853,
+            "projected_loss_ratio": 2.3962416262319675,
+            "group_adverse_losses": {
+              "optical": 650916.9853462853
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.5826798144841194,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trigger_previous_session": {
+          "date": "2025-09-03",
+          "assets": 7935343.914485501,
+          "cash_ratio": 0.1790310451311564,
+          "exposure_ratio": 0.8209689548688436,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.022751563579566477,
+            "remaining_cushion": 1276871.2402159395,
+            "available_budget": 1236270.7970801494,
+            "projected_adverse_loss": 1402078.0399999996,
+            "risk_driver_loss": 1402078.0399999996,
+            "projected_loss_ratio": 1.1341188704865126,
+            "group_adverse_losses": {
+              "optical": 1402078.0399999996
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trough": {
+          "date": "2025-10-14",
+          "assets": 6969598.14186275,
+          "cash_ratio": 0.6579490020119232,
+          "exposure_ratio": 0.3420509979880769,
+          "held_symbol_count": 2,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": false,
+            "drawdown": 0.14168447391662498,
+            "remaining_cushion": 311125.4675931884,
+            "available_budget": 270525.0244573984,
+            "projected_adverse_loss": 224488.69099851546,
+            "risk_driver_loss": 224488.69099851546,
+            "projected_loss_ratio": 0.8298259706242717,
+            "group_adverse_losses": {
+              "optical": 224488.69099851546
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "recovery_date": "2026-04-08",
+        "first_executable_reduction": {
+          "date": "2025-09-05",
+          "symbol": "300308",
+          "reason_category": "risk_reduction"
+        },
+        "execution_overshoot": 0.0001374089217473784,
+        "warning_period_buy_count": 0,
+        "warning_period_add_count": 0,
+        "risk_milestones": [
+          {
+            "date": "2025-09-04",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.1415470649948776,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-10-14",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.14168447391662498,
+            "threshold": 0.14
+          }
+        ],
+        "concentration": {
+          "max_concurrent_symbols": 3,
+          "portfolio_max_positions": 6
+        },
+        "path_summary": {
+          "cash_day_count": 32,
+          "average_exposure_ratio": 0.4436426033802346,
+          "peak_exposure_ratio": 0.9979318147980073
+        },
+        "drawdown_budget_summary": {
+          "observation_count": 316,
+          "constrained_day_count": 246,
+          "recovering_day_count": 0,
+          "reduction_decision_count": 3,
+          "state_transition_count": 1
+        },
+        "locks": {
+          "cycle_lock_count": 0,
+          "portfolio_cycle_lock_count": 0,
+          "terminal_risk_lock": false,
+          "persistent_risk_lock": false,
+          "all_sleeves_locked": false,
+          "rearm_event_count": 0
+        }
+      }
+    },
+    {
+      "scenario_id": "random-20260807-03-030",
+      "scenario_type": "random_subset",
+      "seed": 20260807,
+      "sample_size": 3,
+      "symbols": [
+        "300502",
+        "688249",
+        "688300"
+      ],
+      "symbol_count": 3,
+      "total_return": 2.3255874938238748,
+      "max_drawdown": -0.1724797922322574,
+      "sharpe": 2.9177365721720796,
+      "calmar": 9.318164133547715,
+      "total_trades": 50,
+      "sleeve_fill_count": 50,
+      "date_symbol_side_count": 20,
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 0,
+        "re_entry": 22,
+        "risk_reduction": 13,
+        "strategy_exit": 13,
+        "sector_liquidation": 2,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      },
+      "max_concurrent_symbols": 3,
+      "terminal_risk_lock": true,
+      "deployment_policy": "production_daily_replay",
+      "drawdown_budget_configuration": "balanced",
+      "diagnostic_telemetry": {
+        "peak": {
+          "date": "2025-09-01",
+          "assets": 7509233.935135001,
+          "cash_ratio": 0.0002877703842584147,
+          "exposure_ratio": 0.9997122296157415,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.3333333333333333,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1351662.1083242996,
+            "available_budget": 1314115.9386486246,
+            "projected_adverse_loss": 1627444.7392906332,
+            "risk_driver_loss": 1627444.7392906332,
+            "projected_loss_ratio": 1.2384331484208473,
+            "group_adverse_losses": {
+              "equipment": 15844.912469693169,
+              "material": 183282.96611157397,
+              "optical": 1527880.7999999998
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "peak_previous_session": {
+          "date": "2025-08-29",
+          "assets": 7029926.935135,
+          "cash_ratio": 0.0003073908384737187,
+          "exposure_ratio": 0.9996926091615262,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.3333333333333333,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1265386.8483242998,
+            "available_budget": 1230237.2136486247,
+            "projected_adverse_loss": 1520209.7290189476,
+            "risk_driver_loss": 1520209.7290189476,
+            "projected_loss_ratio": 1.235704555311187,
+            "group_adverse_losses": {
+              "equipment": 13465.91246969317,
+              "material": 237194.96611157397,
+              "optical": 1394879.289728314
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "first_risk_trigger": {
+          "date": "2025-09-04",
+          "event": "portfolio_drawdown_alert_on",
+          "sleeve": "base",
+          "drawdown": 0.18481735791334533,
+          "threshold": 0.18
+        },
+        "trigger_snapshot": {
+          "date": "2025-09-04",
+          "assets": 6214042.8261795,
+          "cash_ratio": 0.13998162718075438,
+          "exposure_ratio": 0.8600183728192456,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.3333333333333333,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": false,
+            "drawdown": 0.1724797922322574,
+            "remaining_cushion": 56470.99936879799,
+            "available_budget": 18924.829693122978,
+            "projected_adverse_loss": 542188.5372844099,
+            "risk_driver_loss": 542188.5372844099,
+            "projected_loss_ratio": 28.649586076932238,
+            "group_adverse_losses": {
+              "equipment": 4874.793242032325,
+              "material": 56483.36585474382,
+              "optical": 511509.4577360218
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.9650954817526955,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trigger_previous_session": {
+          "date": "2025-09-03",
+          "assets": 7082817.8261795,
+          "cash_ratio": 0.1228115486698465,
+          "exposure_ratio": 0.8771884513301536,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.3333333333333333,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.05678556729473303,
+            "remaining_cushion": 925245.999368798,
+            "available_budget": 887699.829693123,
+            "projected_adverse_loss": 1114375.9486026978,
+            "risk_driver_loss": 1114375.9486026978,
+            "projected_loss_ratio": 1.2553522162868236,
+            "group_adverse_losses": {
+              "equipment": 8934.793242032325,
+              "material": 89233.18396336418,
+              "optical": 1065291.9599999997
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trough": {
+          "date": "2025-09-04",
+          "assets": 6214042.8261795,
+          "cash_ratio": 0.13998162718075438,
+          "exposure_ratio": 0.8600183728192456,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.3333333333333333,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": false,
+            "drawdown": 0.1724797922322574,
+            "remaining_cushion": 56470.99936879799,
+            "available_budget": 18924.829693122978,
+            "projected_adverse_loss": 542188.5372844099,
+            "risk_driver_loss": 542188.5372844099,
+            "projected_loss_ratio": 28.649586076932238,
+            "group_adverse_losses": {
+              "equipment": 4874.793242032325,
+              "material": 56483.36585474382,
+              "optical": 511509.4577360218
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.9650954817526955,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "recovery_date": null,
+        "first_executable_reduction": {
+          "date": "2025-09-05",
+          "symbol": "300502",
+          "reason_category": "risk_reduction"
+        },
+        "execution_overshoot": -0.01233756568108793,
+        "warning_period_buy_count": 0,
+        "warning_period_add_count": 0,
+        "risk_milestones": [
+          {
+            "date": "2025-09-04",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "base",
+            "drawdown": 0.18481735791334533,
+            "threshold": 0.18
+          },
+          {
+            "date": "2025-09-04",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "fast",
+            "drawdown": 0.1850734136498051,
+            "threshold": 0.18
+          },
+          {
+            "date": "2025-09-04",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.1724797922322574,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-09-15",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.14285888887778597,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-10-14",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.15197326733385808,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-10-23",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.1407553454089786,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-11-05",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "base",
+            "drawdown": 0.18184965826938107,
+            "threshold": 0.18
+          },
+          {
+            "date": "2025-11-05",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.14068449930076096,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-11-10",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.14374832714242036,
+            "threshold": 0.14
+          },
+          {
+            "date": "2025-11-18",
+            "event": "persistent_portfolio_risk_lock",
+            "sleeve": "fast",
+            "drawdown": 0.2873615517332449
+          },
+          {
+            "date": "2026-03-17",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.14023428357786535,
+            "threshold": 0.14
+          },
+          {
+            "date": "2026-04-24",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.1403470780396329,
+            "threshold": 0.14
+          },
+          {
+            "date": "2026-04-28",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.1407792126658851,
+            "threshold": 0.14
+          }
+        ],
+        "concentration": {
+          "max_concurrent_symbols": 3,
+          "portfolio_max_positions": 6
+        },
+        "path_summary": {
+          "cash_day_count": 32,
+          "average_exposure_ratio": 0.27134734742901917,
+          "peak_exposure_ratio": 0.9997122296157415
+        },
+        "drawdown_budget_summary": {
+          "observation_count": 316,
+          "constrained_day_count": 236,
+          "recovering_day_count": 0,
+          "reduction_decision_count": 3,
+          "state_transition_count": 1
+        },
+        "locks": {
+          "cycle_lock_count": 0,
+          "portfolio_cycle_lock_count": 0,
+          "terminal_risk_lock": true,
+          "persistent_risk_lock": true,
+          "all_sleeves_locked": false,
+          "rearm_event_count": 0
+        }
+      }
+    },
+    {
+      "scenario_id": "permutation-20260807-001",
+      "scenario_type": "permutation",
+      "seed": 20260807,
+      "symbols": [
+        "002409",
+        "300394",
+        "688347",
+        "688249",
+        "688361",
+        "600206",
+        "688120",
+        "920045",
+        "688535",
+        "300308",
+        "688300",
+        "688072",
+        "300776",
+        "688409",
+        "300666",
+        "300604",
+        "688008",
+        "300502",
+        "603986",
+        "688082",
+        "688205",
+        "300054"
+      ],
+      "symbol_count": 22,
+      "total_return": 4.517919097148501,
+      "max_drawdown": -0.1397910885145552,
+      "sharpe": 3.3364898327418127,
+      "calmar": 20.775949086309936,
+      "total_trades": 117,
+      "sleeve_fill_count": 117,
+      "date_symbol_side_count": 49,
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 3,
+        "re_entry": 53,
+        "risk_reduction": 30,
+        "strategy_exit": 28,
+        "sector_liquidation": 3,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      },
+      "max_concurrent_symbols": 5,
+      "terminal_risk_lock": false,
+      "deployment_policy": "production_daily_replay",
+      "drawdown_budget_configuration": "balanced",
+      "diagnostic_telemetry": {
+        "peak": {
+          "date": "2025-09-01",
+          "assets": 7816761.159295751,
+          "cash_ratio": 0.02379504189846683,
+          "exposure_ratio": 0.9762049581015332,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1407017.0086732348,
+            "available_budget": 1367933.2028767562,
+            "projected_adverse_loss": 1811179.3561547436,
+            "risk_driver_loss": 1811179.3561547436,
+            "projected_loss_ratio": 1.3240261676124558,
+            "group_adverse_losses": {
+              "optical": 1811179.3561547436
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "peak_previous_session": {
+          "date": "2025-08-29",
+          "assets": 7017219.159295751,
+          "cash_ratio": 0.026506249138500266,
+          "exposure_ratio": 0.9734937508614997,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0031213813494728607,
+            "remaining_cushion": 1245082.4086732343,
+            "available_budget": 1209886.4528767555,
+            "projected_adverse_loss": 1545625.8806755915,
+            "risk_driver_loss": 1545625.8806755915,
+            "projected_loss_ratio": 1.2774966419373868,
+            "group_adverse_losses": {
+              "optical": 1545625.8806755915
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "first_risk_trigger": null,
+        "trigger_snapshot": null,
+        "trigger_previous_session": null,
+        "trough": {
+          "date": "2025-10-14",
+          "assets": 6724047.608179501,
+          "cash_ratio": 0.5142181926215771,
+          "exposure_ratio": 0.48578180737842297,
+          "held_symbol_count": 2,
+          "largest_group_symbol_share": 1.0,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.1397910885145552,
+            "remaining_cushion": 314303.4575569853,
+            "available_budget": 275219.65176050656,
+            "projected_adverse_loss": 308286.1680605094,
+            "risk_driver_loss": 308286.1680605094,
+            "projected_loss_ratio": 1.120145912868086,
+            "group_adverse_losses": {
+              "optical": 308286.1680605094
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "recovery_date": "2025-10-24",
+        "first_executable_reduction": null,
+        "execution_overshoot": null,
+        "warning_period_buy_count": 0,
+        "warning_period_add_count": 0,
+        "risk_milestones": [],
+        "concentration": {
+          "max_concurrent_symbols": 5,
+          "portfolio_max_positions": 6
+        },
+        "path_summary": {
+          "cash_day_count": 31,
+          "average_exposure_ratio": 0.5195543358190006,
+          "peak_exposure_ratio": 0.9992441126259773
+        },
+        "drawdown_budget_summary": {
+          "observation_count": 316,
+          "constrained_day_count": 246,
+          "recovering_day_count": 0,
+          "reduction_decision_count": 3,
+          "state_transition_count": 1
+        },
+        "locks": {
+          "cycle_lock_count": 0,
+          "portfolio_cycle_lock_count": 0,
+          "terminal_risk_lock": false,
+          "persistent_risk_lock": false,
+          "all_sleeves_locked": false,
+          "rearm_event_count": 0
+        }
+      }
+    },
+    {
+      "scenario_id": "random-20260827-16-050",
+      "scenario_type": "random_subset",
+      "seed": 20260827,
+      "sample_size": 16,
+      "symbols": [
+        "300054",
+        "300502",
+        "300604",
+        "300666",
+        "300776",
+        "600206",
+        "603986",
+        "688008",
+        "688072",
+        "688082",
+        "688120",
+        "688249",
+        "688361",
+        "688409",
+        "688535",
+        "920045"
+      ],
+      "symbol_count": 16,
+      "total_return": 2.0572353626181252,
+      "max_drawdown": -0.16396171332990012,
+      "sharpe": 2.8269515529996037,
+      "calmar": 8.770364731618686,
+      "total_trades": 82,
+      "sleeve_fill_count": 82,
+      "date_symbol_side_count": 33,
+      "reason_attribution": {
+        "initial_entry": 0,
+        "add": 8,
+        "re_entry": 31,
+        "risk_reduction": 34,
+        "strategy_exit": 9,
+        "sector_liquidation": 0,
+        "route_migration": 0,
+        "sticky_replacement": 0
+      },
+      "max_concurrent_symbols": 4,
+      "terminal_risk_lock": true,
+      "deployment_policy": "production_daily_replay",
+      "drawdown_budget_configuration": "balanced",
+      "diagnostic_telemetry": {
+        "peak": {
+          "date": "2025-09-01",
+          "assets": 7171422.85936075,
+          "cash_ratio": 0.09191800180912894,
+          "exposure_ratio": 0.9080819981908711,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.6666666666666666,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1290856.1146849347,
+            "available_budget": 1254999.000388131,
+            "projected_adverse_loss": 1505282.110434574,
+            "risk_driver_loss": 1505282.110434574,
+            "projected_loss_ratio": 1.1994289317912115,
+            "group_adverse_losses": {
+              "equipment": 47804.06086914869,
+              "optical": 1481380.0799999998
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "peak_previous_session": {
+          "date": "2025-08-29",
+          "assets": 6651240.85936075,
+          "cash_ratio": 0.09910674914636967,
+          "exposure_ratio": 0.9008932508536304,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.6666666666666666,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.0,
+            "remaining_cushion": 1197223.354684935,
+            "available_budget": 1163967.1503881312,
+            "projected_adverse_loss": 1373579.4722146355,
+            "risk_driver_loss": 1373579.4722146355,
+            "projected_loss_ratio": 1.1800843965026058,
+            "group_adverse_losses": {
+              "equipment": 42306.0608691487,
+              "optical": 1352426.441780061
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "first_risk_trigger": {
+          "date": "2025-09-04",
+          "event": "portfolio_drawdown_alert_on",
+          "sleeve": "portfolio",
+          "drawdown": 0.16396171332990012,
+          "threshold": 0.1
+        },
+        "trigger_snapshot": {
+          "date": "2025-09-04",
+          "assets": 5995584.08032675,
+          "cash_ratio": 0.22054933474549585,
+          "exposure_ratio": 0.7794506652545042,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.6666666666666666,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": true,
+            "drawdown": 0.16396171332990012,
+            "remaining_cushion": 115017.33565093484,
+            "available_budget": 79160.22135413109,
+            "projected_adverse_loss": 513670.9580081371,
+            "risk_driver_loss": 513670.9580081371,
+            "projected_loss_ratio": 6.489003557862468,
+            "group_adverse_losses": {
+              "equipment": 14502.293235494617,
+              "optical": 506419.8113903898
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.845893134272004,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trigger_previous_session": {
+          "date": "2025-09-03",
+          "assets": 6826097.08032675,
+          "cash_ratio": 0.1937156862503124,
+          "exposure_ratio": 0.8062843137496877,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.6666666666666666,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": false,
+            "hard_lock_active": false,
+            "drawdown": 0.04815303543051452,
+            "remaining_cushion": 945530.3356509348,
+            "available_budget": 909673.2213541311,
+            "projected_adverse_loss": 1066407.3848768156,
+            "risk_driver_loss": 1066407.3848768156,
+            "projected_loss_ratio": 1.1722972160149678,
+            "group_adverse_losses": {
+              "equipment": 23430.6897536318,
+              "optical": 1054692.0399999996
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.0,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "trough": {
+          "date": "2025-09-04",
+          "assets": 5995584.08032675,
+          "cash_ratio": 0.22054933474549585,
+          "exposure_ratio": 0.7794506652545042,
+          "held_symbol_count": 3,
+          "largest_group_symbol_share": 0.6666666666666666,
+          "drawdown_budget": {
+            "state": "constrained",
+            "soft_alert_active": true,
+            "hard_lock_active": true,
+            "drawdown": 0.16396171332990012,
+            "remaining_cushion": 115017.33565093484,
+            "available_budget": 79160.22135413109,
+            "projected_adverse_loss": 513670.9580081371,
+            "risk_driver_loss": 513670.9580081371,
+            "projected_loss_ratio": 6.489003557862468,
+            "group_adverse_losses": {
+              "equipment": 14502.293235494617,
+              "optical": 506419.8113903898
+            },
+            "allow_new_risk": false,
+            "new_risk_capacity": 0.0,
+            "reduction_fraction": 0.845893134272004,
+            "evidence_complete": true,
+            "missing_symbols": []
+          }
+        },
+        "recovery_date": null,
+        "first_executable_reduction": {
+          "date": "2025-09-05",
+          "symbol": "300502",
+          "reason_category": "risk_reduction"
+        },
+        "execution_overshoot": 0.0,
+        "warning_period_buy_count": 0,
+        "warning_period_add_count": 0,
+        "risk_milestones": [
+          {
+            "date": "2025-09-04",
+            "event": "portfolio_drawdown_alert_on",
+            "sleeve": "portfolio",
+            "drawdown": 0.16396171332990012,
+            "threshold": 0.1
+          },
+          {
+            "date": "2025-11-18",
+            "event": "persistent_portfolio_risk_lock",
+            "sleeve": "fast",
+            "drawdown": 0.28803473168095434
+          }
+        ],
+        "concentration": {
+          "max_concurrent_symbols": 4,
+          "portfolio_max_positions": 6
+        },
+        "path_summary": {
+          "cash_day_count": 223,
+          "average_exposure_ratio": 0.22936906354331052,
+          "peak_exposure_ratio": 0.9080819981908711
+        },
+        "drawdown_budget_summary": {
+          "observation_count": 316,
+          "constrained_day_count": 218,
+          "recovering_day_count": 0,
+          "reduction_decision_count": 3,
+          "state_transition_count": 1
+        },
+        "locks": {
+          "cycle_lock_count": 1,
+          "portfolio_cycle_lock_count": 1,
+          "terminal_risk_lock": true,
+          "persistent_risk_lock": true,
+          "all_sleeves_locked": true,
+          "rearm_event_count": 0
+        }
+      }
+    }
+  ]
+}
