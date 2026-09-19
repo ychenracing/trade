@@ -1,0 +1,79 @@
+name: Core17 close 2026-09-18
+on:
+  push:
+    branches: [run/core17-close-20260918]
+    paths: [.github/workflows/postclose-scan.yml]
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUNBUFFERED: '1'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 5f797f7524cd5e012f1abdc96f26b0e724e6c039
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install and record exact environment
+        run: |
+          mkdir -p runtime
+          python -m pip install -r requirements-lock.txt > runtime/install.log 2>&1 || { tail -30 runtime/install.log; exit 1; }
+          python -m pip freeze > runtime/environment.txt
+          git rev-parse HEAD > runtime/source_revision.txt
+          git status --porcelain > runtime/source_status.txt
+      - name: Acquire fixed-index evidence with existing provider fallback
+        run: |
+          python - <<'PY' > runtime/index_acquisition.log 2>&1
+          import json
+          from pathlib import Path
+          from quantfusion.data.contracts import refresh_regime_indices
+          result = refresh_regime_indices('runtime/regime', end_date='2026-09-18', strict=False, allow_provider_fallback=True)
+          Path('runtime/index_acquisition.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(result, ensure_ascii=False))
+          PY
+      - name: Run unchanged production simulation CLI
+        run: |
+          set +e
+          timeout 720s python -m quantfusion.application.daily_scan --start-date 2026-07-01 --end-date 2026-09-18 --capital 2000000 --cache-dir runtime/cache --regime-data-dir runtime/regime --output-dir runtime/simulation > runtime/scan.log 2>&1
+          code=$?
+          printf '%s\n' "$code" > runtime/exit-code.txt
+          echo "Production daily_scan exit code: $code"
+          tail -60 runtime/scan.log
+          exit 0
+      - name: Seal all original run evidence
+        if: always()
+        run: |
+          mkdir -p runtime
+          python - <<'PY'
+          import hashlib, json, os, subprocess
+          from datetime import datetime, timezone
+          from pathlib import Path
+          root = Path('runtime')
+          identity = {'source_revision': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(), 'workflow_revision': os.environ['GITHUB_SHA'], 'run_id': os.environ['GITHUB_RUN_ID'], 'captured_at_utc': datetime.now(timezone.utc).isoformat(), 'requested_close': '2026-09-18', 'mode': 'simulation', 'start_date': '2026-07-01', 'initial_capital_cny': 2000000, 'production_code_modified': False}
+          (root/'execution.json').write_text(json.dumps(identity, indent=2)+'\n')
+          records = []
+          for p in sorted(root.rglob('*')):
+              if p.is_file() and p.name != 'evidence-manifest.json':
+                  data=p.read_bytes()
+                  records.append({'path': p.relative_to(root).as_posix(), 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+          (root/'evidence-manifest.json').write_text(json.dumps({'files': records}, indent=2)+'\n')
+          print(json.dumps({'identity': identity, 'files': len(records), 'total_bytes': sum(r['bytes'] for r in records)}))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core17-close-20260918-${{ github.run_id }}
+          path: runtime/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Require successful production scan
+        if: always()
+        run: test -f runtime/exit-code.txt && test "$(cat runtime/exit-code.txt)" = 0
